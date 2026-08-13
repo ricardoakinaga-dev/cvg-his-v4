@@ -214,6 +214,13 @@ function onClick(event: MouseEvent) {
   animation: ds-spin 0.6s linear infinite;
 }
 
+@media (max-width: 1024px), (pointer: coarse) {
+  .ds-btn--sm,
+  .ds-btn--md {
+    min-height: var(--touch-min, 44px);
+  }
+}
+
 @keyframes ds-spin {
   to {
     transform: rotate(360deg);

@@ -464,18 +464,23 @@ function emitAction(action: PageAction, event: MouseEvent) {
   }
 
   .app-page-header__action-group {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: flex;
+    flex-wrap: nowrap;
     width: 100%;
+    max-width: 100%;
+    justify-content: flex-start;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    padding: 2px 2px 6px;
+    scrollbar-width: thin;
   }
 
   .app-page-header__action-group > * {
-    min-width: 0;
+    flex: 0 0 auto;
   }
 
   .app-page-header__action-group > :last-child {
-    grid-column: 1 / -1;
-    grid-row: 1;
+    order: -1;
   }
 
   .app-page-header__title {

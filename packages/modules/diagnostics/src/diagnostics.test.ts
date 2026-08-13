@@ -26,10 +26,10 @@ function createService() {
   return { service, encounter };
 }
 
-test('DiagnosticsService createOrder creates requested diagnostic order', () => {
+test('DiagnosticsService createOrder creates requested diagnostic order', async () => {
   const { service, encounter } = createService();
 
-  const order = service.createOrder({
+  const order = await service.createOrder({
     encounterId: encounter.id,
     patientId: encounter.patientId,
     examType: 'xray',
@@ -41,22 +41,22 @@ test('DiagnosticsService createOrder creates requested diagnostic order', () => 
   assert.equal(service.list(encounter.id).length, 1);
 });
 
-test('DiagnosticsService recordResult updates status and summary', () => {
+test('DiagnosticsService recordResult updates status and summary', async () => {
   const { service, encounter } = createService();
-  const order = service.createOrder({
+  const order = await service.createOrder({
     encounterId: encounter.id,
     patientId: encounter.patientId,
     examType: 'blood_panel',
     reason: 'Check-up'
   });
 
-  const collected = service.recordResult(order.id, {
+  const collected = await service.recordResult(order.id, {
     status: 'collected',
     collectedByUserId: 'enf_joao'
   });
   assert.equal(collected.status, 'collected');
 
-  const updated = service.recordResult(order.id, {
+  const updated = await service.recordResult(order.id, {
     status: 'resulted',
     resultSummary: 'Hemograma sem alteracoes',
     releasedByUserId: 'vet_ana'
@@ -76,9 +76,9 @@ test('DiagnosticsService getOrThrow rejects unknown order', () => {
   assert.throws(() => service.getOrThrow('diag_missing' as never), NotFoundError);
 });
 
-test('DiagnosticsService list filters by encounter', () => {
+test('DiagnosticsService list filters by encounter', async () => {
   const { service, encounter } = createService();
-  service.createOrder({
+  await service.createOrder({
     encounterId: encounter.id,
     patientId: encounter.patientId,
     examType: 'ultrasound',
@@ -89,17 +89,17 @@ test('DiagnosticsService list filters by encounter', () => {
   assert.equal(service.list(encounter.id).length, 1);
 });
 
-test('DiagnosticsService recordResult follows valid lifecycle', () => {
+test('DiagnosticsService recordResult follows valid lifecycle', async () => {
   const { service, encounter } = createService();
 
-  const order = service.createOrder({
+  const order = await service.createOrder({
     encounterId: encounter.id,
     patientId: encounter.patientId,
     examType: 'blood_panel',
     reason: 'Check-up'
   });
 
-  const collected = service.recordResult(order.id, {
+  const collected = await service.recordResult(order.id, {
     status: 'collected',
     collectedByUserId: 'enf_joao'
   });
@@ -107,7 +107,7 @@ test('DiagnosticsService recordResult follows valid lifecycle', () => {
   assert.equal(collected.collectedByUserId, 'enf_joao');
   assert.ok(collected.collectedAt);
 
-  const resulted = service.recordResult(order.id, {
+  const resulted = await service.recordResult(order.id, {
     status: 'resulted',
     resultSummary: 'Valores dentro da normalidade',
     releasedByUserId: 'vet_ana',
@@ -120,40 +120,40 @@ test('DiagnosticsService recordResult follows valid lifecycle', () => {
   assert.ok(resulted.signatureHash);
 });
 
-test('DiagnosticsService recordResult blocks invalid transitions', () => {
+test('DiagnosticsService recordResult blocks invalid transitions', async () => {
   const { service, encounter } = createService();
 
-  const order = service.createOrder({
+  const order = await service.createOrder({
     encounterId: encounter.id,
     patientId: encounter.patientId,
     examType: 'xray',
     reason: 'Tosse'
   });
 
-  service.recordResult(order.id, { status: 'collected', collectedByUserId: 'enf_joao' });
-  service.recordResult(order.id, {
+  await service.recordResult(order.id, { status: 'collected', collectedByUserId: 'enf_joao' });
+  await service.recordResult(order.id, {
     status: 'resulted',
     resultSummary: 'Sem alteracoes',
     releasedByUserId: 'vet_ana'
   });
 
-  assert.throws(
+  await assert.rejects(
     () => service.recordResult(order.id, { status: 'requested' } as never),
     /Invalid status transition/
   );
 });
 
-test('DiagnosticsService recordResult allows cancellation', () => {
+test('DiagnosticsService recordResult allows cancellation', async () => {
   const { service, encounter } = createService();
 
-  const order = service.createOrder({
+  const order = await service.createOrder({
     encounterId: encounter.id,
     patientId: encounter.patientId,
     examType: 'xray',
     reason: 'Tosse'
   });
 
-  const cancelled = service.recordResult(order.id, { status: 'cancelled' });
+  const cancelled = await service.recordResult(order.id, { status: 'cancelled' });
   assert.equal(cancelled.status, 'cancelled');
 });
 
@@ -165,10 +165,10 @@ test('DiagnosticsService listCatalog returns default catalog', () => {
   assert.equal(catalog[0].code, 'HEM');
 });
 
-test('DiagnosticsService createOrder links catalog entry', () => {
+test('DiagnosticsService createOrder links catalog entry', async () => {
   const { service, encounter } = createService();
 
-  const order = service.createOrder({
+  const order = await service.createOrder({
     encounterId: encounter.id,
     patientId: encounter.patientId,
     examType: 'Hemograma',
@@ -181,10 +181,10 @@ test('DiagnosticsService createOrder links catalog entry', () => {
   assert.equal(catalogEntry?.name, 'Hemograma');
 });
 
-test('DiagnosticsService createOrder rejects patient mismatch and unknown catalog', () => {
+test('DiagnosticsService createOrder rejects patient mismatch and unknown catalog', async () => {
   const { service, encounter } = createService();
 
-  assert.throws(
+  await assert.rejects(
     () =>
       service.createOrder({
         encounterId: encounter.id,
@@ -195,7 +195,7 @@ test('DiagnosticsService createOrder rejects patient mismatch and unknown catalo
     /patientId must match/
   );
 
-  assert.throws(
+  await assert.rejects(
     () =>
       service.createOrder({
         encounterId: encounter.id,
@@ -208,10 +208,50 @@ test('DiagnosticsService createOrder rejects patient mismatch and unknown catalo
   );
 });
 
-test('DiagnosticsService recordResult requires collector and clinical evidence when resulting', () => {
+test('DiagnosticsService rejects cross-account order creation before persistence', async () => {
   const { service, encounter } = createService();
 
-  const order = service.createOrder({
+  await assert.rejects(
+    () =>
+      service.createOrder(
+        {
+          encounterId: encounter.id,
+          patientId: encounter.patientId,
+          examType: 'Hemograma',
+          reason: 'Tentativa entre contas'
+        },
+        'acc_other' as never
+      ),
+    NotFoundError
+  );
+  assert.equal(service.list().length, 0);
+});
+
+test('DiagnosticsService rejects cross-account result mutation without changing state', async () => {
+  const { service, encounter } = createService();
+  const order = await service.createOrder({
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    examType: 'Hemograma',
+    reason: 'Isolamento por conta'
+  });
+
+  await assert.rejects(
+    () =>
+      service.recordResult(
+        order.id,
+        { status: 'collected', collectedByUserId: 'lab_other' },
+        'acc_other' as never
+      ),
+    NotFoundError
+  );
+  assert.equal(service.getOrThrow(order.id).status, 'requested');
+});
+
+test('DiagnosticsService recordResult requires collector and clinical evidence when resulting', async () => {
+  const { service, encounter } = createService();
+
+  const order = await service.createOrder({
     encounterId: encounter.id,
     patientId: encounter.patientId,
     examType: 'Hemograma',
@@ -219,22 +259,22 @@ test('DiagnosticsService recordResult requires collector and clinical evidence w
     reason: 'Check-up'
   });
 
-  assert.throws(
+  await assert.rejects(
     () => service.recordResult(order.id, { status: 'collected' }),
     /collectedByUserId/
   );
 
-  service.recordResult(order.id, {
+  await service.recordResult(order.id, {
     status: 'collected',
     collectedByUserId: 'lab_1'
   });
 
-  assert.throws(
+  await assert.rejects(
     () => service.recordResult(order.id, { status: 'resulted' }),
     /resultSummary or resultAttachmentId/
   );
 
-  assert.throws(
+  await assert.rejects(
     () =>
       service.recordResult(order.id, {
         status: 'resulted',
@@ -288,13 +328,111 @@ test('DiagnosticsService hydrateFromDatabase loads persisted orders by account',
   assert.equal(service.listByAccount('acc_test' as never)[0].id, 'diag_repo_1');
 });
 
+test('DiagnosticsService createOrder propagates repository failure without publishing the order', async () => {
+  const { encounter } = createService();
+  let createAttempts = 0;
+  const service = new DiagnosticsService(
+    {
+      getOrThrow() {
+        return encounter;
+      }
+    } as never,
+    {
+      diagnosticOrderRepository: {
+        async create() {
+          createAttempts += 1;
+          if (createAttempts === 1) {
+            throw new Error('diagnostic order create failed');
+          }
+        },
+        async update() {},
+        async findById() {
+          return null;
+        },
+        async findAll() {
+          return [];
+        },
+        async findByEncounterId() {
+          return [];
+        }
+      }
+    }
+  );
+
+  await assert.rejects(async () => {
+    await service.createOrder({
+      encounterId: encounter.id,
+      patientId: encounter.patientId,
+      examType: 'Hemograma',
+      reason: 'Persistencia obrigatoria'
+    });
+  }, /diagnostic order create failed/);
+  assert.equal(service.listByAccount('acc_test' as never).length, 0);
+
+  const persisted = await service.createOrder({
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    examType: 'Bioquimico',
+    reason: 'Fila deve se recuperar'
+  });
+
+  assert.equal(createAttempts, 2);
+  assert.equal(service.listByAccount('acc_test' as never)[0].id, persisted.id);
+});
+
+test('DiagnosticsService recordResult propagates update failure and preserves prior state', async () => {
+  const { encounter } = createService();
+  const service = new DiagnosticsService(
+    {
+      getOrThrow() {
+        return encounter;
+      }
+    } as never,
+    {
+      diagnosticOrderRepository: {
+        async create() {},
+        async update() {
+          throw new Error('diagnostic order update failed');
+        },
+        async findById() {
+          return null;
+        },
+        async findAll() {
+          return [];
+        },
+        async findByEncounterId() {
+          return [];
+        }
+      }
+    }
+  );
+  const order = await service.createOrder({
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    examType: 'Hemograma',
+    reason: 'Estado anterior deve ser preservado'
+  });
+
+  await assert.rejects(async () => {
+    await service.recordResult(order.id, {
+      status: 'collected',
+      collectedByUserId: 'lab_1'
+    });
+  }, /diagnostic order update failed/);
+
+  const unchanged = service.getOrThrow(order.id);
+  assert.equal(unchanged.status, 'requested');
+  assert.equal(unchanged.collectedAt, undefined);
+  assert.equal(unchanged.collectedByUserId, undefined);
+});
+
 test('LaboratoryService serves backend-first catalog and dashboard summary', async () => {
   const { service: diagnostics, encounter } = createService();
   const laboratory = new LaboratoryService(diagnostics, {
     catalogRepository: new InMemoryLaboratoryCatalogRepository()
   });
 
-  diagnostics.createOrder({
+  await diagnostics.createOrder({
     encounterId: encounter.id,
     patientId: encounter.patientId,
     examType: 'Hemograma',
@@ -396,7 +534,7 @@ test('LaboratoryService exposes resulted orders and order detail scoped by accou
     catalogRepository: new InMemoryLaboratoryCatalogRepository()
   });
 
-  const order = diagnostics.createOrder({
+  const order = await diagnostics.createOrder({
     encounterId: encounter.id,
     patientId: encounter.patientId,
     examType: 'Hemograma',
@@ -404,11 +542,11 @@ test('LaboratoryService exposes resulted orders and order detail scoped by accou
     reason: 'Check-up'
   });
 
-  diagnostics.recordResult(order.id, {
+  await diagnostics.recordResult(order.id, {
     status: 'collected',
     collectedByUserId: 'lab_1'
   });
-  diagnostics.recordResult(order.id, {
+  await diagnostics.recordResult(order.id, {
     status: 'resulted',
     resultAttachmentId: 'att_1',
     releasedByUserId: 'vet_ana'
@@ -439,7 +577,10 @@ test('LaboratoryService falls back to default catalogs when repository is not co
   assert.ok(equipment.length >= 1);
   assert.ok(reportTypes.length >= 1);
   assert.ok(referenceValues.length >= 1);
-  assert.equal(referenceValues.every((item) => item.examType.toUpperCase().includes('HEM')), true);
+  assert.equal(
+    referenceValues.every((item) => item.examType.toUpperCase().includes('HEM')),
+    true
+  );
 });
 
 test('LaboratoryService keeps order listing available when catalog repository is unavailable', async () => {
@@ -488,7 +629,7 @@ test('LaboratoryService keeps order listing available when catalog repository is
     }
   });
 
-  const order = diagnostics.createOrder({
+  const order = await diagnostics.createOrder({
     encounterId: encounter.id,
     patientId: encounter.patientId,
     examType: 'Hemograma',
@@ -505,24 +646,24 @@ test('LaboratoryService listResults filters only released or evidenced orders', 
   const { service: diagnostics, encounter } = createService();
   const laboratory = new LaboratoryService(diagnostics);
 
-  const openOrder = diagnostics.createOrder({
+  const openOrder = await diagnostics.createOrder({
     encounterId: encounter.id,
     patientId: encounter.patientId,
     examType: 'Urinalise',
     reason: 'Triagem'
   });
-  const releasedOrder = diagnostics.createOrder({
+  const releasedOrder = await diagnostics.createOrder({
     encounterId: encounter.id,
     patientId: encounter.patientId,
     examType: 'Bioquimico',
     reason: 'Seguimento'
   });
 
-  diagnostics.recordResult(releasedOrder.id, {
+  await diagnostics.recordResult(releasedOrder.id, {
     status: 'collected',
     collectedByUserId: 'lab_1'
   });
-  diagnostics.recordResult(releasedOrder.id, {
+  await diagnostics.recordResult(releasedOrder.id, {
     status: 'resulted',
     resultSummary: 'Tudo normal',
     releasedByUserId: 'vet_ana'
@@ -530,21 +671,27 @@ test('LaboratoryService listResults filters only released or evidenced orders', 
 
   const results = await laboratory.listResults('acc_test' as never);
 
-  assert.equal(results.some((item) => item.id === releasedOrder.id), true);
-  assert.equal(results.some((item) => item.id === openOrder.id), false);
+  assert.equal(
+    results.some((item) => item.id === releasedOrder.id),
+    true
+  );
+  assert.equal(
+    results.some((item) => item.id === openOrder.id),
+    false
+  );
 });
 
-test('LaboratoryService getOrder blocks access to another account and proxy methods stay coherent', () => {
+test('LaboratoryService getOrder blocks access to another account and proxy methods stay coherent', async () => {
   const { service: diagnostics, encounter } = createService();
   const laboratory = new LaboratoryService(diagnostics);
 
-  const created = laboratory.createOrder({
+  const created = await laboratory.createOrder({
     encounterId: encounter.id,
     patientId: encounter.patientId,
     examType: 'Citologia',
     reason: 'Controle'
   });
-  const collected = laboratory.recordResult(created.id, {
+  const collected = await laboratory.recordResult(created.id, {
     status: 'collected',
     collectedByUserId: 'lab_2'
   });

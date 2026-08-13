@@ -36,59 +36,59 @@ export class DatabaseLaboratoryCatalogRepository implements LaboratoryCatalogRep
   }
 
   public async ensureSeedData(accountId: AccountId): Promise<void> {
-    const reportTypeRow = await this.#db
-      .select({ id: laboratoryReportTypes.id })
-      .from(laboratoryReportTypes)
-      .where(eq(laboratoryReportTypes.accountId, accountId))
-      .limit(1);
-
-    if (reportTypeRow.length > 0) {
-      return;
-    }
-
     const now = new Date(nowIso());
+    const scopedId = (id: string): string => `${accountId}:${id}`;
 
-    await this.#db.insert(laboratoryEquipment).values(
-      DEFAULT_LABORATORY_EQUIPMENT.map((item) => ({
-        id: item.id,
-        accountId,
-        name: item.name,
-        type: item.type,
-        serialNumber: item.serialNumber,
-        status: item.status,
-        lastCalibrationAt: new Date(item.lastCalibrationAt),
-        createdAt: now,
-        updatedAt: now
-      }))
-    );
+    await this.#db
+      .insert(laboratoryEquipment)
+      .values(
+        DEFAULT_LABORATORY_EQUIPMENT.map((item) => ({
+          id: scopedId(item.id),
+          accountId,
+          name: item.name,
+          type: item.type,
+          serialNumber: item.serialNumber,
+          status: item.status,
+          lastCalibrationAt: new Date(item.lastCalibrationAt),
+          createdAt: now,
+          updatedAt: now
+        }))
+      )
+      .onConflictDoNothing();
 
-    await this.#db.insert(laboratoryReportTypes).values(
-      DEFAULT_LABORATORY_REPORT_TYPES.map((item) => ({
-        id: item.id,
-        accountId,
-        name: item.name,
-        code: item.code,
-        category: item.category,
-        description: item.description,
-        active: item.active,
-        createdAt: now,
-        updatedAt: now
-      }))
-    );
+    await this.#db
+      .insert(laboratoryReportTypes)
+      .values(
+        DEFAULT_LABORATORY_REPORT_TYPES.map((item) => ({
+          id: scopedId(item.id),
+          accountId,
+          name: item.name,
+          code: item.code,
+          category: item.category,
+          description: item.description,
+          active: item.active,
+          createdAt: now,
+          updatedAt: now
+        }))
+      )
+      .onConflictDoNothing();
 
-    await this.#db.insert(laboratoryReferenceValues).values(
-      DEFAULT_LABORATORY_REFERENCE_VALUES.map((item) => ({
-        id: item.id,
-        accountId,
-        parameter: item.parameter,
-        examType: item.examType,
-        minValue: item.minValue.toString(),
-        maxValue: item.maxValue.toString(),
-        unit: item.unit,
-        createdAt: now,
-        updatedAt: now
-      }))
-    );
+    await this.#db
+      .insert(laboratoryReferenceValues)
+      .values(
+        DEFAULT_LABORATORY_REFERENCE_VALUES.map((item) => ({
+          id: scopedId(item.id),
+          accountId,
+          parameter: item.parameter,
+          examType: item.examType,
+          minValue: item.minValue.toString(),
+          maxValue: item.maxValue.toString(),
+          unit: item.unit,
+          createdAt: now,
+          updatedAt: now
+        }))
+      )
+      .onConflictDoNothing();
   }
 
   public async listEquipment(accountId: AccountId): Promise<readonly LaboratoryEquipmentSummary[]> {

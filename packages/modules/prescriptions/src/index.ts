@@ -341,19 +341,47 @@ export class PrescriptionsService {
     return prescription;
   }
 
-  public getById(prescriptionId: PrescriptionId): PrescriptionSummary {
+  public getById(
+    prescriptionId: PrescriptionId,
+    expectedAccountId?: AccountId
+  ): PrescriptionSummary {
     const entry = this.#prescriptions.get(prescriptionId);
     if (!entry) throw new NotFoundError('Prescription not found', { prescriptionId });
     const prescription = toPrescriptionSummary(entry);
     if (!prescription) throw new NotFoundError('Prescription not found', { prescriptionId });
+    if (expectedAccountId && prescription.accountId !== expectedAccountId) {
+      throw new NotFoundError('Prescription not found', { prescriptionId });
+    }
     return prescription;
+  }
+
+  public async getByIdAsync(
+    prescriptionId: PrescriptionId,
+    expectedAccountId?: AccountId
+  ): Promise<PrescriptionSummary> {
+    if (this.#prescriptions.has(prescriptionId)) {
+      return this.getById(prescriptionId, expectedAccountId);
+    }
+
+    const persisted = await this.#prescriptionRepository?.findById(prescriptionId);
+    if (!persisted || (expectedAccountId && persisted.accountId !== expectedAccountId)) {
+      throw new NotFoundError('Prescription not found', { prescriptionId });
+    }
+
+    const cached = { ...persisted };
+    this.#prescriptions.set(
+      prescriptionId,
+      cached as unknown as ClinicalEntrySummary
+    );
+    return cached;
   }
 
   public renderDocument(
     prescriptionId: PrescriptionId,
-    context: PrescriptionDocumentContext
+    context: PrescriptionDocumentContext,
+    expectedAccountId?: AccountId
   ): PrescriptionDocument {
-    const prescription = this.getById(prescriptionId);
+    const prescription = this.getById(prescriptionId, expectedAccountId);
     const header = [
       context.clinic.name,
       context.clinic.document ? `CNPJ/CPF: ${context.clinic.document}` : '',
@@ -419,16 +447,32 @@ export class PrescriptionsService {
     };
   }
 
-  public listByEncounter(encounterId: EncounterId): readonly PrescriptionSummary[] {
+  public listByEncounter(
+    encounterId: EncounterId,
+    expectedAccountId?: AccountId
+  ): readonly PrescriptionSummary[] {
     return Array.from(this.#prescriptions.values())
-      .filter((e) => e.encounterId === encounterId && e.entryType === 'prescription')
+      .filter(
+        (entry) =>
+          entry.encounterId === encounterId &&
+          entry.entryType === 'prescription' &&
+          (!expectedAccountId || entry.accountId === expectedAccountId)
+      )
       .map(toPrescriptionSummary)
       .filter((p): p is PrescriptionSummary => p !== null);
   }
 
-  public listByPatient(patientId: PatientId): readonly PrescriptionSummary[] {
+  public listByPatient(
+    patientId: PatientId,
+    expectedAccountId?: AccountId
+  ): readonly PrescriptionSummary[] {
     return Array.from(this.#prescriptions.values())
-      .filter((e) => e.patientId === patientId && e.entryType === 'prescription')
+      .filter(
+        (entry) =>
+          entry.patientId === patientId &&
+          entry.entryType === 'prescription' &&
+          (!expectedAccountId || entry.accountId === expectedAccountId)
+      )
       .map(toPrescriptionSummary)
       .filter((p): p is PrescriptionSummary => p !== null);
   }
@@ -440,8 +484,13 @@ export class PrescriptionsService {
       .filter((p): p is PrescriptionSummary => p !== null);
   }
 
-  public update(prescriptionId: PrescriptionId, actorUserId: UserId, payload: UpdatePrescriptionRequest): PrescriptionSummary {
-    const current = this.getById(prescriptionId);
+  public update(
+    prescriptionId: PrescriptionId,
+    actorUserId: UserId,
+    payload: UpdatePrescriptionRequest,
+    expectedAccountId?: AccountId
+  ): PrescriptionSummary {
+    const current = this.getById(prescriptionId, expectedAccountId);
     if (current.deletedAt) throw new ValidationError('Cannot update an archived prescription', { prescriptionId });
     requireNonEmptyString(payload.reason, 'reason');
     if (payload.expectedVersion !== undefined && payload.expectedVersion !== current.version) {
@@ -479,8 +528,13 @@ export class PrescriptionsService {
     return prescription;
   }
 
-  public archive(prescriptionId: PrescriptionId, actorUserId: UserId, payload: ArchivePrescriptionRequest): PrescriptionSummary {
-    const current = this.getById(prescriptionId);
+  public archive(
+    prescriptionId: PrescriptionId,
+    actorUserId: UserId,
+    payload: ArchivePrescriptionRequest,
+    expectedAccountId?: AccountId
+  ): PrescriptionSummary {
+    const current = this.getById(prescriptionId, expectedAccountId);
     if (current.deletedAt) throw new ValidationError('Prescription is already archived', { prescriptionId });
     if (payload.expectedVersion !== undefined && payload.expectedVersion !== current.version) {
       throw new ValidationError('Prescription version mismatch', {

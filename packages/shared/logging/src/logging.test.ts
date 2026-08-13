@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import test, { mock } from 'node:test';
+import { test, vi } from 'vitest';
 import { trace } from '@opentelemetry/api';
 
 import { createLogger, createChildLogger, type Logger, type LogContext } from './index.js';
@@ -152,12 +152,12 @@ test('logger emits trace context from active span together with request correlat
       traceFlags: 1
     })
   } as never;
-  const getActiveSpanMock = mock.method(trace, 'getActiveSpan', () => fakeSpan);
+  const getActiveSpanMock = vi.spyOn(trace, 'getActiveSpan').mockReturnValue(fakeSpan);
 
   const output = captureStdout(() => {
     logger.info('observability contract', { requestId: 'req-123' });
   });
-  getActiveSpanMock.mock.restore();
+  getActiveSpanMock.mockRestore();
 
   const payload = JSON.parse(output.trim()) as Record<string, unknown>;
   assert.equal(payload.requestId, 'req-123');

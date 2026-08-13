@@ -60,6 +60,19 @@ describe('OwnersService', () => {
       expect(owner.administrativeNotes).toBe('VIP client');
     });
 
+    it('isolates duplicate detection, reads and updates by account', () => {
+      const ownerA = service.create(ACCOUNT_ID, makeOwner());
+      const ownerB = service.create(ACCOUNT_ID_2, makeOwner());
+
+      expect(service.listByAccount(ACCOUNT_ID)).toEqual([ownerA]);
+      expect(service.listByAccount(ACCOUNT_ID_2)).toEqual([ownerB]);
+      expect(() => service.getForAccountOrThrow(ownerA.id, ACCOUNT_ID_2)).toThrow(NotFoundError);
+      expect(() => service.update(ownerA.id, { fullName: 'Cross tenant' }, ACCOUNT_ID_2)).toThrow(
+        NotFoundError
+      );
+      expect(service.getForAccountOrThrow(ownerA.id, ACCOUNT_ID).fullName).toBe('Maria Silva');
+    });
+
     it('creates owner with Vetus operational fields', () => {
       const owner = service.create(ACCOUNT_ID, {
         fullName: 'Cliente Vetus',

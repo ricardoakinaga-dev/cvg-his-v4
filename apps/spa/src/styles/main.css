@@ -28,11 +28,32 @@ html[data-theme='dark'] {
 
 body {
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--color-bg);
   color: var(--color-text);
   transition:
     color 180ms ease,
     background-color 180ms ease;
+}
+
+#app {
+  min-width: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+}
+
+input,
+select,
+textarea,
+button {
+  max-width: 100%;
 }
 
 a {
@@ -434,4 +455,70 @@ code {
   display: flex;
   gap: 8px;
   margin-top: 16px;
+}
+
+@media (max-width: 1024px), (pointer: coarse) {
+  .btn,
+  .btn--sm,
+  .topbar__action-btn,
+  .topbar__logout-btn {
+    min-height: var(--touch-min, 44px);
+  }
+}
+
+@media (max-width: 720px) {
+  .page-header,
+  .page-header__actions,
+  .form-actions,
+  .search-bar,
+  .modal-actions {
+    width: 100%;
+  }
+
+  .page-header__actions,
+  .form-actions,
+  .search-bar,
+  .modal-actions {
+    flex-wrap: wrap;
+  }
+
+  .page-header__actions > *,
+  .form-actions > *,
+  .search-bar > *,
+  .modal-actions > * {
+    flex: 1 1 140px;
+  }
+
+  .detail-section,
+  .form-section,
+  .modal-content {
+    padding: 16px;
+  }
+
+  .detail-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .form-field__input,
+  .search-bar__input {
+    min-height: var(--touch-min, 44px);
+    font-size: 16px;
+  }
+
+  .modal-overlay {
+    align-items: flex-end;
+    min-height: 100dvh;
+    padding:
+      max(12px, env(safe-area-inset-top))
+      max(8px, env(safe-area-inset-right))
+      max(8px, env(safe-area-inset-bottom))
+      max(8px, env(safe-area-inset-left));
+  }
+
+  .modal-content {
+    max-height: calc(100dvh - max(20px, env(safe-area-inset-top)));
+    overflow-y: auto;
+  }
 }

@@ -13,6 +13,7 @@ import type { AccountId, PatientId, OwnerId } from '@cvg-his-v2/shared-types';
 import { ConflictError, NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
 
 const ACCOUNT_ID = 'acc_test' as AccountId;
+const ACCOUNT_ID_2 = 'acc_other' as AccountId;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function createOwner(owners: OwnersService, name = 'Maria Silva'): { id: OwnerId } {
@@ -75,6 +76,56 @@ describe('PatientsService', () => {
       createPatient(service, owners, { name: 'Luna' });
       createPatient(service, owners, { name: 'Max' });
       expect(service.list()).toHaveLength(2);
+    });
+
+    it('isolates patient, link and master-search reads and updates by account', () => {
+      const ownerA = createOwner(owners, 'Tutor A');
+      const ownerB = owners.create(ACCOUNT_ID_2, {
+        fullName: 'Tutor B',
+        contacts: [{ label: 'Phone', value: '11888888888', type: 'phone', primary: true }],
+        financialResponsible: true
+      });
+      const patientA = service.create(ACCOUNT_ID, {
+        name: 'Paciente A',
+        species: 'canine',
+        sex: 'female',
+        primaryOwnerId: ownerA.id
+      });
+      const patientB = service.create(ACCOUNT_ID_2, {
+        name: 'Paciente B',
+        species: 'feline',
+        sex: 'male',
+        primaryOwnerId: ownerB.id
+      });
+
+      expect(service.listByAccount(ACCOUNT_ID)).toEqual([patientA]);
+      expect(service.listByAccount(ACCOUNT_ID_2)).toEqual([patientB]);
+      expect(service.listLinks({ accountId: ACCOUNT_ID })).toHaveLength(1);
+      expect(service.searchMaster('', ACCOUNT_ID).patients).toEqual([patientA]);
+      expect(service.searchMaster('', ACCOUNT_ID).owners).toEqual([ownerA]);
+      expect(() => service.getForAccountOrThrow(patientA.id, ACCOUNT_ID_2)).toThrow(NotFoundError);
+      expect(() => service.update(patientA.id, { name: 'Cross tenant' }, ACCOUNT_ID_2)).toThrow(
+        NotFoundError
+      );
+      expect(service.getForAccountOrThrow(patientA.id, ACCOUNT_ID).name).toBe('Paciente A');
+    });
+
+    it('rejects owner and patient relationships across accounts before mutation', () => {
+      const foreignOwner = owners.create(ACCOUNT_ID_2, {
+        fullName: 'Tutor Externo',
+        contacts: [{ label: 'Phone', value: '11777777777', type: 'phone', primary: true }],
+        financialResponsible: true
+      });
+
+      expect(() =>
+        service.create(ACCOUNT_ID, {
+          name: 'Paciente invalido',
+          species: 'canine',
+          sex: 'unknown',
+          primaryOwnerId: foreignOwner.id
+        })
+      ).toThrow(NotFoundError);
+      expect(service.listByAccount(ACCOUNT_ID)).toHaveLength(0);
     });
 
     it('filters patients by name search', () => {
@@ -442,7 +493,6 @@ describe('PatientsService', () => {
     });
 
     it('updates primaryOwnerId and re-links', () => {
-      const owner1 = createOwner(owners, 'Maria');
       const patient = createPatient(service, owners, { name: 'Luna' });
       const owner2 = createOwner(owners, 'João');
 
@@ -483,8 +533,8 @@ describe('PatientsService', () => {
     });
 
     it('returns all links without filter', () => {
-      const p1 = createPatient(service, owners, { name: 'Luna' });
-      const p2 = createPatient(service, owners, { name: 'Max' });
+      createPatient(service, owners, { name: 'Luna' });
+      createPatient(service, owners, { name: 'Max' });
 
       const links = service.listLinks();
       expect(links.length).toBeGreaterThanOrEqual(2);
@@ -576,7 +626,7 @@ describe('PatientsService', () => {
     });
 
     it('throws ValidationError when primary link does not match patient primaryOwner', () => {
-      const owner1 = createOwner(owners, 'Maria');
+      createOwner(owners, 'Maria');
       const owner2 = createOwner(owners, 'João');
       const patient = createPatient(service, owners);
 
@@ -634,7 +684,7 @@ describe('PatientsService', () => {
 
   describe('searchMaster()', () => {
     it('returns all entities matching query', () => {
-      const owner = createOwner(owners, 'Maria Silva');
+      createOwner(owners, 'Maria Silva');
       createPatient(service, owners, { name: 'Luna' });
 
       const result = service.searchMaster('luna');
@@ -645,7 +695,7 @@ describe('PatientsService', () => {
 
     it('returns owners matching query', () => {
       const owner = createOwner(owners, 'Ana Paula');
-      const patient = service.create(ACCOUNT_ID, {
+      service.create(ACCOUNT_ID, {
         name: 'Luna',
         species: 'canine',
         sex: 'female',

@@ -25,7 +25,11 @@ const API_SECRET_PATHS: Readonly<Record<string, string>> = {
   DATABASE_URL: 'database',
   REDIS_URL: 'redis',
   PAGARME_API_KEY: 'pagarme',
-  PAGARME_PIX_KEY: 'pagarme'
+  PAGARME_PIX_KEY: 'pagarme',
+  RESEND_API_KEY: 'resend',
+  SMS_API_KEY: 'sms',
+  GOOGLE_CALENDAR_ACCESS_TOKEN: 'google_calendar',
+  GOOGLE_CALENDAR_CALENDAR_ID: 'google_calendar'
 };
 
 function isTruthy(value: string | undefined): boolean {

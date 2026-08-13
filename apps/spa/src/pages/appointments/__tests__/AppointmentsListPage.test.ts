@@ -209,9 +209,27 @@ describe('AppointmentsListPage', () => {
       access: { permissionCodes: ['scheduling.read', 'scheduling.manage'] }
     });
     mockGetSchedulingOverview.mockResolvedValue(overviewPayload);
-    mockServicesList.mockResolvedValue([{ id: 'svc-1', name: 'Consulta', code: null, description: null, basePrice: 100, active: true, accountId: 'acc-1', createdAt: '', updatedAt: '' }]);
-    mockOwnerGetById.mockImplementation(async (id: string) => ({ id, fullName: id === 'owner-1' ? 'Maria Silva' : 'João Costa' }));
-    mockPatientGetById.mockImplementation(async (id: string) => ({ id, name: id === 'pat-1' ? 'Rex' : 'Luna' }));
+    mockServicesList.mockResolvedValue([
+      {
+        id: 'svc-1',
+        name: 'Consulta',
+        code: null,
+        description: null,
+        basePrice: 100,
+        active: true,
+        accountId: 'acc-1',
+        createdAt: '',
+        updatedAt: ''
+      }
+    ]);
+    mockOwnerGetById.mockImplementation(async (id: string) => ({
+      id,
+      fullName: id === 'owner-1' ? 'Maria Silva' : 'João Costa'
+    }));
+    mockPatientGetById.mockImplementation(async (id: string) => ({
+      id,
+      name: id === 'pat-1' ? 'Rex' : 'Luna'
+    }));
     mockCheckInQueue.mockResolvedValue({});
     mockCancelAppointment.mockResolvedValue({});
   });
@@ -237,6 +255,11 @@ describe('AppointmentsListPage', () => {
     expect(wrapper.text()).toContain('Ver fila');
     expect(wrapper.text()).toContain('Cliente');
     expect(wrapper.text()).toContain('Filtrar por...');
+    expect(
+      wrapper
+        .findAll('.mini-calendar__day')
+        .every((day) => /^\d{4}-\d{2}-\d{2}$/.test(String(day.attributes('aria-label'))))
+    ).toBe(true);
     expect(wrapper.text()).toContain('Status:');
     expect(wrapper.text()).toContain('Pesquisar Profissional');
     expect(wrapper.text()).toContain('Marcador');
@@ -260,7 +283,9 @@ describe('AppointmentsListPage', () => {
 
     await flushPromises();
 
-    const weekToggle = wrapper.findAll('button').find((button) => button.text().trim() === 'Semana');
+    const weekToggle = wrapper
+      .findAll('button')
+      .find((button) => button.text().trim() === 'Semana');
     expect(weekToggle).toBeDefined();
 
     await weekToggle!.trigger('click');
@@ -275,9 +300,9 @@ describe('AppointmentsListPage', () => {
 
     await flushPromises();
 
-    const quickCreateButton = wrapper.findAll('button').find((button) =>
-      button.text().includes('Criar agendamento')
-    );
+    const quickCreateButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('Criar agendamento'));
     expect(quickCreateButton).toBeDefined();
 
     await quickCreateButton!.trigger('click');
@@ -296,7 +321,9 @@ describe('AppointmentsListPage', () => {
 
     await flushPromises();
 
-    const emptySlot = wrapper.findAll('button').find((button) => button.text().trim() === 'Disponível');
+    const emptySlot = wrapper
+      .findAll('button')
+      .find((button) => button.text().trim() === 'Disponível');
     expect(emptySlot).toBeDefined();
 
     await emptySlot!.trigger('click');
@@ -317,9 +344,9 @@ describe('AppointmentsListPage', () => {
 
     await flushPromises();
 
-    const appointmentButton = wrapper.findAll('button').find((button) =>
-      button.text().includes('Rex')
-    );
+    const appointmentButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('Rex'));
     expect(appointmentButton).toBeDefined();
 
     await appointmentButton!.trigger('click');
@@ -338,23 +365,26 @@ describe('AppointmentsListPage', () => {
 
     await flushPromises();
 
-    const appointmentButton = wrapper.findAll('button').find((button) =>
-      button.text().includes('Rex')
-    );
+    const appointmentButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('Rex'));
     expect(appointmentButton).toBeDefined();
 
     await appointmentButton!.trigger('click');
     await flushPromises();
 
-    const cancelButton = wrapper.findAll('button').find((button) =>
-      button.text().includes('Cancelar Agendamento')
-    );
+    const cancelButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('Cancelar Agendamento'));
     expect(cancelButton).toBeDefined();
 
     await cancelButton!.trigger('click');
     await flushPromises();
 
-    expect(mockCancelAppointment).toHaveBeenCalledWith('appt-1', 'Cancelado pela agenda operacional');
+    expect(mockCancelAppointment).toHaveBeenCalledWith(
+      'appt-1',
+      'Cancelado pela agenda operacional'
+    );
   });
 
   it('shows slot creation entry in month view', async () => {
@@ -368,9 +398,9 @@ describe('AppointmentsListPage', () => {
     await monthToggle!.trigger('click');
     await flushPromises();
 
-    const monthCreateButton = wrapper.findAll('button').find((button) =>
-      button.text().includes('Novo agendamento')
-    );
+    const monthCreateButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('Novo agendamento'));
     expect(monthCreateButton).toBeDefined();
   });
 
@@ -399,9 +429,9 @@ describe('AppointmentsListPage', () => {
 
     await flushPromises();
 
-    const appointmentButton = wrapper.findAll('button').find((button) =>
-      button.text().includes('Rex')
-    );
+    const appointmentButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('Rex'));
     expect(appointmentButton).toBeDefined();
 
     await appointmentButton!.trigger('click');
@@ -498,11 +528,25 @@ describe('AppointmentsListPage', () => {
     });
     mockOwnerGetById.mockImplementation(async (id: string) => ({
       id,
-      fullName: ({ 'owner-1': 'Maria Silva', 'owner-2': 'João Costa', 'owner-3': 'Ana Lima', 'owner-4': 'Paulo Reis' } as Record<string, string>)[id] || id
+      fullName:
+        (
+          {
+            'owner-1': 'Maria Silva',
+            'owner-2': 'João Costa',
+            'owner-3': 'Ana Lima',
+            'owner-4': 'Paulo Reis'
+          } as Record<string, string>
+        )[id] || id
     }));
     mockPatientGetById.mockImplementation(async (id: string) => ({
       id,
-      name: ({ 'pat-1': 'Rex', 'pat-2': 'Luna', 'pat-3': 'Mel', 'pat-4': 'Thor' } as Record<string, string>)[id] || id
+      name:
+        (
+          { 'pat-1': 'Rex', 'pat-2': 'Luna', 'pat-3': 'Mel', 'pat-4': 'Thor' } as Record<
+            string,
+            string
+          >
+        )[id] || id
     }));
 
     const wrapper = await mountPage();
@@ -510,6 +554,65 @@ describe('AppointmentsListPage', () => {
     await flushPromises();
 
     expect(wrapper.findAll('.timeline-item--dense').length).toBeGreaterThan(0);
+    expect(wrapper.text()).toContain('+1 adicionais');
+  });
+
+  it('keeps active appointments visible ahead of cancelled records in dense slots', async () => {
+    const baseAppointment = overviewPayload.items[0];
+    mockGetSchedulingOverview.mockResolvedValue({
+      ...overviewPayload,
+      items: [
+        {
+          ...baseAppointment,
+          id: 'appt-cancelled-1',
+          patientId: 'pat-cancelled-1',
+          ownerId: 'owner-cancelled-1',
+          scheduledAt: '2026-04-12T09:00:00.000Z',
+          status: 'cancelled',
+          operational: {
+            ...baseAppointment.operational,
+            stage: 'cancelled',
+            label: 'Cancelado'
+          }
+        },
+        {
+          ...baseAppointment,
+          id: 'appt-cancelled-2',
+          patientId: 'pat-cancelled-2',
+          ownerId: 'owner-cancelled-2',
+          scheduledAt: '2026-04-12T09:05:00.000Z',
+          status: 'cancelled',
+          operational: {
+            ...baseAppointment.operational,
+            stage: 'cancelled',
+            label: 'Cancelado'
+          }
+        },
+        {
+          ...baseAppointment,
+          id: 'appt-active',
+          patientId: 'pat-active',
+          ownerId: 'owner-active',
+          scheduledAt: '2026-04-12T09:10:00.000Z',
+          status: 'scheduled',
+          operational: {
+            ...baseAppointment.operational,
+            stage: 'scheduled',
+            label: 'Agendado'
+          }
+        }
+      ]
+    });
+    mockOwnerGetById.mockImplementation(async (id: string) => ({ id, fullName: id }));
+    mockPatientGetById.mockImplementation(async (id: string) => ({
+      id,
+      name: id === 'pat-active' ? 'Paciente Ativo Prioritário' : id
+    }));
+
+    const wrapper = await mountPage();
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Paciente Ativo Prioritário');
     expect(wrapper.text()).toContain('+1 adicionais');
   });
 

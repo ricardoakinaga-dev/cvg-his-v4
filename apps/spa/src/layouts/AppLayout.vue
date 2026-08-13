@@ -5,10 +5,10 @@
     class="app-layout"
     :class="{
       'app-layout--collapsed': appStore.sidebarCollapsed,
+      'app-layout--compact': isCompactViewport,
+      'app-layout--mobile-nav-open': isMobileNavigationOpen,
       'app-layout--dark': themeStore.theme === 'dark'
     }"
-    role="application"
-    aria-label="CVG HIS - Sistema de Gestao de Saude"
   >
     <header class="topbar">
       <div class="topbar__brand-pill">
@@ -24,14 +24,18 @@
       </div>
 
       <button
+        ref="navigationToggleEl"
         class="topbar__collapse-btn"
         type="button"
-        @click="appStore.toggleSidebar()"
-        :aria-label="appStore.sidebarCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'"
-        :title="appStore.sidebarCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'"
+        data-testid="mobile-navigation-trigger"
+        aria-controls="primary-navigation"
+        :aria-expanded="isCompactViewport ? isMobileNavigationOpen : undefined"
+        :aria-label="navigationToggleLabel"
+        :title="navigationToggleLabel"
+        @click="toggleNavigation"
       >
-        <span class="topbar__collapse-icon">{{ appStore.sidebarCollapsed ? '☰' : '⇤' }}</span>
-        <span class="topbar__collapse-label">{{ appStore.sidebarCollapsed ? 'Expandir menu' : 'Recolher menu' }}</span>
+        <span class="topbar__collapse-icon">{{ navigationToggleIcon }}</span>
+        <span class="topbar__collapse-label">{{ navigationToggleLabel }}</span>
       </button>
 
       <button class="topbar__search-shell" type="button" @click="openPalette">
@@ -58,16 +62,47 @@
           {{ themeStore.theme === 'dark' ? '☀️' : '🌙' }}
         </button>
 
-        <div class="topbar__profile">
+        <button
+          class="topbar__profile"
+          type="button"
+          aria-label="Abrir área do usuário"
+          title="Configurar minha conta"
+          :disabled="!authStore.user.id"
+          @click="openUserProfile"
+        >
           <strong>{{ authStore.userName }}</strong>
           <span>{{ userBadgeId }}</span>
-        </div>
+        </button>
 
         <button class="topbar__logout-btn" @click="handleLogout()">Sair</button>
       </div>
     </header>
 
-    <aside class="sidebar" role="navigation" aria-label="Navegacao principal">
+    <button
+      v-if="isCompactViewport && isMobileNavigationOpen"
+      class="sidebar-backdrop"
+      type="button"
+      data-testid="mobile-navigation-backdrop"
+      aria-label="Fechar menu de navegação"
+      @click="closeMobileNavigation"
+    />
+
+    <aside
+      id="primary-navigation"
+      ref="sidebarEl"
+      class="sidebar"
+      role="navigation"
+      aria-label="Navegacao principal"
+      :aria-hidden="isCompactViewport ? String(!isMobileNavigationOpen) : undefined"
+    >
+      <div class="sidebar__mobile-header">
+        <div>
+          <strong>Menu principal</strong>
+          <span>Escolha uma área para continuar</span>
+        </div>
+        <button type="button" aria-label="Fechar menu de navegação" @click="closeMobileNavigation">×</button>
+      </div>
+
       <div class="sidebar__search">
         <input
           v-model="searchQuery"
@@ -98,12 +133,12 @@
             <summary class="sidebar__group-summary">
               <span class="sidebar__group-summary-text">
                 <span class="sidebar__group-icon">{{ group.icon }}</span>
-                <span v-if="!appStore.sidebarCollapsed" class="sidebar__group-copy">
+                <span v-if="!appStore.sidebarCollapsed || isCompactViewport" class="sidebar__group-copy">
                   <span class="sidebar__group-label">{{ group.label }}</span>
                   <small class="sidebar__group-description">{{ group.description }}</small>
                 </span>
               </span>
-              <span v-if="!appStore.sidebarCollapsed" class="sidebar__group-chevron">▾</span>
+              <span v-if="!appStore.sidebarCollapsed || isCompactViewport" class="sidebar__group-chevron">▾</span>
             </summary>
 
             <div class="sidebar__group-body">
@@ -113,7 +148,7 @@
                 class="sidebar__section"
                 :class="{ 'sidebar__section--active': currentLocation?.section.id === section.id }"
               >
-                <p v-if="!appStore.sidebarCollapsed" class="sidebar__section-label">
+                <p v-if="!appStore.sidebarCollapsed || isCompactViewport" class="sidebar__section-label">
                   {{ section.label }}
                 </p>
                 <router-link
@@ -125,7 +160,7 @@
                   :title="item.label"
                 >
                   <span class="sidebar__link-icon">{{ item.icon ?? '•' }}</span>
-                  <span v-if="!appStore.sidebarCollapsed" class="sidebar__link-label">
+                  <span v-if="!appStore.sidebarCollapsed || isCompactViewport" class="sidebar__link-label">
                     {{ item.label }}
                   </span>
                 </router-link>
@@ -135,14 +170,14 @@
         </nav>
 
         <section class="sidebar__utility-stack">
-          <div v-if="!appStore.sidebarCollapsed" class="sidebar__utility-label">Utilitários</div>
+          <div v-if="!appStore.sidebarCollapsed || isCompactViewport" class="sidebar__utility-label">Utilitários</div>
           <details
             v-if="filteredEnterpriseSections.length"
             class="sidebar__utility-group sidebar__utility-group--enterprise"
           >
             <summary class="sidebar__utility-summary">
               <span class="sidebar__eyebrow">Console Enterprise</span>
-              <span v-if="!appStore.sidebarCollapsed" class="sidebar__microcopy">Governança e integrações</span>
+              <span v-if="!appStore.sidebarCollapsed || isCompactViewport" class="sidebar__microcopy">Governança e integrações</span>
             </summary>
             <div class="sidebar__panel sidebar__panel--enterprise">
               <div class="sidebar__enterprise-groups">
@@ -151,7 +186,7 @@
                   :key="section.id"
                   class="sidebar__section"
                 >
-                  <p v-if="!appStore.sidebarCollapsed" class="sidebar__section-label">
+                  <p v-if="!appStore.sidebarCollapsed || isCompactViewport" class="sidebar__section-label">
                     {{ section.label }}
                   </p>
                   <router-link
@@ -163,7 +198,7 @@
                     :title="item.label"
                   >
                     <span class="sidebar__link-icon">{{ item.icon ?? '•' }}</span>
-                    <span v-if="!appStore.sidebarCollapsed" class="sidebar__link-label">
+                    <span v-if="!appStore.sidebarCollapsed || isCompactViewport" class="sidebar__link-label">
                       {{ item.label }}
                     </span>
                   </router-link>
@@ -175,12 +210,12 @@
           <details v-if="favoriteLinks.length" class="sidebar__utility-group">
             <summary class="sidebar__utility-summary">
               <span class="sidebar__eyebrow">Favoritos</span>
-              <span v-if="!appStore.sidebarCollapsed" class="sidebar__microcopy">Atalhos pessoais</span>
+              <span v-if="!appStore.sidebarCollapsed || isCompactViewport" class="sidebar__microcopy">Atalhos pessoais</span>
             </summary>
             <section class="sidebar__panel">
               <div class="sidebar__panel-head">
                 <button
-                  v-if="!appStore.sidebarCollapsed"
+                  v-if="!appStore.sidebarCollapsed || isCompactViewport"
                   class="sidebar__ghost-btn"
                   type="button"
                   @click="toggleCurrentFavoriteRoute()"
@@ -197,7 +232,7 @@
                   :class="{ 'sidebar__quick-link--active': isActivePath(item.path) }"
                 >
                   <span class="sidebar__quick-link-icon">{{ item.icon ?? '★' }}</span>
-                  <span v-if="!appStore.sidebarCollapsed" class="sidebar__quick-link-label">
+                  <span v-if="!appStore.sidebarCollapsed || isCompactViewport" class="sidebar__quick-link-label">
                     {{ item.label }}
                   </span>
                 </router-link>
@@ -208,12 +243,12 @@
           <details v-if="recentLinks.length" class="sidebar__utility-group">
             <summary class="sidebar__utility-summary">
               <span class="sidebar__eyebrow">Recentes</span>
-              <span v-if="!appStore.sidebarCollapsed" class="sidebar__microcopy">Histórico de navegação</span>
+              <span v-if="!appStore.sidebarCollapsed || isCompactViewport" class="sidebar__microcopy">Histórico de navegação</span>
             </summary>
             <section class="sidebar__panel sidebar__panel--recent">
               <div class="sidebar__panel-head">
                 <button
-                  v-if="!appStore.sidebarCollapsed"
+                  v-if="!appStore.sidebarCollapsed || isCompactViewport"
                   class="sidebar__ghost-btn"
                   type="button"
                   @click="appStore.clearRecentRoutes()"
@@ -230,7 +265,7 @@
                   :class="{ 'sidebar__recent-link--active': isActivePath(item.path) }"
                 >
                   <span class="sidebar__recent-link-icon">{{ item.icon ?? '↗' }}</span>
-                  <span v-if="!appStore.sidebarCollapsed" class="sidebar__recent-link-label">
+                  <span v-if="!appStore.sidebarCollapsed || isCompactViewport" class="sidebar__recent-link-label">
                     {{ item.label }}
                   </span>
                 </router-link>
@@ -238,6 +273,21 @@
             </section>
           </details>
         </section>
+      </div>
+
+      <div class="sidebar__mobile-actions" data-testid="mobile-account-actions">
+        <button type="button" @click="themeStore.toggle()">
+          <span aria-hidden="true">{{ themeStore.theme === 'dark' ? '☀️' : '🌙' }}</span>
+          {{ themeStore.theme === 'dark' ? 'Tema claro' : 'Tema escuro' }}
+        </button>
+        <button type="button" :disabled="!authStore.user.id" @click="openUserProfile">
+          <span aria-hidden="true">👤</span>
+          Minha conta
+        </button>
+        <button type="button" @click="handleLogout">
+          <span aria-hidden="true">↪</span>
+          Sair
+        </button>
       </div>
     </aside>
 
@@ -353,9 +403,15 @@ const commandInputEl = ref<HTMLInputElement | null>(null);
 const selectedIndex = ref(0);
 const historyPosition = ref(readHistoryPosition());
 const maxHistoryPosition = ref(readHistoryPosition());
+const sidebarEl = ref<HTMLElement | null>(null);
+const navigationToggleEl = ref<HTMLButtonElement | null>(null);
 const sidebarNavEl = ref<HTMLElement | null>(null);
 const isSidebarScrolled = ref(false);
 const isSidebarNearBottom = ref(false);
+const isCompactViewport = ref(false);
+const isMobileNavigationOpen = ref(false);
+const compactViewportQuery = '(max-width: 1024px)';
+let compactViewportMedia: MediaQueryList | null = null;
 
 interface CommandAction {
   id: string;
@@ -622,6 +678,20 @@ const filteredRouteItems = computed(() => {
 const totalItems = computed(() => filteredActionItems.value.length + filteredRouteItems.value.length);
 const canGoBack = computed(() => historyPosition.value > 0);
 const canGoForward = computed(() => historyPosition.value < maxHistoryPosition.value);
+const navigationToggleLabel = computed(() => {
+  if (isCompactViewport.value) {
+    return isMobileNavigationOpen.value ? 'Fechar menu de navegação' : 'Abrir menu de navegação';
+  }
+
+  return appStore.sidebarCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral';
+});
+const navigationToggleIcon = computed(() => {
+  if (isCompactViewport.value) {
+    return isMobileNavigationOpen.value ? '×' : '☰';
+  }
+
+  return appStore.sidebarCollapsed ? '☰' : '⇤';
+});
 
 function readHistoryPosition() {
   if (typeof window === 'undefined') return 0;
@@ -650,9 +720,40 @@ function closePalette() {
   selectedIndex.value = 0;
 }
 
+function toggleNavigation() {
+  if (!isCompactViewport.value) {
+    appStore.toggleSidebar();
+    return;
+  }
+
+  isMobileNavigationOpen.value = !isMobileNavigationOpen.value;
+}
+
+function closeMobileNavigation(restoreFocus = true) {
+  const wasOpen = isMobileNavigationOpen.value;
+  isMobileNavigationOpen.value = false;
+  if (wasOpen && restoreFocus) {
+    void nextTick(() => navigationToggleEl.value?.focus());
+  }
+}
+
+function syncCompactViewport(eventOrMedia: MediaQueryListEvent | MediaQueryList) {
+  isCompactViewport.value = eventOrMedia.matches;
+  if (!eventOrMedia.matches) {
+    closeMobileNavigation();
+  }
+}
+
 function navigateTo(path: string) {
   closePalette();
   void router.push(path);
+}
+
+function openUserProfile() {
+  const userId = authStore.user.id;
+  if (!userId) return;
+
+  navigateTo(`/users/${encodeURIComponent(userId)}/edit`);
 }
 
 function syncHistoryPosition() {
@@ -736,7 +837,10 @@ function onKeydown(event: KeyboardEvent) {
   }
 
   if (event.key === 'Escape') {
-    if (commandPaletteOpen.value) {
+    if (isMobileNavigationOpen.value) {
+      event.preventDefault();
+      closeMobileNavigation();
+    } else if (commandPaletteOpen.value) {
       event.preventDefault();
       closePalette();
     } else if (searchQuery.value) {
@@ -797,6 +901,9 @@ function scrollActiveSidebarItemIntoView() {
 }
 
 onMounted(async () => {
+  compactViewportMedia = window.matchMedia(compactViewportQuery);
+  syncCompactViewport(compactViewportMedia);
+  compactViewportMedia.addEventListener('change', syncCompactViewport);
   window.addEventListener('keydown', onKeydown);
   sidebarNavEl.value?.addEventListener('scroll', syncSidebarScrollState, { passive: true });
   syncHistoryPosition();
@@ -806,8 +913,11 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  compactViewportMedia?.removeEventListener('change', syncCompactViewport);
+  compactViewportMedia = null;
   window.removeEventListener('keydown', onKeydown);
   sidebarNavEl.value?.removeEventListener('scroll', syncSidebarScrollState);
+  document.body.classList.remove('mobile-navigation-open');
 });
 
 watch(commandPaletteOpen, async (open) => {
@@ -830,12 +940,21 @@ watch(totalItems, (nextTotal) => {
 watch(
   () => route.fullPath,
   async () => {
+    closeMobileNavigation(false);
     syncHistoryPosition();
     await nextTick();
     scrollActiveSidebarItemIntoView();
     syncSidebarScrollState();
   }
 );
+
+watch(isMobileNavigationOpen, async (open) => {
+  document.body.classList.toggle('mobile-navigation-open', open);
+  if (!open) return;
+
+  await nextTick();
+  sidebarEl.value?.querySelector<HTMLElement>('.sidebar__search-input')?.focus();
+});
 
 function handleLogout() {
   authStore.logout();
@@ -874,6 +993,7 @@ function handleLogout() {
   --shell-muted: #64748b;
   --topbar-height: 72px;
   min-height: 100vh;
+  min-height: 100dvh;
   display: grid;
   grid-template-columns: 248px minmax(0, 1fr);
   grid-template-rows: var(--topbar-height) minmax(0, 1fr);
@@ -909,6 +1029,12 @@ function handleLogout() {
   background: linear-gradient(180deg, #f8fbfe, #f2f6fa 72%, #edf3f8);
   min-width: 0;
   box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.85);
+}
+
+.sidebar-backdrop,
+.sidebar__mobile-header,
+.sidebar__mobile-actions {
+  display: none;
 }
 
 .sidebar__panel {
@@ -1428,6 +1554,22 @@ function handleLogout() {
   border: 1px solid rgba(14, 165, 233, 0.22);
   background: linear-gradient(135deg, rgba(224, 242, 254, 0.78), rgba(255, 255, 255, 0.98));
   min-width: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.topbar__profile:hover,
+.topbar__profile:focus-visible {
+  border-color: rgba(14, 165, 233, 0.5);
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.12);
+  outline: none;
+}
+
+.topbar__profile:disabled {
+  cursor: default;
+  opacity: 0.7;
 }
 
 .topbar__profile strong {
@@ -1618,7 +1760,7 @@ function handleLogout() {
   color: #7dd3fc;
 }
 
-@media (max-width: 1200px) {
+@media (min-width: 1025px) and (max-width: 1200px) {
   .app-layout,
   .app-layout--collapsed {
     grid-template-columns: 64px minmax(0, 1fr);
@@ -1638,7 +1780,7 @@ function handleLogout() {
   }
 }
 
-@media (max-width: 980px) {
+@media (min-width: 1025px) and (max-width: 1180px) {
   .app-layout {
     --topbar-height: 122px;
   }
@@ -1662,74 +1804,201 @@ function handleLogout() {
   }
 }
 
-@media (max-width: 860px) {
+@media (max-width: 1024px) {
   .app-layout,
   .app-layout--collapsed {
-    --topbar-height: 156px;
+    --topbar-height: 64px;
     grid-template-columns: 1fr;
-    grid-template-rows: auto auto minmax(0, 1fr);
+    grid-template-rows: var(--topbar-height) minmax(0, 1fr);
   }
 
   .topbar {
     position: sticky;
     grid-column: 1;
     grid-row: 1;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    min-height: var(--topbar-height);
+    padding: max(8px, env(safe-area-inset-top)) 16px 8px;
   }
 
-  .topbar__brand-copy strong {
-    max-width: 180px;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  .topbar__brand-pill {
+    display: none;
   }
 
-  .topbar__brand-copy span,
-  .topbar__profile span,
+  .topbar__actions,
+  .topbar__search-shell-copy,
   .topbar__search-shell kbd {
     display: none;
   }
 
-  .topbar__actions {
-    order: 2;
-    flex: 1 1 100%;
-    justify-content: flex-start;
-    flex-wrap: wrap;
+  .topbar__collapse-btn,
+  .topbar__search-shell {
+    min-width: var(--touch-min, 44px);
+    min-height: var(--touch-min, 44px);
   }
 
   .topbar__search-shell {
-    order: 3;
-  }
-
-  .topbar__profile {
-    max-width: 150px;
-    padding-inline: 10px;
-  }
-
-  .topbar__logout-btn {
-    padding-inline: 10px;
+    justify-self: end;
+    width: 44px;
+    max-width: 44px;
+    padding: 0;
+    justify-content: center;
   }
 
   .sidebar {
-    position: sticky;
-    grid-column: 1;
-    grid-row: 2;
-    top: var(--topbar-height);
-    z-index: 20;
-    height: auto;
-    max-height: 48vh;
-    overflow: auto;
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 80;
+    width: min(360px, 88vw);
+    height: 100dvh;
+    max-height: none;
+    padding: max(14px, env(safe-area-inset-top)) 12px max(14px, env(safe-area-inset-bottom));
+    border-right: 1px solid var(--shell-border);
+    box-shadow: 20px 0 48px rgba(15, 23, 42, 0.22);
+    transform: translateX(-105%);
+    visibility: hidden;
+    transition: transform 180ms ease, visibility 180ms step-end;
   }
 
-  .workspace {
-    grid-column: 1;
-    grid-row: 3;
+  .app-layout--mobile-nav-open .sidebar {
+    transform: translateX(0);
+    visibility: visible;
+    transition: transform 180ms ease, visibility 0s;
+  }
+
+  .sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    display: block;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    border: 0;
+    background: rgba(15, 23, 42, 0.48);
+    backdrop-filter: blur(2px);
+  }
+
+  .sidebar__mobile-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .sidebar__mobile-header > div {
+    display: grid;
+    gap: 2px;
+  }
+
+  .sidebar__mobile-header strong {
+    color: var(--shell-text);
+    font-size: 15px;
+  }
+
+  .sidebar__mobile-header span {
+    color: var(--shell-muted);
+    font-size: 12px;
+  }
+
+  .sidebar__mobile-header button {
+    width: var(--touch-min, 44px);
+    height: var(--touch-min, 44px);
+    border: 0;
+    border-radius: 10px;
+    background: rgba(148, 163, 184, 0.12);
+    color: var(--shell-text);
+    font-size: 24px;
+  }
+
+  .sidebar__mobile-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    padding-top: 10px;
+    border-top: 1px solid var(--shell-border);
+  }
+
+  .sidebar__mobile-actions button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-width: 0;
+    min-height: var(--touch-min, 44px);
+    padding: 8px;
+    border: 1px solid var(--shell-border);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.72);
+    color: var(--shell-text);
+    font-size: 12px;
+  }
+
+  .sidebar__search,
+  .sidebar__group-label,
+  .sidebar__group-description,
+  .sidebar__link-label,
+  .sidebar__quick-link-label,
+  .sidebar__recent-link-label,
+  .sidebar__microcopy,
+  .sidebar__section-label,
+  .sidebar__ghost-btn,
+  .sidebar__utility-label {
+    display: initial;
   }
 
   .app-layout .sidebar__search {
     display: block;
   }
 
+  .sidebar__link-label,
+  .sidebar__quick-link-label,
+  .sidebar__recent-link-label {
+    max-width: none;
+  }
+
+  .sidebar__group-summary,
+  .sidebar__quick-link,
+  .sidebar__recent-link,
+  .sidebar__link,
+  .sidebar__utility-summary,
+  .sidebar__search-input {
+    min-height: var(--touch-min, 44px);
+  }
+
+  .workspace {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
   .workspace__body {
-    padding: 16px;
+    width: 100%;
+    padding: 20px;
+    overflow-wrap: anywhere;
+  }
+}
+
+:global(body.mobile-navigation-open) {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+@media (max-width: 600px) {
+  .topbar {
+    padding-inline: 12px;
+  }
+
+  .workspace__body {
+    padding: 14px 12px calc(20px + env(safe-area-inset-bottom));
+  }
+
+  .sidebar {
+    width: min(340px, 92vw);
+  }
+
+  .sidebar__mobile-actions {
+    grid-template-columns: 1fr;
   }
 }
 </style>

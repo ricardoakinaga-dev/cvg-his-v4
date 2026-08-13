@@ -190,8 +190,8 @@ pnpm typecheck && pnpm build
 
 # 2. Preparar banco
 pnpm test:db:start
-DATABASE_URL_TEST=postgres://postgres:postgres@localhost:5433/cvg_his_v2_test \
-DATABASE_URL=postgres://postgres:postgres@localhost:5433/cvg_his_v2_test \
+DATABASE_URL_TEST="<test-database-url>" \
+DATABASE_URL="<test-database-url>" \
 pnpm test:critical
 pnpm test:db:stop
 

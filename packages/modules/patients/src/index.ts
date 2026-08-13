@@ -258,16 +258,20 @@ export class PatientsService {
     this.#pendingPersist = pending;
   }
 
-  public list(search?: string): readonly PatientSummary[] {
+  public list(search?: string, expectedAccountId?: AccountId): readonly PatientSummary[] {
     const query = normalizeSearchQuery(search);
-    const patients = Array.from(this.#patients.values());
+    const patients = Array.from(this.#patients.values()).filter(
+      (patient) => !expectedAccountId || patient.accountId === expectedAccountId
+    );
 
     if (!query) {
       return patients;
     }
 
     return patients.filter((patient) => {
-      const owner = this.#owners.getOrThrow(patient.primaryOwnerId);
+      const owner = expectedAccountId
+        ? this.#owners.getForAccountOrThrow(patient.primaryOwnerId, expectedAccountId)
+        : this.#owners.getOrThrow(patient.primaryOwnerId);
       return (
         matchesSearchValue(patient.id, query) ||
         matchesSearchValue(patient.name, query) ||
@@ -282,11 +286,20 @@ export class PatientsService {
     });
   }
 
+  public listByAccount(accountId: AccountId, search?: string): readonly PatientSummary[] {
+    return this.list(search, accountId);
+  }
+
   public listLinks(filters?: {
+    readonly accountId?: AccountId;
     readonly ownerId?: OwnerId;
     readonly patientId?: PatientId;
   }): readonly OwnerPatientLinkSummary[] {
     return Array.from(this.#links.values()).filter((link) => {
+      if (filters?.accountId && link.accountId !== filters.accountId) {
+        return false;
+      }
+
       if (filters?.ownerId && link.ownerId !== filters.ownerId) {
         return false;
       }
@@ -308,17 +321,28 @@ export class PatientsService {
     return patient;
   }
 
+  public getForAccountOrThrow(
+    patientId: PatientId,
+    expectedAccountId: AccountId
+  ): PatientSummary {
+    const patient = this.getOrThrow(patientId);
+    if (patient.accountId !== expectedAccountId) {
+      throw new NotFoundError('Patient not found', { patientId });
+    }
+    return patient;
+  }
+
   public create(accountId: AccountId, payload: CreatePatientRequest): PatientSummary {
     const primaryOwnerId = requireNonEmptyString(
       payload.primaryOwnerId,
       'primaryOwnerId'
     ) as OwnerId;
-    this.#owners.getOrThrow(primaryOwnerId);
+    this.#owners.getForAccountOrThrow(primaryOwnerId, accountId);
 
     const name = requireNonEmptyString(payload.name, 'name');
     const species = requireNonEmptyString(payload.species, 'species');
 
-    const duplicate = this.list().find(
+    const duplicate = this.listByAccount(accountId).find(
       (patient) =>
         patient.name.toLowerCase() === name.toLowerCase() &&
         patient.primaryOwnerId === primaryOwnerId
@@ -393,13 +417,19 @@ export class PatientsService {
     return patient;
   }
 
-  public update(patientId: PatientId, payload: UpdatePatientRequest): PatientSummary {
-    const current = this.getOrThrow(patientId);
+  public update(
+    patientId: PatientId,
+    payload: UpdatePatientRequest,
+    expectedAccountId?: AccountId
+  ): PatientSummary {
+    const current = expectedAccountId
+      ? this.getForAccountOrThrow(patientId, expectedAccountId)
+      : this.getOrThrow(patientId);
     const nextPrimaryOwnerId =
       payload.primaryOwnerId !== undefined
         ? (requireNonEmptyString(payload.primaryOwnerId, 'primaryOwnerId') as OwnerId)
         : current.primaryOwnerId;
-    this.#owners.getOrThrow(nextPrimaryOwnerId);
+    this.#owners.getForAccountOrThrow(nextPrimaryOwnerId, current.accountId);
 
     const updated: PatientSummary = {
       ...current,
@@ -478,10 +508,10 @@ export class PatientsService {
   ): OwnerPatientLinkSummary {
     const ownerId = requireNonEmptyString(payload.ownerId, 'ownerId') as OwnerId;
     const patientId = requireNonEmptyString(payload.patientId, 'patientId') as PatientId;
-    this.#owners.getOrThrow(ownerId);
-    const patient = this.getOrThrow(patientId);
+    this.#owners.getForAccountOrThrow(ownerId, accountId);
+    const patient = this.getForAccountOrThrow(patientId, accountId);
 
-    const duplicate = this.listLinks({ ownerId, patientId }).find(
+    const duplicate = this.listLinks({ accountId, ownerId, patientId }).find(
       (link) => link.relationshipType === payload.relationshipType
     );
     if (duplicate) {
@@ -521,18 +551,27 @@ export class PatientsService {
     return link;
   }
 
-  public searchMaster(query: string): {
+  public searchMaster(query: string, expectedAccountId?: AccountId): {
     readonly owners: readonly OwnerSummary[];
     readonly patients: readonly PatientSummary[];
     readonly links: readonly OwnerPatientLinkSummary[];
   } {
     const trimmed = query.trim();
     return {
-      owners: this.#owners.list(trimmed),
-      patients: this.list(trimmed),
+      owners: expectedAccountId
+        ? this.#owners.listByAccount(expectedAccountId, trimmed)
+        : this.#owners.list(trimmed),
+      patients: expectedAccountId
+        ? this.listByAccount(expectedAccountId, trimmed)
+        : this.list(trimmed),
       links: Array.from(this.#links.values()).filter((link) => {
+        if (expectedAccountId && link.accountId !== expectedAccountId) {
+          return false;
+        }
         const patient = this.#patients.get(link.patientId);
-        const owner = this.#owners.getOrThrow(link.ownerId);
+        const owner = expectedAccountId
+          ? this.#owners.getForAccountOrThrow(link.ownerId, expectedAccountId)
+          : this.#owners.getOrThrow(link.ownerId);
         return (
           trimmed.length === 0 ||
           patient?.name.toLowerCase().includes(trimmed.toLowerCase()) ||
@@ -543,7 +582,7 @@ export class PatientsService {
   }
 
   private ensurePrimaryLink(accountId: AccountId, patientId: PatientId, ownerId: OwnerId): void {
-    const existing = this.listLinks({ patientId }).find(
+    const existing = this.listLinks({ accountId, patientId }).find(
       (link) => link.relationshipType === 'primary'
     );
 

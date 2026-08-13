@@ -17,6 +17,10 @@ import { test, expect } from './fixtures/spa-fixture';
 
 const SPA_URL = process.env.SPA_URL || 'http://localhost:3102';
 
+function resolveE2EAccountSlug(): string {
+  return process.env.E2E_ACCOUNT_SLUG?.trim() || 'default';
+}
+
 test.describe('Login Real + Owner/Patient via UI', () => {
   test('faz login real na SPA, cria tutor e paciente pela interface', async ({
     page,
@@ -90,6 +94,17 @@ test.describe('Login Real + Owner/Patient via UI', () => {
     console.log('   🎉 Login + Owner + Patient UI flow completed!');
   });
 
+  test('abre a área do usuário ao clicar no usuário autenticado', async ({ page, loginViaUI }) => {
+    await loginViaUI();
+
+    const profileButton = page.getByRole('button', { name: 'Abrir área do usuário' });
+    await expect(profileButton).toBeVisible();
+    await profileButton.click();
+
+    await expect(page).toHaveURL(/\/users\/[0-9a-f-]+\/edit$/i);
+    await expect(page.getByRole('heading', { name: 'Editar Usuário' })).toBeVisible();
+  });
+
   test('validates login error with wrong credentials', async ({ page }) => {
     console.log('   🔐 Testing login with wrong credentials...');
 
@@ -99,6 +114,7 @@ test.describe('Login Real + Owner/Patient via UI', () => {
     await page.goto(`${SPA_URL}/login`);
     await page.waitForLoadState('networkidle');
 
+    await page.fill('#account-slug', resolveE2EAccountSlug());
     await page.fill('#email', 'wrong@email.com');
     await page.fill('#password', 'WrongPassword123!');
     await page.click('button[type="submit"]');
@@ -122,11 +138,11 @@ test.describe('Login Real + Owner/Patient via UI', () => {
 
     await expect(page.locator('#fullName')).toHaveJSProperty('required', true);
     await expect(page.locator('#fullName')).toHaveValue('');
-    await expect(page.locator('#contact-value-0')).toHaveValue('');
+    await expect(page.locator('#mobile')).toHaveValue('');
 
     const ownerRequiredState = await page.evaluate(() => {
       const fullName = document.querySelector('#fullName') as HTMLInputElement | null;
-      const contactValue = document.querySelector('#contact-value-0') as HTMLInputElement | null;
+      const contactValue = document.querySelector('#mobile') as HTMLInputElement | null;
       return {
         fullNameInvalid: fullName ? !fullName.checkValidity() : false,
         contactInvalid: contactValue ? !contactValue.checkValidity() : false
@@ -164,7 +180,7 @@ test.describe('Login Real + Owner/Patient via UI', () => {
     expect(patientRequiredState.nameInvalid).toBe(true);
     expect(patientRequiredState.speciesInvalid).toBe(true);
     expect(patientRequiredState.sexInvalid).toBe(true);
-    await expect(page.getByPlaceholder('Buscar tutor por nome...')).toHaveValue('');
+    await expect(page.getByPlaceholder('Buscar cliente por nome...')).toHaveValue('');
     await expect(page).toHaveURL(/\/patients\/new$/, { timeout: 5000 });
     console.log('   ✅ Patient form exposes required-field invalid state before submission');
   });

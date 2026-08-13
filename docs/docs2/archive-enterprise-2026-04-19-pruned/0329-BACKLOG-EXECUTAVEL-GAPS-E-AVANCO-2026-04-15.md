@@ -166,7 +166,7 @@ O backlog sera considerado em boa execucao quando:
 - `GAP-201`
 - `infra/helm/cvg-his-v2/templates/storage-pvc.yaml`: PVC compartilhado de storage criado para atender os `claimName` usados por API e worker
 - `infra/helm/cvg-his-v2/templates/spa-deployment.yaml`: `Service` do SPA desacoplado de `ingress.enabled`, permitindo ambiente `dev` sem ingress e ainda com service valido
-- `helm lint infra/helm/cvg-his-v2 --set postgresql.url=postgres://postgres:postgres@db:5432/cvg_his_v2 --set postgresql.password=postgres --set redis.url=redis://redis:6379/0`: verde
+- `helm lint infra/helm/cvg-his-v2 --set postgresql.existingSecret=<database-secret> --set redis.existingSecret=<redis-secret>`: verde
 - `helm template` em `values.dev.yaml`, `values.staging.yaml` e `values.prod.yaml`: verde, com manifests renderizados e PVC presente nas tres variantes
 - smoke real em cluster local `kind-gap201`: `helm install gap201-smoke2 ... --wait` com overrides minimos de validacao (`worker.replicaCount=0`, `postgresql.enabled=false`, `redis.enabled=false` e imagens publicas rootless para API/SPA) terminou com `STATUS: deployed`
 - `kubectl --context kind-gap201 get deploy,pods,svc -l app.kubernetes.io/instance=gap201-smoke2`: `api 1/1`, `spa 1/1`, services publicados; imagens originais do projeto permaneceram fora do smoke por exigirem autenticacao no registry

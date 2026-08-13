@@ -1,18 +1,13 @@
 import { readFileSync } from 'node:fs';
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { resolve } from 'node:path';
 
 import { parse as parseYaml } from 'yaml';
 
-const FALLBACK_OPENAPI_SPEC = {
-  openapi: '3.0.3',
-  info: {
-    title: 'CVG HIS API',
-    version: '1.0.0',
-    description: 'CVG Hospital Information System REST API'
-  },
-  servers: [{ url: '/', description: 'Local development' }],
-  paths: {}
-};
+type OpenApiRouteDependencies = Readonly<{
+  readFile?: typeof readFileSync;
+  currentWorkingDirectory?: () => string;
+}>;
 
 const API_DOCS_RESPONSE = {
   title: 'CVG HIS API',
@@ -44,12 +39,26 @@ const API_DOCS_RESPONSE = {
   }
 };
 
-function loadOpenApiYaml(): string {
-  try {
-    return readFileSync(new URL('./openapi.yaml', import.meta.url), 'utf8');
-  } catch {
-    return readFileSync(new URL('../openapi.yaml', import.meta.url), 'utf8');
+function loadOpenApiYaml(dependencies: OpenApiRouteDependencies = {}): string {
+  const readFile = dependencies.readFile ?? readFileSync;
+  const currentWorkingDirectory = dependencies.currentWorkingDirectory ?? process.cwd;
+  const candidates: Array<URL | string> = [
+    new URL('../openapi.yaml', import.meta.url),
+    resolve(currentWorkingDirectory(), 'apps/api/dist/openapi.yaml'),
+    resolve(currentWorkingDirectory(), 'apps/api/src/openapi.yaml'),
+    resolve(currentWorkingDirectory(), 'openapi.yaml')
+  ];
+  let lastError: unknown;
+
+  for (const candidate of candidates) {
+    try {
+      return readFile(candidate, 'utf8');
+    } catch (error) {
+      lastError = error;
+    }
   }
+
+  throw lastError instanceof Error ? lastError : new Error('OpenAPI specification not found');
 }
 
 function sendJson(response: ServerResponse, statusCode: number, payload: unknown): true {
@@ -61,7 +70,8 @@ function sendJson(response: ServerResponse, statusCode: number, payload: unknown
 
 export function handleOpenApiRoutes(
   request: IncomingMessage,
-  response: ServerResponse
+  response: ServerResponse,
+  dependencies: OpenApiRouteDependencies = {}
 ): boolean {
   if (request.method !== 'GET') {
     return false;
@@ -69,10 +79,13 @@ export function handleOpenApiRoutes(
 
   if (request.url === '/openapi.json') {
     try {
-      const openApiSpec = parseYaml(loadOpenApiYaml());
+      const openApiSpec = parseYaml(loadOpenApiYaml(dependencies));
       return sendJson(response, 200, openApiSpec);
     } catch {
-      return sendJson(response, 200, FALLBACK_OPENAPI_SPEC);
+      return sendJson(response, 500, {
+        code: 'OPENAPI_SPEC_UNAVAILABLE',
+        message: 'OpenAPI specification is not available'
+      });
     }
   }
 
@@ -80,7 +93,7 @@ export function handleOpenApiRoutes(
     try {
       response.setHeader('content-type', 'text/yaml');
       response.statusCode = 200;
-      response.end(loadOpenApiYaml());
+      response.end(loadOpenApiYaml(dependencies));
     } catch {
       response.statusCode = 500;
       response.end('OpenAPI spec not available');

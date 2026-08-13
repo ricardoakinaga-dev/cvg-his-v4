@@ -1,13 +1,75 @@
 import { SpanStatusCode, trace } from '@opentelemetry/api';
 import { drizzle, type NodePgDatabase, type NodePgClient } from 'drizzle-orm/node-postgres';
 import { Pool, type PoolClient } from 'pg';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import * as schema from './schemas/index.js';
 
 let pool: Pool | null = null;
 let db: ReturnType<typeof drizzle> | null = null;
+const activeDatabaseContext = new AsyncLocalStorage<DatabaseExecutionContext>();
+
+export interface DatabaseExecutionContext {
+  readonly client: PoolClient;
+  readonly accountId?: string;
+}
+
+interface DatabaseRuntimeRoleRow {
+  readonly role_name: string;
+  readonly rolsuper: boolean;
+  readonly rolbypassrls: boolean;
+  readonly rolcreatedb: boolean;
+  readonly rolcreaterole: boolean;
+  readonly rolcanlogin: boolean;
+  readonly rolreplication: boolean;
+  readonly owned_tenant_tables: string | number;
+  readonly role_memberships: string | number;
+}
+
+export interface DatabaseRoleQueryable {
+  query(queryText: string): Promise<{ rows: readonly DatabaseRuntimeRoleRow[] }>;
+}
+
+export interface DatabaseRuntimeRoleInspection {
+  readonly roleName: string;
+  readonly canLogin: boolean;
+  readonly isSuperuser: boolean;
+  readonly bypassesRls: boolean;
+  readonly canCreateDatabase: boolean;
+  readonly canCreateRole: boolean;
+  readonly canReplicate: boolean;
+  readonly ownedTenantTables: number;
+  readonly roleMemberships: number;
+}
 
 type QueryArgs = Parameters<Pool['query']>;
 type QueryResult = Awaited<ReturnType<Pool['query']>>;
+
+export function getActiveDatabaseContext(): DatabaseExecutionContext | undefined {
+  return activeDatabaseContext.getStore();
+}
+
+export function runWithDatabaseClient<T>(
+  client: PoolClient,
+  scope: { readonly accountId?: string },
+  fn: () => T
+): T {
+  return activeDatabaseContext.run(
+    Object.freeze({ client, accountId: scope.accountId }),
+    fn
+  );
+}
+
+function routePoolQueriesThroughActiveClient(targetPool: Pool): Pool {
+  const originalQuery = targetPool.query.bind(targetPool);
+  targetPool.query = ((...args: QueryArgs) => {
+    const active = getActiveDatabaseContext();
+    if (active) {
+      return (active.client.query as (...queryArgs: QueryArgs) => unknown)(...args);
+    }
+    return originalQuery(...args);
+  }) as Pool['query'];
+  return targetPool;
+}
 
 function extractQueryText(args: readonly unknown[]): string {
   const firstArg = args[0];
@@ -112,7 +174,7 @@ export function createDatabaseClient(connectionString: string) {
     return db;
   }
 
-  const basePool = new Pool({ connectionString });
+  const basePool = routePoolQueriesThroughActiveClient(new Pool({ connectionString }));
   const otelEnabled = process.env.OTEL_ENABLED === 'true' || process.env.OTEL_ENABLED === '1';
   pool = otelEnabled ? instrumentPool(basePool) : basePool;
   db = drizzle(pool, { schema });
@@ -131,6 +193,94 @@ export function getPool() {
     throw new Error('Database pool not initialized. Call createDatabaseClient first.');
   }
   return pool;
+}
+
+export async function inspectDatabaseRuntimeRole(
+  queryable: DatabaseRoleQueryable
+): Promise<DatabaseRuntimeRoleInspection> {
+  const result = await queryable.query(`
+    SELECT
+      current_user AS role_name,
+      role.rolsuper,
+      role.rolbypassrls,
+      role.rolcreatedb,
+      role.rolcreaterole,
+      role.rolcanlogin,
+      role.rolreplication,
+      (
+        SELECT COUNT(*)::int
+        FROM pg_class tenant_table
+        JOIN pg_namespace namespace ON namespace.oid = tenant_table.relnamespace
+        JOIN information_schema.columns tenant_column
+          ON tenant_column.table_schema = namespace.nspname
+         AND tenant_column.table_name = tenant_table.relname
+         AND tenant_column.column_name = 'account_id'
+        WHERE namespace.nspname = 'public'
+          AND tenant_table.relkind IN ('r', 'p')
+          AND tenant_table.relowner = role.oid
+      ) AS owned_tenant_tables,
+      (
+        SELECT COUNT(*)::int
+        FROM pg_auth_members membership
+        WHERE membership.member = role.oid
+      ) AS role_memberships
+    FROM pg_roles role
+    WHERE role.rolname = current_user
+  `);
+  const row = result.rows[0];
+
+  if (!row) {
+    throw new Error('Unable to inspect the active PostgreSQL role');
+  }
+
+  const ownedTenantTables = Number(row.owned_tenant_tables);
+  if (!Number.isSafeInteger(ownedTenantTables) || ownedTenantTables < 0) {
+    throw new Error('PostgreSQL returned an invalid tenant table ownership count');
+  }
+  const roleMemberships = Number(row.role_memberships);
+  if (!Number.isSafeInteger(roleMemberships) || roleMemberships < 0) {
+    throw new Error('PostgreSQL returned an invalid role membership count');
+  }
+
+  return Object.freeze({
+    roleName: row.role_name,
+    canLogin: row.rolcanlogin,
+    isSuperuser: row.rolsuper,
+    bypassesRls: row.rolbypassrls,
+    canCreateDatabase: row.rolcreatedb,
+    canCreateRole: row.rolcreaterole,
+    canReplicate: row.rolreplication,
+    ownedTenantTables,
+    roleMemberships
+  });
+}
+
+export async function assertDatabaseRuntimeRoleIsRestricted(
+  queryable: DatabaseRoleQueryable
+): Promise<DatabaseRuntimeRoleInspection> {
+  const inspection = await inspectDatabaseRuntimeRole(queryable);
+  const violations = [
+    inspection.canLogin ? null : 'LOGIN is disabled',
+    inspection.isSuperuser ? 'has SUPERUSER' : null,
+    inspection.bypassesRls ? 'has BYPASSRLS' : null,
+    inspection.canCreateDatabase ? 'has CREATEDB' : null,
+    inspection.canCreateRole ? 'has CREATEROLE' : null,
+    inspection.canReplicate ? 'has REPLICATION' : null,
+    inspection.ownedTenantTables > 0
+      ? `owns ${inspection.ownedTenantTables} tenant table(s)`
+      : null,
+    inspection.roleMemberships > 0
+      ? `can assume ${inspection.roleMemberships} role(s)`
+      : null
+  ].filter((violation): violation is string => violation !== null);
+
+  if (violations.length > 0) {
+    throw new Error(
+      `PostgreSQL runtime role "${inspection.roleName}" violates least privilege: ${violations.join(', ')}`
+    );
+  }
+
+  return inspection;
 }
 
 export async function closeDatabaseClient() {

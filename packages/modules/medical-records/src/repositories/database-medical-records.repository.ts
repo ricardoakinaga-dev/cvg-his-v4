@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 import type { DatabaseClient } from '@cvg-his-v2/shared-database';
 import {
   medicalRecords,
@@ -270,7 +270,7 @@ export class DatabaseClinicalTimelineRepository implements ClinicalTimelineRepos
       summary: event.summary ?? null,
       actorUserId: event.actorUserId,
       clinicalEntryId: event.clinicalEntryId ?? null,
-      attachmentId: event.attachmentId ?? null,
+      runtimeAttachmentId: event.attachmentId ?? null,
       occurredAt: new Date(event.occurredAt)
     });
   }
@@ -300,7 +300,7 @@ export class DatabaseClinicalTimelineRepository implements ClinicalTimelineRepos
       summary: row.summary ?? '',
       actorUserId: (row.actorUserId ?? 'system') as UserId,
       clinicalEntryId: (row.clinicalEntryId ?? undefined) as never,
-      attachmentId: (row.attachmentId ?? undefined) as never,
+      attachmentId: (row.runtimeAttachmentId ?? row.attachmentId ?? undefined) as never,
       occurredAt: row.occurredAt.toISOString()
     }));
   }
@@ -332,7 +332,8 @@ export class DatabaseEntryRevisionRepository implements EntryRevisionRepository 
       result = await this.#db
         .select()
         .from(entryRevisions)
-        .where(eq(entryRevisions.entryId, entryId));
+        .where(eq(entryRevisions.entryId, entryId))
+        .orderBy(asc(entryRevisions.version));
     } catch (error) {
       if (isMissingRelationError(error)) {
         return [];

@@ -43,6 +43,7 @@ describe('LoginPage', () => {
     const LoginPage = (await import('../../LoginPage.vue')).default;
     const wrapper = mount(LoginPage);
 
+    await wrapper.find('#account-slug').setValue('clinic-a');
     await wrapper.find('#email').setValue('admin');
     await wrapper.find('#password').setValue('secret');
     await wrapper.find('form').trigger('submit');
@@ -52,7 +53,8 @@ describe('LoginPage', () => {
       '/auth/login',
       expect.objectContaining({
         method: 'POST',
-        skipAuth: true
+        skipAuth: true,
+        body: JSON.stringify({ accountSlug: 'clinic-a', username: 'admin', password: 'secret' })
       })
     );
     expect(mockAuthStore.setPendingMfaUserId).toHaveBeenCalledWith('user-123');
@@ -61,5 +63,33 @@ describe('LoginPage', () => {
       path: '/auth/mfa',
       query: { next: '/notifications' }
     });
+  });
+
+  it('normalizes the account and username without changing the password', async () => {
+    mockApiRequest.mockResolvedValue({
+      requiresMfa: true,
+      userId: 'user-123',
+      mfaMethods: ['totp']
+    });
+
+    const LoginPage = (await import('../../LoginPage.vue')).default;
+    const wrapper = mount(LoginPage);
+
+    await wrapper.find('#account-slug').setValue('  default  ');
+    await wrapper.find('#email').setValue('  admin@cvg-his.local  ');
+    await wrapper.find('#password').setValue('  password-with-spaces  ');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(mockApiRequest).toHaveBeenCalledWith(
+      '/auth/login',
+      expect.objectContaining({
+        body: JSON.stringify({
+          accountSlug: 'default',
+          username: 'admin@cvg-his.local',
+          password: '  password-with-spaces  '
+        })
+      })
+    );
   });
 });

@@ -14,9 +14,7 @@ import type {
 import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 import { DEFAULT_EXAM_CATALOG } from './catalog.js';
-import {
-  DatabaseLaboratoryCatalogRepository
-} from './repositories/database-laboratory-catalog.repository.js';
+import { DatabaseLaboratoryCatalogRepository } from './repositories/database-laboratory-catalog.repository.js';
 import { DatabaseDiagnosticOrderRepository } from './repositories/database-diagnostics.repository.js';
 import type { DiagnosticOrderRepository } from './repositories/database-diagnostics.repository.js';
 import {
@@ -51,7 +49,7 @@ export class DiagnosticsService {
   readonly #orders = new Map<DiagnosticOrderId, DiagnosticOrderSummary>();
   readonly #catalog: readonly ExamCatalogEntry[];
   readonly #repository?: DiagnosticOrderRepository;
-  #pendingPersist: Promise<void> = Promise.resolve();
+  #pendingMutation: Promise<void> = Promise.resolve();
 
   public constructor(encounters: EncountersService, options?: DiagnosticsServiceOptions) {
     this.#encounters = encounters;
@@ -64,23 +62,13 @@ export class DiagnosticsService {
     return allowed?.includes(newStatus) ?? false;
   }
 
-  private async persistOrder(order: DiagnosticOrderSummary): Promise<void> {
-    const repo = this.#repository;
-    if (repo) {
-      this.#pendingPersist = this.#pendingPersist.then(async () => {
-        const existing = await repo.findById(order.id);
-        if (existing) {
-          await repo.update(order);
-        } else {
-          await repo.create(order);
-        }
-      });
-      await this.#pendingPersist;
-    }
-  }
-
-  private async updateOrder(order: DiagnosticOrderSummary): Promise<void> {
-    await this.persistOrder(order);
+  private enqueueMutation<T>(mutation: () => Promise<T>): Promise<T> {
+    const result = this.#pendingMutation.then(mutation);
+    this.#pendingMutation = result.then(
+      () => undefined,
+      () => undefined
+    );
+    return result;
   }
 
   private createResultSignatureHash(
@@ -89,15 +77,17 @@ export class DiagnosticsService {
     resultedAt: string
   ): string {
     return createHash('sha256')
-      .update([
-        order.id,
-        order.accountId,
-        payload.releasedByUserId,
-        payload.signedByUserId ?? payload.releasedByUserId,
-        payload.resultSummary ?? '',
-        payload.resultAttachmentId ?? '',
-        resultedAt
-      ].join('|'))
+      .update(
+        [
+          order.id,
+          order.accountId,
+          payload.releasedByUserId,
+          payload.signedByUserId ?? payload.releasedByUserId,
+          payload.resultSummary ?? '',
+          payload.resultAttachmentId ?? '',
+          resultedAt
+        ].join('|')
+      )
       .digest('hex');
   }
 
@@ -109,8 +99,14 @@ export class DiagnosticsService {
     return this.#catalog.find((entry) => entry.id === catalogId);
   }
 
-  public createOrder(payload: CreateDiagnosticOrderRequest): DiagnosticOrderSummary {
+  public async createOrder(
+    payload: CreateDiagnosticOrderRequest,
+    expectedAccountId?: AccountId
+  ): Promise<DiagnosticOrderSummary> {
     const encounter = this.#encounters.getOrThrow(payload.encounterId as never);
+    if (expectedAccountId && encounter.accountId !== expectedAccountId) {
+      throw new NotFoundError('Encounter not found', { encounterId: payload.encounterId });
+    }
     if (payload.patientId !== encounter.patientId) {
       throw new Error('patientId must match the encounter patient');
     }
@@ -132,11 +128,11 @@ export class DiagnosticsService {
       createdAt: now,
       updatedAt: now
     };
-    this.#orders.set(order.id, order);
-    this.persistOrder(order).catch((err) =>
-      console.error('Failed to persist diagnostic order:', err)
-    );
-    return order;
+    return this.enqueueMutation(async () => {
+      await this.#repository?.create(order);
+      this.#orders.set(order.id, order);
+      return order;
+    });
   }
 
   public list(encounterId?: string): readonly DiagnosticOrderSummary[] {
@@ -171,62 +167,74 @@ export class DiagnosticsService {
     return order;
   }
 
-  public recordResult(
+  public async recordResult(
     orderId: DiagnosticOrderId,
-    payload: RecordDiagnosticResultRequest
-  ): DiagnosticOrderSummary {
-    const current = this.getOrThrow(orderId);
+    payload: RecordDiagnosticResultRequest,
+    expectedAccountId?: AccountId
+  ): Promise<DiagnosticOrderSummary> {
+    return this.enqueueMutation(async () => {
+      const current = this.getOrThrow(orderId);
+      if (expectedAccountId && current.accountId !== expectedAccountId) {
+        throw new NotFoundError('Diagnostic order not found', { orderId });
+      }
 
-    if (!this.isValidTransition(current.status, payload.status)) {
-      throw new Error(`Invalid status transition from '${current.status}' to '${payload.status}'`);
-    }
+      if (!this.isValidTransition(current.status, payload.status)) {
+        throw new Error(
+          `Invalid status transition from '${current.status}' to '${payload.status}'`
+        );
+      }
 
-    if (payload.status === 'collected') {
-      requireNonEmptyString(payload.collectedByUserId, 'collectedByUserId');
-    }
+      if (payload.status === 'collected') {
+        requireNonEmptyString(payload.collectedByUserId, 'collectedByUserId');
+      }
 
-    if (payload.status === 'resulted' && !payload.resultSummary && !payload.resultAttachmentId) {
-      throw new Error('resultSummary or resultAttachmentId is required when status is resulted');
-    }
+      if (payload.status === 'resulted' && !payload.resultSummary && !payload.resultAttachmentId) {
+        throw new Error('resultSummary or resultAttachmentId is required when status is resulted');
+      }
 
-    const now = nowIso();
-    const releasedByUserId =
-      payload.status === 'resulted'
-        ? requireNonEmptyString(payload.releasedByUserId, 'releasedByUserId')
-        : undefined;
-    const signedByUserId =
-      payload.status === 'resulted'
-        ? requireNonEmptyString(payload.signedByUserId ?? releasedByUserId, 'signedByUserId')
-        : undefined;
-    const signatureHash =
-      payload.status === 'resulted'
-        ? payload.signatureHash ?? this.createResultSignatureHash(current, {
-          ...payload,
+      const now = nowIso();
+      const releasedByUserId =
+        payload.status === 'resulted'
+          ? requireNonEmptyString(payload.releasedByUserId, 'releasedByUserId')
+          : undefined;
+      const signedByUserId =
+        payload.status === 'resulted'
+          ? requireNonEmptyString(payload.signedByUserId ?? releasedByUserId, 'signedByUserId')
+          : undefined;
+      const signatureHash =
+        payload.status === 'resulted'
+          ? (payload.signatureHash ??
+            this.createResultSignatureHash(
+              current,
+              {
+                ...payload,
+                releasedByUserId,
+                signedByUserId
+              },
+              now
+            ))
+          : undefined;
+      const updated: DiagnosticOrderSummary = {
+        ...current,
+        status: payload.status,
+        ...(payload.status === 'collected' && {
+          collectedAt: now,
+          collectedByUserId: requireNonEmptyString(payload.collectedByUserId, 'collectedByUserId')
+        }),
+        ...(payload.status === 'resulted' && {
+          resultSummary: payload.resultSummary,
+          resultAttachmentId: payload.resultAttachmentId,
+          resultedAt: now,
           releasedByUserId,
-          signedByUserId
-        }, now)
-        : undefined;
-    const updated: DiagnosticOrderSummary = {
-      ...current,
-      status: payload.status,
-      ...(payload.status === 'collected' && {
-        collectedAt: now,
-        collectedByUserId: requireNonEmptyString(payload.collectedByUserId, 'collectedByUserId')
-      }),
-      ...(payload.status === 'resulted' && {
-        resultSummary: payload.resultSummary,
-        resultAttachmentId: payload.resultAttachmentId,
-        resultedAt: now,
-        releasedByUserId,
-        signedByUserId,
-        signatureHash
-      }),
-      updatedAt: now
-    };
-    this.#orders.set(orderId, updated);
-    this.updateOrder(updated).catch((err) =>
-      console.error('Failed to update diagnostic order:', err)
-    );
-    return updated;
+          signedByUserId,
+          signatureHash
+        }),
+        updatedAt: now
+      };
+
+      await this.#repository?.update(updated);
+      this.#orders.set(orderId, updated);
+      return updated;
+    });
   }
 }

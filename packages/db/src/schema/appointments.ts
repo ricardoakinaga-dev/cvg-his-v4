@@ -1,12 +1,15 @@
-import { index, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { index, integer, pgEnum, pgTable, text, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
 
 import { accounts } from './accounts.js';
 import { patients } from './patients.js';
 import { owners } from './owners.js';
 import { users } from './users.js';
+import { staff } from './staff.js';
+import { services } from './services.js';
 
 export const appointmentStatusEnum = pgEnum('appointment_status', [
   'scheduled',
+  'checked_in',
   'confirmed',
   'in_progress',
   'completed',
@@ -44,6 +47,16 @@ export const appointments = pgTable(
     status: appointmentStatusEnum('status').notNull().default('scheduled'),
     type: appointmentTypeEnum('type').notNull().default('consultation'),
     notes: text('notes'),
+    duration: integer('duration').notNull(),
+    visitType: varchar('visit_type', { length: 50 }).notNull(),
+    reason: text('reason').notNull(),
+    practitionerStaffId: uuid('practitioner_staff_id').references(() => staff.id, {
+      onDelete: 'restrict'
+    }),
+    serviceId: uuid('service_id').references(() => services.id, { onDelete: 'restrict' }),
+    unit: varchar('unit', { length: 120 }),
+    specialty: varchar('specialty', { length: 120 }),
+    resourceLabel: varchar('resource_label', { length: 120 }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
   },

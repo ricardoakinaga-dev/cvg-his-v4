@@ -4,6 +4,8 @@ import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
+import { retryOperation } from './restore-drill-fixture-lib.mjs';
+
 const root = process.cwd();
 const baseDir = resolve(process.env.RESTORE_FIXTURE_BASE_DIR ?? '/tmp/cvg-his-v2-backup-fixtures');
 const timestamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\..+$/, 'Z');
@@ -70,29 +72,35 @@ function createDatabaseFixture() {
 
   waitForPostgres();
 
-  docker([
-    'exec',
-    containerName,
-    'psql',
-    '-v',
-    'ON_ERROR_STOP=1',
-    '-U',
-    'postgres',
-    '-d',
-    'postgres',
-    '-c',
-    [
-      'CREATE TABLE public.restore_drill_probe (',
-      'id uuid PRIMARY KEY,',
-      'account_id uuid NOT NULL,',
-      'label text NOT NULL,',
-      'created_at timestamptz NOT NULL DEFAULT now()',
-      ');',
-      "INSERT INTO public.restore_drill_probe (id, account_id, label) VALUES ('00000000-0000-4000-8000-000000000001', '11111111-1111-4111-8111-111111111111', 'fixture restore drill');",
-      'CREATE TABLE public.__drizzle_migrations (id serial PRIMARY KEY, hash text NOT NULL, created_at bigint);',
-      "INSERT INTO public.__drizzle_migrations (hash, created_at) VALUES ('restore-drill-fixture', 20260528120000);",
-    ].join(' '),
-  ]);
+  retryOperation(
+    () => docker([
+      'exec',
+      containerName,
+      'psql',
+      '-v',
+      'ON_ERROR_STOP=1',
+      '-U',
+      'postgres',
+      '-d',
+      'postgres',
+      '-c',
+      [
+        'CREATE TABLE IF NOT EXISTS public.restore_drill_probe (',
+        'id uuid PRIMARY KEY,',
+        'account_id uuid NOT NULL,',
+        'label text NOT NULL,',
+        'created_at timestamptz NOT NULL DEFAULT now()',
+        ');',
+        "INSERT INTO public.restore_drill_probe (id, account_id, label) VALUES ('00000000-0000-4000-8000-000000000001', '11111111-1111-4111-8111-111111111111', 'fixture restore drill') ON CONFLICT (id) DO NOTHING;",
+        'CREATE TABLE IF NOT EXISTS public.__drizzle_migrations (id serial PRIMARY KEY, hash text NOT NULL, created_at bigint);',
+        "INSERT INTO public.__drizzle_migrations (hash, created_at) SELECT 'restore-drill-fixture', 20260528120000 WHERE NOT EXISTS (SELECT 1 FROM public.__drizzle_migrations WHERE hash = 'restore-drill-fixture');",
+      ].join(' '),
+    ]),
+    {
+      attempts: 60,
+      pause: () => spawnSync('sleep', ['1']),
+    },
+  );
 
   const dump = docker(
     [

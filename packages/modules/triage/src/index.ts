@@ -64,9 +64,21 @@ export class TriageService {
     );
   }
 
+  public listByAccount(accountId: AccountId, encounterId?: EncounterId): readonly TriageSummary[] {
+    return this.list(encounterId).filter((record) => record.accountId === accountId);
+  }
+
   public getOrThrow(triageId: TriageRecordId): TriageSummary {
     const record = this.#records.get(triageId);
     if (!record) {
+      throw new NotFoundError('Triage record not found', { triageId });
+    }
+    return record;
+  }
+
+  public getForAccountOrThrow(accountId: AccountId, triageId: TriageRecordId): TriageSummary {
+    const record = this.getOrThrow(triageId);
+    if (record.accountId !== accountId) {
       throw new NotFoundError('Triage record not found', { triageId });
     }
     return record;
@@ -78,10 +90,14 @@ export class TriageService {
 
   public async createTriage(
     actorUserId: UserId,
-    payload: CreateTriageRequest
+    payload: CreateTriageRequest,
+    expectedAccountId?: AccountId
   ): Promise<TriageSummary> {
     const encounterId = requireNonEmptyString(payload.encounterId, 'encounterId') as EncounterId;
     const encounter = this.#encounters.getOrThrow(encounterId);
+    if (expectedAccountId && encounter.accountId !== expectedAccountId) {
+      throw new NotFoundError('Encounter not found', { encounterId });
+    }
     const patientId = requireNonEmptyString(payload.patientId, 'patientId') as PatientId;
     if (patientId !== encounter.patientId) {
       throw new ValidationError('Triage patientId must match encounter patientId', {
@@ -123,9 +139,12 @@ export class TriageService {
   public async updateTriage(
     triageId: TriageRecordId,
     payload: UpdateTriageRequest,
-    actorUserId?: UserId
+    actorUserId?: UserId,
+    expectedAccountId?: AccountId
   ): Promise<TriageSummary> {
-    const current = this.getOrThrow(triageId);
+    const current = expectedAccountId
+      ? this.getForAccountOrThrow(expectedAccountId, triageId)
+      : this.getOrThrow(triageId);
     const encounter = this.#encounters.getOrThrow(current.encounterId);
     if (encounter.status === 'closed') {
       throw new ConflictError('Closed encounters do not allow triage updates', {

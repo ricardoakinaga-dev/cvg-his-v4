@@ -1,143 +1,141 @@
-import { test, expect } from '../fixtures/cvg-his.fixture';
+import { randomUUID } from 'node:crypto';
 
-/**
- * E2E Test: Fluxo Principal
- * Criar tutor → Criar paciente → Criar agendamento → Iniciar atendimento
- */
+import type { APIResponse } from '@playwright/test';
+
+import { expect, test } from '../fixtures/cvg-his.fixture';
+
+async function expectJsonResponse<T>(response: APIResponse, expectedStatus: number): Promise<T> {
+  const rawBody = await response.text();
+  expect(response.status(), `Resposta inesperada de ${response.url()}: ${rawBody}`).toBe(
+    expectedStatus
+  );
+  expect(rawBody, `Resposta sem JSON em ${response.url()}`).not.toBe('');
+  return JSON.parse(rawBody) as T;
+}
+
+function futureOperationalSlot(daysFromNow: number, hourUtc: number): string {
+  const slot = new Date();
+  slot.setUTCDate(slot.getUTCDate() + daysFromNow);
+  slot.setUTCHours(hourUtc, 0, 0, 0);
+  return slot.toISOString();
+}
 
 test.describe('Fluxo: Tutor → Paciente → Agendamento → Atendimento', () => {
-  
-  test('deve completar o fluxo completo via API', async ({ apiContext, testUser }) => {
-    // =====================
-    // 1. Criar Tutor (Owner)
-    // =====================
-    const ownerRes = await apiContext.post('/owners', {
+  test('completa o fluxo principal usando os contratos atuais', async ({ apiContext }) => {
+    const fixtureId = randomUUID();
+    const ownerResponse = await apiContext.post('/owners', {
       data: {
-        fullName: 'Maria Silva E2E',
-        document: `E2E-${Date.now()}`,
-        phoneMain: '11987654321',
-        email: `maria.e2e.${Date.now()}@test.com`,
-        addressCity: 'São Paulo'
+        fullName: `Tutor Fluxo Principal ${fixtureId}`,
+        documentId: `E2E-PRINCIPAL-${fixtureId}`,
+        contacts: [
+          {
+            label: 'Celular',
+            type: 'phone',
+            value: '11987654321',
+            primary: true
+          }
+        ],
+        financialResponsible: true,
+        status: 'active'
       }
     });
-    expect(ownerRes.ok()).toBeTruthy();
-    const owner = await ownerRes.json();
-    expect(owner.id).toBeTruthy();
-    expect(owner.fullName).toBe('Maria Silva E2E');
-    console.log(`   ✅ Tutor criado: ${owner.id}`);
+    const owner = await expectJsonResponse<{ id: string; fullName: string }>(ownerResponse, 201);
+    expect(owner).toMatchObject({ fullName: `Tutor Fluxo Principal ${fixtureId}` });
 
-    // =====================
-    // 2. Criar Paciente
-    // =====================
-    const patientRes = await apiContext.post('/patients', {
+    const patientResponse = await apiContext.post('/patients', {
       data: {
-        ownerId: owner.id,
-        name: 'Rex E2E',
-        species: 'Canina',
+        primaryOwnerId: owner.id,
+        name: `Paciente Fluxo Principal ${fixtureId}`,
+        species: 'canine',
         breed: 'Golden Retriever',
         sex: 'male',
-        birthDate: '2020-05-15',
-        microchip: `E2E-${Date.now()}`,
-        weight: 30.5
+        birthDateApproximate: '2020-05-15',
+        baseWeightKg: 30.5,
+        microchip: `E2E-MICROCHIP-${fixtureId}`,
+        status: 'active'
       }
     });
-    expect(patientRes.ok()).toBeTruthy();
-    const patient = await patientRes.json();
-    expect(patient.id).toBeTruthy();
-    expect(patient.name).toBe('Rex E2E');
-    console.log(`   ✅ Paciente criado: ${patient.id}`);
+    const patient = await expectJsonResponse<{
+      id: string;
+      name: string;
+      primaryOwnerId: string;
+    }>(patientResponse, 201);
+    expect(patient).toMatchObject({
+      name: `Paciente Fluxo Principal ${fixtureId}`,
+      primaryOwnerId: owner.id
+    });
 
-    // =====================
-    // 3. Criar Agendamento
-    // =====================
-    const startAt = new Date();
-    startAt.setDate(startAt.getDate() + 1); // Tomorrow
-    startAt.setHours(10, 0, 0, 0);
-    const endAt = new Date(startAt);
-    endAt.setMinutes(endAt.getMinutes() + 30);
-
-    const appointmentRes = await apiContext.post('/appointments', {
+    const scheduledAt = futureOperationalSlot(3, 9);
+    const appointmentResponse = await apiContext.post('/appointments', {
       data: {
         patientId: patient.id,
         ownerId: owner.id,
-        professionalUserId: testUser.userId,
-        startAt: startAt.toISOString(),
-        endAt: endAt.toISOString(),
-        type: 'consultation',
-        notes: 'Consulta de rotina - E2E Test'
+        scheduledAt,
+        durationMinutes: 30,
+        visitType: 'scheduled',
+        reason: 'Consulta de rotina do fluxo principal E2E'
       }
     });
-    expect(appointmentRes.ok()).toBeTruthy();
-    const appointment = await appointmentRes.json();
-    expect(appointment.id).toBeTruthy();
-    expect(appointment.status).toBe('scheduled');
-    console.log(`   ✅ Agendamento criado: ${appointment.id}`);
+    const appointment = await expectJsonResponse<{
+      id: string;
+      patientId: string;
+      ownerId: string;
+      scheduledAt: string;
+      status: string;
+    }>(appointmentResponse, 201);
+    expect(appointment).toMatchObject({
+      patientId: patient.id,
+      ownerId: owner.id,
+      scheduledAt,
+      status: 'scheduled'
+    });
 
-    // =====================
-    // 4. Verificar agendamento na lista
-    // =====================
-    const listRes = await apiContext.get('/appointments', {
+    const appointmentsResponse = await apiContext.get('/appointments', {
       params: { patientId: patient.id }
     });
-    expect(listRes.ok()).toBeTruthy();
-    const list = await listRes.json();
-    expect(list.data.length).toBeGreaterThan(0);
-    expect(list.data.some((a: any) => a.id === appointment.id)).toBeTruthy();
-    console.log(`   ✅ Agendamento encontrado na lista`);
+    const appointments = await expectJsonResponse<{ items: Array<{ id: string }> }>(
+      appointmentsResponse,
+      200
+    );
+    expect(appointments.items).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: appointment.id })])
+    );
 
-    // =====================
-    // 5. Iniciar atendimento a partir do agendamento
-    // =====================
-    const startEncounterRes = await apiContext.post(`/appointments/${appointment.id}/start-encounter`, {
-      data: { reason: 'Consulta de rotina' }
+    const encounterResponse = await apiContext.post(
+      `/appointments/${appointment.id}/start-encounter`,
+      { data: {} }
+    );
+    const encounter = await expectJsonResponse<{
+      id: string;
+      patientId: string;
+      ownerId: string;
+      appointmentId: string;
+      status: string;
+    }>(encounterResponse, 201);
+    expect(encounter).toMatchObject({
+      patientId: patient.id,
+      ownerId: owner.id,
+      appointmentId: appointment.id,
+      status: 'reception'
     });
-    expect(startEncounterRes.ok()).toBeTruthy();
-    const encounterResult = await startEncounterRes.json();
-    expect(encounterResult.encounterId).toBeTruthy();
-    expect(encounterResult.appointmentId).toBe(appointment.id);
-    console.log(`   ✅ Atendimento iniciado: ${encounterResult.encounterId}`);
 
-    // =====================
-    // 6. Verificar que o encounter foi criado
-    // =====================
-    const encounterRes = await apiContext.get(`/encounters/${encounterResult.encounterId}`);
-    expect(encounterRes.ok()).toBeTruthy();
-    const encounter = await encounterRes.json();
-    expect(encounter.patientId).toBe(patient.id);
-    expect(encounter.status).toBe('open');
-    console.log(`   ✅ Atendimento verificado (status: ${encounter.status})`);
-
-    // =====================
-    // 7. Verificar que o agendamento foi atualizado
-    // =====================
-    const updatedApptRes = await apiContext.get(`/appointments/${appointment.id}`);
-    expect(updatedApptRes.ok()).toBeTruthy();
-    const updatedAppt = await updatedApptRes.json();
-    expect(updatedAppt.status).toBe('in_progress');
-    console.log(`   ✅ Status do agendamento atualizado: ${updatedAppt.status}`);
-
-    console.log('\n   🎉 Fluxo completo: Tutor → Paciente → Agendamento → Atendimento');
+    const encounterDetailResponse = await apiContext.get(`/encounters/${encounter.id}`);
+    const encounterDetail = await expectJsonResponse<typeof encounter>(
+      encounterDetailResponse,
+      200
+    );
+    expect(encounterDetail).toMatchObject(encounter);
   });
 
-  test('deve listar tutores criados', async ({ apiContext }) => {
-    const res = await apiContext.get('/owners', {
-      params: { page: 1, pageSize: 10 }
-    });
-    expect(res.ok()).toBeTruthy();
-    const data = await res.json();
-    expect(data.data).toBeDefined();
-    expect(Array.isArray(data.data)).toBeTruthy();
-    console.log(`   ✅ ${data.total} tutores encontrados`);
+  test('lista tutores com envelope canônico', async ({ apiContext }) => {
+    const response = await apiContext.get('/owners');
+    const payload = await expectJsonResponse<{ items: unknown[] }>(response, 200);
+    expect(payload.items).toEqual(expect.any(Array));
   });
 
-  test('deve listar pacientes criados', async ({ apiContext }) => {
-    const res = await apiContext.get('/patients', {
-      params: { page: 1, pageSize: 10 }
-    });
-    expect(res.ok()).toBeTruthy();
-    const data = await res.json();
-    expect(data.data).toBeDefined();
-    expect(Array.isArray(data.data)).toBeTruthy();
-    console.log(`   ✅ ${data.total} pacientes encontrados`);
+  test('lista pacientes com envelope canônico', async ({ apiContext }) => {
+    const response = await apiContext.get('/patients');
+    const payload = await expectJsonResponse<{ items: unknown[] }>(response, 200);
+    expect(payload.items).toEqual(expect.any(Array));
   });
 });

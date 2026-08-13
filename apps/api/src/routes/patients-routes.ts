@@ -43,7 +43,7 @@ export async function handlePatientsRoutes(
   if (pathname === '/master-search' && method === 'GET') {
     const principal = requirePrincipal(request, 'patients.read');
     const query = url.searchParams.get('q') ?? '';
-    const results = patients.searchMaster(query);
+    const results = patients.searchMaster(query, principal.user.accountId as never);
 
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -67,10 +67,16 @@ export async function handlePatientsRoutes(
 
     const principal = requirePrincipal(request, 'patients.read');
     const patientId = match[1];
-    const patient = patients.getOrThrow(patientId as never);
-    const owner = owners.getOrThrow(patient.primaryOwnerId);
+    const patient = patients.getForAccountOrThrow(
+      patientId as never,
+      principal.user.accountId as never
+    );
+    const owner = owners.getForAccountOrThrow(
+      patient.primaryOwnerId,
+      principal.user.accountId as never
+    );
     const relatedEncounters = encounters
-      .listAll()
+      .listByAccount(principal.user.accountId as never)
       .filter((encounter) => encounter.patientId === patient.id)
       .sort((left, right) => right.openedAt.localeCompare(left.openedAt));
 
@@ -114,7 +120,7 @@ export async function handlePatientsRoutes(
     const species = url.searchParams.get('species') ?? undefined;
     const status = url.searchParams.get('status') ?? undefined;
 
-    let items = patients.list(query);
+    let items = patients.listByAccount(principal.user.accountId as never, query);
 
     if (ownerId) {
       items = items.filter((patient) => patient.primaryOwnerId === ownerId);
@@ -194,7 +200,10 @@ export async function handlePatientsRoutes(
     const principal = requirePrincipal(request, 'patients.read');
     const patientId = match[1];
 
-    const patient = patients.getOrThrow(patientId as never);
+    const patient = patients.getForAccountOrThrow(
+      patientId as never,
+      principal.user.accountId as never
+    );
 
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -240,7 +249,7 @@ export async function handlePatientsRoutes(
       originalCreatedAt: body.originalCreatedAt,
       primaryOwnerId: body.primaryOwnerId,
       status: body.status
-    });
+    }, principal.user.accountId as never);
     await patients.waitForPersistence();
 
     appendAudit(audit, {
@@ -266,7 +275,11 @@ export async function handlePatientsRoutes(
     const principal = requirePrincipal(request, 'patients.manage');
     const patientId = match[1];
 
-    const patient = patients.update(patientId as never, { status: 'inactive' });
+    const patient = patients.update(
+      patientId as never,
+      { status: 'inactive' },
+      principal.user.accountId as never
+    );
     await patients.waitForPersistence();
 
     appendAudit(audit, {
@@ -294,7 +307,10 @@ export async function handlePatientsRoutes(
     const principal = requirePrincipal(request, 'patients.read');
     const patientId = match[1];
 
-    const patient = patients.getOrThrow(patientId as never);
+    const patient = patients.getForAccountOrThrow(
+      patientId as never,
+      principal.user.accountId as never
+    );
     // We need access to owners service to get the owner
     // For now, return a placeholder - this will be enhanced with actual owner lookup
     const ownerId = patient.primaryOwnerId;
@@ -333,6 +349,7 @@ export async function handlePatientsRoutes(
 
     return json(response, 200, {
       items: patients.listLinks({
+        accountId: principal.user.accountId as never,
         ownerId: ownerId as never,
         patientId: patientId as never
       })

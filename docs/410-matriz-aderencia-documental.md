@@ -113,7 +113,7 @@
 | --- | --- | --- | ---: |
 | Faixa `700-790` e recente | Documentos datados de 2026-03-31 e escritos com diagnostico do estado real | Muito boa aderencia como retrato atual | 88 |
 | Existencia de camada de testes | Foram encontrados testes em `apps/api`, `packages/modules`, `tests/integration`, `e2e/tests` | A documentacao nao esta vendendo algo inexistente | 85 |
-| Operabilidade imediata do gate `test:critical` | A suite sobe, mas falhou por credenciais de PostgreSQL (`tests/setup/env.ts` assume `postgres://postgres:postgres@localhost:5432/cvg_his_v2_test`) | Parcial; existe, mas nao e autooperavel em qualquer ambiente | 60 |
+| Operabilidade imediata do gate `test:critical` | A suite sobe, mas falhou por credenciais de PostgreSQL (o ambiente de teste requer `DATABASE_URL_TEST`) | Parcial; existe, mas nao e autooperavel em qualquer ambiente | 60 |
 | Consistencia entre docs e scripts raiz | `package.json` possui `test`, `test:all`, `test:critical`, `test:e2e`, `release:check` | Boa aderencia | 80 |
 
 ## 9. Achados criticos

@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import type { AuditService } from '@cvg-his-v2/module-audit';
 import type { CounterSalesService } from '@cvg-his-v2/module-counter-sales';
+import type { OwnersService } from '@cvg-his-v2/module-owners';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 import { AuthenticationError } from '@cvg-his-v2/shared-errors';
 
@@ -10,6 +11,7 @@ import { readJsonBody } from '../helpers/common.js';
 
 export interface CounterSalesRoutesHandlers {
   counterSales: CounterSalesService;
+  owners?: OwnersService;
   audit: AuditService;
   requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
 }
@@ -37,7 +39,7 @@ export async function handleCounterSalesRoutes(
     return false;
   }
 
-  const { counterSales, audit, requirePrincipal } = handlers;
+  const { counterSales, owners, audit, requirePrincipal } = handlers;
   const method = request.method ?? 'GET';
   const url = new URL(request.url ?? pathname, 'http://localhost');
 
@@ -102,6 +104,12 @@ export async function handleCounterSalesRoutes(
       ownerId?: string | null;
       notes?: string | null;
     };
+    if (payload.ownerId) {
+      owners?.getForAccountOrThrow(
+        payload.ownerId as never,
+        principal.user.accountId as never
+      );
+    }
     const sale = await counterSales.open(principal.user.accountId, principal.user.id, {
       ownerId: payload.ownerId,
       notes: payload.notes

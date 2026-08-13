@@ -23,14 +23,14 @@ Authenticate with email+password or API key.
 ```json
 {
   "type": "key",
-  "key": "your-32-character-minimum-api-key"
+  "key": "<api-key>"
 }
 ```
 
 **Response:**
 ```json
 {
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token": "<access-token>",
   "actor": {
     "accountId": "00000000-0000-0000-0000-000000000001",
     "userId": "00000000-0000-0000-0000-000000000001",
@@ -65,7 +65,7 @@ Verify a JWT token.
 **Request Body:**
 ```json
 {
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  "token": "<access-token>"
 }
 ```
 

@@ -46,10 +46,10 @@ test.describe('Fluxo de Webhooks (Webhook Management UI)', () => {
 
     // ── Step 3: Create webhook via UI ──
     console.log('   ➕ Creating webhook via UI...');
-    await page.getByRole('link', { name: /Novo Webhook/i }).first().click();
+    await page.getByRole('button', { name: 'Incluir' }).click();
     await page.waitForLoadState('networkidle');
 
-    await expect(pageHeaderTitle).toHaveText('Novo Webhook', {
+    await expect(pageHeaderTitle).toHaveText('Incluir Webhook', {
       timeout: 10000
     });
 
@@ -65,12 +65,13 @@ test.describe('Fluxo de Webhooks (Webhook Management UI)', () => {
     console.log('   ✅ First event selected');
 
     // Submit
-    await page.getByRole('button', { name: /Cadastrar Webhook/ }).click();
+    await page.getByRole('button', { name: /^Salvar$/ }).click();
 
     // Wait for success and redirect to detail
     await expect(page.getByText(/Webhook cadastrado com sucesso/i)).toBeVisible({ timeout: 15000 });
-    await expect(page).toHaveURL(/\/webhooks\/wh_/, { timeout: 10000 });
+    await expect(page).toHaveURL(/\/webhooks\/wh_[a-z0-9]+_[a-z0-9]+$/, { timeout: 10000 });
     const webhookId = page.url().split('/').pop();
+    expect(webhookId).toMatch(/^wh_[a-z0-9]+_[a-z0-9]+$/);
     console.log(`   ✅ Webhook created with ID: ${webhookId}`);
 
     cleanup.track({ type: 'webhook', id: webhookId as string });
@@ -87,8 +88,8 @@ test.describe('Fluxo de Webhooks (Webhook Management UI)', () => {
     // ── Step 5: Open webhook detail ──
     console.log('   🔍 Opening webhook detail...');
     const webhookRow = page.locator('tr', { hasText: webhookUrl });
-    await webhookRow.getByRole('link', { name: /Ver/i }).click();
-    await expect(page).toHaveURL(/\/webhooks\/wh_/, { timeout: 10000 });
+    await webhookRow.getByRole('button', { name: 'Abrir' }).click();
+    await expect(page).toHaveURL(/\/webhooks\/[^/]+$/, { timeout: 10000 });
     await expect(pageHeaderTitle).toHaveText('Webhook', {
       timeout: 10000
     });
@@ -123,7 +124,7 @@ test.describe('Fluxo de Webhooks (Webhook Management UI)', () => {
 
     // ── Step 7: Verify edit ──
     console.log('   ✅ Verifying edit...');
-    await expect(page).toHaveURL(/\/webhooks\/wh_/, { timeout: 10000 });
+    await expect(page).toHaveURL(/\/webhooks\/[^/]+$/, { timeout: 10000 });
     await expect(page.locator('.detail-value', { hasText: webhookUrlEdited })).toBeVisible({
       timeout: 10000
     });
@@ -135,19 +136,20 @@ test.describe('Fluxo de Webhooks (Webhook Management UI)', () => {
     page.once('dialog', (dialog) => dialog.accept());
     await page.getByRole('button', { name: /Desativar/ }).click();
 
-    // Wait for redirect to list
-    await page.waitForURL(/\/webhooks$/, { timeout: 10000 });
-    console.log('   ✅ Redirected to webhooks list');
-
-    // Verify webhook is no longer in active list (may still appear but with Inativo badge)
-    await page.waitForLoadState('networkidle');
+    await expect(page.getByText('Inativo').first()).toBeVisible({ timeout: 10000 });
     console.log('   ✅ Webhook deactivated');
 
     // ── Step 9: Verify in list ──
     console.log('   📋 Verifying webhook in list after deactivation...');
+    await page.goto(`${SPA_URL}/webhooks`);
+    await page.waitForLoadState('networkidle');
+    await page.locator('select').selectOption('all');
+    await page.getByRole('button', { name: 'Pesquisar' }).click();
     await expect(pageHeaderTitle).toHaveText('Webhooks', {
       timeout: 10000
     });
+    const inactiveRow = page.locator('tr', { hasText: webhookUrlEdited });
+    await expect(inactiveRow).toContainText('Inativo', { timeout: 10000 });
     console.log('   ✅ Webhook list still accessible');
 
     console.log('   🎉 Webhook CRUD flow completed successfully!');
@@ -171,19 +173,19 @@ test.describe('Fluxo de Webhooks (Webhook Management UI)', () => {
     });
 
     // Validate "Novo Webhook" button
-    await expect(page.getByRole('link', { name: /Novo Webhook/i }).first()).toBeVisible({
+    await expect(page.getByRole('button', { name: 'Incluir' })).toBeVisible({
       timeout: 10000
     });
 
     // Validate table columns (even if empty)
     const columns = page.locator('thead th, .data-table th');
-    if ((await columns.count()) > 0) {
-      await expect(columns.getByText(/URL/i)).toBeVisible({ timeout: 5000 });
-      await expect(columns.getByText(/Eventos/i)).toBeVisible({ timeout: 5000 });
-      await expect(columns.getByText(/Status/i)).toBeVisible({ timeout: 5000 });
-      await expect(columns.getByText(/Ações/i)).toBeVisible({ timeout: 5000 });
-      console.log('   ✅ Table headers validated');
-    }
+    await expect(columns).toHaveCount(5);
+    await expect(columns.getByText('URL', { exact: true })).toBeVisible({ timeout: 5000 });
+    await expect(columns.getByText('Eventos', { exact: true })).toBeVisible({ timeout: 5000 });
+    await expect(columns.getByText('Status', { exact: true })).toBeVisible({ timeout: 5000 });
+    await expect(columns.getByText('Criado em', { exact: true })).toBeVisible({ timeout: 5000 });
+    await expect(columns.getByText('Abrir', { exact: true })).toBeVisible({ timeout: 5000 });
+    console.log('   ✅ Table headers validated');
 
     console.log('   ✅ Webhooks list page elements validated');
   });

@@ -135,6 +135,10 @@ export class EncountersService {
     return Array.from(this.#encounters.values());
   }
 
+  public listByAccount(accountId: AccountId): readonly EncounterSummary[] {
+    return this.listAll().filter((encounter) => encounter.accountId === accountId);
+  }
+
   public async hydrateFromDatabase(accountId: AccountId): Promise<void> {
     if (!this.#encounterRepository) {
       return;
@@ -158,6 +162,14 @@ export class EncountersService {
       throw new NotFoundError('Encounter not found', { encounterId });
     }
 
+    return encounter;
+  }
+
+  public getForAccountOrThrow(accountId: AccountId, encounterId: EncounterId): EncounterSummary {
+    const encounter = this.getOrThrow(encounterId);
+    if (encounter.accountId !== accountId) {
+      throw new NotFoundError('Encounter not found', { encounterId });
+    }
     return encounter;
   }
 

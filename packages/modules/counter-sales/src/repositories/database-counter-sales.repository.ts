@@ -416,7 +416,7 @@ export class DatabaseCounterSalesRepository implements CounterSalesRepository {
   ): Promise<{ name: string; code: string; onHand: number; reorderLevel: number }[]> {
     return withTenantQuery(getPool(), async (client) => {
       const result = await client.query(
-        `SELECT name, sku as code, on_hand_quantity as onHand, reorder_level as reorderLevel
+        `SELECT name, sku AS code, on_hand_quantity AS "onHand", reorder_level AS "reorderLevel"
          FROM inventory_items
          WHERE account_id = $1 AND on_hand_quantity <= reorder_level
          ORDER BY on_hand_quantity ASC`,

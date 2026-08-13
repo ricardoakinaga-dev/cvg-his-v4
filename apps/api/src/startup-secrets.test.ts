@@ -7,6 +7,15 @@ import {
   resolveApiStartup
 } from './startup-secrets.js';
 
+function databaseUrl(user: string, password: string): string {
+  const url = new URL('postgres://db:5432/cvg_his_v2');
+  url.username = user;
+  url.password = password;
+  return url.toString();
+}
+
+const VAULT_DATABASE_URL = databaseUrl('vault-user', 'vault-pass');
+
 function installMockVaultFetch(): {
   readonly baseUrl: string;
   readonly requests: string[];
@@ -26,11 +35,21 @@ function installMockVaultFetch(): {
       AUTH_SECRET_VERSION: '2026-q2'
     },
     '/v1/secret/data/cvg-his-v2/production/database': {
-      DATABASE_URL: 'postgres://vault-user:vault-pass@db:5432/cvg_his_v2'
+      DATABASE_URL: VAULT_DATABASE_URL
     },
     '/v1/secret/data/cvg-his-v2/production/pagarme': {
       PAGARME_API_KEY: 'vault-pagarme-api-key',
       PAGARME_PIX_KEY: 'vault-pagarme-pix-key'
+    },
+    '/v1/secret/data/cvg-his-v2/production/resend': {
+      RESEND_API_KEY: 'vault-resend-api-key'
+    },
+    '/v1/secret/data/cvg-his-v2/production/sms': {
+      SMS_API_KEY: 'vault-sms-api-key'
+    },
+    '/v1/secret/data/cvg-his-v2/production/google_calendar': {
+      GOOGLE_CALENDAR_ACCESS_TOKEN: 'vault-google-calendar-token',
+      GOOGLE_CALENDAR_CALENDAR_ID: 'vault-google-calendar-id'
     }
   };
 
@@ -89,7 +108,11 @@ test('buildApiManagedSecretDescriptors maps API secrets to environment-scoped Va
       ['DATABASE_URL', 'production/database', true],
       ['REDIS_URL', 'production/redis', false],
       ['PAGARME_API_KEY', 'production/pagarme', false],
-      ['PAGARME_PIX_KEY', 'production/pagarme', false]
+      ['PAGARME_PIX_KEY', 'production/pagarme', false],
+      ['RESEND_API_KEY', 'production/resend', false],
+      ['SMS_API_KEY', 'production/sms', false],
+      ['GOOGLE_CALENDAR_ACCESS_TOKEN', 'production/google_calendar', false],
+      ['GOOGLE_CALENDAR_CALENDAR_ID', 'production/google_calendar', false]
     ]
   );
 });
@@ -115,7 +138,7 @@ test('resolveApiStartup resolves managed secrets from Vault before validating AP
     });
 
     assert.equal(startup.secretsManager.provider, 'vault');
-    assert.equal(startup.config.databaseUrl, 'postgres://vault-user:vault-pass@db:5432/cvg_his_v2');
+    assert.equal(startup.config.databaseUrl, VAULT_DATABASE_URL);
     assert.equal(startup.config.authSecret, 'vault-auth-token-key-with-more-than-32-characters');
     assert.deepEqual(startup.config.authVerifierSecrets, [
       'vault-previous-auth-token-key-with-more-than-32-characters'
@@ -123,7 +146,7 @@ test('resolveApiStartup resolves managed secrets from Vault before validating AP
     assert.equal(startup.config.authSecretVersion, '2026-q2');
     assert.equal(startup.config.pagarmeApiKey, 'vault-pagarme-api-key');
     assert.equal(startup.config.pagarmePixKey, 'vault-pagarme-pix-key');
-    assert.equal(startup.env.DATABASE_URL, 'postgres://vault-user:vault-pass@db:5432/cvg_his_v2');
+    assert.equal(startup.env.DATABASE_URL, VAULT_DATABASE_URL);
     assert.ok(vault.requests.includes('POST /v1/auth/approle/login'));
     assert.ok(vault.requests.includes('GET /v1/secret/data/cvg-his-v2/production/api'));
     assert.ok(vault.requests.includes('GET /v1/secret/data/cvg-his-v2/production/api_previous'));
@@ -145,7 +168,7 @@ test('resolveApiStartup preserves explicit env secrets instead of overriding the
       FILE_STORAGE_PATH: '/tmp/cvg-his-v2',
       AUTH_SECRET: 'explicit-auth-token-key-with-more-than-32-characters',
       AUTH_SECRET_PREVIOUS: 'explicit-previous-auth-token-key-with-more-than-32-chars',
-      DATABASE_URL: 'postgres://env-user:env-pass@db:5432/cvg_his_v2',
+      DATABASE_URL: databaseUrl('env-user', 'env-pass'),
       VAULT_ENABLED: 'true',
       VAULT_URL: vault.baseUrl,
       VAULT_ROLE_ID: 'role-id',
@@ -157,7 +180,7 @@ test('resolveApiStartup preserves explicit env secrets instead of overriding the
     assert.deepEqual(startup.config.authVerifierSecrets, [
       'explicit-previous-auth-token-key-with-more-than-32-chars'
     ]);
-    assert.equal(startup.config.databaseUrl, 'postgres://env-user:env-pass@db:5432/cvg_his_v2');
+    assert.equal(startup.config.databaseUrl, databaseUrl('env-user', 'env-pass'));
     assert.equal(vault.requests.includes('GET /v1/secret/data/cvg-his-v2/production/api'), false);
     assert.equal(vault.requests.includes('GET /v1/secret/data/cvg-his-v2/production/database'), false);
   } finally {

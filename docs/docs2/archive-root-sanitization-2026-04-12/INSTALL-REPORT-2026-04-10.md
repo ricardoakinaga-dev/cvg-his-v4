@@ -86,7 +86,7 @@ docker compose --env-file .env.v2 -f docker-compose.v2.yml up -d postgres redis
 
 ### 3.6 Aplicação de migrations
 ```bash
-DATABASE_URL="postgres://postgres:<SENHA>@127.0.0.1:5432/cvg_his_v2" \
+DATABASE_URL="<migration-database-url>" \
   npx tsx packages/db/src/migrate.ts
 ```
 **Resultado:** ⚠️ OK reportou "Migrations applied successfully", porém com ressalvas

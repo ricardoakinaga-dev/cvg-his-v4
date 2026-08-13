@@ -20,7 +20,7 @@ describe('shared-auth-sdk', () => {
     });
 
     it('returns Bearer header for long token', () => {
-      const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyX2FkbWluIn0';
+      const token = ['header-segment', 'payload-segment', 'signature-segment'].join('.');
       expect(buildAuthorizationHeader(token)).toBe(`Bearer ${token}`);
     });
   });

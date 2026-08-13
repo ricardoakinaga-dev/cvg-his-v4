@@ -2,6 +2,7 @@
 
 **Status:** vivo
 **Data de criacao:** 2026-03-31
+**Ultima verificacao executavel:** 2026-08-12 — `pnpm typecheck`, `pnpm build`, `pnpm lint`, `pnpm test`, `pnpm test:critical`, `pnpm test:coverage` e `pnpm security:enterprise` passam após o fechamento P1 e a remediação de dependências; aceite enterprise final ainda depende dos itens residuais registrados no relatório vivo.
 **Base:** docs/460-qualidade-testes-e-gates.md, docs/131-checklist-cutover-servidor.md, docs/470-politica-migracao-e-deploy.md
 
 ---
@@ -40,8 +41,9 @@
 - [ ] `pnpm --filter @cvg-his-v2/spa test` — verde
 - [ ] `pnpm test:critical` — verde com banco de teste preparado
   - Pre-requisito: `pnpm test:db:start` (PostgreSQL 16 na porta 5433)
-  - Execucao: `DATABASE_URL_TEST=postgres://postgres:postgres@localhost:5433/cvg_his_v2_test pnpm test:critical`
-  - Meta: 100% dos testes passando (atual: 162 testes)
+  - Execucao: `DATABASE_URL_TEST="<test-database-url>" pnpm test:critical`
+  - Meta: 100% dos testes passando (atual: 171 testes)
+- [x] `pnpm security:enterprise` — verde; secret scan limpo e zero vulnerabilidades conhecidas de qualquer severidade em `pnpm audit --audit-level=low`
 - [ ] `pnpm test:e2e` — verde com API rodando em localhost:3000
   - Pre-requisito: API rodando com DATABASE_URL configurado
   - Execucao: `npx playwright test e2e/tests/fluxos-criticos.spec.ts`
@@ -51,7 +53,7 @@
 
 ```
 Test Files  4 passed (4)
-Tests       162 passed (162)
+Tests       171 passed (171)
 ```
 
 ---
@@ -88,9 +90,10 @@ Tests       162 passed (162)
 
 ### Migration
 
-- [ ] Migration Drizzle `0000_vengeful_pet_avengers.sql` aplica em banco limpo
+- [ ] As migrations Drizzle `0000` a `0058_auth_sessions_rls.sql` aplicam em banco limpo
+- [x] `pnpm validate:rls` — 98/98 tabelas tenant protegidas, sem exceções
 - [ ] Comando: `DATABASE_URL=<url> tsx packages/db/src/migrate.ts`
-- [ ] Resultado: 46 tabelas, 28 ENUM types, 126 foreign keys criadas
+- [ ] Resultado atual reproduzido: 125 tabelas, 38 ENUM types, 266 foreign keys criadas
 
 ### Seed
 

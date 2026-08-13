@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import { uuid, insertOne, cleanupRegistry, queryOne } from '../helpers/db-helpers.js';
 import { ensureDefaultAccount } from './unit-factory.js';
 import { getOrCreateRole } from './role-factory.js';
@@ -22,7 +24,7 @@ export interface UserOptions {
   roleCodes?: string[];
 }
 
-const DEFAULT_PASSWORD_HASH = '5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8';
+const DEFAULT_PASSWORD_HASH = createHash('sha256').update('password').digest('hex');
 
 export async function createUser(options: UserOptions = {}): Promise<UserRecord> {
   const id = uuid();

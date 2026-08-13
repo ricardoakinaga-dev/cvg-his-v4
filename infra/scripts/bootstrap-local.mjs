@@ -139,18 +139,18 @@ async function main() {
   });
 
   console.log('\nStep 3: Environment setup');
-  console.log('  DATABASE_URL=postgres://postgres:postgres@localhost:5432/cvg_his_v2');
+  console.log('  Configure DATABASE_URL with a restricted local runtime role.');
   console.log('  REDIS_URL=redis://localhost:6379');
   console.log('\nTo start API with real database:');
   console.log(
-    '  DATABASE_URL=postgres://postgres:postgres@localhost:5432/cvg_his_v2 pnpm dev:api'
+    '  DATABASE_URL="$DATABASE_URL" pnpm dev:api'
   );
   console.log('\nTo start Worker with real database:');
   console.log(
-    '  DATABASE_URL=postgres://postgres:postgres@localhost:5432/cvg_his_v2 pnpm dev:worker'
+    '  DATABASE_URL="$DATABASE_URL" pnpm dev:worker'
   );
   console.log('\nOr run both together:');
-  console.log('  DATABASE_URL=postgres://postgres:postgres@localhost:5432/cvg_his_v2 pnpm dev');
+  console.log('  DATABASE_URL="$DATABASE_URL" pnpm dev');
 
   console.log('\n✓ Bootstrap complete!');
 }

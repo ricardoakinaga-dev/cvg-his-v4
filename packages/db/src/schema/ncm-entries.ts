@@ -1,4 +1,13 @@
-import { pgTable, text, numeric, varchar, index } from 'drizzle-orm/pg-core';
+import {
+  boolean,
+  index,
+  numeric,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+  varchar
+} from 'drizzle-orm/pg-core';
 
 /**
  * NCM Entries — Cadastro de NCM (Nomenclatura Comum do Mercosul)
@@ -9,15 +18,15 @@ import { pgTable, text, numeric, varchar, index } from 'drizzle-orm/pg-core';
 export const ncmEntries = pgTable(
   'ncm_entries',
   {
-    id: varchar('id', { length: 60 }).notNull().primaryKey(),
+    id: uuid('id').defaultRandom().primaryKey(),
     ncm: varchar('ncm', { length: 10 }).notNull(),
-    category: text('category').notNull(),
-    ipiRate: numeric('ipi_rate', { precision: 5, scale: 2 }).notNull().default('0'),
-    source: text('source').notNull(),
+    category: varchar('category', { length: 64 }).notNull(),
+    ipiRate: numeric('ipi_rate', { precision: 5, scale: 2 }),
+    source: varchar('source', { length: 128 }),
     notes: text('notes'),
-    active: text('active').notNull().default('true'),
-    createdAt: text('created_at').notNull().default('now'),
-    updatedAt: text('updated_at').notNull().default('now')
+    active: boolean('active').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
   },
   (table) => ({
     ncmIdx: index('ncm_entries_ncm_idx').on(table.ncm),

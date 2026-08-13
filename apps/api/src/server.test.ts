@@ -3,10 +3,17 @@ import { Readable, Writable } from 'node:stream';
 import test from 'node:test';
 
 import { ChaosEngine } from '@cvg-his-v2/chaos';
+import { InMemoryEncounterFinancialRepository } from '@cvg-his-v2/module-financial';
 
 import { setAppState } from './app-state.js';
 import { recordRequestSloObservation, resetRequestSloObservations } from './metrics.js';
 import { createApiServer } from './server.js';
+
+class FailingEncounterFinancialRepository extends InMemoryEncounterFinancialRepository {
+  public override async upsertFinancialAccount(): Promise<void> {
+    throw new Error('financial persistence failed');
+  }
+}
 
 class MockRequest extends Readable {
   public readonly method: string;
@@ -119,13 +126,32 @@ class MockResponse extends Writable {
 }
 
 function createServerUnderTest(overrides: Partial<Parameters<typeof createApiServer>[0]> = {}) {
+  const environment = overrides.environment ?? 'test';
+  const productionLike = ['production', 'staging', 'prod', 'stage'].includes(environment);
   return createApiServer({
     appName: 'api-test',
-    environment: 'test',
+    environment,
     version: '0.1.0',
     authSecret: 'test-secret',
     accessTokenTtlSeconds: 900,
     refreshTokenTtlSeconds: 604800,
+    ...(productionLike
+      ? {
+          pagarmeApiKey: 'pagarme-test-key',
+          pagarmePixKey: 'pix-test-key',
+          resendApiKey: 'resend-test-key',
+          emailFrom: 'clinic@example.com',
+          smsApiKey: 'sms-test-key',
+          smsFrom: 'CVGHIS',
+          googleCalendarAccessToken: 'calendar-test-token',
+          googleCalendarCalendarId: 'calendar-test-id'
+        }
+      : {
+          pixMockMode: true,
+          emailMockMode: true,
+          smsMockMode: true,
+          googleCalendarMockMode: true
+        }),
     featureFlags: {
       providerName: 'test',
       enabledKeys: ['notifications.whatsapp.inbound_actions.enabled'],
@@ -206,6 +232,41 @@ async function login(
   return response.bodyJson<{ accessToken: string }>().accessToken;
 }
 
+test('request fails closed when its audit event cannot be persisted', async () => {
+  const persistedAuditEvents: unknown[] = [];
+  const server = createServerUnderTest({
+    repositories: {
+      audit: {
+        async create(event) {
+          if (event.module === 'inventory') {
+            throw new Error('audit persistence unavailable for request');
+          }
+          persistedAuditEvents.push(event);
+        },
+        async list() {
+          return [];
+        },
+        async findById() {
+          return null;
+        }
+      }
+    }
+  });
+  const accessToken = await login(server, 'admin', 'seed_admin');
+
+  const response = await performRequest(server, {
+    method: 'GET',
+    url: '/inventory',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+
+  assert.equal(response.statusCode, 500);
+  assert.equal(response.bodyJson<{ code: string }>().code, 'INTERNAL_ERROR');
+});
+
 test('CORS preflight reflects an allowed origin', async () => {
   const server = createServerUnderTest({
     corsAllowedOrigins: ['https://app.example.com']
@@ -226,13 +287,15 @@ test('CORS preflight reflects an allowed origin', async () => {
   assert.match(response.getHeader('access-control-allow-methods') ?? '', /OPTIONS/);
 });
 
-test('server falls back to LocalPix when PagarMe credentials are absent', async () => {
-  assert.doesNotThrow(() =>
-    createServerUnderTest({
-      pixMockMode: false,
-      pagarmeApiKey: undefined,
-      pagarmePixKey: undefined
-    })
+test('server rejects implicit local providers when mock mode is not explicit', async () => {
+  assert.throws(
+    () =>
+      createServerUnderTest({
+        pixMockMode: false,
+        pagarmeApiKey: undefined,
+        pagarmePixKey: undefined
+      }),
+    /PagarMe PIX provider is not configured/
   );
 });
 
@@ -352,7 +415,12 @@ test('SLO endpoint exposes compliance, error budget and Prometheus gauges', asyn
   assert.equal(payload.report.overallStatus, 'critical');
   assert.equal(payload.report.errorBudgetExhausted, true);
   assert.equal(payload.runbook.metrics, '/metrics');
-  assert.equal(payload.report.slos.some((slo) => slo.id === 'api-error-rate' && slo.category === 'reliability'), true);
+  assert.equal(
+    payload.report.slos.some(
+      (slo) => slo.id === 'api-error-rate' && slo.category === 'reliability'
+    ),
+    true
+  );
 
   const aliasResponse = await performRequest(server, {
     method: 'GET',
@@ -372,8 +440,14 @@ test('SLO endpoint exposes compliance, error budget and Prometheus gauges', asyn
   });
   assert.equal(metricsResponse.statusCode, 200);
   const metricsText = metricsResponse.bodyText();
-  assert.match(metricsText, /^app_slo_status\{slo_id="api-error-rate",category="reliability"\} 2$/m);
-  assert.match(metricsText, /^app_slo_burn_rate\{slo_id="api-error-rate",category="reliability"\} 100$/m);
+  assert.match(
+    metricsText,
+    /^app_slo_status\{slo_id="api-error-rate",category="reliability"\} 2$/m
+  );
+  assert.match(
+    metricsText,
+    /^app_slo_burn_rate\{slo_id="api-error-rate",category="reliability"\} 100$/m
+  );
 
   resetRequestSloObservations();
 });
@@ -469,9 +543,14 @@ test('chaos operations expose effective runtime state, runbooks and metrics', as
     assert.equal(experimentsPayload.runtimeState.workerReady, false);
     assert.equal(experimentsPayload.runtimeState.redisHealthy, false);
     assert.equal(experimentsPayload.runtimeState.rateLimiterMode, 'in-memory-fallback');
-    assert.equal(experimentsPayload.runtimeState.activeExperimentIds.includes('database-failure'), true);
+    assert.equal(
+      experimentsPayload.runtimeState.activeExperimentIds.includes('database-failure'),
+      true
+    );
 
-    const databaseExperiment = experimentsPayload.experiments.find((item) => item.id === 'database-failure');
+    const databaseExperiment = experimentsPayload.experiments.find(
+      (item) => item.id === 'database-failure'
+    );
     assert.equal(databaseExperiment?.active, true);
     assert.equal(
       databaseExperiment?.runbook?.path,
@@ -533,7 +612,10 @@ test('bootstrap serves extracted OpenAPI and docs routes over HTTP semantics', a
   });
   assert.equal(openApiResponse.statusCode, 200);
   assert.equal(openApiResponse.getHeader('content-type'), 'application/json');
-  const openApiPayload = openApiResponse.bodyJson<{ openapi: string; paths: Record<string, unknown> }>();
+  const openApiPayload = openApiResponse.bodyJson<{
+    openapi: string;
+    paths: Record<string, unknown>;
+  }>();
   assert.equal(openApiPayload.openapi, '3.0.3');
   assert.ok(Object.keys(openApiPayload.paths).length > 0);
 
@@ -580,9 +662,87 @@ test('bootstrap serves extracted owners and patients routes over HTTP semantics'
   assert.equal(patientsPayload.items[0]?.patientId, 'patient_luna');
 });
 
+test('server keeps pre-auth login tenantless and blocks tenant dispatch when initialization fails', async () => {
+  let tenantHydrations = 0;
+  const server = createServerUnderTest({
+    repositories: {
+      owner: {
+        async findByAccountId() {
+          tenantHydrations += 1;
+          throw new Error('tenant bootstrap failed');
+        }
+      } as never
+    }
+  });
+
+  const accessToken = await login(server, 'admin', 'seed_admin');
+  assert.equal(tenantHydrations, 0);
+
+  const response = await performRequest(server, {
+    method: 'GET',
+    url: '/owners',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+
+  assert.equal(tenantHydrations, 1);
+  assert.equal(response.statusCode, 500);
+  assert.equal(response.bodyJson<{ code: string }>().code, 'INTERNAL_ERROR');
+});
+
 test('bootstrap registers prescription routes over HTTP semantics', async () => {
   const server = createServerUnderTest();
   const accessToken = await login(server, 'admin', 'seed_admin');
+
+  const encounterResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/encounters',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      visitType: 'walk_in',
+      origin: 'reception',
+      reason: 'Prescricao HTTP vinculada a atendimento real'
+    }
+  });
+  assert.equal(encounterResponse.statusCode, 201);
+  const encounter = encounterResponse.bodyJson<{ id: string }>();
+
+  const entryResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/medical-records/entries',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      encounterId: encounter.id,
+      patientId: 'patient_luna',
+      entryType: 'progress_note',
+      title: 'Avaliacao para prescricao',
+      content: 'Registro clinico criado antes da prescricao.'
+    }
+  });
+  assert.equal(entryResponse.statusCode, 201);
+
+  const recordResponse = await performRequest(server, {
+    method: 'GET',
+    url: `/medical-records?encounterId=${encounter.id}`,
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+  assert.equal(recordResponse.statusCode, 200);
+  const record = recordResponse.bodyJson<{ record: { id: string } }>().record;
 
   const createResponse = await performRequest(server, {
     method: 'POST',
@@ -593,8 +753,8 @@ test('bootstrap registers prescription routes over HTTP semantics', async () => 
       host: 'localhost'
     },
     body: {
-      medicalRecordId: 'mr-http-prescription',
-      encounterId: 'enc-http-prescription',
+      medicalRecordId: record.id,
+      encounterId: encounter.id,
       patientId: 'patient_luna',
       medicationName: 'Dipirona',
       dosage: '25 mg/kg',
@@ -727,6 +887,93 @@ test('bootstrap serves administrative financial routes over HTTP semantics', asy
   const receivables = receivablesResponse.bodyJson<{ data: Array<{ encounterId: string }> }>();
   assert.equal(receivables.data.length, 2);
   assert.equal(receivables.data[0]?.encounterId, encounter.id);
+});
+
+test('encounter summary fails closed when financial persistence fails', async () => {
+  const server = createServerUnderTest({
+    repositories: {
+      encounterFinancial: new FailingEncounterFinancialRepository()
+    }
+  });
+  const accessToken = await login(server, 'admin', 'seed_admin');
+
+  const encounterResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/encounters',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      visitType: 'walk_in',
+      origin: 'reception',
+      reason: 'Falha financeira controlada'
+    }
+  });
+  assert.equal(encounterResponse.statusCode, 201);
+  const encounter = encounterResponse.bodyJson<{ id: string }>();
+
+  const estimateResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/billing/estimate',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: { encounterId: encounter.id }
+  });
+  assert.equal(estimateResponse.statusCode, 200);
+
+  const summaryResponse = await performRequest(server, {
+    method: 'GET',
+    url: `/encounters/${encounter.id}/summary`,
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+
+  assert.equal(summaryResponse.statusCode, 500);
+  assert.equal(summaryResponse.bodyJson<{ code: string }>().code, 'INTERNAL_ERROR');
+});
+
+test('encounter summary reports an explicit null financial state before billing exists', async () => {
+  const server = createServerUnderTest();
+  const accessToken = await login(server, 'admin', 'seed_admin');
+  const encounterResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/encounters',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      visitType: 'walk_in',
+      origin: 'reception',
+      reason: 'Atendimento ainda sem cobranca'
+    }
+  });
+  assert.equal(encounterResponse.statusCode, 201);
+  const encounter = encounterResponse.bodyJson<{ id: string }>();
+
+  const summaryResponse = await performRequest(server, {
+    method: 'GET',
+    url: `/encounters/${encounter.id}/summary`,
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+
+  assert.equal(summaryResponse.statusCode, 200);
+  assert.equal(summaryResponse.bodyJson<{ financial: unknown }>().financial, null);
 });
 
 test('bootstrap deletes encounters over HTTP semantics', async () => {
@@ -1150,6 +1397,309 @@ test('medical records expose revision history and archive semantics over HTTP', 
   assert.equal(entries.items.length, 0);
 });
 
+test('critical clinical workflow exposes timelines, attachments, notifications and handoff lifecycle', async () => {
+  const server = createServerUnderTest();
+  const accessToken = await login(server, 'admin', 'seed_admin');
+  const authenticatedHeaders = {
+    authorization: `Bearer ${accessToken}`,
+    host: 'localhost'
+  };
+  const jsonHeaders = {
+    ...authenticatedHeaders,
+    'content-type': 'application/json'
+  };
+
+  const encounterResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/encounters',
+    headers: jsonHeaders,
+    body: {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      visitType: 'walk_in',
+      origin: 'reception',
+      reason: 'Critical clinical workflow'
+    }
+  });
+  assert.equal(encounterResponse.statusCode, 201);
+  const encounter = encounterResponse.bodyJson<{
+    id: string;
+    patientId: string;
+    ownerId: string;
+  }>();
+
+  const entryResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/medical-records/entries',
+    headers: jsonHeaders,
+    body: {
+      encounterId: encounter.id,
+      patientId: encounter.patientId,
+      entryType: 'progress_note',
+      title: 'Critical workflow entry',
+      content: 'Clinical record created for the full HTTP workflow.'
+    }
+  });
+  assert.equal(entryResponse.statusCode, 201);
+
+  const recordResponse = await performRequest(server, {
+    method: 'GET',
+    url: `/medical-records?encounterId=${encounter.id}`,
+    headers: authenticatedHeaders
+  });
+  assert.equal(recordResponse.statusCode, 200);
+  const record = recordResponse.bodyJson<{ record: { id: string }; entries: unknown[] }>();
+  assert.equal(record.entries.length, 1);
+
+  const allRecordsResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/medical-records',
+    headers: authenticatedHeaders
+  });
+  assert.equal(allRecordsResponse.statusCode, 200);
+  assert.ok(
+    allRecordsResponse
+      .bodyJson<{ items: Array<{ record: { id: string }; entryCount: number }> }>()
+      .items.some((item) => item.record.id === record.record.id && item.entryCount === 1)
+  );
+
+  const diagnosticResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/diagnostics/orders',
+    headers: jsonHeaders,
+    body: {
+      encounterId: encounter.id,
+      patientId: encounter.patientId,
+      examType: 'Hemograma completo',
+      reason: 'Critical workflow diagnostic'
+    }
+  });
+  assert.equal(diagnosticResponse.statusCode, 201);
+  const diagnosticOrder = diagnosticResponse.bodyJson<{ id: string }>();
+
+  const attachmentTargets = [
+    { linkedEntityType: 'encounter', linkedEntityId: encounter.id },
+    { linkedEntityType: 'medical_record', linkedEntityId: record.record.id },
+    { linkedEntityType: 'diagnostic_order', linkedEntityId: diagnosticOrder.id }
+  ] as const;
+  for (const [index, target] of attachmentTargets.entries()) {
+    const uploadResponse = await performRequest(server, {
+      method: 'POST',
+      url: '/attachments',
+      headers: jsonHeaders,
+      body: {
+        ...target,
+        category: 'document',
+        fileName: `critical-workflow-${index}.pdf`,
+        mimeType: 'application/pdf',
+        checksum: `critical-checksum-${index}`
+      }
+    });
+    assert.equal(uploadResponse.statusCode, 201);
+
+    const listResponse = await performRequest(server, {
+      method: 'GET',
+      url: `/attachments?linkedEntityType=${target.linkedEntityType}&linkedEntityId=${target.linkedEntityId}`,
+      headers: authenticatedHeaders
+    });
+    assert.equal(listResponse.statusCode, 200);
+    assert.equal(listResponse.bodyJson<{ items: unknown[] }>().items.length, 1);
+  }
+
+  const clinicalTimelineResponse = await performRequest(server, {
+    method: 'GET',
+    url: `/medical-records/timeline?encounterId=${encounter.id}`,
+    headers: authenticatedHeaders
+  });
+  assert.equal(clinicalTimelineResponse.statusCode, 200);
+  assert.ok(clinicalTimelineResponse.bodyJson<{ items: unknown[] }>().items.length >= 4);
+
+  const inpatientResponse = await performRequest(server, {
+    method: 'GET',
+    url: `/inpatient?encounterId=${encounter.id}&patientId=${encounter.patientId}&includeDischarged=true`,
+    headers: authenticatedHeaders
+  });
+  assert.equal(inpatientResponse.statusCode, 200);
+  assert.deepEqual(inpatientResponse.bodyJson<{ items: unknown[] }>().items, []);
+
+  const notificationResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/notifications',
+    headers: jsonHeaders,
+    body: {
+      category: 'operations',
+      encounterId: encounter.id,
+      patientId: encounter.patientId,
+      recipientRoleCode: 'reception',
+      title: 'Critical workflow notification',
+      message: 'Clinical workflow is ready for reception.',
+      severity: 'high'
+    }
+  });
+  assert.equal(notificationResponse.statusCode, 201);
+
+  const notificationsResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/notifications?status=queued',
+    headers: authenticatedHeaders
+  });
+  assert.equal(notificationsResponse.statusCode, 200);
+  assert.equal(notificationsResponse.bodyJson<{ items: unknown[] }>().items.length, 1);
+  const jobsResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/notifications/jobs',
+    headers: authenticatedHeaders
+  });
+  assert.equal(jobsResponse.statusCode, 200);
+  assert.equal(jobsResponse.bodyJson<{ items: unknown[] }>().items.length, 1);
+  const processNotificationsResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/notifications/process',
+    headers: jsonHeaders,
+    body: { limit: 1 }
+  });
+  assert.equal(processNotificationsResponse.statusCode, 200);
+  assert.equal(processNotificationsResponse.bodyJson<{ items: unknown[] }>().items.length, 1);
+
+  const sendHandoffResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/clinical-handoffs/send-to-reception',
+    headers: jsonHeaders,
+    body: {
+      encounterId: encounter.id,
+      clinicalSummary: 'Paciente estável após avaliação clínica.',
+      receptionInstructions: 'Conferir cobrança e retorno.',
+      priority: 'high',
+      toResponsibleType: 'team',
+      toResponsibleId: 'reception-team'
+    }
+  });
+  assert.equal(sendHandoffResponse.statusCode, 201);
+  const handoff = sendHandoffResponse.bodyJson<{ id: string }>();
+
+  const handoffListResponse = await performRequest(server, {
+    method: 'GET',
+    url: `/clinical-handoffs?status=sent_to_reception&priority=high&encounterId=${encounter.id}&ownerId=${encounter.ownerId}&patientId=${encounter.patientId}`,
+    headers: authenticatedHeaders
+  });
+  assert.equal(handoffListResponse.statusCode, 200);
+  assert.equal(handoffListResponse.bodyJson<{ items: unknown[] }>().items.length, 1);
+  const handoffDetailResponse = await performRequest(server, {
+    method: 'GET',
+    url: `/clinical-handoffs/${handoff.id}`,
+    headers: authenticatedHeaders
+  });
+  assert.equal(handoffDetailResponse.statusCode, 200);
+
+  const invalidStatusResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/clinical-handoffs?status=invalid-status',
+    headers: authenticatedHeaders
+  });
+  assert.equal(invalidStatusResponse.statusCode, 400);
+  const invalidPriorityResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/clinical-handoffs?priority=invalid-priority',
+    headers: authenticatedHeaders
+  });
+  assert.equal(invalidPriorityResponse.statusCode, 400);
+
+  const acknowledgeResponse = await performRequest(server, {
+    method: 'POST',
+    url: `/clinical-handoffs/${handoff.id}/acknowledge`,
+    headers: jsonHeaders,
+    body: { note: 'Recepção ciente.' }
+  });
+  assert.equal(acknowledgeResponse.statusCode, 200);
+  const pendingResponse = await performRequest(server, {
+    method: 'POST',
+    url: `/clinical-handoffs/${handoff.id}/pending`,
+    headers: jsonHeaders,
+    body: {
+      type: 'billing-document',
+      severity: 'high',
+      ownerType: 'person',
+      ownerId: 'finance-user',
+      reason: 'Documento financeiro pendente.',
+      blocksFinance: true
+    }
+  });
+  assert.equal(pendingResponse.statusCode, 200);
+  const pendingHandoff = pendingResponse.bodyJson<{
+    pendingIssues: Array<{ id: string }>;
+  }>();
+  const pendingIssueId = pendingHandoff.pendingIssues[0]?.id;
+  assert.ok(pendingIssueId);
+
+  const blockedFinanceResponse = await performRequest(server, {
+    method: 'POST',
+    url: `/clinical-handoffs/${handoff.id}/send-to-finance`,
+    headers: jsonHeaders,
+    body: { note: 'Should remain blocked.' }
+  });
+  assert.equal(blockedFinanceResponse.statusCode, 409);
+
+  const resolveResponse = await performRequest(server, {
+    method: 'POST',
+    url: `/clinical-handoffs/${handoff.id}/pending/${pendingIssueId}/resolve`,
+    headers: jsonHeaders,
+    body: { resolution: 'Documento anexado e validado.' }
+  });
+  assert.equal(resolveResponse.statusCode, 200);
+  const returnResponse = await performRequest(server, {
+    method: 'POST',
+    url: `/clinical-handoffs/${handoff.id}/return-to-clinic`,
+    headers: jsonHeaders,
+    body: { reason: 'Complementar orientação clínica.', toResponsibleId: 'clinical-team' }
+  });
+  assert.equal(returnResponse.statusCode, 200);
+  const financeResponse = await performRequest(server, {
+    method: 'POST',
+    url: `/clinical-handoffs/${handoff.id}/send-to-finance`,
+    headers: jsonHeaders,
+    body: { note: 'Documentação validada.' }
+  });
+  assert.equal(financeResponse.statusCode, 200);
+  assert.equal(
+    financeResponse.bodyJson<{ handoffStatus: string }>().handoffStatus,
+    'sent_to_finance'
+  );
+
+  const encounterListResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/encounters',
+    headers: authenticatedHeaders
+  });
+  assert.equal(encounterListResponse.statusCode, 200);
+  assert.ok(
+    encounterListResponse
+      .bodyJson<{ items: Array<{ id: string }> }>()
+      .items.some((item) => item.id === encounter.id)
+  );
+  const transitionResponse = await performRequest(server, {
+    method: 'POST',
+    url: `/encounters/${encounter.id}/transition`,
+    headers: jsonHeaders,
+    body: { nextStatus: 'in_care' }
+  });
+  assert.equal(transitionResponse.statusCode, 200);
+  const encounterTimelineResponse = await performRequest(server, {
+    method: 'GET',
+    url: `/encounters/${encounter.id}/timeline`,
+    headers: authenticatedHeaders
+  });
+  assert.equal(encounterTimelineResponse.statusCode, 200);
+  assert.ok(encounterTimelineResponse.bodyJson<{ items: unknown[] }>().items.length > 0);
+  const closeResponse = await performRequest(server, {
+    method: 'POST',
+    url: `/encounters/${encounter.id}/close`,
+    headers: jsonHeaders,
+    body: { closeReason: 'Critical workflow completed.' }
+  });
+  assert.equal(closeResponse.statusCode, 200);
+  assert.equal(closeResponse.bodyJson<{ status: string }>().status, 'closed');
+});
+
 test('catalog endpoints respect frontend search filters over HTTP semantics', async () => {
   const server = createServerUnderTest();
   const accessToken = await login(server, 'admin', 'seed_admin');
@@ -1279,9 +1829,17 @@ test('catalog endpoints respect frontend search filters over HTTP semantics', as
     }
   });
   assert.equal(activeServicesResponse.statusCode, 200);
-  const activeServices = activeServicesResponse.bodyJson<{ items: Array<{ code: string | null; active: boolean }> }>();
-  assert.equal(activeServices.items.some((item) => item.code === 'SRV-FILTRO-001'), true);
-  assert.equal(activeServices.items.some((item) => item.code === 'SRV-INATIVO-001'), false);
+  const activeServices = activeServicesResponse.bodyJson<{
+    items: Array<{ code: string | null; active: boolean }>;
+  }>();
+  assert.equal(
+    activeServices.items.some((item) => item.code === 'SRV-FILTRO-001'),
+    true
+  );
+  assert.equal(
+    activeServices.items.some((item) => item.code === 'SRV-INATIVO-001'),
+    false
+  );
 
   const createTermResponse = await performRequest(server, {
     method: 'POST',
@@ -1302,7 +1860,11 @@ test('catalog endpoints respect frontend search filters over HTTP semantics', as
     }
   });
   assert.equal(createTermResponse.statusCode, 201);
-  const createdTerm = createTermResponse.bodyJson<{ id: string; code: string | null; usageContext: string }>();
+  const createdTerm = createTermResponse.bodyJson<{
+    id: string;
+    code: string | null;
+    usageContext: string;
+  }>();
   assert.equal(createdTerm.code, 'TERM-INTERNACAO-001');
   assert.equal(createdTerm.usageContext, 'internacao');
 
@@ -1352,7 +1914,11 @@ test('catalog endpoints respect frontend search filters over HTTP semantics', as
     }
   });
   assert.equal(createBreedResponse.statusCode, 201);
-  const createdBreed = createBreedResponse.bodyJson<{ id: string; code: string | null; species: string }>();
+  const createdBreed = createBreedResponse.bodyJson<{
+    id: string;
+    code: string | null;
+    species: string;
+  }>();
   assert.equal(createdBreed.code, 'CAN-GOLD-001');
   assert.equal(createdBreed.species, 'canine');
 
@@ -1378,8 +1944,13 @@ test('catalog endpoints respect frontend search filters over HTTP semantics', as
     }
   });
   assert.equal(vetusAliasBreedResponse.statusCode, 200);
-  const vetusAliasBreeds = vetusAliasBreedResponse.bodyJson<{ items: Array<{ code: string | null }> }>();
-  assert.equal(vetusAliasBreeds.items.some((item) => item.code === 'CAN-GOLD-001'), true);
+  const vetusAliasBreeds = vetusAliasBreedResponse.bodyJson<{
+    items: Array<{ code: string | null }>;
+  }>();
+  assert.equal(
+    vetusAliasBreeds.items.some((item) => item.code === 'CAN-GOLD-001'),
+    true
+  );
 
   const updateBreedResponse = await performRequest(server, {
     method: 'PATCH',
@@ -1414,7 +1985,11 @@ test('catalog endpoints respect frontend search filters over HTTP semantics', as
     }
   });
   assert.equal(createSpeciesResponse.statusCode, 201);
-  const createdSpecies = createSpeciesResponse.bodyJson<{ id: string; code: string | null; systemCode: string }>();
+  const createdSpecies = createSpeciesResponse.bodyJson<{
+    id: string;
+    code: string | null;
+    systemCode: string;
+  }>();
   assert.equal(createdSpecies.code, 'LAGOMORPH-001');
   assert.equal(createdSpecies.systemCode, 'other');
 
@@ -1440,8 +2015,13 @@ test('catalog endpoints respect frontend search filters over HTTP semantics', as
     }
   });
   assert.equal(vetusAliasSpeciesResponse.statusCode, 200);
-  const vetusAliasSpecies = vetusAliasSpeciesResponse.bodyJson<{ items: Array<{ code: string | null }> }>();
-  assert.equal(vetusAliasSpecies.items.some((item) => item.code === 'LAGOMORPH-001'), true);
+  const vetusAliasSpecies = vetusAliasSpeciesResponse.bodyJson<{
+    items: Array<{ code: string | null }>;
+  }>();
+  assert.equal(
+    vetusAliasSpecies.items.some((item) => item.code === 'LAGOMORPH-001'),
+    true
+  );
 
   const updateSpeciesResponse = await performRequest(server, {
     method: 'PATCH',
@@ -1509,8 +2089,13 @@ test('catalog endpoints respect frontend search filters over HTTP semantics', as
     }
   });
   assert.equal(vetusAliasCoatColorsResponse.statusCode, 200);
-  const vetusAliasCoatColors = vetusAliasCoatColorsResponse.bodyJson<{ items: Array<{ code: string | null }> }>();
-  assert.equal(vetusAliasCoatColors.items.some((item) => item.code === 'COAT-CHOCOLATE-001'), true);
+  const vetusAliasCoatColors = vetusAliasCoatColorsResponse.bodyJson<{
+    items: Array<{ code: string | null }>;
+  }>();
+  assert.equal(
+    vetusAliasCoatColors.items.some((item) => item.code === 'COAT-CHOCOLATE-001'),
+    true
+  );
 
   const updateCoatColorResponse = await performRequest(server, {
     method: 'PATCH',
@@ -1571,7 +2156,9 @@ test('catalog endpoints respect frontend search filters over HTTP semantics', as
     }
   });
   assert.equal(customerGroupsResponse.statusCode, 200);
-  const customerGroups = customerGroupsResponse.bodyJson<{ items: Array<{ code: string | null }> }>();
+  const customerGroups = customerGroupsResponse.bodyJson<{
+    items: Array<{ code: string | null }>;
+  }>();
   assert.equal(customerGroups.items.length, 1);
   assert.equal(customerGroups.items[0]?.code, 'CUSTOMER-GROUP-001');
 
@@ -1584,8 +2171,13 @@ test('catalog endpoints respect frontend search filters over HTTP semantics', as
     }
   });
   assert.equal(vetusAliasCustomerGroupsResponse.statusCode, 200);
-  const vetusAliasCustomerGroups = vetusAliasCustomerGroupsResponse.bodyJson<{ items: Array<{ code: string | null }> }>();
-  assert.equal(vetusAliasCustomerGroups.items.some((item) => item.code === 'CUSTOMER-GROUP-001'), true);
+  const vetusAliasCustomerGroups = vetusAliasCustomerGroupsResponse.bodyJson<{
+    items: Array<{ code: string | null }>;
+  }>();
+  assert.equal(
+    vetusAliasCustomerGroups.items.some((item) => item.code === 'CUSTOMER-GROUP-001'),
+    true
+  );
 
   const updateCustomerGroupResponse = await performRequest(server, {
     method: 'PATCH',
@@ -1601,7 +2193,10 @@ test('catalog endpoints respect frontend search filters over HTTP semantics', as
     }
   });
   assert.equal(updateCustomerGroupResponse.statusCode, 200);
-  assert.equal(updateCustomerGroupResponse.bodyJson<{ active: boolean; name: string }>().active, false);
+  assert.equal(
+    updateCustomerGroupResponse.bodyJson<{ active: boolean; name: string }>().active,
+    false
+  );
 
   const createPreventiveResponse = await performRequest(server, {
     method: 'POST',
@@ -1612,8 +2207,8 @@ test('catalog endpoints respect frontend search filters over HTTP semantics', as
       host: 'localhost'
     },
     body: {
-      patientId: 'patient_rex',
-      ownerId: 'owner_maria',
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
       clientName: 'Maria Silva',
       animalName: 'Rex',
       eventDate: '2026-05-10',
@@ -1634,19 +2229,21 @@ test('catalog endpoints respect frontend search filters over HTTP semantics', as
   assert.equal(createdPreventive.description, 'Vacina V10 - reforco anual');
   assert.equal(createdPreventive.status, 'scheduled');
   assert.equal(createdPreventive.itemType, 'vaccine');
-  assert.equal(createdPreventive.patientId, 'patient_rex');
-  assert.equal(createdPreventive.ownerId, 'owner_maria');
+  assert.equal(createdPreventive.patientId, 'patient_luna');
+  assert.equal(createdPreventive.ownerId, 'owner_maria_silva');
 
   const preventiveListResponse = await performRequest(server, {
     method: 'GET',
-    url: '/vaccines-dewormers?dateFrom=2026-05-01&dateTo=2026-05-31&client=Maria&animal=Rex&itemType=vaccine&patientId=patient_rex&ownerId=owner_maria',
+    url: '/vaccines-dewormers?dateFrom=2026-05-01&dateTo=2026-05-31&client=Maria&animal=Rex&itemType=vaccine&patientId=patient_luna&ownerId=owner_maria_silva',
     headers: {
       authorization: `Bearer ${accessToken}`,
       host: 'localhost'
     }
   });
   assert.equal(preventiveListResponse.statusCode, 200);
-  const preventiveEvents = preventiveListResponse.bodyJson<{ items: Array<{ id: string; status: string }> }>();
+  const preventiveEvents = preventiveListResponse.bodyJson<{
+    items: Array<{ id: string; status: string }>;
+  }>();
   assert.equal(preventiveEvents.items.length, 1);
   assert.equal(preventiveEvents.items[0]?.id, createdPreventive.id);
 
@@ -1696,7 +2293,10 @@ test('catalog endpoints respect frontend search filters over HTTP semantics', as
   const includeExecutedPreventive = includeExecutedPreventiveResponse.bodyJson<{
     items: Array<{ status: string }>;
   }>();
-  assert.equal(includeExecutedPreventive.items.some((item) => item.status === 'executed'), true);
+  assert.equal(
+    includeExecutedPreventive.items.some((item) => item.status === 'executed'),
+    true
+  );
 
   const preventiveEmailResponse = await performRequest(server, {
     method: 'POST',
@@ -1761,8 +2361,14 @@ test('API keys unlock integration catalog and PIX intent creation over HTTP sema
   });
   assert.equal(listKeyResponse.statusCode, 200);
   const apiKeyList = listKeyResponse.bodyJson<{ items: Array<{ id: string; keyHash?: string }> }>();
-  assert.equal(apiKeyList.items.some((item) => item.id === createdKey.apiKey.id), true);
-  assert.equal(apiKeyList.items.some((item) => 'keyHash' in item), false);
+  assert.equal(
+    apiKeyList.items.some((item) => item.id === createdKey.apiKey.id),
+    true
+  );
+  assert.equal(
+    apiKeyList.items.some((item) => 'keyHash' in item),
+    false
+  );
 
   const catalogResponse = await performRequest(server, {
     method: 'GET',

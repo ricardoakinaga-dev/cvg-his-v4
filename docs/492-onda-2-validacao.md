@@ -33,8 +33,8 @@ Duration    18.25s
 **Comando executado:**
 
 ```bash
-DATABASE_URL_TEST=postgres://postgres:postgres@localhost:5433/cvg_his_v2_test \
-DATABASE_URL=postgres://postgres:postgres@localhost:5433/cvg_his_v2_test \
+DATABASE_URL_TEST="<test-database-url>" \
+DATABASE_URL="<test-database-url>" \
 pnpm test:critical
 ```
 

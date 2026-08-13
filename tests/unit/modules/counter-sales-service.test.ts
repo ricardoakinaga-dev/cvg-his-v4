@@ -219,6 +219,9 @@ describe('CounterSalesService coverage guard', () => {
     expect(service.getPayments('sale_repo_1')).toHaveLength(1);
     expect(service.findById('sale_repo_1')?.number).toBe('CS-900001');
 
+    const nextSale = await service.open(ACCOUNT_ID, USER_ID);
+    expect(nextSale.number).toBe('CS-900002');
+
     const dashboard = await service.getCommercialDashboard(ACCOUNT_ID);
     expect(dashboard.openSales).toBe(2);
     expect(dashboard.closedToday).toBe(5);

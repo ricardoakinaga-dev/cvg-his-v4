@@ -36,6 +36,7 @@ data:
   APP_NAME: {{ .Values.worker.env.APP_NAME | quote }}
   WORKER_INTERVAL_MS: {{ .Values.worker.env.WORKER_INTERVAL_MS | quote }}
   WORKER_HEALTH_PORT: {{ .Values.worker.env.WORKER_HEALTH_PORT | quote }}
+  WORKER_ACCOUNT_IDS: {{ .Values.worker.env.WORKER_ACCOUNT_IDS | quote }}
   FEATURE_FLAGS_PROVIDER: {{ .Values.worker.env.FEATURE_FLAGS_PROVIDER | quote }}
   WORKER_FEATURE_FLAGS: {{ .Values.worker.env.WORKER_FEATURE_FLAGS | quote }}
   OTEL_ENABLED: {{ .Values.worker.env.OTEL_ENABLED | quote }}

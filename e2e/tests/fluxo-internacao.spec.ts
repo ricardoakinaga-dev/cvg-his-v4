@@ -1,207 +1,380 @@
+import type { APIRequestContext, APIResponse } from '@playwright/test';
+
 import { test, expect } from '../fixtures/cvg-his.fixture';
 
-/**
- * E2E Test: Fluxo de Internação
- * Admitir → Prescrever → Administrar → Dar alta
- */
+type ClinicalFixture = {
+  ownerId: string;
+  patientId: string;
+  encounterId: string;
+};
+
+type InpatientStay = {
+  id: string;
+  encounterId: string;
+  patientId: string;
+  unit: string;
+  ward: string;
+  bed: string;
+  status: 'admitted' | 'stable' | 'transferred' | 'discharged';
+  admittedAt: string;
+  dischargedAt?: string;
+  dischargeReason?: string;
+};
+
+type Prescription = {
+  id: string;
+  medicalRecordId: string;
+  encounterId: string;
+  patientId: string;
+  entryType: 'prescription';
+  medicationName: string;
+  dosage?: string;
+  route?: string;
+  frequency?: string;
+};
+
+type PrescriptionExecution = {
+  id: string;
+  clinicalEntryId: string;
+  encounterId: string;
+  patientId: string;
+  medicationName: string;
+  dosage: string;
+  scheduledAt: string;
+  status: 'pending' | 'administered' | 'not-administered' | 'suspended' | 'cancelled';
+  administeredBy?: string;
+  administeredAt?: string;
+};
+
+async function expectJsonResponse<T>(response: APIResponse, expectedStatus: number): Promise<T> {
+  const rawBody = await response.text();
+
+  expect(response.status(), `Resposta inesperada de ${response.url()}: ${rawBody}`).toBe(
+    expectedStatus
+  );
+  expect(rawBody, `Resposta sem body em ${response.url()}`).not.toBe('');
+
+  const body: unknown = JSON.parse(rawBody);
+  expect(body, `Body JSON ausente em ${response.url()}`).toEqual(expect.any(Object));
+  return body as T;
+}
+
+async function createClinicalFixture(apiContext: APIRequestContext): Promise<ClinicalFixture> {
+  const ownerResponse = await apiContext.post('/owners', {
+    data: {
+      fullName: 'Tutor E2E Internação',
+      contacts: [
+        {
+          label: 'Celular',
+          value: '+55 11 97777-6655',
+          type: 'whatsapp',
+          primary: true
+        }
+      ],
+      financialResponsible: true
+    }
+  });
+  const owner = await expectJsonResponse<{ id: string; fullName: string }>(ownerResponse, 201);
+  expect(owner).toMatchObject({ fullName: 'Tutor E2E Internação' });
+  expect(owner.id).toEqual(expect.any(String));
+
+  const patientResponse = await apiContext.post('/patients', {
+    data: {
+      primaryOwnerId: owner.id,
+      name: 'Paciente E2E Internação',
+      species: 'feline',
+      breed: 'SRD',
+      sex: 'female'
+    }
+  });
+  const patient = await expectJsonResponse<{
+    id: string;
+    name: string;
+    primaryOwnerId: string;
+  }>(patientResponse, 201);
+  expect(patient).toMatchObject({
+    name: 'Paciente E2E Internação',
+    primaryOwnerId: owner.id
+  });
+  expect(patient.id).toEqual(expect.any(String));
+
+  const encounterResponse = await apiContext.post('/encounters', {
+    data: {
+      patientId: patient.id,
+      ownerId: owner.id,
+      visitType: 'walk_in',
+      origin: 'reception',
+      reason: 'Observação pós-operatória E2E'
+    }
+  });
+  const encounter = await expectJsonResponse<{
+    id: string;
+    patientId: string;
+    ownerId: string;
+    status: string;
+    reason: string;
+  }>(encounterResponse, 201);
+  expect(encounter).toMatchObject({
+    patientId: patient.id,
+    ownerId: owner.id,
+    status: 'reception',
+    reason: 'Observação pós-operatória E2E'
+  });
+  expect(encounter.id).toEqual(expect.any(String));
+
+  return {
+    ownerId: owner.id,
+    patientId: patient.id,
+    encounterId: encounter.id
+  };
+}
 
 test.describe('Fluxo: Internação → Prescrição → Administração → Alta', () => {
-  
-  let patientId: string;
-  let ownerId: string;
-  let stayId: string;
+  test('admite, prescreve, administra e dá alta com as APIs atuais', async ({
+    apiContext,
+    testUser
+  }) => {
+    const fixture = await createClinicalFixture(apiContext);
 
-  test.beforeAll(async ({ apiContext, testUser }) => {
-    // Create owner and patient for internment tests
-    const ownerRes = await apiContext.post('/owners', {
+    const admitResponse = await apiContext.post('/inpatient/admit', {
       data: {
-        fullName: 'João Santos E2E Internação',
-        document: `E2E-INT-${Date.now()}`,
-        phoneMain: '11912345678'
+        encounterId: fixture.encounterId,
+        patientId: fixture.patientId,
+        unit: 'Hospital CVG E2E',
+        ward: 'Ala de Observação E2E',
+        bed: 'Leito E2E 01'
       }
     });
-    const owner = await ownerRes.json();
-    ownerId = owner.id;
-
-    const patientRes = await apiContext.post('/patients', {
-      data: {
-        ownerId,
-        name: 'Luna E2E Internação',
-        species: 'Felina',
-        breed: 'SRD',
-        sex: 'female',
-        microchip: `E2E-INT-${Date.now()}`
-      }
+    const stay = await expectJsonResponse<InpatientStay>(admitResponse, 201);
+    expect(stay).toMatchObject({
+      encounterId: fixture.encounterId,
+      patientId: fixture.patientId,
+      unit: 'Hospital CVG E2E',
+      ward: 'Ala de Observação E2E',
+      bed: 'Leito E2E 01',
+      status: 'admitted'
     });
-    const patient = await patientRes.json();
-    patientId = patient.id;
-  });
+    expect(stay.id).toEqual(expect.any(String));
+    expect(stay.admittedAt).toEqual(expect.any(String));
 
-  test('deve admitir paciente em leito', async ({ apiContext }) => {
-    // =====================
-    // 1. Buscar ward e bed disponíveis
-    // =====================
-    const wardsRes = await apiContext.get('/wards');
-    expect(wardsRes.ok()).toBeTruthy();
-    const wards = await wardsRes.json();
-    
-    if (wards.data.length === 0) {
-      console.log('   ⚠️  Sem wards cadastrados - pulando teste de internação');
-      test.skip();
-      return;
-    }
-
-    const ward = wards.data[0];
-    console.log(`   ℹ️  Ward encontrado: ${ward.name}`);
-
-    // Get beds in ward
-    const bedsRes = await apiContext.get(`/beds/bedmap`, {
-      params: { wardId: ward.id }
+    const activeStaysResponse = await apiContext.get('/inpatient', {
+      params: { patientId: fixture.patientId }
     });
-    expect(bedsRes.ok()).toBeTruthy();
-    const beds = await bedsRes.json();
+    const activeStays = await expectJsonResponse<{ items: InpatientStay[] }>(
+      activeStaysResponse,
+      200
+    );
+    expect(activeStays.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: stay.id,
+          encounterId: fixture.encounterId,
+          status: 'admitted'
+        })
+      ])
+    );
 
-    // Find available bed
-    let availableBed = beds.data?.find((b: any) => b.status === 'available' || b.status === 'free');
-    
-    if (!availableBed) {
-      // Create a bed if none available
-      const createBedRes = await apiContext.post('/beds', {
-        data: {
-          wardId: ward.id,
-          label: `E2E-BED-${Date.now()}`,
-          bedType: 'standard'
-        }
-      });
-      availableBed = await createBedRes.json();
-    }
-
-    console.log(`   ✅ Leito disponível: ${availableBed.label || availableBed.id}`);
-
-    // =====================
-    // 2. Admitir paciente
-    // =====================
-    const admitRes = await apiContext.post('/inpatient/admit', {
-      data: {
-        patientId,
-        ownerId,
-        wardId: ward.id,
-        bedId: availableBed.id,
-        chiefComplaint: 'Observação pós-cirúrgica - E2E',
-        reason: 'Monitoramento 24h após procedimento',
-        planSummary: 'Repouso, medicação IV, monitoramento vital'
-      }
+    const medicalRecordResponse = await apiContext.get('/medical-records', {
+      params: { encounterId: fixture.encounterId }
     });
-    
-    if (!admitRes.ok()) {
-      const error = await admitRes.json();
-      console.log(`   ⚠️  Admit failed: ${JSON.stringify(error)}`);
-      // Try to continue test
-    }
-    
-    expect(admitRes.ok()).toBeTruthy();
-    const stay = await admitRes.json();
-    stayId = stay.id;
-    expect(stay.id).toBeTruthy();
-    expect(stay.status).toBe('active');
-    console.log(`   ✅ Paciente admitido - Stay: ${stay.id}`);
+    const medicalRecord = await expectJsonResponse<{
+      record: { id: string; encounterId: string; patientId: string; status: string };
+      entries: unknown[];
+    }>(medicalRecordResponse, 200);
+    expect(medicalRecord.record).toMatchObject({
+      encounterId: fixture.encounterId,
+      patientId: fixture.patientId,
+      status: 'open'
+    });
+    expect(medicalRecord.record.id).toEqual(expect.any(String));
+    expect(medicalRecord.entries).toEqual(expect.any(Array));
 
-    // =====================
-    // 3. Verificar stay ativo
-    // =====================
-    const stayRes = await apiContext.get(`/inpatient/stays/${stay.id}`);
-    expect(stayRes.ok()).toBeTruthy();
-    const stayData = await stayRes.json();
-    expect(stayData.status).toBe('active');
-    expect(stayData.patientId).toBe(patientId);
-    console.log(`   ✅ Internação ativa verificada`);
-  });
-
-  test('deve criar ordem de medicação', async ({ apiContext }) => {
-    if (!stayId) {
-      console.log('   ⚠️  Sem stayId - pulando teste');
-      test.skip();
-      return;
-    }
-
-    // =====================
-    // 1. Criar ordem de medicação
-    // =====================
-    const orderRes = await apiContext.post('/medication-orders', {
+    const prescriptionResponse = await apiContext.post('/prescriptions', {
       data: {
-        patientId,
-        stayId,
-        medicationName: 'Dipirona 500mg',
-        dose: '1 comprimido',
-        route: 'oral',
+        medicalRecordId: medicalRecord.record.id,
+        encounterId: fixture.encounterId,
+        patientId: fixture.patientId,
+        medicationName: 'Dipirona',
+        dosage: '25 mg/kg',
+        route: 'intravenosa',
         frequency: '8/8h',
-        startDate: new Date().toISOString(),
-        notes: 'Medicação E2E Test'
+        notes: 'Prescrição E2E da internação'
       }
     });
-
-    if (!orderRes.ok()) {
-      const error = await orderRes.json();
-      console.log(`   ⚠️  Medication order failed: ${JSON.stringify(error)}`);
-      test.skip();
-      return;
-    }
-
-    const order = await orderRes.json();
-    expect(order.id).toBeTruthy();
-    expect(order.medicationName).toBe('Dipirona 500mg');
-    console.log(`   ✅ Ordem de medicação criada: ${order.id}`);
-
-    // =====================
-    // 2. Listar ordens do paciente
-    // =====================
-    const listRes = await apiContext.get('/medication-orders', {
-      params: { patientId }
+    const prescription = await expectJsonResponse<Prescription>(prescriptionResponse, 201);
+    expect(prescription).toMatchObject({
+      medicalRecordId: medicalRecord.record.id,
+      encounterId: fixture.encounterId,
+      patientId: fixture.patientId,
+      entryType: 'prescription',
+      medicationName: 'Dipirona',
+      dosage: '25 mg/kg',
+      route: 'intravenosa',
+      frequency: '8/8h'
     });
-    expect(listRes.ok()).toBeTruthy();
-    const list = await listRes.json();
-    expect(list.data.length).toBeGreaterThan(0);
-    console.log(`   ✅ ${list.data.length} ordens de medicação encontradas`);
-  });
+    expect(prescription.id).toEqual(expect.any(String));
 
-  test('deve dar alta do paciente', async ({ apiContext }) => {
-    if (!stayId) {
-      console.log('   ⚠️  Sem stayId - pulando teste');
-      test.skip();
-      return;
-    }
+    const prescriptionsResponse = await apiContext.get('/prescriptions', {
+      params: { encounterId: fixture.encounterId }
+    });
+    const prescriptions = await expectJsonResponse<{ items: Prescription[] }>(
+      prescriptionsResponse,
+      200
+    );
+    expect(prescriptions.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: prescription.id, medicationName: 'Dipirona' })
+      ])
+    );
 
-    // =====================
-    // 1. Dar alta
-    // =====================
-    const dischargeRes = await apiContext.post(`/inpatient/stays/${stayId}/discharge`, {
+    const scheduledAt = '2030-01-15T12:00:00.000Z';
+    const executionResponse = await apiContext.post('/prescription-executions', {
       data: {
-        dischargeReason: 'Paciente recuperado - E2E Test',
-        dischargeSummary: 'Alta com sucesso após 24h de observação'
+        clinicalEntryId: prescription.id,
+        patientId: fixture.patientId,
+        encounterId: fixture.encounterId,
+        medicationName: prescription.medicationName,
+        dosage: prescription.dosage,
+        route: prescription.route,
+        frequency: prescription.frequency,
+        scheduledAt,
+        notes: 'Dose programada durante internação E2E'
       }
     });
+    const execution = await expectJsonResponse<PrescriptionExecution>(executionResponse, 201);
+    expect(execution).toMatchObject({
+      clinicalEntryId: prescription.id,
+      encounterId: fixture.encounterId,
+      patientId: fixture.patientId,
+      medicationName: 'Dipirona',
+      dosage: '25 mg/kg',
+      scheduledAt,
+      status: 'pending'
+    });
+    expect(execution.id).toEqual(expect.any(String));
 
-    if (!dischargeRes.ok()) {
-      const error = await dischargeRes.json();
-      console.log(`   ⚠️  Discharge failed: ${JSON.stringify(error)}`);
-      test.skip();
-      return;
-    }
+    const administrationResponse = await apiContext.post(
+      `/prescription-executions/${execution.id}/execute`,
+      {
+        data: {
+          status: 'administered',
+          notes: 'Dose administrada sem intercorrências.',
+          vitalsSnapshot: { temperatureCelsius: 38.2 }
+        }
+      }
+    );
+    const administration = await expectJsonResponse<PrescriptionExecution>(
+      administrationResponse,
+      200
+    );
+    expect(administration).toMatchObject({
+      id: execution.id,
+      clinicalEntryId: prescription.id,
+      status: 'administered',
+      administeredBy: testUser.userId
+    });
+    expect(administration.administeredAt).toEqual(expect.any(String));
 
-    const discharged = await dischargeRes.json();
-    expect(discharged.status).toBe('discharged');
-    expect(discharged.dischargedAt).toBeTruthy();
-    console.log(`   ✅ Alta realizada com sucesso`);
+    const executionDetailResponse = await apiContext.get(
+      `/prescription-executions/${execution.id}`
+    );
+    const executionDetail = await expectJsonResponse<
+      PrescriptionExecution & { events: Array<{ eventType: string; actorId: string }> }
+    >(executionDetailResponse, 200);
+    expect(executionDetail).toMatchObject({ id: execution.id, status: 'administered' });
+    expect(executionDetail.events).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ eventType: 'created' }),
+        expect.objectContaining({ eventType: 'administered', actorId: testUser.userId })
+      ])
+    );
 
-    // =====================
-    // 2. Verificar status final
-    // =====================
-    const stayRes = await apiContext.get(`/inpatient/stays/${stayId}`);
-    expect(stayRes.ok()).toBeTruthy();
-    const stay = await stayRes.json();
-    expect(stay.status).toBe('discharged');
-    console.log(`   ✅ Status final verificado: ${stay.status}`);
+    const progressResponse = await apiContext.post(`/inpatient/${stay.id}/progress`, {
+      data: { note: 'Paciente estável após administração da medicação.' }
+    });
+    const progress = await expectJsonResponse<{
+      id: string;
+      stayId: string;
+      encounterId: string;
+      note: string;
+      authoredByUserId: string;
+    }>(progressResponse, 201);
+    expect(progress).toMatchObject({
+      stayId: stay.id,
+      encounterId: fixture.encounterId,
+      note: 'Paciente estável após administração da medicação.',
+      authoredByUserId: testUser.userId
+    });
+    expect(progress.id).toEqual(expect.any(String));
 
-    console.log('\n   🎉 Fluxo completo: Admitir → Prescrever → Dar Alta');
+    const stableResponse = await apiContext.patch(`/inpatient/${stay.id}/update-status`, {
+      data: { status: 'stable' }
+    });
+    const stableStay = await expectJsonResponse<InpatientStay>(stableResponse, 200);
+    expect(stableStay).toMatchObject({
+      id: stay.id,
+      patientId: fixture.patientId,
+      status: 'stable'
+    });
+
+    const dischargeReason = 'Paciente recuperado após observação E2E.';
+    const dischargeResponse = await apiContext.patch(`/inpatient/${stay.id}/update-status`, {
+      data: {
+        status: 'discharged',
+        dischargeReason
+      }
+    });
+    const dischargedStay = await expectJsonResponse<InpatientStay>(dischargeResponse, 200);
+    expect(dischargedStay).toMatchObject({
+      id: stay.id,
+      encounterId: fixture.encounterId,
+      patientId: fixture.patientId,
+      status: 'discharged',
+      dischargeReason
+    });
+    expect(dischargedStay.dischargedAt).toEqual(expect.any(String));
+
+    const dischargedStaysResponse = await apiContext.get('/inpatient', {
+      params: {
+        patientId: fixture.patientId,
+        includeDischarged: 'true'
+      }
+    });
+    const dischargedStays = await expectJsonResponse<{ items: InpatientStay[] }>(
+      dischargedStaysResponse,
+      200
+    );
+    expect(dischargedStays.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: stay.id,
+          status: 'discharged',
+          dischargeReason
+        })
+      ])
+    );
+
+    const timelineResponse = await apiContext.get('/medical-records/timeline', {
+      params: { encounterId: fixture.encounterId }
+    });
+    const timeline = await expectJsonResponse<{
+      items: Array<{ eventType: string; encounterId: string; summary: string }>;
+    }>(timelineResponse, 200);
+    expect(timeline.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          encounterId: fixture.encounterId,
+          eventType: 'inpatient_admitted'
+        }),
+        expect.objectContaining({
+          encounterId: fixture.encounterId,
+          eventType: 'inpatient_progressed'
+        }),
+        expect.objectContaining({
+          encounterId: fixture.encounterId,
+          eventType: 'inpatient_discharged'
+        })
+      ])
+    );
   });
 });

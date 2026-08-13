@@ -13,7 +13,7 @@ test('NotificationsService: create notification returns notification with queued
     message: 'This is a test'
   });
 
-  assert.ok(notification.id);
+  assert.match(notification.id, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
   assert.equal(notification.status, 'queued');
   assert.equal(notification.title, 'Test notification');
   assert.equal(notification.severity, 'medium');

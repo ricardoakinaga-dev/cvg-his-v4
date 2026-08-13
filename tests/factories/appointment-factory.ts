@@ -26,6 +26,9 @@ export interface AppointmentOptions {
   startAt?: string;
   endAt?: string;
   status?: string;
+  duration?: number;
+  visitType?: string;
+  reason?: string;
 }
 
 export async function createAppointment(
@@ -49,11 +52,33 @@ export async function createAppointment(
   const startAt = options.startAt ?? new Date(now.getTime() + 3600000).toISOString();
   const endAt = options.endAt ?? new Date(now.getTime() + 7200000).toISOString();
   const status = options.status ?? 'scheduled';
+  const duration = options.duration ?? Math.max(
+    1,
+    Math.ceil((new Date(endAt).getTime() - new Date(startAt).getTime()) / 60000)
+  );
+  const visitType = options.visitType ?? 'scheduled';
+  const reason = options.reason ?? 'Factory appointment';
 
   const row = await insertOne<Record<string, unknown>>(
-    `INSERT INTO appointments (id, account_id, patient_id, owner_id, professional_user_id, start_at, end_at, status, type)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'consultation') RETURNING id, account_id, patient_id, owner_id, professional_user_id, start_at, end_at, status`,
-    [id, accountId, patient.id, owner.id, professionalUser.id, startAt, endAt, status]
+    `INSERT INTO appointments (
+       id, account_id, patient_id, owner_id, professional_user_id, start_at,
+       end_at, status, type, duration, visit_type, reason
+     ) VALUES (
+       $1, $2, $3, $4, $5, $6, $7, $8, 'consultation', $9, $10, $11
+     ) RETURNING id, account_id, patient_id, owner_id, professional_user_id, start_at, end_at, status`,
+    [
+      id,
+      accountId,
+      patient.id,
+      owner.id,
+      professionalUser.id,
+      startAt,
+      endAt,
+      status,
+      duration,
+      visitType,
+      reason
+    ]
   );
 
   const appointment: AppointmentRecord = {

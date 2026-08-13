@@ -53,8 +53,8 @@ Fechar a cobertura base do fluxo critico `Busca Mestre -> cockpit 360 -> recepca
 - `pnpm --filter @cvg-his-v2/spa build` - build da SPA concluido.
 - `pnpm --filter @cvg-his-v2/api build` - build da API concluido apos correcao do fallback preventivo.
 - `npx playwright test --config playwright-spa.config.ts e2e/spa/master-search-360-reception.spec.ts` - 4/4 testes passando.
-- `DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5433/cvg_his_v2_test node infra/scripts/prepare-test-db.mjs` - migrations aplicadas com sucesso ate `0054_enterprise_rls_gap_closure`.
-- `API_DISABLE_INCOMPATIBLE_DB_REPOS=0 E2E_DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5433/cvg_his_v2_test npx playwright test --config playwright-spa.config.ts e2e/spa/master-search-360-reception.spec.ts` - 4/4 testes passando com `persistenceMode: "database"`.
+- `DATABASE_URL="<test-database-url>" node infra/scripts/prepare-test-db.mjs` - migrations aplicadas com sucesso ate `0054_enterprise_rls_gap_closure`.
+- `API_DISABLE_INCOMPATIBLE_DB_REPOS=0 E2E_DATABASE_URL="<test-database-url>" npx playwright test --config playwright-spa.config.ts e2e/spa/master-search-360-reception.spec.ts` - 4/4 testes passando com `persistenceMode: "database"`.
 - `pnpm validate:rls` - cobertura RLS validada em 96/96 tabelas tenant apos as tabelas laboratoriais adicionadas.
 - `npx playwright test --config playwright-spa.config.ts e2e/spa/master-search-360-mobile.spec.ts` - 1/1 teste passando em viewport mobile com screenshots de Busca Mestre, cockpit 360 e recepcao.
 - `pnpm test:e2e:spa:360` - 5/5 testes passando localmente.

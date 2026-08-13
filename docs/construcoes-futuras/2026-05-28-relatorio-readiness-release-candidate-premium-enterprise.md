@@ -1,5 +1,7 @@
 # Relatorio de Readiness - Release Candidate Premium Enterprise
 
+> Documento historico de 28/05/2026. O score `97/100` abaixo descreve o gate daquela data e nao representa o estado atual. Consulte [`docs/2026-08-11-relatorio-auditoria-p1.md`](../2026-08-11-relatorio-auditoria-p1.md) para a auditoria executável vigente.
+
 Data: 2026-05-28  
 Base: relatorios de auditoria, plano executivo, guia operacional e gates implementados em `docs/construcoes-futuras`.
 

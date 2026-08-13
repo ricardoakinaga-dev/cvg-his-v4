@@ -27,7 +27,7 @@
     </div>
 
     <EmptyState
-      v-else-if="rows.length === 0"
+      v-else-if="rows.length === 0 && !showHeadersWhenEmpty"
       :icon="emptyIcon"
       :title="emptyTitle"
       :description="emptyDescription"
@@ -37,7 +37,13 @@
       </template>
     </EmptyState>
 
-    <div v-else class="table-wrapper">
+    <div
+      v-else
+      class="table-wrapper"
+      role="region"
+      tabindex="0"
+      :aria-label="caption || 'Tabela de dados com rolagem horizontal'"
+    >
       <table class="data-table" :class="tableClass">
         <caption v-if="caption" class="sr-only">
           {{
@@ -64,6 +70,19 @@
               <slot :name="`cell-${col.key}`" :row="row" :value="row[col.key]" :index="rowIndex">
                 {{ formatValue(row[col.key], col) }}
               </slot>
+            </td>
+          </tr>
+          <tr v-if="rows.length === 0" class="data-table__empty-row">
+            <td :colspan="columns.length">
+              <EmptyState
+                :icon="emptyIcon"
+                :title="emptyTitle"
+                :description="emptyDescription"
+              >
+                <template v-if="$slots.emptyAction" #action>
+                  <slot name="emptyAction" />
+                </template>
+              </EmptyState>
             </td>
           </tr>
         </tbody>
@@ -95,6 +114,7 @@ interface Props {
   emptyIcon?: string;
   emptyTitle?: string;
   emptyDescription?: string;
+  showHeadersWhenEmpty?: boolean;
   compact?: boolean;
   variant?: 'default' | 'striped' | 'hoverable';
   rowKeyField?: string;
@@ -106,6 +126,7 @@ const props = withDefaults(defineProps<Props>(), {
   emptyIcon: '📋',
   emptyTitle: 'Nenhum registro encontrado',
   emptyDescription: '',
+  showHeadersWhenEmpty: false,
   compact: false,
   variant: 'default',
   rowKeyField: 'id'
@@ -186,10 +207,21 @@ function skeletonWidth(columnKey: string, rowIndex: number): string {
 
 .table-wrapper {
   overflow-x: auto;
+  max-width: 100%;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-primary-300, #93c5fd) var(--color-bg-subtle, #f8fafc);
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-wrapper:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.35);
+  outline-offset: 2px;
 }
 
 .data-table {
   width: 100%;
+  min-width: max-content;
   border-collapse: collapse;
   font-size: 14px;
 }
@@ -211,6 +243,10 @@ function skeletonWidth(columnKey: string, rowIndex: number): string {
   padding: 12px 16px;
   border-bottom: 1px solid var(--color-border, #e2e8f0);
   vertical-align: middle;
+}
+
+.data-table tbody .data-table__empty-row > td {
+  padding: 0;
 }
 
 .data-table--striped tbody tr:nth-child(even) {
@@ -237,5 +273,16 @@ function skeletonWidth(columnKey: string, rowIndex: number): string {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+@media (max-width: 720px) {
+  .data-table thead th,
+  .data-table tbody td {
+    padding: 10px 12px;
+  }
+
+  .table-wrapper {
+    border-radius: 10px;
+  }
 }
 </style>

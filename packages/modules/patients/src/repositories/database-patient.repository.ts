@@ -274,6 +274,7 @@ export class DatabaseOwnerPatientLinkRepository implements OwnerPatientLinkRepos
     requireAccountId(); // Enforce tenant context
     await this.#db.insert(ownerPatientLinks).values({
       id: link.id,
+      accountId: link.accountId,
       ownerId: link.ownerId,
       patientId: link.patientId,
       relationship: link.relationshipType,

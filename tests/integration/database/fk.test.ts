@@ -1,6 +1,42 @@
 import { getTestPool } from '../../db/db-admin.js';
 import { queryOne } from '../../helpers/db-helpers.js';
 
+function requireFixture<T>(value: T | undefined, label: string): T {
+  if (value === undefined) throw new Error(`Required database fixture is missing: ${label}`);
+  return value;
+}
+
+async function createForeignKeyFixtures() {
+  const pool = getTestPool();
+  const account = requireFixture(
+    await queryOne<{ id: string }>(`SELECT id FROM accounts LIMIT 1`),
+    'account',
+  );
+  const userResult = await pool.query<{ id: string }>(
+    `INSERT INTO users (id, account_id, email, password_hash, full_name, is_active)
+     VALUES (
+       gen_random_uuid(), $1, gen_random_uuid()::text || '@fk-test.invalid',
+       'hash', 'FK Test User', true
+     ) RETURNING id`,
+    [account.id],
+  );
+  const ownerResult = await pool.query<{ id: string }>(
+    `INSERT INTO owners (id, account_id, full_name)
+     VALUES (gen_random_uuid(), $1, 'FK Test Owner') RETURNING id`,
+    [account.id],
+  );
+  const user = requireFixture(userResult.rows[0], 'user');
+  const owner = requireFixture(ownerResult.rows[0], 'owner');
+  const patientResult = await pool.query<{ id: string }>(
+    `INSERT INTO patients (id, account_id, owner_id, name, species)
+     VALUES (gen_random_uuid(), $1, $2, 'FK Test Patient', 'canine') RETURNING id`,
+    [account.id, owner.id],
+  );
+  const patient = requireFixture(patientResult.rows[0], 'patient');
+
+  return Object.freeze({ account, owner, patient, user });
+}
+
 // ============================================================================
 // DB Foreign Key Tests — validates that essential FKs exist and function.
 // Based on docs/740 section 4.
@@ -54,7 +90,7 @@ describe('Foreign Keys — Existence', () => {
   ];
 
   it.each(ESSENTIAL_FKS)(
-    'FK $table.$column → $refTable.id should exist',
+    'FK $table / $column → $refTable / id should exist',
     async ({ table, column }) => {
       const result = await queryOne<{ count: number }>(
         `SELECT COUNT(*)::int FROM information_schema.table_constraints
@@ -73,10 +109,7 @@ describe('Foreign Keys — Enforcement', () => {
   it('should reject encounter with invalid patient_id', async () => {
     const fakeUuid = '00000000-0000-0000-0000-000000000000';
     const pool = getTestPool();
-    const account = await queryOne<{ id: string }>(`SELECT id FROM accounts LIMIT 1`);
-    const owner = await queryOne<{ id: string }>(`SELECT id FROM owners LIMIT 1`);
-    const user = await queryOne<{ id: string }>(`SELECT id FROM users LIMIT 1`);
-    if (!account || !owner || !user) return; // Seed data required
+    const { account, owner, user } = await createForeignKeyFixtures();
 
     try {
       await pool.query(
@@ -93,8 +126,7 @@ describe('Foreign Keys — Enforcement', () => {
   it('should reject patient with invalid owner_id', async () => {
     const fakeUuid = '00000000-0000-0000-0000-000000000000';
     const pool = getTestPool();
-    const account = await queryOne<{ id: string }>(`SELECT id FROM accounts LIMIT 1`);
-    if (!account) return;
+    const { account } = await createForeignKeyFixtures();
 
     try {
       await pool.query(
@@ -111,15 +143,17 @@ describe('Foreign Keys — Enforcement', () => {
   it('should reject appointment with invalid professional_user_id', async () => {
     const fakeUuid = '00000000-0000-0000-0000-000000000000';
     const pool = getTestPool();
-    const account = await queryOne<{ id: string }>(`SELECT id FROM accounts LIMIT 1`);
-    const patient = await queryOne<{ id: string }>(`SELECT id FROM patients LIMIT 1`);
-    const owner = await queryOne<{ id: string }>(`SELECT id FROM owners LIMIT 1`);
-    if (!account || !patient || !owner) return;
+    const { account, patient, owner } = await createForeignKeyFixtures();
 
     try {
       await pool.query(
-        `INSERT INTO appointments (id, account_id, patient_id, owner_id, professional_user_id, start_at, end_at, status, type)
-         VALUES (gen_random_uuid(), $1, $2, $3, $4, NOW(), NOW() + INTERVAL '1 hour', 'scheduled', 'consultation')`,
+        `INSERT INTO appointments (
+           id, account_id, patient_id, owner_id, professional_user_id, start_at,
+           end_at, status, type, duration, visit_type, reason
+         ) VALUES (
+           gen_random_uuid(), $1, $2, $3, $4, NOW(), NOW() + INTERVAL '1 hour',
+           'scheduled', 'consultation', 60, 'scheduled', 'Foreign key enforcement test'
+         )`,
         [account.id, patient.id, owner.id, fakeUuid]
       );
       expect.unreachable('Should have thrown FK violation');
@@ -131,8 +165,7 @@ describe('Foreign Keys — Enforcement', () => {
   it('should reject stock_item with invalid product_id', async () => {
     const fakeUuid = '00000000-0000-0000-0000-000000000000';
     const pool = getTestPool();
-    const account = await queryOne<{ id: string }>(`SELECT id FROM accounts LIMIT 1`);
-    if (!account) return;
+    const { account } = await createForeignKeyFixtures();
 
     try {
       await pool.query(
@@ -146,11 +179,10 @@ describe('Foreign Keys — Enforcement', () => {
     }
   });
 
-  it('should reject bed with invalid ward_id', async () => {
+  it('should reject bed with invalid tenant references', async () => {
     const fakeUuid = '00000000-0000-0000-0000-000000000000';
     const pool = getTestPool();
-    const account = await queryOne<{ id: string }>(`SELECT id FROM accounts LIMIT 1`);
-    if (!account) return;
+    const { account } = await createForeignKeyFixtures();
 
     try {
       await pool.query(
@@ -158,9 +190,9 @@ describe('Foreign Keys — Enforcement', () => {
          VALUES (gen_random_uuid(), $1, $2, $3, 'FK-INVALID', 'Test Bed')`,
         [account.id, fakeUuid, fakeUuid]
       );
-      expect.unreachable('Should have thrown FK violation');
+      expect.unreachable('Should have thrown a tenant reference or FK violation');
     } catch (error) {
-      expect(String(error)).toContain('foreign key');
+      expect(String(error)).toMatch(/foreign key|tenant reference violation/i);
     }
   });
 });

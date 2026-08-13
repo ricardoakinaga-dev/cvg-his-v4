@@ -1,218 +1,300 @@
+import type { APIRequestContext, APIResponse } from '@playwright/test';
+
 import { test, expect } from '../fixtures/cvg-his.fixture';
 
-/**
- * E2E Test: Fluxo de Exames
- * Criar paciente → Criar encounter → Solicitar exame → Criar resultado → Verificar no prontuário
- */
+type ClinicalFixture = {
+  ownerId: string;
+  patientId: string;
+  encounterId: string;
+};
+
+type DiagnosticOrder = {
+  id: string;
+  accountId: string;
+  encounterId: string;
+  patientId: string;
+  examType: string;
+  examCatalogId?: string;
+  reason: string;
+  status: 'requested' | 'collected' | 'resulted' | 'cancelled';
+  collectedAt?: string;
+  collectedByUserId?: string;
+  resultSummary?: string;
+  resultedAt?: string;
+  releasedByUserId?: string;
+  signedByUserId?: string;
+  signatureHash?: string;
+};
+
+type ExamCatalogEntry = {
+  id: string;
+  code: string;
+  name: string;
+  category: string;
+};
+
+type ClinicalTimelineEvent = {
+  encounterId: string;
+  eventType: string;
+  summary: string;
+};
+
+async function expectJsonResponse<T>(response: APIResponse, expectedStatus: number): Promise<T> {
+  const rawBody = await response.text();
+
+  expect(response.status(), `Resposta inesperada de ${response.url()}: ${rawBody}`).toBe(
+    expectedStatus
+  );
+  expect(rawBody, `Resposta sem body em ${response.url()}`).not.toBe('');
+
+  const body: unknown = JSON.parse(rawBody);
+  expect(body, `Body JSON ausente em ${response.url()}`).toEqual(expect.any(Object));
+  return body as T;
+}
+
+async function createClinicalFixture(
+  apiContext: APIRequestContext,
+  marker: string
+): Promise<ClinicalFixture> {
+  const ownerName = `Tutor E2E Exames ${marker}`;
+  const ownerResponse = await apiContext.post('/owners', {
+    data: {
+      fullName: ownerName,
+      contacts: [
+        {
+          label: 'Celular',
+          value: '+55 11 98888-7766',
+          type: 'whatsapp',
+          primary: true
+        }
+      ],
+      financialResponsible: true
+    }
+  });
+  const owner = await expectJsonResponse<{ id: string; fullName: string }>(ownerResponse, 201);
+  expect(owner).toMatchObject({ fullName: ownerName });
+  expect(owner.id).toEqual(expect.any(String));
+
+  const patientName = `Paciente E2E Exames ${marker}`;
+  const patientResponse = await apiContext.post('/patients', {
+    data: {
+      primaryOwnerId: owner.id,
+      name: patientName,
+      species: 'canine',
+      breed: 'Labrador',
+      sex: 'male'
+    }
+  });
+  const patient = await expectJsonResponse<{
+    id: string;
+    name: string;
+    primaryOwnerId: string;
+  }>(patientResponse, 201);
+  expect(patient).toMatchObject({ name: patientName, primaryOwnerId: owner.id });
+  expect(patient.id).toEqual(expect.any(String));
+
+  const encounterReason = `Investigação diagnóstica E2E ${marker}`;
+  const encounterResponse = await apiContext.post('/encounters', {
+    data: {
+      patientId: patient.id,
+      ownerId: owner.id,
+      visitType: 'walk_in',
+      origin: 'reception',
+      reason: encounterReason
+    }
+  });
+  const encounter = await expectJsonResponse<{
+    id: string;
+    patientId: string;
+    ownerId: string;
+    status: string;
+    reason: string;
+  }>(encounterResponse, 201);
+  expect(encounter).toMatchObject({
+    patientId: patient.id,
+    ownerId: owner.id,
+    status: 'reception',
+    reason: encounterReason
+  });
+  expect(encounter.id).toEqual(expect.any(String));
+
+  return {
+    ownerId: owner.id,
+    patientId: patient.id,
+    encounterId: encounter.id
+  };
+}
 
 test.describe('Fluxo: Exame → Resultado → Prontuário', () => {
-  
-  let patientId: string;
-  let ownerId: string;
-  let encounterId: string;
-  let examOrderId: string;
+  test('solicita, coleta, libera e registra o exame no prontuário', async ({
+    apiContext,
+    testUser
+  }) => {
+    const fixture = await createClinicalFixture(apiContext, 'Hemograma');
 
-  test.beforeAll(async ({ apiContext, testUser }) => {
-    // Create owner and patient for exam tests
-    const ownerRes = await apiContext.post('/owners', {
+    const catalogResponse = await apiContext.get('/diagnostics/catalog');
+    const catalog = await expectJsonResponse<{ items: ExamCatalogEntry[] }>(catalogResponse, 200);
+    expect(catalog.items).toEqual(expect.any(Array));
+    const hemogram = catalog.items.find((item) => item.code === 'HEM')!;
+    expect(hemogram).toMatchObject({ code: 'HEM', category: 'Laboratorial' });
+
+    const createOrderResponse = await apiContext.post('/diagnostics/orders', {
       data: {
-        fullName: 'Ana Costa E2E Exames',
-        document: `E2E-EXAM-${Date.now()}`,
-        phoneMain: '11998877665'
+        encounterId: fixture.encounterId,
+        patientId: fixture.patientId,
+        examType: hemogram.name,
+        examCatalogId: hemogram.id,
+        reason: 'Check-up hematológico E2E'
       }
     });
-    const owner = await ownerRes.json();
-    ownerId = owner.id;
+    const order = await expectJsonResponse<DiagnosticOrder>(createOrderResponse, 201);
+    expect(order).toMatchObject({
+      encounterId: fixture.encounterId,
+      patientId: fixture.patientId,
+      examType: hemogram.name,
+      examCatalogId: hemogram.id,
+      reason: 'Check-up hematológico E2E',
+      status: 'requested'
+    });
+    expect(order.id).toEqual(expect.any(String));
 
-    const patientRes = await apiContext.post('/patients', {
+    const listOrdersResponse = await apiContext.get('/diagnostics/orders', {
+      params: { encounterId: fixture.encounterId }
+    });
+    const listedOrders = await expectJsonResponse<{ items: DiagnosticOrder[] }>(
+      listOrdersResponse,
+      200
+    );
+    expect(listedOrders.items).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: order.id, status: 'requested' })])
+    );
+
+    const collectResponse = await apiContext.post(`/diagnostics/orders/${order.id}/result`, {
       data: {
-        ownerId,
-        name: 'Buddy E2E Exames',
-        species: 'Canina',
-        breed: 'Labrador',
-        sex: 'male',
-        microchip: `E2E-EXAM-${Date.now()}`
+        status: 'collected',
+        collectedByUserId: testUser.userId
       }
     });
-    const patient = await patientRes.json();
-    patientId = patient.id;
+    const collected = await expectJsonResponse<DiagnosticOrder>(collectResponse, 200);
+    expect(collected).toMatchObject({
+      id: order.id,
+      status: 'collected',
+      collectedByUserId: testUser.userId
+    });
+    expect(collected.collectedAt).toEqual(expect.any(String));
 
-    // Create encounter
-    const encounterRes = await apiContext.post('/encounters', {
+    const resultSummary = 'Hemácias, leucócitos e plaquetas dentro dos parâmetros de referência.';
+    const releaseResponse = await apiContext.post(`/diagnostics/orders/${order.id}/result`, {
       data: {
-        patientId,
-        ownerId,
-        reason: 'Check-up completo - E2E Exames'
+        status: 'resulted',
+        resultSummary,
+        signedByUserId: testUser.userId
       }
     });
-    const encounter = await encounterRes.json();
-    encounterId = encounter.id;
+    const released = await expectJsonResponse<DiagnosticOrder>(releaseResponse, 200);
+    expect(released).toMatchObject({
+      id: order.id,
+      status: 'resulted',
+      resultSummary,
+      releasedByUserId: testUser.userId,
+      signedByUserId: testUser.userId
+    });
+    expect(released.resultedAt).toEqual(expect.any(String));
+    expect(released.signatureHash).toMatch(/^[a-f0-9]{64}$/);
+
+    const resultsResponse = await apiContext.get('/diagnostics/results', {
+      params: {
+        patientId: fixture.patientId,
+        examType: hemogram.name
+      }
+    });
+    const results = await expectJsonResponse<{ items: DiagnosticOrder[] }>(resultsResponse, 200);
+    expect(results.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: order.id, status: 'resulted', resultSummary })
+      ])
+    );
+
+    const printableResponse = await apiContext.get(`/laboratory/reports/${order.id}/print`);
+    const printable = await expectJsonResponse<{ html: string }>(printableResponse, 200);
+    expect(printable.html).toContain('Laudo Laboratorial');
+    expect(printable.html).toContain(resultSummary);
+    expect(printable.html).toContain(released.signatureHash);
+
+    const timelineResponse = await apiContext.get('/medical-records/timeline', {
+      params: { encounterId: fixture.encounterId }
+    });
+    const timeline = await expectJsonResponse<{ items: ClinicalTimelineEvent[] }>(
+      timelineResponse,
+      200
+    );
+    expect(timeline.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          encounterId: fixture.encounterId,
+          eventType: 'diagnostic_requested'
+        }),
+        expect.objectContaining({
+          encounterId: fixture.encounterId,
+          eventType: 'diagnostic_collected'
+        }),
+        expect.objectContaining({
+          encounterId: fixture.encounterId,
+          eventType: 'diagnostic_resulted'
+        })
+      ])
+    );
+
+    const summaryResponse = await apiContext.get('/diagnostics/summary');
+    const summary = await expectJsonResponse<{
+      totalOrders: number;
+      pendingOrders: number;
+      pendingResults: number;
+      releasedResults: number;
+      equipmentActive: number;
+    }>(summaryResponse, 200);
+    expect(summary.totalOrders).toBeGreaterThanOrEqual(1);
+    expect(summary.releasedResults).toBeGreaterThanOrEqual(1);
+    expect(summary.equipmentActive).toBeGreaterThanOrEqual(1);
   });
 
-  test('deve solicitar exame laboratorial', async ({ apiContext }) => {
-    // =====================
-    // 1. Criar pedido de exame
-    // =====================
-    const examRes = await apiContext.post('/exam-orders', {
+  test('solicita exame de imagem pelo catálogo atual', async ({ apiContext }) => {
+    const fixture = await createClinicalFixture(apiContext, 'Radiografia');
+
+    const catalogResponse = await apiContext.get('/diagnostics/catalog');
+    const catalog = await expectJsonResponse<{ items: ExamCatalogEntry[] }>(catalogResponse, 200);
+    expect(catalog.items).toEqual(expect.any(Array));
+    const radiography = catalog.items.find((item) => item.code === 'RX')!;
+    expect(radiography).toMatchObject({ code: 'RX', category: 'Imagem' });
+
+    const createOrderResponse = await apiContext.post('/diagnostics/orders', {
       data: {
-        patientId,
-        encounterId,
-        category: 'laboratory',
-        examName: 'Hemograma completo',
-        examCode: 'HEMO',
-        priority: 'routine',
-        notes: 'Exame de rotina - E2E Test'
+        encounterId: fixture.encounterId,
+        patientId: fixture.patientId,
+        examType: radiography.name,
+        examCatalogId: radiography.id,
+        reason: 'Suspeita de pneumonia; avaliação urgente.'
       }
     });
-    expect(examRes.ok()).toBeTruthy();
-    const exam = await examRes.json();
-    examOrderId = exam.id;
-    expect(exam.id).toBeTruthy();
-    expect(exam.status).toBe('requested');
-    expect(exam.examName).toBe('Hemograma completo');
-    console.log(`   ✅ Exame solicitado: ${exam.id} (${exam.examName})`);
-
-    // =====================
-    // 2. Verificar na lista de exames
-    // =====================
-    const listRes = await apiContext.get('/exam-orders', {
-      params: { patientId }
+    const order = await expectJsonResponse<DiagnosticOrder>(createOrderResponse, 201);
+    expect(order).toMatchObject({
+      encounterId: fixture.encounterId,
+      patientId: fixture.patientId,
+      examType: radiography.name,
+      examCatalogId: radiography.id,
+      reason: 'Suspeita de pneumonia; avaliação urgente.',
+      status: 'requested'
     });
-    expect(listRes.ok()).toBeTruthy();
-    const list = await listRes.json();
-    expect(list.data.some((e: any) => e.id === exam.id)).toBeTruthy();
-    console.log(`   ✅ Exame encontrado na lista (${list.total} total)`);
-  });
+    expect(order.id).toEqual(expect.any(String));
 
-  test('deve solicitar exame de imagem com prioridade urgente', async ({ apiContext }) => {
-    const examRes = await apiContext.post('/exam-orders', {
-      data: {
-        patientId,
-        encounterId,
-        category: 'imaging',
-        examName: 'Raio-X Tórax',
-        examCode: 'RX-TOR',
-        priority: 'urgent',
-        notes: 'Suspeita de pneumonia - E2E Test'
-      }
+    const detailResponse = await apiContext.get(`/diagnostics/orders/${order.id}`);
+    const detail = await expectJsonResponse<DiagnosticOrder>(detailResponse, 200);
+    expect(detail).toMatchObject({
+      id: order.id,
+      encounterId: fixture.encounterId,
+      patientId: fixture.patientId,
+      examCatalogId: radiography.id,
+      status: 'requested'
     });
-    expect(examRes.ok()).toBeTruthy();
-    const exam = await examRes.json();
-    expect(exam.category).toBe('imaging');
-    expect(exam.priority).toBe('urgent');
-    console.log(`   ✅ Exame de imagem solicitado: ${exam.id} (${exam.priority})`);
-  });
-
-  test('deve criar resultado de exame', async ({ apiContext }) => {
-    if (!examOrderId) {
-      console.log('   ⚠️  Sem examOrderId - pulando teste');
-      test.skip();
-      return;
-    }
-
-    // =====================
-    // 1. Criar resultado
-    // =====================
-    const resultRes = await apiContext.post('/exam-results', {
-      data: {
-        examOrderId,
-        findings: 'Hemácias: 5.2 milhões/mm³ (normal)\nLeucócitos: 8.500/mm³ (normal)\nPlaquetas: 250.000/mm³ (normal)',
-        interpretation: 'Hemograma dentro dos parâmetros de normalidade',
-        resultValues: '{"hemacias": 5.2, "leucocitos": 8500, "plaquetas": 250000}',
-        normalRange: '{"hemacias": "4.5-6.5", "leucocitos": "6000-17000", "plaquetas": "200000-500000"}',
-        notes: 'Resultado E2E Test'
-      }
-    });
-
-    if (!resultRes.ok()) {
-      const error = await resultRes.json();
-      console.log(`   ⚠️  Create result failed: ${JSON.stringify(error)}`);
-      test.skip();
-      return;
-    }
-
-    const result = await resultRes.json();
-    expect(result.id).toBeTruthy();
-    expect(result.examOrderId).toBe(examOrderId);
-    expect(result.status).toBe('draft');
-    console.log(`   ✅ Resultado criado: ${result.id} (status: ${result.status})`);
-
-    // =====================
-    // 2. Verificar na lista de resultados
-    // =====================
-    const listRes = await apiContext.get('/exam-results', {
-      params: { examOrderId }
-    });
-    expect(listRes.ok()).toBeTruthy();
-    const list = await listRes.json();
-    expect(list.data.some((r: any) => r.id === result.id)).toBeTruthy();
-    console.log(`   ✅ Resultado encontrado na lista`);
-  });
-
-  test('deve atualizar status do exame', async ({ apiContext }) => {
-    if (!examOrderId) {
-      console.log('   ⚠️  Sem examOrderId - pulando teste');
-      test.skip();
-      return;
-    }
-
-    // =====================
-    // 1. Atualizar status para coletado
-    // =====================
-    const updateRes = await apiContext.patch(`/exam-orders/${examOrderId}`, {
-      data: { status: 'collected' }
-    });
-    expect(updateRes.ok()).toBeTruthy();
-    const updated = await updateRes.json();
-    expect(updated.status).toBe('collected');
-    console.log(`   ✅ Status atualizado: collected`);
-
-    // =====================
-    // 2. Atualizar status para em andamento
-    // =====================
-    const update2Res = await apiContext.patch(`/exam-orders/${examOrderId}`, {
-      data: { status: 'in_progress' }
-    });
-    expect(update2Res.ok()).toBeTruthy();
-    console.log(`   ✅ Status atualizado: in_progress`);
-
-    // =====================
-    // 3. Atualizar status para concluído
-    // =====================
-    const update3Res = await apiContext.patch(`/exam-orders/${examOrderId}`, {
-      data: { status: 'completed' }
-    });
-    expect(update3Res.ok()).toBeTruthy();
-    const completed = await update3Res.json();
-    expect(completed.status).toBe('completed');
-    console.log(`   ✅ Status atualizado: completed`);
-
-    console.log('\n   🎉 Fluxo completo: Solicitar → Coletar → Processar → Concluir');
-  });
-
-  test('deve verificar exames no relatório pendentes', async ({ apiContext }) => {
-    // =====================
-    // 1. Consultar relatório de exames pendentes
-    // =====================
-    const pendingRes = await apiContext.get('/reports/exams-pending');
-    expect(pendingRes.ok()).toBeTruthy();
-    const pending = await pendingRes.json();
-    expect(pending.data).toBeDefined();
-    console.log(`   ✅ ${pending.total} exames pendentes encontrados`);
-
-    // =====================
-    // 2. Consultar resumo de exames
-    // =====================
-    const now = new Date();
-    const dateFrom = new Date(now.getFullYear(), 0, 1).toISOString().slice(0, 10);
-    const dateTo = now.toISOString().slice(0, 10);
-
-    const summaryRes = await apiContext.get('/reports/exams-summary', {
-      params: { dateFrom, dateTo }
-    });
-    expect(summaryRes.ok()).toBeTruthy();
-    const summary = await summaryRes.json();
-    expect(summary.data).toBeDefined();
-    console.log(`   ✅ Resumo de exames consultado (${summary.data.length} categorias)`);
   });
 });

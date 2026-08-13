@@ -238,7 +238,11 @@ export class PaymentsEventHandlers {
       providerConfirmationId: payload.providerConfirmationId ?? payload.providerTransactionId,
       completedAt,
       lastProviderSyncAt: completedAt,
-      billingSettlementStatus: payload.billingRecordId ? 'pending_billing' : 'not_applicable'
+      billingSettlementStatus: payload.billingRecordId
+        ? transaction?.billingSettlementStatus === 'applied'
+          ? 'applied'
+          : 'pending_billing'
+        : 'not_applicable'
     });
 
     const effectiveTransaction = updatedTransaction ?? transaction;
@@ -397,7 +401,11 @@ export class PaymentsEventHandlers {
       providerAuthorizationCode:
         payload.providerAuthorizationCode ?? transaction?.providerAuthorizationCode,
       providerReferenceId: payload.providerReferenceId ?? transaction?.providerReferenceId,
-      billingSettlementStatus: payload.billingRecordId ? 'pending_billing' : 'not_applicable'
+      billingSettlementStatus: payload.billingRecordId
+        ? transaction?.billingSettlementStatus === 'applied'
+          ? 'applied'
+          : 'pending_billing'
+        : 'not_applicable'
     });
     const effectiveTransaction = updatedTransaction ?? transaction;
     if (!effectiveTransaction) {

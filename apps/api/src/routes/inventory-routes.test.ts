@@ -15,13 +15,22 @@ class MockResponse extends Writable {
   public statusCode = 200;
   readonly #chunks: Buffer[] = [];
 
-  _write(chunk: string | Buffer, _encoding: BufferEncoding, callback: (error?: Error | null) => void): void {
+  _write(
+    chunk: string | Buffer,
+    _encoding: BufferEncoding,
+    callback: (error?: Error | null) => void
+  ): void {
     this.#chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
     callback();
   }
 
-  override end(chunk?: string | Buffer | (() => void), encoding?: BufferEncoding | (() => void), callback?: () => void): this {
-    const finalCallback = typeof chunk === 'function' ? chunk : typeof encoding === 'function' ? encoding : callback;
+  override end(
+    chunk?: string | Buffer | (() => void),
+    encoding?: BufferEncoding | (() => void),
+    callback?: () => void
+  ): this {
+    const finalCallback =
+      typeof chunk === 'function' ? chunk : typeof encoding === 'function' ? encoding : callback;
     if (chunk !== undefined && typeof chunk !== 'function') {
       this.#chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
     }
@@ -74,7 +83,13 @@ function principal(): AuthenticatedPrincipal {
   };
 }
 
-function handlers(inventory = new InventoryService({ getOrThrow() { throw new Error('not used'); } } as never)) {
+function handlers(
+  inventory = new InventoryService({
+    getOrThrow() {
+      throw new Error('not used');
+    }
+  } as never)
+) {
   return {
     inventory,
     audit: { write() {} } as unknown as AuditService,
@@ -101,7 +116,11 @@ test('handleInventoryRoutes creates stock adjustments and lists stock movements'
   );
 
   assert.equal(adjustmentResponse.statusCode, 201);
-  const movement = adjustmentResponse.bodyJson<{ id: string; quantityDelta: number; balanceAfter: number }>();
+  const movement = adjustmentResponse.bodyJson<{
+    id: string;
+    quantityDelta: number;
+    balanceAfter: number;
+  }>();
   assert.equal(movement.quantityDelta, 4);
   assert.equal(movement.balanceAfter, 28);
 
@@ -116,4 +135,51 @@ test('handleInventoryRoutes creates stock adjustments and lists stock movements'
 
   assert.equal(movementsResponse.statusCode, 200);
   assert.equal(movementsResponse.bodyJson<{ items: unknown[] }>().items.length, 1);
+});
+
+test('handleInventoryRoutes hides foreign-account items on get and update', async () => {
+  const foreignAccount = 'acc_foreign' as AccountId;
+  const foreignItem = {
+    id: 'inv_foreign_route' as never,
+    accountId: foreignAccount,
+    sku: 'FOREIGN-ROUTE',
+    name: 'Foreign route item',
+    unit: 'unit',
+    onHandQuantity: 8,
+    reorderLevel: 1,
+    unitCostAmount: 2,
+    createdAt: '2026-08-12T10:00:00.000Z',
+    updatedAt: '2026-08-12T10:00:00.000Z'
+  };
+  const inventory = new InventoryService(
+    {
+      getOrThrow() {
+        throw new Error('not used');
+      }
+    } as never,
+    [foreignItem]
+  );
+  const routeHandlers = handlers(inventory);
+
+  const getResponse = new MockResponse();
+  await handleInventoryRoutes(
+    `/inventory/${foreignItem.id}`,
+    request('GET', undefined, `/inventory/${foreignItem.id}`),
+    getResponse as never,
+    'corr-inventory-foreign-get',
+    routeHandlers
+  );
+
+  const patchResponse = new MockResponse();
+  await handleInventoryRoutes(
+    `/inventory/${foreignItem.id}`,
+    request('PATCH', { name: 'Cross-account update' }, `/inventory/${foreignItem.id}`),
+    patchResponse as never,
+    'corr-inventory-foreign-update',
+    routeHandlers
+  );
+
+  assert.equal(getResponse.statusCode, 404);
+  assert.equal(patchResponse.statusCode, 404);
+  assert.equal(inventory.getItemOrThrow(foreignAccount, foreignItem.id).name, foreignItem.name);
 });

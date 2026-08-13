@@ -105,6 +105,34 @@ test('AttachmentsService rejects invalid target type', async () => {
   );
 });
 
+test('AttachmentsService rejects cross-account uploads and reads before mutation', async () => {
+  const { service, record } = createService();
+  const payload = {
+    linkedEntityType: 'medical_record' as const,
+    linkedEntityId: record.id,
+    category: 'document' as const,
+    fileName: 'segredo-clinico.pdf',
+    mimeType: 'application/pdf',
+    checksum: 'sha256-tenant-boundary'
+  };
+
+  await assert.rejects(
+    () => service.upload('user_foreign' as never, payload, undefined, 'acc_other' as never),
+    NotFoundError
+  );
+  await assert.rejects(
+    () => service.listByLinkedEntity('medical_record', record.id, 'acc_other' as never),
+    NotFoundError
+  );
+
+  const visible = await service.listByLinkedEntity(
+    'medical_record',
+    record.id,
+    'acc_test' as never
+  );
+  assert.equal(visible.length, 0);
+});
+
 test('AttachmentsService listByLinkedEntity filters attachments', async () => {
   const { service, encounter, record } = createService();
 

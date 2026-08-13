@@ -54,6 +54,7 @@
       empty-icon="🔗"
       empty-title="Nenhum registro encontrado"
       empty-description="Use os filtros acima ou inclua um novo webhook."
+      show-headers-when-empty
       variant="hoverable"
     >
       <template #cell-url="{ row }">

@@ -524,7 +524,7 @@ describe('external integrations premium evidence', () => {
       origin: 'reception',
       reason: 'Equipment premium'
     });
-    const order = laboratory.createOrder({
+    const order = await laboratory.createOrder({
       encounterId: encounter.id,
       patientId: encounter.patientId,
       examType: 'HEM',

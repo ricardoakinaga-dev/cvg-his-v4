@@ -4,11 +4,13 @@ const E2E_API_URL = 'http://127.0.0.1:3111';
 const E2E_SPA_URL = 'http://127.0.0.1:3112';
 const E2E_DATABASE_URL =
   process.env.E2E_DATABASE_URL ||
-  process.env.DATABASE_URL ||
   'postgres://postgres:postgres@127.0.0.1:5433/cvg_his_v2_test';
 const E2E_REDIS_URL =
   process.env.E2E_REDIS_URL || process.env.REDIS_URL || 'redis://127.0.0.1:6381';
-const E2E_DISABLE_INCOMPATIBLE_DB_REPOS = process.env.API_DISABLE_INCOMPATIBLE_DB_REPOS ?? '1';
+const E2E_DISABLE_INCOMPATIBLE_DB_REPOS = process.env.API_DISABLE_INCOMPATIBLE_DB_REPOS ?? '0';
+const E2E_REUSE_EXISTING_SERVER = process.env.E2E_REUSE_EXISTING_SERVER === 'true';
+const E2E_ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL || 'admin@cvg-his.local';
+const E2E_ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD || 'seed_admin';
 
 process.env.API_URL = process.env.API_URL || E2E_API_URL;
 process.env.SPA_URL = process.env.SPA_URL || E2E_SPA_URL;
@@ -24,6 +26,7 @@ process.env.SPA_URL = process.env.SPA_URL || E2E_SPA_URL;
  *   npx playwright test --config playwright-spa.config.ts --headed
  *   npx playwright test --config playwright-spa.config.ts -g "Visual"
  *   npx playwright test --config playwright-spa.config.ts -g "Visual" --update-snapshots
+ *   E2E_REUSE_EXISTING_SERVER=true npx playwright test --config playwright-spa.config.ts
  */
 export default defineConfig({
   testDir: './e2e/spa',
@@ -68,19 +71,42 @@ export default defineConfig({
   webServer: [
     {
       command:
-        `env -u DATABASE_URL -u DATABASE_URL_TEST API_DISABLE_INCOMPATIBLE_DB_REPOS="${E2E_DISABLE_INCOMPATIBLE_DB_REPOS}" NODE_ENV=test AUTH_SECRET="e2e-test-secret-key-do-not-use-in-production-12345678" AUTH_RATE_LIMIT_MAX_REQUESTS="${process.env.AUTH_RATE_LIMIT_MAX_REQUESTS || '200'}" DATABASE_URL="${E2E_DATABASE_URL}" DATABASE_URL_TEST="${E2E_DATABASE_URL}" REDIS_URL="${E2E_REDIS_URL}" PORT=3111 HOST=127.0.0.1 node apps/api/dist/index.js`,
-      url: `${process.env.API_URL || E2E_API_URL}/health`,
-      reuseExistingServer: true,
-      timeout: 90_000,
+        'pnpm --filter @cvg-his-v2/api^... build && node infra/scripts/prepare-test-db.mjs && node packages/db/dist/seed.js && pnpm --filter @cvg-his-v2/api build && node apps/api/dist/index.js',
+      env: {
+        API_DISABLE_INCOMPATIBLE_DB_REPOS: E2E_DISABLE_INCOMPATIBLE_DB_REPOS,
+        NODE_ENV: 'test',
+        PIX_MOCK_MODE: 'true',
+        EMAIL_MOCK_MODE: 'true',
+        SMS_MOCK_MODE: 'true',
+        GOOGLE_CALENDAR_MOCK_MODE: 'true',
+        AUTH_SECRET: 'e2e-test-secret-key-do-not-use-in-production-12345678',
+        AUTH_RATE_LIMIT_MAX_REQUESTS: process.env.AUTH_RATE_LIMIT_MAX_REQUESTS || '200',
+        DATABASE_URL: E2E_DATABASE_URL,
+        DATABASE_URL_TEST: E2E_DATABASE_URL,
+        REDIS_URL: E2E_REDIS_URL,
+        ADMIN_EMAIL: E2E_ADMIN_EMAIL,
+        ADMIN_PASSWORD: E2E_ADMIN_PASSWORD,
+        E2E_ADMIN_PASSWORD,
+        PORT: '3111',
+        HOST: '127.0.0.1'
+      },
+      url: `${process.env.API_URL || E2E_API_URL}/ready`,
+      reuseExistingServer: E2E_REUSE_EXISTING_SERVER,
+      timeout: 600_000,
       stdout: 'pipe',
       stderr: 'pipe'
     },
     {
       command:
-        `SPA_E2E_HOST=127.0.0.1 SPA_E2E_PORT=3112 SPA_E2E_API_TARGET=${process.env.API_URL || E2E_API_URL} node infra/scripts/serve-spa-e2e.mjs`,
+        'pnpm --filter @cvg-his-v2/spa build && node infra/scripts/serve-spa-e2e.mjs',
+      env: {
+        SPA_E2E_HOST: '127.0.0.1',
+        SPA_E2E_PORT: '3112',
+        SPA_E2E_API_TARGET: process.env.API_URL || E2E_API_URL
+      },
       url: process.env.SPA_URL || E2E_SPA_URL,
-      reuseExistingServer: true,
-      timeout: 60_000,
+      reuseExistingServer: E2E_REUSE_EXISTING_SERVER,
+      timeout: 600_000,
       stdout: 'pipe',
       stderr: 'pipe'
     }

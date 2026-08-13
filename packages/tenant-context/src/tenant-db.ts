@@ -29,8 +29,21 @@
  */
 
 import type { Pool, PoolClient } from 'pg';
-import { getPool } from '@cvg-his-v2/shared-database';
+import {
+  getActiveDatabaseContext,
+  getPool,
+  runWithDatabaseClient
+} from '@cvg-his-v2/shared-database';
 import { requireAccountId } from './context.js';
+
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function assertDatabaseAccountId(accountId: string): void {
+  if (!UUID_PATTERN.test(accountId)) {
+    throw new Error('Database tenant accountId must be a valid UUID');
+  }
+}
 
 /**
  * Executes a single query within a PostgreSQL transaction that has
@@ -72,17 +85,36 @@ export async function withTenantQueryExplicit<T>(
   accountId: string,
   fn: (client: PoolClient) => Promise<T>
 ): Promise<T> {
+  assertDatabaseAccountId(accountId);
+  const activeContext = getActiveDatabaseContext();
+  if (activeContext) {
+    if (activeContext.accountId !== accountId) {
+      throw new Error(
+        `A database transaction cannot switch from tenant ${activeContext.accountId ?? 'unknown'} to tenant ${accountId}`
+      );
+    }
+    return fn(activeContext.client);
+  }
+
   const client: PoolClient = await pool.connect();
   try {
     await client.query('BEGIN');
     await client.query("SELECT set_config('app.current_account_id', $1, true)", [accountId]);
-    const result = await fn(client);
+    const result = await runWithDatabaseClient(client, { accountId }, () => fn(client));
     await client.query('COMMIT');
     return result;
   } catch (error) {
-    await client.query('ROLLBACK').catch(() => {
-      // Ignore rollback errors during error handling
-    });
+    try {
+      await client.query('ROLLBACK');
+    } catch (rollbackError) {
+      const originalMessage = error instanceof Error ? error.message : String(error);
+      const rollbackMessage =
+        rollbackError instanceof Error ? rollbackError.message : String(rollbackError);
+      throw new AggregateError(
+        [error, rollbackError],
+        `${originalMessage}; rollback also failed: ${rollbackMessage}`
+      );
+    }
     throw error;
   } finally {
     client.release();

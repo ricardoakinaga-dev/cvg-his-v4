@@ -1,4 +1,4 @@
-import { createHash, scrypt, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes, randomUUID, scrypt, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 
 import { NotFoundError } from '@cvg-his-v2/shared-errors';
@@ -161,6 +161,8 @@ export class UsersService {
   readonly #repository?: UsersRepository;
   readonly #users = new Map<UserId, UserRecord>();
   readonly #usersByUsername = new Map<string, UserRecord>();
+  readonly #usersByAccountUsername = new Map<string, UserRecord>();
+  readonly #usersByScopedUsername = new Map<string, UserRecord>();
 
   public constructor(
     options?: UsersServiceOptions,
@@ -170,8 +172,7 @@ export class UsersService {
     const seedEnabled = options?.seedUsersEnabled ?? isSeedEnvironment();
     if (seedEnabled) {
       for (const user of seedUsers) {
-        this.#users.set(user.id, user);
-        this.#usersByUsername.set(user.username, user);
+        this.#cacheUser(user);
       }
     }
   }
@@ -199,13 +200,14 @@ export class UsersService {
         passwordHash: dbUser.passwordHash,
         roleCodes
       };
-      this.#users.set(userRecord.id, userRecord);
-      this.#usersByUsername.set(userRecord.username, userRecord);
+      this.#cacheUser(userRecord);
     }
   }
 
-  public list(): readonly UserSummary[] {
-    return Array.from(this.#users.values()).map(stripSecrets);
+  public list(accountId?: AccountId): readonly UserSummary[] {
+    return Array.from(this.#users.values())
+      .filter((user) => !accountId || user.accountId === accountId)
+      .map(stripSecrets);
   }
 
   public getOrThrow(userId: UserId): UserRecord {
@@ -216,8 +218,72 @@ export class UsersService {
     return user;
   }
 
+  public getForAccountOrThrow(accountId: AccountId, userId: UserId): UserRecord {
+    const user = this.#users.get(userId);
+    if (!user || user.accountId !== accountId) {
+      throw new NotFoundError('User not found', { userId });
+    }
+    return user;
+  }
+
   public findByUsername(username: string): UserRecord | undefined {
-    return this.#usersByUsername.get(username);
+    return this.#usersByUsername.get(normalizeUsername(username));
+  }
+
+  public async resolveAccountIdBySlug(accountSlug: string): Promise<AccountId | undefined> {
+    const normalizedSlug = accountSlug.trim();
+    if (!normalizedSlug || !this.#repository?.resolveAccountIdBySlug) {
+      return undefined;
+    }
+    return (await this.#repository.resolveAccountIdBySlug(normalizedSlug)) ?? undefined;
+  }
+
+  public async findForLogin(
+    accountSlug: string | undefined,
+    username: string
+  ): Promise<UserRecord | undefined> {
+    if (!accountSlug || !this.#repository) {
+      return this.findByUsername(username);
+    }
+
+    const cacheKey = `${accountSlug.trim().toLowerCase()}:${username.trim().toLowerCase()}`;
+    const cached = this.#usersByScopedUsername.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const persisted = await this.#repository.findByLogin(accountSlug, username);
+    if (!persisted) {
+      return undefined;
+    }
+    const roleCodes = await this.#repository.findRoleCodesByUserId(
+      persisted.id as UserId,
+      persisted.accountId
+    );
+    const userRecord: UserRecord = {
+      id: persisted.id as UserId,
+      accountId: persisted.accountId,
+      username: persisted.email.split('@')[0] ?? persisted.email,
+      email: persisted.email,
+      displayName: persisted.fullName,
+      status: persisted.isActive ? 'active' : 'inactive',
+      staffId: '' as never,
+      createdAt: persisted.createdAt,
+      updatedAt: persisted.updatedAt,
+      passwordHash: persisted.passwordHash,
+      roleCodes
+    };
+
+    this.#users.set(userRecord.id, userRecord);
+    this.#usersByAccountUsername.set(
+      accountUsernameKey(userRecord.accountId, userRecord.username),
+      userRecord
+    );
+    this.#usersByScopedUsername.set(cacheKey, userRecord);
+    if (!this.#usersByUsername.has(userRecord.username)) {
+      this.#usersByUsername.set(userRecord.username, userRecord);
+    }
+    return userRecord;
   }
 
   public async verifyPassword(user: UserRecord, password: string): Promise<boolean> {
@@ -225,6 +291,7 @@ export class UsersService {
   }
 
   public async create(input: {
+    readonly accountId: AccountId;
     readonly username: string;
     readonly email: string;
     readonly password: string;
@@ -232,27 +299,26 @@ export class UsersService {
     readonly roleCode?: string;
     readonly status?: 'active' | 'inactive';
   }): Promise<UserSummary> {
-    if (this.#usersByUsername.has(input.username)) {
+    const username = input.username.trim();
+    const scopedUsernameKey = accountUsernameKey(input.accountId, username);
+    if (this.#usersByAccountUsername.has(scopedUsernameKey)) {
       throw new Error('Username already exists');
     }
     const now = nowIso();
-    const id = ('user_' + Math.random().toString(36).slice(2, 10)) as UserId;
+    const id = randomUUID() as UserId;
     const passwordHash = await hashPassword(input.password);
     const user: UserRecord = {
       id,
-      accountId: 'acc_cvg_demo' as AccountId,
-      username: input.username,
+      accountId: input.accountId,
+      username,
       email: input.email,
       passwordHash,
-      displayName: input.displayName || input.username,
+      displayName: input.displayName || username,
       roleCodes: input.roleCode ? [input.roleCode] : [],
       status: input.status || 'active',
       createdAt: now,
       updatedAt: now
     };
-    this.#users.set(id, user);
-    this.#usersByUsername.set(user.username, user);
-
     if (this.#repository) {
       await this.#repository.create({
         id,
@@ -266,7 +332,22 @@ export class UsersService {
       });
     }
 
+    this.#cacheUser(user);
+
     return stripSecrets(user);
+  }
+
+  public async updateForAccount(
+    accountId: AccountId,
+    userId: UserId,
+    changes: {
+      readonly displayName?: string;
+      readonly email?: string;
+      readonly status?: 'active' | 'inactive';
+    }
+  ): Promise<UserSummary> {
+    this.getForAccountOrThrow(accountId, userId);
+    return this.update(userId, changes);
   }
 
   public async update(
@@ -286,9 +367,6 @@ export class UsersService {
       updatedAt: nowIso()
     };
 
-    this.#users.set(userId, updated);
-    this.#usersByUsername.set(updated.username, updated);
-
     if (this.#repository) {
       await this.#repository.update({
         id: updated.id,
@@ -302,8 +380,30 @@ export class UsersService {
       });
     }
 
+    this.#cacheUser(updated);
+
     return stripSecrets(updated);
   }
+
+  #cacheUser(user: UserRecord): void {
+    this.#users.set(user.id, user);
+    this.#usersByAccountUsername.set(accountUsernameKey(user.accountId, user.username), user);
+    const usernameKey = normalizeUsername(user.username);
+    if (
+      !this.#usersByUsername.has(usernameKey) ||
+      this.#usersByUsername.get(usernameKey)?.id === user.id
+    ) {
+      this.#usersByUsername.set(usernameKey, user);
+    }
+  }
+}
+
+function normalizeUsername(username: string): string {
+  return username.trim().toLowerCase();
+}
+
+function accountUsernameKey(accountId: AccountId, username: string): string {
+  return `${accountId}:${normalizeUsername(username)}`;
 }
 
 function stripSecrets(user: UserRecord): UserSummary {

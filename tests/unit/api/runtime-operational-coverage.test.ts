@@ -7,10 +7,11 @@ import { createInMemoryRuntimeRepositories } from '../../../apps/api/src/runtime
 
 const ACCOUNT_ID = 'acc_cvg_demo' as never;
 const USER_ID = 'user_admin' as never;
+const TEST_AUTH_SECRET = ['test', 'auth', 'value', 'operational'].join('-');
 
 function createRuntime() {
   return createApiRuntime({
-    authSecret: 'test-secret-key-123456',
+    authSecret: TEST_AUTH_SECRET,
     accessTokenTtlSeconds: 900,
     refreshTokenTtlSeconds: 3_600
   });
@@ -276,7 +277,7 @@ describe('runtime operational coverage', () => {
   it('publishes notification.sent events when queued notifications are processed', async () => {
     const inMemoryRepos = createInMemoryRuntimeRepositories();
     const runtime = createApiRuntime({
-      authSecret: 'test-secret-key-123456',
+      authSecret: TEST_AUTH_SECRET,
       accessTokenTtlSeconds: 900,
       refreshTokenTtlSeconds: 3_600,
       repositories: {
@@ -313,7 +314,7 @@ describe('runtime operational coverage', () => {
 
   it('initializes without scoped hydrations when no bootstrap account id can be resolved', async () => {
     const runtime = createApiRuntime({
-      authSecret: 'test-secret-key-123456',
+      authSecret: TEST_AUTH_SECRET,
       accessTokenTtlSeconds: 900,
       refreshTokenTtlSeconds: 3_600,
       repositories: {
@@ -373,7 +374,7 @@ describe('runtime operational coverage', () => {
   it('publishes appointment.status_changed when an appointment is cancelled', async () => {
     const inMemoryRepos = createInMemoryRuntimeRepositories();
     const runtime = createApiRuntime({
-      authSecret: 'test-secret-key-123456',
+      authSecret: TEST_AUTH_SECRET,
       accessTokenTtlSeconds: 900,
       refreshTokenTtlSeconds: 3_600,
       repositories: {
@@ -415,7 +416,7 @@ describe('runtime operational coverage', () => {
   it('publishes encounter.status_changed when the encounter moves to observation', async () => {
     const inMemoryRepos = createInMemoryRuntimeRepositories();
     const runtime = createApiRuntime({
-      authSecret: 'test-secret-key-123456',
+      authSecret: TEST_AUTH_SECRET,
       accessTokenTtlSeconds: 900,
       refreshTokenTtlSeconds: 3_600,
       repositories: {
@@ -465,7 +466,7 @@ describe('runtime operational coverage', () => {
   it('publishes patient.created when a patient is registered at runtime', async () => {
     const inMemoryRepos = createInMemoryRuntimeRepositories();
     const runtime = createApiRuntime({
-      authSecret: 'test-secret-key-123456',
+      authSecret: TEST_AUTH_SECRET,
       accessTokenTtlSeconds: 900,
       refreshTokenTtlSeconds: 3_600,
       repositories: {

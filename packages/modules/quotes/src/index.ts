@@ -63,13 +63,19 @@ export class QuotesService {
   public async hydrateFromDatabase(accountId: AccountId): Promise<void> {
     if (!this.#repository) return;
     const quotes = await this.#repository.findByAccountId(accountId);
+    let highestPersistedNumber = this.#numberCounter;
     for (const quote of quotes) {
       this.#quotes.set(quote.id, quote);
+      const sequence = /^QT-(\d+)$/.exec(quote.number)?.[1];
+      if (sequence) {
+        highestPersistedNumber = Math.max(highestPersistedNumber, Number(sequence));
+      }
       const items = await this.#repository.findItemsByQuoteId(quote.id);
       for (const item of items) {
         this.#items.set(item.id, item);
       }
     }
+    this.#numberCounter = highestPersistedNumber;
   }
 
   #nextNumber(): string {
@@ -133,10 +139,12 @@ export class QuotesService {
 
   async update(
     quoteId: string,
-    input: { notes?: string | null; validUntil?: string | null }
+    input: { notes?: string | null; validUntil?: string | null },
+    expectedAccountId?: AccountId
   ): Promise<QuoteSummary> {
-    const quote = this.#quotes.get(quoteId);
-    if (!quote) throw new NotFoundError('Quote not found', { quoteId });
+    const quote = expectedAccountId
+      ? this.getForAccountOrThrow(quoteId, expectedAccountId)
+      : this.getOrThrow(quoteId);
     if (quote.status !== 'draft')
       throw new ConflictError('Can only update draft quotes', { status: quote.status });
 
@@ -167,10 +175,12 @@ export class QuotesService {
       quantity?: number;
       discountAmount?: number;
       notes?: string | null;
-    }
+    },
+    expectedAccountId?: AccountId
   ): Promise<{ quote: QuoteSummary; item: QuoteItemSummary }> {
-    const quote = this.#quotes.get(quoteId);
-    if (!quote) throw new NotFoundError('Quote not found', { quoteId });
+    const quote = expectedAccountId
+      ? this.getForAccountOrThrow(quoteId, expectedAccountId)
+      : this.getOrThrow(quoteId);
     if (quote.status !== 'draft')
       throw new ConflictError('Can only add items to draft quotes', { status: quote.status });
 
@@ -209,10 +219,15 @@ export class QuotesService {
 
   async updateItem(
     itemId: string,
-    input: { quantity?: number; discountAmount?: number; notes?: string | null }
+    input: { quantity?: number; discountAmount?: number; notes?: string | null },
+    expectedAccountId?: AccountId
   ): Promise<{ quote: QuoteSummary; item: QuoteItemSummary }> {
     const item = this.#items.get(itemId);
     if (!item) throw new NotFoundError('Quote item not found', { itemId });
+
+    if (expectedAccountId && item.accountId !== expectedAccountId) {
+      throw new NotFoundError('Quote item not found', { itemId });
+    }
 
     const quote = this.#quotes.get(item.quoteId);
     if (!quote) throw new NotFoundError('Quote not found', { quoteId: item.quoteId });
@@ -244,9 +259,13 @@ export class QuotesService {
     return { quote: updatedQuote, item: finalItem };
   }
 
-  async removeItem(itemId: string): Promise<QuoteSummary> {
+  async removeItem(itemId: string, expectedAccountId?: AccountId): Promise<QuoteSummary> {
     const item = this.#items.get(itemId);
     if (!item) throw new NotFoundError('Quote item not found', { itemId });
+
+    if (expectedAccountId && item.accountId !== expectedAccountId) {
+      throw new NotFoundError('Quote item not found', { itemId });
+    }
 
     const quote = this.#quotes.get(item.quoteId);
     if (!quote) throw new NotFoundError('Quote not found', { quoteId: item.quoteId });
@@ -262,9 +281,10 @@ export class QuotesService {
     return this.#recalculate(item.quoteId);
   }
 
-  async approve(quoteId: string): Promise<QuoteSummary> {
-    const quote = this.#quotes.get(quoteId);
-    if (!quote) throw new NotFoundError('Quote not found', { quoteId });
+  async approve(quoteId: string, expectedAccountId?: AccountId): Promise<QuoteSummary> {
+    const quote = expectedAccountId
+      ? this.getForAccountOrThrow(quoteId, expectedAccountId)
+      : this.getOrThrow(quoteId);
     if (quote.status !== 'draft')
       throw new ConflictError('Can only approve draft quotes', { status: quote.status });
 
@@ -279,9 +299,10 @@ export class QuotesService {
     return updated;
   }
 
-  async reject(quoteId: string): Promise<QuoteSummary> {
-    const quote = this.#quotes.get(quoteId);
-    if (!quote) throw new NotFoundError('Quote not found', { quoteId });
+  async reject(quoteId: string, expectedAccountId?: AccountId): Promise<QuoteSummary> {
+    const quote = expectedAccountId
+      ? this.getForAccountOrThrow(quoteId, expectedAccountId)
+      : this.getOrThrow(quoteId);
     if (quote.status !== 'draft' && quote.status !== 'approved') {
       throw new ConflictError('Can only reject draft or approved quotes', { status: quote.status });
     }
@@ -297,9 +318,10 @@ export class QuotesService {
     return updated;
   }
 
-  async cancel(quoteId: string): Promise<QuoteSummary> {
-    const quote = this.#quotes.get(quoteId);
-    if (!quote) throw new NotFoundError('Quote not found', { quoteId });
+  async cancel(quoteId: string, expectedAccountId?: AccountId): Promise<QuoteSummary> {
+    const quote = expectedAccountId
+      ? this.getForAccountOrThrow(quoteId, expectedAccountId)
+      : this.getOrThrow(quoteId);
     if (quote.convertedToSaleId) throw new ConflictError('Cannot cancel a converted quote');
 
     const updated: QuoteSummary = { ...quote, status: 'cancelled', updatedAt: nowIso() };
@@ -313,9 +335,14 @@ export class QuotesService {
     return updated;
   }
 
-  async convertToSale(quoteId: string, counterSaleId: string): Promise<QuoteSummary> {
-    const quote = this.#quotes.get(quoteId);
-    if (!quote) throw new NotFoundError('Quote not found', { quoteId });
+  async convertToSale(
+    quoteId: string,
+    counterSaleId: string,
+    expectedAccountId?: AccountId
+  ): Promise<QuoteSummary> {
+    const quote = expectedAccountId
+      ? this.getForAccountOrThrow(quoteId, expectedAccountId)
+      : this.getOrThrow(quoteId);
     if (quote.status !== 'approved') {
       throw new ConflictError('Can only convert approved quotes', { status: quote.status });
     }
@@ -459,9 +486,24 @@ export class QuotesService {
     return quote;
   }
 
-  getItems(quoteId: string): QuoteItemSummary[] {
+  getForAccountOrThrow(id: string, expectedAccountId: AccountId): QuoteSummary {
+    const quote = this.getOrThrow(id);
+    if (quote.accountId !== expectedAccountId) {
+      throw new NotFoundError('Quote not found', { id });
+    }
+    return quote;
+  }
+
+  getItems(quoteId: string, expectedAccountId?: AccountId): QuoteItemSummary[] {
+    if (expectedAccountId) {
+      this.getForAccountOrThrow(quoteId, expectedAccountId);
+    }
     return Array.from(this.#items.values())
-      .filter((i) => i.quoteId === quoteId)
+      .filter(
+        (item) =>
+          item.quoteId === quoteId &&
+          (!expectedAccountId || item.accountId === expectedAccountId)
+      )
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }
 

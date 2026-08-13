@@ -6,7 +6,7 @@ import {
   trace as otelTrace
 } from '@opentelemetry/api';
 import { getPool } from '@cvg-his-v2/shared-database';
-import { withTenantQuery } from '@cvg-his-v2/tenant-context';
+import { requireAccountId, withTenantQuery } from '@cvg-his-v2/tenant-context';
 import type { CorrelationId, ModuleName } from '@cvg-his-v2/shared-types';
 import { nowIso } from '@cvg-his-v2/shared-utils';
 import type { OutboxEvent, OutboxRepository } from './outbox.interface.js';
@@ -140,12 +140,14 @@ async function withEventSpan<T>(event: OutboxEvent, fn: () => Promise<T>): Promi
 
 export class DatabaseOutboxRepository implements OutboxRepository {
   async create(event: OutboxEvent): Promise<void> {
+    const accountId = requireAccountId();
     return withTenantQuery(getPool(), async (client) => {
       await client.query(
-        `INSERT INTO outbox_events (id, correlation_id, module_name, event_type, payload, status, attempts, max_attempts, scheduled_at, processed_at, error, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+        `INSERT INTO outbox_events (id, account_id, correlation_id, module_name, event_type, payload, status, attempts, max_attempts, scheduled_at, processed_at, error, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
         [
           event.id,
+          accountId,
           event.correlationId,
           event.moduleName,
           event.eventType,

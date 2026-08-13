@@ -78,7 +78,7 @@ test('handleLaboratoryIntegrationRoutes imports equipment result and exposes rep
     origin: 'reception',
     reason: 'Lab bridge'
   });
-  const order = laboratory.createOrder({
+  const order = await laboratory.createOrder({
     encounterId: encounter.id,
     patientId: encounter.patientId,
     examType: 'HEM',

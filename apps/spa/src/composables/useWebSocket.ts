@@ -1,4 +1,5 @@
 import { ref, onUnmounted, readonly } from 'vue';
+import type { Ref } from 'vue';
 
 export interface WebSocketMessage<T = unknown> {
   type: string;
@@ -26,11 +27,11 @@ export interface UseWebSocketOptions {
 
 export interface UseWebSocketReturn {
   /** Whether the WebSocket is currently connected */
-  isConnected: Readonly<Readonly<import('vue').Ref<boolean>>>;
+  isConnected: Readonly<Ref<boolean>>;
   /** Number of reconnection attempts */
-  reconnectAttempts: Readonly<import('vue').Ref<number>>;
+  reconnectAttempts: Readonly<Ref<number>>;
   /** Last error if any */
-  lastError: Readonly<import('vue').Ref<string | null>>;
+  lastError: Readonly<Ref<string | null>>;
   /** Manually send a message */
   send: (data: unknown) => void;
   /** Disconnect and stop reconnecting */

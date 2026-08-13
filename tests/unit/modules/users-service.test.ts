@@ -44,6 +44,16 @@ class InMemoryUsersRepository implements UsersRepository {
     );
   }
 
+  async findByLogin(accountSlug: string, username: string): Promise<any | null> {
+    return (
+      Array.from(this.#users.values()).find(
+        (user) =>
+          user.accountSlug === accountSlug &&
+          String(user.email).split('@')[0]?.toLowerCase() === username.toLowerCase()
+      ) ?? null
+    );
+  }
+
   async findAll(): Promise<readonly any[]> {
     return Array.from(this.#users.values());
   }
@@ -59,6 +69,7 @@ class InMemoryUsersRepository implements UsersRepository {
 }
 
 describe('UsersService coverage guard', () => {
+  const accountId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' as AccountId;
   let service: UsersService;
 
   beforeEach(() => {
@@ -67,6 +78,7 @@ describe('UsersService coverage guard', () => {
 
   it('creates users with modern password hashing and rejects duplicate usernames', async () => {
     const created = await service.create({
+      accountId,
       username: 'quality_user',
       email: 'quality@cvg.local',
       password: 'StrongPass123!',
@@ -80,6 +92,7 @@ describe('UsersService coverage guard', () => {
 
     await expect(
       service.create({
+        accountId,
         username: 'quality_user',
         email: 'duplicated@cvg.local',
         password: 'AnotherStrongPass123!'
@@ -118,7 +131,9 @@ describe('UsersService coverage guard', () => {
 
     expect(hydrated.findByUsername('admin')?.email).toBe('admin@cvg-his.local');
     expect(hydrated.findByUsername('hydrated')?.displayName).toBe('Hydrated User');
-    expect(await hydrated.verifyPassword(hydrated.findByUsername('hydrated')!, 'HydratedPass123!')).toBe(true);
+    expect(
+      await hydrated.verifyPassword(hydrated.findByUsername('hydrated')!, 'HydratedPass123!')
+    ).toBe(true);
   });
 
   it('updates users through repository persistence and keeps runtime lookups coherent', async () => {
@@ -126,6 +141,7 @@ describe('UsersService coverage guard', () => {
     const repositoryBacked = new UsersService({ repository }, []);
 
     const created = await repositoryBacked.create({
+      accountId,
       username: 'repo_user',
       email: 'repo@cvg.local',
       password: 'RepoPass123!'

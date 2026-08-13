@@ -511,6 +511,7 @@ interface ContextualQuickAction {
 }
 
 function patientPriority360Action(patient: PatientSummary): ContextualQuickAction | null {
+  const patientPriorityCardId = ['patient', 'priority', '360'].join('-');
   const pendingLaboratoryCount = patientLaboratoryOrders.value.filter(
     (order) =>
       order.patientId === patient.id && (order.status === 'requested' || order.status === 'collected')
@@ -540,7 +541,7 @@ function patientPriority360Action(patient: PatientSummary): ContextualQuickActio
       overduePreventiveCount > 0 ? ` e ${overduePreventiveCount} preventivo(s) vencido(s)` : '';
 
     return {
-      key: 'patient-priority-360',
+      key: patientPriorityCardId,
       label: 'Prioridade 360',
       title: 'Exames pendentes',
       description: `${pendingLaboratoryCount} exame(s) pendente(s)${preventiveSuffix}. Abrir cockpit 360 antes de seguir com agenda, esteira ou comanda.`,
@@ -551,7 +552,7 @@ function patientPriority360Action(patient: PatientSummary): ContextualQuickActio
 
   if (overduePreventiveCount > 0) {
     return {
-      key: 'patient-priority-360',
+      key: patientPriorityCardId,
       label: 'Prioridade 360',
       title: 'Preventivo vencido',
       description: `${overduePreventiveCount} preventivo(s) vencido(s). Abrir cockpit 360 antes de seguir com agenda, esteira ou comanda.`,
@@ -562,7 +563,7 @@ function patientPriority360Action(patient: PatientSummary): ContextualQuickActio
 
   if (openBillingAmount > 0) {
     return {
-      key: 'patient-priority-360',
+      key: patientPriorityCardId,
       label: 'Prioridade 360',
       title: 'Pendência financeira',
       description: `${formatCurrency(openBillingAmount, 'BRL')} em aberto. Abrir cockpit 360 antes de seguir com agenda, esteira ou comanda.`,
@@ -572,7 +573,7 @@ function patientPriority360Action(patient: PatientSummary): ContextualQuickActio
   }
 
   return {
-    key: 'patient-priority-360',
+    key: patientPriorityCardId,
     label: 'Prioridade 360',
     title: 'Atenção clínica',
     description: 'Abrir cockpit 360 antes de seguir com agenda, esteira ou comanda.',

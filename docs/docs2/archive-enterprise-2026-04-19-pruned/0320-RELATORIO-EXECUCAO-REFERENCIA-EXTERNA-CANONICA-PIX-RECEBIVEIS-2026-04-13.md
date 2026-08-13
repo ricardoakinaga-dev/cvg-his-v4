@@ -110,7 +110,7 @@ Mudancas:
 
 ## Observacao operacional
 
-`DATABASE_URL=postgres://postgres:postgres@localhost:5433/cvg_his_v2_test node infra/scripts/prepare-test-db.mjs` falhou neste workspace com erro preexistente de enum duplicado (`appointment_status`) no bootstrap local do zero. Ainda assim, o contrato oficial de migrations executado pela suite `deploy-migrations-contract` aplicou `0015` com sucesso e validou o trilho canonico de deploy.
+`DATABASE_URL="<test-database-url>" node infra/scripts/prepare-test-db.mjs` falhou neste workspace com erro preexistente de enum duplicado (`appointment_status`) no bootstrap local do zero. Ainda assim, o contrato oficial de migrations executado pela suite `deploy-migrations-contract` aplicou `0015` com sucesso e validou o trilho canonico de deploy.
 
 ## Riscos remanescentes
 

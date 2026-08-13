@@ -1,7 +1,9 @@
 # 430 - Fonte de Verdade Documental
 
 **Status:** vivo
-**Data de validacao:** 2026-03-31
+**Data de validacao:** 2026-08-11
+
+O estado executável atual e os scores reproduzidos localmente estão registrados em [2026-08-11-relatorio-auditoria-p1.md](2026-08-11-relatorio-auditoria-p1.md). Os relatórios de release com scores 96/97 permanecem como histórico de seus ciclos.
 
 ## Objetivo
 
@@ -30,6 +32,7 @@ Se um documento nao ajuda diretamente a construir, validar, operar ou publicar o
 ### Qualidade
 
 - `460-qualidade-testes-e-gates.md`
+- `2026-08-11-relatorio-auditoria-p1.md`
 
 ### Banco, migrations e deploy
 

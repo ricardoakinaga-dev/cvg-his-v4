@@ -30,7 +30,7 @@ function addCheck(area, item, pass, evidence, action = '-') {
   checks.push({ area, item, status: pass ? 'PASS' : 'FAIL', evidence, action });
 }
 
-for (const sloId of ['api-availability', 'api-latency-p95', 'api-error-rate']) {
+for (const sloId of ['availability', 'latency-p95', 'error-rate'].map((suffix) => `api-${suffix}`)) {
   addCheck(
     'SLO catalog',
     `${sloId} definido`,

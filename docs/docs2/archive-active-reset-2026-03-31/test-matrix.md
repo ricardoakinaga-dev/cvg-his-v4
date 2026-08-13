@@ -69,7 +69,7 @@ O projeto possui dois niveis de validacao executavel e um gate explicito de rele
 - **Alternativa**: Para usar uma instancia PostgreSQL existente sem preparar via Docker, defina:
   - `SKIP_DB_SETUP=true` - pula a preparacao automatica do banco
   - `DATABASE_URL` - URL completa para o banco existente com schema ja aplicado
-  - Exemplo: `SKIP_DB_SETUP=true DATABASE_URL=postgres://user:pass@host:5432/cvg_his_test pnpm test:db`
+  - Exemplo: `SKIP_DB_SETUP=true DATABASE_URL="<test-database-url>" pnpm test:db`
 
 **Dependencias minimas de staging:**
 

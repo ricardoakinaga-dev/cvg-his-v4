@@ -5624,6 +5624,30 @@ paths:
               schema:
                 $ref: '#/components/schemas/InpatientListResponse'
 
+  /inpatient/admit:
+    post:
+      operationId: admitInpatientStay
+      summary: Admit an encounter to inpatient care
+      description: Creates a tenant-scoped inpatient stay linked to an existing encounter and patient.
+      tags: [Inpatient]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInpatientAdmissionRequest'
+      responses:
+        '201':
+          description: Inpatient stay admitted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InpatientStay'
+        '400':
+          description: Invalid admission payload
+        '404':
+          description: Encounter not found for current account
+
   /inpatient/handover-preview:
     get:
       operationId: getInpatientHandoverPreview
@@ -12694,6 +12718,32 @@ components:
       type: object
       required: [sectorId, bedId]
       properties:
+        sectorId:
+          type: string
+          format: uuid
+        bedId:
+          type: string
+          format: uuid
+
+    CreateInpatientAdmissionRequest:
+      type: object
+      required: [encounterId, patientId, unit, ward, bed]
+      properties:
+        encounterId:
+          type: string
+          format: uuid
+        patientId:
+          type: string
+          format: uuid
+        unit:
+          type: string
+          minLength: 1
+        ward:
+          type: string
+          minLength: 1
+        bed:
+          type: string
+          minLength: 1
         sectorId:
           type: string
           format: uuid

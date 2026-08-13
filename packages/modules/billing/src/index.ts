@@ -74,14 +74,19 @@ export class BillingService {
   }
 
   public async findByEncounter(
-    encounterId: EncounterId
+    encounterId: EncounterId,
+    expectedAccountId?: AccountId
   ): Promise<BillingRecordSummary | null> {
     const existingId = this.#recordByEncounterId.get(encounterId);
     if (existingId) {
-      return this.getOrThrow(existingId);
+      const existing = this.getOrThrow(existingId);
+      return expectedAccountId && existing.accountId !== expectedAccountId ? null : existing;
     }
 
     const encounter = this.#encounters.getOrThrow(encounterId);
+    if (expectedAccountId && encounter.accountId !== expectedAccountId) {
+      return null;
+    }
 
     if (this.#repository) {
       const record = await this.#repository.findRecordByEncounter(encounter.accountId, encounterId);
@@ -97,13 +102,19 @@ export class BillingService {
     return null;
   }
 
-  public async ensureRecord(encounterId: EncounterId): Promise<BillingRecordSummary> {
-    const existing = await this.findByEncounter(encounterId);
+  public async ensureRecord(
+    encounterId: EncounterId,
+    expectedAccountId?: AccountId
+  ): Promise<BillingRecordSummary> {
+    const existing = await this.findByEncounter(encounterId, expectedAccountId);
     if (existing) {
       return existing;
     }
 
     const encounter = this.#encounters.getOrThrow(encounterId);
+    if (expectedAccountId && encounter.accountId !== expectedAccountId) {
+      throw new NotFoundError('Encounter not found', { encounterId });
+    }
     const now = nowIso();
     const record: BillingRecordSummary = {
       id: createCorrelationId('bill') as BillingRecordId,
@@ -132,56 +143,64 @@ export class BillingService {
   }
 
   public list(filters?: string | BillingRecordFilters): readonly BillingRecordSummary[] {
-    const normalized =
-      typeof filters === 'string' ? { encounterId: filters } : filters ?? {};
+    const normalized = typeof filters === 'string' ? { encounterId: filters } : (filters ?? {});
     return Array.from(this.#records.values())
-      .filter((record) =>
-        normalized.accountId ? record.accountId === normalized.accountId : true
-      )
+      .filter((record) => (normalized.accountId ? record.accountId === normalized.accountId : true))
       .filter((record) =>
         normalized.encounterId ? record.encounterId === normalized.encounterId : true
       )
-      .filter((record) =>
-        normalized.patientId ? record.patientId === normalized.patientId : true
-      )
-      .filter((record) =>
-        normalized.ownerId ? record.ownerId === normalized.ownerId : true
-      );
+      .filter((record) => (normalized.patientId ? record.patientId === normalized.patientId : true))
+      .filter((record) => (normalized.ownerId ? record.ownerId === normalized.ownerId : true));
   }
 
-  public async getByEncounterOrThrow(encounterId: EncounterId): Promise<BillingRecordSummary> {
-    const record = await this.findByEncounter(encounterId);
+  public async getByEncounterOrThrow(
+    encounterId: EncounterId,
+    expectedAccountId?: AccountId
+  ): Promise<BillingRecordSummary> {
+    const record = await this.findByEncounter(encounterId, expectedAccountId);
     if (!record) {
       throw new NotFoundError('Billing record not found', { encounterId });
     }
     return record;
   }
 
-  public getOrThrow(recordId: BillingRecordId): BillingRecordSummary {
+  public getOrThrow(
+    recordId: BillingRecordId,
+    expectedAccountId?: AccountId
+  ): BillingRecordSummary {
     const record = this.#records.get(recordId);
     if (!record) {
       throw new ConflictError('Billing record not found', { recordId });
+    }
+    if (expectedAccountId && record.accountId !== expectedAccountId) {
+      throw new NotFoundError('Billing record not found', { recordId });
     }
     return record;
   }
 
   public async createEstimate(
-    payload: CreateBillingEstimateRequest
+    payload: CreateBillingEstimateRequest,
+    expectedAccountId?: AccountId
   ): Promise<BillingRecordSummary> {
     const encounterId = requireNonEmptyString(payload.encounterId, 'encounterId') as EncounterId;
-    await this.ensureRecord(encounterId);
-    return this.updateStatus(encounterId, {
-      status: 'estimated',
-      administrativeNotes: payload.administrativeNotes
-    });
+    await this.ensureRecord(encounterId, expectedAccountId);
+    return this.updateStatus(
+      encounterId,
+      {
+        status: 'estimated',
+        administrativeNotes: payload.administrativeNotes
+      },
+      expectedAccountId
+    );
   }
 
   public async addItem(
     actorUserId: UserId,
-    payload: CreateBillingItemRequest
+    payload: CreateBillingItemRequest,
+    expectedAccountId?: AccountId
   ): Promise<BillingItemSummary> {
     const encounterId = requireNonEmptyString(payload.encounterId, 'encounterId') as EncounterId;
-    const record = await this.ensureRecord(encounterId);
+    const record = await this.ensureRecord(encounterId, expectedAccountId);
     if (record.status === 'settled') {
       throw new ConflictError('Settled billing records cannot receive new items', {
         encounterId
@@ -231,8 +250,11 @@ export class BillingService {
     return item;
   }
 
-  public async listItems(encounterId: EncounterId): Promise<readonly BillingItemSummary[]> {
-    const record = await this.findByEncounter(encounterId);
+  public async listItems(
+    encounterId: EncounterId,
+    expectedAccountId?: AccountId
+  ): Promise<readonly BillingItemSummary[]> {
+    const record = await this.findByEncounter(encounterId, expectedAccountId);
     if (!record) return [];
 
     if (this.#repository) {
@@ -253,9 +275,10 @@ export class BillingService {
 
   public async updateStatus(
     encounterId: EncounterId,
-    payload: UpdateBillingStatusRequest
+    payload: UpdateBillingStatusRequest,
+    expectedAccountId?: AccountId
   ): Promise<BillingRecordSummary> {
-    const record = await this.findByEncounter(encounterId);
+    const record = await this.findByEncounter(encounterId, expectedAccountId);
     if (!record) {
       throw new NotFoundError('Billing record not found', { encounterId });
     }

@@ -170,6 +170,46 @@ test('handleInpatientRoutes generates handover preview with latest progress and 
   assert.equal(payload.items[0]?.requiresAttention, true);
 });
 
+test('handleInpatientRoutes admits an encounter with persistence and audit semantics', async () => {
+  const inpatient = createInpatientService();
+  const sourceStay = inpatient.list()[0]!;
+  const response = new MockResponse();
+  const onAdmitted = test.mock.fn();
+
+  const handled = await handleInpatientRoutes(
+    '/inpatient/admit',
+    new MockRequest({
+      method: 'POST',
+      url: '/inpatient/admit',
+      body: {
+        encounterId: sourceStay.encounterId,
+        patientId: sourceStay.patientId,
+        unit: 'Hospital CVG',
+        ward: 'Ala E2E',
+        bed: 'Leito E2E'
+      }
+    }) as never,
+    response as never,
+    'corr-inpatient-admit',
+    {
+      inpatient,
+      sectorBedService: {} as never,
+      audit: { write: () => {} } as never,
+      requirePrincipal: () => createPrincipal(),
+      onAdmitted
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 201);
+  const stay = response.bodyJson<{ id: string; encounterId: string; status: string }>();
+  assert.equal(stay.encounterId, sourceStay.encounterId);
+  assert.equal(stay.status, 'admitted');
+  assert.equal(onAdmitted.mock.callCount(), 1);
+  assert.equal(onAdmitted.mock.calls[0]?.arguments[0].stay.id, stay.id);
+  assert.equal(onAdmitted.mock.calls[0]?.arguments[0].principal.user.id, 'user-1');
+});
+
 test('handleInpatientRoutes appends inpatient progress to clinical record timeline', async () => {
   const response = new MockResponse();
   const inpatient = createInpatientService();

@@ -2,7 +2,7 @@
 # Starts PostgreSQL + Redis + API, then Playwright runs the SPA dev server.
 #
 # Usage:
-#   docker compose -f docker-compose.e2e.yml up -d
+#   E2E_DATABASE_URL=<restricted-test-database-url> docker compose -f docker-compose.e2e.yml up -d
 #   pnpm test:e2e:spa
 #   docker compose -f docker-compose.e2e.yml down -v
 
@@ -38,7 +38,7 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile
     environment:
-      DATABASE_URL: postgres://postgres:postgres@postgres-e2e:5432/cvg_his_e2e
+      DATABASE_URL: ${E2E_DATABASE_URL:?E2E_DATABASE_URL must be set}
       REDIS_URL: redis://redis-e2e:6379
       AUTH_SECRET: e2e-test-secret-key-do-not-use-in-production-12345678
       AUTH_ACCESS_TOKEN_TTL_SECONDS: '900'

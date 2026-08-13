@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import type { AuditService } from '@cvg-his-v2/module-audit';
+import type { MedicalRecordsService } from '@cvg-his-v2/module-medical-records';
 import type {
   CreatePrescriptionRequest,
   UpdatePrescriptionRequest,
@@ -8,6 +9,7 @@ import type {
 } from '@cvg-his-v2/module-prescriptions';
 import { PrescriptionsService } from '@cvg-his-v2/module-prescriptions';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
+import { NotFoundError } from '@cvg-his-v2/shared-errors';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 
 import { appendAudit } from '../helpers/audit-helper.js';
@@ -15,6 +17,7 @@ import { readJsonBody } from '../helpers/common.js';
 
 export interface PrescriptionRoutesHandlers {
   prescriptions: PrescriptionsService;
+  medicalRecords?: MedicalRecordsService;
   audit: AuditService;
   requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
 }
@@ -38,14 +41,18 @@ export async function handlePrescriptionRoutes(
     return false;
   }
 
-  const { prescriptions, audit, requirePrincipal } = handlers;
+  const { prescriptions, medicalRecords, audit, requirePrincipal } = handlers;
 
   const documentMatch = pathname.match(/^\/prescriptions\/([^/]+)\/document$/);
   if (documentMatch && request.method === 'POST') {
     const principal = requirePrincipal(request, 'prescriptions.read');
     const prescriptionId = requireNonEmptyString(documentMatch[1], 'prescriptionId');
     const payload = await readJsonBody(request);
-    const document = prescriptions.renderDocument(prescriptionId as never, payload as never);
+    const document = prescriptions.renderDocument(
+      prescriptionId as never,
+      payload as never,
+      principal.user.accountId as never
+    );
 
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -71,9 +78,12 @@ export async function handlePrescriptionRoutes(
 
     let items;
     if (encounterId) {
-      items = prescriptions.listByEncounter(encounterId as never);
+      items = prescriptions.listByEncounter(
+        encounterId as never,
+        principal.user.accountId as never
+      );
     } else if (patientId) {
-      items = prescriptions.listByPatient(patientId as never);
+      items = prescriptions.listByPatient(patientId as never, principal.user.accountId as never);
     } else {
       items = prescriptions.listByAccount(principal.user.accountId as never);
     }
@@ -97,6 +107,17 @@ export async function handlePrescriptionRoutes(
   if (pathname === '/prescriptions' && request.method === 'POST') {
     const principal = requirePrincipal(request, 'prescriptions.write');
     const payload = (await readJsonBody(request)) as CreatePrescriptionRequest;
+    if (medicalRecords) {
+      const record = await medicalRecords.getRecordOrThrowAsync(
+        payload.medicalRecordId as never,
+        principal.user.accountId as never
+      );
+      if (record.encounterId !== payload.encounterId || record.patientId !== payload.patientId) {
+        throw new NotFoundError('Medical record not found', {
+          medicalRecordId: payload.medicalRecordId
+        });
+      }
+    }
     const rx = prescriptions.create(principal.user.accountId, principal.user.id, payload);
     await prescriptions.waitForPersistence();
 
@@ -122,7 +143,10 @@ export async function handlePrescriptionRoutes(
     // GET /prescriptions/:id
     if (request.method === 'GET') {
       const principal = requirePrincipal(request, 'prescriptions.read');
-      const rx = prescriptions.getById(prescriptionId as never);
+      const rx = prescriptions.getById(
+        prescriptionId as never,
+        principal.user.accountId as never
+      );
 
       appendAudit(audit, {
         actorId: principal.user.id,
@@ -143,7 +167,12 @@ export async function handlePrescriptionRoutes(
     if (request.method === 'PATCH') {
       const principal = requirePrincipal(request, 'prescriptions.write');
       const payload = (await readJsonBody(request)) as UpdatePrescriptionRequest;
-      const rx = prescriptions.update(prescriptionId as never, principal.user.id, payload);
+      const rx = prescriptions.update(
+        prescriptionId as never,
+        principal.user.id,
+        payload,
+        principal.user.accountId as never
+      );
       await prescriptions.waitForPersistence();
 
       appendAudit(audit, {
@@ -165,7 +194,12 @@ export async function handlePrescriptionRoutes(
     if (request.method === 'DELETE') {
       const principal = requirePrincipal(request, 'prescriptions.write');
       const payload = (await readJsonBody(request)) as ArchivePrescriptionRequest;
-      const rx = prescriptions.archive(prescriptionId as never, principal.user.id, payload);
+      const rx = prescriptions.archive(
+        prescriptionId as never,
+        principal.user.id,
+        payload,
+        principal.user.accountId as never
+      );
       await prescriptions.waitForPersistence();
 
       appendAudit(audit, {

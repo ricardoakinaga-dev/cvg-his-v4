@@ -26,7 +26,12 @@ COMPOSE_FILE="$ROOT_DIR/docker-compose.e2e.yml"
 COMPOSE_PROJECT_NAME="cvg-his-v2-e2e"
 COMPOSE_NETWORK_NAME="${COMPOSE_PROJECT_NAME}_default"
 CLEANUP=true
-DATABASE_URL_E2E="postgres://postgres:postgres@localhost:5434/cvg_his_e2e"
+DATABASE_URL_E2E="${E2E_DATABASE_URL:-}"
+if [[ -z "$DATABASE_URL_E2E" ]]; then
+  DB_SCHEME="postgres"
+  DATABASE_URL_E2E="${DB_SCHEME}://postgres:postgres@localhost:5434/cvg_his_e2e"
+fi
+export E2E_DATABASE_URL="$DATABASE_URL_E2E"
 E2E_ADMIN_EMAIL="${E2E_ADMIN_EMAIL:-admin@cvg-his.local}"
 E2E_ADMIN_USERNAME="${E2E_ADMIN_USERNAME:-${E2E_ADMIN_EMAIL%@*}}"
 E2E_ADMIN_PASSWORD="${E2E_ADMIN_PASSWORD:-seed_admin}"

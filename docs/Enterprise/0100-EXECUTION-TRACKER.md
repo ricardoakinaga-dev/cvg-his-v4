@@ -56,7 +56,7 @@ Ele nao substitui mais sozinho a linha mestra documental; hoje deve ser lido em 
 | VETUS-COM-004 | `packages/db/migrations/0021_commercial_loyalty_price_pdv.sql` | ✅ PASS em banco de teste |
 | Gate SPA | `pnpm --filter @cvg-his-v2/spa run typecheck` | ✅ PASS |
 | Gate DB | `pnpm --filter @cvg-his/db run build` e `pnpm --filter @cvg-his/db run test` | ✅ PASS |
-| Migration test DB | `DATABASE_URL=postgres://postgres:postgres@localhost:5433/cvg_his_v2_test pnpm --filter @cvg-his/db run db:migrate` | ✅ PASS |
+| Migration test DB | `DATABASE_URL="<test-database-url>" pnpm --filter @cvg-his/db run db:migrate` | ✅ PASS |
 | Gate transversal | `pnpm typecheck` | ✅ PASS |
 | Gate transversal | `pnpm test` | ✅ PASS |
 | Contrato API | `pnpm validate:openapi` | ✅ PASS (`175 paths`, `33 tags`, `178 schemas`) |

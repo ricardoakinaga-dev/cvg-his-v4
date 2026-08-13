@@ -112,13 +112,53 @@ export class MedicalRecordsService {
     this.#pendingPersist = pending;
   }
 
-  public ensureRecord(encounterId: EncounterId): MedicalRecordSummary {
+  #assertAccount(
+    actualAccountId: AccountId,
+    expectedAccountId: AccountId | undefined,
+    entityType: 'medical record' | 'clinical entry',
+    entityId: string
+  ): void {
+    if (expectedAccountId && actualAccountId !== expectedAccountId) {
+      throw new NotFoundError(`${entityType === 'medical record' ? 'Medical record' : 'Clinical entry'} not found`, {
+        [`${entityType === 'medical record' ? 'record' : 'entry'}Id`]: entityId
+      });
+    }
+  }
+
+  #findCachedEntry(entryId: ClinicalEntryId): ClinicalEntrySummary | undefined {
+    for (const entries of this.#entries.values()) {
+      const entry = entries.find((item) => item.id === entryId);
+      if (entry) {
+        return entry;
+      }
+    }
+    return undefined;
+  }
+
+  async #getEntryForAccountOrThrowAsync(
+    entryId: ClinicalEntryId,
+    expectedAccountId: AccountId
+  ): Promise<ClinicalEntrySummary> {
+    const cached = this.#findCachedEntry(entryId);
+    const entry = cached ?? (await this.#clinicalEntryRepository?.findById(entryId));
+    if (!entry) {
+      throw new NotFoundError('Clinical entry not found', { entryId });
+    }
+    this.#assertAccount(entry.accountId, expectedAccountId, 'clinical entry', entryId);
+    return entry;
+  }
+
+  public ensureRecord(
+    encounterId: EncounterId,
+    expectedAccountId?: AccountId
+  ): MedicalRecordSummary {
     const existingId = this.#recordByEncounterId.get(encounterId);
     if (existingId) {
-      return this.getRecordOrThrow(existingId);
+      return this.getRecordOrThrow(existingId, expectedAccountId);
     }
 
     const encounter = this.#encounters.getOrThrow(encounterId);
+    this.#assertAccount(encounter.accountId, expectedAccountId, 'medical record', encounterId);
     this.#patients.getOrThrow(encounter.patientId);
     const now = nowIso();
     const record: MedicalRecordSummary = {
@@ -203,43 +243,60 @@ export class MedicalRecordsService {
     return record;
   }
 
-  public getRecordByEncounterOrThrow(encounterId: EncounterId): MedicalRecordSummary {
-    return this.ensureRecord(encounterId);
+  public getRecordByEncounterOrThrow(
+    encounterId: EncounterId,
+    expectedAccountId?: AccountId
+  ): MedicalRecordSummary {
+    return this.ensureRecord(encounterId, expectedAccountId);
   }
 
   public async getRecordByEncounterOrThrowAsync(
-    encounterId: EncounterId
+    encounterId: EncounterId,
+    expectedAccountId?: AccountId
   ): Promise<MedicalRecordSummary> {
     const loaded = await this.#loadRecordByEncounterId(encounterId);
     if (loaded) {
+      this.#assertAccount(loaded.accountId, expectedAccountId, 'medical record', loaded.id);
       return loaded;
     }
 
-    return this.ensureRecord(encounterId);
+    return this.ensureRecord(encounterId, expectedAccountId);
   }
 
-  public getRecordOrThrow(recordId: MedicalRecordId): MedicalRecordSummary {
+  public getRecordOrThrow(
+    recordId: MedicalRecordId,
+    expectedAccountId?: AccountId
+  ): MedicalRecordSummary {
     const record = this.#records.get(recordId);
     if (!record) {
       throw new NotFoundError('Medical record not found', { recordId });
     }
 
+    this.#assertAccount(record.accountId, expectedAccountId, 'medical record', recordId);
     return record;
   }
 
-  public async getRecordOrThrowAsync(recordId: MedicalRecordId): Promise<MedicalRecordSummary> {
+  public async getRecordOrThrowAsync(
+    recordId: MedicalRecordId,
+    expectedAccountId?: AccountId
+  ): Promise<MedicalRecordSummary> {
     const loaded = await this.#loadRecordById(recordId);
     if (!loaded) {
       throw new NotFoundError('Medical record not found', { recordId });
     }
 
+    this.#assertAccount(loaded.accountId, expectedAccountId, 'medical record', recordId);
     return loaded;
   }
 
-  public addEntry(actorUserId: UserId, payload: CreateClinicalEntryRequest): ClinicalEntrySummary {
+  public addEntry(
+    actorUserId: UserId,
+    payload: CreateClinicalEntryRequest,
+    expectedAccountId?: AccountId
+  ): ClinicalEntrySummary {
     const encounterId = requireNonEmptyString(payload.encounterId, 'encounterId') as EncounterId;
     const patientId = requireNonEmptyString(payload.patientId, 'patientId') as PatientId;
-    const record = this.ensureRecord(encounterId);
+    const record = this.ensureRecord(encounterId, expectedAccountId);
     const encounter = this.#encounters.getOrThrow(encounterId);
     if (encounter.patientId !== patientId) {
       throw new NotFoundError('Encounter does not match patient', {
@@ -301,7 +358,8 @@ export class MedicalRecordsService {
   public updateEntry(
     actorUserId: UserId,
     entryId: ClinicalEntryId,
-    payload: UpdateClinicalEntryRequest
+    payload: UpdateClinicalEntryRequest,
+    expectedAccountId?: AccountId
   ): ClinicalEntrySummary {
     let foundRecordId: MedicalRecordId | undefined;
     let foundEntry: ClinicalEntrySummary | undefined;
@@ -320,6 +378,8 @@ export class MedicalRecordsService {
     if (!foundEntry || !foundRecordId) {
       throw new NotFoundError('Clinical entry not found', { entryId });
     }
+
+    this.#assertAccount(foundEntry.accountId, expectedAccountId, 'clinical entry', entryId);
 
     if (foundEntry.deletedAt) {
       throw new ValidationError('Archived clinical entry cannot be updated', { entryId });
@@ -410,7 +470,8 @@ export class MedicalRecordsService {
   public archiveEntry(
     actorUserId: UserId,
     entryId: ClinicalEntryId,
-    payload: ArchiveClinicalEntryRequest
+    payload: ArchiveClinicalEntryRequest,
+    expectedAccountId?: AccountId
   ): ClinicalEntrySummary {
     let foundRecordId: MedicalRecordId | undefined;
     let foundEntry: ClinicalEntrySummary | undefined;
@@ -429,6 +490,8 @@ export class MedicalRecordsService {
     if (!foundEntry || !foundRecordId) {
       throw new NotFoundError('Clinical entry not found', { entryId });
     }
+
+    this.#assertAccount(foundEntry.accountId, expectedAccountId, 'clinical entry', entryId);
 
     if (foundEntry.deletedAt) {
       throw new ValidationError('Clinical entry already archived', { entryId });
@@ -514,7 +577,17 @@ export class MedicalRecordsService {
     return archivedEntry;
   }
 
-  public getEntryRevisions(entryId: ClinicalEntryId): readonly EntryRevisionSummary[] {
+  public getEntryRevisions(
+    entryId: ClinicalEntryId,
+    expectedAccountId?: AccountId
+  ): readonly EntryRevisionSummary[] {
+    if (expectedAccountId) {
+      const entry = this.#findCachedEntry(entryId);
+      if (!entry) {
+        throw new NotFoundError('Clinical entry not found', { entryId });
+      }
+      this.#assertAccount(entry.accountId, expectedAccountId, 'clinical entry', entryId);
+    }
     if (this.#entryRevisionRepository) {
       // Note: async repo reads not called here for sync compat
     }
@@ -522,24 +595,29 @@ export class MedicalRecordsService {
   }
 
   public async getEntryRevisionsAsync(
-    entryId: ClinicalEntryId
+    entryId: ClinicalEntryId,
+    expectedAccountId?: AccountId
   ): Promise<readonly EntryRevisionSummary[]> {
+    if (expectedAccountId) {
+      await this.#getEntryForAccountOrThrowAsync(entryId, expectedAccountId);
+    }
     if (this.#entryRevisionRepository) {
       const revisions = await this.#entryRevisionRepository.findByEntryId(entryId);
       this.#revisions.set(entryId, [...revisions]);
       return revisions;
     }
 
-    return this.getEntryRevisions(entryId);
+    return this.getEntryRevisions(entryId, expectedAccountId);
   }
 
   public listEntriesByEncounter(
     encounterId: EncounterId,
     options?: {
       readonly includeArchived?: boolean;
-    }
+    },
+    expectedAccountId?: AccountId
   ): readonly ClinicalEntrySummary[] {
-    const record = this.ensureRecord(encounterId);
+    const record = this.ensureRecord(encounterId, expectedAccountId);
     const entries = [...(this.#entries.get(record.id) ?? [])];
     if (options?.includeArchived) {
       return entries;
@@ -551,9 +629,10 @@ export class MedicalRecordsService {
     encounterId: EncounterId,
     options?: {
       readonly includeArchived?: boolean;
-    }
+    },
+    expectedAccountId?: AccountId
   ): Promise<readonly ClinicalEntrySummary[]> {
-    const record = await this.getRecordByEncounterOrThrowAsync(encounterId);
+    const record = await this.getRecordByEncounterOrThrowAsync(encounterId, expectedAccountId);
     if (this.#clinicalEntryRepository) {
       const entries = await this.#clinicalEntryRepository.findByMedicalRecordId(record.id);
       this.#entries.set(record.id, [...entries]);
@@ -563,27 +642,29 @@ export class MedicalRecordsService {
       return entries.filter((entry) => !entry.deletedAt);
     }
 
-    return this.listEntriesByEncounter(encounterId, options);
+    return this.listEntriesByEncounter(encounterId, options, expectedAccountId);
   }
 
   public listTimelineByEncounter(
-    encounterId: EncounterId
+    encounterId: EncounterId,
+    expectedAccountId?: AccountId
   ): readonly ClinicalTimelineEventSummary[] {
-    const record = this.ensureRecord(encounterId);
+    const record = this.ensureRecord(encounterId, expectedAccountId);
     return [...(this.#timeline.get(record.id) ?? [])];
   }
 
   public async listTimelineByEncounterAsync(
-    encounterId: EncounterId
+    encounterId: EncounterId,
+    expectedAccountId?: AccountId
   ): Promise<readonly ClinicalTimelineEventSummary[]> {
-    const record = await this.getRecordByEncounterOrThrowAsync(encounterId);
+    const record = await this.getRecordByEncounterOrThrowAsync(encounterId, expectedAccountId);
     if (this.#clinicalTimelineRepository) {
       const events = await this.#clinicalTimelineRepository.findByMedicalRecordId(record.id);
       this.#timeline.set(record.id, [...events]);
       return events;
     }
 
-    return this.listTimelineByEncounter(encounterId);
+    return this.listTimelineByEncounter(encounterId, expectedAccountId);
   }
 
   public async listAll(accountId: AccountId): Promise<
@@ -621,9 +702,10 @@ export class MedicalRecordsService {
     encounterId: EncounterId,
     actorUserId: UserId,
     attachmentId: string,
-    summary: string
+    summary: string,
+    expectedAccountId?: AccountId
   ): void {
-    const record = this.ensureRecord(encounterId);
+    const record = this.ensureRecord(encounterId, expectedAccountId);
     this.appendTimeline(record.id, {
       accountId: record.accountId,
       encounterId,
@@ -649,9 +731,10 @@ export class MedicalRecordsService {
       | 'diagnostic_requested'
       | 'diagnostic_collected'
       | 'diagnostic_resulted',
-    summary: string
+    summary: string,
+    expectedAccountId?: AccountId
   ): void {
-    const record = this.ensureRecord(encounterId);
+    const record = this.ensureRecord(encounterId, expectedAccountId);
     this.appendTimeline(record.id, {
       accountId: record.accountId,
       encounterId,

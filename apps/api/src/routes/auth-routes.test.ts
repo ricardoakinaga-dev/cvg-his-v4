@@ -3,6 +3,7 @@ import { Writable } from 'node:stream';
 import test from 'node:test';
 
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
+import { AuthenticationError } from '@cvg-his-v2/shared-errors';
 
 import {
   createInMemoryOidcStateStore,
@@ -255,6 +256,56 @@ test('handleAuthRoutes POST /auth/login returns a session on success', async () 
   assert.equal(response.statusCode, 200);
   assert.equal(response.getHeader('x-ratelimit-limit'), '5');
   assert.equal(response.bodyJson<{ accessToken: string }>().accessToken, 'token-1');
+});
+
+test('handleAuthRoutes POST /auth/login maps authentication failures to a safe 401 response', async () => {
+  const response = new MockResponse();
+
+  const handled = await handleAuthRoutes(
+    '/auth/login',
+    {
+      method: 'POST',
+      url: '/auth/login',
+      headers: {},
+      socket: { remoteAddress: '127.0.0.1' },
+      [Symbol.asyncIterator]: async function* () {
+        yield Buffer.from(JSON.stringify({ username: 'admin', password: 'wrong' }));
+      }
+    } as never,
+    response as never,
+    'corr-auth-invalid-credentials',
+    {
+      auth: {
+        login: async () => {
+          throw new AuthenticationError('Invalid credentials');
+        }
+      } as never,
+      authRateLimiter: {
+        check: async () => ({
+          limit: 5,
+          remaining: 4,
+          reset: 123,
+          blocked: false,
+          retryAfterMs: 0
+        })
+      },
+      logger: { error: () => {} },
+      appName: 'test-app',
+      featureFlags: { authOidcEnabled: false, authWebauthnEnabled: false },
+      webauthnChallenges: new Map(),
+      webauthnChallengeTtlMs: DEFAULT_WEBAUTHN_CHALLENGE_TTL_MS,
+      oidcConfig: null,
+      oidcStateStore: createInMemoryOidcStateStore(),
+      oidcStateTtlMs: 60_000,
+      requirePrincipal: () => createPrincipal(),
+      appendAudit: () => {}
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 401);
+  assert.equal(response.bodyJson<{ code: string }>().code, 'AUTHENTICATION_ERROR');
+  assert.doesNotMatch(response.bodyJson<{ message?: string }>().message ?? '', /stack|secret/i);
 });
 
 test('handleAuthRoutes POST /auth/login returns 429 when rate limited', async () => {
@@ -619,4 +670,321 @@ test('handleAuthRoutes POST /auth/mfa/webauthn/assert rejects expired authentica
   assert.equal(response.statusCode, 400);
   assert.equal(response.bodyJson<{ code: string }>().code, 'CHALLENGE_EXPIRED');
   assert.equal(verifyCalled, false);
+});
+
+test('OIDC state stores reject malformed values and consume valid state only once', () => {
+  const memory = createInMemoryOidcStateStore();
+  const state = memory.create({
+    codeChallenge: 'challenge',
+    codeVerifier: 'verifier',
+    redirectUri: 'https://app.example.com/callback',
+    createdAt: Date.now()
+  });
+  assert.ok(memory.consume(state));
+  assert.equal(memory.consume(state), null);
+  assert.equal(memory.consume('missing'), null);
+
+  const stateless = createStatelessOidcStateStore('enterprise-secret');
+  assert.equal(stateless.consume('missing-separator'), null);
+  assert.equal(stateless.consume('payload.short'), null);
+  const invalidShape = stateless.create({ createdAt: Date.now() } as never);
+  assert.equal(stateless.consume(invalidShape), null);
+});
+
+test('handleAuthRoutes exposes safe MFA, WebAuthn and OIDC edge responses', async () => {
+  const principal = createPrincipal();
+  const oidcConfig = {
+    issuer: 'https://issuer.example.com',
+    clientId: 'client-id',
+    clientSecret: 'client-secret',
+    redirectUri: 'https://app.example.com/auth/callback',
+    scope: 'openid profile email',
+    authorizationEndpoint: 'https://issuer.example.com/auth',
+    tokenEndpoint: 'https://issuer.example.com/token',
+    userinfoEndpoint: 'https://issuer.example.com/userinfo',
+    endSessionEndpoint: 'https://issuer.example.com/logout'
+  };
+  const request = (method: string, url: string, body?: unknown, headers: Record<string, string> = {}) => ({
+    method,
+    url,
+    headers,
+    socket: { remoteAddress: undefined },
+    [Symbol.asyncIterator]: async function* () {
+      if (body !== undefined) yield Buffer.from(JSON.stringify(body));
+    }
+  });
+  const baseHandlers = {
+    auth: {} as never,
+    authRateLimiter: {
+      check: async () => ({ limit: 5, remaining: 4, reset: 123, blocked: false, retryAfterMs: 0 })
+    },
+    logger: { error: () => {} },
+    appName: 'test-app',
+    featureFlags: { authOidcEnabled: false, authWebauthnEnabled: false },
+    webauthnChallenges: new Map(),
+    webauthnChallengeTtlMs: DEFAULT_WEBAUTHN_CHALLENGE_TTL_MS,
+    oidcConfig: null,
+    oidcStateStore: createInMemoryOidcStateStore(),
+    oidcStateTtlMs: 60_000,
+    requirePrincipal: () => principal,
+    appendAudit: () => {}
+  };
+  const invoke = async (
+    pathname: string,
+    method: string,
+    overrides: Record<string, unknown> = {},
+    body?: unknown,
+    url = pathname,
+    headers: Record<string, string> = {}
+  ) => {
+    const response = new MockResponse();
+    const handled = await handleAuthRoutes(
+      pathname,
+      request(method, url, body, headers) as never,
+      response as never,
+      `corr-edge-${pathname}`,
+      { ...baseHandlers, ...overrides } as never
+    );
+    return { handled, response };
+  };
+
+  for (const [pathname, method] of [
+    ['/mfa/setup', 'POST'],
+    ['/mfa/setup/confirm', 'POST'],
+    ['/mfa/status', 'GET'],
+    ['/mfa/disable', 'POST'],
+    ['/mfa/recovery-codes/regenerate', 'POST'],
+    ['/auth/mfa/webauthn/setup', 'GET'],
+    ['/auth/mfa/webauthn/setup', 'POST'],
+    ['/auth/mfa/webauthn/authenticate', 'POST'],
+    ['/auth/mfa/webauthn/assert', 'POST']
+  ] as const) {
+    const { response } = await invoke(pathname, method, {}, {});
+    assert.equal(response.statusCode, pathname === '/mfa/status' ? 200 : 501);
+  }
+
+  const webauthnDisabled = { generateRegistrationOptions: async () => ({}) } as never;
+  for (const [pathname, method] of [
+    ['/auth/mfa/webauthn/setup', 'GET'],
+    ['/auth/mfa/webauthn/setup', 'POST'],
+    ['/auth/mfa/webauthn/authenticate', 'POST'],
+    ['/auth/mfa/webauthn/assert', 'POST']
+  ] as const) {
+    const { response } = await invoke(pathname, method, { webauthnService: webauthnDisabled }, {});
+    assert.equal(response.statusCode, 403);
+  }
+
+  const challenges = new Map<string, { challenge: string; createdAt: number }>();
+  const webauthnService = {
+    async generateRegistrationOptions() {
+      return { publicKeyOptions: { rp: { id: 'clinic.example.com' } }, challenge: 'reg-challenge' };
+    },
+    async verifyRegistration() { return { credentialId: 'credential-1' }; },
+    async generateAuthenticationOptions() {
+      return { publicKeyOptions: {}, challenge: 'auth-challenge' };
+    },
+    async verifyAuthentication() { return { success: false }; }
+  };
+  const webauthnOverrides = {
+    webauthnService,
+    webauthnChallenges: challenges,
+    featureFlags: { authOidcEnabled: false, authWebauthnEnabled: true }
+  };
+  const setup = await invoke(
+    '/auth/mfa/webauthn/setup',
+    'GET',
+    webauthnOverrides,
+    undefined,
+    '/auth/mfa/webauthn/setup',
+    { 'x-rp-id': 'clinic.example.com' }
+  );
+  assert.equal(setup.response.statusCode, 200);
+  const registration = await invoke('/auth/mfa/webauthn/setup', 'POST', webauthnOverrides, {
+    credentialId: 'credential-1',
+    attestationObject: 'attestation',
+    clientDataJSON: 'client-data'
+  });
+  assert.equal(registration.response.statusCode, 200);
+
+  const authentication = await invoke('/auth/mfa/webauthn/authenticate', 'POST', webauthnOverrides, {
+    credentialId: 'credential-1'
+  });
+  assert.equal(authentication.response.statusCode, 200);
+  const failedAssertion = await invoke('/auth/mfa/webauthn/assert', 'POST', webauthnOverrides, {
+    credentialId: 'credential-1',
+    authenticatorData: 'auth-data',
+    clientDataJSON: 'client-data',
+    signature: 'signature'
+  });
+  assert.equal(failedAssertion.response.statusCode, 401);
+
+  const missingChallenge = await invoke('/auth/mfa/webauthn/assert', 'POST', webauthnOverrides, {
+    credentialId: 'credential-1',
+    authenticatorData: 'auth-data',
+    clientDataJSON: 'client-data',
+    signature: 'signature'
+  });
+  assert.equal(missingChallenge.response.statusCode, 400);
+  assert.equal(missingChallenge.response.bodyJson<{ code: string }>().code, 'INVALID_CHALLENGE');
+
+  for (const [pathname, method] of [
+    ['/auth/oidc/login', 'GET'],
+    ['/auth/oidc/callback', 'GET'],
+    ['/auth/oidc/logout', 'POST']
+  ] as const) {
+    const { response } = await invoke(pathname, method);
+    assert.equal(response.statusCode, 501);
+  }
+  for (const pathname of ['/auth/oidc/login', '/auth/oidc/callback']) {
+    const { response } = await invoke(pathname, 'GET', { oidcConfig });
+    assert.equal(response.statusCode, 403);
+  }
+
+  const oidcEnabled = {
+    oidcConfig,
+    featureFlags: { authOidcEnabled: true, authWebauthnEnabled: false }
+  };
+  const providerError = await invoke(
+    '/auth/oidc/callback',
+    'GET',
+    oidcEnabled,
+    undefined,
+    '/auth/oidc/callback?error=access_denied'
+  );
+  assert.equal(providerError.response.statusCode, 400);
+  assert.equal(providerError.response.bodyJson<{ message: string }>().message, 'access_denied');
+  const invalidCallback = await invoke('/auth/oidc/callback', 'GET', oidcEnabled);
+  assert.equal(invalidCallback.response.bodyJson<{ code: string }>().code, 'INVALID_CALLBACK');
+
+  const expiredStore = createInMemoryOidcStateStore();
+  const expiredState = expiredStore.create({
+    codeChallenge: 'challenge',
+    codeVerifier: 'verifier',
+    redirectUri: oidcConfig.redirectUri,
+    createdAt: Date.now() - 10_000
+  });
+  const expired = await invoke(
+    '/auth/oidc/callback',
+    'GET',
+    { ...oidcEnabled, oidcStateStore: expiredStore, oidcStateTtlMs: 1 },
+    undefined,
+    `/auth/oidc/callback?code=code&state=${encodeURIComponent(expiredState)}`
+  );
+  assert.equal(expired.response.bodyJson<{ code: string }>().code, 'STATE_EXPIRED');
+
+  const localLogoutConfig = { ...oidcConfig, endSessionEndpoint: undefined };
+  const localLogout = await invoke('/auth/oidc/logout', 'POST', { oidcConfig: localLogoutConfig }, {});
+  assert.equal(localLogout.response.statusCode, 200);
+  const providerLogout = await invoke(
+    '/auth/oidc/logout',
+    'POST',
+    { oidcConfig },
+    { idTokenHint: 'id-token' }
+  );
+  assert.equal(providerLogout.response.statusCode, 302);
+  assert.match(providerLogout.response.getHeader('location') ?? '', /id_token_hint=id-token/);
+
+  const revoked = await invoke('/auth/sessions/session-inactive/revoke', 'POST', {
+    auth: { revokeSessionForUser: () => false }
+  });
+  assert.equal(revoked.response.bodyJson<{ revoked: boolean }>().revoked, false);
+
+  const mfaLimited = await invoke('/auth/login/mfa', 'POST', {
+    authRateLimiter: {
+      check: async () => ({ limit: 5, remaining: 0, reset: 123, blocked: true, retryAfterMs: 1000 })
+    }
+  });
+  assert.equal(mfaLimited.response.statusCode, 429);
+});
+
+test('handleAuthRoutes completes refresh, logout, TOTP and successful WebAuthn contracts', async () => {
+  const principal = createPrincipal();
+  const calls: string[] = [];
+  const mfaService = {
+    async initiateSetup() { calls.push('setup'); return { secret: 'secret', qrCode: 'qr' }; },
+    async confirmSetup() { calls.push('confirm'); return { isActive: true }; },
+    async isMfaActive() { calls.push('status'); return true; },
+    isMfaRequired() { return true; },
+    async disableMfa() { calls.push('disable'); },
+    async regenerateRecoveryCodes() { calls.push('recovery'); return ['code-1']; }
+  };
+  const auth = {
+    mfaService,
+    refresh: () => ({ accessToken: 'refreshed' }),
+    logout: () => { calls.push('logout'); },
+    completeMfaLogin: async () => ({ accessToken: 'mfa-token' })
+  };
+  const challenges = new Map<string, { challenge: string; createdAt: number }>();
+  const webauthnService = {
+    async generateAuthenticationOptions() {
+      return { publicKeyOptions: {}, challenge: 'auth-success' };
+    },
+    async verifyAuthentication() { return { success: true }; }
+  };
+  const handlers = {
+    auth,
+    authRateLimiter: {
+      check: async () => ({ limit: 5, remaining: 4, reset: 123, blocked: false, retryAfterMs: 0 })
+    },
+    logger: { error: () => {} },
+    appName: 'test-app',
+    featureFlags: { authOidcEnabled: false, authWebauthnEnabled: true },
+    webauthnService,
+    webauthnChallenges: challenges,
+    webauthnChallengeTtlMs: DEFAULT_WEBAUTHN_CHALLENGE_TTL_MS,
+    oidcConfig: null,
+    oidcStateStore: createInMemoryOidcStateStore(),
+    oidcStateTtlMs: 60_000,
+    requirePrincipal: () => principal,
+    appendAudit: () => {}
+  };
+  const invoke = async (
+    pathname: string,
+    method: string,
+    body?: unknown,
+    headers: Record<string, string> = {}
+  ) => {
+    const response = new MockResponse();
+    await handleAuthRoutes(
+      pathname,
+      {
+        method,
+        url: pathname,
+        headers,
+        socket: { remoteAddress: '127.0.0.1' },
+        [Symbol.asyncIterator]: async function* () {
+          if (body !== undefined) yield Buffer.from(JSON.stringify(body));
+        }
+      } as never,
+      response as never,
+      `corr-success-${pathname}`,
+      handlers as never
+    );
+    return response;
+  };
+
+  assert.equal((await invoke('/auth/refresh', 'POST', { refreshToken: 'refresh' })).statusCode, 200);
+  assert.equal(
+    (await invoke('/auth/logout', 'POST', { refreshToken: 'refresh' }, { authorization: 'Bearer token' })).statusCode,
+    204
+  );
+  assert.equal((await invoke('/auth/login/mfa', 'POST', { userId: 'user-1', token: '123456' })).statusCode, 200);
+  assert.equal((await invoke('/mfa/setup', 'POST')).statusCode, 200);
+  assert.equal((await invoke('/mfa/setup/confirm', 'POST', { token: '123456' })).statusCode, 200);
+  assert.equal((await invoke('/mfa/status', 'GET')).bodyJson<{ isRequired: boolean }>().isRequired, true);
+  assert.equal((await invoke('/mfa/disable', 'POST', { token: '123456' })).statusCode, 200);
+  assert.deepEqual(
+    (await invoke('/mfa/recovery-codes/regenerate', 'POST')).bodyJson<{ recoveryCodes: string[] }>().recoveryCodes,
+    ['code-1']
+  );
+
+  await invoke('/auth/mfa/webauthn/authenticate', 'POST', {});
+  const assertion = await invoke('/auth/mfa/webauthn/assert', 'POST', {
+    credentialId: 'credential-success',
+    authenticatorData: 'auth-data',
+    clientDataJSON: 'client-data',
+    signature: 'signature'
+  }, { 'x-rp-id': 'clinic.example.com' });
+  assert.equal(assertion.statusCode, 200);
+  assert.deepEqual(calls, ['logout', 'setup', 'confirm', 'status', 'disable', 'recovery']);
 });

@@ -12,6 +12,8 @@ import {
   type EncounterReceivableRecord
 } from './index.js';
 
+const UUID_V4_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 function createFinancialService(
   repository = new InMemoryEncounterFinancialRepository(),
   onReceivablePaid?: (payment: EncounterReceivablePaymentRecord) => Promise<void>
@@ -247,17 +249,59 @@ test('InMemoryEncounterFinancialRepository filters receivables by account and st
 });
 
 test('EncounterFinancialService syncs encounter and exposes administrative summary', async () => {
-  const { service, encounter } = createFinancialService();
+  const { service, repository, encounter } = createFinancialService();
 
   await service.syncEncounter(encounter.id);
   const summary = await service.getSummary(encounter.id);
+  const account = await repository.findFinancialAccountByEncounter(encounter.id);
 
+  assert.ok(account);
+  assert.match(account.id, UUID_V4_PATTERN);
   assert.equal(summary.total, 190);
   assert.equal(summary.financialStatus, 'pending');
   assert.equal(summary.patientName, 'Luna');
   assert.equal(summary.ownerName, 'Maria Silva');
   assert.equal(summary.receivables.length, 1);
+  assert.match(summary.receivables[0]!.id, UUID_V4_PATTERN);
   assert.equal(summary.receivables[0]?.amountOutstanding, 190);
+});
+
+test('EncounterFinancialService rejects cross-account summaries, closes and settlements', async () => {
+  const { service, encounter } = createFinancialService();
+  const accountId = 'acc_cvg_demo' as never;
+  const foreignAccountId = 'acc_other' as never;
+
+  await assert.rejects(() => service.getSummary(encounter.id, foreignAccountId), /not found/i);
+  await assert.rejects(
+    () =>
+      service.closeEncounterFinancial(
+        encounter.id,
+        'user_foreign' as never,
+        { installments: [{ amount: 190 }] },
+        foreignAccountId
+      ),
+    /not found/i
+  );
+
+  const closed = await service.closeEncounterFinancial(
+    encounter.id,
+    'user_finance' as never,
+    { installments: [{ amount: 190 }] },
+    accountId
+  );
+  await assert.rejects(
+    () =>
+      service.settleReceivable(
+        closed.receivables[0]!.id,
+        { amountPaid: 10 },
+        foreignAccountId
+      ),
+    /not found/i
+  );
+
+  const unchanged = await service.getSummary(encounter.id, accountId);
+  assert.equal(unchanged.paidAmount, 0);
+  assert.equal(unchanged.balanceDue, 190);
 });
 
 test('EncounterFinancialService closes encounter with installments and allocates payment across them', async () => {
@@ -285,6 +329,8 @@ test('EncounterFinancialService closes encounter with installments and allocates
   assert.equal(summary.receivables[0]?.status, 'settled');
   assert.equal(summary.receivables[1]?.status, 'open');
   assert.equal(summary.receivables[1]?.amountOutstanding, 70);
+  assert.equal(summary.receivables.every((item) => UUID_V4_PATTERN.test(item.id)), true);
+  assert.equal(summary.payments.every((item) => UUID_V4_PATTERN.test(item.id)), true);
   assert.equal(paid.length, 2);
 });
 
@@ -628,4 +674,134 @@ test('FinancialIncomeStatementService consolidates realized result from receivab
     { category: 'Estoque', accruedAmount: 500, paidAmount: 300, outstandingAmount: 200 },
     { category: 'Laboratorio', accruedAmount: 200, paidAmount: 0, outstandingAmount: 200 }
   ]);
+});
+
+test('FinancialPayablesService validates boundaries, tenant ownership and reconciliation eligibility', async () => {
+  const repository = new InMemoryFinancialPayablesRepository();
+  const service = new FinancialPayablesService(repository);
+  const base = {
+    supplierName: 'Fornecedor premium',
+    description: 'Serviço enterprise',
+    category: 'Servicos',
+    costCenterCode: 'ADM',
+    costCenterName: 'Administrativo',
+    issuedAt: '2026-08-01',
+    dueAt: '2026-08-31',
+    totalAmount: 100
+  };
+
+  await assert.rejects(
+    () => service.createPayable('acc_cvg_demo' as never, 'user_finance' as never, {
+      ...base,
+      supplierName: '   '
+    }),
+    /supplierName is required/
+  );
+  await assert.rejects(
+    () => service.createPayable('acc_cvg_demo' as never, 'user_finance' as never, {
+      ...base,
+      issuedAt: 'invalid-date'
+    }),
+    /issuedAt must be a valid ISO date/
+  );
+  await assert.rejects(
+    () => service.createPayable('acc_cvg_demo' as never, 'user_finance' as never, {
+      ...base,
+      issuedAt: '2026-09-01'
+    }),
+    /issuedAt must be before or equal to dueAt/
+  );
+  for (const totalAmount of [0, Number.NaN]) {
+    await assert.rejects(
+      () => service.createPayable('acc_cvg_demo' as never, 'user_finance' as never, {
+        ...base,
+        totalAmount
+      }),
+      /totalAmount must be greater than zero/
+    );
+  }
+
+  const payable = await service.createPayable('acc_cvg_demo' as never, 'user_finance' as never, {
+    ...base,
+    issuedAt: undefined,
+    sourceExpenseId: '   ',
+    notes: '   '
+  });
+  assert.equal(payable.sourceExpenseId, null);
+  assert.equal(payable.notes, null);
+  await assert.rejects(
+    () => service.payPayable('acc_other' as never, 'user_finance' as never, payable.id, { amountPaid: 1 }),
+    /Financial payable not found/
+  );
+  await assert.rejects(
+    () => service.payPayable('acc_cvg_demo' as never, 'user_finance' as never, payable.id, { amountPaid: 0 }),
+    /amountPaid must be greater than zero/
+  );
+  await assert.rejects(
+    () => service.reconcilePayablePayment('acc_cvg_demo' as never, 'user_finance' as never, payable.id, {}),
+    /Only paid payables can be reconciled/
+  );
+
+  const cashPaid = await service.payPayable('acc_cvg_demo' as never, 'user_finance' as never, payable.id, {
+    amountPaid: 100,
+    paymentMethod: 'cash'
+  });
+  assert.equal(cashPaid.reconciliationStatus, 'not_required');
+  await assert.rejects(
+    () => service.reconcilePayablePayment('acc_cvg_demo' as never, 'user_finance' as never, payable.id, {}),
+    /Only non-cash payable payments require reconciliation/
+  );
+  await assert.rejects(
+    () => service.cancelPayable('acc_cvg_demo' as never, 'user_finance' as never, payable.id),
+    /Paid payables cannot be cancelled/
+  );
+
+  const empty = await service.listPayables('acc_cvg_demo' as never, {
+    status: 'open',
+    search: 'não encontrado',
+    page: 0,
+    pageSize: 200
+  });
+  assert.equal(empty.page, 1);
+  assert.equal(empty.pageSize, 100);
+  assert.equal(empty.total, 0);
+  const reconciliation = await service.listPayableReconciliation('acc_cvg_demo' as never, {
+    search: 'não encontrado',
+    page: 0,
+    pageSize: 200
+  });
+  assert.equal(reconciliation.page, 1);
+  assert.equal(reconciliation.pageSize, 100);
+  assert.equal(reconciliation.total, 0);
+  await assert.rejects(
+    () => service.payPayable('acc_cvg_demo' as never, 'user_finance' as never, 'missing', { amountPaid: 1 }),
+    /Financial payable not found/
+  );
+});
+
+test('FinancialIncomeStatementService handles empty defaults and rejects invalid periods', async () => {
+  const statement = new FinancialIncomeStatementService({
+    receivables: new InMemoryEncounterFinancialRepository(),
+    payables: new InMemoryFinancialPayablesRepository()
+  });
+  const empty = await statement.getIncomeStatement('acc_empty' as never);
+  assert.equal(empty.revenue.receivableCount, 0);
+  assert.equal(empty.expenses.payableCount, 0);
+  assert.equal(empty.result.grossMarginPercent, null);
+  assert.equal(empty.result.cashConversionPercent, null);
+
+  await assert.rejects(
+    () => statement.getIncomeStatement('acc_empty' as never, {
+      dateFrom: '2026-09-01',
+      dateTo: '2026-08-01'
+    }),
+    /dateFrom must be before or equal to dateTo/
+  );
+  await assert.rejects(
+    () => statement.getIncomeStatement('acc_empty' as never, {
+      dateFrom: 'not-a-date',
+      dateTo: '2026-08-01'
+    }),
+    /dateFrom must be a valid ISO date/
+  );
 });

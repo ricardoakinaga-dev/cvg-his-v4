@@ -37,7 +37,7 @@ Regra operacional: o deploy correto deve reconstruir as imagens a partir do codi
 
 ## Servicos canonicos da stack V2
 
-Os servicos definidos hoje em [`docker-compose.v2.yml`](/root/.openclaw/workspace/cvg-his-v2/docker-compose.v2.yml) sao:
+Os servicos definidos hoje em [`docker-compose.v2.yml`](docker-compose.v2.yml) sao:
 
 - `postgres`
 - `redis`
@@ -111,7 +111,7 @@ docker compose --env-file .env.v2 -f docker-compose.v2.yml up -d postgres redis
 
 ### 6. Aplicar migrations oficiais
 
-O caminho canonico de schema para deploy atual e Drizzle via [`packages/db/src/migrate.ts`](/root/.openclaw/workspace/cvg-his-v2/packages/db/src/migrate.ts).
+O caminho canonico de schema para deploy atual e Drizzle via [`packages/db/src/migrate.ts`](packages/db/src/migrate.ts).
 
 ```bash
 DATABASE_URL=postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@127.0.0.1:5432/$POSTGRES_DB \
@@ -220,11 +220,11 @@ Checks operacionais:
 
 ## Documentacao operacional
 
-- [OPENCLAW_DEPLOY_DIRETRIZES.md](/root/.openclaw/workspace/cvg-his-v2/OPENCLAW_DEPLOY_DIRETRIZES.md)
-- [INSTALACAO_V2_OPENCLAW.md](/root/.openclaw/workspace/cvg-his-v2/INSTALACAO_V2_OPENCLAW.md)
-- [docs/132-superficie-canonica-deploy-e-migracao.md](/root/.openclaw/workspace/cvg-his-v2/docs/132-superficie-canonica-deploy-e-migracao.md)
-- [docker-compose.v2.yml](/root/.openclaw/workspace/cvg-his-v2/docker-compose.v2.yml)
-- [.env.v2.example](/root/.openclaw/workspace/cvg-his-v2/.env.v2.example)
-- [infra/scripts/cutover-v2.sh](/root/.openclaw/workspace/cvg-his-v2/infra/scripts/cutover-v2.sh)
-- [infra/scripts/check-cutover-readiness.mjs](/root/.openclaw/workspace/cvg-his-v2/infra/scripts/check-cutover-readiness.mjs)
-- [infra/docker/Caddyfile.v2](/root/.openclaw/workspace/cvg-his-v2/infra/docker/Caddyfile.v2)
+- [OPENCLAW_DEPLOY_DIRETRIZES.md](OPENCLAW_DEPLOY_DIRETRIZES.md)
+- [INSTALACAO_V2_OPENCLAW.md](INSTALACAO_V2_OPENCLAW.md)
+- [docs/132-superficie-canonica-deploy-e-migracao.md](docs/132-superficie-canonica-deploy-e-migracao.md)
+- [docker-compose.v2.yml](docker-compose.v2.yml)
+- [.env.v2.example](.env.v2.example)
+- [infra/scripts/cutover-v2.sh](infra/scripts/cutover-v2.sh)
+- [infra/scripts/check-cutover-readiness.mjs](infra/scripts/check-cutover-readiness.mjs)
+- [infra/docker/Caddyfile.v2](infra/docker/Caddyfile.v2)

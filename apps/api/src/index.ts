@@ -93,6 +93,7 @@ async function main() {
   const bootstrapResult = await bootstrapServices({
     databaseUrl,
     fileStoragePath: config.fileStoragePath,
+    environment: config.environment,
     skipDatabase: !databaseUrl
   });
 
@@ -186,6 +187,7 @@ async function main() {
     enableMfa: config.enableMfa,
     mfaEncryptionKey: config.mfaEncryptionKey,
     repositories: bootstrapResult.repositories,
+    databaseRequestTransactions: bootstrapResult.repositoriesUseDatabase,
     fileStorage: bootstrapResult.fileStorage,
     sectorBedOptions: db ? { databaseClient: db } : undefined,
     featureFlagsProvider: config.featureFlagsProvider,
@@ -205,7 +207,10 @@ async function main() {
     googleCalendarCalendarId: config.googleCalendarCalendarId,
     googleCalendarMockMode: config.googleCalendarMockMode,
     redisUrl: config.redisUrl,
-    secretsManager
+    secretsManager,
+    allowInMemoryCatalogFallback: !['production', 'staging', 'prod', 'stage'].includes(
+      config.environment
+    )
   });
 
   await server.ready;

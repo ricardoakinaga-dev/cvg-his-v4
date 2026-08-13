@@ -95,7 +95,7 @@ Uso:
 
 ```bash
 pnpm test:db:start
-DATABASE_URL_TEST=postgres://postgres:postgres@localhost:5433/cvg_his_v2_test \
+DATABASE_URL_TEST="<test-database-url>" \
 pnpm test:critical:bootstrap
 pnpm test:db:stop
 ```
@@ -149,7 +149,7 @@ pnpm typecheck
 pnpm test
 
 # test:critical — requer PostgreSQL (nao disponivel neste ambiente)
-# DATABASE_URL_TEST=postgres://postgres:postgres@localhost:5433/cvg_his_v2_test pnpm test:critical
+# DATABASE_URL_TEST="<test-database-url>" pnpm test:critical
 ```
 
 ---

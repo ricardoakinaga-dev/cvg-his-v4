@@ -188,7 +188,9 @@ describe('AuditService', () => {
     });
 
     const report = service.getOperationalCoverageReport('acc_1' as AccountId);
-    const requirement = report.requirements.find((item) => item.id === 'reports-delivery-alerts-read');
+    const requirement = report.requirements.find(
+      (item) => item.id === 'reports-delivery-alerts-read'
+    );
 
     expect(requirement).toBeDefined();
     expect(requirement?.covered).toBe(true);
@@ -221,6 +223,126 @@ describe('AuditService with repository', () => {
     expect(fromRepo).toHaveLength(1);
     expect(fromRepo[0].eventId).toBe(event.eventId);
     expect(fromRepo[0].payloadSummary).toBe('Patient created');
+  });
+
+  it('flushes best-effort writes for the current request correlation before completion', async () => {
+    let releasePersistence: (() => void) | undefined;
+    let persisted = false;
+    const requestAudit = new AuditService({
+      auditRepository: {
+        async create() {
+          await new Promise<void>((resolve) => {
+            releasePersistence = resolve;
+          });
+          persisted = true;
+        },
+        async list() {
+          return [];
+        },
+        async findById() {
+          return null;
+        }
+      }
+    });
+
+    requestAudit.write({
+      actorId: 'user_1',
+      accountId: 'acc_1' as AccountId,
+      module: 'inventory',
+      action: 'update',
+      entityType: 'inventory-item',
+      entityId: 'item_1',
+      correlationId: 'corr_request_a',
+      payloadSummary: 'Request-scoped audit',
+      riskLevel: 'high'
+    });
+    const flush = requestAudit.flushPendingWrites('corr_request_a');
+    await Promise.resolve();
+    expect(persisted).toBe(false);
+    releasePersistence?.();
+    await flush;
+    expect(persisted).toBe(true);
+  });
+
+  it('propagates request-scoped audit persistence failures at the flush boundary', async () => {
+    const failing = new AuditService({
+      auditRepository: {
+        async create() {
+          throw new Error('audit request persistence unavailable');
+        },
+        async list() {
+          return [];
+        },
+        async findById() {
+          return null;
+        }
+      }
+    });
+    failing.write({
+      actorId: 'user_1',
+      accountId: 'acc_1' as AccountId,
+      module: 'laboratory',
+      action: 'resulted',
+      entityType: 'diagnostic-order',
+      entityId: 'diag_1',
+      correlationId: 'corr_request_failure',
+      payloadSummary: 'Must fail the request boundary',
+      riskLevel: 'high'
+    });
+
+    await expect(failing.flushPendingWrites('corr_request_failure')).rejects.toThrow(
+      'audit request persistence unavailable'
+    );
+  });
+
+  it('writeDurable resolves only after persistence and fails without recording partial evidence', async () => {
+    const persisted: string[] = [];
+    const durable = new AuditService({
+      auditRepository: {
+        create: async (event) => {
+          persisted.push(event.eventId);
+        },
+        list: async () => [],
+        findById: async () => null
+      }
+    });
+
+    const event = await durable.writeDurable({
+      actorId: 'user_1',
+      accountId: 'acc_1' as AccountId,
+      module: 'auth',
+      action: 'login',
+      entityType: 'session',
+      entityId: 'session_1',
+      payloadSummary: 'Durable login audit',
+      riskLevel: 'high'
+    });
+
+    expect(persisted).toEqual([event.eventId]);
+    expect(durable.list().map((item) => item.eventId)).toEqual([event.eventId]);
+
+    const failing = new AuditService({
+      auditRepository: {
+        create: async () => {
+          throw new Error('audit storage unavailable');
+        },
+        list: async () => [],
+        findById: async () => null
+      }
+    });
+    await expect(
+      failing.writeDurable({
+        actorId: 'user_1',
+        accountId: 'acc_1' as AccountId,
+        module: 'auth',
+        action: 'login',
+        entityType: 'session',
+        entityId: 'session_2',
+        payloadSummary: 'Must fail closed',
+        riskLevel: 'high'
+      })
+    ).rejects.toThrow('audit storage unavailable');
+    expect(failing.list()).toEqual([]);
   });
 
   it('persists multiple events to repository', async () => {

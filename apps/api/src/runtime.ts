@@ -6,7 +6,7 @@ import {
 } from '@cvg-his-v2/module-attachments';
 import { AuditService } from '@cvg-his-v2/module-audit';
 import type { AuditRepository } from '@cvg-his-v2/module-audit';
-import { AuthService, BruteForceProtection } from '@cvg-his-v2/module-auth';
+import { AuthService } from '@cvg-his-v2/module-auth';
 import type { SessionRepository } from '@cvg-his-v2/module-auth';
 import { ApiKeysService } from '@cvg-his-v2/module-api-keys';
 import { BillingService } from '@cvg-his-v2/module-billing';
@@ -79,7 +79,7 @@ import { CounterSalesService } from '@cvg-his-v2/module-counter-sales';
 import { QuotesService } from '@cvg-his-v2/module-quotes';
 import { ReportsService, type ReportRepository } from '@cvg-his-v2/module-reports';
 import { CashService } from '@cvg-his-v2/module-cash';
-import type { AccountId } from '@cvg-his-v2/shared-types';
+import type { AccountId, UserId } from '@cvg-his-v2/shared-types';
 import { ProductsService } from '@cvg-his-v2/module-products';
 import { ServicesService } from '@cvg-his-v2/module-services';
 import type { DischargeRepository } from '@cvg-his-v2/module-discharges';
@@ -113,15 +113,11 @@ import {
   RuntimePatientLookup,
   RuntimeSettingsLookup,
   EnvNotificationSettingsProvider,
-  AppointmentReminderWorkflow,
-  type NotificationSettingsProvider,
-  type OwnerLookup,
-  type PatientLookup,
-  type SettingsLookup
+  AppointmentReminderWorkflow
 } from '@cvg-his-v2/module-notifications-whatsapp';
 import type { ApiKeyRepository } from '@cvg-his-v2/module-api-keys';
 import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
-import { getTenantContext, runWithTenantContext } from '@cvg-his-v2/tenant-context';
+import { getTenantContext } from '@cvg-his-v2/tenant-context';
 import { trace as otelTrace } from '@opentelemetry/api';
 
 import type { BillingRepository } from '@cvg-his-v2/module-billing';
@@ -238,18 +234,6 @@ function createRuntimeSeeds<T>(
   preserveWithRepository = false
 ): readonly T[] {
   return repository && !preserveWithRepository ? [] : fallbackSeeds;
-}
-
-function resolveBootstrapAccountId(
-  ...candidates: Array<AccountId | null | undefined>
-): AccountId | undefined {
-  for (const candidate of candidates) {
-    if (typeof candidate === 'string' && candidate.trim().length > 0) {
-      return candidate as AccountId;
-    }
-  }
-
-  return undefined;
 }
 
 export function createApiRuntime(options: ApiRuntimeOptions) {
@@ -577,7 +561,8 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
   const pixTransactions = repos.pixTransaction ?? new InMemoryPixTransactionRepository();
   const cardTransactions = repos.cardTransaction ?? new InMemoryCardTransactionRepository();
   const cash = new CashService({ repository: repos.cash });
-  const encounterFinancialRepository = repos.encounterFinancial ?? new InMemoryEncounterFinancialRepository();
+  const encounterFinancialRepository =
+    repos.encounterFinancial ?? new InMemoryEncounterFinancialRepository();
   const encounterFinancial = new EncounterFinancialService(encounters, billing, patients, owners, {
     repository: encounterFinancialRepository,
     async onReceivablePaid(payment) {
@@ -616,7 +601,8 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
       });
     }
   });
-  const financialPayablesRepository = repos.financialPayables ?? new InMemoryFinancialPayablesRepository();
+  const financialPayablesRepository =
+    repos.financialPayables ?? new InMemoryFinancialPayablesRepository();
   const financialPayables = new FinancialPayablesService(financialPayablesRepository, {
     async onPayablePaid(event) {
       if (event.paymentMethod !== 'cash') return;
@@ -701,13 +687,18 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
   const counterSales = new CounterSalesService({
     repository: repos.counterSales,
     inventoryService: {
-      async consumeForSale(accountId: AccountId, codeSnapshot: string, quantity: number) {
-        const items = inventory.listItems().filter((i) => i.sku === codeSnapshot);
+      async consumeForSale(
+        accountId: AccountId,
+        codeSnapshot: string,
+        quantity: number,
+        recordedByUserId: UserId
+      ) {
+        const items = inventory.listItems(accountId).filter((i) => i.sku === codeSnapshot);
         if (items.length === 0) {
           throw new Error(`Inventory item not found for code: ${codeSnapshot}`);
         }
         const item = items[0];
-        return inventory.consumeForSale(accountId, item.id as never, quantity);
+        return inventory.consumeForSale(accountId, item.id as never, quantity, recordedByUserId);
       }
     },
     cashService: {
@@ -769,10 +760,13 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
       owners: (async (_subjectId, context) => {
         const ownerRows =
           context.subjectType === 'owner'
-            ? owners.list(context.subjectId)
+            ? owners.listByAccount(context.accountId as AccountId, context.subjectId)
             : context.subjectType === 'patient'
-              ? owners.list().filter((owner) => {
-                  const patient = patients.getOrThrow(context.subjectId as never);
+              ? owners.listByAccount(context.accountId as AccountId).filter((owner) => {
+                  const patient = patients.getForAccountOrThrow(
+                    context.subjectId as never,
+                    context.accountId as AccountId
+                  );
                   return owner.id === patient.primaryOwnerId;
                 })
               : [];
@@ -785,9 +779,11 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
       patients: (async (_subjectId, context) => {
         const patientRows =
           context.subjectType === 'patient'
-            ? patients.list(context.subjectId)
+            ? patients.listByAccount(context.accountId as AccountId, context.subjectId)
             : context.subjectType === 'owner'
-              ? patients.list().filter((patient) => patient.primaryOwnerId === context.subjectId)
+              ? patients
+                  .listByAccount(context.accountId as AccountId)
+                  .filter((patient) => patient.primaryOwnerId === context.subjectId)
               : [];
 
         return {
@@ -796,12 +792,15 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
         };
       }) satisfies LgpdDataProvider,
       encounters: (async (_subjectId, context) => {
-        const encounterRows = encounters.listAll().filter((encounter) => {
-          if (encounter.accountId !== context.accountId) return false;
-          if (context.subjectType === 'patient') return encounter.patientId === context.subjectId;
-          if (context.subjectType === 'owner') return encounter.ownerId === context.subjectId;
-          return false;
-        });
+        const encounterRows = encounters
+          .listByAccount(context.accountId as AccountId)
+          .filter((encounter) => {
+            if (context.subjectType === 'patient') {
+              return encounter.patientId === context.subjectId;
+            }
+            if (context.subjectType === 'owner') return encounter.ownerId === context.subjectId;
+            return false;
+          });
         const timelines = await Promise.all(
           encounterRows.map(async (encounter) => ({
             encounterId: encounter.id,
@@ -821,9 +820,8 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
       })) satisfies LgpdDataProvider,
       laboratory: (async (_subjectId, context) => {
         const encounterIds = encounters
-          .listAll()
+          .listByAccount(context.accountId as AccountId)
           .filter((encounter) => {
-            if (encounter.accountId !== context.accountId) return false;
             if (context.subjectType === 'patient') return encounter.patientId === context.subjectId;
             if (context.subjectType === 'owner') return encounter.ownerId === context.subjectId;
             return false;
@@ -837,28 +835,47 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
         };
       }) satisfies LgpdDataProvider,
       attachments: (async (_subjectId, context) => {
-        const subjectEncounters = encounters.listAll().filter((encounter) => {
-          if (encounter.accountId !== context.accountId) return false;
-          if (context.subjectType === 'patient') return encounter.patientId === context.subjectId;
-          if (context.subjectType === 'owner') return encounter.ownerId === context.subjectId;
-          return false;
-        });
+        const subjectEncounters = encounters
+          .listByAccount(context.accountId as AccountId)
+          .filter((encounter) => {
+            if (context.subjectType === 'patient') {
+              return encounter.patientId === context.subjectId;
+            }
+            if (context.subjectType === 'owner') return encounter.ownerId === context.subjectId;
+            return false;
+          });
         const clinicalRecords = await medicalRecords.listAll(context.accountId as AccountId);
         const diagnosticOrders = diagnostics.listByAccount(context.accountId as AccountId);
         const attachmentGroups = await Promise.all([
           ...subjectEncounters.map((encounter) =>
-            attachments.listByLinkedEntity('encounter', encounter.id)
+            attachments.listByLinkedEntity(
+              'encounter',
+              encounter.id,
+              context.accountId as AccountId
+            )
           ),
           ...clinicalRecords
             .filter(({ record }) =>
               subjectEncounters.some((encounter) => encounter.id === record.encounterId)
             )
-            .map(({ record }) => attachments.listByLinkedEntity('medical_record', record.id)),
+            .map(({ record }) =>
+              attachments.listByLinkedEntity(
+                'medical_record',
+                record.id,
+                context.accountId as AccountId
+              )
+            ),
           ...diagnosticOrders
             .filter((order) =>
               subjectEncounters.some((encounter) => encounter.id === order.encounterId)
             )
-            .map((order) => attachments.listByLinkedEntity('diagnostic_order', order.id))
+            .map((order) =>
+              attachments.listByLinkedEntity(
+                'diagnostic_order',
+                order.id,
+                context.accountId as AccountId
+              )
+            )
         ]);
 
         return { source: 'AttachmentsService', rows: attachmentGroups.flat() };
@@ -879,6 +896,66 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
     mfa,
     sessionRepository: repos.session
   });
+
+  const tenantInitializations = new Map<AccountId, Promise<void>>();
+
+  async function hydrateTenant(accountId: AccountId): Promise<void> {
+    await Promise.all([
+      users.hydrateFromDatabase(),
+      staff.hydrateFromDatabase(accountId),
+      owners.hydrateFromDatabase(accountId),
+      patients.hydrateFromDatabase(accountId),
+      encounters.hydrateFromDatabase(accountId),
+      clinicalHandoffs.hydrateFromDatabase(accountId),
+      accessControl.hydrateFromDatabase(accountId),
+      diagnostics.hydrateFromDatabase(accountId),
+      laboratory.hydrateCatalog(accountId),
+      commercial.hydrateFromDatabase(accountId),
+      commissions.hydrateFromDatabase(accountId),
+      packages.hydrateFromDatabase(accountId),
+      inventory.hydrateFromDatabase(accountId),
+      scheduling.hydrateFromDatabase(accountId),
+      triage.hydrateFromDatabase(accountId),
+      products.hydrateFromDatabase(accountId),
+      services.hydrateFromDatabase(accountId),
+      counterSales.hydrateFromDatabase(accountId),
+      quotes.hydrateFromDatabase(accountId),
+      cash.hydrateFromDatabase(accountId),
+      reports.hydrateFromDatabase(accountId),
+      marketing.hydrateFromDatabase(accountId),
+      prescriptions.hydrateFromDatabase(accountId),
+      billing.hydrateFromDatabase(accountId)
+    ]);
+
+    const accountUserIds = users.list(accountId).map((user) => user.id);
+    await auth.hydrateFromRepository(accountUserIds);
+  }
+
+  async function initializeTenant(accountId: AccountId): Promise<void> {
+    const tenantContext = getTenantContext();
+    if (tenantContext?.accountId !== accountId) {
+      throw new Error(
+        `Tenant initialization account ${accountId} does not match the active tenant context`
+      );
+    }
+
+    const existing = tenantInitializations.get(accountId);
+    if (existing) {
+      await existing;
+      return;
+    }
+
+    const initialization = hydrateTenant(accountId);
+    tenantInitializations.set(accountId, initialization);
+    try {
+      await initialization;
+    } catch (error) {
+      if (tenantInitializations.get(accountId) === initialization) {
+        tenantInitializations.delete(accountId);
+      }
+      throw error;
+    }
+  }
 
   const serviceMap = {
     accessControl,
@@ -933,54 +1010,8 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
   return {
     ...serviceMap,
     async initialize(): Promise<void> {
-      await Promise.allSettled([users.hydrateFromDatabase(), staff.hydrateFromDatabase(undefined)]);
-      await auth.hydrateFromRepository(users.list().map((user) => user.id));
-
-      const bootstrapAccountId = resolveBootstrapAccountId(
-        users.list()[0]?.accountId,
-        staff.list()[0]?.accountId,
-        owners.list()[0]?.accountId,
-        patients.list()[0]?.accountId
-      );
-
-      if (!bootstrapAccountId) {
-        await billing.hydrateFromDatabase();
-        return;
-      }
-
-      await runWithTenantContext(
-        {
-          tenantId: '00000000-0000-0000-0000-000000000001',
-          accountId: bootstrapAccountId,
-          correlationId: createCorrelationId('boot')
-        },
-        async () => {
-          await Promise.allSettled([
-            owners.hydrateFromDatabase(bootstrapAccountId),
-            patients.hydrateFromDatabase(bootstrapAccountId),
-            encounters.hydrateFromDatabase(bootstrapAccountId),
-            clinicalHandoffs.hydrateFromDatabase(bootstrapAccountId),
-            accessControl.hydrateFromDatabase(bootstrapAccountId),
-            diagnostics.hydrateFromDatabase(bootstrapAccountId),
-            laboratory.hydrateCatalog(bootstrapAccountId),
-            commercial.hydrateFromDatabase(bootstrapAccountId),
-            commissions.hydrateFromDatabase(bootstrapAccountId),
-            packages.hydrateFromDatabase(bootstrapAccountId),
-            inventory.hydrateFromDatabase(bootstrapAccountId),
-            scheduling.hydrateFromDatabase(bootstrapAccountId),
-            triage.hydrateFromDatabase(bootstrapAccountId),
-            products.hydrateFromDatabase(bootstrapAccountId),
-            services.hydrateFromDatabase(bootstrapAccountId),
-            counterSales.hydrateFromDatabase(bootstrapAccountId),
-            quotes.hydrateFromDatabase(bootstrapAccountId),
-            cash.hydrateFromDatabase(bootstrapAccountId),
-            reports.hydrateFromDatabase(bootstrapAccountId),
-            marketing.hydrateFromDatabase(bootstrapAccountId),
-            prescriptions.hydrateFromDatabase(bootstrapAccountId),
-            billing.hydrateFromDatabase(bootstrapAccountId)
-          ]);
-        }
-      );
-    }
+      // Tenant-backed repositories are initialized lazily after request tenancy is known.
+    },
+    initializeTenant
   };
 }

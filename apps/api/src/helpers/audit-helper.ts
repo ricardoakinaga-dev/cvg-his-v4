@@ -18,9 +18,9 @@ export interface AuditParams {
 }
 
 /**
- * Append an audit entry for a route handler action.
- * Fire-and-forget — errors are logged but don't block the response.
- * Note: occurredAt is set automatically by AuditService.write().
+ * Append an audit entry for a route handler action. AuditService tracks the
+ * pending write by correlation ID; the server flushes it before releasing the
+ * HTTP response, so persistence failures fail the request boundary.
  */
 export function appendAudit(audit: AuditService, params: AuditParams): void {
   audit.write({

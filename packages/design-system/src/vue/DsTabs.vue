@@ -84,6 +84,11 @@ function handleKeydown(event: KeyboardEvent, index: number) {
   gap: 0;
   border-bottom: 2px solid var(--color-border, #e2e8f0);
   font-family: var(--font-sans, 'Inter', system-ui, sans-serif);
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
 }
 
 .ds-tab {
@@ -132,5 +137,11 @@ function handleKeydown(event: KeyboardEvent, index: number) {
 .ds-tab--active .ds-tab__count {
   background: var(--color-primary-100, #dbeafe);
   color: var(--color-primary-700, #1d4ed8);
+}
+
+@media (max-width: 1024px), (pointer: coarse) {
+  .ds-tab {
+    min-height: var(--touch-min, 44px);
+  }
 }
 </style>

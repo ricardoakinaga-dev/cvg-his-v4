@@ -94,12 +94,11 @@ test.describe('Fluxo Crítico SPA — Ponta a Ponta', () => {
     console.log('   📋 Adding clinical entry...');
     await page.goto(`${SPA_URL}/medical-records/${encounterId}`);
     await page.waitForLoadState('networkidle');
-    await expect(page.getByRole('heading', { name: /Prontuário Clínico/ })).toBeVisible({
+    await expect(page.getByRole('heading', { name: /Prontuário clínico/i })).toBeVisible({
       timeout: 15000
     });
 
-    await page.getByRole('button', { name: /Nova Entrada/ }).click();
-    await page.selectOption('#entryType', 'anamnesis');
+    await page.getByRole('button', { name: 'Adicionar anamnese' }).click();
     await page.locator('#entryTitle').fill('Anamnese inicial - E2E');
     await page.locator('#entryContent').fill('Paciente apresenta dor abdominal e letargia.');
 
@@ -113,11 +112,16 @@ test.describe('Fluxo Crítico SPA — Ponta a Ponta', () => {
     console.log('   💰 Adding billing item...');
     await page.goto(`${SPA_URL}/billing/${encounterId}`);
     await page.waitForLoadState('networkidle');
-    await expect(page.getByRole('button', { name: 'Gerar Estimativa' })).toBeVisible({
+    const generateEstimate = page.getByRole('button', { name: 'Gerar Estimativa' }).first();
+    await expect(generateEstimate).toBeVisible({
       timeout: 10000
     });
-    await page.getByRole('button', { name: 'Gerar Estimativa' }).click();
-    await expect(page.getByLabel('Estimado')).toBeVisible({ timeout: 15000 });
+    await generateEstimate.click();
+    await expect(page.getByRole('main').getByText('Estimado', { exact: true }).first()).toBeVisible(
+      {
+        timeout: 15000
+      }
+    );
 
     await page.getByRole('button', { name: /Adicionar Item/ }).click();
     await page.selectOption('#itemType', 'service');
@@ -140,18 +144,25 @@ test.describe('Fluxo Crítico SPA — Ponta a Ponta', () => {
     await page.getByRole('button', { name: 'Fechar Atendimento' }).click();
     const closeDialog = page.getByRole('dialog', { name: 'Fechar Atendimento' });
     await closeDialog.locator('#closeReason').fill('Atendimento concluído - E2E test');
-    await closeDialog.locator('button').filter({ hasText: /^Fechar$/ }).click();
+    await closeDialog
+      .locator('button')
+      .filter({ hasText: /^Fechar$/ })
+      .click();
 
-    await expect(page.getByLabel('✅ Finalizado')).toBeVisible({ timeout: 15000 });
+    await expect(
+      page.getByRole('main').getByText('✅ Finalizado', { exact: true }).first()
+    ).toBeVisible({ timeout: 15000 });
     console.log('   ✅ Encounter closed');
 
     // ── Step 8: Validate final state ──
     console.log('   ✅ Validating final state...');
-    await expect(page.getByLabel('✅ Finalizado')).toBeVisible();
+    await expect(
+      page.getByRole('main').getByText('✅ Finalizado', { exact: true }).first()
+    ).toBeVisible();
 
     await page.goto(`${SPA_URL}/encounters`);
     await page.waitForLoadState('networkidle');
-    await expect(page.getByRole('heading', { name: 'Atendimentos', exact: true })).toBeVisible({
+    await expect(page.getByRole('heading', { name: '🩺 Atendimentos', exact: true })).toBeVisible({
       timeout: 15000
     });
     console.log('   ✅ Encounters list accessible');

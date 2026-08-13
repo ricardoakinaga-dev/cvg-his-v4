@@ -10,6 +10,7 @@ import { AuditService } from '@cvg-his-v2/module-audit';
 import { BillingService } from '@cvg-his-v2/module-billing';
 import { InventoryService } from '@cvg-his-v2/module-inventory';
 import { ForbiddenError } from '@cvg-his-v2/shared-errors';
+import type { UserSummary } from '@cvg-his-v2/shared-types';
 
 // ============================================================================
 // Foundational Integration Tests — Phase 3
@@ -23,6 +24,19 @@ import { ForbiddenError } from '@cvg-his-v2/shared-errors';
 
 const TEST_ACCOUNT_ID = 'acc_test_001';
 const TEST_USER_ID = 'user_admin';
+
+function createAccessActor(status: UserSummary['status'] = 'active'): UserSummary {
+  return {
+    id: 'user1' as never,
+    accountId: 'acc1' as never,
+    username: 'integration-user',
+    email: 'integration-user@example.test',
+    displayName: 'Integration User',
+    status,
+    createdAt: '2026-08-12T00:00:00.000Z',
+    updatedAt: '2026-08-12T00:00:00.000Z'
+  };
+}
 
 function getSafeScheduledAt(base = new Date()): string {
   const scheduledAt = new Date(base);
@@ -45,6 +59,7 @@ describe('ICT-001 — User → Role → Effective Permission', () => {
     // Create user with reception role (matches AccessControlService role code)
     const roleCode = 'reception';
     const user = await users.create({
+      accountId: TEST_ACCOUNT_ID as never,
       username: `test_user_${Date.now()}`,
       email: `test_${Date.now()}@test.com`,
       password: 'TestPassword123',
@@ -80,7 +95,7 @@ describe('ICT-002 — User Without Permission Is Blocked', () => {
     expect(() =>
       accessControl.assertAuthorized({
         access: profile,
-        actor: { id: 'user1', accountId: 'acc1', status: 'active' } as any,
+        actor: createAccessActor(),
         permissionCode: 'scheduling.manage',
         accountId: 'acc1'
       })
@@ -97,7 +112,7 @@ describe('ICT-003 — User With Permission Can Execute', () => {
     expect(() =>
       accessControl.assertAuthorized({
         access: profile,
-        actor: { id: 'user1', accountId: 'acc1', status: 'active' } as any,
+        actor: createAccessActor(),
         permissionCode: 'scheduling.manage',
         accountId: 'acc1'
       })
@@ -106,7 +121,7 @@ describe('ICT-003 — User With Permission Can Execute', () => {
     expect(() =>
       accessControl.assertAuthorized({
         access: profile,
-        actor: { id: 'user1', accountId: 'acc1', status: 'active' } as any,
+        actor: createAccessActor(),
         permissionCode: 'owners.manage',
         accountId: 'acc1'
       })
@@ -144,7 +159,7 @@ describe('ICT-005 — Inactive Professional → Not Eligible', () => {
     expect(() =>
       accessControl.assertAuthorized({
         access: profile,
-        actor: { id: 'user1', accountId: 'acc1', status: 'inactive' } as any,
+        actor: createAccessActor('inactive'),
         permissionCode: 'scheduling.manage',
         accountId: 'acc1'
       })
@@ -373,7 +388,7 @@ describe('ICT-010 — Billable/Consumption → Module Reflex', () => {
     expect(items[0].quantity).toBe(1);
   });
 
-  it('consumption generates expected reflex in inventory module', () => {
+  it('consumption generates expected reflex in inventory module', async () => {
     const owners = new OwnersService();
     const patients = new PatientsService({ owners });
     // Shared encounters instance so inventory can see test encounters
@@ -398,15 +413,17 @@ describe('ICT-010 — Billable/Consumption → Module Reflex', () => {
       reason: 'Consulta'
     });
 
-    // Get initial stock
-    const items = inventory.listItems();
-    expect(items.length).toBeGreaterThan(0);
-
-    const initialItem = items[0];
+    const initialItem = await inventory.createItem(TEST_ACCOUNT_ID, TEST_USER_ID, {
+      sku: `FOUNDATIONAL-${Date.now()}`,
+      name: 'Foundational inventory item',
+      unit: 'unit',
+      onHandQuantity: 10,
+      reorderLevel: 2,
+      unitCostAmount: 3
+    });
     const initialQty = initialItem.onHandQuantity;
 
-    // Consume (real API: consume(actorUserId, payload with sourceEntityType))
-    inventory.consume(TEST_USER_ID, {
+    await inventory.consume(TEST_ACCOUNT_ID, TEST_USER_ID, {
       encounterId: encounter.id,
       inventoryItemId: initialItem.id,
       quantity: 2,
@@ -414,7 +431,7 @@ describe('ICT-010 — Billable/Consumption → Module Reflex', () => {
     });
 
     // Verify reflex: stock reduced
-    const updatedItem = inventory.getItemOrThrow(initialItem.id);
+    const updatedItem = inventory.getItemOrThrow(TEST_ACCOUNT_ID, initialItem.id);
     expect(updatedItem.onHandQuantity).toBe(initialQty - 2);
 
     // Verify consumption was recorded

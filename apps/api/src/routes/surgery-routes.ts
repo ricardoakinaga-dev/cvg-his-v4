@@ -31,7 +31,10 @@ export async function handleSurgeryRoutes(
     const principal = requirePrincipal(request, 'surgery.read');
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const encounterId = url.searchParams.get('encounterId') ?? undefined;
-    const items = surgery.list(encounterId ?? undefined);
+    const items = surgery.listByAccount(
+      principal.user.accountId as never,
+      encounterId ?? undefined
+    );
 
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -53,7 +56,8 @@ export async function handleSurgeryRoutes(
   if (pathname === '/surgeries' && request.method === 'POST') {
     const principal = requirePrincipal(request, 'surgery.manage');
     const payload = (await readJsonBody(request)) as CreateSurgeryCaseRequest;
-    const surgeryCase = surgery.requestCase(payload);
+    const surgeryCase = surgery.requestCase(payload, principal.user.accountId as never);
+    await surgery.waitForPersistence();
 
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -76,7 +80,10 @@ export async function handleSurgeryRoutes(
   if (detailMatch && request.method === 'GET') {
     const principal = requirePrincipal(request, 'surgery.read');
     const surgeryCaseId = requireNonEmptyString(detailMatch[1], 'surgeryCaseId');
-    const surgeryCase = surgery.getOrThrow(surgeryCaseId as never);
+    const surgeryCase = surgery.getForAccountOrThrow(
+      principal.user.accountId as never,
+      surgeryCaseId as never
+    );
 
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -100,7 +107,12 @@ export async function handleSurgeryRoutes(
     const principal = requirePrincipal(request, 'surgery.manage');
     const surgeryCaseId = requireNonEmptyString(statusMatch[1], 'surgeryCaseId');
     const payload = (await readJsonBody(request)) as UpdateSurgeryStatusRequest;
-    const surgeryCase = surgery.updateStatus(surgeryCaseId as never, payload);
+    const surgeryCase = surgery.updateStatus(
+      surgeryCaseId as never,
+      payload,
+      principal.user.accountId as never
+    );
+    await surgery.waitForPersistence();
 
     appendAudit(audit, {
       actorId: principal.user.id,

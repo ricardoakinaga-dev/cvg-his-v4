@@ -15,7 +15,7 @@ export function encrypt(plaintext: string, masterKey: string): string {
   const iv = randomBytes(IV_LENGTH);
   const key = deriveKey(masterKey, salt);
 
-  const cipher = createCipheriv(ALGORITHM, key, iv);
+  const cipher = createCipheriv(ALGORITHM, key, iv, { authTagLength: AUTH_TAG_LENGTH });
   let encrypted = cipher.update(plaintext, 'utf8', 'base64');
   encrypted += cipher.final('base64');
   const authTag = cipher.getAuthTag();
@@ -34,8 +34,15 @@ export function decrypt(ciphertext: string, masterKey: string): string {
   const authTag = Buffer.from(parts[2], 'base64');
   const encrypted = parts[3];
 
+  if (salt.length !== SALT_LENGTH || iv.length !== IV_LENGTH) {
+    throw new Error('Invalid ciphertext parameters');
+  }
+  if (authTag.length !== AUTH_TAG_LENGTH) {
+    throw new Error('Invalid authentication tag length');
+  }
+
   const key = deriveKey(masterKey, salt);
-  const decipher = createDecipheriv(ALGORITHM, key, iv);
+  const decipher = createDecipheriv(ALGORITHM, key, iv, { authTagLength: AUTH_TAG_LENGTH });
   decipher.setAuthTag(authTag);
 
   let decrypted = decipher.update(encrypted, 'base64', 'utf8');

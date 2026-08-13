@@ -10,6 +10,7 @@ import { NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
 import type { AccountId, EncounterId, PatientId, UserId } from '@cvg-his-v2/shared-types';
 
 const ACCOUNT_ID = 'acc_cvg_demo' as AccountId;
+const FOREIGN_ACCOUNT_ID = 'acc_other' as AccountId;
 const PATIENT_1 = 'pat_001' as PatientId;
 const PATIENT_2 = 'pat_002' as PatientId;
 const ENCOUNTER_1 = 'enc_001' as EncounterId;
@@ -107,6 +108,27 @@ describe('PrescriptionsService', () => {
       expect(found!.medicationName).toBe('Amoxicilina');
     });
 
+    it('should reject cross-account reads, lists and mutations before persistence', async () => {
+      const rx = service.create(ACCOUNT_ID, ACTOR_ID, createPayload());
+
+      expect(() => service.getById(rx.id, FOREIGN_ACCOUNT_ID)).toThrow(NotFoundError);
+      expect(service.listByEncounter(ENCOUNTER_1, FOREIGN_ACCOUNT_ID)).toEqual([]);
+      expect(service.listByPatient(PATIENT_1, FOREIGN_ACCOUNT_ID)).toEqual([]);
+      expect(() =>
+        service.update(
+          rx.id,
+          ACTOR_ID,
+          { content: 'Cross tenant', reason: 'cross' },
+          FOREIGN_ACCOUNT_ID
+        )
+      ).toThrow(NotFoundError);
+      expect(() =>
+        service.archive(rx.id, ACTOR_ID, { reason: 'cross' }, FOREIGN_ACCOUNT_ID)
+      ).toThrow(NotFoundError);
+
+      expect(service.getById(rx.id, ACCOUNT_ID)).toMatchObject({ version: 1, deletedAt: undefined });
+    });
+
     it('should hydrate prescriptions from repository by account', async () => {
       const rx = service.create(ACCOUNT_ID, ACTOR_ID, createPayload());
       await service.waitForPersistence();
@@ -116,6 +138,21 @@ describe('PrescriptionsService', () => {
 
       expect(rehydrated.getById(rx.id).medicationName).toBe('Amoxicilina');
       expect(rehydrated.listByPatient(PATIENT_1)).toHaveLength(1);
+    });
+
+    it('should resolve a prescription persisted after service hydration without crossing accounts', async () => {
+      const externallyPersisted = new PrescriptionsService({ prescriptionRepository: repo });
+      const rx = externallyPersisted.create(ACCOUNT_ID, ACTOR_ID, createPayload());
+      await externallyPersisted.waitForPersistence();
+
+      await expect(service.getByIdAsync(rx.id, ACCOUNT_ID)).resolves.toMatchObject({
+        id: rx.id,
+        accountId: ACCOUNT_ID,
+        medicationName: 'Amoxicilina'
+      });
+      await expect(service.getByIdAsync(rx.id, FOREIGN_ACCOUNT_ID)).rejects.toThrow(
+        NotFoundError
+      );
     });
 
     it('should roll back memory when repository persistence fails', async () => {

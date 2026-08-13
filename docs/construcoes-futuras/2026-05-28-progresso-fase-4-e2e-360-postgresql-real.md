@@ -32,8 +32,8 @@ Fechar a pendencia registrada na jornada `Busca Mestre -> cockpit 360 -> recepca
 - `pnpm --filter @cvg-his-v2/api build`
 - `pnpm --filter @cvg-his-v2/spa build`
 - `pnpm validate:rls` - `96/96 tenant table(s) protected`
-- `DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5433/cvg_his_v2_test node infra/scripts/prepare-test-db.mjs`
-- `API_DISABLE_INCOMPATIBLE_DB_REPOS=0 E2E_DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5433/cvg_his_v2_test npx playwright test --config playwright-spa.config.ts e2e/spa/master-search-360-reception.spec.ts`
+- `DATABASE_URL="<test-database-url>" node infra/scripts/prepare-test-db.mjs`
+- `API_DISABLE_INCOMPATIBLE_DB_REPOS=0 E2E_DATABASE_URL="<test-database-url>" npx playwright test --config playwright-spa.config.ts e2e/spa/master-search-360-reception.spec.ts`
 - `pnpm test:e2e:spa:360` - 5/5 testes passando localmente.
 
 Resultado final: `4 passed`.

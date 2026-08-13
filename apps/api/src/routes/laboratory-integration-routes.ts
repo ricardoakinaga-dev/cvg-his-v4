@@ -22,10 +22,16 @@ export async function handleLaboratoryIntegrationRoutes(
   correlationId: string,
   handlers: LaboratoryIntegrationRoutesHandlers
 ): Promise<boolean> {
-  if (pathname === '/integrations/laboratory/equipment-results/imports' && request.method === 'POST') {
+  if (
+    pathname === '/integrations/laboratory/equipment-results/imports' &&
+    request.method === 'POST'
+  ) {
     return handleEquipmentImport(request, response, correlationId, handlers);
   }
-  if (pathname === '/integrations/laboratory/equipment-results/report' && request.method === 'GET') {
+  if (
+    pathname === '/integrations/laboratory/equipment-results/report' &&
+    request.method === 'GET'
+  ) {
     return handleEquipmentReport(request, response, correlationId, handlers);
   }
   return false;
@@ -59,19 +65,30 @@ async function handleEquipmentImport(
     return true;
   }
 
-  const order = laboratory.getOrder(apiKeyPrincipal.apiKey.accountId as never, String(body.orderId) as never);
+  const order = laboratory.getOrder(
+    apiKeyPrincipal.apiKey.accountId as never,
+    String(body.orderId) as never
+  );
   if (order.status === 'requested') {
-    laboratory.recordResult(order.id, {
-      status: 'collected',
-      collectedByUserId: 'equipment_bridge'
-    });
+    await laboratory.recordResult(
+      order.id,
+      {
+        status: 'collected',
+        collectedByUserId: 'equipment_bridge'
+      },
+      apiKeyPrincipal.apiKey.accountId as never
+    );
   }
-  const updated = laboratory.recordResult(order.id, {
-    status: 'resulted',
-    resultSummary: String(body.resultSummary),
-    releasedByUserId: 'equipment_bridge',
-    signedByUserId: 'equipment_bridge'
-  });
+  const updated = await laboratory.recordResult(
+    order.id,
+    {
+      status: 'resulted',
+      resultSummary: String(body.resultSummary),
+      releasedByUserId: 'equipment_bridge',
+      signedByUserId: 'equipment_bridge'
+    },
+    apiKeyPrincipal.apiKey.accountId as never
+  );
   const record = {
     externalResultId,
     orderId: order.id,

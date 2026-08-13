@@ -93,6 +93,17 @@ const emit = defineEmits<{
   .app-search-toolbar__filters,
   .app-search-toolbar__actions {
     flex: 1 1 100%;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .app-search-toolbar__filters :deep(.ds-input-wrapper) {
+    flex-basis: 100%;
+    min-width: 0;
+  }
+
+  .app-search-toolbar__actions :deep(.ds-btn) {
+    flex: 1 1 auto;
   }
 }
 </style>

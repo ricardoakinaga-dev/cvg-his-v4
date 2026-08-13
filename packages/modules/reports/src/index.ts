@@ -553,7 +553,6 @@ export class ReportsService {
   }
 }
 
-/* v8 ignore start -- SQL repository adapter covered by integration tests. */
 export class DatabaseReportRepository implements ReportRepository {
   async saveExecution(execution: ReportExecutionDetail): Promise<void> {
     await withTenantQuery(getPool(), async (client) => {
@@ -845,7 +844,6 @@ function mapSchedule(row: Record<string, unknown>): ReportScheduleSummary {
     updatedAt: dateIso(row.updated_at)
   };
 }
-/* v8 ignore stop */
 
 function toCsv(columns: readonly ReportColumn[], rows: readonly Record<string, unknown>[]): string {
   const header = columns.map((column) => csvCell(column.label)).join(',');

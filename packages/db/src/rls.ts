@@ -10,9 +10,15 @@ export interface RlsMigrationCoverageTable {
   readonly sourceFiles: readonly string[];
   readonly hasAccountId: boolean;
   readonly rlsEnabled: boolean;
+  readonly rlsForced: boolean;
   readonly hasTenantPolicy: boolean;
   readonly policyUsesCurrentAccountId: boolean;
-  readonly status: 'protected' | 'missing_rls' | 'missing_policy' | 'documented_exception';
+  readonly status:
+    | 'protected'
+    | 'missing_rls'
+    | 'missing_force_rls'
+    | 'missing_policy'
+    | 'documented_exception';
   readonly missing: readonly string[];
 }
 
@@ -56,6 +62,8 @@ function collectTenantTables(files: readonly RlsMigrationFile[]): Map<string, Se
   const tables = new Map<string, Set<string>>();
   const createTablePattern =
     /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?((?:"?public"?\.)?"?[a-zA-Z0-9_]+"?)\s*\(([\s\S]*?)\)\s*;/gi;
+  const addAccountIdPattern =
+    /ALTER\s+TABLE\s+(?:IF\s+EXISTS\s+)?((?:"?public"?\.)?"?[a-zA-Z0-9_]+"?)\s+ADD\s+(?:COLUMN\s+)?(?:IF\s+NOT\s+EXISTS\s+)?"?account_id"?\s+(uuid|text|varchar|character\s+varying|char|bigint|integer)\b/gi;
 
   for (const file of files) {
     const sql = stripSqlComments(file.sql);
@@ -63,6 +71,17 @@ function collectTenantTables(files: readonly RlsMigrationFile[]): Map<string, Se
       const tableName = normalizeIdentifier(match[1] ?? '');
       const body = match[2] ?? '';
       if (!tableName || !/"?account_id"?\s+(uuid|text|varchar|character varying|char|bigint|integer)/i.test(body)) {
+        continue;
+      }
+
+      const sourceFiles = tables.get(tableName) ?? new Set<string>();
+      sourceFiles.add(file.name);
+      tables.set(tableName, sourceFiles);
+    }
+
+    for (const match of sql.matchAll(addAccountIdPattern)) {
+      const tableName = normalizeIdentifier(match[1] ?? '');
+      if (!tableName) {
         continue;
       }
 
@@ -79,6 +98,14 @@ function hasRlsEnabled(combinedSql: string, tableName: string): boolean {
   const table = escapeRegExp(tableName);
   return new RegExp(
     `ALTER\\s+TABLE\\s+(?:IF\\s+EXISTS\\s+)?(?:(?:"?public"?)\\.)?"?${table}"?\\s+ENABLE\\s+ROW\\s+LEVEL\\s+SECURITY`,
+    'i'
+  ).test(combinedSql);
+}
+
+function hasRlsForced(combinedSql: string, tableName: string): boolean {
+  const table = escapeRegExp(tableName);
+  return new RegExp(
+    `ALTER\\s+TABLE\\s+(?:IF\\s+EXISTS\\s+)?(?:(?:"?public"?)\\.)?"?${table}"?\\s+FORCE\\s+ROW\\s+LEVEL\\s+SECURITY`,
     'i'
   ).test(combinedSql);
 }
@@ -117,10 +144,12 @@ export function analyzeRlsMigrationCoverage(
 
   for (const [tableName, sourceFiles] of tenantTables.entries()) {
     const rlsEnabled = hasRlsEnabled(combinedSql, tableName);
+    const rlsForced = hasRlsForced(combinedSql, tableName);
     const tenantPolicy = hasTenantPolicy(combinedSql, tableName);
     const usesCurrentAccount = policyUsesCurrentAccountId(combinedSql, tableName);
     const missing = [
       ...(rlsEnabled ? [] : ['ENABLE ROW LEVEL SECURITY']),
+      ...(rlsForced ? [] : ['FORCE ROW LEVEL SECURITY']),
       ...(tenantPolicy ? [] : ['CREATE POLICY']),
       ...(usesCurrentAccount ? [] : ['app.current_account_id policy predicate'])
     ];
@@ -131,6 +160,7 @@ export function analyzeRlsMigrationCoverage(
       sourceFiles: [...sourceFiles].sort(),
       hasAccountId: true,
       rlsEnabled,
+      rlsForced,
       hasTenantPolicy: tenantPolicy,
       policyUsesCurrentAccountId: usesCurrentAccount,
       status:
@@ -138,9 +168,11 @@ export function analyzeRlsMigrationCoverage(
           ? 'protected'
           : isException
             ? 'documented_exception'
-            : rlsEnabled
-              ? 'missing_policy'
-              : 'missing_rls',
+            : !rlsEnabled
+              ? 'missing_rls'
+              : !rlsForced
+                ? 'missing_force_rls'
+                : 'missing_policy',
       missing
     });
   }
@@ -151,7 +183,12 @@ export function analyzeRlsMigrationCoverage(
     totalTenantTables: sortedTables.length,
     protectedTables: sortedTables.filter((table) => table.status === 'protected').length,
     exceptionTables: sortedTables.filter((table) => table.status === 'documented_exception').length,
-    failingTables: sortedTables.filter((table) => table.status === 'missing_policy' || table.status === 'missing_rls').length,
+    failingTables: sortedTables.filter(
+      (table) =>
+        table.status === 'missing_policy' ||
+        table.status === 'missing_rls' ||
+        table.status === 'missing_force_rls'
+    ).length,
     tables: sortedTables
   };
 }
@@ -255,12 +292,17 @@ export async function verifyCrossTenantIsolation(
   accountA: string,
   accountB: string
 ): Promise<{ accountASeesB: boolean; accountBSeesA: boolean }> {
+  if (!/^[a-z_][a-z0-9_]*$/.test(tableName)) {
+    throw new Error(`Invalid PostgreSQL identifier: ${tableName}`);
+  }
+
+  const quotedTableName = `"${tableName}"`;
   let accountASeesB = false;
   let accountBSeesA = false;
 
   // Account A tenta ver dados de Account B
   await withTenantContext(pool, accountA, async (client) => {
-    const result = await client.query(`SELECT COUNT(*) FROM ${tableName} WHERE account_id = $1`, [
+    const result = await client.query(`SELECT COUNT(*) FROM ${quotedTableName} WHERE account_id = $1`, [
       accountB
     ]);
     accountASeesB = parseInt(result.rows[0].count, 10) > 0;
@@ -268,7 +310,7 @@ export async function verifyCrossTenantIsolation(
 
   // Account B tenta ver dados de Account A
   await withTenantContext(pool, accountB, async (client) => {
-    const result = await client.query(`SELECT COUNT(*) FROM ${tableName} WHERE account_id = $1`, [
+    const result = await client.query(`SELECT COUNT(*) FROM ${quotedTableName} WHERE account_id = $1`, [
       accountA
     ]);
     accountBSeesA = parseInt(result.rows[0].count, 10) > 0;

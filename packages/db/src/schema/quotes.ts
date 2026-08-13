@@ -32,7 +32,7 @@ export const quoteItemTypeEnum = pgEnum('quote_item_type', ['product', 'service'
 export const quotes = pgTable(
   'quotes',
   {
-    id: uuid('id').defaultRandom().primaryKey(),
+    id: text('id').primaryKey(),
     accountId: uuid('account_id')
       .notNull()
       .references(() => accounts.id, { onDelete: 'cascade' }),
@@ -45,7 +45,7 @@ export const quotes = pgTable(
     total: numeric('total', { precision: 12, scale: 2 }).notNull().default('0'),
     notes: text('notes'),
     createdByUserId: uuid('created_by_user_id').notNull(),
-    convertedToSaleId: uuid('converted_to_sale_id'),
+    convertedToSaleId: text('converted_to_sale_id'),
     convertedAt: timestamp('converted_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
@@ -65,15 +65,15 @@ export const quotes = pgTable(
 export const quoteItems = pgTable(
   'quote_items',
   {
-    id: uuid('id').defaultRandom().primaryKey(),
-    quoteId: uuid('quote_id')
+    id: text('id').primaryKey(),
+    quoteId: text('quote_id')
       .notNull()
       .references(() => quotes.id, { onDelete: 'cascade' }),
     accountId: uuid('account_id')
       .notNull()
       .references(() => accounts.id, { onDelete: 'cascade' }),
     itemType: quoteItemTypeEnum('item_type').notNull(),
-    catalogItemId: uuid('catalog_item_id'),
+    catalogItemId: text('catalog_item_id'),
     nameSnapshot: text('name_snapshot').notNull(),
     codeSnapshot: text('code_snapshot'),
     unitPrice: numeric('unit_price', { precision: 12, scale: 2 }).notNull(),

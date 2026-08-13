@@ -8,12 +8,12 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { AccessControlService } from '@cvg-his-v2/module-access-control';
 import type { AuditService } from '@cvg-his-v2/module-audit';
 import type { CounterSalesService } from '@cvg-his-v2/module-counter-sales';
+import type { OwnersService } from '@cvg-his-v2/module-owners';
 import type { QuotesService } from '@cvg-his-v2/module-quotes';
 import type { StaffService } from '@cvg-his-v2/module-staff';
 import type { UsersService } from '@cvg-his-v2/module-users';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 import type { UpdateUserRequest } from '@cvg-his-v2/shared-contracts';
-import { AuthenticationError } from '@cvg-his-v2/shared-errors';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 
 import { appendAudit } from '../helpers/audit-helper.js';
@@ -24,6 +24,7 @@ export interface UsersStaffQuotesRoutesHandlers {
   users: UsersService;
   staff: StaffService;
   quotes: QuotesService;
+  owners?: OwnersService;
   counterSales: CounterSalesService;
   accessControl: AccessControlService;
   audit: AuditService;
@@ -37,7 +38,8 @@ export async function handleUsersStaffQuotesRoutes(
   correlationId: string,
   handlers: UsersStaffQuotesRoutesHandlers
 ): Promise<boolean> {
-  const { users, staff, quotes, counterSales, accessControl, audit, requirePrincipal } = handlers;
+  const { users, staff, quotes, owners, counterSales, accessControl, audit, requirePrincipal } =
+    handlers;
   const url = new URL(request.url ?? pathname, 'http://localhost');
 
   // ==========================================================
@@ -61,13 +63,13 @@ export async function handleUsersStaffQuotesRoutes(
       );
 
       const newUser = await users.create({
+        accountId: principal.user.accountId,
         username: payload.username as string,
         email: payload.email as string,
         password: payload.password as string,
         displayName: (payload.displayName as string) || (payload.username as string),
         roleCode: (payload.roleCode as string) || undefined,
-        status:
-          payload.status === 'inactive' ? 'inactive' : ('active' as 'active' | 'inactive')
+        status: payload.status === 'inactive' ? 'inactive' : ('active' as 'active' | 'inactive')
       });
       if (payload.roleCode) {
         await accessControl.replaceLegacyRoles(newUser.id, [payload.roleCode as string]);
@@ -111,7 +113,7 @@ export async function handleUsersStaffQuotesRoutes(
       correlationId
     });
     response.statusCode = 200;
-    response.end(JSON.stringify({ items: users.list() }));
+    response.end(JSON.stringify({ items: users.list(principal.user.accountId) }));
     return true;
   }
 
@@ -123,7 +125,7 @@ export async function handleUsersStaffQuotesRoutes(
     );
     const userId = requireNonEmptyString(pathname.split('/')[2], 'userId');
     if (request.method === 'GET') {
-      const user = users.getOrThrow(userId as never);
+      const user = users.getForAccountOrThrow(principal.user.accountId, userId as never);
       appendAudit(audit, {
         actorId: principal.user.id,
         accountId: principal.user.accountId,
@@ -141,7 +143,7 @@ export async function handleUsersStaffQuotesRoutes(
     }
     if (request.method === 'PATCH') {
       const payload = (await readJsonBody(request)) as UpdateUserRequest;
-      const user = await users.update(userId as never, payload);
+      const user = await users.updateForAccount(principal.user.accountId, userId as never, payload);
       appendAudit(audit, {
         actorId: principal.user.id,
         accountId: principal.user.accountId,
@@ -180,7 +182,7 @@ export async function handleUsersStaffQuotesRoutes(
     response.statusCode = 200;
     response.end(
       JSON.stringify({
-        items: staff.list().filter((member) => member.accountId === principal.user.accountId)
+        items: staff.list(principal.user.accountId as never)
       })
     );
     return true;
@@ -190,10 +192,7 @@ export async function handleUsersStaffQuotesRoutes(
   if (pathname.startsWith('/staff/') && request.method === 'GET') {
     const principal = requirePrincipal(request, 'staff.read');
     const staffId = requireNonEmptyString(pathname.split('/')[2], 'staffId');
-    const member = staff.getOrThrow(staffId as never);
-    if (member.accountId !== principal.user.accountId) {
-      throw new AuthenticationError('Staff member not found for current account');
-    }
+    const member = staff.getOrThrow(staffId as never, principal.user.accountId as never);
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
@@ -220,6 +219,9 @@ export async function handleUsersStaffQuotesRoutes(
       department?: string | null;
       jobTitle?: string | null;
     };
+    if (payload.userId) {
+      users.getForAccountOrThrow(principal.user.accountId, payload.userId as never);
+    }
     const member = await staff.create(principal.user.accountId as never, {
       employeeCode: requireNonEmptyString(payload.employeeCode, 'employeeCode'),
       fullName: requireNonEmptyString(payload.fullName, 'fullName'),
@@ -247,10 +249,7 @@ export async function handleUsersStaffQuotesRoutes(
   if (pathname.startsWith('/staff/') && request.method === 'PATCH') {
     const principal = requirePrincipal(request, 'staff.manage');
     const staffId = requireNonEmptyString(pathname.split('/')[2], 'staffId');
-    const existingMember = staff.getOrThrow(staffId as never);
-    if (existingMember.accountId !== principal.user.accountId) {
-      throw new AuthenticationError('Staff member not found for current account');
-    }
+    staff.getOrThrow(staffId as never, principal.user.accountId as never);
     const payload = (await readJsonBody(request)) as {
       fullName?: string;
       department?: string | null;
@@ -287,10 +286,7 @@ export async function handleUsersStaffQuotesRoutes(
   ) {
     const principal = requirePrincipal(request, 'staff.manage');
     const staffId = requireNonEmptyString(pathname.split('/')[2], 'staffId');
-    const existingMember = staff.getOrThrow(staffId as never);
-    if (existingMember.accountId !== principal.user.accountId) {
-      throw new AuthenticationError('Staff member not found for current account');
-    }
+    staff.getOrThrow(staffId as never, principal.user.accountId as never);
     const payload = (await readJsonBody(request)) as { isActive: boolean };
     const member = await staff.toggleActive(staffId as never, payload.isActive);
     appendAudit(audit, {
@@ -346,6 +342,12 @@ export async function handleUsersStaffQuotesRoutes(
       validUntil?: string | null;
       notes?: string | null;
     };
+    if (payload.ownerId) {
+      owners?.getForAccountOrThrow(
+        payload.ownerId as never,
+        principal.user.accountId as never
+      );
+    }
     const quote = await quotes.create(
       principal.user.accountId as never,
       principal.user.id,
@@ -372,26 +374,29 @@ export async function handleUsersStaffQuotesRoutes(
     const principal = requirePrincipal(request, 'quote.read');
     const quoteId = requireNonEmptyString(pathname.split('/')[2], 'quoteId');
     const action = pathname.split('/')[3];
-    const quote = quotes.getOrThrow(quoteId);
-    if (quote.accountId !== principal.user.accountId) {
-      throw new AuthenticationError('Quote not found for current account');
-    }
+    const quote = quotes.getForAccountOrThrow(
+      quoteId,
+      principal.user.accountId as never
+    );
 
     if (action === 'print') {
-      const html = quotes.generatePrintHtml(quote, quotes.getItems(quote.id));
+      const html = quotes.generatePrintHtml(
+        quote,
+        quotes.getItems(quote.id, principal.user.accountId as never)
+      );
       response.statusCode = 200;
       response.end(JSON.stringify({ html }));
       return true;
     }
 
     if (action === 'pdf') {
-      const pdfBuffer = quotes.generatePdfBuffer(quote, quotes.getItems(quote.id));
+      const pdfBuffer = quotes.generatePdfBuffer(
+        quote,
+        quotes.getItems(quote.id, principal.user.accountId as never)
+      );
       response.statusCode = 200;
       response.setHeader('content-type', 'application/pdf');
-      response.setHeader(
-        'content-disposition',
-        `inline; filename="orcamento-${quote.number}.pdf"`
-      );
+      response.setHeader('content-disposition', `inline; filename="orcamento-${quote.number}.pdf"`);
       response.end(pdfBuffer);
       return true;
     }
@@ -409,23 +414,24 @@ export async function handleUsersStaffQuotesRoutes(
         correlationId
       });
       response.statusCode = 200;
-      response.end(JSON.stringify({ ...quote, items: quotes.getItems(quote.id) }));
+      response.end(
+        JSON.stringify({
+          ...quote,
+          items: quotes.getItems(quote.id, principal.user.accountId as never)
+        })
+      );
       return true;
     }
   }
 
   // POST /quotes/:id/items — add item to quote
-  if (
-    pathname.startsWith('/quotes/') &&
-    pathname.endsWith('/items') &&
-    request.method === 'POST'
-  ) {
+  if (pathname.startsWith('/quotes/') && pathname.endsWith('/items') && request.method === 'POST') {
     const principal = requirePrincipal(request, 'quote.write');
     const quoteId = requireNonEmptyString(pathname.split('/')[2], 'quoteId');
-    const quote = quotes.getOrThrow(quoteId);
-    if (quote.accountId !== principal.user.accountId) {
-      throw new AuthenticationError('Quote not found for current account');
-    }
+    const quote = quotes.getForAccountOrThrow(
+      quoteId,
+      principal.user.accountId as never
+    );
     const payload = (await readJsonBody(request)) as {
       itemType: 'product' | 'service';
       catalogItemId?: string | null;
@@ -436,7 +442,11 @@ export async function handleUsersStaffQuotesRoutes(
       discountAmount?: number;
       notes?: string | null;
     };
-    const result = await quotes.addItem(quoteId, payload);
+    const result = await quotes.addItem(
+      quoteId,
+      payload,
+      principal.user.accountId as never
+    );
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
@@ -461,7 +471,7 @@ export async function handleUsersStaffQuotesRoutes(
   ) {
     const principal = requirePrincipal(request, 'quote.write');
     const quoteId = requireNonEmptyString(pathname.split('/')[2], 'quoteId');
-    const quote = await quotes.approve(quoteId);
+    const quote = await quotes.approve(quoteId, principal.user.accountId as never);
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
@@ -486,7 +496,7 @@ export async function handleUsersStaffQuotesRoutes(
   ) {
     const principal = requirePrincipal(request, 'quote.write');
     const quoteId = requireNonEmptyString(pathname.split('/')[2], 'quoteId');
-    const quote = await quotes.reject(quoteId);
+    const quote = await quotes.reject(quoteId, principal.user.accountId as never);
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
@@ -511,7 +521,7 @@ export async function handleUsersStaffQuotesRoutes(
   ) {
     const principal = requirePrincipal(request, 'quote.write');
     const quoteId = requireNonEmptyString(pathname.split('/')[2], 'quoteId');
-    const quote = await quotes.cancel(quoteId);
+    const quote = await quotes.cancel(quoteId, principal.user.accountId as never);
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
@@ -536,15 +546,15 @@ export async function handleUsersStaffQuotesRoutes(
   ) {
     const principal = requirePrincipal(request, 'quote.write');
     const quoteId = requireNonEmptyString(pathname.split('/')[2], 'quoteId');
-    const quote = quotes.getOrThrow(quoteId);
-    if (quote.accountId !== principal.user.accountId) {
-      throw new AuthenticationError('Quote not found for current account');
-    }
+    const quote = quotes.getForAccountOrThrow(
+      quoteId,
+      principal.user.accountId as never
+    );
     const sale = await counterSales.open(principal.user.accountId as never, principal.user.id, {
       ownerId: quote.ownerId,
       notes: `Convertida do orcamento ${quote.number}`
     });
-    for (const item of quotes.getItems(quote.id)) {
+    for (const item of quotes.getItems(quote.id, principal.user.accountId as never)) {
       await counterSales.addItem(sale.id, {
         itemType: item.itemType,
         catalogItemId: item.catalogItemId,
@@ -556,7 +566,11 @@ export async function handleUsersStaffQuotesRoutes(
         notes: item.notes
       });
     }
-    const converted = await quotes.convertToSale(quote.id, sale.id);
+    const converted = await quotes.convertToSale(
+      quote.id,
+      sale.id,
+      principal.user.accountId as never
+    );
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,

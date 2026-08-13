@@ -6,7 +6,8 @@ import {
   text,
   timestamp,
   uniqueIndex,
-  uuid
+  uuid,
+  varchar
 } from 'drizzle-orm/pg-core';
 
 import { accounts } from './accounts.js';
@@ -19,6 +20,8 @@ import { wards } from './wards.js';
 
 export const inpatientStayStatusEnum = pgEnum('inpatient_stay_status', [
   'active',
+  'admitted',
+  'stable',
   'discharged',
   'transferred'
 ]);
@@ -37,12 +40,8 @@ export const inpatientStays = pgTable(
       .notNull()
       .references(() => owners.id, { onDelete: 'cascade' }),
     encounterId: uuid('encounter_id').references(() => encounters.id, { onDelete: 'set null' }),
-    wardId: uuid('ward_id')
-      .notNull()
-      .references(() => wards.id),
-    bedId: uuid('bed_id')
-      .notNull()
-      .references(() => beds.id),
+    wardId: uuid('ward_id').references(() => wards.id),
+    bedId: uuid('bed_id').references(() => beds.id),
     status: inpatientStayStatusEnum('status').notNull().default('active'),
     admittedAt: timestamp('admitted_at', { withTimezone: true }).notNull().defaultNow(),
     dischargedAt: timestamp('discharged_at', { withTimezone: true }),
@@ -55,6 +54,15 @@ export const inpatientStays = pgTable(
     chiefComplaint: text('chief_complaint'),
     reason: text('reason'),
     planSummary: text('plan_summary'),
+    unit: varchar('unit', { length: 100 }),
+    ward: varchar('ward', { length: 100 }),
+    bed: varchar('bed', { length: 100 }),
+    sectorId: varchar('sector_id', { length: 255 }),
+    dischargeReason: varchar('discharge_reason', { length: 500 }),
+    transferToUnit: varchar('transfer_to_unit', { length: 100 }),
+    transferToWard: varchar('transfer_to_ward', { length: 100 }),
+    transferToSectorId: varchar('transfer_to_sector_id', { length: 255 }),
+    transferToBedId: uuid('transfer_to_bed_id').references(() => beds.id),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
   },

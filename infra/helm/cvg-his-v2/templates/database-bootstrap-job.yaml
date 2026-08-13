@@ -1,0 +1,53 @@
+{{- if .Values.databaseBootstrap.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "cvg-his-v2.fullname" . }}-database-bootstrap-{{ .Release.Revision }}
+  labels:
+    {{- include "cvg-his-v2.labels" . | nindent 4 }}
+    app.kubernetes.io/component: database-bootstrap
+spec:
+  backoffLimit: {{ .Values.databaseBootstrap.backoffLimit }}
+  ttlSecondsAfterFinished: {{ .Values.databaseBootstrap.ttlSecondsAfterFinished }}
+  template:
+    metadata:
+      labels:
+        {{- include "cvg-his-v2.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: database-bootstrap
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: migrate-and-provision-runtime-role
+          image: {{ .Values.api.image.registry }}/{{ .Values.api.image.repository }}:{{ .Values.api.image.tag | default .Chart.AppVersion }}
+          imagePullPolicy: {{ .Values.api.image.pullPolicy }}
+          command: ["/nodejs/bin/node"]
+          args: ["ops/database-bootstrap.mjs"]
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cvg-his-v2.postgres.secretName" . }}
+                  key: {{ .Values.postgresql.secretKeys.adminUrl }}
+            - name: DATABASE_ADMIN_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cvg-his-v2.postgres.secretName" . }}
+                  key: {{ .Values.postgresql.secretKeys.adminUrl }}
+            - name: DATABASE_RUNTIME_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cvg-his-v2.postgres.secretName" . }}
+                  key: {{ .Values.postgresql.secretKeys.runtimeUrl }}
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+{{- end }}

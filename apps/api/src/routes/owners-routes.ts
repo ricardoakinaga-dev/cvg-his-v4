@@ -73,7 +73,7 @@ export async function handleOwnersRoutes(
     const status = url.searchParams.get('status') ?? undefined;
     const financialResponsible = url.searchParams.get('financialResponsible');
 
-    let items = owners.list(query);
+    let items = owners.listByAccount(principal.user.accountId as never, query);
 
     if (status === 'active' || status === 'inactive') {
       items = items.filter((owner) => owner.status === status);
@@ -143,9 +143,12 @@ export async function handleOwnersRoutes(
 
     const principal = requirePrincipal(request, 'owners.read');
     const ownerId = match[1];
-    const owner = owners.getOrThrow(ownerId as never);
+    const owner = owners.getForAccountOrThrow(
+      ownerId as never,
+      principal.user.accountId as never
+    );
     const relatedPatients = patients
-      .list()
+      .listByAccount(principal.user.accountId as never)
       .filter((patient) => patient.primaryOwnerId === owner.id)
       .map((patient) => ({
         id: patient.id,
@@ -154,7 +157,7 @@ export async function handleOwnersRoutes(
         breed: patient.breed ?? null
       }));
     const totalEncounters = encounters
-      .listAll()
+      .listByAccount(principal.user.accountId as never)
       .filter((encounter) => encounter.ownerId === owner.id).length;
 
     appendAudit(audit, {
@@ -200,7 +203,10 @@ export async function handleOwnersRoutes(
       );
     }
 
-    const owner = owners.getOrThrow(ownerId as never);
+    const owner = owners.getForAccountOrThrow(
+      ownerId as never,
+      principal.user.accountId as never
+    );
 
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -239,7 +245,7 @@ export async function handleOwnersRoutes(
     }
     const body = (await readJsonBody(request)) as UpdateOwnerRequest;
 
-    const owner = owners.update(ownerId as never, body);
+    const owner = owners.update(ownerId as never, body, principal.user.accountId as never);
     await owners.waitForPersistence();
 
     appendAudit(audit, {
@@ -278,7 +284,11 @@ export async function handleOwnersRoutes(
       );
     }
 
-    const owner = owners.update(ownerId as never, { status: 'inactive' });
+    const owner = owners.update(
+      ownerId as never,
+      { status: 'inactive' },
+      principal.user.accountId as never
+    );
     await owners.waitForPersistence();
 
     appendAudit(audit, {

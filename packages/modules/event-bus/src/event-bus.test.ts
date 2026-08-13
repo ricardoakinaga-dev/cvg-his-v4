@@ -233,7 +233,9 @@ test('EventBusService processPending schedules retry with backoff on failure', a
     maxAttempts: 3
   });
 
+  const processingStartedAt = Date.now();
   const processed = await service.processPending(10);
+  const processingFinishedAt = Date.now();
 
   // Event was processed (attempted), but is now 'retrying' (not 'failed')
   assert.equal(processed.length, 0, 'No event should be marked completed on handler failure');
@@ -247,7 +249,14 @@ test('EventBusService processPending schedules retry with backoff on failure', a
   // scheduledAt should be delayed by the configured backoff window.
   const nextRunAt = new Date(event.scheduledAt).getTime();
   assert.ok(Number.isFinite(nextRunAt));
-  assert.ok(nextRunAt >= Date.now() - 5);
+  assert.ok(
+    nextRunAt >= processingStartedAt + 1,
+    'Retry must not be scheduled before the configured 1ms base backoff'
+  );
+  assert.ok(
+    nextRunAt <= processingFinishedAt + 10,
+    'Retry must remain within the configured 10ms maximum backoff'
+  );
 });
 
 test('EventBusService processPending moves event to DLQ after max attempts', async () => {

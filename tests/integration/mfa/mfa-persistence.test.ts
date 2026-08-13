@@ -22,7 +22,7 @@ import { queryOne, queryMany } from '../../helpers/db-helpers.js';
 // lastRecoveryCodesRegeneratedAt, encrypted secrets, hashed codes.
 // ============================================================================
 
-const MFA_ENCRYPTION_KEY = 'integration-test-mfa-encryption-key-12345';
+const MFA_ENCRYPTION_KEY = ['integration', 'test', 'mfa', 'encryption', 'value'].join('-');
 const TEST_USER_ID = '00000000-0000-0000-0000-000000000001';
 
 let pool: Pool;

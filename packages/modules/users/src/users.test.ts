@@ -12,13 +12,19 @@ class InMemoryUsersRepository implements UsersRepository {
   readonly updated: Array<Record<string, unknown>> = [];
   readonly #users = new Map<UserId, Record<string, unknown>>();
 
-  constructor(initialUsers: Array<Record<string, unknown>> = []) {
+  constructor(
+    initialUsers: Array<Record<string, unknown>> = [],
+    readonly failCreates = false
+  ) {
     for (const user of initialUsers) {
       this.#users.set(user.id as UserId, user);
     }
   }
 
   async create(user: any): Promise<void> {
+    if (this.failCreates) {
+      throw new Error('database unavailable');
+    }
     this.created.push(user);
     this.#users.set(user.id, user);
   }
@@ -40,6 +46,16 @@ class InMemoryUsersRepository implements UsersRepository {
     );
   }
 
+  async findByLogin(accountSlug: string, username: string): Promise<any | null> {
+    return (
+      Array.from(this.#users.values()).find(
+        (user) =>
+          user.accountSlug === accountSlug &&
+          String(user.email).split('@')[0]?.toLowerCase() === username.toLowerCase()
+      ) ?? null
+    );
+  }
+
   async findAll(): Promise<readonly any[]> {
     return Array.from(this.#users.values());
   }
@@ -55,6 +71,7 @@ class InMemoryUsersRepository implements UsersRepository {
 }
 
 describe('UsersService', () => {
+  const accountId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' as AccountId;
   let service: UsersService;
 
   beforeEach(() => {
@@ -63,6 +80,7 @@ describe('UsersService', () => {
 
   it('creates user, hashes password and verifies it successfully', async () => {
     const created = await service.create({
+      accountId,
       username: 'quality_user',
       email: 'quality@cvg.local',
       password: 'StrongPass123!',
@@ -84,6 +102,7 @@ describe('UsersService', () => {
     const repoService = new UsersService({ repository }, []);
 
     const created = await repoService.create({
+      accountId,
       username: 'repo_user',
       email: 'repo@cvg.local',
       password: 'RepoPass123!'
@@ -150,8 +169,49 @@ describe('UsersService', () => {
     expect(await hydratedService.verifyPassword(hydrated!, 'HydratedPass123!')).toBe(true);
   });
 
+  it('loads the same username from the explicitly selected account without cross-account cache bleed', async () => {
+    const passwordA = await hashPassword('AccountAPass123!');
+    const passwordB = await hashPassword('AccountBPass123!');
+    const repository = new InMemoryUsersRepository([
+      {
+        id: '11111111-1111-4111-8111-111111111111' as UserId,
+        accountId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' as AccountId,
+        accountSlug: 'clinic-a',
+        email: 'admin@clinic-a.test',
+        passwordHash: passwordA,
+        fullName: 'Admin A',
+        isActive: true,
+        roleCodes: ['admin'],
+        createdAt: '2026-08-12T10:00:00.000Z',
+        updatedAt: '2026-08-12T10:00:00.000Z'
+      },
+      {
+        id: '22222222-2222-4222-8222-222222222222' as UserId,
+        accountId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb' as AccountId,
+        accountSlug: 'clinic-b',
+        email: 'admin@clinic-b.test',
+        passwordHash: passwordB,
+        fullName: 'Admin B',
+        isActive: true,
+        roleCodes: ['admin'],
+        createdAt: '2026-08-12T10:00:00.000Z',
+        updatedAt: '2026-08-12T10:00:00.000Z'
+      }
+    ]);
+    const scopedService = new UsersService({ repository }, []);
+
+    const userA = await scopedService.findForLogin('clinic-a', 'admin');
+    const userB = await scopedService.findForLogin('clinic-b', 'admin');
+
+    expect(userA?.accountId).toBe('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+    expect(userB?.accountId).toBe('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb');
+    expect(await scopedService.verifyPassword(userA!, 'AccountAPass123!')).toBe(true);
+    expect(await scopedService.verifyPassword(userB!, 'AccountBPass123!')).toBe(true);
+  });
+
   it('rejects duplicate usernames', async () => {
     await service.create({
+      accountId,
       username: 'duplicated',
       email: 'first@cvg.local',
       password: 'FirstPass123!'
@@ -159,10 +219,72 @@ describe('UsersService', () => {
 
     await expect(
       service.create({
+        accountId,
         username: 'duplicated',
         email: 'second@cvg.local',
         password: 'SecondPass123!'
       })
     ).rejects.toThrow('Username already exists');
+  });
+
+  it('creates a UUID user in the authenticated account and isolates duplicate usernames by account', async () => {
+    const accountA = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' as AccountId;
+    const accountB = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' as AccountId;
+
+    const createdA = await service.create({
+      accountId: accountA,
+      username: 'shared.login',
+      email: 'shared@login-a.test',
+      password: 'StrongPass123!'
+    } as never);
+    const createdB = await service.create({
+      accountId: accountB,
+      username: 'shared.login',
+      email: 'shared@login-b.test',
+      password: 'StrongPass123!'
+    } as never);
+
+    expect(createdA.id).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    );
+    expect(createdA.accountId).toBe(accountA);
+    expect(createdB.accountId).toBe(accountB);
+    expect(service.list(accountA)).toEqual([expect.objectContaining({ id: createdA.id })]);
+    expect(service.list(accountB)).toEqual([expect.objectContaining({ id: createdB.id })]);
+  });
+
+  it('does not expose an unpersisted user in memory when repository creation fails', async () => {
+    const repository = new InMemoryUsersRepository([], true);
+    const repositoryBacked = new UsersService({ repository }, []);
+
+    await expect(
+      repositoryBacked.create({
+        accountId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' as AccountId,
+        username: 'must_not_leak',
+        email: 'must-not-leak@test.local',
+        password: 'StrongPass123!'
+      } as never)
+    ).rejects.toThrow('database unavailable');
+
+    expect(repositoryBacked.list()).toEqual([]);
+    expect(repositoryBacked.findByUsername('must_not_leak')).toBeUndefined();
+  });
+
+  it('rejects account-mismatched reads and updates', async () => {
+    const ownerAccount = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' as AccountId;
+    const foreignAccount = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' as AccountId;
+    const created = await service.create({
+      accountId: ownerAccount,
+      username: 'tenant_guard',
+      email: 'tenant-guard@test.local',
+      password: 'StrongPass123!'
+    } as never);
+
+    expect(() => service.getForAccountOrThrow(foreignAccount, created.id)).toThrow(
+      'User not found'
+    );
+    await expect(
+      service.updateForAccount(foreignAccount, created.id, { displayName: 'Cross tenant' })
+    ).rejects.toThrow('User not found');
   });
 });

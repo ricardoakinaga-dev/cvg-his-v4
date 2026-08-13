@@ -1,5 +1,5 @@
 import { getPool } from '@cvg-his-v2/shared-database';
-import { withTenantQuery } from '@cvg-his-v2/tenant-context';
+import { getTenantContext, withTenantQuery } from '@cvg-his-v2/tenant-context';
 import type {
   AccountId,
   AppointmentId,
@@ -31,21 +31,56 @@ export interface SchedulingRepository {
 }
 
 export class DatabaseSchedulingRepository implements SchedulingRepository {
+  async #resolveProfessionalUserId(
+    client: { query: (sql: string, params?: readonly unknown[]) => Promise<{ rows: Record<string, unknown>[] }> },
+    appointment: SchedulingAppointmentSummary
+  ): Promise<string> {
+    if (appointment.practitionerStaffId) {
+      const result = await client.query(
+        `SELECT user_id
+         FROM staff
+         WHERE id = $1 AND account_id = $2`,
+        [appointment.practitionerStaffId, appointment.accountId]
+      );
+      const userId = result.rows[0]?.user_id;
+      if (typeof userId !== 'string') {
+        throw new Error('Appointment practitioner must be linked to an active database user');
+      }
+      return userId;
+    }
+
+    const userId = getTenantContext()?.userId;
+    if (!userId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId)) {
+      throw new Error('Appointment persistence requires an authenticated database user');
+    }
+    return userId;
+  }
+
   async createAppointment(appointment: SchedulingAppointmentSummary): Promise<void> {
     await withTenantQuery(getPool(), async (client) => {
+      const professionalUserId = await this.#resolveProfessionalUserId(client, appointment);
+      const startAt = new Date(appointment.scheduledAt);
+      const endAt = new Date(startAt.getTime() + (appointment.durationMinutes ?? 30) * 60_000);
       return await client.query(
         `INSERT INTO appointments
-           (id, account_id, owner_id, patient_id, scheduled_at, duration, visit_type, reason, practitioner_staff_id, service_id, unit, specialty, resource_label, status, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+           (id, account_id, owner_id, patient_id, professional_user_id, start_at, end_at,
+            type, notes, duration, visit_type, reason, practitioner_staff_id, service_id,
+            unit, specialty, resource_label, status, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
+                 $15, $16, $17, $18, $19, $20)`,
         [
           appointment.id,
           appointment.accountId,
           appointment.ownerId,
           appointment.patientId,
-          new Date(appointment.scheduledAt),
+          professionalUserId,
+          startAt,
+          endAt,
+          appointment.visitType === 'return' ? 'return' : 'consultation',
+          appointment.reason,
           appointment.durationMinutes ?? null,
           appointment.visitType,
-          appointment.reason ?? null,
+          appointment.reason,
           appointment.practitionerStaffId ?? null,
           appointment.serviceId ?? null,
           appointment.unit ?? null,
@@ -61,27 +96,36 @@ export class DatabaseSchedulingRepository implements SchedulingRepository {
 
   async updateAppointment(appointment: SchedulingAppointmentSummary): Promise<void> {
     await withTenantQuery(getPool(), async (client) => {
+      const professionalUserId = await this.#resolveProfessionalUserId(client, appointment);
+      const startAt = new Date(appointment.scheduledAt);
+      const endAt = new Date(startAt.getTime() + (appointment.durationMinutes ?? 30) * 60_000);
       return await client.query(
         `UPDATE appointments
             SET status = $2,
-                reason = $3,
-                scheduled_at = $4,
-                duration = $5,
-                visit_type = $6,
-                practitioner_staff_id = $7,
-                service_id = $8,
-                unit = $9,
-                specialty = $10,
-                resource_label = $11,
-                updated_at = $12
+                reason = $3, notes = $3,
+                start_at = $4,
+                end_at = $5,
+                duration = $6,
+                visit_type = $7,
+                type = $8,
+                professional_user_id = $9,
+                practitioner_staff_id = $10,
+                service_id = $11,
+                unit = $12,
+                specialty = $13,
+                resource_label = $14,
+                updated_at = $15
           WHERE id = $1`,
         [
           appointment.id,
           appointment.status,
           appointment.reason ?? null,
-          new Date(appointment.scheduledAt),
+          startAt,
+          endAt,
           appointment.durationMinutes ?? null,
           appointment.visitType,
+          appointment.visitType === 'return' ? 'return' : 'consultation',
+          professionalUserId,
           appointment.practitionerStaffId ?? null,
           appointment.serviceId ?? null,
           appointment.unit ?? null,
@@ -104,10 +148,10 @@ export class DatabaseSchedulingRepository implements SchedulingRepository {
   async findAllAppointments(accountId?: AccountId): Promise<readonly SchedulingAppointmentSummary[]> {
     return withTenantQuery(getPool(), async (client) => {
       const result = accountId
-        ? await client.query('SELECT * FROM appointments WHERE account_id = $1 ORDER BY scheduled_at ASC', [
+        ? await client.query('SELECT * FROM appointments WHERE account_id = $1 ORDER BY start_at ASC', [
             accountId
           ])
-        : await client.query('SELECT * FROM appointments ORDER BY scheduled_at ASC');
+        : await client.query('SELECT * FROM appointments ORDER BY start_at ASC');
       return result.rows.map((r: Record<string, unknown>) => this.mapAppointment(r));
     });
   }
@@ -275,10 +319,20 @@ export class DatabaseSchedulingRepository implements SchedulingRepository {
       accountId: row.account_id as AccountId,
       patientId: row.patient_id as PatientId,
       ownerId: row.owner_id as OwnerId,
-      scheduledAt: new Date(row.scheduled_at as string).toISOString(),
-      durationMinutes: (row.duration as number | null) ?? undefined,
-      visitType: row.visit_type as SchedulingAppointmentSummary['visitType'],
-      reason: (row.reason as string) ?? undefined,
+      scheduledAt: new Date(row.start_at as string).toISOString(),
+      durationMinutes:
+        (row.duration as number | null) ??
+        Math.max(
+          1,
+          Math.round(
+            (new Date(row.end_at as string).getTime() - new Date(row.start_at as string).getTime()) /
+              60_000
+          )
+        ),
+      visitType:
+        (row.visit_type as SchedulingAppointmentSummary['visitType'] | null) ??
+        ((row.type as string) === 'return' ? 'return' : 'scheduled'),
+      reason: ((row.reason as string | null) ?? (row.notes as string | null) ?? 'Agendamento') as string,
       practitionerStaffId: (row.practitioner_staff_id as StaffId | null) ?? undefined,
       serviceId: (row.service_id as string | null) ?? undefined,
       unit: (row.unit as string | null) ?? undefined,

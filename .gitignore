@@ -1,5 +1,10 @@
 node_modules/
 dist/
+# The database package is TypeScript-only; compiled artifacts belong in dist/.
+/packages/db/src/**/*.js
+/packages/db/src/**/*.js.map
+/packages/db/src/**/*.d.ts
+/packages/db/src/**/*.d.ts.map
 .turbo/
 .tsbuildinfo
 **/*.tsbuildinfo

@@ -321,4 +321,56 @@ describe('module-financial / repository', () => {
     expect(listed.totalOutstanding).toBe(190);
     expect(listed.data[0]?.ownerName).toMatch(/Maria/);
   });
+
+  it('enforces settlement boundaries, defaults and paginated negative searches', async () => {
+    const { service, encounter, repository } = createFinancialService();
+
+    await expect(service.settleReceivable('missing', { amountPaid: 1 })).rejects.toThrow(
+      'Encounter receivable not found'
+    );
+    const closed = await service.closeEncounterFinancial(encounter.id, 'user_finance' as never, {
+      notes: '  Fechamento padrão  '
+    });
+    expect(closed.receivables).toHaveLength(1);
+    expect(closed.receivables[0]).toEqual(
+      expect.objectContaining({ installmentLabel: 'Parcela 1/1', notes: 'Fechamento padrão' })
+    );
+    const account = await repository.findFinancialAccountByEncounter(encounter.id);
+    const receivable = (await repository.listReceivablesByFinancialAccount(account!.id))[0]!;
+
+    await expect(service.settleReceivable(receivable.id, { amountPaid: 0 })).rejects.toThrow(
+      'amountPaid must be greater than zero'
+    );
+    await expect(service.recordPaymentForEncounter(encounter.id, { amountPaid: 0 })).rejects.toThrow(
+      'amountPaid must be greater than zero'
+    );
+    await expect(service.recordPaymentForEncounter(encounter.id, { amountPaid: 191 })).rejects.toThrow(
+      'Payment exceeds outstanding receivable balance'
+    );
+
+    const settled = await service.settleReceivable(receivable.id, { amountPaid: 10 });
+    expect(settled.payments[0]).toEqual(
+      expect.objectContaining({
+        paidByUserId: null,
+        externalReferenceType: null,
+        externalReferenceId: null,
+        notes: null
+      })
+    );
+    await expect(
+      service.closeEncounterFinancial(encounter.id, 'user_finance' as never, {
+        installments: [{ amount: 190 }]
+      })
+    ).rejects.toThrow('Cannot redefine receivable installments after payments');
+
+    const empty = await service.listReceivables({
+      accountId: 'acc_cvg_demo' as never,
+      search: 'não encontrado',
+      page: 0,
+      pageSize: 200
+    });
+    expect(empty.page).toBe(1);
+    expect(empty.pageSize).toBe(100);
+    expect(empty.total).toBe(0);
+  });
 });

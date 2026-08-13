@@ -73,7 +73,11 @@ export async function handleInventoryRoutes(
   if (pathname === '/inventory/consumptions' && request.method === 'POST') {
     const principal = rp(request, 'inventory.manage');
     const payload = (await readJsonBody(request)) as CreateInventoryConsumptionRequest;
-    const consumption = await inventory.consume(principal.user.id as never, payload);
+    const consumption = await inventory.consume(
+      principal.user.accountId as never,
+      principal.user.id as never,
+      payload
+    );
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
@@ -203,7 +207,11 @@ export async function handleInventoryRoutes(
       },
       request
     );
-    const item = inventory.createItem(principal.user.accountId, payload);
+    const item = await inventory.createItem(
+      principal.user.accountId,
+      principal.user.id as never,
+      payload
+    );
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
@@ -225,7 +233,7 @@ export async function handleInventoryRoutes(
     const itemId = requireNonEmptyString(pathname.split('/')[2], 'inventoryItemId');
     const principal = rp(request, 'inventory.read');
     try {
-      const item = inventory.getItemOrThrow(itemId as never);
+      const item = inventory.getItemOrThrow(principal.user.accountId as never, itemId as never);
       appendAudit(audit, {
         actorId: principal.user.id,
         accountId: principal.user.accountId,
@@ -269,7 +277,12 @@ export async function handleInventoryRoutes(
       request
     );
     try {
-      const item = inventory.updateItem(itemId as never, payload);
+      const item = await inventory.updateItem(
+        principal.user.accountId as never,
+        principal.user.id as never,
+        itemId as never,
+        payload
+      );
       appendAudit(audit, {
         actorId: principal.user.id,
         accountId: principal.user.accountId,

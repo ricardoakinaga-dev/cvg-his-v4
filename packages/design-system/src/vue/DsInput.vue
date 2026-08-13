@@ -224,4 +224,16 @@ const inputId = computed(() => props.id || `ds-input-${Math.random().toString(36
   color: var(--color-text-muted, #94a3b8);
   font-family: var(--font-sans, 'Inter', system-ui, sans-serif);
 }
+
+@media (max-width: 1024px), (pointer: coarse) {
+  .ds-input {
+    min-height: var(--touch-min, 44px);
+  }
+}
+
+@media (max-width: 600px) {
+  .ds-input {
+    font-size: 16px;
+  }
+}
 </style>

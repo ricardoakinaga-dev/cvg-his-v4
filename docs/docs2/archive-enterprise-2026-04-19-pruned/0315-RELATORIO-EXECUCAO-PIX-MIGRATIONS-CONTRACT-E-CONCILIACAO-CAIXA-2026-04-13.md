@@ -95,7 +95,7 @@ Metadados persistidos:
 ### Banco de teste e migrations
 
 - `pnpm test:db:start` -> PASS
-- `DATABASE_URL=postgres://postgres:postgres@localhost:5433/cvg_his_v2_test node infra/scripts/prepare-test-db.mjs` -> PASS
+- `DATABASE_URL="<test-database-url>" node infra/scripts/prepare-test-db.mjs` -> PASS
   - migrations aplicadas ate `0014_pix_transactions_cash_reconciliation`
 - `pnpm exec vitest run tests/integration/deploy-migrations-contract.test.ts --config vitest.config.ts` -> PASS
   - `3/3` testes passando

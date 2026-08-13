@@ -19,7 +19,8 @@ api:
     RUNTIME_DISTRIBUTED_STATE_ENABLED: "false"
     VAULT_ENABLED: "false"
   auth:
-    value: cvg-his-v2-development-auth-secret-1234567890
+    existingSecret: cvg-his-v2-dev-api-secrets
+    value: ""
 
 worker:
   replicaCount: 1
@@ -39,14 +40,18 @@ spa:
 
 postgresql:
   enabled: true
-  password: postgres
+  existingSecret: cvg-his-v2-dev-postgres
+  password: ""
+  adminUrl: ""
+  runtimeUrl: ""
   persistence:
     enabled: true
     size: 1Gi
 
 redis:
   enabled: true
-  url: redis://RELEASE-NAME-cvg-his-v2-redis:6379
+  existingSecret: cvg-his-v2-dev-redis
+  url: ""
 
 ingress:
   enabled: false   # no ingress in dev — use port-forward instead

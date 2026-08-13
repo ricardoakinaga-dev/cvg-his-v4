@@ -94,18 +94,18 @@ export const API_CONFIG_FIELDS: readonly ConfigFieldDescriptor[] = [
   { app: 'api', key: 'FEATURE_FLAGS_PROVIDER', required: false, defaultValue: 'env', description: 'Feature flag provider type. Currently supports "env" (bootstrap/development mode).' },
   { app: 'api', key: 'API_FEATURE_FLAGS', required: false, description: 'Comma-separated list of explicitly enabled feature flag keys for the API. Example: "auth.oidc.enabled,auth.webauthn.enabled".' },
   { app: 'api', key: 'RUNTIME_DISTRIBUTED_STATE_ENABLED', required: false, defaultValue: 'false', description: 'When true, enables distributed runtime state (Redis-backed session, encounter timeline, etc.).' },
-  { app: 'api', key: 'PAGARME_API_KEY', required: false, sensitive: true, description: 'Pagar.me API key for PIX payments. When set, PagarMePixAdapter is used instead of LocalPixPaymentGateway.' },
-  { app: 'api', key: 'PAGARME_PIX_KEY', required: false, description: 'Pagar.me PIX key (chave Pix) for QR code generation. Required when PAGARME_API_KEY is set.' },
-  { app: 'api', key: 'PIX_MOCK_MODE', required: false, defaultValue: 'false', description: 'When true, forces LocalPixPaymentGateway (mock) even if PAGARME_API_KEY and PAGARME_PIX_KEY are set. Default: false (PagarMe is the default provider).' },
-  { app: 'api', key: 'RESEND_API_KEY', required: false, sensitive: true, description: 'Resend API key for transactional email provider.' },
+  { app: 'api', key: 'PAGARME_API_KEY', required: false, sensitive: true, description: 'Pagar.me API key for PIX payments. Required in production-like environments unless the API is not started.' },
+  { app: 'api', key: 'PAGARME_PIX_KEY', required: false, description: 'Pagar.me PIX key (chave Pix) for QR code generation. Required together with PAGARME_API_KEY in production-like environments.' },
+  { app: 'api', key: 'PIX_MOCK_MODE', required: false, defaultValue: 'false', description: 'Explicitly enables LocalPixPaymentGateway for development/test only; local mocks are rejected in production-like environments.' },
+  { app: 'api', key: 'RESEND_API_KEY', required: false, sensitive: true, description: 'Resend API key for transactional email provider. Required in production-like environments.' },
   { app: 'api', key: 'EMAIL_FROM', required: false, defaultValue: 'noreply@cvg-his.local', description: 'Default sender used by the transactional email provider.' },
-  { app: 'api', key: 'EMAIL_MOCK_MODE', required: false, defaultValue: 'false', description: 'When true, forces LocalEmailGateway even if RESEND_API_KEY is set. Default: false (Resend is the default provider when configured).' },
-  { app: 'api', key: 'SMS_API_KEY', required: false, sensitive: true, description: 'Twilio-compatible API key for transactional SMS provider.' },
+  { app: 'api', key: 'EMAIL_MOCK_MODE', required: false, defaultValue: 'false', description: 'Explicitly enables LocalEmailGateway for development/test only; local mocks are rejected in production-like environments.' },
+  { app: 'api', key: 'SMS_API_KEY', required: false, sensitive: true, description: 'Twilio-compatible API key for transactional SMS provider. Required in production-like environments.' },
   { app: 'api', key: 'SMS_FROM', required: false, defaultValue: 'CVGHIS', description: 'Default sender used by the SMS provider.' },
-  { app: 'api', key: 'SMS_MOCK_MODE', required: false, defaultValue: 'false', description: 'When true, forces LocalSmsGateway even if SMS_API_KEY is set.' },
-  { app: 'api', key: 'GOOGLE_CALENDAR_ACCESS_TOKEN', required: false, sensitive: true, description: 'Bearer token used for outbound Google Calendar sync.' },
-  { app: 'api', key: 'GOOGLE_CALENDAR_CALENDAR_ID', required: false, description: 'Google Calendar identifier used for outbound appointment sync.' },
-  { app: 'api', key: 'GOOGLE_CALENDAR_MOCK_MODE', required: false, defaultValue: 'false', description: 'When true, forces LocalGoogleCalendarGateway even if Google Calendar credentials are set.' },
+  { app: 'api', key: 'SMS_MOCK_MODE', required: false, defaultValue: 'false', description: 'Explicitly enables LocalSmsGateway for development/test only; local mocks are rejected in production-like environments.' },
+  { app: 'api', key: 'GOOGLE_CALENDAR_ACCESS_TOKEN', required: false, sensitive: true, description: 'Bearer token used for outbound Google Calendar sync. Required in production-like environments.' },
+  { app: 'api', key: 'GOOGLE_CALENDAR_CALENDAR_ID', required: false, description: 'Google Calendar identifier used for outbound appointment sync. Required in production-like environments.' },
+  { app: 'api', key: 'GOOGLE_CALENDAR_MOCK_MODE', required: false, defaultValue: 'false', description: 'Explicitly enables LocalGoogleCalendarGateway for development/test only; local mocks are rejected in production-like environments.' },
   { app: 'api', key: 'REDIS_URL', required: false, description: 'Redis connection URL for distributed rate limiting. When set, the auth rate limiter uses Redis backend instead of in-memory.' },
   { app: 'api', key: 'VAULT_ENABLED', required: false, defaultValue: 'false', description: 'When true, enables HashiCorp Vault AppRole bootstrap for managed secrets.' },
   { app: 'api', key: 'VAULT_URL', required: false, description: 'Base URL of the Vault server.' },
@@ -479,6 +479,54 @@ const apiEnvSchema = z
         path: ['DATABASE_URL'],
         message: 'DATABASE_URL is required in production-like environments'
       });
+    }
+
+    if (isProductionEnvironment(value.NODE_ENV)) {
+      const integrations = [
+        {
+          mock: value.PIX_MOCK_MODE,
+          credentials: [
+            ['PAGARME_API_KEY', value.PAGARME_API_KEY],
+            ['PAGARME_PIX_KEY', value.PAGARME_PIX_KEY]
+          ] as const
+        },
+        {
+          mock: value.EMAIL_MOCK_MODE,
+          credentials: [['RESEND_API_KEY', value.RESEND_API_KEY]] as const
+        },
+        {
+          mock: value.SMS_MOCK_MODE,
+          credentials: [['SMS_API_KEY', value.SMS_API_KEY]] as const
+        },
+        {
+          mock: value.GOOGLE_CALENDAR_MOCK_MODE,
+          credentials: [
+            ['GOOGLE_CALENDAR_ACCESS_TOKEN', value.GOOGLE_CALENDAR_ACCESS_TOKEN],
+            ['GOOGLE_CALENDAR_CALENDAR_ID', value.GOOGLE_CALENDAR_CALENDAR_ID]
+          ] as const
+        }
+      ];
+
+      for (const integration of integrations) {
+        if (integration.mock) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['NODE_ENV'],
+            message: 'Local integration mock mode is forbidden in production-like environments'
+          });
+          continue;
+        }
+
+        for (const [key, credential] of integration.credentials) {
+          if (!credential) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: [key],
+              message: `${key} is required in production-like environments`
+            });
+          }
+        }
+      }
     }
   });
 

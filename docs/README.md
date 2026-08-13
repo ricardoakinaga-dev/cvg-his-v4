@@ -2,6 +2,8 @@
 
 Esta raiz `docs/` agora contem apenas a documentacao viva e necessaria para conduzir a proxima etapa de construcao do CVG-HIS V2 como um ERP veterinario enterprise.
 
+**Estado auditado em 11/08/2026 e verificado em 12/08/2026:** a auditoria executável partiu de **67/100**, fechou o P1 interno em **78/100** e alcançou a nota conservadora de **81/100** após zerar as 48 ocorrências de vulnerabilidade, fechar o RLS de sessões e validar 98/98 tabelas tenant. O relatório vivo está em [`2026-08-11-relatorio-auditoria-p1.md`](2026-08-11-relatorio-auditoria-p1.md), e o programa até 95 está dividido em [plano executivo](2026-08-12-plano-executivo-meta-95.md), [roadmap](2026-08-12-roadmap-meta-95.md) e [backlog](2026-08-12-backlog-meta-95.md). Os scores `96/100` e `97/100` registrados em documentos de abril/maio são baselines históricos e não substituem os gates atuais.
+
 Todo o acervo historico, auditorias antigas, prompts, relatorios de fase e documentos fora da trilha viva foi arquivado em `docs/docs2/archive-active-reset-2026-03-31/`.
 
 ## Objetivo da trilha viva
@@ -27,39 +29,42 @@ Documentos historicos em `docs/docs2/` ou referencias antigas a `apps/his-*`, `c
 
 ## Ordem recomendada de leitura
 
-1. `400-auditoria-documental-pente-fino.md`
-2. `410-matriz-aderencia-documental.md`
-3. `420-plano-atualizacao-documental.md`
-4. `430-fonte-de-verdade-documental.md`
-5. `440-roadmap-construcao-85.md`
-6. `450-gaps-enterprise-priorizados.md`
-7. `480-plano-execucao-85-plus-enterprise.md`
-8. `490-backlog-executavel-implementacao.md`
-9. `112-target-architecture.md`
-10. `113-module-contracts.md`
-11. `114-frontend-architecture.md`
-12. `115-backend-architecture.md`
-13. `116-worker-architecture.md`
-14. `123-phased-execution-plan.md`
-15. `460-qualidade-testes-e-gates.md`
-16. `470-politica-migracao-e-deploy.md`
-17. `130-instalacao-publicacao-cvg-his-v2-real.md`
-18. `131-checklist-cutover-servidor.md`
-19. `580-plano-modulos-comerciais-enterprise.md`
-20. `581-backlog-modulos-comerciais.md`
+1. `2026-08-11-relatorio-auditoria-p1.md`
+2. `2026-08-12-plano-executivo-meta-95.md`
+3. `2026-08-12-roadmap-meta-95.md`
+4. `2026-08-12-backlog-meta-95.md`
+5. `400-auditoria-documental-pente-fino.md`
+6. `410-matriz-aderencia-documental.md`
+7. `420-plano-atualizacao-documental.md`
+8. `430-fonte-de-verdade-documental.md`
+9. `440-roadmap-construcao-85.md`
+10. `450-gaps-enterprise-priorizados.md`
+11. `480-plano-execucao-85-plus-enterprise.md`
+12. `490-backlog-executavel-implementacao.md`
+13. `112-target-architecture.md`
+14. `113-module-contracts.md`
+15. `114-frontend-architecture.md`
+16. `115-backend-architecture.md`
+17. `116-worker-architecture.md`
+18. `123-phased-execution-plan.md`
+19. `460-qualidade-testes-e-gates.md`
+20. `470-politica-migracao-e-deploy.md`
+21. `130-instalacao-publicacao-cvg-his-v2-real.md`
+22. `131-checklist-cutover-servidor.md`
+23. `580-plano-modulos-comerciais-enterprise.md`
+24. `581-backlog-modulos-comerciais.md`
 
 ## Trilha Premium Vetus-like
 
 Quando a discussão for comparacao com o Vetus-like, roadmap premium, backlog, sprints e corte do legado, a porta de entrada oficial passa a ser:
 
 1. `vetus/README.md`
-2. `Enterprise/0190-MASTER-TRILHA-PREMIUM-ENTERPRISE-CVGHISV2.md`
-3. `Enterprise/0191-RELATORIO-EXECUTIVO-AVALIACAO-REAL-2026-04-12.md`
-4. `Enterprise/0192-ROADMAP-IMPLEMENTACAO-PREMIUM-ENTERPRISE.md`
-5. `Enterprise/0193-BACKLOG-IMPLEMENTACAO-PREMIUM-ENTERPRISE.md`
-6. `Enterprise/0194-PLANO-DE-SPRINTS-IMPLEMENTACAO-PREMIUM-ENTERPRISE.md`
-7. `Enterprise/0196-MATRIZ-STATUS-REAL-PROJETO-PREMIUM-ENTERPRISE-2026-04-12.md`
-8. `Enterprise/0197-PLANO-GERAL-REORGANIZACAO-VETUS-ALIGNED-PREMIUM-ENTERPRISE.md`
+2. `Enterprise/0338-PLANO-EXECUTIVO-RUMO-96-2026-04-22.md`
+3. `Enterprise/0349-PLANO-EXECUTIVO-FECHAMENTO-GAP-96-2026-04-24.md`
+4. `Enterprise/0350-ROADMAP-FECHAMENTO-GAP-96-2026-04-24.md`
+5. `Enterprise/0351-BACKLOG-FECHAMENTO-GAP-96-2026-04-24.md`
+6. `Enterprise/0348-RELATORIO-AUDITORIA-DOCS-VS-CODIGO-2026-04-24.md`
+7. `Enterprise/0346-RELATORIO-AUDITORIA-FINAL-96-2026-04-22.md`
 
 ## Trilha Vetus de referencia
 
@@ -81,6 +86,9 @@ Quando a necessidade for inspecao visual, comparacao de navegacao, inventario de
 
 ### Construcao alvo
 
+- `2026-08-12-plano-executivo-meta-95.md`
+- `2026-08-12-roadmap-meta-95.md`
+- `2026-08-12-backlog-meta-95.md`
 - `440-roadmap-construcao-85.md`
 - `450-gaps-enterprise-priorizados.md`
 - `480-plano-execucao-85-plus-enterprise.md`
@@ -183,6 +191,7 @@ Complemento fora de `docs/`:
 - `880-plano-executivo-ux-operacional.md`
 - `881-roadmap-ux-operacional.md`
 - `882-backlog-ux-operacional.md`
+- `879-auditoria-inicial-ui-ux-operacional.md`
 - `883-auditoria-ui-atual-ux-operacional.md`
 - `884-brief-visual-operacional.md`
 - `885-spec-cabecalho-contextual.md`
@@ -207,7 +216,7 @@ Complemento fora de `docs/`:
 - `630-avaliacao-atual-e-plano-producao-enterprise.md`
 - `631-fase-e1-qualidade-validacao.md`
 - `632-fase-e2-operacao-validacao.md`
-- `632-fase-paralela-triage-validacao.md`
+- `635-fase-paralela-triage-validacao.md`
 - `633-fase-paralela-scheduling-queue-validacao.md`
 - `634-fase-hardening-scheduling-validacao.md`
 
@@ -232,6 +241,8 @@ Complemento fora de `docs/`:
 - prompts operacionais nao ficam mais misturados com documentacao de referencia
 - deploy, banco e testes devem ter uma fonte de verdade explicita
 - qualquer novo documento na raiz deve ser necessario para construcao ou operacao
+- IDs numericos devem ser unicos entre os documentos ativos da raiz; arquivos arquivados podem preservar IDs historicos e nao sao referencia operacional
+- scores, contagens e status precisam informar a data da evidencia; documentos antigos devem apontar para o relatorio vivo quando citarem um estado anterior
 
 ## Arquivo historico
 

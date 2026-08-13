@@ -396,7 +396,6 @@ export class PackagesService {
   }
 }
 
-/* v8 ignore start -- SQL repository adapter covered by integration tests. */
 export class DatabasePackageRepository implements PackageRepository {
   async savePackage(pkg: CustomerPackageSummary): Promise<void> {
     await withTenantQuery(getPool(), async (client) => {
@@ -665,4 +664,3 @@ function mapPackageConsumption(row: Record<string, unknown>): PackageConsumption
     notes: row.notes as string | null
   };
 }
-/* v8 ignore stop */

@@ -37,6 +37,69 @@ test('SurgeryService requestCase creates requested surgery case', () => {
   assert.equal(service.list(encounter.id).length, 1);
 });
 
+test('SurgeryService scopes creation, reads and mutations to the expected account', () => {
+  const { service, encounter } = createService();
+  assert.throws(
+    () =>
+      service.requestCase(
+        {
+          encounterId: encounter.id,
+          patientId: encounter.patientId,
+          procedureName: 'Tentativa entre contas'
+        },
+        'acc_other' as never
+      ),
+    NotFoundError
+  );
+  const surgeryCase = service.requestCase(
+    {
+      encounterId: encounter.id,
+      patientId: encounter.patientId,
+      procedureName: 'Procedimento isolado'
+    },
+    'acc_test' as never
+  );
+  assert.equal(service.listByAccount('acc_test' as never).length, 1);
+  assert.equal(service.listByAccount('acc_other' as never).length, 0);
+  assert.throws(
+    () => service.updateStatus(surgeryCase.id, { status: 'pre_op' }, 'acc_other' as never),
+    NotFoundError
+  );
+});
+
+test('SurgeryService exposes persistence failures and rolls back the requested case', async () => {
+  const encounter = {
+    id: 'encounter_1',
+    accountId: 'acc_test',
+    patientId: 'patient_1'
+  };
+  const service = new SurgeryService(
+    {
+      getOrThrow: () => encounter,
+      waitForPersistence: async () => {}
+    } as never,
+    {
+      surgeryCaseRepository: {
+        create: async () => {
+          throw new Error('surgery persistence unavailable');
+        },
+        update: async () => {},
+        findById: async () => null,
+        findByEncounterId: async () => []
+      }
+    }
+  );
+
+  const surgeryCase = service.requestCase({
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    procedureName: 'Ovariohisterectomia'
+  });
+
+  await assert.rejects(service.waitForPersistence(), /surgery persistence unavailable/);
+  assert.throws(() => service.getOrThrow(surgeryCase.id), NotFoundError);
+});
+
 test('SurgeryService updateStatus stores operative notes', () => {
   const { service, encounter } = createService();
   const surgeryCase = service.requestCase({
@@ -136,6 +199,7 @@ test('SurgeryService updateStatus allows cancellation from early states', () => 
     procedureName: 'Ressecção2'
   });
   const cancelledFromPreOp = service.updateStatus(preOpCase.id, { status: 'pre_op' });
+  assert.equal(cancelledFromPreOp.status, 'pre_op');
   const cancelledAfterPreOp = service.updateStatus(preOpCase.id, { status: 'cancelled' });
   assert.equal(cancelledAfterPreOp.status, 'cancelled');
 });

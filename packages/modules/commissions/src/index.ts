@@ -352,7 +352,6 @@ export class CommissionsService {
   }
 }
 
-/* v8 ignore start -- SQL repository adapter covered by integration tests. */
 export class DatabaseCommissionRepository implements CommissionRepository {
   async saveRule(rule: CommissionRuleSummary): Promise<void> {
     await withTenantQuery(getPool(), async (client) => {
@@ -646,4 +645,3 @@ function mapLine(row: Record<string, unknown>): CommissionLineSummary {
     occurredAt: dateOnly(row.occurred_at)
   };
 }
-/* v8 ignore stop */

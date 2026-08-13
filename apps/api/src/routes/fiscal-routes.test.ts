@@ -983,3 +983,164 @@ test('handleFiscalRoutes ignores unrelated paths', async () => {
 
   assert.equal(handled, false);
 });
+
+test('handleFiscalRoutes returns explicit not-found, validation and method responses for fiscal backoffice edges', async () => {
+  const service = new FiscalService();
+  const handlers = {
+    fiscal: service,
+    audit: { write: () => ({}) } as never,
+    requirePrincipal: () => createPrincipal(),
+    fiscalBackofficeEnabled: true
+  };
+
+  for (const [pathname, code] of [
+    ['/fiscal/icms/missing', 'ICMS_TABLE_NOT_FOUND'],
+    ['/fiscal/ipi/missing', 'IPI_TABLE_NOT_FOUND'],
+    ['/fiscal/pis/missing', 'PIS_TABLE_NOT_FOUND'],
+    ['/fiscal/cofins/missing', 'COFINS_TABLE_NOT_FOUND'],
+    ['/fiscal/ibs-cbs/missing', 'IBS_CBS_TABLE_NOT_FOUND'],
+    ['/fiscal/cfop/missing', 'CFOP_NOT_FOUND'],
+    ['/fiscal/nfse/missing', 'NFSE_LAYOUT_NOT_FOUND']
+  ] as const) {
+    const response = new MockResponse();
+    const handled = await handleFiscalRoutes(
+      pathname,
+      createMockRequest('PATCH', pathname, { description: 'missing' }) as never,
+      response as never,
+      `corr-not-found-${code}`,
+      handlers
+    );
+    assert.equal(handled, true);
+    assert.equal(response.statusCode, 404);
+    assert.equal(response.bodyJson<{ code: string }>().code, code);
+  }
+
+  const missingDocumentResponse = new MockResponse();
+  assert.equal(
+    await handleFiscalRoutes(
+      '/fiscal/nfse/documents/missing',
+      { method: 'GET', url: '/fiscal/nfse/documents/missing' } as never,
+      missingDocumentResponse as never,
+      'corr-document-not-found',
+      handlers
+    ),
+    true
+  );
+  assert.equal(missingDocumentResponse.statusCode, 404);
+
+  for (const action of ['issue', 'cancel'] as const) {
+    const response = new MockResponse();
+    await handleFiscalRoutes(
+      `/fiscal/nfse/documents/missing/${action}`,
+      createMockRequest('POST', `/fiscal/nfse/documents/missing/${action}`, {
+        reason: 'Documento ausente'
+      }) as never,
+      response as never,
+      `corr-document-${action}-not-found`,
+      handlers
+    );
+    assert.equal(response.statusCode, 404);
+    assert.equal(response.bodyJson<{ code: string }>().code, 'NFSE_DOCUMENT_NOT_FOUND');
+  }
+
+  const invalidCreateResponse = new MockResponse();
+  await handleFiscalRoutes(
+    '/fiscal/nfse/documents',
+    createMockRequest('POST', '/fiscal/nfse/documents') as never,
+    invalidCreateResponse as never,
+    'corr-document-invalid-create',
+    handlers
+  );
+  assert.equal(invalidCreateResponse.statusCode, 400);
+  assert.equal(invalidCreateResponse.bodyJson<{ code: string }>().code, 'INVALID_REQUEST');
+
+  const createdResponse = new MockResponse();
+  await handleFiscalRoutes(
+    '/fiscal/nfse/documents',
+    createMockRequest('POST', '/fiscal/nfse/documents', {
+      competencia: '2026-08-12',
+      serie: '001',
+      numero: 9001,
+      provider: 'abrasf',
+      customer: {
+        type: 'cnpj',
+        document: '12345678000199',
+        name: 'Cliente de idempotência fiscal',
+        email: 'finance@example.com',
+        phone: '+55 11 99999-0000'
+      },
+      services: [{
+        description: 'Serviço veterinário',
+        codigoServico: '0407',
+        cnae: '7500-1/00',
+        quantity: 1,
+        unitValue: 100,
+        totalValue: 100,
+        issRate: 0.05,
+        issValue: 5,
+        pisValue: 0,
+        cofinsValue: 0,
+        csllValue: 0,
+        irrfValue: 0,
+        inssValue: 0
+      }]
+    }) as never,
+    createdResponse as never,
+    'corr-document-state-create',
+    handlers
+  );
+  assert.equal(createdResponse.statusCode, 201);
+  const documentId = createdResponse.bodyJson<{ id: string }>().id;
+  const firstIssueResponse = new MockResponse();
+  await handleFiscalRoutes(
+    `/fiscal/nfse/documents/${documentId}/issue`,
+    createMockRequest('POST', `/fiscal/nfse/documents/${documentId}/issue`) as never,
+    firstIssueResponse as never,
+    'corr-document-state-first-issue',
+    handlers
+  );
+  assert.equal(firstIssueResponse.statusCode, 200);
+  const conflictResponse = new MockResponse();
+  await handleFiscalRoutes(
+    `/fiscal/nfse/documents/${documentId}/issue`,
+    createMockRequest('POST', `/fiscal/nfse/documents/${documentId}/issue`) as never,
+    conflictResponse as never,
+    'corr-document-state-second-issue',
+    handlers
+  );
+  assert.equal(conflictResponse.statusCode, 409);
+  assert.equal(conflictResponse.bodyJson<{ code: string }>().code, 'INVALID_DOCUMENT_STATE');
+
+  const invalidBooleanResponse = new MockResponse();
+  await handleFiscalRoutes(
+    '/fiscal/nfse',
+    { method: 'GET', url: '/fiscal/nfse?active=invalid' } as never,
+    invalidBooleanResponse as never,
+    'corr-invalid-boolean',
+    handlers
+  );
+  assert.equal(invalidBooleanResponse.statusCode, 200);
+
+  for (const pathname of [
+    '/fiscal/tax-preview',
+    '/fiscal/icms',
+    '/fiscal/ipi',
+    '/fiscal/pis',
+    '/fiscal/cofins',
+    '/fiscal/ibs-cbs',
+    '/fiscal/pis-cofins',
+    '/fiscal/cfop',
+    '/fiscal/ncm',
+    '/fiscal/icms-matrix',
+    '/fiscal/unknown'
+  ]) {
+    const handled = await handleFiscalRoutes(
+      pathname,
+      { method: 'PUT', url: pathname } as never,
+      new MockResponse() as never,
+      `corr-method-${pathname}`,
+      handlers
+    );
+    assert.equal(handled, false);
+  }
+});

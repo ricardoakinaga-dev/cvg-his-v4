@@ -78,7 +78,37 @@ const permissionSeeds = [
   { key: 'inventory.read', description: 'Permite leitura de itens de estoque.' },
   { key: 'inventory.manage', description: 'Permite registrar consumo de estoque.' },
   { key: 'notifications.read', description: 'Permite leitura de notificacoes operacionais.' },
-  { key: 'notifications.manage', description: 'Permite criar e processar notificacoes.' }
+  { key: 'notifications.manage', description: 'Permite criar e processar notificacoes.' },
+  { key: 'prescriptions.read', description: 'Permite leitura de prescricoes.' },
+  { key: 'prescriptions.write', description: 'Permite criar e alterar prescricoes.' },
+  {
+    key: 'prescription-executions.read',
+    description: 'Permite leitura de planos de execucao de prescricoes.'
+  },
+  {
+    key: 'prescription-executions.manage',
+    description: 'Permite agendar e registrar execucoes de prescricoes.'
+  },
+  { key: 'discharges.read', description: 'Permite leitura de registros de alta.' },
+  { key: 'discharges.manage', description: 'Permite criar e alterar registros de alta.' },
+  { key: 'fiscal.read', description: 'Permite leitura de parametrizacao fiscal.' },
+  { key: 'fiscal.manage', description: 'Permite gerenciar parametrizacao fiscal.' },
+  { key: 'product.read', description: 'Permite leitura do catalogo de produtos.' },
+  { key: 'product.write', description: 'Permite gerenciar o catalogo de produtos.' },
+  { key: 'service.read', description: 'Permite leitura do catalogo de servicos.' },
+  { key: 'service.write', description: 'Permite gerenciar o catalogo de servicos.' },
+  { key: 'counter_sale.read', description: 'Permite leitura de vendas de balcao.' },
+  { key: 'counter_sale.write', description: 'Permite gerenciar vendas de balcao.' },
+  { key: 'quote.read', description: 'Permite leitura de orcamentos.' },
+  { key: 'quote.write', description: 'Permite gerenciar orcamentos.' },
+  { key: 'webhooks.read', description: 'Permite leitura de webhooks e entregas.' },
+  { key: 'webhooks.manage', description: 'Permite gerenciar webhooks.' },
+  { key: 'integrations.read', description: 'Permite leitura de integracoes.' },
+  { key: 'integrations.manage', description: 'Permite gerenciar integracoes.' },
+  { key: 'api_keys.manage', description: 'Permite gerenciar chaves de API.' },
+  { key: 'payments.manage', description: 'Permite gerenciar pagamentos.' },
+  { key: 'flags.read', description: 'Permite leitura de feature flags.' },
+  { key: 'flags.admin', description: 'Permite administrar feature flags.' }
 ];
 
 // Role-permission mapping aligned with AccessControlService vocabulary
@@ -86,19 +116,19 @@ const rolePermissionMap: Record<string, string[]> = {
   admin: permissionSeeds.map((p) => p.key),
   veterinarian: [
     'auth.session.read',
-    'audit.read',
-    'audit.write',
     'owners.read',
     'patients.read',
-    'patients.manage',
-    'scheduling.read',
-    'scheduling.manage',
     'encounters.read',
     'encounters.manage',
     'triage.read',
-    'triage.manage',
     'medical-records.read',
     'medical-records.manage',
+    'prescriptions.read',
+    'prescriptions.write',
+    'prescription-executions.read',
+    'prescription-executions.manage',
+    'discharges.read',
+    'discharges.manage',
     'attachments.read',
     'attachments.manage',
     'inpatient.read',
@@ -107,12 +137,13 @@ const rolePermissionMap: Record<string, string[]> = {
     'surgery.manage',
     'diagnostics.read',
     'diagnostics.manage',
-    'billing.read',
-    'notifications.read'
+    'inventory.read',
+    'inventory.manage',
+    'notifications.read',
+    'notifications.manage'
   ],
   nurse: [
     'auth.session.read',
-    'audit.read',
     'owners.read',
     'patients.read',
     'scheduling.read',
@@ -121,21 +152,23 @@ const rolePermissionMap: Record<string, string[]> = {
     'triage.read',
     'triage.manage',
     'medical-records.read',
-    'medical-records.manage',
+    'prescriptions.read',
+    'prescriptions.write',
+    'prescription-executions.read',
+    'prescription-executions.manage',
+    'discharges.read',
+    'discharges.manage',
     'attachments.read',
-    'attachments.manage',
     'inpatient.read',
-    'inpatient.manage',
-    'surgery.read',
-    'diagnostics.read',
-    'diagnostics.manage',
-    'billing.read',
     'inventory.read',
     'inventory.manage',
-    'notifications.read'
+    'notifications.read',
+    'notifications.manage'
   ],
   reception: [
     'auth.session.read',
+    'users.read',
+    'staff.read',
     'owners.read',
     'owners.manage',
     'patients.read',
@@ -144,37 +177,60 @@ const rolePermissionMap: Record<string, string[]> = {
     'scheduling.manage',
     'encounters.read',
     'encounters.manage',
-    'triage.read',
-    'triage.manage',
     'medical-records.read',
-    'attachments.read',
-    'inpatient.read',
     'billing.read',
-    'notifications.read'
+    'inventory.read',
+    'notifications.read',
+    'notifications.manage',
+    'webhooks.read',
+    'webhooks.manage',
+    'product.read',
+    'service.read',
+    'counter_sale.read',
+    'counter_sale.write',
+    'quote.read',
+    'quote.write'
   ],
   finance: [
     'auth.session.read',
-    'audit.read',
     'owners.read',
     'patients.read',
     'encounters.read',
-    'medical-records.read',
     'billing.read',
     'billing.manage',
-    'notifications.read'
+    'fiscal.read',
+    'fiscal.manage',
+    'product.read',
+    'service.read',
+    'counter_sale.read',
+    'counter_sale.write',
+    'quote.read',
+    'quote.write',
+    'notifications.read',
+    'notifications.manage'
   ],
   inventory: [
     'auth.session.read',
+    'patients.read',
     'encounters.read',
     'inventory.read',
     'inventory.manage',
-    'notifications.read'
+    'fiscal.read',
+    'product.read',
+    'service.read',
+    'counter_sale.read',
+    'quote.read',
+    'notifications.read',
+    'notifications.manage'
   ],
   auditor: [
     'auth.session.read',
     'audit.read',
+    'access.read',
+    'fiscal.read',
     'owners.read',
     'patients.read',
+    'scheduling.read',
     'encounters.read',
     'triage.read',
     'medical-records.read',
@@ -285,6 +341,13 @@ async function seedPermissionsAndRoles(): Promise<void> {
   const roleIdByName = new Map(
     dbRoles.map((role: { name: string; id: string }) => [role.name, role.id])
   );
+
+  const canonicalRoleIds = [...roleIdByName.values()];
+  if (canonicalRoleIds.length > 0) {
+    await db
+      .delete(rolePermissions)
+      .where(inArray(rolePermissions.roleId, canonicalRoleIds));
+  }
 
   for (const [roleName, permissionKeys] of Object.entries(rolePermissionMap)) {
     const roleId = roleIdByName.get(roleName);

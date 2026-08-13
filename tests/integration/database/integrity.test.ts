@@ -1,6 +1,11 @@
 import { getTestPool } from '../../db/db-admin.js';
 import { queryOne, queryMany } from '../../helpers/db-helpers.js';
 
+function requireFixture<T>(value: T | undefined, label: string): T {
+  if (value === undefined) throw new Error(`Required database fixture is missing: ${label}`);
+  return value;
+}
+
 // ============================================================================
 // DB Integrity Tests — NOT NULL, UNIQUE, CHECK constraints.
 // Based on docs/740 sections 5-7.
@@ -194,16 +199,23 @@ describe('Unique Constraints', () => {
   });
 
   it('should reject duplicate user email within account', async () => {
+    const pool = getTestPool();
+    const account = requireFixture(
+      await queryOne<{ id: string }>(`SELECT id FROM accounts LIMIT 1`),
+      'account',
+    );
+    const email = 'integrity-duplicate-user@example.invalid';
+    await pool.query(
+      `INSERT INTO users (id, account_id, email, password_hash, full_name, is_active)
+       VALUES (gen_random_uuid(), $1, $2, 'hash', 'Integrity Fixture', true)`,
+      [account.id, email],
+    );
+
     try {
-      const pool = getTestPool();
-      const firstUser = await queryOne<{ account_id: string; email: string }>(
-        `SELECT account_id, email FROM users LIMIT 1`
-      );
-      if (!firstUser) return; // No users in DB (seed skipped without ADMIN_EMAIL/PASSWORD)
       await pool.query(
         `INSERT INTO users (id, account_id, email, password_hash, full_name, is_active)
          VALUES (gen_random_uuid(), $1, $2, 'hash', 'Duplicate', true)`,
-        [firstUser.account_id, firstUser.email]
+        [account.id, email]
       );
       expect.unreachable('Should have thrown unique violation');
     } catch (error) {
@@ -214,24 +226,36 @@ describe('Unique Constraints', () => {
 
 describe('CHECK Constraints', () => {
   it('should reject protocol version with version_number <= 0', async () => {
+    const pool = getTestPool();
+    const account = requireFixture(
+      await queryOne<{ id: string }>(`SELECT id FROM accounts LIMIT 1`),
+      'account',
+    );
+    const userResult = await pool.query<{ id: string }>(
+      `INSERT INTO users (id, account_id, email, password_hash, full_name, is_active)
+       VALUES (gen_random_uuid(), $1, 'integrity-protocol@example.invalid', 'hash', 'Protocol Fixture', true)
+       RETURNING id`,
+      [account.id],
+    );
+    const user = requireFixture(userResult.rows[0], 'protocol author');
+    const protocolResult = await pool.query<{ id: string }>(
+      `INSERT INTO protocols (id, account_id, title, slug, created_by_user_id)
+       VALUES (gen_random_uuid(), $1, 'Integrity Protocol', 'integrity-protocol', $2)
+       RETURNING id`,
+      [account.id, user.id],
+    );
+    const protocol = requireFixture(protocolResult.rows[0], 'protocol');
+
     try {
-      const pool = getTestPool();
-      const protocol = await queryOne<{ id: string; account_id: string }>(
-        `SELECT id, account_id FROM protocols LIMIT 1`
-      );
-      if (!protocol) {
-        // No protocols exist yet — skip (seed doesn't create protocols)
-        return;
-      }
       await pool.query(
-        `INSERT INTO protocol_versions (id, account_id, protocol_id, version_number, status, title)
-         VALUES (gen_random_uuid(), $1, $2, 0, 'draft', 'Invalid')`,
-        [protocol.account_id, protocol.id]
+        `INSERT INTO protocol_versions (
+           id, account_id, protocol_id, version_number, status, content_json, created_by_user_id
+         ) VALUES (gen_random_uuid(), $1, $2, 0, 'draft', '{}'::jsonb, $3)`,
+        [account.id, protocol.id, user.id]
       );
       expect.unreachable('Should have thrown CHECK violation');
     } catch (error) {
-      const message = String(error);
-      expect(message).toMatch(/check|violates/i);
+      expect(String(error)).toContain('protocol_versions_version_number_positive_chk');
     }
   });
 });

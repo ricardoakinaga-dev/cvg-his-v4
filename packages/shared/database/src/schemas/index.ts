@@ -19,6 +19,7 @@ export const sessions = pgTable('sessions', {
   tokenHash: varchar('token_hash', { length: 255 }).notNull(),
   refreshTokenHash: varchar('refresh_token_hash', { length: 255 }),
   expiresAt: timestamp('expires_at').notNull(),
+  refreshExpiresAt: timestamp('refresh_expires_at').notNull(),
   createdAt: timestamp('created_at').notNull(),
   updatedAt: timestamp('updated_at').notNull()
 });
@@ -75,8 +76,9 @@ export const patients = pgTable('patients', {
 
 export const ownerPatientLinks = pgTable('owner_patient_links', {
   id: varchar('id', { length: 255 }).primaryKey(),
-  ownerId: varchar('owner_id', { length: 255 }).notNull(),
-  patientId: varchar('patient_id', { length: 255 }).notNull(),
+  accountId: uuid('account_id').notNull(),
+  ownerId: uuid('owner_id').notNull(),
+  patientId: uuid('patient_id').notNull(),
   relationship: varchar('relationship', { length: 50 }),
   isPrimary: boolean('is_primary').notNull().default(false),
   createdAt: timestamp('created_at').notNull()
@@ -156,6 +158,7 @@ export const clinicalTimeline = pgTable('clinical_timeline', {
   actorUserId: uuid('actor_user_id'),
   clinicalEntryId: varchar('clinical_entry_id', { length: 255 }),
   attachmentId: uuid('attachment_id'),
+  runtimeAttachmentId: varchar('runtime_attachment_id', { length: 255 }),
   occurredAt: timestamp('occurred_at').notNull()
 });
 
@@ -176,16 +179,20 @@ export const attachments = pgTable('attachments', {
 });
 
 export const appointments = pgTable('appointments', {
-  id: varchar('id', { length: 255 }).primaryKey(),
-  accountId: varchar('account_id', { length: 255 }).notNull(),
-  ownerId: varchar('owner_id', { length: 255 }).notNull(),
-  patientId: varchar('patient_id', { length: 255 }).notNull(),
-  scheduledAt: timestamp('scheduled_at').notNull(),
-  duration: integer('duration'),
+  id: uuid('id').primaryKey(),
+  accountId: uuid('account_id').notNull(),
+  ownerId: uuid('owner_id').notNull(),
+  patientId: uuid('patient_id').notNull(),
+  professionalUserId: uuid('professional_user_id').notNull(),
+  startAt: timestamp('start_at', { withTimezone: true }).notNull(),
+  endAt: timestamp('end_at', { withTimezone: true }).notNull(),
+  type: varchar('type', { length: 50 }).notNull(),
+  notes: text('notes'),
+  duration: integer('duration').notNull(),
   visitType: varchar('visit_type', { length: 50 }).notNull(),
-  reason: varchar('reason', { length: 500 }),
-  practitionerStaffId: varchar('practitioner_staff_id', { length: 255 }),
-  serviceId: varchar('service_id', { length: 255 }),
+  reason: text('reason').notNull(),
+  practitionerStaffId: uuid('practitioner_staff_id'),
+  serviceId: uuid('service_id'),
   unit: varchar('unit', { length: 120 }),
   specialty: varchar('specialty', { length: 120 }),
   resourceLabel: varchar('resource_label', { length: 120 }),
@@ -225,7 +232,7 @@ export const billingItems = pgTable('billing_items', {
 
 export const inventoryItems = pgTable('inventory_items', {
   id: varchar('id', { length: 255 }).primaryKey(),
-  accountId: varchar('account_id', { length: 255 }).notNull(),
+  accountId: uuid('account_id').notNull(),
   sku: varchar('sku', { length: 50 }).notNull(),
   name: varchar('name', { length: 255 }).notNull(),
   unit: varchar('unit', { length: 50 }).notNull(),
@@ -238,16 +245,16 @@ export const inventoryItems = pgTable('inventory_items', {
 
 export const inventoryConsumptions = pgTable('inventory_consumptions', {
   id: varchar('id', { length: 255 }).primaryKey(),
-  accountId: varchar('account_id', { length: 255 }).notNull(),
+  accountId: uuid('account_id').notNull(),
   inventoryItemId: varchar('inventory_item_id', { length: 255 }).notNull(),
-  encounterId: varchar('encounter_id', { length: 255 }).notNull(),
-  patientId: varchar('patient_id', { length: 255 }).notNull(),
+  encounterId: uuid('encounter_id').notNull(),
+  patientId: uuid('patient_id').notNull(),
   quantity: numeric('quantity', { precision: 10, scale: 2 }).notNull(),
   unit: varchar('unit', { length: 50 }).notNull(),
   costAmount: numeric('cost_amount', { precision: 12, scale: 2 }).notNull(),
   sourceEntityType: varchar('source_entity_type', { length: 50 }),
   sourceEntityId: varchar('source_entity_id', { length: 255 }),
-  recordedByUserId: varchar('recorded_by_user_id', { length: 255 }).notNull(),
+  recordedByUserId: uuid('recorded_by_user_id').notNull(),
   createdAt: timestamp('created_at').notNull()
 });
 
@@ -279,34 +286,41 @@ export const notificationJobs = pgTable('notification_jobs', {
 });
 
 export const inpatientStays = pgTable('inpatient_stays', {
-  id: varchar('id', { length: 255 }).primaryKey(),
-  accountId: varchar('account_id', { length: 255 }).notNull(),
-  encounterId: varchar('encounter_id', { length: 255 }).notNull(),
-  patientId: varchar('patient_id', { length: 255 }).notNull(),
-  unit: varchar('unit', { length: 100 }).notNull(),
-  ward: varchar('ward', { length: 100 }).notNull(),
-  bed: varchar('bed', { length: 50 }).notNull(),
-  sectorId: varchar('sector_id', { length: 255 }),
-  bedId: varchar('bed_id', { length: 255 }),
+  id: uuid('id').primaryKey(),
+  accountId: uuid('account_id').notNull(),
+  patientId: uuid('patient_id').notNull(),
+  ownerId: uuid('owner_id').notNull(),
+  encounterId: uuid('encounter_id'),
+  wardId: uuid('ward_id'),
+  bedId: uuid('bed_id'),
   status: varchar('status', { length: 50 }).notNull(),
   admittedAt: timestamp('admitted_at').notNull(),
   dischargedAt: timestamp('discharged_at'),
+  admittedByUserId: uuid('admitted_by_user_id').notNull(),
+  dischargedByUserId: uuid('discharged_by_user_id'),
+  chiefComplaint: text('chief_complaint'),
+  reason: text('reason'),
+  planSummary: text('plan_summary'),
+  unit: varchar('unit', { length: 100 }),
+  ward: varchar('ward', { length: 100 }),
+  bed: varchar('bed', { length: 100 }),
+  sectorId: varchar('sector_id', { length: 255 }),
   dischargeReason: varchar('discharge_reason', { length: 500 }),
   transferToUnit: varchar('transfer_to_unit', { length: 100 }),
   transferToWard: varchar('transfer_to_ward', { length: 100 }),
   transferToSectorId: varchar('transfer_to_sector_id', { length: 255 }),
-  transferToBedId: varchar('transfer_to_bed_id', { length: 255 }),
+  transferToBedId: uuid('transfer_to_bed_id'),
   createdAt: timestamp('created_at').notNull(),
   updatedAt: timestamp('updated_at').notNull()
 });
 
 export const inpatientProgress = pgTable('inpatient_progress', {
   id: varchar('id', { length: 255 }).primaryKey(),
-  accountId: varchar('account_id', { length: 255 }).notNull(),
-  stayId: varchar('stay_id', { length: 255 }).notNull(),
-  encounterId: varchar('encounter_id', { length: 255 }).notNull(),
+  accountId: uuid('account_id').notNull(),
+  stayId: uuid('stay_id').notNull(),
+  encounterId: uuid('encounter_id').notNull(),
   note: varchar('note', { length: 5000 }).notNull(),
-  authoredByUserId: varchar('authored_by_user_id', { length: 255 }).notNull(),
+  authoredByUserId: uuid('authored_by_user_id').notNull(),
   createdAt: timestamp('created_at').notNull()
 });
 
@@ -343,12 +357,12 @@ export const inpatientDailyCharges = pgTable('inpatient_daily_charges', {
 
 export const surgeryCases = pgTable('surgery_cases', {
   id: varchar('id', { length: 255 }).primaryKey(),
-  accountId: varchar('account_id', { length: 255 }).notNull(),
-  encounterId: varchar('encounter_id', { length: 255 }).notNull(),
-  patientId: varchar('patient_id', { length: 255 }).notNull(),
+  accountId: uuid('account_id').notNull(),
+  encounterId: uuid('encounter_id').notNull(),
+  patientId: uuid('patient_id').notNull(),
   procedureName: varchar('procedure_name', { length: 255 }).notNull(),
   status: varchar('status', { length: 50 }).notNull(),
-  surgeonUserId: varchar('surgeon_user_id', { length: 255 }),
+  surgeonUserId: uuid('surgeon_user_id'),
   surgicalTeam: jsonb('surgical_team'),
   preparationNotes: varchar('preparation_notes', { length: 2000 }),
   operativeNotes: varchar('operative_notes', { length: 5000 }),
@@ -428,8 +442,9 @@ export const sectors = pgTable('sectors', {
 });
 
 export const beds = pgTable('beds', {
-  id: varchar('id', { length: 255 }).primaryKey(),
-  accountId: varchar('account_id', { length: 255 }).notNull(),
+  id: uuid('id').primaryKey(),
+  accountId: uuid('account_id').notNull(),
+  wardId: uuid('ward_id'),
   sectorId: varchar('sector_id', { length: 255 }).notNull(),
   code: varchar('code', { length: 50 }).notNull(),
   name: varchar('name', { length: 255 }).notNull(),

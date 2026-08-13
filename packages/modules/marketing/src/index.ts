@@ -450,7 +450,6 @@ export class MarketingService {
   }
 }
 
-/* v8 ignore start -- SQL repository adapter covered by integration tests. */
 export class DatabaseMarketingRepository implements MarketingRepository {
   async saveSegment(segment: MarketingSegmentSummary): Promise<void> {
     await withTenantQuery(getPool(), async (client) => {
@@ -801,4 +800,3 @@ function mapDelivery(row: Record<string, unknown>): MarketingCampaignDeliverySum
     failedAt: row.failed_at ? dateIso(row.failed_at) : undefined
   };
 }
-/* v8 ignore stop */

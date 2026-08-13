@@ -4,6 +4,5 @@
     "rootDir": "./src",
     "outDir": "./dist"
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["src/database-provider.ts", "src/database-provider.test.ts", "src/repositories/**/*"]
+  "include": ["src/**/*.ts"]
 }

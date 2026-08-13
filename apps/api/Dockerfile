@@ -1,19 +1,22 @@
-FROM node:22-bookworm-slim AS builder
+FROM node:22-bookworm-slim@sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0c23dfb172dc3cc6436 AS builder
 
-RUN npm install -g pnpm@10.33.0
+RUN npm install -g pnpm@10.34.5
 
-WORKDIR /app
+WORKDIR /workspace
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
 COPY apps ./apps
 COPY packages ./packages
-COPY infra ./infra
 
-RUN pnpm install --no-frozen-lockfile --prod=false
+RUN pnpm install --frozen-lockfile --prod=false
 RUN find . -name 'tsconfig.tsbuildinfo' -delete
-RUN pnpm build
+RUN pnpm --filter @cvg-his-v2/api... run build
+RUN pnpm --filter @cvg-his-v2/api deploy --prod /runtime/api
+COPY scripts ./scripts
+RUN mkdir -p /runtime/api/ops \
+  && cp scripts/database-bootstrap.mjs scripts/provision-database-runtime-role.mjs /runtime/api/ops/
 
-FROM node:22-bookworm-slim AS runner
+FROM gcr.io/distroless/nodejs22-debian13:nonroot@sha256:939d6f1671529d230f50b563578e9b5d206af58f038b10ebd7e1233023d4e167 AS runner
 
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
@@ -21,20 +24,14 @@ ENV PORT=3001
 
 WORKDIR /app
 
-# Install curl for healthcheck
-RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+COPY --from=builder --chown=nonroot:nonroot /runtime/api ./
 
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/pnpm-lock.yaml ./pnpm-lock.yaml
-COPY --from=builder /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
-COPY --from=builder /app/tsconfig.base.json ./tsconfig.base.json
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/apps ./apps
-COPY --from=builder /app/packages ./packages
+USER nonroot
 
 EXPOSE 3001
 
 HEALTHCHECK --interval=10s --timeout=3s --retries=20 \
-  CMD curl -fsS "http://127.0.0.1:${PORT}/health" >/dev/null || exit 1
+  CMD ["/nodejs/bin/node", "-e", "fetch('http://127.0.0.1:'+(process.env.PORT||'3001')+'/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
 
-CMD ["node", "apps/api/dist/index.js"]
+ENTRYPOINT ["/nodejs/bin/node"]
+CMD ["dist/index.js"]

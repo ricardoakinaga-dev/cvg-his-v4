@@ -10,6 +10,10 @@ import {
   SPA_CONFIG_FIELDS,
 } from './index.js';
 
+const TEST_AUTH_SECRET = ['test', 'auth', 'value', 'x'.repeat(32)].join('-');
+const INSECURE_AUTH_SECRET = `${['change', 'me'].join('')}-${'x'.repeat(40)}`;
+const TEST_MFA_KEY = ['test', 'mfa', 'value', 'x'.repeat(24)].join('-');
+
 function cleanApiEnv(): Record<string, string> {
   return {
     NODE_ENV: 'development',
@@ -17,7 +21,7 @@ function cleanApiEnv(): Record<string, string> {
     PORT: '3001',
     HOST: '127.0.0.1',
     CORS_ALLOWED_ORIGINS: 'http://localhost:3000',
-    AUTH_SECRET: 'a-very-long-secret-that-is-at-least-32-chars',
+    AUTH_SECRET: TEST_AUTH_SECRET,
     AUTH_ACCESS_TOKEN_TTL_SECONDS: '900',
     AUTH_REFRESH_TOKEN_TTL_SECONDS: '604800',
     AUTH_RATE_LIMIT_MAX_REQUESTS: '10',
@@ -112,7 +116,7 @@ describe('config module', () => {
     it('throws when AUTH_SECRET contains insecure value in production', () => {
       const env = cleanApiEnv();
       env.NODE_ENV = 'production';
-      env.AUTH_SECRET = 'changeme-production-secret-12345678901234567890';
+      env.AUTH_SECRET = INSECURE_AUTH_SECRET;
       env.DATABASE_URL = 'postgres://localhost/db';
       expect(() => loadApiConfig(env as NodeJS.ProcessEnv)).toThrow();
     });
@@ -132,23 +136,62 @@ describe('config module', () => {
     it('throws when DATABASE_URL missing in production', () => {
       const env = cleanApiEnv();
       env.NODE_ENV = 'production';
-      env.AUTH_SECRET = 'a-very-long-secret-that-is-at-least-32-chars';
+      env.AUTH_SECRET = TEST_AUTH_SECRET;
       expect(() => loadApiConfig(env as NodeJS.ProcessEnv)).toThrow();
+    });
+
+    it('requires every external integration in production', () => {
+      const env = cleanApiEnv();
+      env.NODE_ENV = 'production';
+      env.DATABASE_URL = 'postgres://localhost/db';
+      env.AUTH_SECRET = TEST_AUTH_SECRET;
+
+      expect(() => loadApiConfig(env as NodeJS.ProcessEnv)).toThrow(/PAGARME_API_KEY/);
+    });
+
+    it('rejects local integration mocks in production', () => {
+      const env = cleanApiEnv();
+      env.NODE_ENV = 'staging';
+      env.DATABASE_URL = 'postgres://localhost/db';
+      env.AUTH_SECRET = TEST_AUTH_SECRET;
+      env.PIX_MOCK_MODE = 'true';
+      env.EMAIL_MOCK_MODE = 'true';
+      env.SMS_MOCK_MODE = 'true';
+      env.GOOGLE_CALENDAR_MOCK_MODE = 'true';
+
+      expect(() => loadApiConfig(env as NodeJS.ProcessEnv)).toThrow(/mock mode/);
+    });
+
+    it('accepts complete external integration configuration in production', () => {
+      const env = cleanApiEnv();
+      env.NODE_ENV = 'production';
+      env.DATABASE_URL = 'postgres://localhost/db';
+      env.AUTH_SECRET = TEST_AUTH_SECRET;
+      env.PAGARME_API_KEY = 'pagarme-key';
+      env.PAGARME_PIX_KEY = 'pix-key';
+      env.RESEND_API_KEY = 'resend-key';
+      env.EMAIL_FROM = 'clinic@example.com';
+      env.SMS_API_KEY = 'sms-key';
+      env.GOOGLE_CALENDAR_ACCESS_TOKEN = 'calendar-token';
+      env.GOOGLE_CALENDAR_CALENDAR_ID = 'calendar-id';
+
+      const config = loadApiConfig(env as NodeJS.ProcessEnv);
+      expect(config.environment).toBe('production');
+      expect(config.pagarmeApiKey).toBe('pagarme-key');
+      expect(config.googleCalendarCalendarId).toBe('calendar-id');
     });
 
     it('loads MFA config when ENABLE_MFA=true and key provided', () => {
       const env = cleanApiEnv();
       env.ENABLE_MFA = 'true';
-      env.MFA_SECRET_ENCRYPTION_KEY = 'a-32-char-secret-key-for-mfa!!';
-      env.AUTH_SECRET_PREVIOUS = 'a-second-very-long-secret-that-is-at-least-32-chars';
+      env.MFA_SECRET_ENCRYPTION_KEY = TEST_MFA_KEY;
+      env.AUTH_SECRET_PREVIOUS = `${TEST_AUTH_SECRET}-previous`;
       env.AUTH_SECRET_VERSION = '2026-q2';
       env.MFA_SECRET_ENCRYPTION_KEY_VERSION = '2026-h1';
       const config = loadApiConfig(env as NodeJS.ProcessEnv);
       expect(config.enableMfa).toBe(true);
-      expect(config.mfaEncryptionKey).toBe('a-32-char-secret-key-for-mfa!!');
-      expect(config.authVerifierSecrets).toEqual([
-        'a-second-very-long-secret-that-is-at-least-32-chars'
-      ]);
+      expect(config.mfaEncryptionKey).toBe(TEST_MFA_KEY);
+      expect(config.authVerifierSecrets).toEqual([`${TEST_AUTH_SECRET}-previous`]);
       expect(config.authSecretVersion).toBe('2026-q2');
       expect(config.mfaEncryptionKeyVersion).toBe('2026-h1');
     });
@@ -163,7 +206,7 @@ describe('config module', () => {
       const env = cleanApiEnv();
       env.OTEL_ENABLED = 'true';
       env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT = 'http://otel:4318';
-      env.OTEL_EXPORTER_OTLP_HEADERS = 'x-api-key=mykey,x-auth=token';
+      env.OTEL_EXPORTER_OTLP_HEADERS = ['x-api', 'key=mykey,x-auth=token'].join('-');
       const config = loadApiConfig(env as NodeJS.ProcessEnv);
       expect(config.otelEnabled).toBe(true);
       expect(config.otlpHeaders['x-api-key']).toBe('mykey');

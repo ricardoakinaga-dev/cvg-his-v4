@@ -2,6 +2,8 @@
 
 Esta pasta contem apenas os documentos **ativos** e **usados na construcao atual** do programa.
 
+> **Baseline histórico:** os scores `96/100`, `92/100` e `97/100` desta trilha pertencem a ciclos encerrados entre abril e maio de 2026. Para o estado executável atual, consulte [o relatório de 11/08/2026](../2026-08-11-relatorio-auditoria-p1.md), que registra a nota inicial 67/100, o fechamento P1 em 78/100 e os gates reproduzidos localmente.
+
 **Taxonomia:** `CANONICO`
 **Papel no sistema documental:** indice de entrada da pasta ativa `docs/Enterprise`
 **Ler em conjunto com:** `0337-RELATORIO-REAUDITORIA-EXECUTAVEL-2026-04-22.md`, `0338-PLANO-EXECUTIVO-RUMO-96-2026-04-22.md`, `0339-CHECKLIST-FORMAL-REQUISITOS-VIVOS-2026-04-22.md`, `0340-SCORECARD-E-GATE-RUMO-96-2026-04-22.md`, `0347-RELATORIO-CICLO-VETUS-PARIDADE-COMERCIAL-2026-04-24.md`, `0348-RELATORIO-AUDITORIA-DOCS-VS-CODIGO-2026-04-24.md`, `0349-PLANO-EXECUTIVO-FECHAMENTO-GAP-96-2026-04-24.md`, `0350-ROADMAP-FECHAMENTO-GAP-96-2026-04-24.md`, `0351-BACKLOG-FECHAMENTO-GAP-96-2026-04-24.md`, `0352-RELATORIO-PARCIAL-ONDA-P2-VETUS-COMERCIAL-2026-04-24.md`, `101-ROADMAP-RUMO-96.md`, `201-BACKLOG-RUMO-96.md`

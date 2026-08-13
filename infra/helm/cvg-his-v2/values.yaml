@@ -145,6 +145,7 @@ worker:
     APP_NAME: cvg-his-v2-worker
     WORKER_INTERVAL_MS: "5000"
     WORKER_HEALTH_PORT: "3002"
+    WORKER_ACCOUNT_IDS: ""
     FEATURE_FLAGS_PROVIDER: env
     WORKER_FEATURE_FLAGS: ""
     OTEL_ENABLED: "false"
@@ -220,9 +221,12 @@ postgresql:
   enabled: true
   existingSecret: ""
   secretKeys:
-    url: url
+    adminUrl: admin-url
+    # The URL consumed by API/worker must point to a restricted, non-owner runtime role.
+    runtimeUrl: runtime-url
     password: password
-  url: ""
+  adminUrl: ""
+  runtimeUrl: ""
   password: ""
 
   persistence:
@@ -244,6 +248,13 @@ postgresql:
     database: cvg_his_v2
     username: postgres
     # password injected via secret — never store plaintext
+
+databaseBootstrap:
+  enabled: true
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 3600
+  waitAttempts: 90
+  waitIntervalSeconds: 2
 
 # ──────────────────────────────────────────────
 # Redis (StatefulSet — dev/staging only)

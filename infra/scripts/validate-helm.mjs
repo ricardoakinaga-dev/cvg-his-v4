@@ -14,7 +14,7 @@ const environments = [
     name: 'dev',
     release: 'cvg-his-v2-dev',
     values: path.join(chartDir, 'values.dev.yaml'),
-    expectManagedSecrets: true,
+    expectManagedSecrets: false,
     expectEmbeddedDatastores: true,
     expectApiProbes: false
   },
@@ -71,6 +71,15 @@ function validateStaticChart() {
   assert(base.api?.image?.repository, 'values.yaml must define api.image.repository');
   assert(base.worker?.image?.repository, 'values.yaml must define worker.image.repository');
   assert(base.spa?.image?.repository, 'values.yaml must define spa.image.repository');
+  assert(
+    base.postgresql?.secretKeys?.runtimeUrl,
+    'values.yaml must define the restricted PostgreSQL runtime URL secret key'
+  );
+  assert(
+    base.postgresql?.secretKeys?.adminUrl,
+    'values.yaml must define the migration-only PostgreSQL admin URL secret key'
+  );
+  assert(base.databaseBootstrap?.enabled === true, 'database bootstrap Job must be enabled');
 
   const requiredTemplates = [
     'api-deployment.yaml',
@@ -79,6 +88,7 @@ function validateStaticChart() {
     'configmap.yaml',
     'poddisruptionbudgets.yaml',
     'secrets.yaml',
+    'database-bootstrap-job.yaml',
     'postgres-statefulset.yaml',
     'redis-statefulset.yaml'
   ];
@@ -92,6 +102,8 @@ function validateStaticChart() {
     const values = readYamlFile(environment.values);
     if (environment.expectManagedSecrets) {
       assert(values.api?.auth?.value, `${environment.name}: expected managed API auth secret value`);
+      assert(values.postgresql?.adminUrl, `${environment.name}: expected explicit PostgreSQL admin URL`);
+      assert(values.postgresql?.runtimeUrl, `${environment.name}: expected explicit PostgreSQL runtime URL`);
     } else {
       assert(values.api?.auth?.existingSecret, `${environment.name}: expected API existingSecret`);
     }
@@ -99,6 +111,8 @@ function validateStaticChart() {
     if (environment.expectEmbeddedDatastores) {
       assert(values.postgresql?.enabled === true, `${environment.name}: expected embedded PostgreSQL`);
       assert(values.redis?.enabled === true, `${environment.name}: expected embedded Redis`);
+      assert(values.postgresql?.existingSecret, `${environment.name}: expected PostgreSQL existingSecret`);
+      assert(values.redis?.existingSecret, `${environment.name}: expected Redis existingSecret`);
     } else {
       assert(values.postgresql?.enabled === false, `${environment.name}: expected external PostgreSQL`);
       assert(values.redis?.enabled === false, `${environment.name}: expected external Redis`);
@@ -155,6 +169,9 @@ for (const environment of environments) {
   const apiPdb = findDoc(docs, 'PodDisruptionBudget', `${prefix}-api`);
   const workerPdb = findDoc(docs, 'PodDisruptionBudget', `${prefix}-worker`);
   const spaPdb = findDoc(docs, 'PodDisruptionBudget', `${prefix}-spa`);
+  const databaseBootstrap = docs.find(
+    (doc) => doc.kind === 'Job' && doc.metadata?.name?.startsWith(`${prefix}-database-bootstrap-`)
+  );
 
   assert(apiDeployment, `${environment.name}: API deployment not rendered`);
   assert(workerDeployment, `${environment.name}: worker deployment not rendered`);
@@ -165,9 +182,22 @@ for (const environment of environments) {
   assert(apiPdb, `${environment.name}: API PodDisruptionBudget not rendered`);
   assert(workerPdb, `${environment.name}: worker PodDisruptionBudget not rendered`);
   assert(spaPdb, `${environment.name}: SPA PodDisruptionBudget not rendered`);
+  assert(databaseBootstrap, `${environment.name}: database bootstrap Job not rendered`);
 
   const apiContainer = apiDeployment.spec.template.spec.containers[0];
   const workerContainer = workerDeployment.spec.template.spec.containers[0];
+  assert(
+    apiDeployment.spec.template.spec.initContainers?.some(
+      (container) => container.name === 'wait-runtime-database-role'
+    ),
+    `${environment.name}: API must wait for the restricted runtime database role`
+  );
+  assert(
+    workerDeployment.spec.template.spec.initContainers?.some(
+      (container) => container.name === 'wait-runtime-database-role'
+    ),
+    `${environment.name}: worker must wait for the restricted runtime database role`
+  );
 
   if (environment.expectApiProbes) {
     assert(

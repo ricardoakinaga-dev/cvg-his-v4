@@ -7,6 +7,15 @@
       </div>
       <form class="login-form" @submit.prevent="handleLogin">
         <DsInput
+          id="account-slug"
+          v-model="accountSlug"
+          type="text"
+          label="Conta"
+          placeholder="minha-clinica"
+          required
+          autocomplete="organization"
+        />
+        <DsInput
           id="email"
           v-model="email"
           type="text"
@@ -50,6 +59,7 @@ const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
 
+const accountSlug = ref('');
 const email = ref('');
 const password = ref('');
 const error = ref('');
@@ -66,7 +76,11 @@ async function handleLogin() {
       {
         method: 'POST',
         skipAuth: true,
-        body: JSON.stringify({ username: email.value, password: password.value })
+        body: JSON.stringify({
+          accountSlug: accountSlug.value.trim(),
+          username: email.value.trim(),
+          password: password.value
+        })
       }
     );
 

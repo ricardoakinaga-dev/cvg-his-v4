@@ -4,6 +4,11 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
+import {
+  buildRehearsalEnvironment,
+  serializeRehearsalEnvironment,
+} from './cutover-rehearsal-environment.mjs';
+
 const root = process.cwd();
 const timestamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\..+$/, 'Z');
 const runId = `${timestamp}-${process.pid}`;
@@ -60,24 +65,8 @@ function waitForService(service) {
 }
 
 function writeEnvFile() {
-  const password = `postgres_${process.pid}_pw`;
-  const authSecret = `local_rehearsal_auth_secret_${process.pid}_01234567890123456789`;
-  writeFileSync(
-    envFile,
-    [
-      'NODE_ENV=production',
-      'POSTGRES_DB=cvg_his_v2_rehearsal',
-      'POSTGRES_USER=postgres',
-      `POSTGRES_PASSWORD=${password}`,
-      `AUTH_SECRET=${authSecret}`,
-      'CORS_ALLOWED_ORIGINS=http://127.0.0.1:3002',
-      'VITE_APP_NAME=CVG HIS V2 Rehearsal',
-      'VITE_DISABLE_PWA=1',
-      'OTEL_ENABLED=false',
-      'BACKUP_INCLUDE_STORAGE=true',
-      '',
-    ].join('\n'),
-  );
+  const environment = buildRehearsalEnvironment(process.pid);
+  writeFileSync(envFile, serializeRehearsalEnvironment(environment));
 }
 
 function writeOverrideFile() {

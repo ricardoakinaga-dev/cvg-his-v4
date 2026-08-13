@@ -5,6 +5,7 @@ import {
   primaryKey,
   timestamp,
   uniqueIndex,
+  uuid,
   varchar
 } from 'drizzle-orm/pg-core';
 
@@ -16,7 +17,7 @@ export const accessTeams = pgTable(
   'access_teams',
   {
     id: varchar('id', { length: 255 }).primaryKey(),
-    accountId: varchar('account_id', { length: 255 })
+    accountId: uuid('account_id')
       .notNull()
       .references(() => accounts.id, { onDelete: 'cascade' }),
     code: varchar('code', { length: 100 }).notNull(),
@@ -36,7 +37,7 @@ export const accessSectors = pgTable(
   'access_sectors',
   {
     id: varchar('id', { length: 255 }).primaryKey(),
-    accountId: varchar('account_id', { length: 255 })
+    accountId: uuid('account_id')
       .notNull()
       .references(() => accounts.id, { onDelete: 'cascade' }),
     code: varchar('code', { length: 100 }).notNull(),
@@ -55,7 +56,7 @@ export const accessSectors = pgTable(
 export const accessTeamMemberships = pgTable(
   'access_team_memberships',
   {
-    userId: varchar('user_id', { length: 255 })
+    userId: uuid('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     teamId: varchar('team_id', { length: 255 })
@@ -76,7 +77,7 @@ export const accessTeamMemberships = pgTable(
 export const accessSectorMemberships = pgTable(
   'access_sector_memberships',
   {
-    userId: varchar('user_id', { length: 255 })
+    userId: uuid('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     sectorId: varchar('sector_id', { length: 255 })
@@ -97,10 +98,10 @@ export const accessSectorMemberships = pgTable(
 export const accessUserPermissions = pgTable(
   'access_user_permissions',
   {
-    userId: varchar('user_id', { length: 255 })
+    userId: uuid('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
-    permissionId: varchar('permission_id', { length: 255 })
+    permissionId: uuid('permission_id')
       .notNull()
       .references(() => permissions.id, { onDelete: 'cascade' }),
     effect: varchar('effect', { length: 16 }).notNull(),
@@ -123,7 +124,7 @@ export const accessTeamPermissions = pgTable(
     teamId: varchar('team_id', { length: 255 })
       .notNull()
       .references(() => accessTeams.id, { onDelete: 'cascade' }),
-    permissionId: varchar('permission_id', { length: 255 })
+    permissionId: uuid('permission_id')
       .notNull()
       .references(() => permissions.id, { onDelete: 'cascade' }),
     effect: varchar('effect', { length: 16 }).notNull(),
@@ -146,7 +147,7 @@ export const accessSectorPermissions = pgTable(
     sectorId: varchar('sector_id', { length: 255 })
       .notNull()
       .references(() => accessSectors.id, { onDelete: 'cascade' }),
-    permissionId: varchar('permission_id', { length: 255 })
+    permissionId: uuid('permission_id')
       .notNull()
       .references(() => permissions.id, { onDelete: 'cascade' }),
     effect: varchar('effect', { length: 16 }).notNull(),

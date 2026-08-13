@@ -105,17 +105,17 @@ test('handleMlRoutes exposes OCR, demand forecasting and lab anomalies', async (
     origin: 'reception',
     reason: 'Anomaly scan'
   });
-  const order = laboratory.createOrder({
+  const order = await laboratory.createOrder({
     encounterId: encounter.id,
     patientId: encounter.patientId,
     examType: 'HEM',
     reason: 'Monitoramento'
   });
-  laboratory.recordResult(order.id, {
+  await laboratory.recordResult(order.id, {
     status: 'collected',
     collectedByUserId: 'lab_user'
   });
-  laboratory.recordResult(order.id, {
+  await laboratory.recordResult(order.id, {
     status: 'resulted',
     resultSummary: 'Leucocitos: 30',
     releasedByUserId: 'lab_user'
@@ -240,17 +240,17 @@ test('handleMlRoutes publishes operational report and anomaly review workflow', 
     origin: 'reception',
     reason: 'Anomaly scan'
   });
-  const order = laboratory.createOrder({
+  const order = await laboratory.createOrder({
     encounterId: encounter.id,
     patientId: encounter.patientId,
     examType: 'HEM',
     reason: 'Monitoramento'
   });
-  laboratory.recordResult(order.id, {
+  await laboratory.recordResult(order.id, {
     status: 'collected',
     collectedByUserId: 'lab_user'
   });
-  laboratory.recordResult(order.id, {
+  await laboratory.recordResult(order.id, {
     status: 'resulted',
     resultSummary: 'Leucocitos: 30',
     releasedByUserId: 'lab_user'

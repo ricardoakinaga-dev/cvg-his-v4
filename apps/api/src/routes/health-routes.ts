@@ -5,7 +5,7 @@
  */
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { ChaosEngine } from '@cvg-his-v2/chaos';
-import type { ApiServerOptions } from '../server.js';
+import type { ApiServerOptions } from '../server-options.js';
 import { createReadinessResponse, createLivenessResponse } from '../health.js';
 import { getAppState } from '../app-state.js';
 import { resolveOperationalRuntimeState } from '../chaos-operational-state.js';

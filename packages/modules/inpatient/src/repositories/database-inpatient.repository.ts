@@ -1,10 +1,12 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import type { DatabaseClient } from '@cvg-his-v2/shared-database';
 import {
   inpatientStays,
   inpatientProgress,
   inpatientOccurrences,
-  inpatientDailyCharges
+  inpatientDailyCharges,
+  beds,
+  encounters
 } from '@cvg-his-v2/shared-database';
 import type {
   AccountId,
@@ -55,19 +57,62 @@ export class DatabaseInpatientStayRepository implements InpatientStayRepository 
   }
 
   public async create(stay: InpatientStaySummary): Promise<void> {
+    const encounterRows = await this.#db
+      .select({
+        ownerId: encounters.ownerId,
+        admittedByUserId: encounters.openedByUserId
+      })
+      .from(encounters)
+      .where(
+        and(
+          eq(encounters.id, stay.encounterId),
+          eq(encounters.accountId, stay.accountId)
+        )
+      )
+      .limit(1);
+    const encounter = encounterRows[0];
+    if (!encounter) {
+      throw new Error(`Cannot persist inpatient stay ${stay.id}: encounter was not persisted`);
+    }
+
+    let wardId: string | null = null;
+    if (stay.bedId) {
+      const bedRows = await this.#db
+        .select({
+          accountId: beds.accountId,
+          wardId: beds.wardId,
+          sectorId: beds.sectorId
+        })
+        .from(beds)
+        .where(eq(beds.id, stay.bedId))
+        .limit(1);
+      const persistedBed = bedRows[0];
+      if (!persistedBed || persistedBed.accountId !== stay.accountId) {
+        throw new Error(`Cannot persist inpatient stay ${stay.id}: bed is outside the account`);
+      }
+      if (stay.sectorId && persistedBed.sectorId !== stay.sectorId) {
+        throw new Error(`Cannot persist inpatient stay ${stay.id}: bed is outside the sector`);
+      }
+      wardId = persistedBed.wardId;
+    }
+
     await this.#db.insert(inpatientStays).values({
       id: stay.id,
       accountId: stay.accountId,
-      encounterId: stay.encounterId,
       patientId: stay.patientId,
-      unit: stay.unit,
-      ward: stay.ward,
-      bed: stay.bed,
-      sectorId: stay.sectorId ?? null,
+      ownerId: encounter.ownerId,
+      encounterId: stay.encounterId,
+      wardId,
       bedId: stay.bedId ?? null,
       status: stay.status,
       admittedAt: new Date(stay.admittedAt),
       dischargedAt: stay.dischargedAt ? new Date(stay.dischargedAt) : null,
+      admittedByUserId: encounter.admittedByUserId,
+      dischargedByUserId: null,
+      unit: stay.unit,
+      ward: stay.ward,
+      bed: stay.bed,
+      sectorId: stay.sectorId ?? null,
       dischargeReason: stay.dischargeReason ?? null,
       transferToUnit: stay.transferToUnit ?? null,
       transferToWard: stay.transferToWard ?? null,
@@ -83,6 +128,9 @@ export class DatabaseInpatientStayRepository implements InpatientStayRepository 
       .update(inpatientStays)
       .set({
         status: stay.status,
+        unit: stay.unit,
+        ward: stay.ward,
+        bed: stay.bed,
         sectorId: stay.sectorId ?? null,
         bedId: stay.bedId ?? null,
         dischargedAt: stay.dischargedAt ? new Date(stay.dischargedAt) : null,
@@ -122,6 +170,15 @@ export class DatabaseInpatientStayRepository implements InpatientStayRepository 
   }
 
   private mapRowToStay(row: typeof inpatientStays.$inferSelect): InpatientStaySummary {
+    if (!row.encounterId) {
+      throw new Error(`Inpatient stay ${row.id} has no encounter`);
+    }
+    if (!row.unit || !row.ward || !row.bed) {
+      throw new Error(
+        `Inpatient stay ${row.id} has incomplete legacy placement labels and requires remediation`
+      );
+    }
+
     return {
       id: row.id as InpatientStayId,
       accountId: row.accountId as AccountId,

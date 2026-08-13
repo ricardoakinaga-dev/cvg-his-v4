@@ -164,6 +164,7 @@ test('MedicalRecordsService addEntry stores entry and appends timeline', async (
 
   assert.equal(entry.title, 'Historico');
   assert.equal(entries.length, 1);
+  assert.equal(timeline.length, 2);
   assert.equal(service.listEntriesByEncounter('encounter_1' as never).length, 1);
   assert.equal(service.listTimelineByEncounter('encounter_1' as never).length, 2);
   assert.equal(service.listTimelineByEncounter('encounter_1' as never)[0].eventType, 'entry_added');
@@ -252,6 +253,95 @@ test('MedicalRecordsService addEntry rejects patient mismatch', () => {
       }),
     NotFoundError
   );
+});
+
+test('MedicalRecordsService rejects cross-account record and entry access before mutation', async () => {
+  const { service } = createService();
+  const encounterId = 'encounter_tenant_boundary' as never;
+  const expectedAccountId = 'acc_test' as never;
+  const foreignAccountId = 'acc_other' as never;
+
+  const record = service.ensureRecord(encounterId, expectedAccountId);
+  await service.waitForPersistence();
+
+  await assert.rejects(
+    () => service.getRecordOrThrowAsync(record.id, foreignAccountId),
+    NotFoundError
+  );
+  await assert.rejects(
+    () => service.listEntriesByEncounterAsync(encounterId, undefined, foreignAccountId),
+    NotFoundError
+  );
+  await assert.rejects(
+    () => service.listTimelineByEncounterAsync(encounterId, foreignAccountId),
+    NotFoundError
+  );
+
+  assert.throws(
+    () =>
+      service.addEntry(
+        'doctor_1' as never,
+        {
+          encounterId,
+          patientId: 'patient_1',
+          entryType: 'progress_note',
+          title: 'Tentativa entre contas',
+          content: 'Nao deve ser persistido'
+        },
+        foreignAccountId
+      ),
+    NotFoundError
+  );
+  assert.equal(
+    service.listEntriesByEncounter(encounterId, undefined, expectedAccountId).length,
+    0
+  );
+
+  const entry = service.addEntry(
+    'doctor_1' as never,
+    {
+      encounterId,
+      patientId: 'patient_1',
+      entryType: 'progress_note',
+      title: 'Registro legitimo',
+      content: 'Conteudo original'
+    },
+    expectedAccountId
+  );
+
+  assert.throws(
+    () =>
+      service.updateEntry(
+        'doctor_1' as never,
+        entry.id,
+        { content: 'Alteracao indevida' },
+        foreignAccountId
+      ),
+    NotFoundError
+  );
+  assert.throws(
+    () =>
+      service.archiveEntry(
+        'doctor_1' as never,
+        entry.id,
+        { reason: 'Arquivamento indevido' },
+        foreignAccountId
+      ),
+    NotFoundError
+  );
+  await assert.rejects(
+    () => service.getEntryRevisionsAsync(entry.id, foreignAccountId),
+    NotFoundError
+  );
+
+  const persistedEntry = service.listEntriesByEncounter(
+    encounterId,
+    undefined,
+    expectedAccountId
+  )[0];
+  assert.equal(persistedEntry?.version, 1);
+  assert.equal(persistedEntry?.content, 'Conteudo original');
+  assert.equal(persistedEntry?.deletedAt, undefined);
 });
 
 test('MedicalRecordsService updateEntry increments version and creates revision', async () => {

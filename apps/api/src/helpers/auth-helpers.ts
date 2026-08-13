@@ -2,12 +2,12 @@
  * Auth helpers for API key and principal validation.
  * Extracted from server.ts to support route extraction.
  */
-import type { IncomingMessage, ServerResponse } from 'node:http';
+import type { IncomingMessage } from 'node:http';
 import { AuthenticationError, ForbiddenError } from '@cvg-his-v2/shared-errors';
 import type { ApiKeySummary } from '@cvg-his-v2/shared-types';
 import type { ApiKeysService } from '@cvg-his-v2/module-api-keys';
 
-function readHeader(request: IncomingMessage, name: string): string | undefined {
+export function readHeader(request: IncomingMessage, name: string): string | undefined {
   const value = request.headers[name.toLowerCase()] ?? request.headers[name];
   return typeof value === 'string' ? value : undefined;
 }
@@ -48,6 +48,8 @@ export async function requireApiKey(
  * Sanitize an API key by removing the keyHash field.
  */
 export function sanitizeApiKey(apiKey: ApiKeySummary): Omit<ApiKeySummary, 'keyHash'> {
-  const { keyHash: _keyHash, ...safe } = apiKey;
-  return safe;
+  return Object.fromEntries(Object.entries(apiKey).filter(([key]) => key !== 'keyHash')) as Omit<
+    ApiKeySummary,
+    'keyHash'
+  >;
 }

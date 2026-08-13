@@ -52,6 +52,32 @@ test('BillingService createEstimate moves billing record to estimated', async ()
   assert.equal(record.administrativeNotes, 'Estimativa inicial');
 });
 
+test('BillingService rejects cross-account reads and writes before mutation', async () => {
+  const service = createService();
+  await assert.rejects(
+    () => service.createEstimate({ encounterId: 'encounter_1' }, 'acc_other' as never),
+    NotFoundError
+  );
+  const record = await service.createEstimate({ encounterId: 'encounter_1' }, 'acc_test' as never);
+  assert.equal(record.accountId, 'acc_test');
+  assert.equal(await service.findByEncounter('encounter_1' as never, 'acc_other' as never), null);
+  await assert.rejects(
+    () =>
+      service.addItem(
+        'user_other' as never,
+        {
+          encounterId: 'encounter_1',
+          itemType: 'service',
+          description: 'Tentativa entre contas',
+          quantity: 1,
+          unitPriceAmount: 10
+        },
+        'acc_other' as never
+      ),
+    NotFoundError
+  );
+});
+
 test('BillingService read methods do not create billing records', async () => {
   let created = 0;
   const service = new BillingService(

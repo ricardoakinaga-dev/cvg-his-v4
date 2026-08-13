@@ -35,7 +35,7 @@
 |----------|---------|-------------|
 | `NODE_ENV` | `production` | Environment mode |
 | `PORT` | `3000` | Server port |
-| `DATABASE_URL` | `postgres://user:pass@host:5432/db` | PostgreSQL connection string |
+| `DATABASE_URL` | `<runtime-database-url>` | PostgreSQL connection string |
 | `REDIS_URL` | `redis://host:6379` | Redis connection string |
 | `JWT_SECRET` | (secure random) | JWT signing secret |
 | `JWT_ISSUER` | `cvg-his` | JWT issuer |

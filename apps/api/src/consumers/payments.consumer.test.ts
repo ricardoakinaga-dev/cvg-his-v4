@@ -360,3 +360,204 @@ test('PaymentsEventHandlers persists card intent creation and settles billing on
   assert.equal(captured?.status, 'captured');
   assert.equal(captured?.billingSettlementStatus, 'applied');
 });
+
+test('PaymentsEventHandlers normalizes PIX intent defaults, completion and duplicate delivery', async () => {
+  const billing = createMockBillingService();
+  const encounterFinancial = createMockEncounterFinancialService();
+  const pixTransactions = new InMemoryPixTransactionRepository();
+  const cardTransactions = new InMemoryCardTransactionRepository();
+  const handlers = new PaymentsEventHandlers({ billing, encounterFinancial, pixTransactions, cardTransactions });
+  const event = makePixIntentCreatedEvent('pix_normalized');
+  Object.assign(event.payload as Record<string, unknown>, {
+    provider: 'unsupported',
+    currency: 'USD',
+    status: 'completed',
+    createdAt: undefined,
+    description: undefined,
+    qrCodePayload: undefined,
+    qrCodeBase64: undefined
+  });
+
+  await handlers.handlers(event);
+  await handlers.handle(event);
+
+  const transaction = await pixTransactions.findByTransactionId('pix_normalized');
+  assert.equal(transaction?.provider, 'local-pix');
+  assert.equal(transaction?.currency, 'BRL');
+  assert.equal(transaction?.status, 'completed');
+  assert.equal(transaction?.description, 'PIX payment pix_normalized');
+  assert.equal(transaction?.qrCodePayload, '');
+  assert.equal(transaction?.qrCodeBase64, '');
+  assert.equal(transaction?.billingSettlementStatus, 'not_applicable');
+  assert.equal((await pixTransactions.list({ accountId: 'acc_test' })).length, 1);
+});
+
+test('PaymentsEventHandlers creates a missing PIX confirmation and keeps settlement idempotent', async () => {
+  const billing = createMockBillingService();
+  const encounterFinancial = createMockEncounterFinancialService();
+  const pixTransactions = new InMemoryPixTransactionRepository();
+  const cardTransactions = new InMemoryCardTransactionRepository();
+  const handlers = new PaymentsEventHandlers({ billing, encounterFinancial, pixTransactions, cardTransactions });
+  const event = makePixConfirmedEvent('br_missing_intent');
+  Object.assign(event.payload as Record<string, unknown>, {
+    intentId: 'pix_missing_intent',
+    completedAt: undefined,
+    confirmedAt: '2026-08-12T10:00:00.000Z',
+    providerConfirmationId: undefined
+  });
+
+  await handlers.handle(event);
+  await handlers.handle(event);
+
+  const transaction = await pixTransactions.findByTransactionId('pix_missing_intent');
+  assert.equal(transaction?.status, 'completed');
+  assert.equal(transaction?.providerConfirmationId, 'provider_tx_1');
+  assert.equal(transaction?.billingSettlementStatus, 'applied');
+  assert.equal(billing.settles.length, 1);
+  assert.equal(encounterFinancial.payments.length, 0);
+});
+
+test('PaymentsEventHandlers records PIX settlement failures and propagates retryable errors', async () => {
+  const billing = createMockBillingService();
+  billing.settleByRecordId = async () => {
+    throw new Error('billing temporarily unavailable');
+  };
+  const encounterFinancial = createMockEncounterFinancialService();
+  const pixTransactions = new InMemoryPixTransactionRepository();
+  const cardTransactions = new InMemoryCardTransactionRepository();
+  await seedPixTransaction(pixTransactions, 'pix_failure', 'br_failure');
+  const handlers = new PaymentsEventHandlers({ billing, encounterFinancial, pixTransactions, cardTransactions });
+  const event = makePixConfirmedEvent('br_failure');
+  (event.payload as { intentId: string }).intentId = 'pix_failure';
+
+  await assert.rejects(handlers.handle(event), /billing temporarily unavailable/);
+  const transaction = await pixTransactions.findByTransactionId('pix_failure');
+  assert.equal(transaction?.billingSettlementStatus, 'failed');
+  assert.equal(transaction?.billingSettlementError, 'billing temporarily unavailable');
+});
+
+test('PaymentsEventHandlers normalizes every card intent status and provider without duplicating intents', async () => {
+  const billing = createMockBillingService();
+  const encounterFinancial = createMockEncounterFinancialService();
+  const pixTransactions = new InMemoryPixTransactionRepository();
+  const cardTransactions = new InMemoryCardTransactionRepository();
+  const handlers = new PaymentsEventHandlers({ billing, encounterFinancial, pixTransactions, cardTransactions });
+  const cases = [
+    ['captured', 'pagarme-card', 'pending_billing'],
+    ['not_authorized', 'unsupported', 'failed'],
+    ['failed', 'local-card', 'failed'],
+    ['voided', 'local-card', 'failed'],
+    ['unknown', 'local-card', 'failed']
+  ] as const;
+
+  for (const [status, provider, billingStatus] of cases) {
+    const intentId = `card_${status}`;
+    const event = makeCardIntentCreatedEvent(intentId, `br_${status}`);
+    Object.assign(event.payload as Record<string, unknown>, {
+      status,
+      provider,
+      currency: 'USD',
+      createdAt: undefined,
+      description: undefined,
+      installments: 0,
+      card: undefined
+    });
+    await handlers.handle(event);
+    await handlers.handle(event);
+    const transaction = await cardTransactions.findByTransactionId(intentId);
+    assert.equal(transaction?.provider, provider === 'pagarme-card' ? 'pagarme-card' : 'local-card');
+    assert.equal(transaction?.currency, 'BRL');
+    assert.equal(transaction?.status, status === 'unknown' ? 'pending' : status);
+    assert.equal(transaction?.billingSettlementStatus, billingStatus);
+    assert.equal(transaction?.installments, 1);
+    assert.equal(transaction?.description, `Card payment ${intentId}`);
+    assert.equal(transaction?.capturedAt === undefined, status !== 'captured');
+  }
+});
+
+test('PaymentsEventHandlers handles card completion without prior intent, billing or duplicate settlement', async () => {
+  const billing = createMockBillingService();
+  const encounterFinancial = createMockEncounterFinancialService();
+  const pixTransactions = new InMemoryPixTransactionRepository();
+  const cardTransactions = new InMemoryCardTransactionRepository();
+  const handlers = new PaymentsEventHandlers({ billing, encounterFinancial, pixTransactions, cardTransactions });
+  const withoutBilling = makeCardCompletedEvent('');
+  Object.assign(withoutBilling.payload as Record<string, unknown>, {
+    intentId: 'card_without_billing',
+    billingRecordId: undefined,
+    provider: 'unsupported',
+    capturedAt: undefined,
+    completedAt: '2026-08-12T11:00:00.000Z'
+  });
+  await handlers.handle(withoutBilling);
+  const noBilling = await cardTransactions.findByTransactionId('card_without_billing');
+  assert.equal(noBilling?.provider, 'local-card');
+  assert.equal(noBilling?.billingSettlementStatus, 'not_applicable');
+
+  const appliedIntent = makeCardIntentCreatedEvent('card_applied', 'br_applied');
+  Object.assign(appliedIntent.payload as Record<string, unknown>, { status: 'captured' });
+  await handlers.handle(appliedIntent);
+  await cardTransactions.updateBillingSettlement({
+    transactionId: 'card_applied',
+    billingSettlementStatus: 'applied',
+    billingSettledAt: '2026-08-12T11:00:00.000Z',
+    updatedAt: '2026-08-12T11:00:00.000Z'
+  });
+  const completed = makeCardCompletedEvent('br_applied');
+  (completed.payload as { intentId: string }).intentId = 'card_applied';
+  await handlers.handle(completed);
+  assert.equal(billing.settles.length, 0);
+});
+
+test('PaymentsEventHandlers records card settlement failure and card failure lifecycle', async () => {
+  const billing = createMockBillingService();
+  const encounterFinancial = createMockEncounterFinancialService();
+  const pixTransactions = new InMemoryPixTransactionRepository();
+  const cardTransactions = new InMemoryCardTransactionRepository();
+  const handlers = new PaymentsEventHandlers({ billing, encounterFinancial, pixTransactions, cardTransactions });
+  await handlers.handle(makeCardIntentCreatedEvent('card_settlement_failure', 'br_card_failure'));
+  billing.settleByRecordId = async () => {
+    throw 'gateway offline';
+  };
+  const completion = makeCardCompletedEvent('br_card_failure');
+  (completion.payload as { intentId: string }).intentId = 'card_settlement_failure';
+  await assert.rejects(handlers.handle(completion), (error) => error === 'gateway offline');
+  const settlementFailure = await cardTransactions.findByTransactionId('card_settlement_failure');
+  assert.equal(settlementFailure?.billingSettlementStatus, 'failed');
+  assert.equal(settlementFailure?.billingSettlementError, 'gateway offline');
+
+  const newFailure = {
+    ...makeCardCompletedEvent(''),
+    eventType: 'payment.card.failed',
+    payload: {
+      accountId: 'acc_test',
+      intentId: 'card_new_failure',
+      provider: 'unsupported',
+      status: 'failed',
+      failureReason: 'not authorized',
+      failedAt: '2026-08-12T12:00:00.000Z'
+    }
+  } as OutboxEvent;
+  await handlers.handle(newFailure);
+  const createdFailure = await cardTransactions.findByTransactionId('card_new_failure');
+  assert.equal(createdFailure?.provider, 'local-card');
+  assert.equal(createdFailure?.status, 'failed');
+  assert.equal(createdFailure?.billingSettlementStatus, 'not_applicable');
+
+  const existingIntent = makeCardIntentCreatedEvent('card_existing_failure', 'br_existing_failure');
+  await handlers.handle(existingIntent);
+  const existingFailure = {
+    ...newFailure,
+    payload: {
+      accountId: 'acc_test',
+      intentId: 'card_existing_failure',
+      billingRecordId: 'br_existing_failure',
+      failureReason: 'issuer declined'
+    }
+  } as OutboxEvent;
+  await handlers.handle(existingFailure);
+  const updatedFailure = await cardTransactions.findByTransactionId('card_existing_failure');
+  assert.equal(updatedFailure?.status, 'failed');
+  assert.equal(updatedFailure?.billingSettlementStatus, 'failed');
+  assert.equal(updatedFailure?.billingSettlementError, 'issuer declined');
+});

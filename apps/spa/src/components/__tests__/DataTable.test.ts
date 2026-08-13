@@ -52,6 +52,37 @@ describe('DataTable', () => {
     expect(wrapper.find('.empty-state__title').text()).toBe('Vazio');
   });
 
+  it('keeps column headers visible with an accessible empty row when requested', () => {
+    const wrapper = mount(DataTable, {
+      props: {
+        columns,
+        rows: [],
+        emptyTitle: 'Vazio',
+        emptyDescription: 'Sem dados',
+        showHeadersWhenEmpty: true
+      }
+    });
+
+    expect(wrapper.findAll('thead th')).toHaveLength(3);
+    expect(wrapper.find('tbody td').attributes('colspan')).toBe('3');
+    expect(wrapper.find('.empty-state__title').text()).toBe('Vazio');
+  });
+
+  it('exposes wide tables as a keyboard-focusable scrolling region', () => {
+    const wrapper = mount(DataTable, {
+      props: {
+        columns,
+        rows,
+        caption: 'Lista de usuarios'
+      }
+    });
+
+    const region = wrapper.get('.table-wrapper');
+    expect(region.attributes('role')).toBe('region');
+    expect(region.attributes('tabindex')).toBe('0');
+    expect(region.attributes('aria-label')).toBe('Lista de usuarios');
+  });
+
   it('renders custom cell content via slots', () => {
     const wrapper = mount(DataTable, {
       props: { columns, rows },

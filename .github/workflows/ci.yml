@@ -10,24 +10,30 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions: {}
+
 jobs:
   typecheck:
     name: Typecheck
     runs-on: ubuntu-22.04
+    permissions:
+      contents: read
     timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '22'
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         with:
-          version: 10
+          version: 10.34.5
           run_install: false
 
       - name: Get pnpm store path
@@ -35,7 +41,7 @@ jobs:
         run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_ENV
 
       - name: Cache pnpm store
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ${{ env.STORE_PATH }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
@@ -50,60 +56,102 @@ jobs:
   sast:
     name: SAST (Semgrep)
     runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      security-events: write
     timeout-minutes: 15
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
 
       - name: Run Semgrep scan
-        uses: returntocorp/semgrep-action@v1
-        with:
-          config: |
-            p/security-extended
-            p/nodejs
-            p/typescript
-          competitive: false
-          on: pushed
-          output: semgrep.json
-          sarif: semgrep.sarif
+        id: semgrep-scan
+        continue-on-error: true
+        run: |
+          mkdir -p artifacts/security
+          docker run --rm \
+            --volume "$GITHUB_WORKSPACE:/src" \
+            --workdir /src \
+            semgrep/semgrep:1.172.0@sha256:65dcd4408adda7c183a6b4550cb1e9b19f7f627a6fbb7e0559bd466bedc44d7b \
+            semgrep scan \
+            --config p/security-audit \
+            --config p/nodejs \
+            --config p/typescript \
+            --json-output artifacts/security/semgrep.json \
+            --sarif-output artifacts/security/semgrep.sarif \
+            --metrics auto
+
+      - name: Evaluate Semgrep findings
+        id: semgrep-evaluate
+        if: always()
+        continue-on-error: true
+        env:
+          SEMGREP_SCAN_OUTCOME: ${{ steps.semgrep-scan.outcome }}
+        run: |
+          SCANNER_EXIT_CODE=0
+          if [ "$SEMGREP_SCAN_OUTCOME" != "success" ]; then
+            SCANNER_EXIT_CODE=1
+          fi
+          node scripts/gate-semgrep-results.mjs \
+            --input artifacts/security/semgrep.json \
+            --report artifacts/security/semgrep-gate.json \
+            --fail-on ERROR,WARNING \
+            --scanner-exit-code "$SCANNER_EXIT_CODE"
 
       - name: Upload Semgrep SARIF report
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        uses: github/codeql-action/upload-sarif@c4dd10e44af883a891fe31ced449bcb4a6728b9b # v3
+        if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false)
         with:
-          sarif_file: semgrep.sarif
+          sarif_file: artifacts/security/semgrep.sarif
           category: semgrep
 
-      - name: Display Semgrep results
+      - name: Upload Semgrep evidence
+        id: semgrep-artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
+        with:
+          name: semgrep-evidence
+          path: artifacts/security/semgrep*
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Enforce Semgrep gate
+        if: always()
+        env:
+          SCAN_OUTCOME: ${{ steps.semgrep-scan.outcome }}
+          EVALUATION_OUTCOME: ${{ steps.semgrep-evaluate.outcome }}
+          ARTIFACT_OUTCOME: ${{ steps.semgrep-artifact.outcome }}
         run: |
-          if [ -f semgrep.json ]; then
-            echo "### SAST (Semgrep) Results" >> $GITHUB_STEP_SUMMARY
-            TOTAL=$(cat semgrep.json | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8');const r=JSON.parse(d);console.log(r.results?r.results.length:0)")
-            ERRORS=$(cat semgrep.json | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8');const r=JSON.parse(d);console.log(r.results?r.results.filter(x=>x.severity==='ERROR').length:0)")
-            WARNINGS=$(cat semgrep.json | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8');const r=JSON.parse(d);console.log(r.results?r.results.filter(x=>x.severity==='WARNING').length:0)")
-            echo "Total findings: $TOTAL" >> $GITHUB_STEP_SUMMARY
-            echo "Errors: $ERRORS | Warnings: $WARNINGS" >> $GITHUB_STEP_SUMMARY
-            echo "Full report: https://github.com/$GITHUB_REPOSITORY/security/code-scanning" >> $GITHUB_STEP_SUMMARY
+          if [ "$SCAN_OUTCOME" != "success" ] || \
+             [ "$EVALUATION_OUTCOME" != "success" ] || \
+             [ "$ARTIFACT_OUTCOME" != "success" ]; then
+            echo "Semgrep security gate failed after evidence collection."
+            exit 1
           fi
 
   secret-scan:
     name: Secret Scan
     runs-on: ubuntu-22.04
+    permissions:
+      contents: read
     timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '22'
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         with:
-          version: 10
+          version: 10.34.5
           run_install: false
 
       - name: Get pnpm store path
@@ -111,7 +159,7 @@ jobs:
         run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_ENV
 
       - name: Cache pnpm store
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ${{ env.STORE_PATH }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
@@ -120,33 +168,102 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run secret scan
-        run: pnpm security:secrets
-
-      - name: Secret scan summary
+      - name: Scan working tree with Secretlint
+        id: secretlint
         if: always()
+        continue-on-error: true
         run: |
-          echo "### Secret Scan" >> $GITHUB_STEP_SUMMARY
-          echo "Command: \`pnpm security:secrets\`" >> $GITHUB_STEP_SUMMARY
+          mkdir -p artifacts/security
+          pnpm security:secrets > artifacts/security/secretlint.log 2>&1
+
+      - name: Scan full Git history with Gitleaks
+        id: gitleaks-scan
+        if: always()
+        continue-on-error: true
+        run: |
+          docker run --rm \
+            --volume "$GITHUB_WORKSPACE:/repo" \
+            --workdir /repo \
+            ghcr.io/gitleaks/gitleaks:v8.27.2@sha256:ebfeb6fd4f2c37fa371d3731ebfa662fdf80f93cd37d3b4771bb82263edff8d0 \
+            git /repo \
+            --redact \
+            --report-format json \
+            --report-path /repo/artifacts/security/gitleaks.json \
+            --exit-code 0 \
+            --log-opts="--all"
+          docker run --rm \
+            --volume "$GITHUB_WORKSPACE:/repo" \
+            --workdir /repo \
+            ghcr.io/gitleaks/gitleaks:v8.27.2@sha256:ebfeb6fd4f2c37fa371d3731ebfa662fdf80f93cd37d3b4771bb82263edff8d0 \
+            dir /repo \
+            --redact \
+            --report-format json \
+            --report-path /repo/artifacts/security/gitleaks-working-tree.json \
+            --exit-code 0
+
+      - name: Evaluate Gitleaks findings
+        id: gitleaks-evaluate
+        if: always()
+        continue-on-error: true
+        run: |
+          node scripts/gate-gitleaks-results.mjs \
+            --history artifacts/security/gitleaks.json \
+            --working-tree artifacts/security/gitleaks-working-tree.json \
+            --baseline .gitleaks-history-baseline.json \
+            --report artifacts/security/gitleaks-gate.json
+
+      - name: Upload secret scan evidence
+        id: secret-artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: secret-scan-evidence
+          path: |
+            artifacts/security/secretlint.log
+            artifacts/security/gitleaks.json
+            artifacts/security/gitleaks-working-tree.json
+            artifacts/security/gitleaks-gate.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Enforce secret scan gate
+        if: always()
+        env:
+          SECRETLINT_OUTCOME: ${{ steps.secretlint.outcome }}
+          GITLEAKS_SCAN_OUTCOME: ${{ steps.gitleaks-scan.outcome }}
+          GITLEAKS_EVALUATION_OUTCOME: ${{ steps.gitleaks-evaluate.outcome }}
+          ARTIFACT_OUTCOME: ${{ steps.secret-artifact.outcome }}
+        run: |
+          if [ "$SECRETLINT_OUTCOME" != "success" ] || \
+             [ "$GITLEAKS_SCAN_OUTCOME" != "success" ] || \
+             [ "$GITLEAKS_EVALUATION_OUTCOME" != "success" ] || \
+             [ "$ARTIFACT_OUTCOME" != "success" ]; then
+            echo "Secret scan gate failed after evidence collection."
+            exit 1
+          fi
 
   validate-openapi:
     name: Validate OpenAPI
     runs-on: ubuntu-22.04
+    permissions:
+      contents: read
     timeout-minutes: 5
     needs: [typecheck]
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '22'
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         with:
-          version: 10
+          version: 10.34.5
           run_install: false
 
       - name: Get pnpm store path
@@ -154,7 +271,7 @@ jobs:
         run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_ENV
 
       - name: Cache pnpm store
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ${{ env.STORE_PATH }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
@@ -169,6 +286,8 @@ jobs:
   api-contract-tests:
     name: API Contract Tests
     runs-on: ubuntu-22.04
+    permissions:
+      contents: read
     timeout-minutes: 15
     needs: [build]
     services:
@@ -196,17 +315,19 @@ jobs:
           --health-retries 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '22'
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         with:
-          version: 10
+          version: 10.34.5
           run_install: false
 
       - name: Get pnpm store path
@@ -214,7 +335,7 @@ jobs:
         run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_ENV
 
       - name: Cache pnpm store
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ${{ env.STORE_PATH }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
@@ -230,15 +351,18 @@ jobs:
             sleep 1
           done
 
+      - name: Configure ephemeral database URL
+        run: |
+          DB_SCHEME=postgres
+          TEST_DATABASE_URL="${DB_SCHEME}://postgres:postgres@localhost:5433/cvg_his_v2_test"
+          echo "DATABASE_URL=$TEST_DATABASE_URL" >> "$GITHUB_ENV"
+          echo "DATABASE_URL_TEST=$TEST_DATABASE_URL" >> "$GITHUB_ENV"
+
       - name: Apply migrations
-        env:
-          DATABASE_URL_TEST: postgres://postgres:postgres@localhost:5433/cvg_his_v2_test
-          DATABASE_URL: postgres://postgres:postgres@localhost:5433/cvg_his_v2_test
         run: node packages/db/src/migrate.ts
 
       - name: Start API
         env:
-          DATABASE_URL: postgres://postgres:postgres@localhost:5433/cvg_his_v2_test
           REDIS_URL: redis://localhost:6380
           AUTH_SECRET: ci-test-secret-key-do-not-use-in-production-123456789012
           PORT: '3001'
@@ -258,8 +382,6 @@ jobs:
 
       - name: Run API contract tests
         env:
-          DATABASE_URL_TEST: postgres://postgres:postgres@localhost:5433/cvg_his_v2_test
-          DATABASE_URL: postgres://postgres:postgres@localhost:5433/cvg_his_v2_test
           API_RUNTIME_URL: http://localhost:3001
         run: pnpm vitest run tests/integration/openapi-runtime.test.ts --config vitest.config.ts
 
@@ -269,21 +391,25 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-22.04
+    permissions:
+      contents: read
     timeout-minutes: 10
     needs: [typecheck, validate-openapi]
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '22'
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         with:
-          version: 10
+          version: 10.34.5
           run_install: false
 
       - name: Get pnpm store path
@@ -291,7 +417,7 @@ jobs:
         run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_ENV
 
       - name: Cache pnpm store
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ${{ env.STORE_PATH }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
@@ -306,21 +432,25 @@ jobs:
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-22.04
+    permissions:
+      contents: read
     timeout-minutes: 10
     needs: [build]
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '22'
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         with:
-          version: 10
+          version: 10.34.5
           run_install: false
 
       - name: Get pnpm store path
@@ -328,7 +458,7 @@ jobs:
         run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_ENV
 
       - name: Cache pnpm store
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ${{ env.STORE_PATH }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
@@ -343,6 +473,8 @@ jobs:
   integration-tests:
     name: Integration Tests
     runs-on: ubuntu-22.04
+    permissions:
+      contents: read
     timeout-minutes: 15
     needs: [build]
     services:
@@ -361,17 +493,19 @@ jobs:
           --health-retries 5
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '22'
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         with:
-          version: 10
+          version: 10.34.5
           run_install: false
 
       - name: Get pnpm store path
@@ -379,7 +513,7 @@ jobs:
         run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_ENV
 
       - name: Cache pnpm store
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ${{ env.STORE_PATH }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
@@ -395,30 +529,38 @@ jobs:
             sleep 1
           done
 
+      - name: Configure ephemeral database URL
+        run: |
+          DB_SCHEME=postgres
+          TEST_DATABASE_URL="${DB_SCHEME}://postgres:postgres@localhost:5433/cvg_his_v2_test"
+          echo "DATABASE_URL=$TEST_DATABASE_URL" >> "$GITHUB_ENV"
+          echo "DATABASE_URL_TEST=$TEST_DATABASE_URL" >> "$GITHUB_ENV"
+
       - name: Run integration tests
-        env:
-          DATABASE_URL_TEST: postgres://postgres:postgres@localhost:5433/cvg_his_v2_test
-          DATABASE_URL: postgres://postgres:postgres@localhost:5433/cvg_his_v2_test
-        run: pnpm test:critical
+        run: pnpm test:integration
 
   coverage:
     name: Coverage
     runs-on: ubuntu-22.04
+    permissions:
+      contents: read
     timeout-minutes: 15
     needs: [typecheck]
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '22'
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         with:
-          version: 10
+          version: 10.34.5
           run_install: false
 
       - name: Get pnpm store path
@@ -426,7 +568,7 @@ jobs:
         run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_ENV
 
       - name: Cache pnpm store
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ${{ env.STORE_PATH }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
@@ -458,7 +600,7 @@ jobs:
           fi
 
       - name: Upload coverage report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: coverage-report
@@ -468,6 +610,8 @@ jobs:
   performance-k6:
     name: Performance (k6 SLOs)
     runs-on: ubuntu-22.04
+    permissions:
+      contents: read
     timeout-minutes: 15
     needs: [build]
     services:
@@ -495,24 +639,26 @@ jobs:
           --health-retries 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '22'
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         with:
-          version: 10
+          version: 10.34.5
           run_install: false
 
       - name: Get pnpm store path
         run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_ENV
 
       - name: Cache pnpm store
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ${{ env.STORE_PATH }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
@@ -542,7 +688,12 @@ jobs:
 
       - name: Install k6
         run: |
-          curl -sL https://github.com/grafana/k6/releases/download/v0.55.0/k6-v0.55.0-linux-amd64.tar.gz | tar -xz -C /usr/local/bin
+          curl -fsSLo /tmp/k6-v0.55.0-linux-amd64.tar.gz \
+            https://github.com/grafana/k6/releases/download/v0.55.0/k6-v0.55.0-linux-amd64.tar.gz
+          echo "47a43a8dbb4c1f5d5bd7b8ed6a1b8c83b35546acf989b78400b4e6ce3adaf628  /tmp/k6-v0.55.0-linux-amd64.tar.gz" \
+            | sha256sum --check --strict
+          tar -xzf /tmp/k6-v0.55.0-linux-amd64.tar.gz -C /tmp
+          install -m 0755 /tmp/k6-v0.55.0-linux-amd64/k6 /usr/local/bin/k6
 
       - name: Run k6 benchmark
         id: k6-benchmark
@@ -559,7 +710,7 @@ jobs:
 
       - name: Upload performance report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: performance-k6-report
           path: benchmarks/k6/results/performance-report.json
@@ -569,9 +720,11 @@ jobs:
         if: steps.k6-benchmark.outcome == 'failure'
         run: exit 1
 
-  test-e2e-spa:
-    name: E2E Tests (SPA)
+  test-e2e-api:
+    name: E2E Tests (API)
     runs-on: ubuntu-22.04
+    permissions:
+      contents: read
     timeout-minutes: 20
     needs: [build]
     services:
@@ -599,17 +752,19 @@ jobs:
           --health-retries 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '22'
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         with:
-          version: 10
+          version: 10.34.5
           run_install: false
 
       - name: Get pnpm store path
@@ -617,7 +772,7 @@ jobs:
         run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_ENV
 
       - name: Cache pnpm store
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ${{ env.STORE_PATH }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
@@ -636,9 +791,121 @@ jobs:
             sleep 1
           done
 
+      - name: Configure ephemeral database URL
+        run: |
+          DB_SCHEME=postgres
+          TEST_DATABASE_URL="${DB_SCHEME}://postgres:postgres@localhost:5434/cvg_his_e2e"
+          echo "DATABASE_URL=$TEST_DATABASE_URL" >> "$GITHUB_ENV"
+          echo "E2E_DATABASE_URL=$TEST_DATABASE_URL" >> "$GITHUB_ENV"
+
       - name: Apply DB schema and seed
         env:
-          DATABASE_URL: postgres://postgres:postgres@localhost:5434/cvg_his_e2e
+          ADMIN_EMAIL: admin@cvg-his.local
+          ADMIN_PASSWORD: seed_admin
+        run: |
+          if ! node infra/scripts/prepare-test-db.mjs; then
+            if ! node infra/scripts/test-critical-bootstrap.mjs; then
+              echo "ERROR: DB setup failed - both bootstrap scripts failed"
+              exit 1
+            fi
+          fi
+          pnpm exec tsx packages/db/src/seed.ts
+
+      - name: Run API E2E tests
+        env:
+          E2E_REDIS_URL: redis://localhost:6380
+          API_DISABLE_INCOMPATIBLE_DB_REPOS: '0'
+        run: pnpm test:e2e
+
+      - name: Upload API E2E report
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: e2e-api-report
+          path: e2e/report/
+          if-no-files-found: error
+          retention-days: 30
+
+  test-e2e-spa:
+    name: E2E Tests (SPA)
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    timeout-minutes: 20
+    needs: [build]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: cvg_his_e2e
+        ports:
+          - 5434:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d cvg_his_e2e"
+          --health-interval 3s
+          --health-timeout 5s
+          --health-retries 15
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6380:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 3s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: 10.34.5
+          run_install: false
+
+      - name: Get pnpm store path
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_ENV
+
+      - name: Cache pnpm store
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Wait for PostgreSQL
+        run: |
+          for i in $(seq 1 30); do
+            pg_isready -h localhost -p 5434 -U postgres -d cvg_his_e2e && break
+            sleep 1
+          done
+
+      - name: Configure ephemeral database URL
+        run: |
+          DB_SCHEME=postgres
+          TEST_DATABASE_URL="${DB_SCHEME}://postgres:postgres@localhost:5434/cvg_his_e2e"
+          echo "DATABASE_URL=$TEST_DATABASE_URL" >> "$GITHUB_ENV"
+          echo "E2E_DATABASE_URL=$TEST_DATABASE_URL" >> "$GITHUB_ENV"
+
+      - name: Apply DB schema and seed
+        env:
           ADMIN_EMAIL: admin@cvg-his.local
           ADMIN_PASSWORD: seed_admin
         run: |
@@ -652,28 +919,33 @@ jobs:
 
       - name: Start API
         env:
-          DATABASE_URL: postgres://postgres:postgres@localhost:5434/cvg_his_e2e
           REDIS_URL: redis://localhost:6380
           AUTH_SECRET: e2e-ci-secret-key-do-not-use-in-production-12345678
           API_DISABLE_INCOMPATIBLE_DB_REPOS: '0'
+          PIX_MOCK_MODE: 'true'
+          EMAIL_MOCK_MODE: 'true'
+          SMS_MOCK_MODE: 'true'
+          GOOGLE_CALENDAR_MOCK_MODE: 'true'
           PORT: '3001'
           NODE_ENV: test
         run: |
-          pnpm --filter @cvg-his-v2/api run build &
-          wait
+          pnpm --filter @cvg-his-v2/api^... run build
+          pnpm --filter @cvg-his-v2/api run build
           pnpm --filter @cvg-his-v2/api run dev &
           API_PID=$!
           echo "API_PID=$API_PID" >> $GITHUB_ENV
 
-      - name: Wait for API health
+      - name: Wait for API readiness
         run: |
           for i in $(seq 1 60); do
-            if curl -fsS http://localhost:3001/health >/dev/null 2>&1; then
-              echo "✅ API is healthy"
-              break
+            if curl -fsS http://localhost:3001/ready >/dev/null 2>&1; then
+              echo "✅ API is ready"
+              exit 0
             fi
             sleep 2
           done
+          echo "API did not become ready"
+          exit 1
 
       - name: Build SPA
         run: pnpm --filter @cvg-his-v2/spa run build
@@ -690,10 +962,12 @@ jobs:
           for i in $(seq 1 30); do
             if curl -fsS http://localhost:3002/ >/dev/null 2>&1; then
               echo "✅ SPA is healthy (port 3002)"
-              break
+              exit 0
             fi
             sleep 2
           done
+          echo "SPA did not become healthy"
+          exit 1
 
       - name: Run SPA E2E tests
         env:
@@ -701,14 +975,14 @@ jobs:
           SPA_URL: http://localhost:3002
           E2E_ADMIN_EMAIL: admin@cvg-his.local
           E2E_ADMIN_PASSWORD: seed_admin
-          E2E_DATABASE_URL: postgres://postgres:postgres@localhost:5434/cvg_his_e2e
           E2E_REDIS_URL: redis://localhost:6380
           API_DISABLE_INCOMPATIBLE_DB_REPOS: '0'
-        run: |
-          npx playwright test --config playwright-spa.config.ts \
-            e2e/spa/master-search-360-reception.spec.ts \
-            e2e/spa/master-search-360-mobile.spec.ts \
-            e2e/spa/enterprise-surfaces-gate.spec.ts
+          E2E_REUSE_EXISTING_SERVER: 'true'
+        # The full non-visual suite below includes these blocking Enterprise specs:
+        # e2e/spa/master-search-360-reception.spec.ts
+        # e2e/spa/master-search-360-mobile.spec.ts
+        # e2e/spa/enterprise-surfaces-gate.spec.ts
+        run: npx playwright test --config playwright-spa.config.ts --grep-invert "Visual"
 
       - name: Generate Enterprise RC evidence
         if: always()
@@ -720,7 +994,7 @@ jobs:
           pnpm rc:evidence | tee e2e/spa-report/enterprise-rc-evidence.md
 
       - name: Upload E2E report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: e2e-spa-report
@@ -730,6 +1004,8 @@ jobs:
   test-visual:
     name: Visual Regression
     runs-on: ubuntu-22.04
+    permissions:
+      contents: read
     timeout-minutes: 20
     needs: [build]
     services:
@@ -757,17 +1033,19 @@ jobs:
           --health-retries 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '22'
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         with:
-          version: 10
+          version: 10.34.5
           run_install: false
 
       - name: Get pnpm store path
@@ -775,7 +1053,7 @@ jobs:
         run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_ENV
 
       - name: Cache pnpm store
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ${{ env.STORE_PATH }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
@@ -794,9 +1072,17 @@ jobs:
             sleep 1
           done
 
+      - name: Configure ephemeral database URL
+        run: |
+          DB_SCHEME=postgres
+          TEST_DATABASE_URL="${DB_SCHEME}://postgres:postgres@localhost:5434/cvg_his_e2e"
+          echo "DATABASE_URL=$TEST_DATABASE_URL" >> "$GITHUB_ENV"
+          echo "E2E_DATABASE_URL=$TEST_DATABASE_URL" >> "$GITHUB_ENV"
+
       - name: Apply DB schema and seed
         env:
-          DATABASE_URL: postgres://postgres:postgres@localhost:5434/cvg_his_e2e
+          ADMIN_EMAIL: admin@cvg-his.local
+          ADMIN_PASSWORD: seed_admin
         run: |
           if ! node infra/scripts/prepare-test-db.mjs; then
             if ! node infra/scripts/test-critical-bootstrap.mjs; then
@@ -804,30 +1090,37 @@ jobs:
               exit 1
             fi
           fi
+          pnpm exec tsx packages/db/src/seed.ts
 
       - name: Start API
         env:
-          DATABASE_URL: postgres://postgres:postgres@localhost:5434/cvg_his_e2e
           REDIS_URL: redis://localhost:6380
           AUTH_SECRET: e2e-ci-secret-key-do-not-use-in-production-12345678
+          API_DISABLE_INCOMPATIBLE_DB_REPOS: '0'
+          PIX_MOCK_MODE: 'true'
+          EMAIL_MOCK_MODE: 'true'
+          SMS_MOCK_MODE: 'true'
+          GOOGLE_CALENDAR_MOCK_MODE: 'true'
           PORT: '3001'
           NODE_ENV: test
         run: |
-          pnpm --filter @cvg-his-v2/api run build &
-          wait
+          pnpm --filter @cvg-his-v2/api^... run build
+          pnpm --filter @cvg-his-v2/api run build
           pnpm --filter @cvg-his-v2/api run dev &
           API_PID=$!
           echo "API_PID=$API_PID" >> $GITHUB_ENV
 
-      - name: Wait for API health
+      - name: Wait for API readiness
         run: |
           for i in $(seq 1 60); do
-            if curl -fsS http://localhost:3001/health >/dev/null 2>&1; then
-              echo "✅ API is healthy"
-              break
+            if curl -fsS http://localhost:3001/ready >/dev/null 2>&1; then
+              echo "✅ API is ready"
+              exit 0
             fi
             sleep 2
           done
+          echo "API did not become ready"
+          exit 1
 
       - name: Build SPA
         run: pnpm --filter @cvg-his-v2/spa run build
@@ -844,22 +1137,26 @@ jobs:
           for i in $(seq 1 30); do
             if curl -fsS http://localhost:3002/ >/dev/null 2>&1; then
               echo "✅ SPA is healthy (port 3002)"
-              break
+              exit 0
             fi
             sleep 2
           done
+          echo "SPA did not become healthy"
+          exit 1
 
       - name: Run visual regression tests
         env:
           API_URL: http://localhost:3001
           SPA_URL: http://localhost:3002
-          E2E_ADMIN_EMAIL: admin@cvg.local
-          E2E_ADMIN_PASSWORD: Admin123!
+          E2E_ADMIN_EMAIL: admin@cvg-his.local
+          E2E_ADMIN_PASSWORD: seed_admin
+          E2E_REDIS_URL: redis://localhost:6380
+          API_DISABLE_INCOMPATIBLE_DB_REPOS: '0'
+          E2E_REUSE_EXISTING_SERVER: 'true'
         run: npx playwright test --config playwright-spa.config.ts -g "Visual"
-        continue-on-error: true
 
       - name: Upload visual regression report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: visual-regression-report
@@ -867,7 +1164,7 @@ jobs:
           retention-days: 30
 
       - name: Upload visual diff screenshots
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: failure()
         with:
           name: visual-regression-diffs
@@ -878,7 +1175,7 @@ jobs:
           retention-days: 14
 
       - name: Upload visual test-results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: failure()
         with:
           name: visual-test-results
@@ -888,38 +1185,224 @@ jobs:
   dependency-audit:
     name: Dependency Audit (CVE Scan)
     runs-on: ubuntu-22.04
-    timeout-minutes: 10
+    permissions:
+      contents: read
+    timeout-minutes: 20
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '22'
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         with:
-          version: 10
+          version: 10.34.5
           run_install: false
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Run enterprise security evidence
+        id: dependency-evidence
+        if: always()
+        continue-on-error: true
         run: pnpm security:evidence
 
       - name: Upload security evidence
-        uses: actions/upload-artifact@v4
+        id: dependency-artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: security-evidence
           path: artifacts/security/
+          if-no-files-found: error
           retention-days: 30
 
-      - name: Publish Audit Report
+      - name: Enforce dependency and SBOM gate
         if: always()
+        env:
+          EVIDENCE_OUTCOME: ${{ steps.dependency-evidence.outcome }}
+          ARTIFACT_OUTCOME: ${{ steps.dependency-artifact.outcome }}
         run: |
-          echo "### Dependency Audit" >> $GITHUB_STEP_SUMMARY
-          echo "Security evidence generated in artifact: \`security-evidence\`." >> $GITHUB_STEP_SUMMARY
+          if [ "$EVIDENCE_OUTCOME" != "success" ] || [ "$ARTIFACT_OUTCOME" != "success" ]; then
+            echo "Dependency/SBOM gate failed after evidence collection."
+            exit 1
+          fi
+
+  image-scan:
+    name: Image Scan (${{ matrix.image }})
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [api, spa, worker]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Build image for scanning
+        id: image-build
+        if: always()
+        continue-on-error: true
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          file: apps/${{ matrix.image }}/Dockerfile
+          load: true
+          push: false
+          tags: cvg-his-${{ matrix.image }}:${{ github.sha }}
+          cache-from: type=gha,scope=image-scan-${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=image-scan-${{ matrix.image }}
+
+      - name: Smoke built image
+        id: image-smoke
+        if: always()
+        continue-on-error: true
+        run: |
+          node scripts/smoke-container-image.mjs \
+            --kind "${{ matrix.image }}" \
+            --image "cvg-his-${{ matrix.image }}:${{ github.sha }}"
+
+      - name: Scan image with Trivy
+        id: trivy-scan
+        if: always()
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: cvg-his-${{ matrix.image }}:${{ github.sha }}
+          version: v0.72.0
+          format: json
+          output: artifacts/security/trivy-${{ matrix.image }}.json
+          scanners: vuln,secret,misconfig
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+          ignore-unfixed: false
+          exit-code: '0'
+
+      - name: Evaluate image findings
+        id: trivy-evaluate
+        if: always()
+        continue-on-error: true
+        env:
+          TRIVY_SCAN_OUTCOME: ${{ steps.trivy-scan.outcome }}
+        run: |
+          mkdir -p artifacts/security
+          SCANNER_EXIT_CODE=0
+          if [ "$TRIVY_SCAN_OUTCOME" != "success" ]; then
+            SCANNER_EXIT_CODE=1
+          fi
+          node scripts/gate-trivy-results.mjs \
+            --input artifacts/security/trivy-${{ matrix.image }}.json \
+            --report artifacts/security/trivy-${{ matrix.image }}-gate.json \
+            --fail-on CRITICAL,HIGH \
+            --scanner-exit-code "$SCANNER_EXIT_CODE"
+
+      - name: Upload image scan evidence
+        id: trivy-artifact
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: trivy-${{ matrix.image }}-evidence
+          path: artifacts/security/trivy-${{ matrix.image }}*.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Enforce image scan gate
+        if: always()
+        env:
+          BUILD_OUTCOME: ${{ steps.image-build.outcome }}
+          RUNTIME_OUTCOME: ${{ steps.image-smoke.outcome }}
+          SCAN_OUTCOME: ${{ steps.trivy-scan.outcome }}
+          EVALUATION_OUTCOME: ${{ steps.trivy-evaluate.outcome }}
+          ARTIFACT_OUTCOME: ${{ steps.trivy-artifact.outcome }}
+        run: |
+          if [ "$BUILD_OUTCOME" != "success" ] || \
+             [ "$RUNTIME_OUTCOME" != "success" ] || \
+             [ "$SCAN_OUTCOME" != "success" ] || \
+             [ "$EVALUATION_OUTCOME" != "success" ] || \
+             [ "$ARTIFACT_OUTCOME" != "success" ]; then
+            echo "Image security gate failed after evidence collection."
+            exit 1
+          fi
+
+  security-gate:
+    name: Security Gate
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    if: always()
+    needs: [sast, secret-scan, dependency-audit, image-scan]
+    steps:
+      - name: Enforce all security jobs
+        env:
+          SAST_RESULT: ${{ needs.sast.result }}
+          SECRET_SCAN_RESULT: ${{ needs.secret-scan.result }}
+          DEPENDENCY_AUDIT_RESULT: ${{ needs.dependency-audit.result }}
+          IMAGE_SCAN_RESULT: ${{ needs.image-scan.result }}
+        run: |
+          if [ "$SAST_RESULT" != "success" ] || \
+             [ "$SECRET_SCAN_RESULT" != "success" ] || \
+             [ "$DEPENDENCY_AUDIT_RESULT" != "success" ] || \
+             [ "$IMAGE_SCAN_RESULT" != "success" ]; then
+            echo "One or more required security jobs failed."
+            exit 1
+          fi
+
+  release-gate:
+    name: Strict Enterprise Release Gate
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    timeout-minutes: 60
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs:
+      [
+        security-gate,
+        unit-tests,
+        integration-tests,
+        coverage,
+        test-e2e-api,
+        test-e2e-spa,
+        test-visual
+      ]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: 10.34.5
+          run_install: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run strict RC evidence gate
+        env:
+          RC_CI_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RC_BACKUP_DRILL_REPORT: ${{ vars.RC_BACKUP_DRILL_REPORT }}
+          RC_DEPLOY_EVIDENCE_URL: ${{ vars.RC_DEPLOY_EVIDENCE_URL }}
+        run: pnpm rc:evidence:strict

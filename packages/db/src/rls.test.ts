@@ -62,21 +62,107 @@ describe('rls helpers', () => {
     expect(report).toMatchObject({
       generatedAt: '2026-05-28T00:00:00.000Z',
       totalTenantTables: 2,
-      protectedTables: 1,
-      failingTables: 1
+      protectedTables: 0,
+      failingTables: 2
     });
     expect(report.tables.find((table) => table.tableName === 'billing_records')).toMatchObject({
-      status: 'protected',
-      missing: []
+      status: 'missing_force_rls',
+      missing: ['FORCE ROW LEVEL SECURITY']
     });
     expect(report.tables.find((table) => table.tableName === 'financial_payables')).toMatchObject({
       status: 'missing_rls',
       missing: [
         'ENABLE ROW LEVEL SECURITY',
+        'FORCE ROW LEVEL SECURITY',
         'CREATE POLICY',
         'app.current_account_id policy predicate'
       ]
     });
+  });
+
+  it('only marks tenant tables protected when row-level security is forced', () => {
+    const report = analyzeRlsMigrationCoverage(
+      [
+        {
+          name: '001_secure_records.sql',
+          sql: `
+            CREATE TABLE secure_records (
+              id UUID PRIMARY KEY,
+              account_id UUID NOT NULL
+            );
+            ALTER TABLE secure_records ENABLE ROW LEVEL SECURITY;
+            ALTER TABLE secure_records FORCE ROW LEVEL SECURITY;
+            CREATE POLICY secure_records_tenant_isolation ON secure_records
+              USING (account_id = app.current_account_id())
+              WITH CHECK (account_id = app.current_account_id());
+          `
+        }
+      ],
+      { generatedAt: '2026-08-12T00:00:00.000Z' }
+    );
+
+    expect(report).toMatchObject({
+      totalTenantTables: 1,
+      protectedTables: 1,
+      failingTables: 0
+    });
+    expect(report.tables[0]).toMatchObject({
+      tableName: 'secure_records',
+      rlsEnabled: true,
+      rlsForced: true,
+      status: 'protected',
+      missing: []
+    });
+  });
+
+  it('discovers tenant columns added after table creation', () => {
+    const report = analyzeRlsMigrationCoverage(
+      [
+        {
+          name: '001_create_notes.sql',
+          sql: `CREATE TABLE clinical_notes (id UUID PRIMARY KEY);`
+        },
+        {
+          name: '002_tenant_notes.sql',
+          sql: `
+            ALTER TABLE clinical_notes ADD COLUMN IF NOT EXISTS account_id UUID NOT NULL;
+            ALTER TABLE clinical_notes ENABLE ROW LEVEL SECURITY;
+            ALTER TABLE clinical_notes FORCE ROW LEVEL SECURITY;
+            CREATE POLICY clinical_notes_tenant_isolation ON clinical_notes
+              USING (account_id = app.current_account_id())
+              WITH CHECK (account_id = app.current_account_id());
+          `
+        }
+      ],
+      { generatedAt: '2026-08-12T00:00:00.000Z' }
+    );
+
+    expect(report).toMatchObject({
+      totalTenantTables: 1,
+      protectedTables: 1,
+      failingTables: 0
+    });
+    expect(report.tables[0]).toMatchObject({
+      tableName: 'clinical_notes',
+      sourceFiles: ['002_tenant_notes.sql'],
+      status: 'protected'
+    });
+  });
+
+  it('rejects unsafe table identifiers in cross-tenant verification', async () => {
+    const client = createMockClient();
+    const pool = createMockPool(client);
+
+    await expect(
+      verifyCrossTenantIsolation(
+        pool,
+        'owners; DROP TABLE owners',
+        'account-a',
+        'account-b'
+      )
+    ).rejects.toThrow('Invalid PostgreSQL identifier');
+
+    expect(pool.connect).not.toHaveBeenCalled();
   });
 
   it('sets the current account id in the postgres session', async () => {

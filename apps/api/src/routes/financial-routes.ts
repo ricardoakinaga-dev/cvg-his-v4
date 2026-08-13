@@ -257,7 +257,10 @@ async function listReconciliationRows(
   async function getBillingRecord(recordId: string) {
     if (!billingCache.has(recordId)) {
         try {
-        billingCache.set(recordId, handlers.billing.getOrThrow(recordId as never));
+        billingCache.set(
+          recordId,
+          handlers.billing.getOrThrow(recordId as never, params.accountId as never)
+        );
       } catch {
         billingCache.set(recordId, null);
       }
@@ -268,7 +271,13 @@ async function listReconciliationRows(
   async function getFinancialSummary(encounterId: string) {
     if (!summaryCache.has(encounterId)) {
       try {
-        summaryCache.set(encounterId, await handlers.encounterFinancial.getSummary(encounterId as never));
+        summaryCache.set(
+          encounterId,
+          await handlers.encounterFinancial.getSummary(
+            encounterId as never,
+            params.accountId as never
+          )
+        );
       } catch {
         summaryCache.set(encounterId, null);
       }
@@ -413,7 +422,10 @@ async function listCardReconciliationRows(
   async function getBillingRecord(recordId: string) {
     if (!billingCache.has(recordId)) {
       try {
-        billingCache.set(recordId, handlers.billing.getOrThrow(recordId as never));
+        billingCache.set(
+          recordId,
+          handlers.billing.getOrThrow(recordId as never, params.accountId as never)
+        );
       } catch {
         billingCache.set(recordId, null);
       }
@@ -426,7 +438,10 @@ async function listCardReconciliationRows(
       try {
         summaryCache.set(
           encounterId,
-          await handlers.encounterFinancial.getSummary(encounterId as never)
+          await handlers.encounterFinancial.getSummary(
+            encounterId as never,
+            params.accountId as never
+          )
         );
       } catch {
         summaryCache.set(encounterId, null);
@@ -751,7 +766,10 @@ export async function handleFinancialRoutes(
   ) {
     const principal = requirePrincipal(request, 'billing.read');
     const encounterId = requireNonEmptyString(pathname.split('/')[2], 'encounterId');
-    const summary = await encounterFinancial.getSummary(encounterId as never);
+    const summary = await encounterFinancial.getSummary(
+      encounterId as never,
+      principal.user.accountId as never
+    );
 
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -797,7 +815,8 @@ export async function handleFinancialRoutes(
                 notes: typeof item.notes === 'string' ? item.notes : null
               }))
           : undefined
-      }
+      },
+      principal.user.accountId as never
     );
 
     appendAudit(audit, {
@@ -953,11 +972,15 @@ export async function handleFinancialRoutes(
     const principal = requirePrincipal(request, 'billing.manage');
     const receivableId = requireNonEmptyString(pathname.split('/')[3], 'receivableId');
     const payload = (await readJsonBody(request)) as Record<string, unknown>;
-    const settled = await encounterFinancial.settleReceivable(receivableId, {
-      amountPaid: Number(payload.amountPaid),
-      notes: typeof payload.notes === 'string' ? payload.notes : null,
-      paidByUserId: principal.user.id as never
-    });
+    const settled = await encounterFinancial.settleReceivable(
+      receivableId,
+      {
+        amountPaid: Number(payload.amountPaid),
+        notes: typeof payload.notes === 'string' ? payload.notes : null,
+        paidByUserId: principal.user.id as never
+      },
+      principal.user.accountId as never
+    );
 
     appendAudit(audit, {
       actorId: principal.user.id,

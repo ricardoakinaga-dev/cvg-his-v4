@@ -1,7 +1,13 @@
 # 450 - Gaps Enterprise Priorizados
 
 **Status:** vivo
-**Data de validacao:** 2026-03-31
+**Data de validacao:** 2026-08-11
+
+O P1 desta matriz foi executado nesta rodada: adapters locais e persistência agora exigem seleção explícita ou falham em ambientes production-like, a composição da API foi extraída para módulos, a cobertura de rotas/autenticação/repositórios/integrações foi ampliada, e a documentação ativa foi reconciliada. O detalhamento dos gates e dos itens ainda fora do aceite enterprise está no [relatório atual](2026-08-11-relatorio-auditoria-p1.md).
+
+Em 12/08/2026, as 48 ocorrências de vulnerabilidade de dependências também foram eliminadas e o gate enterprise passou a bloquear advisories a partir de severidade baixa. O programa residual até 95 está em [plano executivo](2026-08-12-plano-executivo-meta-95.md), [roadmap](2026-08-12-roadmap-meta-95.md) e [backlog](2026-08-12-backlog-meta-95.md).
+
+Na mesma verificação, o gap RLS de `sessions` foi fechado por migration aditiva e teste negativo; `validate:rls` passou com 98/98 tabelas tenant protegidas. Permanecem na F1 a role production-like sem bypass, `FORCE RLS`, contexto por transação e a matriz cross-tenant completa.
 
 ## P0 - Corrigir agora
 

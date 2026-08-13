@@ -65,6 +65,10 @@ ensure_prereqs() {
   require_env POSTGRES_PASSWORD
   require_env AUTH_SECRET
   require_env NODE_ENV
+  require_env DATABASE_ADMIN_URL
+  require_env DATABASE_URL
+  require_env DATABASE_RUNTIME_URL_DOCKER
+  require_env WORKER_ACCOUNT_IDS
   if [[ "${NODE_ENV}" != "production" && "${NODE_ENV}" != "staging" && "${NODE_ENV}" != "prod" && "${NODE_ENV}" != "stage" ]]; then
     if [[ "${ALLOW_NON_PRODUCTION_CUTOVER:-false}" != "true" ]]; then
       die "NODE_ENV must be production-like for cutover. Current: ${NODE_ENV}. Set ALLOW_NON_PRODUCTION_CUTOVER=true only for exceptional rehearsals."
@@ -170,20 +174,26 @@ apply_v2_schema() {
     return
   fi
 
-  local db_url="postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@127.0.0.1:5432/${POSTGRES_DB:-cvg_his_v2}"
   require_cmd npx
 
   log "applying V2 schema via Drizzle migration"
-  DATABASE_URL="$db_url" npx tsx packages/db/src/migrate.ts
+  DATABASE_URL="$DATABASE_ADMIN_URL" npx tsx packages/db/src/migrate.ts
   log "Drizzle migration applied successfully"
 
   if [[ -n "${ADMIN_EMAIL:-}" && -n "${ADMIN_PASSWORD:-}" ]]; then
     log "running Drizzle seed with admin user"
-    DATABASE_URL="$db_url" ADMIN_EMAIL="$ADMIN_EMAIL" ADMIN_PASSWORD="$ADMIN_PASSWORD" npx tsx packages/db/src/seed.ts
+    DATABASE_URL="$DATABASE_ADMIN_URL" ADMIN_EMAIL="$ADMIN_EMAIL" ADMIN_PASSWORD="$ADMIN_PASSWORD" npx tsx packages/db/src/seed.ts
     log "Drizzle seed applied successfully"
   else
     log "ADMIN_EMAIL/ADMIN_PASSWORD not provided; skipping admin seed"
   fi
+
+}
+
+provision_runtime_role() {
+  log "provisioning and validating restricted PostgreSQL runtime role"
+  DATABASE_ADMIN_URL="$DATABASE_ADMIN_URL" DATABASE_URL="$DATABASE_URL" node scripts/provision-database-runtime-role.mjs
+  log "restricted PostgreSQL runtime role is ready"
 }
 
 start_v2_applications() {
@@ -353,6 +363,7 @@ main() {
   build_v2_images
   start_dependencies
   apply_v2_schema
+  provision_runtime_role
   start_v2_applications
   validate_v2_stack
   switch_caddy_if_enabled

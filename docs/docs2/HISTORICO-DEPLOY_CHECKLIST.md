@@ -31,7 +31,7 @@
 |----------|----------|-------------|---------|
 | `NODE_ENV` | Yes | Environment mode | `production` |
 | `PORT` | No | Server port (default: 3000) | `3000` |
-| `DATABASE_URL` | Yes | PostgreSQL connection string | `postgres://user:pass@host:5432/db` |
+| `DATABASE_URL` | Yes | PostgreSQL connection string | `<runtime-database-url>` |
 | `REDIS_URL` | Yes | Redis connection string | `redis://host:6379` |
 | `JWT_SECRET` | Yes | Secret for JWT signing | `min-32-char-secret` |
 | `JWT_ISSUER` | Yes | JWT issuer | `cvg-his-api` |
@@ -56,7 +56,7 @@
 | Variable | Required | Description | Example |
 |----------|----------|-------------|---------|
 | `NODE_ENV` | Yes | Environment mode | `production` |
-| `DATABASE_URL` | Yes | PostgreSQL connection string | `postgres://user:pass@host:5432/db` |
+| `DATABASE_URL` | Yes | PostgreSQL connection string | `<runtime-database-url>` |
 | `REDIS_URL` | Yes | Redis connection string | `redis://host:6379` |
 | `QUEUE_PREFIX` | No | BullMQ queue prefix | `cvg-his:` |
 

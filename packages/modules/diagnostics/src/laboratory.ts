@@ -29,18 +29,25 @@ interface DiagnosticsOrdersGateway {
   list(encounterId?: string): readonly DiagnosticOrderSummary[];
   listByAccount(accountId: AccountId): readonly DiagnosticOrderSummary[];
   listCatalog(): readonly ExamCatalogEntry[];
-  createOrder(payload: CreateDiagnosticOrderRequest): DiagnosticOrderSummary;
+  createOrder(
+    payload: CreateDiagnosticOrderRequest,
+    expectedAccountId?: AccountId
+  ): Promise<DiagnosticOrderSummary>;
   getOrThrow(orderId: DiagnosticOrderId): DiagnosticOrderSummary;
   recordResult(
     orderId: DiagnosticOrderId,
-    payload: RecordDiagnosticResultRequest
-  ): DiagnosticOrderSummary;
+    payload: RecordDiagnosticResultRequest,
+    expectedAccountId?: AccountId
+  ): Promise<DiagnosticOrderSummary>;
 }
 
 export interface LaboratoryCatalogRepository {
   ensureSeedData(accountId: AccountId): Promise<void>;
   listEquipment(accountId: AccountId): Promise<readonly LaboratoryEquipmentSummary[]>;
-  getEquipment(accountId: AccountId, equipmentId: string): Promise<LaboratoryEquipmentSummary | undefined>;
+  getEquipment(
+    accountId: AccountId,
+    equipmentId: string
+  ): Promise<LaboratoryEquipmentSummary | undefined>;
   createEquipment(
     accountId: AccountId,
     payload: CreateLaboratoryEquipmentRequest
@@ -51,7 +58,10 @@ export interface LaboratoryCatalogRepository {
     payload: UpdateLaboratoryEquipmentRequest
   ): Promise<LaboratoryEquipmentSummary>;
   listReportTypes(accountId: AccountId): Promise<readonly LaboratoryReportTypeSummary[]>;
-  getReportType(accountId: AccountId, reportTypeId: string): Promise<LaboratoryReportTypeSummary | undefined>;
+  getReportType(
+    accountId: AccountId,
+    reportTypeId: string
+  ): Promise<LaboratoryReportTypeSummary | undefined>;
   createReportType(
     accountId: AccountId,
     payload: CreateLaboratoryReportTypeRequest
@@ -65,7 +75,10 @@ export interface LaboratoryCatalogRepository {
     accountId: AccountId,
     filterExam?: string
   ): Promise<readonly LaboratoryReferenceValueSummary[]>;
-  getReferenceValue(accountId: AccountId, referenceValueId: string): Promise<LaboratoryReferenceValueSummary | undefined>;
+  getReferenceValue(
+    accountId: AccountId,
+    referenceValueId: string
+  ): Promise<LaboratoryReferenceValueSummary | undefined>;
   createReferenceValue(
     accountId: AccountId,
     payload: CreateLaboratoryReferenceValueRequest
@@ -82,7 +95,10 @@ export interface LaboratoryServiceOptions {
 }
 
 function normalizeText(value: string | undefined): string {
-  return (value ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toUpperCase();
+  return (value ?? '')
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toUpperCase();
 }
 
 export class InMemoryLaboratoryCatalogRepository implements LaboratoryCatalogRepository {
@@ -231,7 +247,9 @@ export class InMemoryLaboratoryCatalogRepository implements LaboratoryCatalogRep
     await this.ensureSeedData(accountId);
     const normalizedFilter = normalizeText(filterExam);
     return [...(this.#referenceValues.get(accountId) ?? [])]
-      .filter((item) => !normalizedFilter || normalizeText(item.examType).includes(normalizedFilter))
+      .filter(
+        (item) => !normalizedFilter || normalizeText(item.examType).includes(normalizedFilter)
+      )
       .sort((left, right) => left.parameter.localeCompare(right.parameter));
   }
 
@@ -240,7 +258,9 @@ export class InMemoryLaboratoryCatalogRepository implements LaboratoryCatalogRep
     referenceValueId: string
   ): Promise<LaboratoryReferenceValueSummary | undefined> {
     await this.ensureSeedData(accountId);
-    return (this.#referenceValues.get(accountId) ?? []).find((item) => item.id === referenceValueId);
+    return (this.#referenceValues.get(accountId) ?? []).find(
+      (item) => item.id === referenceValueId
+    );
   }
 
   public async createReferenceValue(
@@ -343,18 +363,24 @@ export class LaboratoryService {
   }
 
   public listCatalog(): readonly ExamCatalogEntry[] {
-    return [...this.#diagnostics.listCatalog()].sort((left, right) => left.name.localeCompare(right.name));
+    return [...this.#diagnostics.listCatalog()].sort((left, right) =>
+      left.name.localeCompare(right.name)
+    );
   }
 
-  public createOrder(payload: CreateDiagnosticOrderRequest): DiagnosticOrderSummary {
-    return this.#diagnostics.createOrder(payload);
+  public async createOrder(
+    payload: CreateDiagnosticOrderRequest,
+    expectedAccountId?: AccountId
+  ): Promise<DiagnosticOrderSummary> {
+    return this.#diagnostics.createOrder(payload, expectedAccountId);
   }
 
-  public recordResult(
+  public async recordResult(
     orderId: DiagnosticOrderId,
-    payload: RecordDiagnosticResultRequest
-  ): DiagnosticOrderSummary {
-    return this.#diagnostics.recordResult(orderId, payload);
+    payload: RecordDiagnosticResultRequest,
+    expectedAccountId?: AccountId
+  ): Promise<DiagnosticOrderSummary> {
+    return this.#diagnostics.recordResult(orderId, payload, expectedAccountId);
   }
 
   public async getDashboardSummary(accountId: AccountId): Promise<LaboratoryDashboardSummary> {
@@ -372,9 +398,7 @@ export class LaboratoryService {
     };
   }
 
-  public async listEquipment(
-    accountId: AccountId
-  ): Promise<readonly LaboratoryEquipmentSummary[]> {
+  public async listEquipment(accountId: AccountId): Promise<readonly LaboratoryEquipmentSummary[]> {
     if (!this.#catalogRepository) {
       return [...DEFAULT_LABORATORY_EQUIPMENT].sort((left, right) =>
         left.name.localeCompare(right.name)
@@ -499,7 +523,9 @@ export class LaboratoryService {
     if (!this.#catalogRepository) {
       const normalizedFilter = normalizeText(filterExam);
       return [...DEFAULT_LABORATORY_REFERENCE_VALUES]
-        .filter((item) => !normalizedFilter || normalizeText(item.examType).includes(normalizedFilter))
+        .filter(
+          (item) => !normalizedFilter || normalizeText(item.examType).includes(normalizedFilter)
+        )
         .sort((left, right) => left.parameter.localeCompare(right.parameter));
     }
 
@@ -509,7 +535,9 @@ export class LaboratoryService {
     } catch {
       const normalizedFilter = normalizeText(filterExam);
       return [...DEFAULT_LABORATORY_REFERENCE_VALUES]
-        .filter((item) => !normalizedFilter || normalizeText(item.examType).includes(normalizedFilter))
+        .filter(
+          (item) => !normalizedFilter || normalizeText(item.examType).includes(normalizedFilter)
+        )
         .sort((left, right) => left.parameter.localeCompare(right.parameter));
     }
   }
@@ -519,13 +547,18 @@ export class LaboratoryService {
     referenceValueId: string
   ): Promise<LaboratoryReferenceValueSummary> {
     if (!this.#catalogRepository) {
-      const referenceValue = DEFAULT_LABORATORY_REFERENCE_VALUES.find((item) => item.id === referenceValueId);
+      const referenceValue = DEFAULT_LABORATORY_REFERENCE_VALUES.find(
+        (item) => item.id === referenceValueId
+      );
       if (!referenceValue) throw new Error('Laboratory reference value not found');
       return referenceValue;
     }
 
     await this.#catalogRepository.ensureSeedData(accountId);
-    const referenceValue = await this.#catalogRepository.getReferenceValue(accountId, referenceValueId);
+    const referenceValue = await this.#catalogRepository.getReferenceValue(
+      accountId,
+      referenceValueId
+    );
     if (!referenceValue) {
       throw new Error('Laboratory reference value not found');
     }

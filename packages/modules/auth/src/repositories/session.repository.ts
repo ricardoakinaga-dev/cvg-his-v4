@@ -4,8 +4,8 @@ export interface SessionRepository {
   create(session: PersistedSessionRecord): Promise<void>;
   update(session: PersistedSessionRecord | UpdateSessionParams): Promise<void>;
   findById(id: SessionId): Promise<PersistedSessionRecord | null>;
-  findByUserId(userId: string): Promise<readonly PersistedSessionRecord[]>;
-  delete(id: SessionId): Promise<void>;
+  findByUserId(userId: string, accountId?: string): Promise<readonly PersistedSessionRecord[]>;
+  delete(id: SessionId, accountId?: string): Promise<void>;
 }
 
 export interface PersistedSessionRecord extends SessionSummary {

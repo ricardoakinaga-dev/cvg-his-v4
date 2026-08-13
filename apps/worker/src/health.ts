@@ -2,6 +2,7 @@ import type { IncomingMessage } from 'node:http';
 
 import type { HealthResponse } from '@cvg-his-v2/shared-contracts';
 import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
+import { isProductionLikeEnvironment } from './account-config.js';
 
 export interface WorkerHealthDeps {
   readonly databaseConfigured: boolean;
@@ -11,6 +12,7 @@ export interface WorkerHealthDeps {
   readonly ticksCompleted: number;
   readonly lastTickAt: string | null;
   readonly lastError: string | null;
+  readonly configuredAccountCount: number;
   readonly initialized: boolean;
 }
 
@@ -39,9 +41,13 @@ export function createWorkerHealthResponse(
   const databaseState = resolveDatabaseState(deps);
   const repositoriesReady = deps.persistenceMode === 'database' ? deps.databaseHealthy : true;
   const loopHealthy = deps.lastError === null;
+  const accountsReady =
+    !isProductionLikeEnvironment(environment) || deps.configuredAccountCount > 0;
+  const workerReady = loopHealthy && accountsReady;
+  const ready = deps.databaseHealthy && repositoriesReady && workerReady;
 
   return {
-    ok: deps.databaseConfigured ? deps.databaseHealthy : repositoriesReady,
+    ok: ready,
     service: appName,
     version,
     environment,
@@ -52,8 +58,13 @@ export function createWorkerHealthResponse(
       initialized: deps.initialized
     },
     readiness: {
-      ready: deps.databaseHealthy,
-      productionReady: deps.databaseConfigured && deps.databaseHealthy,
+      ready,
+      productionReady:
+        deps.databaseConfigured
+        && deps.databaseHealthy
+        && deps.persistenceMode === 'database'
+        && deps.configuredAccountCount > 0
+        && loopHealthy,
       persistenceMode: deps.persistenceMode
     },
     dependencies: {
@@ -71,10 +82,12 @@ export function createWorkerHealthResponse(
             : 'Worker repositories running in-memory only'
       },
       worker: {
-        state: loopHealthy ? 'ready' : 'degraded',
-        detail: loopHealthy
-          ? `Loop healthy; ticks=${deps.ticksCompleted}; lastTickAt=${deps.lastTickAt ?? 'never'}`
-          : `Worker loop degraded: ${deps.lastError ?? 'unknown error'}`
+        state: !accountsReady ? 'not-configured' : loopHealthy ? 'ready' : 'degraded',
+        detail: !accountsReady
+          ? 'WORKER_ACCOUNT_IDS must contain at least one tenant UUID in production-like environments'
+          : loopHealthy
+            ? `Loop healthy; accounts=${deps.configuredAccountCount}; ticks=${deps.ticksCompleted}; lastTickAt=${deps.lastTickAt ?? 'never'}`
+            : `Worker loop degraded: ${deps.lastError ?? 'unknown error'}`
       }
     }
   };

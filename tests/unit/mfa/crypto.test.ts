@@ -59,6 +59,16 @@ describe('MFA Crypto', () => {
       expect(() => decrypt(tampered, MASTER_KEY)).toThrow();
     });
 
+    it('rejects a truncated GCM authentication tag before decryption', () => {
+      const encrypted = encrypt('JBSWY3DPEHPK3PXP', MASTER_KEY);
+      const [salt, iv, authTag, payload] = encrypted.split(':');
+      const truncatedTag = Buffer.from(authTag, 'base64').subarray(0, 8).toString('base64');
+
+      expect(() => decrypt(`${salt}:${iv}:${truncatedTag}:${payload}`, MASTER_KEY)).toThrow(
+        'Invalid authentication tag length'
+      );
+    });
+
     it('fails to decrypt with invalid format', () => {
       expect(() => decrypt('invalid-format', MASTER_KEY)).toThrow('Invalid ciphertext format');
     });

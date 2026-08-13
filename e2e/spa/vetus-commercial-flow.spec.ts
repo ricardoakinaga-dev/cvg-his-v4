@@ -65,15 +65,17 @@ test.describe('Vetus Comercial — fidelidade, tabelas de preço e PDV', () => {
     });
 
     await spaPage.goto('/loyalty');
-    await expect(page.getByRole('heading', { name: /Resgate de Pontos|Fidelidade/i })).toBeVisible();
-    await expect(page.getByText(`Brinde E2E ${suffix}`)).toBeVisible({ timeout: 15000 });
+    await expect(
+      page.getByRole('heading', { name: /Resgate de Pontos|Fidelidade/i })
+    ).toBeVisible();
+    await expect(page.getByText(`Brinde E2E ${suffix}`).first()).toBeVisible({ timeout: 15000 });
 
     await spaPage.goto('/tabelas-de-preco');
-    await expect(page.getByRole('heading', { name: /Tabelas de Preço/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Tabelas de Preço/i }).first()).toBeVisible();
     await expect(page.getByText(`TABELA E2E ${suffix}`)).toBeVisible({ timeout: 15000 });
 
     await spaPage.goto('/pontos-de-venda');
-    await expect(page.getByRole('heading', { name: /Pontos de venda/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Pontos de venda', exact: true })).toBeVisible();
     await expect(page.getByText(job.id)).toBeVisible({ timeout: 15000 });
     await expect(page.getByText('Concluído')).toBeVisible();
   });

@@ -8,7 +8,8 @@ function uniqueSuffix(): string {
 
 function todayAtBusinessHour(): Date {
   const date = new Date();
-  date.setHours(10, 0, 0, 0);
+  date.setDate(date.getDate() + 7);
+  date.setHours(10, Math.floor(Math.random() * 4) * 10, 0, 0);
   return date;
 }
 
@@ -49,7 +50,7 @@ test.describe('Walkthrough operacional principal', () => {
       reason: 'Walkthrough operacional doc 890',
       unit: 'Clinica',
       specialty: 'Clinico geral',
-      resourceLabel: 'Consultorio 1'
+      resourceLabel: `Consultorio E2E ${suffix}`
     });
     cleanup.track({ type: 'appointment', id: appointment.id });
 
@@ -69,6 +70,9 @@ test.describe('Walkthrough operacional principal', () => {
     await expect(page.getByRole('heading', { name: /Agenda/ }).first()).toBeVisible({
       timeout: 15000
     });
+    await page
+      .getByRole('button', { name: scheduledAt.toISOString().slice(0, 10), exact: true })
+      .click();
     await expect(page.getByText(patientName)).toBeVisible({ timeout: 15000 });
 
     await page.goto(`${SPA_URL}/reception`);

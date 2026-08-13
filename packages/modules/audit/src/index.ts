@@ -4,6 +4,7 @@ import type { AccountId, AuditEventId, AuditEventSummary } from '@cvg-his-v2/sha
 import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
 
 export interface AuditRepository {
+  readonly tenantScoped?: boolean;
   create(event: AuditEventSummary): Promise<void>;
   list(accountId?: AccountId, limit?: number): Promise<readonly AuditEventSummary[]>;
   findById(id: AuditEventId): Promise<AuditEventSummary | null>;
@@ -50,6 +51,11 @@ export interface OperationalAuditCoverageReport {
 
 export interface AuditServiceOptions {
   readonly auditRepository?: AuditRepository;
+}
+
+interface PendingAuditWrites {
+  readonly writes: Set<Promise<void>>;
+  readonly errors: unknown[];
 }
 
 export const DEFAULT_OPERATIONAL_AUDIT_REQUIREMENTS: readonly OperationalAuditRequirement[] = [
@@ -129,13 +135,89 @@ export const DEFAULT_OPERATIONAL_AUDIT_REQUIREMENTS: readonly OperationalAuditRe
 export class AuditService {
   readonly #events: AuditEventSummary[] = [];
   readonly #auditRepository?: AuditRepository;
+  readonly #pendingWritesByCorrelationId = new Map<string, PendingAuditWrites>();
 
   public constructor(options: AuditServiceOptions = {}) {
     this.#auditRepository = options.auditRepository;
   }
 
   public write(input: AuditWriteInput): AuditEventSummary {
-    const event: AuditEventSummary = {
+    return this.#record(input, true);
+  }
+
+  public async writeDurable(input: AuditWriteInput): Promise<AuditEventSummary> {
+    const event = this.#createEvent(input);
+    if (this.#auditRepository) {
+      await this.#auditRepository.create(event);
+    }
+    this.#events.unshift(event);
+    return event;
+  }
+
+  public async flushPendingWrites(correlationId: string): Promise<void> {
+    const pending = this.#pendingWritesByCorrelationId.get(correlationId);
+    if (!pending) {
+      return;
+    }
+
+    while (pending.writes.size > 0) {
+      await Promise.all(pending.writes);
+    }
+    this.#pendingWritesByCorrelationId.delete(correlationId);
+
+    if (pending.errors.length === 1) {
+      throw pending.errors[0];
+    }
+    if (pending.errors.length > 1) {
+      throw new AggregateError(
+        pending.errors,
+        `Failed to persist ${pending.errors.length} audit events for request ${correlationId}`
+      );
+    }
+  }
+
+  #record(input: AuditWriteInput, persist: boolean): AuditEventSummary {
+    const event = this.#createEvent(input);
+
+    this.#events.unshift(event);
+
+    if (persist && this.#auditRepository) {
+      this.#enqueuePersistence(event);
+    }
+
+    return event;
+  }
+
+  #enqueuePersistence(event: AuditEventSummary): void {
+    if (!this.#auditRepository) {
+      return;
+    }
+
+    const pending = this.#pendingWritesByCorrelationId.get(event.correlationId) ?? {
+      writes: new Set<Promise<void>>(),
+      errors: []
+    };
+    this.#pendingWritesByCorrelationId.set(event.correlationId, pending);
+
+    const trackedWrite = this.#auditRepository
+      .create(event)
+      .then(
+        () => undefined,
+        (error: unknown) => {
+          pending.errors.push(error);
+        }
+      )
+      .finally(() => {
+        pending.writes.delete(trackedWrite);
+        if (pending.writes.size === 0 && pending.errors.length === 0) {
+          this.#pendingWritesByCorrelationId.delete(event.correlationId);
+        }
+      });
+    pending.writes.add(trackedWrite);
+  }
+
+  #createEvent(input: AuditWriteInput): AuditEventSummary {
+    return {
       eventId: randomUUID() as AuditEventId,
       occurredAt: nowIso(),
       actorId: input.actorId,
@@ -148,17 +230,6 @@ export class AuditService {
       payloadSummary: input.payloadSummary,
       riskLevel: input.riskLevel
     };
-
-    this.#events.unshift(event);
-
-    // Persist to database if repository is available
-    if (this.#auditRepository) {
-      this.#auditRepository.create(event).catch((err) => {
-        console.error('Failed to persist audit event to database:', err);
-      });
-    }
-
-    return event;
   }
 
   public list(): readonly AuditEventSummary[] {
@@ -220,16 +291,19 @@ export class AuditService {
   }
 
   public seedSystemEvent(summary: string): void {
-    this.write({
-      actorId: 'system',
-      accountId: 'acc_cvg_demo' as AccountId,
-      module: 'audit',
-      action: 'bootstrap',
-      entityType: 'system',
-      entityId: 'phase-3',
-      payloadSummary: summary,
-      riskLevel: 'low'
-    });
+    this.#record(
+      {
+        actorId: 'system',
+        accountId: 'acc_cvg_demo' as AccountId,
+        module: 'audit',
+        action: 'bootstrap',
+        entityType: 'system',
+        entityId: 'phase-3',
+        payloadSummary: summary,
+        riskLevel: 'low'
+      },
+      this.#auditRepository?.tenantScoped !== true
+    );
   }
 }
 

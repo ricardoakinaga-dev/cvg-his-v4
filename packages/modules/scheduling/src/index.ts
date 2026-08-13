@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { OwnersService } from '@cvg-his-v2/module-owners';
 import { PatientsService } from '@cvg-his-v2/module-patients';
 import type {
@@ -613,7 +615,7 @@ export class SchedulingService {
 
     const now = nowIso();
     const appointment: SchedulingAppointmentSummary = {
-      id: createCorrelationId('appt') as AppointmentId,
+      id: randomUUID() as AppointmentId,
       accountId,
       patientId,
       ownerId,

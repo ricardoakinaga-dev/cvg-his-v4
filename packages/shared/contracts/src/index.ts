@@ -11,6 +11,7 @@ import type {
   ClinicalEntrySummary,
   ClinicalTimelineEventSummary,
   DiagnosticOrderSummary,
+  DischargeSummary,
   ExamCatalogEntry,
   EncounterSummary,
   EncounterTimelineEventSummary,
@@ -44,12 +45,15 @@ import type {
   SurgeryCaseSummary,
   PatientSummary,
   PermissionDefinition,
+  PrescriptionExecutionSummary,
   RoleDefinition,
   SessionSummary,
   StaffSummary,
   TriageSummary,
   TriageVersionSummary,
-  UserSummary
+  UserSummary,
+  WebhookDeliverySummary,
+  WebhookSummary
 } from '@cvg-his-v2/shared-types';
 
 export interface HealthResponse extends HealthStatus {
@@ -85,6 +89,8 @@ export interface HealthResponse extends HealthStatus {
 }
 
 export interface LoginRequest {
+  /** Required by database-backed multi-tenant authentication; omitted only by local seed mode. */
+  readonly accountSlug?: string;
   readonly username: string;
   readonly password: string;
 }
@@ -1420,7 +1426,7 @@ export interface UpdateDischargeRequest {
 }
 
 export interface DischargeListResponse {
-  readonly items: readonly import('@cvg-his-v2/shared-types').DischargeSummary[];
+  readonly items: readonly DischargeSummary[];
   readonly total: number;
 }
 
@@ -1455,7 +1461,7 @@ export interface LogAdministrationEventRequest {
 }
 
 export interface PrescriptionExecutionListResponse {
-  readonly items: readonly import('@cvg-his-v2/shared-types').PrescriptionExecutionSummary[];
+  readonly items: readonly PrescriptionExecutionSummary[];
   readonly total: number;
 }
 
@@ -1501,11 +1507,11 @@ export interface UpdateWebhookRequest {
 }
 
 export interface WebhookListResponse {
-  readonly items: readonly import('@cvg-his-v2/shared-types').WebhookSummary[];
+  readonly items: readonly WebhookSummary[];
 }
 
 export interface WebhookDeliveryListResponse {
-  readonly items: readonly import('@cvg-his-v2/shared-types').WebhookDeliverySummary[];
+  readonly items: readonly WebhookDeliverySummary[];
 }
 
 export interface WebhookPayload {

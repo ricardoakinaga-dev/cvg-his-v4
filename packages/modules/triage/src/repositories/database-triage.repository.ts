@@ -153,7 +153,7 @@ export class DatabaseTriageRepository implements TriageRepository {
       destination: (row.destination as TriageSummary['destination']) ?? 'observation',
       triagedByUserId: row.triaged_by as unknown as UserId,
       createdAt: new Date(row.created_at as string).toISOString(),
-      updatedAt: new Date(row.updated_at as string).toISOString()
+      updatedAt: new Date((row.triaged_at ?? row.created_at) as string).toISOString()
     };
   }
 

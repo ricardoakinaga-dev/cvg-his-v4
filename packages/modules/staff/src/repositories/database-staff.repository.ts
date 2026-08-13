@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { getPool } from '@cvg-his-v2/shared-database';
 import { withTenantQuery } from '@cvg-his-v2/tenant-context';
 import type { AccountId, UserId } from '@cvg-his-v2/shared-types';
@@ -44,7 +46,7 @@ export class DatabaseStaffRepository implements StaffRepository {
   async create(input: StaffCreateInput): Promise<StaffRecord> {
     return withTenantQuery(getPool(), async (client) => {
       const now = nowIso();
-      const id = `staff-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const id = randomUUID();
       await client.query(
         `INSERT INTO staff (id, account_id, user_id, employee_code, full_name, department, job_title, is_active, created_at, updated_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,

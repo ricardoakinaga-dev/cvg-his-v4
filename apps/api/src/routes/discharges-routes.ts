@@ -6,6 +6,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import type { AuditService } from '@cvg-his-v2/module-audit';
 import type { DischargesService } from '@cvg-his-v2/module-discharges';
+import type { EncountersService } from '@cvg-his-v2/module-encounters';
 import type { CreateDischargeRequest, UpdateDischargeRequest } from '@cvg-his-v2/shared-contracts';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
@@ -15,6 +16,7 @@ import { readJsonBody, validateRequestBody } from '../helpers/common.js';
 
 export interface DischargesHandlers {
   discharges: DischargesService;
+  encounters?: EncountersService;
   audit: AuditService;
   requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
 }
@@ -30,12 +32,12 @@ export async function handleDischargesRoutes(
   correlationId: string,
   handlers: DischargesHandlers
 ): Promise<boolean> {
-  const { discharges, audit, requirePrincipal } = handlers;
+  const { discharges, encounters, audit, requirePrincipal } = handlers;
 
   // GET /discharges — list all discharges for account
   if (pathname === '/discharges' && request.method === 'GET') {
     const principal = requirePrincipal(request, 'encounters.read');
-    const items = discharges.list(principal.user.accountId as never);
+    const items = await discharges.list(principal.user.accountId as never);
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
@@ -68,7 +70,11 @@ export async function handleDischargesRoutes(
       },
       correlationId
     );
-    const discharge = discharges.create(
+    encounters?.getForAccountOrThrow(
+      principal.user.accountId as never,
+      payload.encounterId as never
+    );
+    const discharge = await discharges.create(
       principal.user.accountId as never,
       principal.user.id as never,
       payload
@@ -90,14 +96,13 @@ export async function handleDischargesRoutes(
   }
 
   // GET /discharges/:dischargeId — get discharge by ID
-  if (
-    pathname.startsWith('/discharges/') &&
-    request.method === 'GET' &&
-    !pathname.includes('?')
-  ) {
+  if (pathname.startsWith('/discharges/') && request.method === 'GET' && !pathname.includes('?')) {
     const principal = requirePrincipal(request, 'encounters.read');
     const dischargeId = requireNonEmptyString(pathname.split('/')[2], 'dischargeId');
-    const discharge = discharges.getById(dischargeId as never);
+    const discharge = await discharges.getById(
+      dischargeId as never,
+      principal.user.accountId as never
+    );
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
@@ -122,7 +127,12 @@ export async function handleDischargesRoutes(
     const { expectedVersion, ...payload } = body as UpdateDischargeRequest & {
       expectedVersion?: number;
     };
-    const discharge = discharges.update(dischargeId as never, payload, expectedVersion);
+    const discharge = await discharges.update(
+      dischargeId as never,
+      payload,
+      expectedVersion,
+      principal.user.accountId as never
+    );
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,

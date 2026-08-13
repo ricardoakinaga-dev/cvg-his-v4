@@ -88,7 +88,8 @@ export interface CounterSalesServiceOptions {
     consumeForSale: (
       accountId: AccountId,
       codeSnapshot: string,
-      quantity: number
+      quantity: number,
+      recordedByUserId: UserId
     ) => Promise<InventoryConsumption>;
   };
   readonly cashService?: {
@@ -130,8 +131,13 @@ export class CounterSalesService {
   public async hydrateFromDatabase(accountId: AccountId): Promise<void> {
     if (!this.#repository) return;
     const sales = await this.#repository.findByAccountId(accountId);
+    let highestPersistedNumber = this.#numberCounter;
     for (const sale of sales) {
       this.#sales.set(sale.id, sale);
+      const sequence = /^CS-(\d+)$/.exec(sale.number)?.[1];
+      if (sequence) {
+        highestPersistedNumber = Math.max(highestPersistedNumber, Number(sequence));
+      }
       const items = await this.#repository.findItemsBySaleId(sale.id);
       for (const item of items) {
         this.#items.set(item.id, item);
@@ -141,6 +147,7 @@ export class CounterSalesService {
         this.#payments.set(payment.id, payment);
       }
     }
+    this.#numberCounter = highestPersistedNumber;
   }
 
   #nextNumber(): string {
@@ -470,7 +477,8 @@ export class CounterSalesService {
           const consumption = await this.#inventoryService.consumeForSale(
             sale.accountId,
             item.codeSnapshot!,
-            item.quantity
+            item.quantity,
+            closedByUserId
           );
           inventoryConsumptions.push(consumption);
         } catch (err) {
@@ -599,7 +607,13 @@ export class CounterSalesService {
 
   list(
     accountId: AccountId,
-    filters?: { status?: string; search?: string; ownerId?: string; dateFrom?: string; dateTo?: string }
+    filters?: {
+      status?: string;
+      search?: string;
+      ownerId?: string;
+      dateFrom?: string;
+      dateTo?: string;
+    }
   ): CounterSaleSummary[] {
     let items = Array.from(this.#sales.values()).filter((s) => s.accountId === accountId);
 

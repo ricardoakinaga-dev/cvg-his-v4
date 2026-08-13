@@ -327,19 +327,45 @@ export class DatabaseFinanceCatalogRepository implements FinanceCatalogPersisten
       );
       if (!existingRow.rows[0]) throw new Error('NOT_FOUND');
       const previous = mapCostCenterRow(existingRow.rows[0] as Record<string, unknown>);
-      const updated = await client.query(
-        `UPDATE finance_cost_centers
-         SET code = $3, name = $4, kind = $5, owner = $6, description = $7, updated_at = NOW()
-         WHERE account_id = $1 AND code = $2
-         RETURNING code, name, kind, owner, description`,
-        [accountId, code, payload.code, payload.name, payload.kind, payload.owner, payload.description]
-      );
-      await client.query(
-        `UPDATE finance_expense_catalog_items
-         SET cost_center_code = $3, cost_center_name = $4, updated_at = NOW()
-         WHERE account_id = $1 AND cost_center_code = $2`,
-        [accountId, code, payload.code, payload.name]
-      );
+      const updated =
+        payload.code === code
+          ? await client.query(
+              `UPDATE finance_cost_centers
+               SET name = $3, kind = $4, owner = $5, description = $6, updated_at = NOW()
+               WHERE account_id = $1 AND code = $2
+               RETURNING code, name, kind, owner, description`,
+              [accountId, code, payload.name, payload.kind, payload.owner, payload.description]
+            )
+          : await client.query(
+              `INSERT INTO finance_cost_centers (
+                 account_id, code, name, kind, owner, description, created_at, updated_at
+               )
+               SELECT account_id, $3, $4, $5, $6, $7, created_at, NOW()
+               FROM finance_cost_centers
+               WHERE account_id = $1 AND code = $2
+               RETURNING code, name, kind, owner, description`,
+              [
+                accountId,
+                code,
+                payload.code,
+                payload.name,
+                payload.kind,
+                payload.owner,
+                payload.description
+              ]
+            );
+      if (payload.code !== code) {
+        await client.query(
+          `UPDATE finance_expense_catalog_items
+           SET cost_center_code = $3, cost_center_name = $4, updated_at = NOW()
+           WHERE account_id = $1 AND cost_center_code = $2`,
+          [accountId, code, payload.code, payload.name]
+        );
+        await client.query(
+          'DELETE FROM finance_cost_centers WHERE account_id = $1 AND code = $2',
+          [accountId, code]
+        );
+      }
       const item = mapCostCenterRow(updated.rows[0] as Record<string, unknown>);
       return { item, diffSummary: summarizeCostCenterDiff(previous, item) };
     });

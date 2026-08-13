@@ -1,6 +1,21 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { URL } from 'node:url';
 
+export const DEFAULT_CORS_ALLOWED_ORIGINS = [
+  'http://127.0.0.1:3000',
+  'http://localhost:3000',
+  'http://127.0.0.1:3002',
+  'http://localhost:3002',
+  'http://127.0.0.1:3102',
+  'http://localhost:3102',
+  'http://127.0.0.1:3112',
+  'http://localhost:3112',
+  'http://127.0.0.1:4173',
+  'http://localhost:4173',
+  'http://127.0.0.1:5173',
+  'http://localhost:5173'
+] as const;
+
 const DEFAULT_CORS_ALLOW_METHODS = 'GET,POST,PUT,PATCH,DELETE,OPTIONS';
 const DEFAULT_CORS_ALLOW_HEADERS =
   'accept, authorization, content-type, x-correlation-id, x-request-id';

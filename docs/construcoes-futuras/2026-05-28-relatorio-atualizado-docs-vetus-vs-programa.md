@@ -1,5 +1,7 @@
 # Relatorio atualizado - Docs, Vetus e programa construido
 
+> Documento historico de 28/05/2026. As notas `94/100`, `91/100` e demais resultados abaixo sao baselines daquela revisao. Consulte [`docs/2026-08-11-relatorio-auditoria-p1.md`](../2026-08-11-relatorio-auditoria-p1.md) para a auditoria executável vigente.
+
 Data: 2026-05-28  
 Base principal:
 

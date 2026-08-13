@@ -4,7 +4,7 @@ import type {
   UpdateSurgeryStatusRequest
 } from '@cvg-his-v2/shared-contracts';
 import { NotFoundError } from '@cvg-his-v2/shared-errors';
-import type { SurgeryCaseId, SurgeryCaseSummary } from '@cvg-his-v2/shared-types';
+import type { AccountId, SurgeryCaseId, SurgeryCaseSummary } from '@cvg-his-v2/shared-types';
 import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 import { DatabaseSurgeryCaseRepository } from './repositories/database-surgery.repository.js';
@@ -31,6 +31,7 @@ export class SurgeryService {
   readonly #cases = new Map<SurgeryCaseId, SurgeryCaseSummary>();
   readonly #repository?: SurgeryCaseRepository;
   #pendingPersist: Promise<void> = Promise.resolve();
+  #lastPersist: Promise<void> = Promise.resolve();
 
   public constructor(encounters: EncountersService, options?: SurgeryServiceOptions) {
     this.#encounters = encounters;
@@ -42,27 +43,50 @@ export class SurgeryService {
     return allowed?.includes(newStatus) ?? false;
   }
 
+  public async waitForPersistence(): Promise<void> {
+    try {
+      await this.#lastPersist;
+    } finally {
+      this.#pendingPersist = this.#pendingPersist.catch(() => {});
+      this.#lastPersist = this.#pendingPersist;
+    }
+  }
+
+  #enqueuePersist(operation: () => Promise<void>, rollback?: () => void): void {
+    const pending = this.#pendingPersist.then(async () => {
+      try {
+        await operation();
+      } catch (error) {
+        rollback?.();
+        throw error;
+      }
+    });
+    this.#lastPersist = pending;
+    this.#pendingPersist = pending;
+    void pending.catch(() => {});
+  }
+
   private async persistCase(surgeryCase: SurgeryCaseSummary): Promise<void> {
-    const repo = this.#repository;
-    if (repo) {
-      this.#pendingPersist = this.#pendingPersist.then(async () => {
-        const existing = await repo.findById(surgeryCase.id);
-        if (existing) {
-          await repo.update(surgeryCase);
-        } else {
-          await repo.create(surgeryCase);
-        }
-      });
-      await this.#pendingPersist;
+    if (this.#repository) {
+      await this.#encounters.waitForPersistence();
+      await this.#repository.create(surgeryCase);
     }
   }
 
   private async updateCase(surgeryCase: SurgeryCaseSummary): Promise<void> {
-    await this.persistCase(surgeryCase);
+    if (this.#repository) {
+      await this.#repository.update(surgeryCase);
+    }
   }
 
-  public requestCase(payload: CreateSurgeryCaseRequest): SurgeryCaseSummary {
+  public requestCase(
+    payload: CreateSurgeryCaseRequest,
+    expectedAccountId?: AccountId
+  ): SurgeryCaseSummary {
     const encounter = this.#encounters.getOrThrow(payload.encounterId as never);
+    if (expectedAccountId && encounter.accountId !== expectedAccountId) {
+      throw new NotFoundError('Encounter not found', { encounterId: payload.encounterId });
+    }
     const now = nowIso();
     const surgeryCase: SurgeryCaseSummary = {
       id: createCorrelationId('surg') as SurgeryCaseId,
@@ -79,8 +103,9 @@ export class SurgeryService {
       updatedAt: now
     };
     this.#cases.set(surgeryCase.id, surgeryCase);
-    this.persistCase(surgeryCase).catch((err) =>
-      console.error('Failed to persist surgery case:', err)
+    this.#enqueuePersist(
+      () => this.persistCase(surgeryCase),
+      () => this.#cases.delete(surgeryCase.id)
     );
     return surgeryCase;
   }
@@ -89,6 +114,10 @@ export class SurgeryService {
     return Array.from(this.#cases.values()).filter(
       (caseItem) => !encounterId || caseItem.encounterId === encounterId
     );
+  }
+
+  public listByAccount(accountId: AccountId, encounterId?: string): readonly SurgeryCaseSummary[] {
+    return this.list(encounterId).filter((caseItem) => caseItem.accountId === accountId);
   }
 
   public getOrThrow(caseId: SurgeryCaseId): SurgeryCaseSummary {
@@ -100,11 +129,22 @@ export class SurgeryService {
     return caseItem;
   }
 
+  public getForAccountOrThrow(accountId: AccountId, caseId: SurgeryCaseId): SurgeryCaseSummary {
+    const caseItem = this.getOrThrow(caseId);
+    if (caseItem.accountId !== accountId) {
+      throw new NotFoundError('Surgery case not found', { caseId });
+    }
+    return caseItem;
+  }
+
   public updateStatus(
     caseId: SurgeryCaseId,
-    payload: UpdateSurgeryStatusRequest
+    payload: UpdateSurgeryStatusRequest,
+    expectedAccountId?: AccountId
   ): SurgeryCaseSummary {
-    const current = this.getOrThrow(caseId);
+    const current = expectedAccountId
+      ? this.getForAccountOrThrow(expectedAccountId, caseId)
+      : this.getOrThrow(caseId);
 
     if (!this.isValidTransition(current.status, payload.status)) {
       throw new Error(`Invalid status transition from '${current.status}' to '${payload.status}'`);
@@ -121,7 +161,10 @@ export class SurgeryService {
         !current.endedAt && { endedAt: now })
     };
     this.#cases.set(caseId, updated);
-    this.updateCase(updated).catch((err) => console.error('Failed to update surgery case:', err));
+    this.#enqueuePersist(
+      () => this.updateCase(updated),
+      () => this.#cases.set(caseId, current)
+    );
     return updated;
   }
 }

@@ -3,3 +3,5 @@ packages:
   - packages/*
   - packages/modules/*
   - packages/shared/*
+
+injectWorkspacePackages: true

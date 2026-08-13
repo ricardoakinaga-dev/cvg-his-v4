@@ -1,5 +1,5 @@
 import { getPool } from '@cvg-his-v2/shared-database';
-import { withTenantQuery } from '@cvg-his-v2/tenant-context';
+import { withTenantQuery, withTenantQueryExplicit } from '@cvg-his-v2/tenant-context';
 import type {
   AccountId,
   UserId
@@ -21,12 +21,22 @@ export interface UsersRepository {
   update(user: UserRecord): Promise<void>;
   findById(id: UserId): Promise<UserRecord | null>;
   findByEmail(accountId: AccountId, email: string): Promise<UserRecord | null>;
+  findByLogin(accountSlug: string, username: string): Promise<UserRecord | null>;
   findAll(): Promise<readonly UserRecord[]>;
-  findRoleCodesByUserId(id: UserId): Promise<readonly string[]>;
+  findRoleCodesByUserId(id: UserId, accountId?: AccountId): Promise<readonly string[]>;
   findByAccountId(accountId: AccountId): Promise<readonly UserRecord[]>;
+  resolveAccountIdBySlug?(accountSlug: string): Promise<AccountId | null>;
 }
 
 export class DatabaseUsersRepository implements UsersRepository {
+  async resolveAccountIdBySlug(accountSlug: string): Promise<AccountId | null> {
+    const result = await getPool().query<{ id: string | null }>(
+      'SELECT app.resolve_active_account_id($1) AS id',
+      [accountSlug]
+    );
+    return (result.rows[0]?.id as AccountId | null | undefined) ?? null;
+  }
+
   async create(user: UserRecord): Promise<void> {
     await withTenantQuery(getPool(), async (client) => {
       return await client.query(
@@ -63,20 +73,56 @@ export class DatabaseUsersRepository implements UsersRepository {
     });
   }
 
+  async findByLogin(accountSlug: string, username: string): Promise<UserRecord | null> {
+    const accountId = await this.resolveAccountIdBySlug(accountSlug);
+    if (!accountId) return null;
+
+    return withTenantQueryExplicit(getPool(), accountId, async (client) => {
+      const result = await client.query(
+        `SELECT *
+         FROM users
+         WHERE account_id = $1
+           AND (lower(email) = lower($2) OR lower(split_part(email, '@', 1)) = lower($2))
+         LIMIT 1`,
+        [accountId, username]
+      );
+      if (result.rows.length === 0) return null;
+      return this.mapRow(result.rows[0]);
+    });
+  }
+
   async findAll(): Promise<readonly UserRecord[]> {
     const result = await getPool().query('SELECT * FROM users ORDER BY full_name');
     return result.rows.map((r: Record<string, unknown>) => this.mapRow(r));
   }
 
-  async findRoleCodesByUserId(id: UserId): Promise<readonly string[]> {
-    const result = await getPool().query(
-      `SELECT r.name
-       FROM user_roles ur
-       JOIN roles r ON r.id = ur.role_id
-       WHERE ur.user_id = $1
-       ORDER BY r.name`,
-      [id]
-    );
+  async findRoleCodesByUserId(
+    id: UserId,
+    accountId?: AccountId
+  ): Promise<readonly string[]> {
+    const result = accountId
+      ? await withTenantQueryExplicit(getPool(), accountId, (client) =>
+          client.query(
+            `SELECT r.name
+             FROM user_roles ur
+             JOIN roles r ON r.id = ur.role_id
+             JOIN users u ON u.id = ur.user_id
+             WHERE ur.user_id = $1
+             ORDER BY r.name`,
+            [id]
+          )
+        )
+      : await withTenantQuery(getPool(), (client) =>
+          client.query(
+            `SELECT r.name
+             FROM user_roles ur
+             JOIN roles r ON r.id = ur.role_id
+             JOIN users u ON u.id = ur.user_id
+             WHERE ur.user_id = $1
+             ORDER BY r.name`,
+            [id]
+          )
+        );
     return result.rows.map((row: Record<string, unknown>) => row.name as string);
   }
 

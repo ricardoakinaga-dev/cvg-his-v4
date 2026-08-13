@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { EncountersService } from '@cvg-his-v2/module-encounters';
 import type {
   AddInpatientProgressRequest,
@@ -11,6 +13,8 @@ import type {
 } from '@cvg-his-v2/shared-contracts';
 import { NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
 import type {
+  AccountId,
+  BedId,
   InpatientProgressId,
   InpatientProgressSummary,
   InpatientOccurrenceId,
@@ -20,9 +24,8 @@ import type {
   InpatientDailyChargeWorklistItem,
   InpatientStayId,
   InpatientStaySummary,
-  UserId,
   SectorId,
-  BedId
+  UserId
 } from '@cvg-his-v2/shared-types';
 import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
@@ -39,7 +42,6 @@ import type {
   InpatientDailyChargeRepository
 } from './repositories/database-inpatient.repository.js';
 import { SectorBedService } from './sector-bed.service.js';
-import type { SectorBedServiceOptions } from './sector-bed.service.js';
 
 export type {
   InpatientStayRepository,
@@ -78,12 +80,14 @@ export interface InpatientServiceOptions {
 }
 
 export interface InpatientStayListFilters {
+  readonly accountId?: AccountId;
   readonly encounterId?: string;
   readonly patientId?: string;
   readonly includeDischarged?: boolean;
 }
 
 export interface InpatientDailyChargeWorklistFilters {
+  readonly accountId?: AccountId;
   readonly status?: InpatientDailyChargeSummary['status'];
   readonly unit?: string;
   readonly ward?: string;
@@ -101,6 +105,7 @@ export class InpatientService {
   readonly #dailyChargeRepository?: InpatientDailyChargeRepository;
   readonly #sectorBedService?: SectorBedService;
   #pendingPersist: Promise<void> = Promise.resolve();
+  #lastPersist: Promise<void> = Promise.resolve();
 
   public constructor(encounters: EncountersService, options?: InpatientServiceOptions) {
     this.#encounters = encounters;
@@ -111,8 +116,27 @@ export class InpatientService {
     this.#sectorBedService = options?.sectorBedService;
   }
 
-  #enqueuePersist(operation: () => Promise<void>): void {
-    this.#pendingPersist = this.#pendingPersist.then(operation).catch(() => {});
+  public async waitForPersistence(): Promise<void> {
+    try {
+      await this.#lastPersist;
+    } finally {
+      this.#pendingPersist = this.#pendingPersist.catch(() => {});
+      this.#lastPersist = this.#pendingPersist;
+    }
+  }
+
+  #enqueuePersist(operation: () => Promise<void>, rollback?: () => void): void {
+    const pending = this.#pendingPersist.then(async () => {
+      try {
+        await operation();
+      } catch (error) {
+        rollback?.();
+        throw error;
+      }
+    });
+    this.#lastPersist = pending;
+    this.#pendingPersist = pending;
+    void pending.catch(() => {});
   }
 
   private isValidTransition(currentStatus: string, newStatus: string): boolean {
@@ -122,6 +146,7 @@ export class InpatientService {
 
   private async persistStay(stay: InpatientStaySummary): Promise<void> {
     if (this.#stayRepository) {
+      await this.#encounters.waitForPersistence();
       await this.#stayRepository.create(stay);
     }
   }
@@ -156,11 +181,23 @@ export class InpatientService {
     }
   }
 
-  public admit(payload: CreateInpatientAdmissionRequest): InpatientStaySummary {
+  public admit(
+    payload: CreateInpatientAdmissionRequest,
+    expectedAccountId?: AccountId
+  ): InpatientStaySummary {
     const encounter = this.#encounters.getOrThrow(payload.encounterId as never);
+    if (expectedAccountId && encounter.accountId !== expectedAccountId) {
+      throw new NotFoundError('Encounter not found', { encounterId: payload.encounterId });
+    }
+    if (payload.patientId !== encounter.patientId) {
+      throw new ValidationError('Patient does not belong to encounter', {
+        encounterId: encounter.id,
+        patientId: payload.patientId
+      });
+    }
     const now = nowIso();
     const stay: InpatientStaySummary = {
-      id: createCorrelationId('stay') as InpatientStayId,
+      id: randomUUID() as InpatientStayId,
       accountId: encounter.accountId,
       encounterId: encounter.id,
       patientId: encounter.patientId,
@@ -177,12 +214,20 @@ export class InpatientService {
     this.#progress.set(stay.id, []);
     this.#occurrences.set(stay.id, []);
     this.#dailyCharges.set(stay.id, []);
-    this.#enqueuePersist(async () => {
-      await this.persistStay(stay);
-      if (this.#sectorBedService && stay.bedId) {
-        await this.#sectorBedService.setBedOccupied(stay.bedId);
+    this.#enqueuePersist(
+      async () => {
+        await this.persistStay(stay);
+        if (this.#sectorBedService && stay.bedId) {
+          await this.#sectorBedService.setBedOccupied(stay.bedId);
+        }
+      },
+      () => {
+        this.#stays.delete(stay.id);
+        this.#progress.delete(stay.id);
+        this.#occurrences.delete(stay.id);
+        this.#dailyCharges.delete(stay.id);
       }
-    });
+    );
     return stay;
   }
 
@@ -191,6 +236,7 @@ export class InpatientService {
     payload: AssignBedRequest
   ): Promise<InpatientStaySummary> {
     const stay = this.getOrThrow(stayId);
+    let targetBedName = stay.bed;
 
     if (stay.status === 'discharged') {
       throw new ValidationError('Cannot assign bed to discharged stay');
@@ -204,6 +250,7 @@ export class InpatientService {
       if (bed.status === 'occupied') {
         throw new ValidationError('Bed is already occupied');
       }
+      targetBedName = bed.name;
       await this.#sectorBedService.setBedOccupied(payload.bedId as BedId);
 
       if (stay.bedId) {
@@ -216,13 +263,19 @@ export class InpatientService {
       ...stay,
       sectorId: payload.sectorId as SectorId,
       bedId: payload.bedId as BedId,
+      bed: targetBedName,
       updatedAt: now
     };
 
     this.#stays.set(stayId, updated);
-    this.#enqueuePersist(async () => {
-      await this.updateStay(updated);
-    });
+    this.#enqueuePersist(
+      async () => {
+        await this.updateStay(updated);
+      },
+      () => {
+        this.#stays.set(stayId, stay);
+      }
+    );
 
     return updated;
   }
@@ -232,6 +285,7 @@ export class InpatientService {
     payload: AssignBedRequest
   ): Promise<InpatientStaySummary> {
     const stay = this.getOrThrow(stayId);
+    let targetBedName = stay.bed;
 
     if (stay.status === 'discharged') {
       throw new ValidationError('Cannot transfer bed for discharged stay');
@@ -249,6 +303,7 @@ export class InpatientService {
       if (bed.status === 'occupied') {
         throw new ValidationError('Bed is already occupied');
       }
+      targetBedName = bed.name;
       await this.#sectorBedService.setBedOccupied(payload.bedId as BedId);
 
       if (stay.bedId) {
@@ -260,24 +315,35 @@ export class InpatientService {
     const updated: InpatientStaySummary = {
       ...stay,
       status: 'transferred',
+      sectorId: payload.sectorId as SectorId,
+      bedId: payload.bedId as BedId,
+      bed: targetBedName,
       transferToSectorId: payload.sectorId as SectorId,
       transferToBedId: payload.bedId as BedId,
       updatedAt: now
     };
 
     this.#stays.set(stayId, updated);
-    this.#enqueuePersist(async () => {
-      await this.updateStay(updated);
-    });
+    this.#enqueuePersist(
+      async () => {
+        await this.updateStay(updated);
+      },
+      () => {
+        this.#stays.set(stayId, stay);
+      }
+    );
 
     return updated;
   }
 
   public list(filters?: string | InpatientStayListFilters): readonly InpatientStaySummary[] {
     const normalizedFilters =
-      typeof filters === 'string' ? { encounterId: filters } : filters ?? {};
+      typeof filters === 'string' ? { encounterId: filters } : (filters ?? {});
 
     return Array.from(this.#stays.values()).filter((stay) => {
+      if (normalizedFilters.accountId && stay.accountId !== normalizedFilters.accountId) {
+        return false;
+      }
       if (normalizedFilters.encounterId && stay.encounterId !== normalizedFilters.encounterId) {
         return false;
       }
@@ -300,6 +366,14 @@ export class InpatientService {
     return stay;
   }
 
+  public getForAccountOrThrow(accountId: AccountId, stayId: InpatientStayId): InpatientStaySummary {
+    const stay = this.getOrThrow(stayId);
+    if (stay.accountId !== accountId) {
+      throw new NotFoundError('Inpatient stay not found', { stayId });
+    }
+    return stay;
+  }
+
   public addProgress(
     actorUserId: UserId,
     payload: AddInpatientProgressRequest
@@ -316,9 +390,14 @@ export class InpatientService {
     };
     const current = this.#progress.get(stay.id) ?? [];
     this.#progress.set(stay.id, [progress, ...current]);
-    this.#enqueuePersist(async () => {
-      await this.persistProgress(progress);
-    });
+    this.#enqueuePersist(
+      async () => {
+        await this.persistProgress(progress);
+      },
+      () => {
+        this.#progress.set(stay.id, current);
+      }
+    );
     return progress;
   }
 
@@ -351,9 +430,14 @@ export class InpatientService {
     };
     const current = this.#occurrences.get(stay.id) ?? [];
     this.#occurrences.set(stay.id, [occurrence, ...current]);
-    this.#enqueuePersist(async () => {
-      await this.persistOccurrence(occurrence);
-    });
+    this.#enqueuePersist(
+      async () => {
+        await this.persistOccurrence(occurrence);
+      },
+      () => {
+        this.#occurrences.set(stay.id, current);
+      }
+    );
     return occurrence;
   }
 
@@ -399,9 +483,14 @@ export class InpatientService {
     };
     const current = this.#dailyCharges.get(stay.id) ?? [];
     this.#dailyCharges.set(stay.id, [dailyCharge, ...current]);
-    this.#enqueuePersist(async () => {
-      await this.persistDailyCharge(dailyCharge);
-    });
+    this.#enqueuePersist(
+      async () => {
+        await this.persistDailyCharge(dailyCharge);
+      },
+      () => {
+        this.#dailyCharges.set(stay.id, current);
+      }
+    );
     return dailyCharge;
   }
 
@@ -426,6 +515,7 @@ export class InpatientService {
         }));
       })
       .filter((charge) => (filters?.status ? charge.status === filters.status : true))
+      .filter((charge) => (filters?.accountId ? charge.accountId === filters.accountId : true))
       .filter((charge) => (filters?.unit ? charge.unit === filters.unit : true))
       .filter((charge) => (filters?.ward ? charge.ward === filters.ward : true))
       .sort((left, right) => {
@@ -462,9 +552,14 @@ export class InpatientService {
       stayId,
       charges.map((item) => (item.id === chargeId ? updated : item))
     );
-    this.#enqueuePersist(async () => {
-      await this.updateDailyCharge(updated);
-    });
+    this.#enqueuePersist(
+      async () => {
+        await this.updateDailyCharge(updated);
+      },
+      () => {
+        this.#dailyCharges.set(stayId, charges);
+      }
+    );
     return updated;
   }
 
@@ -506,26 +601,32 @@ export class InpatientService {
     };
 
     this.#stays.set(stayId, updated);
-    this.#enqueuePersist(async () => {
-      if (
-        this.#sectorBedService &&
-        stay.bedId &&
-        (payload.status === 'discharged' || payload.status === 'transferred')
-      ) {
-        await this.#sectorBedService.setBedAvailable(stay.bedId);
+    this.#enqueuePersist(
+      async () => {
+        if (
+          this.#sectorBedService &&
+          stay.bedId &&
+          (payload.status === 'discharged' || payload.status === 'transferred')
+        ) {
+          await this.#sectorBedService.setBedAvailable(stay.bedId);
+        }
+        await this.updateStay(updated);
+      },
+      () => {
+        this.#stays.set(stayId, stay);
       }
-      await this.updateStay(updated);
-    });
+    );
     return updated;
   }
 
   public buildHandoverPreview(filters?: {
+    readonly accountId?: AccountId;
     readonly unit?: string;
     readonly ward?: string;
     readonly includeDischarged?: boolean;
   }): InpatientHandoverPreviewResponse {
     const includeDischarged = filters?.includeDischarged ?? false;
-    const items = this.list()
+    const items = this.list({ accountId: filters?.accountId, includeDischarged })
       .filter((stay) => includeDischarged || stay.status !== 'discharged')
       .filter((stay) => !filters?.unit || stay.unit === filters.unit)
       .filter((stay) => !filters?.ward || stay.ward === filters.ward)
@@ -539,9 +640,9 @@ export class InpatientService {
       .map((stay) => {
         const latestProgress = this.listProgress(stay.id)[0];
         const requiresAttention =
-          stay.status === 'transferred'
-          || (latestProgress?.note.toLowerCase().includes('urg') ?? false)
-          || (latestProgress?.note.toLowerCase().includes('pend') ?? false);
+          stay.status === 'transferred' ||
+          (latestProgress?.note.toLowerCase().includes('urg') ?? false) ||
+          (latestProgress?.note.toLowerCase().includes('pend') ?? false);
 
         return {
           stayId: stay.id,

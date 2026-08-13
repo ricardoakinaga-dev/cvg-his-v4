@@ -25,10 +25,11 @@
     "@cvg-his-v2/shared-feature-flags": "workspace:*",
     "@cvg-his-v2/tenant-context": "workspace:*",
     "@opentelemetry/api": "^1.9.1",
-    "@opentelemetry/exporter-trace-otlp-http": "^0.218.0",
-    "@opentelemetry/resources": "^2.6.1",
-    "@opentelemetry/sdk-node": "^0.218.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.221.0",
+    "@opentelemetry/resources": "^2.10.0",
+    "@opentelemetry/sdk-node": "^0.221.0",
     "@opentelemetry/semantic-conventions": "^1.40.0",
+    "pg": "^8.13.1",
     "prom-client": "^15.1.3"
   },
   "scripts": {
@@ -36,6 +37,6 @@
     "build": "tsc -b tsconfig.json --force",
     "typecheck": "pnpm --filter @cvg-his-v2/worker^... build && tsc -p tsconfig.json --noEmit",
     "lint": "tsc -p tsconfig.json --noEmit",
-    "test": "tsc -p tsconfig.json && node --test dist/runner.test.js && node --test dist/bootstrap.test.js && node --test dist/jobs/scheduled-report-job.test.js"
+    "test": "tsc -p tsconfig.json && node --test dist/account-config.test.js && node --test dist/account-runner.test.js && node --test dist/entrypoint.test.js && node --test dist/runner.test.js && node --test dist/bootstrap.test.js && node --test dist/jobs/scheduled-report-job.test.js"
   }
 }

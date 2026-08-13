@@ -28,7 +28,7 @@ import {
   type RoleRecord
 } from './repositories/database-access-control.repository.js';
 
-const permissionCatalog: readonly PermissionDefinition[] = [
+export const permissionCatalog: readonly PermissionDefinition[] = [
   {
     id: 'perm_auth_session_read' as PermissionId,
     code: 'auth.session.read',
@@ -379,7 +379,7 @@ const permissionCatalog: readonly PermissionDefinition[] = [
   }
 ] as const;
 
-const roleCatalog: readonly RoleDefinition[] = [
+export const roleCatalog: readonly RoleDefinition[] = [
   {
     id: 'role_admin' as RoleId,
     code: 'admin',

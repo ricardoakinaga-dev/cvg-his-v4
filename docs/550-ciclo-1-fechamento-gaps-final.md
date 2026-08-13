@@ -244,7 +244,7 @@ pnpm typecheck
 pnpm test
 
 # test:critical — requer PostgreSQL rodando (nao disponivel neste ambiente)
-# DATABASE_URL_TEST=postgres://postgres:postgres@localhost:5433/cvg_his_v2_test pnpm test:critical
+# DATABASE_URL_TEST="<test-database-url>" pnpm test:critical
 ```
 
 ---

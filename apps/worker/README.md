@@ -53,6 +53,8 @@ NODE_ENV=production node apps/worker/dist/index.js
 - `APP_NAME` — nome do servico (default: cvg-his-v2-worker)
 - `OTEL_ENABLED`, `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` — trilha de observabilidade distribuida
 - `WORKER_FEATURE_FLAGS` — lista bootstrap de flags explicitas para o worker
+- `WORKER_ACCOUNT_IDS` — lista obrigatoria de UUIDs separada por virgula em producao/staging; cada conta e processada em contexto e transacao RLS isolados
+- `WORKER_REPORTS_USER_ID` — UUID opcional da identidade tecnica usada nos relatorios agendados
 
 ## Dependencias
 
@@ -67,9 +69,10 @@ NODE_ENV=production node apps/worker/dist/index.js
 O worker executa em loop continuo:
 
 1. Bootstrap das dependencias (DB, repositorios)
-2. A cada `WORKER_INTERVAL_MS` ms, executa um tick
-3. Cada tick processa notificacoes pendentes e queues assincronas
-4. Graceful shutdown via `shutdownWorkerServices()`
+2. Valida `WORKER_ACCOUNT_IDS` sem fallback para a variavel singular legada
+3. A cada `WORKER_INTERVAL_MS` ms, executa um tick por conta configurada
+4. Cada operacao de notificacoes, outbox e relatorios usa uma transacao PostgreSQL com o tenant corrente
+5. Graceful shutdown via `shutdownWorkerServices()`
 
 ## Contrato operacional
 

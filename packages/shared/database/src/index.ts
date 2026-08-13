@@ -22,7 +22,14 @@ export {
   getPool,
   closeDatabaseClient,
   checkDatabaseHealth,
-  type DatabaseClient
+  inspectDatabaseRuntimeRole,
+  assertDatabaseRuntimeRoleIsRestricted,
+  getActiveDatabaseContext,
+  runWithDatabaseClient,
+  type DatabaseClient,
+  type DatabaseRoleQueryable,
+  type DatabaseRuntimeRoleInspection,
+  type DatabaseExecutionContext
 } from './client.js';
 
 export * from './schemas/index.js';

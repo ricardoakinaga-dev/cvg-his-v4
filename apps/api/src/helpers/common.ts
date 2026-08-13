@@ -5,6 +5,8 @@
 import type { IncomingMessage } from 'node:http';
 import { ValidationError } from '@cvg-his-v2/shared-errors';
 
+export const MAX_JSON_BODY_BYTES = 1_000_000;
+
 export interface FieldSpec {
   type: 'string' | 'number' | 'boolean' | 'array' | 'object';
   required?: boolean;
@@ -19,9 +21,15 @@ export interface FieldSpec {
  */
 export async function readJsonBody(request: IncomingMessage): Promise<unknown> {
   const chunks: Buffer[] = [];
+  let totalBytes = 0;
 
   for await (const chunk of request) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    totalBytes += buffer.byteLength;
+    if (totalBytes > MAX_JSON_BODY_BYTES) {
+      throw new ValidationError(`Request body exceeds maximum size of ${MAX_JSON_BODY_BYTES} bytes`);
+    }
+    chunks.push(buffer);
   }
 
   if (chunks.length === 0) {

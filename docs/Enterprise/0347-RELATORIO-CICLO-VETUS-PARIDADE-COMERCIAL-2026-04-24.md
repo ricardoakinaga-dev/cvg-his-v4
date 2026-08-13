@@ -91,7 +91,7 @@ Também foram adicionados enums, índices, constraints de consistência e coment
 | `pnpm --filter @cvg-his-v2/spa run typecheck` | `PASS` |
 | `pnpm --filter @cvg-his/db run build` | `PASS` |
 | `pnpm --filter @cvg-his/db run test` | `PASS` |
-| `DATABASE_URL=postgres://postgres:postgres@localhost:5433/cvg_his_v2_test pnpm --filter @cvg-his/db run db:migrate` | `PASS`, incluindo `0021_commercial_loyalty_price_pdv` |
+| `DATABASE_URL="<test-database-url>" pnpm --filter @cvg-his/db run db:migrate` | `PASS`, incluindo `0021_commercial_loyalty_price_pdv` |
 | `pnpm validate:openapi` | `PASS` (`175 paths`, `33 tags`, `178 schemas`) |
 | `node infra/scripts/check-cutover-readiness.mjs` | `PASS` |
 | `pnpm --filter @cvg-his-v2/secrets run test` | `PASS` apos execucao fora do sandbox, pois a suite abre servidor local |

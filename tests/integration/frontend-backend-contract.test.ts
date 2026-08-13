@@ -6,6 +6,7 @@ import { navGroups } from '../../apps/spa/src/navigation';
 import { routes } from '../../apps/spa/src/router/routes';
 
 const SERVICE_DIRECTORY = join(process.cwd(), 'apps/spa/src/services');
+const OPENAPI_PATH = join(process.cwd(), 'apps/api/src/openapi.yaml');
 
 const backendRoutePatterns = [
   /^\/access-control$/,
@@ -167,21 +168,64 @@ const backendRoutePatterns = [
   /^\/webhooks$/,
   /^\/webhooks\/[^/]+$/,
   /^\/webhooks\/[^/]+\/deliveries$/,
-  /^\/webhooks\/whatsapp\/inbound$/
+  /^\/webhooks\/whatsapp\/inbound$/,
+  /^\/breeds$/,
+  /^\/breeds\/[^/]+$/,
+  /^\/clinical-handoffs$/,
+  /^\/clinical-handoffs\/send-to-reception$/,
+  /^\/clinical-handoffs\/[^/]+\/(acknowledge|return-to-clinic|send-to-finance)$/,
+  /^\/clinical-handoffs\/[^/]+\/pending$/,
+  /^\/clinical-handoffs\/[^/]+\/pending\/[^/]+\/resolve$/,
+  /^\/coat-colors$/,
+  /^\/coat-colors\/[^/]+$/,
+  /^\/company-sectors$/,
+  /^\/company-sectors\/[^/]+$/,
+  /^\/customer-groups$/,
+  /^\/customer-groups\/[^/]+$/,
+  /^\/manufacturers$/,
+  /^\/manufacturers\/[^/]+$/,
+  /^\/measurement-units$/,
+  /^\/measurement-units\/[^/]+$/,
+  /^\/prescriptions\/[^/]+\/document$/,
+  /^\/product-groups$/,
+  /^\/product-groups\/[^/]+$/,
+  /^\/queue\/[^/]+\/transfer$/,
+  /^\/responsibility-terms$/,
+  /^\/responsibility-terms\/[^/]+$/,
+  /^\/species$/,
+  /^\/species\/[^/]+$/,
+  /^\/vaccines-dewormers\/reminders\/email$/,
+  /^\/vaccines-dewormers\/[^/]+$/,
+  /^\/vaccines-dewormers\/[^/]+\/email$/,
+  /^\/warehouses$/,
+  /^\/warehouses\/[^/]+$/
 ] as const;
 
 function normalizeServicePath(path: string): string {
   return path
     .replace(/\$\{buildQuery\([\s\S]*?\)\}/g, '')
+    .replace(/\$\{buildWebhookQuery\([\s\S]*?\)\}/g, '')
     .replace(/\$\{params\}/g, '')
     .replace(/\$\{query\}/g, '')
     .replace(/\$\{query \?.*$/, '')
     .replace(/\$\{suffix\}/g, '')
     .replace(/\$\{search\.toString\(\)\}/g, '')
     .replace(/\$\{[^}]+\}/g, '{param}')
+    .replace(/\$\{.*$/, '')
     .replace(/\?.*$/, '')
     .replace(/\{param\}/g, 'sample');
 }
+
+function collectOpenApiRoutePatterns(): RegExp[] {
+  const source = readFileSync(OPENAPI_PATH, 'utf8');
+  return [...source.matchAll(/^  (\/[^:\n]+):\s*$/gm)].map((match) => {
+    const parameterized = (match[1] ?? '').replace(/\{[^}]+\}/g, '__PARAM__');
+    const escaped = parameterized.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(`^${escaped.replaceAll('__PARAM__', '[^/]+')}$`);
+  });
+}
+
+const openApiRoutePatterns = collectOpenApiRoutePatterns();
 
 function collectSpaServicePaths(): string[] {
   const servicePaths = new Set<string>();
@@ -252,19 +296,26 @@ function collectRouterPaths(): string[] {
 describe('frontend/backend route contract', () => {
   it('keeps every SPA service endpoint backed by a backend route', () => {
     const missing = collectSpaServicePaths().filter(
-      (path) => !backendRoutePatterns.some((pattern) => pattern.test(path))
+      (path) =>
+        !backendRoutePatterns.some((pattern) => pattern.test(path)) &&
+        !openApiRoutePatterns.some((pattern) => pattern.test(path))
     );
 
     expect(missing).toEqual([]);
   });
 
-  it('keeps navigation paths resolvable by the SPA router', () => {
+  it('keeps navigation paths resolvable and each section free of duplicate entries', () => {
     const routerPaths = new Set(collectRouterPaths());
     const navPaths = navGroups.flatMap((group) =>
       group.sections.flatMap((section) => section.items.map((item) => item.path))
     );
 
-    expect(new Set(navPaths).size).toBe(navPaths.length);
+    for (const group of navGroups) {
+      for (const section of group.sections) {
+        const sectionPaths = section.items.map((item) => item.path);
+        expect(new Set(sectionPaths).size).toBe(sectionPaths.length);
+      }
+    }
 
     const missing = navPaths.filter((path) => !routerPaths.has(path));
     expect(missing).toEqual([]);

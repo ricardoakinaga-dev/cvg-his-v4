@@ -17,7 +17,10 @@ function loadMigrationFiles(): RlsMigrationFile[] {
 
 const report = analyzeRlsMigrationCoverage(loadMigrationFiles());
 const failing = report.tables.filter(
-  (table) => table.status === 'missing_rls' || table.status === 'missing_policy'
+  (table) =>
+    table.status === 'missing_rls' ||
+    table.status === 'missing_force_rls' ||
+    table.status === 'missing_policy'
 );
 
 if (failing.length > 0) {

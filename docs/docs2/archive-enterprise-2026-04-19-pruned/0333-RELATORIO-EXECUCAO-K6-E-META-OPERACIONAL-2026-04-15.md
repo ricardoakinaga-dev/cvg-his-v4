@@ -105,7 +105,7 @@ Para considerar uma execucao valida de performance, a trilha precisa conter:
 ## 5. Comandos canonicos
 
 ```bash
-DATABASE_URL=postgres://postgres:postgres@localhost:5433/cvg_his_v2_test \
+DATABASE_URL="<test-database-url>" \
 pnpm benchmark:k6:seed
 ```
 

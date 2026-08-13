@@ -56,8 +56,7 @@ describe('navigation groups', () => {
       'Esteira de Exames',
       'Vacinas e Vermífugos',
       'Orçamentos',
-      'Resgate de Pontos',
-      'Vendas (beta)'
+      'Resgate de Pontos'
     ]);
     expect(findSectionItemLabels('atendimento', 'Internação')).toEqual(['Internação', 'Diárias de Internação']);
     expect(findSectionItemLabels('atendimento', 'Cadastros')).toEqual([
@@ -118,7 +117,7 @@ describe('navigation groups', () => {
     expect(findMatchingNavItem('/prescriptions')?.label).toBe('Prescrições');
     expect(findMatchingNavItem('/exam-orders')?.label).toBe('Esteira de Exames');
     expect(findMatchingNavItem('/exam-results')?.label).toBe('Resultados API');
-    expect(findMatchingNavItem('/sales/beta')?.label).toBe('Vendas (beta)');
+    expect(findMatchingNavItem('/sales/beta')?.label).toBe('Vendas');
     expect(findMatchingNavItem('/pix')?.label).toBe('PIX');
     expect(findMatchingNavItem('/reports')?.label).toBe('Visão por Domínio');
   });
@@ -126,6 +125,10 @@ describe('navigation groups', () => {
   it('keeps scheduling only as a legacy route outside the primary menu', () => {
     expect(findMatchingNavItem('/scheduling')).toBeUndefined();
     expect(findGroupPaths('atendimento')).not.toContain('/scheduling');
+  });
+
+  it('keeps the legacy beta sales route out of the primary menu', () => {
+    expect(findGroupPaths('atendimento')).not.toContain('/sales/beta');
   });
 
   it('exposes the requested items for each key module', () => {
@@ -143,7 +146,6 @@ describe('navigation groups', () => {
         '/vaccines-dewormers',
         '/quotes',
         '/loyalty',
-        '/sales/beta',
         '/inpatient',
         '/encounters',
         '/medical-records',

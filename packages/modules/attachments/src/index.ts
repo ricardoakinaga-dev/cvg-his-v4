@@ -48,28 +48,15 @@ export class AttachmentsService {
   public async upload(
     actorUserId: UserId,
     payload: CreateAttachmentRequest,
-    fileContent?: Buffer
+    fileContent?: Buffer,
+    expectedAccountId?: AccountId
   ): Promise<AttachmentSummary> {
     const linkedEntityId = requireNonEmptyString(payload.linkedEntityId, 'linkedEntityId');
-
-    if (payload.linkedEntityType === 'encounter') {
-      this.#encounters.getOrThrow(linkedEntityId as never);
-    } else if (payload.linkedEntityType === 'medical_record') {
-      await this.#medicalRecords.getRecordOrThrowAsync(linkedEntityId as never);
-    } else if (payload.linkedEntityType === 'diagnostic_order') {
-      this.#diagnostics.getOrThrow(linkedEntityId as never);
-    } else {
-      throw new NotFoundError('Invalid attachment link target', {
-        linkedEntityType: payload.linkedEntityType
-      });
-    }
-
-    const accountId =
-      payload.linkedEntityType === 'encounter'
-        ? this.#encounters.getOrThrow(linkedEntityId as never).accountId
-        : payload.linkedEntityType === 'medical_record'
-          ? (await this.#medicalRecords.getRecordOrThrowAsync(linkedEntityId as never)).accountId
-          : this.#diagnostics.getOrThrow(linkedEntityId as never).accountId;
+    const accountId = await this.#resolveLinkedEntityAccount(
+      payload.linkedEntityType,
+      linkedEntityId,
+      expectedAccountId
+    );
 
     let storageKey: string;
     let checksum: string;
@@ -152,15 +139,52 @@ export class AttachmentsService {
 
   public async listByLinkedEntity(
     linkedEntityType: 'encounter' | 'medical_record' | 'diagnostic_order',
-    linkedEntityId: string
+    linkedEntityId: string,
+    expectedAccountId?: AccountId
   ): Promise<readonly AttachmentSummary[]> {
+    const accountId = await this.#resolveLinkedEntityAccount(
+      linkedEntityType,
+      linkedEntityId,
+      expectedAccountId
+    );
     if (this.#repository) {
-      return this.#repository.findByLinkedEntity(linkedEntityType, linkedEntityId);
+      const attachments = await this.#repository.findByLinkedEntity(
+        linkedEntityType,
+        linkedEntityId
+      );
+      return attachments.filter((attachment) => attachment.accountId === accountId);
     }
     return this.#attachments.filter(
       (attachment) =>
+        attachment.accountId === accountId &&
         attachment.linkedEntityType === linkedEntityType &&
         attachment.linkedEntityId === linkedEntityId
     );
+  }
+
+  async #resolveLinkedEntityAccount(
+    linkedEntityType: CreateAttachmentRequest['linkedEntityType'],
+    linkedEntityId: string,
+    expectedAccountId?: AccountId
+  ): Promise<AccountId> {
+    let accountId: AccountId;
+    if (linkedEntityType === 'encounter') {
+      accountId = this.#encounters.getOrThrow(linkedEntityId as never).accountId;
+    } else if (linkedEntityType === 'medical_record') {
+      accountId = (await this.#medicalRecords.getRecordOrThrowAsync(linkedEntityId as never))
+        .accountId;
+    } else if (linkedEntityType === 'diagnostic_order') {
+      accountId = this.#diagnostics.getOrThrow(linkedEntityId as never).accountId;
+    } else {
+      throw new NotFoundError('Invalid attachment link target', { linkedEntityType });
+    }
+
+    if (expectedAccountId && accountId !== expectedAccountId) {
+      throw new NotFoundError('Attachment link target not found', {
+        linkedEntityType,
+        linkedEntityId
+      });
+    }
+    return accountId;
   }
 }

@@ -18,13 +18,15 @@ const SEED_PASSWORD = 'seed_admin';
 function createAuthService(options: {
   readonly mfa?: MfaService;
   readonly sessionRepository?: SessionRepository;
+  readonly audit?: AuditService;
   readonly secret?: string;
   readonly verifierSecrets?: readonly string[];
+  readonly users?: UsersService;
 } = {}) {
-  const users = new UsersService();
+  const users = options.users ?? new UsersService();
   const staff = new StaffService();
   const accessControl = new AccessControlService();
-  const audit = new AuditService();
+  const audit = options.audit ?? new AuditService();
 
   return new AuthService({
     secret: options.secret ?? 'test-secret-key',
@@ -73,6 +75,135 @@ test('AuthService: login with non-existent user throws', async () => {
       return true;
     }
   );
+});
+
+test('AuthService: failed scoped login audits the resolved account instead of a legacy fallback', async () => {
+  const accountId = '11111111-1111-4111-8111-111111111111';
+  const audit = new AuditService();
+  const users = new UsersService({
+    seedUsersEnabled: false,
+    repository: {
+      create: async () => undefined,
+      update: async () => undefined,
+      findById: async () => null,
+      findByEmail: async () => null,
+      findByLogin: async () => null,
+      findAll: async () => [],
+      findRoleCodesByUserId: async () => [],
+      findByAccountId: async () => [],
+      resolveAccountIdBySlug: async () => accountId as never
+    }
+  });
+  const auth = createAuthService({ audit, users });
+
+  await assert.rejects(
+    () =>
+      auth.login(
+        { accountSlug: 'default', username: 'missing-user', password: 'wrong' },
+        'corr-scoped-failure'
+      ),
+    AuthenticationError
+  );
+
+  assert.equal(audit.list()[0]?.accountId, accountId);
+});
+
+test('AuthService: normalizes scoped login identifiers without changing the password', async () => {
+  const accountId = '11111111-1111-4111-8111-111111111111';
+  const observed: { accountSlug?: string; username?: string; password?: string } = {};
+  const users = new UsersService({
+    seedUsersEnabled: false,
+    repository: {
+      create: async () => undefined,
+      update: async () => undefined,
+      findById: async () => null,
+      findByEmail: async () => null,
+      findByLogin: async (accountSlug, username) => {
+        observed.accountSlug = accountSlug;
+        observed.username = username;
+        return {
+          id: '22222222-2222-4222-8222-222222222222' as never,
+          accountId: accountId as never,
+          email: 'admin@cvg-his.local',
+          passwordHash: 'not-used-by-this-test',
+          fullName: 'Admin',
+          isActive: true,
+          createdAt: '2026-08-13T00:00:00.000Z',
+          updatedAt: '2026-08-13T00:00:00.000Z'
+        };
+      },
+      findAll: async () => [],
+      findRoleCodesByUserId: async () => [],
+      findByAccountId: async () => [],
+      resolveAccountIdBySlug: async (accountSlug) => {
+        observed.accountSlug = accountSlug;
+        return accountId as never;
+      }
+    }
+  });
+  users.verifyPassword = async (user, password) => {
+    observed.password = password;
+    void user;
+    return false;
+  };
+  const auth = createAuthService({ users });
+
+  await assert.rejects(
+    () =>
+      auth.login(
+        {
+          accountSlug: '  default  ',
+          username: '  Admin@CVG-HIS.local  ',
+          password: '  password-with-spaces  '
+        },
+        'corr-normalized-login'
+      ),
+    AuthenticationError
+  );
+
+  assert.equal(observed.accountSlug, 'default');
+  assert.equal(observed.username, 'admin@cvg-his.local');
+  assert.equal(observed.password, '  password-with-spaces  ');
+});
+
+test('AuthService: login fails closed when durable session persistence fails', async () => {
+  const repository: SessionRepository = {
+    create: async () => {
+      throw new Error('session database unavailable');
+    },
+    update: async () => undefined,
+    findById: async () => null,
+    findByUserId: async () => [],
+    delete: async () => undefined
+  };
+  const auth = createAuthService({ sessionRepository: repository });
+
+  await assert.rejects(
+    () => auth.login({ username: 'admin', password: SEED_PASSWORD }, 'corr-persistence-fail'),
+    /session database unavailable/
+  );
+  assert.equal(auth.listSessions().length, 0);
+});
+
+test('AuthService: login removes the persisted session when durable audit persistence fails', async () => {
+  const sessions = new InMemorySessionRepository();
+  const audit = new AuditService({
+    auditRepository: {
+      create: async () => {
+        throw new Error('audit database unavailable');
+      },
+      list: async () => [],
+      findById: async () => null
+    }
+  });
+  const auth = createAuthService({ sessionRepository: sessions, audit });
+
+  await assert.rejects(
+    () => auth.login({ username: 'admin', password: SEED_PASSWORD }, 'corr-audit-fail'),
+    /audit database unavailable/
+  );
+  assert.equal(auth.listSessions().length, 0);
+  assert.equal((await sessions.findByUserId('user_admin')).length, 0);
 });
 
 test('AuthService: login requires MFA for critical role when MFA is enabled', async () => {

@@ -60,7 +60,7 @@ Evidencias executadas:
 - `pnpm --filter @cvg-his-v2/api run test` - PASS funcional com `26/27` no sandbox; `startup-secrets.test.js` PASS isolado fora do sandbox por restricao ambiental.
 - `pnpm --filter @cvg-his-v2/spa exec vitest run src/pages/inventory/__tests__/PriceTablesAndPosPage.test.ts src/pages/loyalty/LoyaltyPage.test.ts` - PASS (`5/5`).
 - `pnpm --filter @cvg-his-v2/spa run typecheck` - PASS.
-- `DATABASE_URL_TEST=postgres://postgres:postgres@localhost:5433/cvg_his_v2_test pnpm exec vitest run --config vitest.integration.config.ts tests/integration/rls/rls-commercial.test.ts --reporter=verbose` - PASS fora do sandbox (`16/16`).
+- `DATABASE_URL_TEST="<test-database-url>" pnpm exec vitest run --config vitest.integration.config.ts tests/integration/rls/rls-commercial.test.ts --reporter=verbose` - PASS fora do sandbox (`16/16`).
 - `pnpm validate:openapi` - PASS (`184 paths`).
 - `pnpm validate:helm` - PASS com fallback estatico documentado quando `helm` nao esta instalado.
 

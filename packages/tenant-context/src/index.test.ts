@@ -7,7 +7,8 @@ import {
   requireAccountId,
   requireTenantId,
   resolveTenantFromRequest,
-  runWithTenantContext
+  runWithTenantContext,
+  withTenantQueryExplicit
 } from './index.js';
 
 function createRequest(headers: Record<string, string> = {}): IncomingMessage {
@@ -83,5 +84,91 @@ describe('tenant context', () => {
         })
       )
     ).toThrow('Account ID is required');
+  });
+
+  it('rejects a non-UUID database tenant context before acquiring a connection', async () => {
+    let connectCalled = false;
+    const pool = {
+      connect: async () => {
+        connectCalled = true;
+        throw new Error('must not connect');
+      }
+    };
+
+    await expect(
+      withTenantQueryExplicit(pool as never, 'acc_legacy', async () => undefined)
+    ).rejects.toThrow(/valid UUID/i);
+    expect(connectCalled).toBe(false);
+  });
+
+  it('releases the client and reports rollback failure without hiding the original error', async () => {
+    const queries: string[] = [];
+    let released = false;
+    const client = {
+      query: async (statement: string) => {
+        queries.push(statement);
+        if (statement === 'ROLLBACK') {
+          throw new Error('rollback failed');
+        }
+        return { rows: [] };
+      },
+      release: () => {
+        released = true;
+      }
+    };
+    const pool = { connect: async () => client };
+
+    await expect(
+      withTenantQueryExplicit(
+        pool as never,
+        'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        async () => {
+          throw new Error('business failed');
+        }
+      )
+    ).rejects.toThrow(/business failed.*rollback also failed.*rollback failed/i);
+
+    expect(queries).toEqual([
+      'BEGIN',
+      "SELECT set_config('app.current_account_id', $1, true)",
+      'ROLLBACK'
+    ]);
+    expect(released).toBe(true);
+  });
+
+  it('reuses the active request transaction and rejects a nested tenant switch', async () => {
+    const queries: string[] = [];
+    let connectCount = 0;
+    const client = {
+      query: async (statement: string) => {
+        queries.push(statement);
+        return { rows: [] };
+      },
+      release: () => undefined
+    };
+    const pool = {
+      connect: async () => {
+        connectCount += 1;
+        return client;
+      }
+    };
+    const accountA = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+    const accountB = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+
+    await withTenantQueryExplicit(pool as never, accountA, async () => {
+      await withTenantQueryExplicit(pool as never, accountA, async (activeClient) => {
+        expect(activeClient).toBe(client);
+      });
+      await expect(
+        withTenantQueryExplicit(pool as never, accountB, async () => undefined)
+      ).rejects.toThrow(/cannot switch.*tenant/i);
+    });
+
+    expect(connectCount).toBe(1);
+    expect(queries).toEqual([
+      'BEGIN',
+      "SELECT set_config('app.current_account_id', $1, true)",
+      'COMMIT'
+    ]);
   });
 });

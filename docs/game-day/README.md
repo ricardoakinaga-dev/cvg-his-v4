@@ -431,4 +431,4 @@ done
 - [Database Failure Runbook](../../packages/chaos/src/runbooks/database-failure-runbook.md)
 - [Redis Failure Runbook](../../packages/chaos/src/runbooks/redis-failure-runbook.md)
 - [API Failure Runbook](../../packages/chaos/src/runbooks/api-failure-runbook.md)
-- [GAP-15 Backlog Item](../../docs/Enterprise/0193-BACKLOG-IMPLEMENTACAO-PREMIUM-ENTERPRISE.md)
+- [GAP-15 Backlog Item](../Enterprise/0351-BACKLOG-FECHAMENTO-GAP-96-2026-04-24.md)

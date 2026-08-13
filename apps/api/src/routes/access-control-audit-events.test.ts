@@ -5,7 +5,7 @@ import test from 'node:test';
 
 import { AccessControlService } from '@cvg-his-v2/module-access-control';
 import { UsersService, type UserRecord } from '@cvg-his-v2/module-users';
-import { AuthenticationError, ForbiddenError } from '@cvg-his-v2/shared-errors';
+import { ForbiddenError, NotFoundError } from '@cvg-his-v2/shared-errors';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 import { handleAccessControlRoutes } from './access-control-routes.js';
 
@@ -527,7 +527,7 @@ test('access-control routes reject cross-account subjects for RH governance writ
         'corr-rh-cross-1',
         handlers
       ),
-    AuthenticationError
+    NotFoundError
   );
 
   await assert.rejects(
@@ -541,7 +541,7 @@ test('access-control routes reject cross-account subjects for RH governance writ
         'corr-rh-cross-2',
         handlers
       ),
-    AuthenticationError
+    NotFoundError
   );
 
   await assert.rejects(
@@ -558,6 +558,6 @@ test('access-control routes reject cross-account subjects for RH governance writ
         'corr-rh-cross-3',
         handlers
       ),
-    AuthenticationError
+    NotFoundError
   );
 });

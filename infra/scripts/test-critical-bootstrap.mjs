@@ -5,7 +5,7 @@
  * Provisions the test database and runs the critical test suite.
  * Usage:
  *   node infra/scripts/test-critical-bootstrap.mjs
- *   DATABASE_URL_TEST=postgres://user:pass@host:5433/cvg_his_v2_test node infra/scripts/test-critical-bootstrap.mjs
+ *   DATABASE_URL_TEST="$DATABASE_URL_TEST" node infra/scripts/test-critical-bootstrap.mjs
  *
  * Requirements:
  *   - Docker + docker compose available to start the isolated test PostgreSQL service
@@ -24,12 +24,16 @@
 import { execSync } from 'node:child_process';
 import { env } from 'node:process';
 
+import { waitForPostgres } from './test-critical-bootstrap-lib.mjs';
+
 function resolveDefaultTestDbUrl() {
   if (env.DATABASE_URL_TEST ?? env.DATABASE_URL) {
     return env.DATABASE_URL_TEST ?? env.DATABASE_URL;
   }
 
-  const url = new URL('postgres://postgres:postgres@localhost:5433/cvg_his_v2_test');
+  const url = new URL('postgres://localhost:5433/cvg_his_v2_test');
+  url.username = 'postgres';
+  url.password = 'postgres';
   url.pathname = `${url.pathname}_${process.pid}`;
   return url.toString();
 }
@@ -56,21 +60,8 @@ function run(cmd, opts = {}) {
   }
 }
 
-function tryRun(cmd, opts = {}) {
-  try {
-    execSync(cmd, { stdio: 'ignore', env: { ...env, ...opts.env }, cwd: process.cwd() });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 function cleanupRunner() {
   run('node infra/scripts/cleanup-test-runner.mjs --kill-orphans --drop-stale-dbs');
-}
-
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function main() {
@@ -85,14 +76,7 @@ async function main() {
   run(`docker compose -f ${COMPOSE_FILE} up -d postgres-test`);
 
   log('Checking PostgreSQL connectivity...');
-  let connected = false;
-  for (let attempt = 1; attempt <= 30; attempt += 1) {
-    connected = tryRun(`psql "${ADMIN_DB_URL}" -c "SELECT 1"`, { env: { PGCONNECT_TIMEOUT: '5' } });
-    if (connected) {
-      break;
-    }
-    await sleep(1000);
-  }
+  const connected = await waitForPostgres({ databaseUrl: ADMIN_DB_URL });
 
   if (!connected) {
     log('ERROR: Cannot connect to isolated PostgreSQL test service.');

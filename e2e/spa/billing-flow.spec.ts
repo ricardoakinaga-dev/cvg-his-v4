@@ -85,31 +85,27 @@ test.describe('Fluxo Completo de Billing (Faturamento)', () => {
     });
     console.log('   ✅ Billing page loaded');
 
-    // Validate patient and owner info
+    await expect(page.getByText('Ainda não há cobrança persistida')).toBeVisible({
+      timeout: 10000
+    });
+
+    // ── Step 3: Generate estimate explicitly ──
+    console.log('   📊 Generating estimate...');
+    const createEstimateButton = page
+      .locator('.billing-empty-state')
+      .getByRole('button', { name: /Gerar estimativa/i });
+    await expect(createEstimateButton).toBeVisible({ timeout: 10000 });
+    await createEstimateButton.click();
+
+    // Wait for status to change to "Estimado"
+    await expect(mainContent.getByText('Estimado', { exact: true }).first()).toBeVisible({
+      timeout: 15000
+    });
+    console.log('   ✅ Status: Estimado (estimated)');
+
     await expect(mainContent.getByText(patientName).first()).toBeVisible({ timeout: 10000 });
     await expect(mainContent.getByText(ownerName).first()).toBeVisible({ timeout: 10000 });
     console.log('   ✅ Patient and owner info visible');
-
-    // Validate initial status (draft)
-    await expect(page.getByLabel('Rascunho')).toBeVisible({ timeout: 10000 });
-    console.log('   ✅ Status: Rascunho (draft)');
-
-    // ── Step 3: Generate estimate ──
-    console.log('   📊 Generating estimate...');
-    await expect(page.getByRole('button', { name: 'Gerar Estimativa' })).toBeVisible({
-      timeout: 10000
-    });
-    await page.getByRole('button', { name: 'Gerar Estimativa' }).click();
-
-    // Wait for status to change to "Estimado"
-    await expect(page.getByLabel('Estimado')).toBeVisible({ timeout: 15000 });
-    console.log('   ✅ Status: Estimado (estimated)');
-
-    // "Gerar Estimativa" button should no longer be visible
-    await expect(page.getByRole('button', { name: 'Gerar Estimativa' })).toBeHidden({
-      timeout: 10000
-    });
-    console.log('   ✅ "Gerar Estimativa" button hidden');
 
     // ── Step 4: Add billing items ──
     console.log('   📦 Adding billing items...');
@@ -161,7 +157,9 @@ test.describe('Fluxo Completo de Billing (Faturamento)', () => {
     await page.getByRole('button', { name: /^Atualizar$/ }).click();
 
     // Wait for status to change
-    await expect(page.getByLabel('Aberto')).toBeVisible({ timeout: 15000 });
+    await expect(mainContent.getByText('Aberto', { exact: true }).first()).toBeVisible({
+      timeout: 15000
+    });
     console.log('   ✅ Status: Aberto (open)');
 
     // ── Step 6: Settle the billing ──
@@ -176,7 +174,9 @@ test.describe('Fluxo Completo de Billing (Faturamento)', () => {
     await page.getByRole('button', { name: /^Atualizar$/ }).click();
 
     // Wait for status to change to "Quitado"
-    await expect(page.getByLabel('Quitado')).toBeVisible({ timeout: 15000 });
+    await expect(mainContent.getByText('Quitado', { exact: true }).first()).toBeVisible({
+      timeout: 15000
+    });
     console.log('   ✅ Status: Quitado (settled)');
 
     // ── Step 7: Validate final state ──
@@ -207,7 +207,7 @@ test.describe('Fluxo Completo de Billing (Faturamento)', () => {
     console.log('   🔙 Verifying navigation...');
     await page.goto(`${SPA_URL}/billing`);
     await page.waitForLoadState('networkidle');
-    await expect(pageHeaderTitle).toHaveText('💰 Faturamento', {
+    await expect(pageHeaderTitle).toHaveText('Contas a Receber', {
       timeout: 15000
     });
     console.log('   ✅ Billing list accessible');
@@ -255,7 +255,7 @@ test.describe('Fluxo Completo de Billing (Faturamento)', () => {
     await page.waitForLoadState('networkidle');
 
     // Validate page title
-    await expect(pageHeaderTitle).toHaveText('💰 Faturamento', {
+    await expect(pageHeaderTitle).toHaveText('Contas a Receber', {
       timeout: 15000
     });
 
@@ -275,14 +275,17 @@ test.describe('Fluxo Completo de Billing (Faturamento)', () => {
     });
 
     // Validate status badge
-    await expect(page.getByLabel('Rascunho')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Ainda não há cobrança persistida')).toBeVisible({
+      timeout: 10000
+    });
 
     // Validate sections
-    await expect(page.getByText('Informa')).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText('Itens de Cobran')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('button', { name: /Gerar estimativa/i }).first()).toBeVisible({
+      timeout: 10000
+    });
 
     // Validate back link
-    const backLink = page.getByRole('link', { name: 'Voltar' });
+    const backLink = page.getByRole('link', { name: 'Voltar' }).first();
     await expect(backLink).toBeVisible({ timeout: 10000 });
     await expect(backLink).toHaveAttribute('href', '/billing');
 

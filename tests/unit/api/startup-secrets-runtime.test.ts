@@ -50,7 +50,11 @@ describe('startup-secrets runtime coverage', () => {
       { key: 'DATABASE_URL', path: 'staging/database', required: true },
       { key: 'REDIS_URL', path: 'staging/redis', required: false },
       { key: 'PAGARME_API_KEY', path: 'staging/pagarme', required: false },
-      { key: 'PAGARME_PIX_KEY', path: 'staging/pagarme', required: false }
+      { key: 'PAGARME_PIX_KEY', path: 'staging/pagarme', required: false },
+      { key: 'RESEND_API_KEY', path: 'staging/resend', required: false },
+      { key: 'SMS_API_KEY', path: 'staging/sms', required: false },
+      { key: 'GOOGLE_CALENDAR_ACCESS_TOKEN', path: 'staging/google_calendar', required: false },
+      { key: 'GOOGLE_CALENDAR_CALENDAR_ID', path: 'staging/google_calendar', required: false }
     ]);
   });
 
@@ -69,7 +73,11 @@ describe('startup-secrets runtime coverage', () => {
       { key: 'DATABASE_URL', path: 'development/database', required: false },
       { key: 'REDIS_URL', path: 'development/redis', required: false },
       { key: 'PAGARME_API_KEY', path: 'development/pagarme', required: false },
-      { key: 'PAGARME_PIX_KEY', path: 'development/pagarme', required: false }
+      { key: 'PAGARME_PIX_KEY', path: 'development/pagarme', required: false },
+      { key: 'RESEND_API_KEY', path: 'development/resend', required: false },
+      { key: 'SMS_API_KEY', path: 'development/sms', required: false },
+      { key: 'GOOGLE_CALENDAR_ACCESS_TOKEN', path: 'development/google_calendar', required: false },
+      { key: 'GOOGLE_CALENDAR_CALENDAR_ID', path: 'development/google_calendar', required: false }
     ]);
   });
 
@@ -98,7 +106,11 @@ describe('startup-secrets runtime coverage', () => {
       { key: 'MFA_SECRET_ENCRYPTION_KEY', path: 'production/mfa', required: false },
       { key: 'MFA_SECRET_ENCRYPTION_KEY_VERSION', path: 'production/mfa_version', required: false },
       { key: 'REDIS_URL', path: 'production/redis', required: false },
-      { key: 'PAGARME_API_KEY', path: 'production/pagarme', required: false }
+      { key: 'PAGARME_API_KEY', path: 'production/pagarme', required: false },
+      { key: 'RESEND_API_KEY', path: 'production/resend', required: false },
+      { key: 'SMS_API_KEY', path: 'production/sms', required: false },
+      { key: 'GOOGLE_CALENDAR_ACCESS_TOKEN', path: 'production/google_calendar', required: false },
+      { key: 'GOOGLE_CALENDAR_CALENDAR_ID', path: 'production/google_calendar', required: false }
     ]);
     expect(resolved.AUTH_SECRET).toBe('vault-auth-secret');
     expect(resolved.DATABASE_URL).toBe('postgres://already-set');
@@ -121,7 +133,11 @@ describe('startup-secrets runtime coverage', () => {
         DATABASE_URL: 'postgres://configured',
         REDIS_URL: 'redis://configured',
         PAGARME_API_KEY: 'configured-pagarme',
-        PAGARME_PIX_KEY: 'configured-pix'
+        PAGARME_PIX_KEY: 'configured-pix',
+        RESEND_API_KEY: 'configured-resend',
+        SMS_API_KEY: 'configured-sms',
+        GOOGLE_CALENDAR_ACCESS_TOKEN: 'configured-calendar-token',
+        GOOGLE_CALENDAR_CALENDAR_ID: 'configured-calendar-id'
       },
       { provider: 'vault', getMany } as never
     );

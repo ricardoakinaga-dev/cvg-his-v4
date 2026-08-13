@@ -12,8 +12,8 @@ import {
 } from 'drizzle-orm/pg-core';
 
 import { accounts } from './accounts.js';
-import { products } from './products.js';
-import { services } from './services.js';
+import { owners } from './owners.js';
+import { users } from './users.js';
 
 // =====================
 // Enums
@@ -41,12 +41,12 @@ export const counterSalePaymentMethodEnum = pgEnum('counter_sale_payment_method'
 export const counterSales = pgTable(
   'counter_sales',
   {
-    id: uuid('id').defaultRandom().primaryKey(),
+    id: text('id').primaryKey(),
     accountId: uuid('account_id')
       .notNull()
       .references(() => accounts.id, { onDelete: 'cascade' }),
     number: text('number').notNull(),
-    ownerId: uuid('owner_id').references(() => accounts.id),
+    ownerId: uuid('owner_id').references(() => owners.id),
     status: counterSaleStatusEnum('status').notNull().default('open'),
     subtotal: numeric('subtotal', { precision: 12, scale: 2 }).notNull().default('0'),
     discountAmount: numeric('discount_amount', { precision: 12, scale: 2 }).notNull().default('0'),
@@ -54,8 +54,8 @@ export const counterSales = pgTable(
     paidAmount: numeric('paid_amount', { precision: 12, scale: 2 }).notNull().default('0'),
     balanceDue: numeric('balance_due', { precision: 12, scale: 2 }).notNull().default('0'),
     notes: text('notes'),
-    openedByUserId: uuid('opened_by_user_id').notNull(),
-    closedByUserId: uuid('closed_by_user_id'),
+    openedByUserId: uuid('opened_by_user_id').notNull().references(() => users.id),
+    closedByUserId: uuid('closed_by_user_id').references(() => users.id),
     closedAt: timestamp('closed_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
@@ -75,15 +75,15 @@ export const counterSales = pgTable(
 export const counterSaleItems = pgTable(
   'counter_sale_items',
   {
-    id: uuid('id').defaultRandom().primaryKey(),
-    counterSaleId: uuid('counter_sale_id')
+    id: text('id').primaryKey(),
+    counterSaleId: text('counter_sale_id')
       .notNull()
       .references(() => counterSales.id, { onDelete: 'cascade' }),
     accountId: uuid('account_id')
       .notNull()
       .references(() => accounts.id, { onDelete: 'cascade' }),
     itemType: counterSaleItemTypeEnum('item_type').notNull(),
-    catalogItemId: uuid('catalog_item_id'),
+    catalogItemId: text('catalog_item_id'),
     nameSnapshot: text('name_snapshot').notNull(),
     codeSnapshot: text('code_snapshot'),
     unitPrice: numeric('unit_price', { precision: 12, scale: 2 }).notNull(),
@@ -108,8 +108,8 @@ export const counterSaleItems = pgTable(
 export const counterSalePayments = pgTable(
   'counter_sale_payments',
   {
-    id: uuid('id').defaultRandom().primaryKey(),
-    counterSaleId: uuid('counter_sale_id')
+    id: text('id').primaryKey(),
+    counterSaleId: text('counter_sale_id')
       .notNull()
       .references(() => counterSales.id, { onDelete: 'cascade' }),
     accountId: uuid('account_id')

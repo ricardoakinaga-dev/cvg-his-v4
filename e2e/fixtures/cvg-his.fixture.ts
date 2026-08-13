@@ -11,6 +11,7 @@ export type TestUser = {
   token?: string;
   userId?: string;
   accountId?: string;
+  accountSlug: string;
 };
 
 export type CVGHTestFixture = {
@@ -46,8 +47,12 @@ export const test = base.extend<CVGHTestFixture>({
       password: process.env.E2E_ADMIN_PASSWORD || 'seed_admin',
       token: process.env.E2E_AUTH_TOKEN,
       userId: process.env.E2E_USER_ID,
-      accountId: process.env.E2E_ACCOUNT_ID
+      accountId: process.env.E2E_ACCOUNT_ID,
+      accountSlug: process.env.E2E_ACCOUNT_SLUG?.trim() || 'default'
     };
+    if (!user.token || !user.userId || !user.accountId) {
+      throw new Error('E2E authenticated user context was not initialized by global setup');
+    }
     await use(user);
   },
 
@@ -63,6 +68,7 @@ export const test = base.extend<CVGHTestFixture>({
     }
 
     // Fill login form — LoginPage uses #email for username field
+    await page.fill('#account-slug', testUser.accountSlug);
     await page.fill('#email', testUser.username);
     await page.fill(
       'input[name="password"], input[type="password"], input#password',

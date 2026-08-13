@@ -43,6 +43,7 @@ interface BillingItemResponse {
 
 const TENANT_ID = uuid();
 const ACCOUNT_ID = uuid();
+const ACCOUNT_SLUG = `billing-api-${ACCOUNT_ID.slice(0, 8)}`;
 const USER_ID = uuid();
 const USERNAME = `billing-api-${USER_ID.slice(0, 8)}`;
 const EMAIL = `${USERNAME}@example.com`;
@@ -72,7 +73,7 @@ async function seedAuthenticatedBillingUser(): Promise<void> {
       VALUES ($1, $2, $3, 'Billing API Account')
       ON CONFLICT (id) DO NOTHING
     `,
-    [ACCOUNT_ID, TENANT_ID, `billing-api-${ACCOUNT_ID.slice(0, 8)}`]
+    [ACCOUNT_ID, TENANT_ID, ACCOUNT_SLUG]
   );
 
   await pool.query(
@@ -190,6 +191,10 @@ beforeAll(async () => {
     authSecret: 'billing-api-db-test-secret',
     accessTokenTtlSeconds: 900,
     refreshTokenTtlSeconds: 604800,
+    pixMockMode: true,
+    emailMockMode: true,
+    smsMockMode: true,
+    googleCalendarMockMode: true,
     repositories: bootstrap.repositories,
     fileStorage: bootstrap.fileStorage
   });
@@ -203,7 +208,7 @@ beforeAll(async () => {
   const login = await requestJson<LoginResponse>('/auth/login', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ username: USERNAME, password: PASSWORD })
+    body: JSON.stringify({ accountSlug: ACCOUNT_SLUG, username: USERNAME, password: PASSWORD })
   });
 
   expect(login.status).toBe(200);

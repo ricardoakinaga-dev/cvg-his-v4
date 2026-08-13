@@ -3,26 +3,48 @@ import { describe, expect, it } from 'vitest';
 import { ConflictError } from '@cvg-his-v2/shared-errors';
 
 import { InventoryService } from '../../../packages/modules/inventory/src/index.js';
+import type { InventoryRepository } from '../../../packages/modules/inventory/src/repositories/database-inventory.repository.js';
+
+function createPersistedItem(
+  command: Parameters<InventoryRepository['createItem']>[0]
+): Awaited<ReturnType<InventoryRepository['createItem']>> {
+  return {
+    item: command.item,
+    movement: {
+      id: command.movementId,
+      accountId: command.item.accountId,
+      inventoryItemId: command.item.id,
+      movementType: 'inbound',
+      quantityDelta: command.item.onHandQuantity,
+      balanceBefore: 0,
+      balanceAfter: command.item.onHandQuantity,
+      unitCostAmount: command.item.unitCostAmount,
+      reason: command.reason,
+      reference: command.reference,
+      recordedByUserId: command.recordedByUserId,
+      createdAt: command.item.createdAt
+    },
+    stockVersion: 0
+  };
+}
 
 function createService() {
-  return new InventoryService(
-    {
-      getOrThrow(encounterId: string) {
-        return {
-          id: encounterId,
-          accountId: 'acc_test',
-          patientId: 'patient_1'
-        };
-      }
-    } as never
-  );
+  return new InventoryService({
+    getOrThrow(encounterId: string) {
+      return {
+        id: encounterId,
+        accountId: 'acc_test',
+        patientId: 'patient_1'
+      };
+    }
+  } as never);
 }
 
 describe('InventoryService coverage guard', () => {
-  it('creates items with rounded values and searchable listing', () => {
+  it('creates items with rounded values and searchable listing', async () => {
     const service = createService();
 
-    const created = service.createItem('acc_test' as never, {
+    const created = await service.createItem('acc_test' as never, 'user_test' as never, {
       sku: ' LAB-100 ',
       name: ' Reagente Bioquimico ',
       unit: ' frasco ',
@@ -40,16 +62,18 @@ describe('InventoryService coverage guard', () => {
     const listed = service.listItems('acc_test' as never, { search: 'lab-100' });
     expect(listed.map((item) => item.id)).toContain(created.id);
 
-    const lots = service.listLots('acc_test' as never).filter((lot) => lot.inventoryItemId === created.id);
+    const lots = service
+      .listLots('acc_test' as never)
+      .filter((lot) => lot.inventoryItemId === created.id);
     expect(lots).toHaveLength(1);
     expect(lots[0]?.quantity).toBe(12.4);
     expect(lots[0]?.status).toBe('active');
   });
 
-  it('rejects duplicate SKU and updates lot projections when stock changes', () => {
+  it('rejects duplicate SKU and updates lot projections when stock changes', async () => {
     const service = createService();
 
-    const created = service.createItem('acc_test' as never, {
+    const created = await service.createItem('acc_test' as never, 'user_test' as never, {
       sku: 'MED-NEW',
       name: 'Novo insumo',
       unit: 'caixa',
@@ -58,8 +82,8 @@ describe('InventoryService coverage guard', () => {
       unitCostAmount: 4
     });
 
-    expect(() =>
-      service.createItem('acc_test' as never, {
+    await expect(
+      service.createItem('acc_test' as never, 'user_test' as never, {
         sku: 'MED-NEW',
         name: 'Duplicado',
         unit: 'caixa',
@@ -67,18 +91,25 @@ describe('InventoryService coverage guard', () => {
         reorderLevel: 1,
         unitCostAmount: 2
       })
-    ).toThrow(ConflictError);
+    ).rejects.toThrow(ConflictError);
 
-    const updated = service.updateItem(created.id, {
-      onHandQuantity: 0.5,
-      reorderLevel: 0.2,
-      unitCostAmount: 10.678
-    });
+    const updated = await service.updateItem(
+      'acc_test' as never,
+      'user_test' as never,
+      created.id,
+      {
+        onHandQuantity: 0.5,
+        reorderLevel: 0.2,
+        unitCostAmount: 10.678
+      }
+    );
 
     expect(updated.reorderLevel).toBe(0);
     expect(updated.unitCostAmount).toBe(10.68);
 
-    const lots = service.listLots('acc_test' as never).filter((lot) => lot.inventoryItemId === created.id);
+    const lots = service
+      .listLots('acc_test' as never)
+      .filter((lot) => lot.inventoryItemId === created.id);
     expect(lots).toHaveLength(1);
     expect(lots[0]?.quantity).toBe(0.5);
     expect(lots[0]?.status).toBe('active');
@@ -93,7 +124,12 @@ describe('InventoryService coverage guard', () => {
 
     expect(beforeLots[0]?.lotNumber).toBe('CAT-240105-A');
 
-    const commercial = await service.consumeForSale('acc_cvg_demo' as never, 'inv_catheter' as never, 7);
+    const commercial = await service.consumeForSale(
+      'acc_cvg_demo' as never,
+      'inv_catheter' as never,
+      7,
+      'user_counter_sale' as never
+    );
 
     expect(commercial.accountId).toBe('acc_cvg_demo');
     expect(commercial.sourceEntityType).toBe('other');
@@ -124,8 +160,12 @@ describe('InventoryService coverage guard', () => {
       [],
       {
         repository: {
-          async createItem() {},
-          async updateItem() {},
+          async createItem(command) {
+            return createPersistedItem(command);
+          },
+          async updateItem() {
+            throw new Error('updateItem not implemented by hydration repository');
+          },
           async findItemById() {
             return null;
           },
@@ -182,6 +222,12 @@ describe('InventoryService coverage guard', () => {
                 createdAt: '2026-04-12T08:00:00.000Z'
               }
             ];
+          },
+          async consumeStock() {
+            throw new Error('consumeStock not implemented by hydration repository');
+          },
+          async adjustStock() {
+            throw new Error('adjustStock not implemented by hydration repository');
           }
         }
       }

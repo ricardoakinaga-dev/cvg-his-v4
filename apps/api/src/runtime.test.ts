@@ -3,7 +3,7 @@ import test from 'node:test';
 
 import type { AuthSessionResponse } from '@cvg-his-v2/shared-contracts';
 import { ForbiddenError } from '@cvg-his-v2/shared-errors';
-import { getTenantContext } from '@cvg-his-v2/tenant-context';
+import { getTenantContext, runWithTenantContext } from '@cvg-his-v2/tenant-context';
 
 import { createApiRuntime, type RuntimeRepositories } from './runtime.js';
 import { bootstrapServices } from './bootstrap.js';
@@ -27,6 +27,18 @@ const REAL_ACCOUNT_ID = '65751ed5-07d3-44a2-830a-cc9dc8a0dbe4' as never;
 const REAL_OWNER_ID = '713309e5-10dc-43c3-9bee-fd0c0dedb7c7' as never;
 const REAL_PATIENT_ID = '0cb71acc-dfc2-47b9-a82b-4a46beae728b' as never;
 const REAL_ENCOUNTER_ID = 'b9544c63-a1b2-40e7-96f9-71e02c75ccbb' as never;
+const TENANT_ID = '00000000-0000-0000-0000-000000000001';
+
+function runAsAccount<T>(accountId: string, operation: () => T): T {
+  return runWithTenantContext(
+    {
+      tenantId: TENANT_ID,
+      accountId,
+      correlationId: `corr_initialize_${accountId}`
+    },
+    operation
+  );
+}
 
 function assertTenantAccount(accountId: string): void {
   assert.equal(getTenantContext()?.accountId, accountId);
@@ -85,7 +97,8 @@ test('login, session refresh and audit trail work end-to-end', async () => {
   );
 });
 
-test('runtime initializes tenant-scoped repositories with the authenticated account context', async () => {
+test('runtime keeps global initialization tenantless and initializes repositories in the requested account context', async () => {
+  let userHydrations = 0;
   const repositories: RuntimeRepositories = {
     users: {
       async create() {},
@@ -96,7 +109,12 @@ test('runtime initializes tenant-scoped repositories with the authenticated acco
       async findByEmail() {
         return null;
       },
+      async findByLogin() {
+        return null;
+      },
       async findAll() {
+        userHydrations += 1;
+        assertTenantAccount(REAL_ACCOUNT_ID);
         return [
           {
             id: '5c2b3750-783b-4cd7-bf8d-4ce982c1dabb' as never,
@@ -111,6 +129,7 @@ test('runtime initializes tenant-scoped repositories with the authenticated acco
         ];
       },
       async findRoleCodesByUserId() {
+        assertTenantAccount(REAL_ACCOUNT_ID);
         return ['admin'];
       },
       async findByAccountId() {
@@ -220,12 +239,90 @@ test('runtime initializes tenant-scoped repositories with the authenticated acco
 
   const runtime = createTestRuntime(repositories);
   await runtime.initialize();
+  assert.equal(userHydrations, 0);
+
+  await runAsAccount(REAL_ACCOUNT_ID, () => runtime.initializeTenant(REAL_ACCOUNT_ID));
 
   const patient = runtime.patients.getOrThrow(REAL_PATIENT_ID);
   const encounter = runtime.encounters.getOrThrow(REAL_ENCOUNTER_ID);
 
   assert.equal(patient.accountId, REAL_ACCOUNT_ID);
   assert.equal(encounter.accountId, REAL_ACCOUNT_ID);
+});
+
+test('runtime memoizes tenant initialization independently across A to B to A and concurrent calls', async () => {
+  const accountA = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  const accountB = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+  const hydrationCalls: string[] = [];
+  let releaseAccountA: (() => void) | undefined;
+  const accountAGate = new Promise<void>((resolve) => {
+    releaseAccountA = resolve;
+  });
+
+  const runtime = createTestRuntime({
+    owner: {
+      async findByAccountId(accountId: string) {
+        assertTenantAccount(accountId);
+        hydrationCalls.push(accountId);
+        if (accountId === accountA) {
+          await accountAGate;
+        }
+        return [];
+      }
+    } as never
+  });
+
+  const concurrentAccountA = runAsAccount(accountA, () =>
+    Promise.all([
+      runtime.initializeTenant(accountA as never),
+      runtime.initializeTenant(accountA as never)
+    ])
+  );
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(hydrationCalls, [accountA]);
+  releaseAccountA?.();
+  await concurrentAccountA;
+
+  await runAsAccount(accountB, () => runtime.initializeTenant(accountB as never));
+  await runAsAccount(accountA, () => runtime.initializeTenant(accountA as never));
+
+  assert.deepEqual(hydrationCalls, [accountA, accountB]);
+});
+
+test('runtime propagates tenant hydration failures and permits a clean retry', async () => {
+  const accountId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+  let attempts = 0;
+  const runtime = createTestRuntime({
+    owner: {
+      async findByAccountId(requestedAccountId: string) {
+        assertTenantAccount(requestedAccountId);
+        attempts += 1;
+        if (attempts === 1) {
+          throw new Error('tenant hydration unavailable');
+        }
+        return [];
+      }
+    } as never
+  });
+
+  await assert.rejects(
+    runAsAccount(accountId, () => runtime.initializeTenant(accountId as never)),
+    /tenant hydration unavailable/
+  );
+  await runAsAccount(accountId, () => runtime.initializeTenant(accountId as never));
+
+  assert.equal(attempts, 2);
+});
+
+test('runtime rejects initialization when the active tenant differs from the requested account', async () => {
+  const accountA = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+  const accountB = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+  const runtime = createTestRuntime();
+
+  await assert.rejects(
+    runAsAccount(accountA, () => runtime.initializeTenant(accountB as never)),
+    /does not match the active tenant context/
+  );
 });
 
 test('runtime exposes API keys and event bus persistence for integrations', async () => {
@@ -992,7 +1089,7 @@ test('advanced care keeps inpatient, surgery and diagnostics tied to the same cl
     `Surgery case moved to ${updatedSurgery.status}`
   );
 
-  const order = runtime.diagnostics.createOrder({
+  const order = await runtime.diagnostics.createOrder({
     encounterId: encounter.id,
     patientId: encounter.patientId,
     examType: 'ultrasound',
@@ -1020,7 +1117,7 @@ test('advanced care keeps inpatient, surgery and diagnostics tied to the same cl
     `Attachment added to diagnostic order ${order.id}`
   );
 
-  const collectedOrder = runtime.diagnostics.recordResult(order.id, {
+  const collectedOrder = await runtime.diagnostics.recordResult(order.id, {
     status: 'collected',
     collectedByUserId: veterinarian.user.id
   });
@@ -1031,7 +1128,7 @@ test('advanced care keeps inpatient, surgery and diagnostics tied to the same cl
     `Diagnostic order collected by ${collectedOrder.collectedByUserId}`
   );
 
-  const resultedOrder = runtime.diagnostics.recordResult(order.id, {
+  const resultedOrder = await runtime.diagnostics.recordResult(order.id, {
     status: 'resulted',
     resultSummary: 'Sem evidencias de efusao abdominal, com alcas discretamente espessadas.',
     releasedByUserId: veterinarian.user.id
@@ -1134,13 +1231,17 @@ test('administrative modules keep billing, inventory and notifications linked wi
   });
   const openedBilling = await runtime.billing.updateStatus(encounter.id, { status: 'open' });
 
-  const consumption = await runtime.inventory.consume(inventoryUser.user.id, {
-    encounterId: encounter.id,
-    inventoryItemId: 'inv_gauze',
-    quantity: 2,
-    sourceEntityType: 'encounter',
-    sourceEntityId: encounter.id
-  });
+  const consumption = await runtime.inventory.consume(
+    inventoryUser.user.accountId,
+    inventoryUser.user.id,
+    {
+      encounterId: encounter.id,
+      inventoryItemId: 'inv_gauze',
+      quantity: 2,
+      sourceEntityType: 'encounter',
+      sourceEntityId: encounter.id
+    }
+  );
 
   const notification = await runtime.notifications.create(finance.user.id, finance.user.accountId, {
     category: 'billing',
@@ -1180,7 +1281,11 @@ test('administrative modules keep billing, inventory and notifications linked wi
     runtime.notifications.list('sent').some((entry) => entry.id === notification.id),
     true
   );
-  assert.equal(runtime.inventory.getItemOrThrow('inv_gauze' as never).onHandQuantity, 58);
+  assert.equal(
+    runtime.inventory.getItemOrThrow(inventoryUser.user.accountId, 'inv_gauze' as never)
+      .onHandQuantity,
+    58
+  );
 });
 
 test('AUD-008-02: repositories persist data across runtime re-instantiation (simulated restart)', async () => {
@@ -1372,7 +1477,9 @@ test('runtime initialize rehydrates session cache and encounter timeline from sh
   );
 
   const runtimeB = createTestRuntime(repositories);
-  await runtimeB.initialize();
+  await runAsAccount(principal.user.accountId, () =>
+    runtimeB.initializeTenant(principal.user.accountId)
+  );
 
   const rehydratedPrincipal = runtimeB.auth.authenticateAccessToken(login.accessToken);
   const timeline = await runtimeB.encounters.listTimelineAsync(encounter.id);

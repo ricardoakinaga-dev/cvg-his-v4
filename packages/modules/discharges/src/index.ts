@@ -31,35 +31,64 @@ export class DischargesService {
     this.#dischargeRepository = options.dischargeRepository;
   }
 
-  public getById(id: DischargeId): DischargeSummary {
-    const discharge = this.#discharges.get(id);
+  public async getById(
+    id: DischargeId,
+    expectedAccountId?: AccountId
+  ): Promise<DischargeSummary> {
+    const discharge = this.#dischargeRepository
+      ? await this.#dischargeRepository.findById(id)
+      : (this.#discharges.get(id) ?? null);
     if (!discharge) {
       throw new NotFoundError('Discharge not found', { dischargeId: id });
     }
-    return discharge;
+    if (expectedAccountId && discharge.accountId !== expectedAccountId) {
+      throw new NotFoundError('Discharge not found', { dischargeId: id });
+    }
+    return { ...discharge };
   }
 
-  public getByEncounterId(encounterId: EncounterId): DischargeSummary | null {
+  public async getByEncounterId(
+    encounterId: EncounterId,
+    expectedAccountId?: AccountId
+  ): Promise<DischargeSummary | null> {
+    if (this.#dischargeRepository) {
+      const discharge = await this.#dischargeRepository.findByEncounterId(encounterId);
+      return discharge && (!expectedAccountId || discharge.accountId === expectedAccountId)
+        ? { ...discharge }
+        : null;
+    }
     for (const discharge of this.#discharges.values()) {
-      if (discharge.encounterId === encounterId) {
-        return discharge;
+      if (
+        discharge.encounterId === encounterId &&
+        (!expectedAccountId || discharge.accountId === expectedAccountId)
+      ) {
+        return { ...discharge };
       }
     }
     return null;
   }
 
-  public list(accountId: AccountId): readonly DischargeSummary[] {
-    return Array.from(this.#discharges.values()).filter((d) => d.accountId === accountId);
+  public async list(accountId: AccountId): Promise<readonly DischargeSummary[]> {
+    const discharges = this.#dischargeRepository
+      ? await this.#dischargeRepository.findByAccountId(accountId)
+      : Array.from(this.#discharges.values()).filter(
+          (discharge) => discharge.accountId === accountId
+        );
+    return discharges.map((discharge) => ({ ...discharge }));
   }
 
-  public create(accountId: AccountId, dischargedBy: UserId, payload: CreateDischargeRequest): DischargeSummary {
+  public async create(
+    accountId: AccountId,
+    dischargedBy: UserId,
+    payload: CreateDischargeRequest
+  ): Promise<DischargeSummary> {
     requireNonEmptyString(payload.encounterId, 'encounterId');
     requireNonEmptyString(payload.dischargeType, 'dischargeType');
 
     const encounterId = payload.encounterId as EncounterId;
 
     // Check for duplicate discharge per encounter
-    const existing = this.getByEncounterId(encounterId);
+    const existing = await this.getByEncounterId(encounterId, accountId);
     if (existing) {
       throw new ConflictError('Encounter already has a discharge', {
         dischargeId: existing.id,
@@ -67,6 +96,8 @@ export class DischargesService {
       });
     }
 
+    const followUpDate = requireOptionalString(payload.followUpDate);
+    validateOptionalDate(followUpDate, 'followUpDate');
     const now = nowIso();
     const discharge: DischargeSummary = {
       id: createCorrelationId('discharge') as DischargeId,
@@ -76,7 +107,7 @@ export class DischargesService {
       outcome: requireOptionalString(payload.outcome),
       clinicalSummary: requireOptionalString(payload.clinicalSummary),
       continuityInstructions: requireOptionalString(payload.continuityInstructions),
-      followUpDate: requireOptionalString(payload.followUpDate),
+      followUpDate,
       followUpNotes: requireOptionalString(payload.followUpNotes),
       dischargedBy,
       dischargedAt: now,
@@ -85,19 +116,21 @@ export class DischargesService {
       updatedAt: now
     };
 
-    this.#discharges.set(discharge.id, discharge);
-
     if (this.#dischargeRepository) {
-      this.#dischargeRepository.create(discharge).catch((err) => {
-        console.error('Failed to persist discharge to database:', err);
-      });
+      await this.#dischargeRepository.create(discharge);
     }
+    this.#discharges.set(discharge.id, { ...discharge });
 
-    return discharge;
+    return { ...discharge };
   }
 
-  public update(id: DischargeId, payload: UpdateDischargeRequest, expectedVersion?: number): DischargeSummary {
-    const current = this.getById(id);
+  public async update(
+    id: DischargeId,
+    payload: UpdateDischargeRequest,
+    expectedVersion?: number,
+    expectedAccountId?: AccountId
+  ): Promise<DischargeSummary> {
+    const current = await this.getById(id, expectedAccountId);
 
     if (expectedVersion !== undefined && current.version !== expectedVersion) {
       throw new ConflictError('Discharge version mismatch', {
@@ -107,9 +140,15 @@ export class DischargesService {
       });
     }
 
+    const followUpDate =
+      payload.followUpDate !== undefined
+        ? requireOptionalString(payload.followUpDate)
+        : current.followUpDate;
+    validateOptionalDate(followUpDate, 'followUpDate');
     const updated: DischargeSummary = {
       ...current,
-      outcome: payload.outcome !== undefined ? requireOptionalString(payload.outcome) : current.outcome,
+      outcome:
+        payload.outcome !== undefined ? requireOptionalString(payload.outcome) : current.outcome,
       clinicalSummary:
         payload.clinicalSummary !== undefined
           ? requireOptionalString(payload.clinicalSummary)
@@ -118,10 +157,7 @@ export class DischargesService {
         payload.continuityInstructions !== undefined
           ? requireOptionalString(payload.continuityInstructions)
           : current.continuityInstructions,
-      followUpDate:
-        payload.followUpDate !== undefined
-          ? requireOptionalString(payload.followUpDate)
-          : current.followUpDate,
+      followUpDate,
       followUpNotes:
         payload.followUpNotes !== undefined
           ? requireOptionalString(payload.followUpNotes)
@@ -130,15 +166,18 @@ export class DischargesService {
       updatedAt: nowIso()
     };
 
-    this.#discharges.set(id, updated);
-
     if (this.#dischargeRepository) {
-      this.#dischargeRepository.update(updated).catch((err) => {
-        console.error('Failed to update discharge in database:', err);
-      });
+      await this.#dischargeRepository.update(updated);
     }
+    this.#discharges.set(id, { ...updated });
 
-    return updated;
+    return { ...updated };
+  }
+}
+
+function validateOptionalDate(value: string | undefined, field: string): void {
+  if (value !== undefined && Number.isNaN(Date.parse(value))) {
+    throw new ValidationError(`${field} must be a valid ISO date`);
   }
 }
 

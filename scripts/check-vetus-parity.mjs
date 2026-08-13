@@ -84,7 +84,11 @@ const areas = [
     target: 92,
     checks: [
       file('packages/modules/services/src/index.ts'),
-      text('apps/api/src/server.ts', /pathname === '\/services'/),
+      text(
+        'apps/api/src/routes/products-services-routes.ts',
+        /pathname === '\/services'/,
+        'rotas API de servicos extraidas e versionadas'
+      ),
       file('apps/spa/src/pages/services/ServicesListPage.vue'),
       file('apps/spa/src/pages/services/ServiceFormPage.vue'),
       file('apps/spa/src/pages/services/__tests__/ServicesListPage.test.ts'),
@@ -128,7 +132,21 @@ const areas = [
     checks: [
       file('apps/spa/src/pages/scheduling/QueuePage.vue'),
       file('apps/spa/src/pages/scheduling/__tests__/QueuePage.test.ts'),
-      text('apps/api/src/server.ts', /attachEncounter|transitionQueueForEncounter/),
+      text(
+        'apps/api/src/routes/encounters-routes.ts',
+        /attachEncounter/,
+        'atendimento vincula entrada da esteira'
+      ),
+      text(
+        'apps/api/src/routes/encounter-queue-sync.ts',
+        /transitionQueueForEncounter/,
+        'transicao clinica sincroniza a esteira'
+      ),
+      text(
+        'packages/modules/scheduling/src/scheduling.test.ts',
+        /attachEncounter[\s\S]*transitionQueueForEncounter/,
+        'contrato atendimento-esteira coberto por testes de dominio'
+      ),
       file('packages/db/migrations/0045_clinical_handoffs.sql'),
       file('e2e/spa/master-search-360-reception.spec.ts'),
     ],

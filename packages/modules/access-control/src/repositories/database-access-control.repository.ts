@@ -512,19 +512,19 @@ export class DatabaseAccessControlRepository implements AccessControlRepository 
   ): Promise<readonly AccessPermissionAssignmentRecord[]> {
     return withTenantQuery(getPool(), async (client) => {
       const result = await client.query(
-        `SELECT u.account_id, 'user' AS subject_type, aup.user_id AS subject_id, p.key AS permission_code, aup.effect, aup.created_at, aup.updated_at
+        `SELECT u.account_id, 'user' AS subject_type, aup.user_id::text AS subject_id, p.key AS permission_code, aup.effect, aup.created_at, aup.updated_at
          FROM access_user_permissions aup
          JOIN users u ON u.id = aup.user_id
          JOIN permissions p ON p.id = aup.permission_id
          WHERE u.account_id = $1
          UNION ALL
-         SELECT t.account_id, 'team' AS subject_type, atp.team_id AS subject_id, p.key AS permission_code, atp.effect, atp.created_at, atp.updated_at
+         SELECT t.account_id, 'team' AS subject_type, atp.team_id::text AS subject_id, p.key AS permission_code, atp.effect, atp.created_at, atp.updated_at
          FROM access_team_permissions atp
          JOIN access_teams t ON t.id = atp.team_id
          JOIN permissions p ON p.id = atp.permission_id
          WHERE t.account_id = $1
          UNION ALL
-         SELECT s.account_id, 'sector' AS subject_type, asp.sector_id AS subject_id, p.key AS permission_code, asp.effect, asp.created_at, asp.updated_at
+         SELECT s.account_id, 'sector' AS subject_type, asp.sector_id::text AS subject_id, p.key AS permission_code, asp.effect, asp.created_at, asp.updated_at
          FROM access_sector_permissions asp
          JOIN access_sectors s ON s.id = asp.sector_id
          JOIN permissions p ON p.id = asp.permission_id

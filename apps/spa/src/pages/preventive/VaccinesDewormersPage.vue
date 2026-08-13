@@ -244,6 +244,13 @@ interface PreventiveFilters {
 
 const route = useRoute();
 
+function formatLocalDate(date = new Date()): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function queryParam(name: string): string {
   const value = route.query[name];
   return Array.isArray(value) ? value[0] ?? '' : value ?? '';
@@ -292,7 +299,7 @@ const scheduleForm = ref({
   animalName: queryParam('animal') || 'Não Definido',
   itemType: 'vaccine' as PreventiveItemType,
   description: '',
-  eventDate: new Date().toISOString().slice(0, 10),
+  eventDate: formatLocalDate(),
   observation: ''
 });
 const executeForm = ref({
@@ -362,7 +369,7 @@ function openScheduleModal(event?: PreventiveEventSummary) {
         animalName: queryParam('animal') || 'Não Definido',
         itemType: 'vaccine',
         description: '',
-        eventDate: new Date().toISOString().slice(0, 10),
+        eventDate: formatLocalDate(),
         observation: ''
       };
   scheduleModalOpen.value = true;

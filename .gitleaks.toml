@@ -1,0 +1,11 @@
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Generated build and security evidence artifacts are non-source outputs"
+paths = [
+  '''(^|/)dist/''',
+  '''(^|/)\.next/''',
+  '''(^|/)coverage/''',
+  '''^artifacts/security/'''
+]

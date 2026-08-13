@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { Readable } from 'node:stream';
 
 import { handleFeatureFlagsRoutes } from '../../../apps/api/src/routes/feature-flags-routes.js';
 
@@ -71,6 +72,7 @@ function createHandlers() {
 
   return {
     featureFlagRepository: {
+      create: vi.fn(async () => undefined),
       listByAccount: vi.fn(async () => flags),
       findByKey: vi.fn(async (key: string) => flags.find((flag) => flag.key === key) ?? null),
       listOverrides: vi.fn(async (key: string) => overridesByFlag.get(key) ?? [])
@@ -95,6 +97,26 @@ function createHandlers() {
 }
 
 describe('feature-flags routes operational reports', () => {
+  it('rejects an empty create payload before persistence', async () => {
+    const handlers = createHandlers();
+    const response = new MockResponse();
+    const request = Object.assign(Readable.from([JSON.stringify({})]), {
+      method: 'POST',
+      url: '/flags'
+    });
+
+    await expect(
+      handleFeatureFlagsRoutes(
+        '/flags',
+        request as never,
+        response as never,
+        'corr-invalid-flag',
+        handlers as never
+      )
+    ).rejects.toThrow("Field 'key' is required");
+    expect(handlers.featureFlagRepository.create).not.toHaveBeenCalled();
+  });
+
   it('returns a governance report for all flags', async () => {
     const handlers = createHandlers();
     const response = new MockResponse();

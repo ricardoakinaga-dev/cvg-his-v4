@@ -9,7 +9,7 @@ import type { AccessControlService } from '@cvg-his-v2/module-access-control';
 import type { AuditService } from '@cvg-his-v2/module-audit';
 import type { UsersService } from '@cvg-his-v2/module-users';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
-import { AuthenticationError } from '@cvg-his-v2/shared-errors';
+import { NotFoundError } from '@cvg-his-v2/shared-errors';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 
 import { appendAudit } from '../helpers/audit-helper.js';
@@ -27,11 +27,7 @@ function getUserForCurrentAccount(
   userId: string,
   principal: AuthenticatedPrincipal
 ) {
-  const targetUser = users.getOrThrow(userId as never);
-  if (targetUser.accountId !== principal.user.accountId) {
-    throw new AuthenticationError('User not found for current account');
-  }
-  return targetUser;
+  return users.getForAccountOrThrow(principal.user.accountId, userId as never);
 }
 
 function assertTeamForCurrentAccount(
@@ -40,7 +36,7 @@ function assertTeamForCurrentAccount(
   principal: AuthenticatedPrincipal
 ) {
   if (!accessControl.listTeams(principal.user.accountId).some((team) => team.id === teamId)) {
-    throw new AuthenticationError('Access team not found for current account');
+    throw new NotFoundError('Access team not found');
   }
 }
 
@@ -49,14 +45,16 @@ function assertSectorForCurrentAccount(
   sectorId: string,
   principal: AuthenticatedPrincipal
 ) {
-  if (!accessControl.listSectors(principal.user.accountId).some((sector) => sector.id === sectorId)) {
-    throw new AuthenticationError('Access sector not found for current account');
+  if (
+    !accessControl.listSectors(principal.user.accountId).some((sector) => sector.id === sectorId)
+  ) {
+    throw new NotFoundError('Access sector not found');
   }
 }
 
 function assertPermissionExists(accessControl: AccessControlService, permissionCode: string) {
   if (!accessControl.listPermissions().some((permission) => permission.code === permissionCode)) {
-    throw new AuthenticationError('Permission not found for current account');
+    throw new NotFoundError('Permission not found');
   }
 }
 
@@ -107,45 +105,42 @@ export async function handleAccessControlRoutes(
         permissions: accessControl.listPermissions(),
         teams: accessControl.listTeams(principal.user.accountId),
         sectors: accessControl.listSectors(principal.user.accountId),
-        users: users.list().filter((user) => user.accountId === principal.user.accountId),
+        users: users.list(principal.user.accountId),
         memberships: {
-          userTeams: users
-            .list()
-            .filter((user) => user.accountId === principal.user.accountId)
-            .flatMap((user) =>
-              accessControl.listMemberships(user.id).teams.map((team) => ({
-                userId: user.id,
-                teamId: team.id
-              }))
-            ),
-          userSectors: users
-            .list()
-            .filter((user) => user.accountId === principal.user.accountId)
-            .flatMap((user) =>
-              accessControl.listMemberships(user.id).sectors.map((sector) => ({
-                userId: user.id,
-                sectorId: sector.id
-              }))
-            )
+          userTeams: users.list(principal.user.accountId).flatMap((user) =>
+            accessControl.listMemberships(user.id).teams.map((team) => ({
+              userId: user.id,
+              teamId: team.id
+            }))
+          ),
+          userSectors: users.list(principal.user.accountId).flatMap((user) =>
+            accessControl.listMemberships(user.id).sectors.map((sector) => ({
+              userId: user.id,
+              sectorId: sector.id
+            }))
+          )
         },
         assignments: {
           userPermissions: accessControl
             .listAssignments()
-            .userPermissions.filter((assignment) => assignment.accountId === principal.user.accountId),
+            .userPermissions.filter(
+              (assignment) => assignment.accountId === principal.user.accountId
+            ),
           teamPermissions: accessControl
             .listAssignments()
-            .teamPermissions.filter((assignment) => assignment.accountId === principal.user.accountId),
+            .teamPermissions.filter(
+              (assignment) => assignment.accountId === principal.user.accountId
+            ),
           sectorPermissions: accessControl
             .listAssignments()
-            .sectorPermissions.filter((assignment) => assignment.accountId === principal.user.accountId)
+            .sectorPermissions.filter(
+              (assignment) => assignment.accountId === principal.user.accountId
+            )
         },
-        legacyRoles: users
-          .list()
-          .filter((user) => user.accountId === principal.user.accountId)
-          .map((user) => ({
-            userId: user.id,
-            roleCodes: accessControl.getLegacyRoleCodes(user.id)
-          }))
+        legacyRoles: users.list(principal.user.accountId).map((user) => ({
+          userId: user.id,
+          roleCodes: accessControl.getLegacyRoleCodes(user.id)
+        }))
       })
     );
     return true;
@@ -181,9 +176,7 @@ export async function handleAccessControlRoutes(
   if (pathname === '/access-control/teams' && request.method === 'GET') {
     const principal = rp(request, 'access.read');
     response.statusCode = 200;
-    response.end(
-      JSON.stringify({ items: accessControl.listTeams(principal.user.accountId) })
-    );
+    response.end(JSON.stringify({ items: accessControl.listTeams(principal.user.accountId) }));
     return true;
   }
 
@@ -222,9 +215,7 @@ export async function handleAccessControlRoutes(
   if (pathname === '/access-control/org-sectors' && request.method === 'GET') {
     const principal = rp(request, 'access.read');
     response.statusCode = 200;
-    response.end(
-      JSON.stringify({ items: accessControl.listSectors(principal.user.accountId) })
-    );
+    response.end(JSON.stringify({ items: accessControl.listSectors(principal.user.accountId) }));
     return true;
   }
 
@@ -388,16 +379,51 @@ export async function handleAccessControlRoutes(
     const entityFilter = (url.searchParams.get('entity') ?? '').trim().toLowerCase();
     const correlationFilter = (url.searchParams.get('correlationId') ?? '').trim().toLowerCase();
     const queryFilter = (url.searchParams.get('q') ?? '').trim().toLowerCase();
-    const entityTypes = url.searchParams.getAll('entityType').map((value) => value.trim().toLowerCase()).filter(Boolean);
-    const limit = Math.max(1, Math.min(200, Number.parseInt(url.searchParams.get('limit') ?? '100', 10) || 100));
+    const entityTypes = url.searchParams
+      .getAll('entityType')
+      .map((value) => value.trim().toLowerCase())
+      .filter(Boolean);
+    const limit = Math.max(
+      1,
+      Math.min(200, Number.parseInt(url.searchParams.get('limit') ?? '100', 10) || 100)
+    );
     const items = audit
       .list()
       .filter((event) => event.accountId === principal.user.accountId)
       .filter((event) => !moduleFilter || event.module.toLowerCase().includes(moduleFilter))
-      .filter((event) => !entityFilter || [event.entityType, event.entityId, event.payloadSummary].some((value) => String(value ?? '').toLowerCase().includes(entityFilter)))
-      .filter((event) => !correlationFilter || event.correlationId.toLowerCase().includes(correlationFilter))
-      .filter((event) => entityTypes.length === 0 || entityTypes.includes(event.entityType.toLowerCase()))
-      .filter((event) => !queryFilter || [event.module, event.action, event.actorId, event.entityType, event.entityId, event.correlationId, event.payloadSummary].some((value) => String(value ?? '').toLowerCase().includes(queryFilter)))
+      .filter(
+        (event) =>
+          !entityFilter ||
+          [event.entityType, event.entityId, event.payloadSummary].some((value) =>
+            String(value ?? '')
+              .toLowerCase()
+              .includes(entityFilter)
+          )
+      )
+      .filter(
+        (event) =>
+          !correlationFilter || event.correlationId.toLowerCase().includes(correlationFilter)
+      )
+      .filter(
+        (event) => entityTypes.length === 0 || entityTypes.includes(event.entityType.toLowerCase())
+      )
+      .filter(
+        (event) =>
+          !queryFilter ||
+          [
+            event.module,
+            event.action,
+            event.actorId,
+            event.entityType,
+            event.entityId,
+            event.correlationId,
+            event.payloadSummary
+          ].some((value) =>
+            String(value ?? '')
+              .toLowerCase()
+              .includes(queryFilter)
+          )
+      )
       .slice(0, limit);
     appendAudit(audit, {
       actorId: principal.user.id,

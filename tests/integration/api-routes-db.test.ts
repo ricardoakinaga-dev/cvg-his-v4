@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { AddressInfo } from 'node:net';
 
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { Pool } from 'pg';
 import { parse } from 'yaml';
 
@@ -14,11 +14,20 @@ import { ApiKeysService } from '../../packages/modules/api-keys/src/index.ts';
 import { runWithTenantContext } from '../../packages/tenant-context/src/index.ts';
 import { TEST_DB_URL } from '../setup/env.ts';
 
+const ACCOUNT_SLUG = 'default';
+const ROUTE_USER_ID = 'a0111111-1111-4111-8111-111111111111';
+const ROUTE_USERNAME = 'route-probe-admin';
+const ROUTE_EMAIL = `${ROUTE_USERNAME}@example.com`;
+const ROUTE_PASSWORD = 'seed_admin';
+
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 interface OpenApiOperation {
   readonly security?: unknown;
   readonly requestBody?: unknown;
+  readonly responses?: Readonly<
+    Record<string, { readonly content?: Readonly<Record<string, unknown>> }>
+  >;
 }
 
 interface OpenApiDocument {
@@ -46,6 +55,12 @@ interface CreatedWebhookResponse {
   readonly events: readonly string[];
 }
 
+interface RouteProbeResponse {
+  readonly status: number;
+  readonly text: string;
+  readonly json?: Record<string, unknown>;
+}
+
 let server: ReturnType<typeof createApiServer>;
 let baseUrl: string;
 let pool: Pool;
@@ -53,6 +68,8 @@ let accessToken: string;
 let refreshToken: string;
 let rawApiKey: string;
 let createdApiKeyId: string;
+let accountId: string;
+let tenantId: string;
 let repositoriesUnderTest: Awaited<ReturnType<typeof bootstrapServices>>['repositories'];
 
 function loadOpenApiDocument(): OpenApiDocument {
@@ -71,21 +88,79 @@ async function requestJson<T>(
 
 async function request(
   path: string,
-  init: RequestInit = {}
-): Promise<{ status: number; text: string; json?: Record<string, unknown> }> {
-  const response = await fetch(`${baseUrl}${path}`, init);
-  const text = await response.text();
-  let json: Record<string, unknown> | undefined;
+  init: RequestInit = {},
+  expectedBodyFormat: 'json' | 'text' = 'json'
+): Promise<RouteProbeResponse> {
+  const method = String(init.method ?? 'GET').toUpperCase();
+  let response: Response;
 
-  if (text.length > 0) {
-    try {
-      json = JSON.parse(text) as Record<string, unknown>;
-    } catch {
-      json = undefined;
-    }
+  try {
+    response = await fetch(`${baseUrl}${path}`, init);
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new Error(`${method} ${path} failed at the HTTP transport: ${detail}`, {
+      cause: error
+    });
   }
 
+  const text = await response.text();
+
+  if (text.trim().length === 0) {
+    if (response.status === 204 || response.status === 205) {
+      return { status: response.status, text };
+    }
+
+    throw new Error(`${method} ${path} returned an empty response body (HTTP ${response.status})`);
+  }
+
+  if (expectedBodyFormat === 'text' && response.status >= 200 && response.status < 300) {
+    return { status: response.status, text };
+  }
+
+  let parsedBody: unknown;
+  try {
+    parsedBody = JSON.parse(text) as unknown;
+  } catch (error) {
+    throw new Error(
+      `${method} ${path} returned a non-JSON response body (HTTP ${response.status})`,
+      { cause: error }
+    );
+  }
+
+  if (typeof parsedBody !== 'object' || parsedBody === null || Array.isArray(parsedBody)) {
+    throw new Error(`${method} ${path} returned a non-object JSON body (HTTP ${response.status})`);
+  }
+
+  const json = parsedBody as Record<string, unknown>;
   return { status: response.status, text, json };
+}
+
+function isMissingRuntimeRoute(response: RouteProbeResponse): boolean {
+  if (response.status !== 404 || !response.json) {
+    return false;
+  }
+
+  const code = typeof response.json.code === 'string' ? response.json.code : '';
+  const normalizedCode = code
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, '_');
+  const routeSpecificCode =
+    /(?:^|_)(?:ROUTE|ENDPOINT)(?:_|$)/.test(normalizedCode) &&
+    /(?:NOT_FOUND|MISSING|UNMAPPED|NO_MATCH)/.test(normalizedCode);
+
+  const message =
+    typeof response.json.message === 'string'
+      ? response.json.message
+      : typeof response.json.error === 'string'
+        ? response.json.error
+        : '';
+  const identifiesRoute = /\b(?:route|endpoint)\b/i.test(message);
+  const identifiesMissingTarget =
+    /\b(?:not\s+found|missing|unmapped)\b/i.test(message) ||
+    /\bno\b.*\bmatch(?:ed|es|ing)?\b/i.test(message);
+
+  return routeSpecificCode || (identifiesRoute && identifiesMissingTarget);
 }
 
 function resolveRoutePath(pathname: string): string {
@@ -127,8 +202,9 @@ function buildRequestBody(method: HttpMethod, pathname: string): Record<string, 
   if (method === 'POST' || method === 'PUT' || method === 'PATCH') {
     if (pathname === '/auth/login') {
       return {
-        username: 'admin',
-        password: 'seed_admin'
+        accountSlug: ACCOUNT_SLUG,
+        username: ROUTE_USERNAME,
+        password: ROUTE_PASSWORD
       };
     }
 
@@ -167,15 +243,62 @@ function isPublicOperation(operation: OpenApiOperation | undefined, pathname: st
   return pathname === '/webhooks/whatsapp/inbound';
 }
 
+function expectedSuccessBodyFormat(operation: OpenApiOperation | undefined): 'json' | 'text' {
+  const successContentTypes = Object.entries(operation?.responses ?? {})
+    .filter(([status]) => status.startsWith('2'))
+    .flatMap(([, response]) => Object.keys(response.content ?? {}));
+
+  const hasJsonResponse = successContentTypes.some((contentType) =>
+    contentType.toLowerCase().includes('json')
+  );
+  const hasTextResponse = successContentTypes.some((contentType) =>
+    contentType.toLowerCase().startsWith('text/')
+  );
+
+  return hasTextResponse && !hasJsonResponse ? 'text' : 'json';
+}
+
 async function cleanupProbeRows(): Promise<void> {
   await pool.query(`DELETE FROM api_key_usage WHERE api_key_id = $1`, [createdApiKeyId ?? null]);
   await pool.query(`DELETE FROM api_key_rate_limits WHERE api_key_id = $1`, [createdApiKeyId ?? null]);
   await pool.query(`DELETE FROM api_keys WHERE name LIKE 'Route Probe %'`);
   await pool.query(`DELETE FROM webhook_deliveries WHERE webhook_id IN (SELECT id FROM webhooks WHERE url LIKE 'https://route-probe.%')`);
   await pool.query(`DELETE FROM webhooks WHERE url LIKE 'https://route-probe.%'`);
+  await pool.query(`DELETE FROM sessions WHERE user_id = $1`, [ROUTE_USER_ID]);
+  await pool.query(`DELETE FROM audit_events WHERE account_id = $1 OR actor_user_id = $2`, [
+    accountId,
+    ROUTE_USER_ID
+  ]);
+  await pool.query(`DELETE FROM user_roles WHERE user_id = $1`, [ROUTE_USER_ID]);
+  await pool.query(`DELETE FROM users WHERE id = $1`, [ROUTE_USER_ID]);
 }
 
 beforeAll(async () => {
+  pool = new Pool({ connectionString: TEST_DB_URL, max: 2 });
+  const accountResult = await pool.query<{ id: string; tenant_id: string }>(
+    `SELECT id, tenant_id FROM accounts WHERE slug = $1`,
+    [ACCOUNT_SLUG]
+  );
+  const defaultAccount = accountResult.rows[0];
+  if (!defaultAccount) {
+    throw new Error('Default account fixture is missing');
+  }
+  accountId = defaultAccount.id;
+  tenantId = defaultAccount.tenant_id;
+
+  await pool.query(
+    `INSERT INTO users (id, account_id, email, password_hash, full_name)
+     VALUES ($1, $2, $3, 'cvg-his-v2-seed-salt-v1:seed_admin', 'Route Probe Admin')
+     ON CONFLICT (id) DO NOTHING`,
+    [ROUTE_USER_ID, accountId, ROUTE_EMAIL]
+  );
+  await pool.query(
+    `INSERT INTO user_roles (user_id, role_id)
+     SELECT $1, id FROM roles WHERE name = 'admin'
+     ON CONFLICT (user_id, role_id) DO NOTHING`,
+    [ROUTE_USER_ID]
+  );
+
   const bootstrap = await bootstrapServices({
     databaseUrl: TEST_DB_URL,
     fileStoragePath: mkdtempSync(join(tmpdir(), 'cvg-his-v2-route-tests-')),
@@ -184,7 +307,7 @@ beforeAll(async () => {
   });
 
   expect(bootstrap.databaseHealthy).toBe(true);
-  expect(bootstrap.repositories.session?.constructor.name).toBe('InMemorySessionRepository');
+  expect(bootstrap.repositories.session?.constructor.name).toBe('DatabaseSessionRepository');
   expect(bootstrap.repositories.audit?.constructor.name).toBe('DatabaseAuditRepository');
   repositoriesUnderTest = bootstrap.repositories;
 
@@ -208,6 +331,10 @@ beforeAll(async () => {
     authSecret: 'test-secret',
     accessTokenTtlSeconds: 900,
     refreshTokenTtlSeconds: 604800,
+    pixMockMode: true,
+    emailMockMode: true,
+    smsMockMode: true,
+    googleCalendarMockMode: true,
     repositories: repositoriesUnderTest,
     fileStorage: bootstrap.fileStorage
   });
@@ -217,12 +344,14 @@ beforeAll(async () => {
   });
 
   baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
-  pool = new Pool({ connectionString: TEST_DB_URL, max: 2 });
-
   const loginResponse = await requestJson<LoginResponse>('/auth/login', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ username: 'admin', password: 'seed_admin' })
+    body: JSON.stringify({
+      accountSlug: ACCOUNT_SLUG,
+      username: ROUTE_USERNAME,
+      password: ROUTE_PASSWORD
+    })
   });
 
   expect(loginResponse.status).toBe(200);
@@ -232,17 +361,17 @@ beforeAll(async () => {
   const apiKeys = new ApiKeysService(repositoriesUnderTest.apiKey);
   const createdApiKey = await runWithTenantContext(
     {
-      tenantId: 'tenant-route-probe',
-      accountId: 'acc_cvg_demo',
-      userId: 'user_admin',
+      tenantId,
+      accountId,
+      userId: ROUTE_USER_ID,
       correlationId: 'corr-route-probe-api-key-bootstrap'
     },
     () =>
       apiKeys.create({
-        accountId: 'acc_cvg_demo' as never,
+        accountId: accountId as never,
         name: 'Route Probe Bootstrap Key',
         permissions: ['integrations.read', 'payments.manage'],
-        createdBy: 'user_admin'
+        createdBy: ROUTE_USER_ID
       })
   );
 
@@ -275,7 +404,87 @@ afterAll(async () => {
 });
 
 describe('API Routes with Database', () => {
-  it('persists audit events in the database while preserving legacy runtime ids in metadata', async () => {
+  it.each([
+    { label: 'empty', responseText: '' },
+    { label: 'non-JSON', responseText: '<html>not found</html>' }
+  ])('rejects an unexpected $label route-probe response', async ({ responseText }) => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(responseText, { status: 200 }));
+
+    try {
+      await expect(request('/probe', { method: 'GET' })).rejects.toThrow('GET /probe');
+    } finally {
+      fetchMock.mockRestore();
+    }
+  });
+
+  it('accepts expected non-empty text from a documented text route', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response('# HELP probe metric', { status: 200 }));
+
+    try {
+      await expect(request('/metrics', { method: 'GET' }, 'text')).resolves.toMatchObject({
+        status: 200,
+        text: '# HELP probe metric'
+      });
+    } finally {
+      fetchMock.mockRestore();
+    }
+  });
+
+  it.each([
+    {
+      label: 'current runtime fallback',
+      response: {
+        status: 404,
+        text: '{"code":"NOT_FOUND","message":"Route not found"}',
+        json: { code: 'NOT_FOUND', message: 'Route not found' }
+      },
+      expected: true
+    },
+    {
+      label: 'route-specific error code',
+      response: {
+        status: 404,
+        text: '{"code":"ROUTE_NOT_FOUND","message":"No endpoint matched the request"}',
+        json: { code: 'ROUTE_NOT_FOUND', message: 'No endpoint matched the request' }
+      },
+      expected: true
+    },
+    {
+      label: 'wording variation',
+      response: {
+        status: 404,
+        text: '{"code":"NOT_FOUND","message":"Requested runtime route was not found"}',
+        json: { code: 'NOT_FOUND', message: 'Requested runtime route was not found' }
+      },
+      expected: true
+    },
+    {
+      label: 'missing resource',
+      response: {
+        status: 404,
+        text: '{"code":"NOT_FOUND","message":"Webhook not found"}',
+        json: { code: 'NOT_FOUND', message: 'Webhook not found' }
+      },
+      expected: false
+    },
+    {
+      label: 'non-404 route-shaped error',
+      response: {
+        status: 400,
+        text: '{"code":"ROUTE_NOT_FOUND","message":"Route not found"}',
+        json: { code: 'ROUTE_NOT_FOUND', message: 'Route not found' }
+      },
+      expected: false
+    }
+  ])('classifies $label robustly', ({ response, expected }) => {
+    expect(isMissingRuntimeRoute(response)).toBe(expected);
+  });
+
+  it('persists tenant and actor UUIDs directly in durable audit events', async () => {
     const beforeCountResult = await pool.query<{ total: string }>(
       `SELECT COUNT(*)::int AS total FROM audit_events`
     );
@@ -284,7 +493,11 @@ describe('API Routes with Database', () => {
     const loginResponse = await requestJson<LoginResponse>('/auth/login', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ username: 'admin', password: 'seed_admin' })
+      body: JSON.stringify({
+        accountSlug: ACCOUNT_SLUG,
+        username: ROUTE_USERNAME,
+        password: ROUTE_PASSWORD
+      })
     });
 
     expect(loginResponse.status).toBe(200);
@@ -327,14 +540,59 @@ describe('API Routes with Database', () => {
 
     expect(persistedRow).toBeDefined();
     expect(persistedRow?.action).toBe('login');
-    expect(persistedRow?.account_id).toBeNull();
-    expect(persistedRow?.actor_user_id).toBeNull();
+    expect(persistedRow?.account_id).toBe(accountId);
+    expect(persistedRow?.actor_user_id).toBe(ROUTE_USER_ID);
     expect(persistedRow?.metadata).toMatchObject({
       module: 'auth',
-      legacyAccountId: 'acc_cvg_demo',
-      legacyActorId: 'user_admin',
-      payloadSummary: 'User admin authenticated',
+      payloadSummary: `User ${ROUTE_USERNAME} authenticated`,
       riskLevel: 'medium'
+    });
+  });
+
+  it('returns an authentication error and durably audits a login for an unknown account', async () => {
+    const correlationId = `unknown-account-${Date.now()}`;
+    const response = await requestJson<{ code: string; message: string }>('/auth/login', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-correlation-id': correlationId
+      },
+      body: JSON.stringify({
+        accountSlug: 'defaut',
+        username: ROUTE_USERNAME,
+        password: ROUTE_PASSWORD
+      })
+    });
+
+    expect(response.status).toBe(401);
+    expect(response.body).toMatchObject({
+      code: 'AUTHENTICATION_ERROR',
+      message: 'Invalid username or password'
+    });
+
+    const auditResult = await pool.query<{
+      account_id: string | null;
+      actor_user_id: string | null;
+      action: string;
+      metadata: Record<string, unknown> | null;
+    }>(
+      `SELECT account_id, actor_user_id, action, metadata
+       FROM audit_events
+       WHERE correlation_id = $1`,
+      [correlationId]
+    );
+
+    expect(auditResult.rows).toHaveLength(1);
+    expect(auditResult.rows[0]).toMatchObject({
+      account_id: null,
+      actor_user_id: null,
+      action: 'login_failed'
+    });
+    expect(auditResult.rows[0]?.metadata).toMatchObject({
+      module: 'auth',
+      legacyAccountId: 'unknown',
+      legacyActorId: 'anonymous',
+      payloadSummary: 'Invalid username or password'
     });
   });
 
@@ -401,7 +659,7 @@ describe('API Routes with Database', () => {
 
     expect(apiKeyRow.rowCount).toBe(1);
     expect(apiKeyRow.rows[0].name).toBe('Route Probe Bootstrap Key');
-    expect(apiKeyRow.rows[0].created_by).toBe('user_admin');
+    expect(apiKeyRow.rows[0].created_by).toBe(ROUTE_USER_ID);
   });
 
   it('does not leave documented routes unmapped in the runtime router', async () => {
@@ -424,17 +682,20 @@ describe('API Routes with Database', () => {
         } else if (!isPublicOperation(operation, rawPath)) {
           headers.authorization = `Bearer ${accessToken}`;
         } else if (!rawPath.startsWith('/health') && rawPath !== '/ready' && rawPath !== '/live') {
-          headers['x-account-id'] = 'acc_cvg_demo';
+          headers['x-account-id'] = accountId;
         }
 
-        const response = await request(pathname, {
-          method,
-          headers,
-          body: body !== undefined ? JSON.stringify(body) : undefined
-        });
+        const response = await request(
+          pathname,
+          {
+            method,
+            headers,
+            body: body !== undefined ? JSON.stringify(body) : undefined
+          },
+          expectedSuccessBodyFormat(operation)
+        );
 
-        const routeWasMissing =
-          response.status === 404 && response.json?.message === 'Route not found';
+        const routeWasMissing = isMissingRuntimeRoute(response);
 
         if (routeWasMissing) {
           failures.push(`${method} ${rawPath}`);

@@ -2,6 +2,7 @@ import {
   createDatabaseClient,
   closeDatabaseClient,
   checkDatabaseHealth,
+  assertDatabaseRuntimeRoleIsRestricted,
   getDatabaseClient,
   getPool,
   type DatabaseClient
@@ -147,6 +148,7 @@ export interface BootstrapOptions {
   databaseUrl?: string;
   fileStoragePath?: string;
   skipDatabase?: boolean;
+  environment?: string;
   maxRetries?: number;
   retryDelayMs?: number;
 }
@@ -160,6 +162,11 @@ export interface BootstrapResult {
 }
 
 const logger = createLogger('bootstrap');
+const PRODUCTION_LIKE_ENVIRONMENTS = new Set(['production', 'staging', 'prod', 'stage']);
+
+function isProductionLikeEnvironment(environment: string | undefined): boolean {
+  return PRODUCTION_LIKE_ENVIRONMENTS.has((environment ?? '').trim().toLowerCase());
+}
 
 async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -709,6 +716,7 @@ class InMemoryWebhookRepository {
 }
 
 export async function bootstrapServices(options: BootstrapOptions = {}): Promise<BootstrapResult> {
+  const productionLike = isProductionLikeEnvironment(options.environment);
   const results: BootstrapResult = {
     databaseHealthy: false,
     databaseDetail: 'Not initialized',
@@ -737,6 +745,11 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
   };
 
   if (options.skipDatabase || !options.databaseUrl) {
+    if (productionLike) {
+      throw new Error(
+        'Production-like API startup requires DATABASE_URL; in-memory repositories are not an allowed fallback'
+      );
+    }
     logger.info(
       'Database initialization skipped (no DATABASE_URL provided), using in-memory repositories'
     );
@@ -761,11 +774,24 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
     results.databaseDetail = health.detail;
 
     if (health.healthy) {
+      if (productionLike) {
+        const runtimeRole = await assertDatabaseRuntimeRoleIsRestricted(getPool());
+        logger.info('PostgreSQL runtime role passed least-privilege validation', {
+          roleName: runtimeRole.roleName,
+          ownedTenantTables: runtimeRole.ownedTenantTables
+        });
+      }
+
       logger.info('Database connection established, using real database repositories', {
         detail: health.detail
       });
 
       if (process.env.API_DISABLE_INCOMPATIBLE_DB_REPOS === '1') {
+        if (productionLike) {
+          throw new Error(
+            'API_DISABLE_INCOMPATIBLE_DB_REPOS cannot be enabled in a production-like environment'
+          );
+        }
         results.databaseDetail =
           'Database healthy, but runtime remains in-memory because legacy text IDs are incompatible with the canonical UUID schema for E2E/runtime flows';
         logger.warn('Database runtime repositories disabled by compatibility guard', {
@@ -803,11 +829,36 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
       const inpatientDailyChargesReady = await databaseTableExists('inpatient_daily_charges');
       const inventoryStockMovementsReady = await databaseTableExists('inventory_stock_movements');
       const clinicalHandoffsReady = await databaseTableExists('clinical_handoffs');
+      const sessionsReady = await databaseTableExists('sessions');
+
+      if (productionLike) {
+        const missingProductionTables = [
+          ['sessions', sessionsReady],
+          ['owner_patient_links', ownerPatientLinksReady],
+          ['clinical_entries', clinicalEntriesReady],
+          ['billing_records + billing_items', billingTablesReady],
+          ['customer_packages + customer_package_items + customer_package_consumptions', packagesTablesReady],
+          ['commission_rules + commission_calculations + commission_lines', commissionsTablesReady],
+          ['report_executions + report_exports + report_schedules', reportsTablesReady],
+          ['marketing_segments + marketing_templates + marketing_campaigns + marketing_campaign_deliveries', marketingTablesReady],
+          ['financial_payables', financialPayablesReady],
+          ['inpatient_occurrences', inpatientOccurrenceReady],
+          ['inpatient_daily_charges', inpatientDailyChargesReady],
+          ['inventory_stock_movements', inventoryStockMovementsReady],
+          ['clinical_handoffs', clinicalHandoffsReady]
+        ]
+          .filter(([, ready]) => !ready)
+          .map(([name]) => name);
+
+        if (missingProductionTables.length > 0) {
+          throw new Error(
+            `Production-like API startup requires canonical persistence tables; missing: ${missingProductionTables.join(', ')}`
+          );
+        }
+      }
 
       results.repositories = {
-        // Sessions remain in-memory in the runtime until the canonical
-        // sessions table/contract is promoted into the migration baseline.
-        session: new InMemorySessionRepository(),
+        session: sessionsReady ? new DatabaseSessionRepository(db) : new InMemorySessionRepository(),
         audit: new DatabaseAuditRepository(db),
         owner: new DatabaseOwnerRepository(db),
         patient: new DatabasePatientRepository(db),
@@ -869,7 +920,7 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
       });
       logger.info('Database repositories initialized for critical auth/encounter runtime', {
         auditPersistence: 'database',
-        sessionPersistence: 'in-memory',
+        sessionPersistence: sessionsReady ? 'database' : 'in-memory',
         ownerPatientLinkPersistence: ownerPatientLinksReady ? 'database' : 'derived-from-patient',
         prescriptionPersistence: clinicalEntriesReady ? 'database' : 'in-memory',
         billingPersistence: billingTablesReady ? 'database' : 'in-memory',
@@ -882,6 +933,11 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
         encounterTimelinePersistence: 'database'
       });
     } else {
+      if (productionLike) {
+        throw new Error(
+          `Production-like API startup cannot continue with an unhealthy database: ${health.detail}`
+        );
+      }
       logger.error('Database connection failed after retries, using in-memory repositories', {
         detail: health.detail
       });
@@ -889,6 +945,9 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     results.databaseDetail = message;
+    if (productionLike) {
+      throw new Error(`Production-like API database bootstrap failed: ${message}`);
+    }
     logger.error('Database initialization failed, using in-memory repositories', {
       error: message
     });

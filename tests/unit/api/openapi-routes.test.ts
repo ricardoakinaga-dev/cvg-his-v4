@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 class MockResponse {
   statusCode = 200;
@@ -25,15 +25,6 @@ class MockResponse {
 }
 
 describe('openapi-routes', () => {
-  beforeEach(() => {
-    vi.resetModules();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-    vi.doUnmock('node:fs');
-  });
-
   it('serves API docs metadata from /api-docs', async () => {
     const { handleOpenApiRoutes } = await import('../../../apps/api/src/routes/openapi-routes.ts');
     const response = new MockResponse();
@@ -51,63 +42,49 @@ describe('openapi-routes', () => {
     ).toBe('/openapi.json');
   });
 
-  it('falls back to the embedded spec when reading the YAML fails', async () => {
-    vi.doMock('node:fs', async () => {
-      const actual = await vi.importActual<Record<string, unknown>>('node:fs');
-      return {
-        ...actual,
-        default: actual,
-        readFileSync: vi.fn(() => {
-          throw new Error('missing-openapi');
-        })
-      };
-    });
-
+  it('tries the next source candidate when the first OpenAPI file is unavailable', async () => {
     const { handleOpenApiRoutes } = await import('../../../apps/api/src/routes/openapi-routes.ts');
     const response = new MockResponse();
+    const readFile = vi
+      .fn()
+      .mockImplementationOnce(() => {
+        throw new Error('missing-first-openapi-candidate');
+      })
+      .mockReturnValue('openapi: 3.0.3\ninfo:\n  title: CVG HIS API\n  version: 1.0.0\npaths: {}\n');
 
     const handled = handleOpenApiRoutes(
       { method: 'GET', url: '/openapi.json' } as never,
-      response as never
+      response as never,
+      { readFile: readFile as never }
     );
 
     expect(handled).toBe(true);
     expect(response.statusCode).toBe(200);
     expect(response.bodyJson<{ openapi: string; paths: Record<string, unknown> }>()).toEqual({
       openapi: '3.0.3',
-      info: {
-        title: 'CVG HIS API',
-        version: '1.0.0',
-        description: 'CVG Hospital Information System REST API'
-      },
-      servers: [{ url: '/', description: 'Local development' }],
+      info: { title: 'CVG HIS API', version: '1.0.0' },
       paths: {}
     });
+    expect(readFile).toHaveBeenCalledTimes(2);
   });
 
-  it('returns 500 for /openapi.yaml when the source file is unavailable', async () => {
-    vi.doMock('node:fs', async () => {
-      const actual = await vi.importActual<Record<string, unknown>>('node:fs');
-      return {
-        ...actual,
-        default: actual,
-        readFileSync: vi.fn(() => {
-          throw new Error('missing-openapi');
-        })
-      };
-    });
-
+  it('returns 500 for /openapi.yaml when every source file is unavailable', async () => {
     const { handleOpenApiRoutes } = await import('../../../apps/api/src/routes/openapi-routes.ts');
     const response = new MockResponse();
+    const readFile = vi.fn(() => {
+      throw new Error('missing-openapi');
+    });
 
     const handled = handleOpenApiRoutes(
       { method: 'GET', url: '/openapi.yaml' } as never,
-      response as never
+      response as never,
+      { readFile: readFile as never }
     );
 
     expect(handled).toBe(true);
     expect(response.statusCode).toBe(500);
     expect(response.body).toBe('OpenAPI spec not available');
+    expect(readFile).toHaveBeenCalledTimes(4);
   });
 
   it('ignores non-GET requests', async () => {

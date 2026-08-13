@@ -52,6 +52,7 @@
                     :key="day.date"
                     type="button"
                     class="mini-calendar__day"
+                    :aria-label="day.date"
                     :class="{
                       'mini-calendar__day--muted': !day.inCurrentMonth,
                       'mini-calendar__day--today': day.isToday,
@@ -78,7 +79,11 @@
                     {{ statusLabel(status) }}
                   </button>
                 </div>
-                <button type="button" class="agenda-filter-block__clear" @click="clearStatusFilters">
+                <button
+                  type="button"
+                  class="agenda-filter-block__clear"
+                  @click="clearStatusFilters"
+                >
                   Limpar filtros
                 </button>
               </div>
@@ -101,7 +106,11 @@
                     {{ professional.fullName }}
                   </option>
                 </DsInput>
-                <button type="button" class="agenda-filter-block__clear" @click="clearPractitionerFilter">
+                <button
+                  type="button"
+                  class="agenda-filter-block__clear"
+                  @click="clearPractitionerFilter"
+                >
                   Limpar filtros
                 </button>
               </div>
@@ -119,7 +128,11 @@
                     {{ service.name }}
                   </option>
                 </DsInput>
-                <button type="button" class="agenda-filter-block__clear" @click="clearServiceFilter">
+                <button
+                  type="button"
+                  class="agenda-filter-block__clear"
+                  @click="clearServiceFilter"
+                >
                   Limpar filtros
                 </button>
               </div>
@@ -165,7 +178,11 @@
                   @change="loadOverview"
                 >
                   <option value="">Todas</option>
-                  <option v-for="unit in overview?.filterOptions.units ?? []" :key="unit" :value="unit">
+                  <option
+                    v-for="unit in overview?.filterOptions.units ?? []"
+                    :key="unit"
+                    :value="unit"
+                  >
                     {{ unit }}
                   </option>
                 </DsInput>
@@ -271,367 +288,440 @@
               </div>
             </section>
 
-          <template v-if="viewMode === 'month'">
-            <section class="month-board">
-              <div class="month-board__weekdays">
-                <span v-for="weekday in weekdayLabels" :key="weekday">{{ weekday }}</span>
-              </div>
-              <div class="month-grid">
-                <DsCard
-                  v-for="day in monthCalendarDays"
-                  :key="day.date"
-                  class="month-cell"
-                  :class="{
-                    'month-cell--muted': !day.inCurrentMonth,
-                    'month-cell--selected': day.date === referenceDate
+            <template v-if="viewMode === 'month'">
+              <section class="month-board">
+                <div class="month-board__weekdays">
+                  <span v-for="weekday in weekdayLabels" :key="weekday">{{ weekday }}</span>
+                </div>
+                <div class="month-grid">
+                  <DsCard
+                    v-for="day in monthCalendarDays"
+                    :key="day.date"
+                    class="month-cell"
+                    :class="{
+                      'month-cell--muted': !day.inCurrentMonth,
+                      'month-cell--selected': day.date === referenceDate
+                    }"
+                  >
+                    <button type="button" class="month-cell__header" @click="selectDate(day.date)">
+                      <strong>{{ day.dayNumber }}</strong>
+                      <span>{{ appointmentsByDay(day.date).length }} ag.</span>
+                    </button>
+                    <div class="month-cell__body">
+                      <div class="month-cell__availability">
+                        {{ availableSlotsByDay(day.date) }} horários livres
+                      </div>
+                      <button
+                        v-if="canManageScheduling"
+                        type="button"
+                        class="month-cell__empty-surface"
+                        :aria-label="`Criar agendamento em ${day.date}`"
+                        @click="openSlotCreateFlow({ date: day.date })"
+                      >
+                        Criar no dia {{ day.dayNumber }}
+                      </button>
+                      <button
+                        v-for="item in appointmentsByDay(day.date).slice(0, 5)"
+                        :key="item.id"
+                        type="button"
+                        class="month-item"
+                        @click="openAppointmentDetails(item)"
+                      >
+                        <span>{{ timeLabel(item.scheduledAt) }}</span>
+                        <strong>{{ patientName(item.patientId) }}</strong>
+                        <small
+                          >{{ ownerName(item.ownerId) }} · {{ appointmentTypeLabel(item) }}</small
+                        >
+                        <small>{{ appointmentResponsibleLabel(item) }}</small>
+                        <small class="month-item__next">{{ nextStepForAppointment(item) }}</small>
+                      </button>
+                      <button
+                        v-if="canManageScheduling"
+                        type="button"
+                        class="month-create-slot"
+                        @click="openSlotCreateFlow({ date: day.date })"
+                      >
+                        + Novo agendamento
+                      </button>
+                      <span v-if="appointmentsByDay(day.date).length > 5" class="month-item__more">
+                        +{{ appointmentsByDay(day.date).length - 5 }} compromissos
+                      </span>
+                    </div>
+                  </DsCard>
+                </div>
+              </section>
+            </template>
+
+            <template v-else-if="viewMode === 'week'">
+              <section class="week-board">
+                <div
+                  class="time-matrix"
+                  :style="{
+                    gridTemplateColumns: `72px repeat(${visibleDays.length}, minmax(150px, 1fr))`
                   }"
                 >
-                  <button type="button" class="month-cell__header" @click="selectDate(day.date)">
-                    <strong>{{ day.dayNumber }}</strong>
-                    <span>{{ appointmentsByDay(day.date).length }} ag.</span>
-                  </button>
-                  <div class="month-cell__body">
-                    <div class="month-cell__availability">
-                      {{ availableSlotsByDay(day.date) }} horários livres
-                    </div>
-                    <button
-                      v-if="canManageScheduling"
-                      type="button"
-                      class="month-cell__empty-surface"
-                      :aria-label="`Criar agendamento em ${day.date}`"
-                      @click="openSlotCreateFlow({ date: day.date })"
-                    >
-                      Criar no dia {{ day.dayNumber }}
-                    </button>
-                    <button
-                      v-for="item in appointmentsByDay(day.date).slice(0, 5)"
-                      :key="item.id"
-                      type="button"
-                      class="month-item"
-                      @click="openAppointmentDetails(item)"
-                    >
-                      <span>{{ timeLabel(item.scheduledAt) }}</span>
-                      <strong>{{ patientName(item.patientId) }}</strong>
-                      <small>{{ ownerName(item.ownerId) }} · {{ appointmentTypeLabel(item) }}</small>
-                      <small>{{ appointmentResponsibleLabel(item) }}</small>
-                      <small class="month-item__next">{{ nextStepForAppointment(item) }}</small>
-                    </button>
-                    <button
-                      v-if="canManageScheduling"
-                      type="button"
-                      class="month-create-slot"
-                      @click="openSlotCreateFlow({ date: day.date })"
-                    >
-                      + Novo agendamento
-                    </button>
-                    <span v-if="appointmentsByDay(day.date).length > 5" class="month-item__more">
-                      +{{ appointmentsByDay(day.date).length - 5 }} compromissos
-                    </span>
-                  </div>
-                </DsCard>
-              </div>
-            </section>
-          </template>
-
-          <template v-else-if="viewMode === 'week'">
-            <section class="week-board">
-              <div
-                class="time-matrix"
-                :style="{ gridTemplateColumns: `72px repeat(${visibleDays.length}, minmax(150px, 1fr))` }"
-              >
-                <div class="time-matrix__corner">Horário</div>
-                <div
-                  v-for="day in visibleDays"
-                  :key="`${day.date}-header`"
-                  class="time-matrix__column-title time-matrix__column-title--day"
-                >
-                  <strong>{{ day.label }}</strong>
-                  <span>{{ dayGridSummary(day.date) }}</span>
-                </div>
-
-                <div class="time-matrix__hour time-matrix__hour--all-day">Dia inteiro</div>
-                <div
-                  v-for="day in visibleDays"
-                  :key="`${day.date}-all-day`"
-                  class="time-matrix__slot time-matrix__slot--all-day"
-                >
-                  <button
-                    v-if="canManageScheduling"
-                    type="button"
-                    class="time-matrix__empty-button time-matrix__empty-button--compact"
-                    :aria-label="`Criar agendamento livre em ${day.label}`"
-                    @click="openSlotCreateFlow({ date: day.date })"
-                  >
-                    Disponível dia inteiro
-                  </button>
-                  <span v-else class="time-matrix__empty">Disponível dia inteiro</span>
-                </div>
-
-                <template v-for="hour in timelineHours" :key="`week-${hour}`">
-                  <div class="time-matrix__hour">{{ formatHour(hour) }}</div>
-
+                  <div class="time-matrix__corner">Horário</div>
                   <div
                     v-for="day in visibleDays"
-                    :key="`${day.date}-${hour}`"
-                    class="time-matrix__slot"
+                    :key="`${day.date}-header`"
+                    class="time-matrix__column-title time-matrix__column-title--day"
                   >
-                    <div v-if="weekBlocksBySlot(day.date, hour).length" class="timeline-blocks">
-                      <div
-                        v-for="block in weekBlocksBySlot(day.date, hour)"
-                        :key="block.id"
-                        class="timeline-block"
-                      >
-                        {{ block.title }}
-                      </div>
-                    </div>
-
-                    <div v-if="appointmentsByWeekSlot(day.date, hour).length" class="timeline-items">
-                      <button
-                        v-for="item in visibleAppointmentsByWeekSlot(day.date, hour)"
-                        :key="item.id"
-                        type="button"
-                        class="timeline-item"
-                        :class="{
-                          [`timeline-item--${item.operational.stage}`]: true,
-                          'timeline-item--dense': isDenseWeekSlot(day.date, hour)
-                        }"
-                        @click="openAppointmentDetails(item)"
-                      >
-                        <div class="timeline-item__head">
-                          <span>{{ timeLabel(item.scheduledAt) }} · {{ item.durationMinutes || 30 }} min</span>
-                          <span class="status-pill" :class="`status-pill--${item.operational.stage}`">
-                            {{ operationalLabel(item) }}
-                          </span>
-                        </div>
-                        <strong>{{ patientName(item.patientId) }}</strong>
-                        <span v-if="!isDenseWeekSlot(day.date, hour)">{{ ownerName(item.ownerId) }}</span>
-                        <small v-if="!isDenseWeekSlot(day.date, hour)">{{ item.serviceName || item.specialty || item.reason }}</small>
-                        <div v-if="!isDenseWeekSlot(day.date, hour)" class="timeline-item__ops">
-                          <span>{{ appointmentResponsibleLabel(item) }}</span>
-                          <span>{{ queueBridgeLabel(item) }}</span>
-                          <strong>{{ nextStepForAppointment(item) }}</strong>
-                        </div>
-                      </button>
-                      <span
-                        v-if="hiddenWeekSlotCount(day.date, hour) > 0"
-                        class="timeline-slot-summary"
-                      >
-                        +{{ hiddenWeekSlotCount(day.date, hour) }} adicionais
-                      </span>
-                    </div>
-
-                    <button
-                      v-if="canManageScheduling && hasAvailableWeekSlot(day.date, hour)"
-                      type="button"
-                      class="time-matrix__empty-button"
-                      :class="{ 'time-matrix__empty-button--compact': appointmentsByWeekSlot(day.date, hour).length > 0 }"
-                      :aria-label="`Criar agendamento livre em ${day.label} às ${formatHour(hour)}`"
-                      @click="openSlotCreateFlow({
-                        date: day.date,
-                        hour,
-                        practitionerStaffId: firstAvailablePractitionerForWeekSlot(day.date, hour)
-                      })"
-                    >
-                      {{ appointmentsByWeekSlot(day.date, hour).length > 0 ? 'Horário livre' : 'Disponível' }}
-                    </button>
-                    <button
-                      v-else-if="canManageScheduling"
-                      type="button"
-                      class="time-matrix__empty-button"
-                      :aria-label="`Criar agendamento em ${day.label} às ${formatHour(hour)}`"
-                      @click="openSlotCreateFlow({ date: day.date, hour })"
-                    >
-                      Disponível
-                    </button>
-                    <span v-else class="time-matrix__empty">Disponível</span>
+                    <strong>{{ day.label }}</strong>
+                    <span>{{ dayGridSummary(day.date) }}</span>
                   </div>
-                </template>
-              </div>
-            </section>
-          </template>
 
-          <template v-else>
-            <section v-for="day in visibleDays" :key="day.date" class="day-board">
-              <div class="day-board__header">
-                <div>
-                  <strong>{{ day.label }}</strong>
-                  <p>{{ dayGridSummary(day.date) }}</p>
-                </div>
-                <DsButton
-                  v-if="canManageScheduling"
-                  variant="ghost"
-                  size="sm"
-                  @click="selectDate(day.date)"
-                >
-                  Fixar data
-                </DsButton>
-              </div>
-
-              <div
-                class="time-matrix"
-                :style="{ gridTemplateColumns: `72px repeat(${columnCount}, minmax(180px, 1fr))` }"
-              >
-                <div class="time-matrix__corner">Horário</div>
-                <div
-                  v-for="column in professionalColumns"
-                  :key="`${day.date}-${column.id}-header`"
-                  class="time-matrix__column-title"
-                >
-                  <strong>{{ column.label }}</strong>
-                  <span>{{ appointmentsByColumn(day.date, column.id).length }}</span>
-                </div>
-
-                <div class="time-matrix__hour time-matrix__hour--all-day">Dia inteiro</div>
-                <div
-                  v-for="column in professionalColumns"
-                  :key="`${day.date}-${column.id}-all-day`"
-                  class="time-matrix__slot time-matrix__slot--all-day"
-                >
-                  <button
-                    v-if="canManageScheduling"
-                    type="button"
-                    class="time-matrix__empty-button time-matrix__empty-button--compact"
-                    :aria-label="slotAriaLabel(day.label, column.label, 9)"
-                    @click="openSlotCreateFlow({ date: day.date, practitionerStaffId: column.id })"
+                  <div class="time-matrix__hour time-matrix__hour--all-day">Dia inteiro</div>
+                  <div
+                    v-for="day in visibleDays"
+                    :key="`${day.date}-all-day`"
+                    class="time-matrix__slot time-matrix__slot--all-day"
                   >
-                    Disponível dia inteiro
-                  </button>
-                  <span v-else class="time-matrix__empty">Disponível dia inteiro</span>
+                    <button
+                      v-if="canManageScheduling"
+                      type="button"
+                      class="time-matrix__empty-button time-matrix__empty-button--compact"
+                      :aria-label="`Criar agendamento livre em ${day.label}`"
+                      @click="openSlotCreateFlow({ date: day.date })"
+                    >
+                      Disponível dia inteiro
+                    </button>
+                    <span v-else class="time-matrix__empty">Disponível dia inteiro</span>
+                  </div>
+
+                  <template v-for="hour in timelineHours" :key="`week-${hour}`">
+                    <div class="time-matrix__hour">{{ formatHour(hour) }}</div>
+
+                    <div
+                      v-for="day in visibleDays"
+                      :key="`${day.date}-${hour}`"
+                      class="time-matrix__slot"
+                    >
+                      <div v-if="weekBlocksBySlot(day.date, hour).length" class="timeline-blocks">
+                        <div
+                          v-for="block in weekBlocksBySlot(day.date, hour)"
+                          :key="block.id"
+                          class="timeline-block"
+                        >
+                          {{ block.title }}
+                        </div>
+                      </div>
+
+                      <div
+                        v-if="appointmentsByWeekSlot(day.date, hour).length"
+                        class="timeline-items"
+                      >
+                        <button
+                          v-for="item in visibleAppointmentsByWeekSlot(day.date, hour)"
+                          :key="item.id"
+                          type="button"
+                          class="timeline-item"
+                          :class="{
+                            [`timeline-item--${item.operational.stage}`]: true,
+                            'timeline-item--dense': isDenseWeekSlot(day.date, hour)
+                          }"
+                          @click="openAppointmentDetails(item)"
+                        >
+                          <div class="timeline-item__head">
+                            <span
+                              >{{ timeLabel(item.scheduledAt) }} ·
+                              {{ item.durationMinutes || 30 }} min</span
+                            >
+                            <span
+                              class="status-pill"
+                              :class="`status-pill--${item.operational.stage}`"
+                            >
+                              {{ operationalLabel(item) }}
+                            </span>
+                          </div>
+                          <strong>{{ patientName(item.patientId) }}</strong>
+                          <span v-if="!isDenseWeekSlot(day.date, hour)">{{
+                            ownerName(item.ownerId)
+                          }}</span>
+                          <small v-if="!isDenseWeekSlot(day.date, hour)">{{
+                            item.serviceName || item.specialty || item.reason
+                          }}</small>
+                          <div v-if="!isDenseWeekSlot(day.date, hour)" class="timeline-item__ops">
+                            <span>{{ appointmentResponsibleLabel(item) }}</span>
+                            <span>{{ queueBridgeLabel(item) }}</span>
+                            <strong>{{ nextStepForAppointment(item) }}</strong>
+                          </div>
+                        </button>
+                        <span
+                          v-if="hiddenWeekSlotCount(day.date, hour) > 0"
+                          class="timeline-slot-summary"
+                        >
+                          +{{ hiddenWeekSlotCount(day.date, hour) }} adicionais
+                        </span>
+                      </div>
+
+                      <button
+                        v-if="canManageScheduling && hasAvailableWeekSlot(day.date, hour)"
+                        type="button"
+                        class="time-matrix__empty-button"
+                        :class="{
+                          'time-matrix__empty-button--compact':
+                            appointmentsByWeekSlot(day.date, hour).length > 0
+                        }"
+                        :aria-label="`Criar agendamento livre em ${day.label} às ${formatHour(hour)}`"
+                        @click="
+                          openSlotCreateFlow({
+                            date: day.date,
+                            hour,
+                            practitionerStaffId: firstAvailablePractitionerForWeekSlot(
+                              day.date,
+                              hour
+                            )
+                          })
+                        "
+                      >
+                        {{
+                          appointmentsByWeekSlot(day.date, hour).length > 0
+                            ? 'Horário livre'
+                            : 'Disponível'
+                        }}
+                      </button>
+                      <button
+                        v-else-if="canManageScheduling"
+                        type="button"
+                        class="time-matrix__empty-button"
+                        :aria-label="`Criar agendamento em ${day.label} às ${formatHour(hour)}`"
+                        @click="openSlotCreateFlow({ date: day.date, hour })"
+                      >
+                        Disponível
+                      </button>
+                      <span v-else class="time-matrix__empty">Disponível</span>
+                    </div>
+                  </template>
+                </div>
+              </section>
+            </template>
+
+            <template v-else>
+              <section v-for="day in visibleDays" :key="day.date" class="day-board">
+                <div class="day-board__header">
+                  <div>
+                    <strong>{{ day.label }}</strong>
+                    <p>{{ dayGridSummary(day.date) }}</p>
+                  </div>
+                  <DsButton
+                    v-if="canManageScheduling"
+                    variant="ghost"
+                    size="sm"
+                    @click="selectDate(day.date)"
+                  >
+                    Fixar data
+                  </DsButton>
                 </div>
 
-                <template v-for="hour in timelineHours" :key="`${day.date}-${hour}`">
-                  <div class="time-matrix__hour">{{ formatHour(hour) }}</div>
-
+                <div
+                  class="time-matrix"
+                  :style="{
+                    gridTemplateColumns: `72px repeat(${columnCount}, minmax(180px, 1fr))`
+                  }"
+                >
+                  <div class="time-matrix__corner">Horário</div>
                   <div
                     v-for="column in professionalColumns"
-                    :key="`${day.date}-${column.id}-${hour}`"
-                    class="time-matrix__slot"
+                    :key="`${day.date}-${column.id}-header`"
+                    class="time-matrix__column-title"
                   >
-                    <div v-if="blocksBySlot(day.date, column.id, hour).length" class="timeline-blocks">
-                      <div
-                        v-for="block in blocksBySlot(day.date, column.id, hour)"
-                        :key="block.id"
-                        class="timeline-block"
-                      >
-                        {{ block.title }}
-                      </div>
-                    </div>
-
-                    <div v-if="appointmentsBySlot(day.date, column.id, hour).length" class="timeline-items">
-                      <button
-                        v-for="item in visibleAppointmentsBySlot(day.date, column.id, hour)"
-                        :key="item.id"
-                        type="button"
-                        class="timeline-item"
-                        :class="{
-                          [`timeline-item--${item.operational.stage}`]: true,
-                          'timeline-item--dense': isDenseSlot(day.date, column.id, hour)
-                        }"
-                        @click="openAppointmentDetails(item)"
-                      >
-                        <div class="timeline-item__head">
-                          <span>{{ timeLabel(item.scheduledAt) }} · {{ item.durationMinutes || 30 }} min</span>
-                          <span class="status-pill" :class="`status-pill--${item.operational.stage}`">
-                            {{ operationalLabel(item) }}
-                          </span>
-                        </div>
-                        <strong>{{ patientName(item.patientId) }}</strong>
-                        <span v-if="!isDenseSlot(day.date, column.id, hour)">{{ ownerName(item.ownerId) }}</span>
-                        <small v-if="!isDenseSlot(day.date, column.id, hour)">{{ item.serviceName || item.specialty || item.reason }}</small>
-                        <small v-if="!isDenseSlot(day.date, column.id, hour)" class="timeline-item__meta">
-                          {{ appointmentTypeLabel(item) }} · {{ appointmentSectorLabel(item) }}
-                        </small>
-                        <div v-if="!isDenseSlot(day.date, column.id, hour)" class="timeline-item__ops">
-                          <span>{{ appointmentResponsibleLabel(item) }}</span>
-                          <span>{{ queueBridgeLabel(item) }}</span>
-                          <strong>{{ nextStepForAppointment(item) }}</strong>
-                        </div>
-
-                        <div v-if="!isDenseSlot(day.date, column.id, hour) && item.conflicts.length" class="timeline-item__conflicts">
-                          <span
-                            v-for="conflict in item.conflicts.slice(0, 2)"
-                            :key="`${item.id}-${conflict.type}-${conflict.startsAt}`"
-                          >
-                            {{ conflict.message }}
-                          </span>
-                        </div>
-
-                        <div v-if="!isDenseSlot(day.date, column.id, hour)" class="timeline-item__actions" @click.stop>
-                          <DsButton variant="ghost" size="sm" @click="openAppointmentDetails(item)">Ver</DsButton>
-                          <DsButton
-                            v-if="canCheckIn(item)"
-                            variant="success"
-                            size="sm"
-                            :loading="actionLoadingId === item.id && actionKind === 'checkin'"
-                            @click="checkIn(item)"
-                          >
-                            Check-in
-                          </DsButton>
-                          <DsButton
-                            v-if="canMarkNoShow(item)"
-                            variant="danger"
-                            size="sm"
-                            :loading="actionLoadingId === item.id && actionKind === 'noshow'"
-                            @click="markNoShow(item)"
-                          >
-                            No-show
-                          </DsButton>
-                          <DsButton
-                            v-if="shouldShowQueueAction(item)"
-                            variant="secondary"
-                            size="sm"
-                            tag="a"
-                            href="/queue"
-                          >
-                            Ver fila
-                          </DsButton>
-                          <DsButton
-                            v-if="shouldShowEncounterAction(item)"
-                            variant="secondary"
-                            size="sm"
-                            @click="openEncounter(item)"
-                          >
-                            {{ encounterActionLabel(item) }}
-                          </DsButton>
-                        </div>
-                      </button>
-                      <span
-                        v-if="hiddenSlotCount(day.date, column.id, hour) > 0"
-                        class="timeline-slot-summary"
-                      >
-                        +{{ hiddenSlotCount(day.date, column.id, hour) }} adicionais
-                      </span>
-                    </div>
-
-                    <button
-                      v-else-if="canManageScheduling"
-                      type="button"
-                      class="time-matrix__empty-button"
-                      :aria-label="slotAriaLabel(day.label, column.label, hour)"
-                      @click="openSlotCreateFlow({ date: day.date, hour, practitionerStaffId: column.id })"
-                    >
-                      Disponível
-                    </button>
-                    <span v-else class="time-matrix__empty">Disponível</span>
+                    <strong>{{ column.label }}</strong>
+                    <span>{{ appointmentsByColumn(day.date, column.id).length }}</span>
                   </div>
-                </template>
+
+                  <div class="time-matrix__hour time-matrix__hour--all-day">Dia inteiro</div>
+                  <div
+                    v-for="column in professionalColumns"
+                    :key="`${day.date}-${column.id}-all-day`"
+                    class="time-matrix__slot time-matrix__slot--all-day"
+                  >
+                    <button
+                      v-if="canManageScheduling"
+                      type="button"
+                      class="time-matrix__empty-button time-matrix__empty-button--compact"
+                      :aria-label="slotAriaLabel(day.label, column.label, 9)"
+                      @click="
+                        openSlotCreateFlow({ date: day.date, practitionerStaffId: column.id })
+                      "
+                    >
+                      Disponível dia inteiro
+                    </button>
+                    <span v-else class="time-matrix__empty">Disponível dia inteiro</span>
+                  </div>
+
+                  <template v-for="hour in timelineHours" :key="`${day.date}-${hour}`">
+                    <div class="time-matrix__hour">{{ formatHour(hour) }}</div>
+
+                    <div
+                      v-for="column in professionalColumns"
+                      :key="`${day.date}-${column.id}-${hour}`"
+                      class="time-matrix__slot"
+                    >
+                      <div
+                        v-if="blocksBySlot(day.date, column.id, hour).length"
+                        class="timeline-blocks"
+                      >
+                        <div
+                          v-for="block in blocksBySlot(day.date, column.id, hour)"
+                          :key="block.id"
+                          class="timeline-block"
+                        >
+                          {{ block.title }}
+                        </div>
+                      </div>
+
+                      <div
+                        v-if="appointmentsBySlot(day.date, column.id, hour).length"
+                        class="timeline-items"
+                      >
+                        <button
+                          v-for="item in visibleAppointmentsBySlot(day.date, column.id, hour)"
+                          :key="item.id"
+                          type="button"
+                          class="timeline-item"
+                          :class="{
+                            [`timeline-item--${item.operational.stage}`]: true,
+                            'timeline-item--dense': isDenseSlot(day.date, column.id, hour)
+                          }"
+                          @click="openAppointmentDetails(item)"
+                        >
+                          <div class="timeline-item__head">
+                            <span
+                              >{{ timeLabel(item.scheduledAt) }} ·
+                              {{ item.durationMinutes || 30 }} min</span
+                            >
+                            <span
+                              class="status-pill"
+                              :class="`status-pill--${item.operational.stage}`"
+                            >
+                              {{ operationalLabel(item) }}
+                            </span>
+                          </div>
+                          <strong>{{ patientName(item.patientId) }}</strong>
+                          <span v-if="!isDenseSlot(day.date, column.id, hour)">{{
+                            ownerName(item.ownerId)
+                          }}</span>
+                          <small v-if="!isDenseSlot(day.date, column.id, hour)">{{
+                            item.serviceName || item.specialty || item.reason
+                          }}</small>
+                          <small
+                            v-if="!isDenseSlot(day.date, column.id, hour)"
+                            class="timeline-item__meta"
+                          >
+                            {{ appointmentTypeLabel(item) }} · {{ appointmentSectorLabel(item) }}
+                          </small>
+                          <div
+                            v-if="!isDenseSlot(day.date, column.id, hour)"
+                            class="timeline-item__ops"
+                          >
+                            <span>{{ appointmentResponsibleLabel(item) }}</span>
+                            <span>{{ queueBridgeLabel(item) }}</span>
+                            <strong>{{ nextStepForAppointment(item) }}</strong>
+                          </div>
+
+                          <div
+                            v-if="!isDenseSlot(day.date, column.id, hour) && item.conflicts.length"
+                            class="timeline-item__conflicts"
+                          >
+                            <span
+                              v-for="conflict in item.conflicts.slice(0, 2)"
+                              :key="`${item.id}-${conflict.type}-${conflict.startsAt}`"
+                            >
+                              {{ conflict.message }}
+                            </span>
+                          </div>
+
+                          <div
+                            v-if="!isDenseSlot(day.date, column.id, hour)"
+                            class="timeline-item__actions"
+                            @click.stop
+                          >
+                            <DsButton
+                              variant="ghost"
+                              size="sm"
+                              @click="openAppointmentDetails(item)"
+                              >Ver</DsButton
+                            >
+                            <DsButton
+                              v-if="canCheckIn(item)"
+                              variant="success"
+                              size="sm"
+                              :loading="actionLoadingId === item.id && actionKind === 'checkin'"
+                              @click="checkIn(item)"
+                            >
+                              Check-in
+                            </DsButton>
+                            <DsButton
+                              v-if="canMarkNoShow(item)"
+                              variant="danger"
+                              size="sm"
+                              :loading="actionLoadingId === item.id && actionKind === 'noshow'"
+                              @click="markNoShow(item)"
+                            >
+                              No-show
+                            </DsButton>
+                            <DsButton
+                              v-if="shouldShowQueueAction(item)"
+                              variant="secondary"
+                              size="sm"
+                              tag="a"
+                              href="/queue"
+                            >
+                              Ver fila
+                            </DsButton>
+                            <DsButton
+                              v-if="shouldShowEncounterAction(item)"
+                              variant="secondary"
+                              size="sm"
+                              @click="openEncounter(item)"
+                            >
+                              {{ encounterActionLabel(item) }}
+                            </DsButton>
+                          </div>
+                        </button>
+                        <span
+                          v-if="hiddenSlotCount(day.date, column.id, hour) > 0"
+                          class="timeline-slot-summary"
+                        >
+                          +{{ hiddenSlotCount(day.date, column.id, hour) }} adicionais
+                        </span>
+                      </div>
+
+                      <button
+                        v-else-if="canManageScheduling"
+                        type="button"
+                        class="time-matrix__empty-button"
+                        :aria-label="slotAriaLabel(day.label, column.label, hour)"
+                        @click="
+                          openSlotCreateFlow({
+                            date: day.date,
+                            hour,
+                            practitionerStaffId: column.id
+                          })
+                        "
+                      >
+                        Disponível
+                      </button>
+                      <span v-else class="time-matrix__empty">Disponível</span>
+                    </div>
+                  </template>
+                </div>
+              </section>
+            </template>
+
+            <section v-if="legendItems.length > 0" class="appointments-legend">
+              <strong>Legenda operacional</strong>
+              <div class="appointments-legend__items">
+                <span
+                  v-for="item in legendItems"
+                  :key="item.label"
+                  class="appointments-legend__pill"
+                  :class="`appointments-legend__pill--${item.tone}`"
+                >
+                  {{ item.label }}
+                </span>
               </div>
             </section>
-          </template>
-
-          <section v-if="legendItems.length > 0" class="appointments-legend">
-            <strong>Legenda operacional</strong>
-            <div class="appointments-legend__items">
-              <span
-                v-for="item in legendItems"
-                :key="item.label"
-                class="appointments-legend__pill"
-                :class="`appointments-legend__pill--${item.tone}`"
-              >
-                {{ item.label }}
-              </span>
-            </div>
-          </section>
           </template>
         </section>
       </div>
@@ -643,12 +733,7 @@
       @selected="handleClientSelected"
     />
 
-    <DsModal
-      :open="showQuickCreate"
-      title="Criar agendamento"
-      size="lg"
-      @close="closeQuickCreate"
-    >
+    <DsModal :open="showQuickCreate" title="Criar agendamento" size="lg" @close="closeQuickCreate">
       <AppointmentQuickCreateForm
         v-if="showQuickCreate"
         submit-label="Salvar e voltar ao cockpit"
@@ -813,8 +898,12 @@ const timelineHours = Array.from({ length: 23 }, (_, index) => index);
 const maxVisibleAppointmentsPerSlot = 2;
 const activeQueueStages = ['checked_in', 'called', 'in_triage', 'in_care', 'observation'] as const;
 
-const canReadScheduling = computed(() => permissionCodes.value?.includes('scheduling.read') ?? false);
-const canManageScheduling = computed(() => permissionCodes.value?.includes('scheduling.manage') ?? false);
+const canReadScheduling = computed(
+  () => permissionCodes.value?.includes('scheduling.read') ?? false
+);
+const canManageScheduling = computed(
+  () => permissionCodes.value?.includes('scheduling.manage') ?? false
+);
 const professionalColumns = computed(() => [
   { id: 'unassigned', label: 'Sem profissional' },
   ...(overview.value?.professionals ?? []).map((professional) => ({
@@ -848,8 +937,7 @@ const checkedInCount = computed(
   () => filteredItems.value.filter((item) => item.operational.stage === 'checked_in').length
 );
 const activeQueueCount = computed(
-  () =>
-    filteredItems.value.filter((item) => isActiveQueueStage(item.operational.stage)).length
+  () => filteredItems.value.filter((item) => isActiveQueueStage(item.operational.stage)).length
 );
 const unassignedCount = computed(
   () => filteredItems.value.filter((item) => !item.practitionerStaffId).length
@@ -871,11 +959,14 @@ const periodLabel = computed(() => {
   if (viewMode.value === 'week') {
     const end = new Date(base);
     end.setDate(end.getDate() + 6);
-    return `${base.toLocaleDateString('pt-BR', { day: '2-digit' })} - ${end.toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: 'long',
-      year: '2-digit'
-    })}`;
+    return `${base.toLocaleDateString('pt-BR', { day: '2-digit' })} - ${end.toLocaleDateString(
+      'pt-BR',
+      {
+        day: '2-digit',
+        month: 'long',
+        year: '2-digit'
+      }
+    )}`;
   }
   return base.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
 });
@@ -1118,7 +1209,8 @@ function isActiveQueueStage(stage: SchedulingCockpitAppointmentSummary['operatio
 }
 
 function queueBridgeLabel(item: SchedulingCockpitAppointmentSummary) {
-  if (item.status === 'cancelled' || item.operational.stage === 'cancelled') return 'Fora da Esteira';
+  if (item.status === 'cancelled' || item.operational.stage === 'cancelled')
+    return 'Fora da Esteira';
   if (isQueueLinked(item)) return 'Na Esteira';
   if (!item.practitionerStaffId) return 'Pendência antes do check-in';
   if (isPastScheduled(item)) return 'Chegada pendente';
@@ -1172,7 +1264,26 @@ function nextStepForAppointment(item: SchedulingCockpitAppointmentSummary) {
 }
 
 function appointmentsByDay(date: string) {
-  return filteredItems.value.filter((item) => item.scheduledAt.slice(0, 10) === date);
+  return filteredItems.value
+    .filter((item) => item.scheduledAt.slice(0, 10) === date)
+    .sort(compareAppointmentVisibility);
+}
+
+function appointmentVisibilityPriority(item: SchedulingCockpitAppointmentSummary) {
+  if (isActiveQueueStage(item.operational.stage)) return 0;
+  if (item.operational.stage === 'scheduled') return 1;
+  if (item.operational.stage === 'completed') return 2;
+  return 3;
+}
+
+function compareAppointmentVisibility(
+  left: SchedulingCockpitAppointmentSummary,
+  right: SchedulingCockpitAppointmentSummary
+) {
+  const priorityDifference =
+    appointmentVisibilityPriority(left) - appointmentVisibilityPriority(right);
+  if (priorityDifference !== 0) return priorityDifference;
+  return left.scheduledAt.localeCompare(right.scheduledAt);
 }
 
 function columnIdForAppointment(item: SchedulingCockpitAppointmentSummary) {
@@ -1212,7 +1323,7 @@ function appointmentsByColumn(date: string, columnId: string) {
       if (columnId === 'unassigned') return !item.practitionerStaffId;
       return item.practitionerStaffId === columnId;
     })
-    .sort((left, right) => left.scheduledAt.localeCompare(right.scheduledAt));
+    .sort(compareAppointmentVisibility);
 }
 
 function appointmentsBySlot(date: string, columnId: string, hour: number) {
@@ -1226,7 +1337,10 @@ function visibleAppointmentsBySlot(date: string, columnId: string, hour: number)
 }
 
 function hiddenSlotCount(date: string, columnId: string, hour: number) {
-  return Math.max(appointmentsBySlot(date, columnId, hour).length - maxVisibleAppointmentsPerSlot, 0);
+  return Math.max(
+    appointmentsBySlot(date, columnId, hour).length - maxVisibleAppointmentsPerSlot,
+    0
+  );
 }
 
 function isDenseSlot(date: string, columnId: string, hour: number) {
@@ -1256,7 +1370,7 @@ function weekBlocksBySlot(date: string, hour: number) {
 function appointmentsByWeekSlot(date: string, hour: number) {
   return appointmentsByDay(date)
     .filter((item) => new Date(item.scheduledAt).getHours() === hour)
-    .sort((left, right) => left.scheduledAt.localeCompare(right.scheduledAt));
+    .sort(compareAppointmentVisibility);
 }
 
 function occupiedProfessionalIdsByWeekSlot(date: string, hour: number) {
@@ -1475,7 +1589,11 @@ function openAppointmentDetails(item: SchedulingCockpitAppointmentSummary) {
 }
 
 function canCheckIn(item: SchedulingCockpitAppointmentSummary) {
-  return item.operational.stage === 'scheduled' && item.status === 'scheduled' && canManageScheduling.value;
+  return (
+    item.operational.stage === 'scheduled' &&
+    item.status === 'scheduled' &&
+    canManageScheduling.value
+  );
 }
 
 function canCancelFromAgenda(item: SchedulingCockpitAppointmentSummary) {
@@ -1483,7 +1601,11 @@ function canCancelFromAgenda(item: SchedulingCockpitAppointmentSummary) {
 }
 
 function canMarkNoShow(item: SchedulingCockpitAppointmentSummary) {
-  return item.operational.stage === 'scheduled' && item.status === 'scheduled' && canManageScheduling.value;
+  return (
+    item.operational.stage === 'scheduled' &&
+    item.status === 'scheduled' &&
+    canManageScheduling.value
+  );
 }
 
 function shouldShowQueueAction(item: SchedulingCockpitAppointmentSummary) {
@@ -1550,7 +1672,8 @@ async function cancelAppointmentFromAgenda(item: SchedulingCockpitAppointmentSum
     await appointmentService.cancel(item.id, 'Cancelado pela agenda operacional');
     await loadOverview();
   } catch (actionError) {
-    error.value = actionError instanceof Error ? actionError.message : 'Erro ao cancelar agendamento';
+    error.value =
+      actionError instanceof Error ? actionError.message : 'Erro ao cancelar agendamento';
   } finally {
     actionLoadingId.value = '';
     actionKind.value = '';
@@ -2090,7 +2213,10 @@ onMounted(async () => {
   background: rgba(248, 250, 252, 0.9);
   color: #475569;
   cursor: pointer;
-  transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease;
+  transition:
+    border-color 0.18s ease,
+    background-color 0.18s ease,
+    color 0.18s ease;
 }
 
 .month-create-slot {
@@ -2189,7 +2315,9 @@ onMounted(async () => {
   display: grid;
   align-content: start;
   gap: 8px;
-  transition: background-color 0.18s ease, box-shadow 0.18s ease;
+  transition:
+    background-color 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
 .time-matrix__slot:hover {

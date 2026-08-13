@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
 
-import { ConflictError } from '@cvg-his-v2/shared-errors';
+import { ConflictError, NotFoundError } from '@cvg-his-v2/shared-errors';
 import type { TriageSummary } from '@cvg-his-v2/shared-types';
 
 import { TriageService } from './index.js';
@@ -74,6 +74,39 @@ test('createTriage prevents a second initial triage for the same encounter', asy
       assert.equal(error instanceof ConflictError, true);
       return true;
     }
+  );
+});
+
+test('TriageService scopes reads and mutations to the expected account', async () => {
+  const service = new TriageService(createEncountersStub());
+  const created = await service.createTriage(
+    'user_triage' as never,
+    {
+      encounterId: 'enc_test',
+      patientId: 'patient_test',
+      priority: 'high',
+      chiefComplaint: 'Isolamento',
+      alerts: [],
+      destination: 'in_care'
+    },
+    'acc_test' as never
+  );
+
+  assert.equal(service.listByAccount('acc_test' as never).length, 1);
+  assert.equal(service.listByAccount('acc_other' as never).length, 0);
+  assert.throws(
+    () => service.getForAccountOrThrow('acc_other' as never, created.id),
+    NotFoundError
+  );
+  await assert.rejects(
+    () =>
+      service.updateTriage(
+        created.id,
+        { priority: 'low' },
+        'user_other' as never,
+        'acc_other' as never
+      ),
+    NotFoundError
   );
 });
 

@@ -29,7 +29,7 @@ interface StabilizeOptions {
   forceLightTheme?: boolean;
   /** Force sidebar expanded state (default: true) */
   expandSidebar?: boolean;
-  /** Hide user name in topbar (default: true) */
+  /** Normalize the dynamic user identity in the topbar (default: true) */
   hideUserName?: boolean;
   /** Additional CSS to inject (appended to stabilization CSS) */
   extraCss?: string;
@@ -171,8 +171,15 @@ export async function stabilizeVisual(page: Page, options?: StabilizeOptions): P
   }
 
   if (opts.hideUserName) {
-    await page.addStyleTag({
-      content: `.topbar__user { visibility: hidden !important; }`
+    await page.locator('.topbar__profile strong').evaluateAll((elements) => {
+      elements.forEach((element) => {
+        element.textContent = 'Usuário';
+      });
+    });
+    await page.locator('.topbar__profile span').evaluateAll((elements) => {
+      elements.forEach((element) => {
+        element.textContent = 'Id. visual';
+      });
     });
   }
 

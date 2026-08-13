@@ -96,7 +96,7 @@ function createMockRequest(method: string, url: string, body?: object): object {
   };
 }
 
-function createLaboratoryService(): LaboratoryService {
+async function createLaboratoryService(): Promise<LaboratoryService> {
   const diagnostics = new DiagnosticsService(
     {
       getOrThrow() {
@@ -109,7 +109,7 @@ function createLaboratoryService(): LaboratoryService {
     } as never
   );
 
-  const requestedOrder = diagnostics.createOrder({
+  const requestedOrder = await diagnostics.createOrder({
     encounterId: 'enc-1',
     patientId: 'pat-1',
     examType: 'Hemograma',
@@ -117,17 +117,17 @@ function createLaboratoryService(): LaboratoryService {
     reason: 'Check-up'
   });
 
-  diagnostics.recordResult(requestedOrder.id, {
+  await diagnostics.recordResult(requestedOrder.id, {
     status: 'collected',
     collectedByUserId: 'lab-user'
   });
-  diagnostics.recordResult(requestedOrder.id, {
+  await diagnostics.recordResult(requestedOrder.id, {
     status: 'resulted',
     resultSummary: 'Hemograma dentro da normalidade',
     releasedByUserId: 'user-1'
   });
 
-  diagnostics.createOrder({
+  await diagnostics.createOrder({
     encounterId: 'enc-1',
     patientId: 'pat-1',
     examType: 'Bioquimico',
@@ -149,7 +149,7 @@ test('handleLaboratoryRoutes serves persisted laboratory catalogs', async () => 
     response as never,
     'corr-lab-1',
     {
-      laboratory: createLaboratoryService(),
+      laboratory: await createLaboratoryService(),
       audit: { write: () => ({}) } as never,
       requirePrincipal: () => createPrincipal()
     }
@@ -171,7 +171,7 @@ test('handleLaboratoryRoutes keeps /diagnostics/orders as a coherent bridge', as
     response as never,
     'corr-lab-2',
     {
-      laboratory: createLaboratoryService(),
+      laboratory: await createLaboratoryService(),
       audit: { write: () => ({}) } as never,
       requirePrincipal: () => createPrincipal()
     }
@@ -193,7 +193,7 @@ test('handleLaboratoryRoutes accepts Vetus-like laboratory exams aliases and fil
     response as never,
     'corr-lab-vetus-exames',
     {
-      laboratory: createLaboratoryService(),
+      laboratory: await createLaboratoryService(),
       audit: { write: () => ({}) } as never,
       requirePrincipal: () => createPrincipal()
     }
@@ -211,7 +211,7 @@ test('handleLaboratoryRoutes accepts Vetus-like laboratory exams aliases and fil
     datedResponse as never,
     'corr-lab-vetus-exames-2',
     {
-      laboratory: createLaboratoryService(),
+      laboratory: await createLaboratoryService(),
       audit: { write: () => ({}) } as never,
       requirePrincipal: () => createPrincipal()
     }
@@ -225,7 +225,7 @@ test('handleLaboratoryRoutes accepts Vetus-like laboratory exams aliases and fil
 });
 
 test('handleLaboratoryRoutes exposes diagnostics catalog and order detail', async () => {
-  const laboratory = createLaboratoryService();
+  const laboratory = await createLaboratoryService();
   const orders = await laboratory.listOrders('acc-1' as never, 'enc-1');
 
   const catalogResponse = new MockResponse();
@@ -276,7 +276,7 @@ test('handleLaboratoryRoutes lists resulted orders through the diagnostics bridg
     response as never,
     'corr-lab-5',
     {
-      laboratory: createLaboratoryService(),
+      laboratory: await createLaboratoryService(),
       audit: { write: () => ({}) } as never,
       requirePrincipal: () => createPrincipal()
     }
@@ -291,7 +291,7 @@ test('handleLaboratoryRoutes lists resulted orders through the diagnostics bridg
 });
 
 test('handleLaboratoryRoutes releases result with authenticated user and technical signature', async () => {
-  const laboratory = createLaboratoryService();
+  const laboratory = await createLaboratoryService();
   const openOrder = (await laboratory.listOrders('acc-1' as never, 'enc-1')).find(
     (order) => order.status === 'requested'
   );
@@ -347,7 +347,7 @@ test('handleLaboratoryRoutes releases result with authenticated user and technic
 });
 
 test('handleLaboratoryRoutes generates printable signed laboratory report html', async () => {
-  const laboratory = createLaboratoryService();
+  const laboratory = await createLaboratoryService();
   const order = (await laboratory.listResults('acc-1' as never, 'HEM'))[0];
   assert.ok(order);
 
@@ -374,7 +374,7 @@ test('handleLaboratoryRoutes generates printable signed laboratory report html',
 });
 
 test('handleLaboratoryRoutes accepts Vetus-like laboratory report aliases and filters', async () => {
-  const laboratory = createLaboratoryService();
+  const laboratory = await createLaboratoryService();
   const response = new MockResponse();
 
   const handled = await handleLaboratoryRoutes(
@@ -417,7 +417,7 @@ test('handleLaboratoryRoutes accepts Vetus-like laboratory report aliases and fi
 });
 
 test('handleLaboratoryRoutes exposes Vetus-like hemograms aliases filtered to HEM results', async () => {
-  const laboratory = createLaboratoryService();
+  const laboratory = await createLaboratoryService();
   const response = new MockResponse();
 
   const handled = await handleLaboratoryRoutes(
@@ -460,19 +460,19 @@ test('handleLaboratoryRoutes exposes Vetus-like hemograms aliases filtered to HE
 });
 
 test('handleLaboratoryRoutes exposes Vetus-like urinalysis aliases filtered to URIN results', async () => {
-  const laboratory = createLaboratoryService();
-  const urinalysisOrder = laboratory.createOrder({
+  const laboratory = await createLaboratoryService();
+  const urinalysisOrder = await laboratory.createOrder({
     encounterId: 'enc-1',
     patientId: 'pat-1',
     examType: 'Urina',
     examCatalogId: 'cat_003',
     reason: 'Suspeita urinaria'
   });
-  laboratory.recordResult(urinalysisOrder.id, {
+  await laboratory.recordResult(urinalysisOrder.id, {
     status: 'collected',
     collectedByUserId: 'lab-user'
   });
-  laboratory.recordResult(urinalysisOrder.id, {
+  await laboratory.recordResult(urinalysisOrder.id, {
     status: 'resulted',
     resultSummary: 'Densidade urinaria dentro da referencia',
     releasedByUserId: 'user-1'
@@ -519,19 +519,19 @@ test('handleLaboratoryRoutes exposes Vetus-like urinalysis aliases filtered to U
 });
 
 test('handleLaboratoryRoutes exposes Vetus-like biochemistry aliases filtered to BIO results', async () => {
-  const laboratory = createLaboratoryService();
-  const biochemistryOrder = laboratory.createOrder({
+  const laboratory = await createLaboratoryService();
+  const biochemistryOrder = await laboratory.createOrder({
     encounterId: 'enc-1',
     patientId: 'pat-1',
     examType: 'Bioquimico',
     examCatalogId: 'cat_002',
     reason: 'Perfil bioquimico'
   });
-  laboratory.recordResult(biochemistryOrder.id, {
+  await laboratory.recordResult(biochemistryOrder.id, {
     status: 'collected',
     collectedByUserId: 'lab-user'
   });
-  laboratory.recordResult(biochemistryOrder.id, {
+  await laboratory.recordResult(biochemistryOrder.id, {
     status: 'resulted',
     resultSummary: 'ALT dentro da referencia',
     releasedByUserId: 'user-1'
@@ -578,7 +578,7 @@ test('handleLaboratoryRoutes exposes Vetus-like biochemistry aliases filtered to
 });
 
 test('handleLaboratoryRoutes exposes Vetus-like laboratory equipment catalog with filters and write flow', async () => {
-  const laboratory = createLaboratoryService();
+  const laboratory = await createLaboratoryService();
   const createResponse = new MockResponse();
 
   const createHandled = await handleLaboratoryRoutes(
@@ -646,7 +646,7 @@ test('handleLaboratoryRoutes exposes Vetus-like laboratory equipment catalog wit
 });
 
 test('handleLaboratoryRoutes exposes Vetus-like laboratory report type catalog with filters and write flow', async () => {
-  const laboratory = createLaboratoryService();
+  const laboratory = await createLaboratoryService();
   const createResponse = new MockResponse();
 
   const createHandled = await handleLaboratoryRoutes(
@@ -714,7 +714,7 @@ test('handleLaboratoryRoutes exposes Vetus-like laboratory report type catalog w
 });
 
 test('handleLaboratoryRoutes exposes Vetus-like hemogram reference value catalog with filters and write flow', async () => {
-  const laboratory = createLaboratoryService();
+  const laboratory = await createLaboratoryService();
   const createResponse = new MockResponse();
 
   const createHandled = await handleLaboratoryRoutes(
@@ -782,7 +782,7 @@ test('handleLaboratoryRoutes exposes Vetus-like hemogram reference value catalog
 });
 
 test('handleLaboratoryRoutes exposes Vetus-like biochemistry reference value catalog with filters and write flow', async () => {
-  const laboratory = createLaboratoryService();
+  const laboratory = await createLaboratoryService();
   const createResponse = new MockResponse();
 
   const createHandled = await handleLaboratoryRoutes(
@@ -847,4 +847,426 @@ test('handleLaboratoryRoutes exposes Vetus-like biochemistry reference value cat
   const updated = updateResponse.bodyJson<{ id: string; maxValue: number }>();
   assert.equal(updated.id, created.id);
   assert.equal(updated.maxValue, 75);
+});
+
+test('handleLaboratoryRoutes covers the enterprise exam-order and exam-result lifecycle', async () => {
+  const laboratory = await createLaboratoryService();
+  const orderCreated: string[] = [];
+  const statusChanged: string[] = [];
+  const handlers = {
+    laboratory,
+    audit: { write: () => ({}) } as never,
+    requirePrincipal: () => createPrincipal(),
+    onOrderCreated: (order: { examType: string }) => orderCreated.push(order.examType),
+    onOrderStatusChanged: (_order: unknown, payload: { status: string }) =>
+      statusChanged.push(payload.status)
+  };
+  const invoke = async (pathname: string, method = 'GET', body?: object, url = pathname) => {
+    const response = new MockResponse();
+    const handled = await handleLaboratoryRoutes(
+      pathname,
+      createMockRequest(method, url, body) as never,
+      response as never,
+      `corr-${method}-${pathname}`,
+      handlers as never
+    );
+    return { handled, response };
+  };
+
+  assert.equal((await invoke('/diagnostics/summary')).response.statusCode, 200);
+  const catalog = await invoke('/diagnostics/catalog');
+  assert.ok(catalog.response.bodyJson<{ items: unknown[] }>().items.length > 0);
+
+  const collectedOrder = await laboratory.createOrder({
+    encounterId: 'enc-1',
+    patientId: 'pat-1',
+    examType: 'Urinalise',
+    reason: 'Enterprise collected result'
+  });
+  await laboratory.recordResult(collectedOrder.id, {
+    status: 'collected',
+    collectedByUserId: 'user-1'
+  });
+  const cancelledOrder = await laboratory.createOrder({
+    encounterId: 'enc-1',
+    patientId: 'pat-1',
+    examType: 'Cultura',
+    reason: 'Enterprise cancelled result'
+  });
+  await laboratory.recordResult(cancelledOrder.id, { status: 'cancelled' });
+
+  const mappedOrders = await invoke('/exam-orders', 'GET', undefined, '/exam-orders?encounterId=enc-1');
+  const mappedOrderItems = mappedOrders.response.bodyJson<{
+    items: Array<{ id: string; status: string }>;
+  }>().items;
+  assert.ok(mappedOrderItems.some((item) => item.status === 'requested'));
+  assert.ok(mappedOrderItems.some((item) => item.status === 'collected'));
+  assert.ok(mappedOrderItems.some((item) => item.status === 'completed'));
+  assert.ok(mappedOrderItems.some((item) => item.status === 'cancelled'));
+  assert.equal((await invoke(`/exam-orders/${collectedOrder.id}`)).response.statusCode, 200);
+
+  const createdFromEncounter = await invoke('/encounters/enc-1/exam-orders', 'POST', {
+    patientId: 'pat-1',
+    examName: 'Enterprise Path Order'
+  });
+  assert.equal(createdFromEncounter.response.statusCode, 201);
+  const createdPathOrder = createdFromEncounter.response.bodyJson<{ id: string; notes: string }>();
+  assert.equal(createdPathOrder.notes, 'Pedido criado via surface enterprise');
+  const createdFromCollection = await invoke('/exam-orders', 'POST', {
+    encounterId: 'enc-1',
+    patientId: 'pat-1',
+    examType: 'Enterprise Payload Order',
+    examCode: 'cat_001',
+    reason: 'Enterprise payload reason'
+  });
+  assert.equal(createdFromCollection.response.statusCode, 201);
+  assert.deepEqual(orderCreated, ['Enterprise Path Order', 'Enterprise Payload Order']);
+
+  const collectedPatch = await invoke(`/exam-results/${createdPathOrder.id}`, 'PATCH', {
+    status: 'draft',
+    findings: 'Enterprise preliminary findings',
+    resultAttachmentId: 'attachment-enterprise'
+  });
+  assert.equal(collectedPatch.response.bodyJson<{ status: string }>().status, 'draft');
+  const releaseOrder = createdFromCollection.response.bodyJson<{ id: string }>();
+  await invoke(`/exam-results/${releaseOrder.id}`, 'PATCH', {
+    status: 'draft',
+    interpretation: 'Enterprise preliminary interpretation'
+  });
+  const releasedPatch = await invoke(`/exam-results/${releaseOrder.id}`, 'PATCH', {
+    status: 'released',
+    interpretation: 'Enterprise released interpretation'
+  });
+  assert.equal(releasedPatch.response.bodyJson<{ status: string }>().status, 'released');
+  const cancelCandidate = await laboratory.createOrder({
+    encounterId: 'enc-1',
+    patientId: 'pat-1',
+    examType: 'Enterprise Cancel Candidate',
+    reason: 'Cancellation branch'
+  });
+  const cancelledPatch = await invoke(`/exam-results/${cancelCandidate.id}`, 'PATCH', {
+    status: 'cancelled'
+  });
+  assert.equal(cancelledPatch.response.bodyJson<{ status: string }>().status, 'cancelled');
+  assert.deepEqual(statusChanged, ['collected', 'collected', 'resulted', 'cancelled']);
+
+  const results = await invoke('/exam-results', 'GET', undefined, '/exam-results?category=Enterprise');
+  assert.equal(results.response.statusCode, 200);
+  assert.equal((await invoke(`/exam-results/${releaseOrder.id}`)).response.statusCode, 200);
+  assert.equal(
+    (await invoke(`/exam-results/${releaseOrder.id}/print`)).response.statusCode,
+    200
+  );
+  await assert.rejects(
+    () => invoke(`/exam-results/${collectedOrder.id}/print`),
+    /Only released laboratory reports can be printed/
+  );
+
+  for (const query of [
+    '?id=missing-order',
+    '?patientId=missing-patient',
+    '?date=1999-01-01'
+  ]) {
+    const filtered = await invoke('/laboratory/orders', 'GET', undefined, `/laboratory/orders${query}`);
+    assert.deepEqual(filtered.response.bodyJson<{ items: unknown[] }>().items, []);
+  }
+  for (const query of [
+    '?code=missing-result',
+    '?patientId=missing-patient',
+    '?body=missing-body',
+    '?finalizedAt=1999-01-01',
+    '?enteredAt=1999-01-01',
+    '?closed=false'
+  ]) {
+    const filtered = await invoke('/laboratory/results', 'GET', undefined, `/laboratory/results${query}`);
+    assert.deepEqual(filtered.response.bodyJson<{ items: unknown[] }>().items, []);
+  }
+});
+
+test('handleLaboratoryRoutes validates catalog payload edges and serves detail routes', async () => {
+  const laboratory = await createLaboratoryService();
+  const handlers = {
+    laboratory,
+    audit: { write: () => ({}) } as never,
+    requirePrincipal: () => createPrincipal()
+  };
+  const invoke = async (pathname: string, method = 'GET', body?: object, url = pathname) => {
+    const response = new MockResponse();
+    const handled = await handleLaboratoryRoutes(
+      pathname,
+      createMockRequest(method, url, body) as never,
+      response as never,
+      `corr-edge-${method}-${pathname}`,
+      handlers
+    );
+    return { handled, response };
+  };
+
+  assert.equal((await invoke('/owners')).handled, false);
+  assert.equal((await invoke('/laboratory/unmapped')).handled, false);
+  await assert.rejects(
+    () => invoke('/laboratory/equipment', 'POST'),
+    /Field name must be a non-empty string/
+  );
+  await assert.rejects(
+    () =>
+      invoke('/laboratory/equipment', 'POST', {
+        name: 'Invalid Analyzer',
+        type: 'hematology',
+        serialNumber: 'INVALID-DATE',
+        lastCalibrationAt: 'not-a-date'
+      }),
+    /lastCalibrationAt must be a valid date/
+  );
+  const equipment = await invoke('/laboratory/equipment', 'POST', {
+    name: 'Enterprise Edge Analyzer',
+    type: 'hematology',
+    serialNumber: 'EDGE-ANALYZER',
+    status: 'unexpected-status',
+    lastCalibrationAt: '2026-08-01T00:00:00.000Z'
+  });
+  const equipmentItem = equipment.response.bodyJson<{ id: string; status: string }>();
+  assert.equal(equipmentItem.status, 'active');
+  assert.equal((await invoke(`/laboratory/equipment/${equipmentItem.id}`)).response.statusCode, 200);
+  const equipmentUpdate = await invoke(`/laboratory/equipment/${equipmentItem.id}`, 'PATCH', {
+    name: 'Enterprise Edge Analyzer Updated',
+    type: 'biochemistry',
+    serialNumber: 'EDGE-ANALYZER-UPDATED',
+    status: 'maintenance',
+    lastCalibrationAt: '2026-08-02T00:00:00.000Z'
+  });
+  assert.equal(equipmentUpdate.response.bodyJson<{ status: string }>().status, 'maintenance');
+
+  for (const query of [
+    '?id=missing-equipment',
+    '?description=missing-description',
+    '?type=missing-type',
+    '?status=missing-status'
+  ]) {
+    const filtered = await invoke('/diagnostics/equipment', 'GET', undefined, `/diagnostics/equipment${query}`);
+    assert.deepEqual(filtered.response.bodyJson<{ items: unknown[] }>().items, []);
+  }
+
+  await assert.rejects(
+    () => invoke('/laboratory/report-types', 'POST', {}),
+    /Field name must be a non-empty string/
+  );
+  const reportType = await invoke('/laboratory/report-types', 'POST', {
+    name: 'Enterprise Edge Report',
+    code: ' edge-report ',
+    category: 'laboratory',
+    description: 'Enterprise edge report type',
+    active: 'inactive'
+  });
+  const reportTypeItem = reportType.response.bodyJson<{ id: string; code: string; active: boolean }>();
+  assert.equal(reportTypeItem.code, 'EDGE-REPORT');
+  assert.equal(reportTypeItem.active, false);
+  assert.equal((await invoke(`/laboratory/report-types/${reportTypeItem.id}`)).response.statusCode, 200);
+  const reportTypeUpdate = await invoke(`/laboratory/report-types/${reportTypeItem.id}`, 'PATCH', {
+    name: 'Enterprise Edge Report Updated',
+    code: ' edge-report-v2 ',
+    category: 'diagnostics',
+    description: 'Enterprise edge report type updated',
+    active: true
+  });
+  assert.equal(reportTypeUpdate.response.bodyJson<{ active: boolean }>().active, true);
+  for (const query of [
+    '?code=missing-code',
+    '?description=missing-description',
+    '?category=missing-category',
+    '?status=inactive'
+  ]) {
+    const filtered = await invoke('/diagnostics/report-types', 'GET', undefined, `/diagnostics/report-types${query}`);
+    assert.deepEqual(filtered.response.bodyJson<{ items: unknown[] }>().items, []);
+  }
+
+  await assert.rejects(
+    () =>
+      invoke('/laboratorio/cadastros/vlr-ref-hemograma', 'POST', {
+        parameter: 'Invalid number',
+        minValue: 'not-a-number',
+        maxValue: 10,
+        unit: 'x'
+      }),
+    /minValue must be a valid number/
+  );
+  await assert.rejects(
+    () =>
+      invoke('/laboratorio/cadastros/vlr-ref-hemograma', 'POST', {
+        parameter: 'Invalid range',
+        minValue: 20,
+        maxValue: 10,
+        unit: 'x'
+      }),
+    /minValue must be less than or equal to maxValue/
+  );
+  const reference = await invoke('/laboratorio/cadastros/vlr-ref-hemograma', 'POST', {
+    parameter: 'Enterprise Edge Parameter',
+    examType: ' custom ',
+    minValue: 1,
+    maxValue: 10,
+    unit: 'mg/dL'
+  });
+  const referenceItem = reference.response.bodyJson<{ id: string }>();
+  assert.equal(
+    (await invoke(`/laboratory/reference-values/${referenceItem.id}`)).response.statusCode,
+    200
+  );
+  await assert.rejects(
+    () =>
+      invoke(`/laboratory/reference-values/${referenceItem.id}`, 'PATCH', {
+        minValue: 30,
+        maxValue: 20
+      }),
+    /minValue must be less than or equal to maxValue/
+  );
+  const referenceUpdate = await invoke(`/laboratory/reference-values/${referenceItem.id}`, 'PATCH', {
+    parameter: 'Enterprise Edge Parameter Updated',
+    examType: ' custom ',
+    minValue: 2,
+    maxValue: 9,
+    unit: 'g/dL'
+  });
+  assert.equal(referenceUpdate.response.bodyJson<{ maxValue: number }>().maxValue, 9);
+  for (const query of [
+    '?id=missing-reference',
+    '?parameter=missing-parameter',
+    '?unit=missing-unit'
+  ]) {
+    const filtered = await invoke(
+      '/laboratory/reference-values',
+      'GET',
+      undefined,
+      `/laboratory/reference-values${query}`
+    );
+    assert.deepEqual(filtered.response.bodyJson<{ items: unknown[] }>().items, []);
+  }
+});
+
+test('handleLaboratoryRoutes propagates create persistence failure before publishing success', async () => {
+  const diagnostics = new DiagnosticsService(
+    {
+      getOrThrow() {
+        return {
+          id: 'enc-1',
+          accountId: 'acc-1',
+          patientId: 'pat-1'
+        };
+      }
+    } as never,
+    {
+      diagnosticOrderRepository: {
+        async create() {
+          throw new Error('route create persistence failed');
+        },
+        async update() {},
+        async findById() {
+          return null;
+        },
+        async findAll() {
+          return [];
+        },
+        async findByEncounterId() {
+          return [];
+        }
+      }
+    }
+  );
+  const laboratory = new LaboratoryService(diagnostics);
+  const response = new MockResponse();
+  let createdEvents = 0;
+  let auditWrites = 0;
+
+  await assert.rejects(
+    () =>
+      handleLaboratoryRoutes(
+        '/laboratory/orders',
+        createMockRequest('POST', '/laboratory/orders', {
+          encounterId: 'enc-1',
+          patientId: 'pat-1',
+          examType: 'Hemograma',
+          reason: 'Falha duravel na rota'
+        }) as never,
+        response as never,
+        'corr-route-create-failure',
+        {
+          laboratory,
+          audit: { write: () => { auditWrites += 1; } } as never,
+          requirePrincipal: () => createPrincipal(),
+          onOrderCreated: () => { createdEvents += 1; }
+        }
+      ),
+    /route create persistence failed/
+  );
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(createdEvents, 0);
+  assert.equal(auditWrites, 0);
+  assert.equal((await laboratory.listOrders('acc-1' as never)).length, 0);
+});
+
+test('handleLaboratoryRoutes propagates result persistence failure and keeps prior state', async () => {
+  const diagnostics = new DiagnosticsService(
+    {
+      getOrThrow() {
+        return {
+          id: 'enc-1',
+          accountId: 'acc-1',
+          patientId: 'pat-1'
+        };
+      }
+    } as never,
+    {
+      diagnosticOrderRepository: {
+        async create() {},
+        async update() {
+          throw new Error('route result persistence failed');
+        },
+        async findById() {
+          return null;
+        },
+        async findAll() {
+          return [];
+        },
+        async findByEncounterId() {
+          return [];
+        }
+      }
+    }
+  );
+  const laboratory = new LaboratoryService(diagnostics);
+  const order = await laboratory.createOrder({
+    encounterId: 'enc-1',
+    patientId: 'pat-1',
+    examType: 'Hemograma',
+    reason: 'Falha duravel no resultado'
+  });
+  const response = new MockResponse();
+  let statusEvents = 0;
+  let auditWrites = 0;
+
+  await assert.rejects(
+    () =>
+      handleLaboratoryRoutes(
+        `/laboratory/orders/${order.id}/result`,
+        createMockRequest('POST', `/laboratory/orders/${order.id}/result`, {
+          status: 'collected',
+          collectedByUserId: 'lab-user'
+        }) as never,
+        response as never,
+        'corr-route-update-failure',
+        {
+          laboratory,
+          audit: { write: () => { auditWrites += 1; } } as never,
+          requirePrincipal: () => createPrincipal(),
+          onOrderStatusChanged: () => { statusEvents += 1; }
+        }
+      ),
+    /route result persistence failed/
+  );
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(statusEvents, 0);
+  assert.equal(auditWrites, 0);
+  assert.equal(laboratory.getOrder('acc-1' as never, order.id).status, 'requested');
 });

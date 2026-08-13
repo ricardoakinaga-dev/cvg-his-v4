@@ -304,7 +304,7 @@ test('CounterSalesService reopen works on closed sale', async () => {
 
 test('CounterSalesService list filters by status', async () => {
   const service = createService();
-  const s1 = await service.open(ACCOUNT_ID, USER_ID);
+  await service.open(ACCOUNT_ID, USER_ID);
   const s2 = await service.open(ACCOUNT_ID, USER_ID);
   await service.cancel(s2.id);
   const open = service.list(ACCOUNT_ID, { status: 'open' });
@@ -375,11 +375,13 @@ test('CounterSalesService getCommercialDashboard returns data', async () => {
 test('CounterSalesService close consumes inventory for product items', async () => {
   let consumedCode: string | null = null;
   let consumedQty = 0;
+  let consumedByUserId: string | null = null;
   const service = new CounterSalesService({
     inventoryService: {
-      async consumeForSale(_accountId, codeSnapshot, quantity) {
+      async consumeForSale(_accountId, codeSnapshot, quantity, recordedByUserId) {
         consumedCode = codeSnapshot;
         consumedQty = quantity;
+        consumedByUserId = recordedByUserId;
         return { id: 'cons-1', inventoryItemId: 'inv-1', quantity, unit: 'un', costAmount: 0 };
       }
     }
@@ -404,6 +406,7 @@ test('CounterSalesService close consumes inventory for product items', async () 
   assert.equal(result.inventoryConsumptions.length, 1);
   assert.equal(consumedCode, 'MED-001');
   assert.equal(consumedQty, 3);
+  assert.equal(consumedByUserId, USER_ID);
 });
 
 test('CounterSalesService close skips inventory for service-only sale', async () => {
@@ -514,4 +517,134 @@ test('CounterSalesService close does not record credit_card in cash movements', 
   const result = await service.close(sale.id, USER_ID);
   assert.equal(result.sale.status, 'closed');
   assert.equal(recorded, false);
+});
+
+test('CounterSalesService preserves item state when recalculation would make totals invalid', async () => {
+  const service = new CounterSalesService();
+  const sale = await service.open(ACCOUNT_ID, USER_ID);
+  await assert.rejects(
+    () =>
+      service.addItem(sale.id, {
+        itemType: 'product',
+        nameSnapshot: 'Desconto inválido',
+        unitPrice: 10,
+        discountAmount: 20
+      }),
+    /total cannot be negative/
+  );
+  assert.equal(service.getItems(sale.id).length, 0);
+
+  const first = await service.addItem(sale.id, {
+    itemType: 'product',
+    nameSnapshot: 'Item principal',
+    unitPrice: 10
+  });
+  const second = await service.addItem(sale.id, {
+    itemType: 'service',
+    nameSnapshot: 'Complemento',
+    unitPrice: 5
+  });
+  await service.addPayment(sale.id, { method: 'cash', amount: 15 });
+
+  await assert.rejects(
+    () => service.updateItem(first.item.id, { discountAmount: 20 }),
+    /total cannot be negative|payments exceed recalculated total/
+  );
+  assert.equal(
+    service.getItems(sale.id).find((item) => item.id === first.item.id)?.discountAmount,
+    0
+  );
+
+  await assert.rejects(
+    () => service.removeItem(second.item.id),
+    /payments exceed recalculated total/
+  );
+  assert.equal(
+    service.getItems(sale.id).some((item) => item.id === second.item.id),
+    true
+  );
+});
+
+test('CounterSalesService enforces missing resources and terminal sale states', async () => {
+  const service = new CounterSalesService();
+  assert.throws(() => service.getOrThrow('missing'), NotFoundError);
+  await assert.rejects(() => service.updateItem('missing', {}), NotFoundError);
+  await assert.rejects(() => service.removeItem('missing'), NotFoundError);
+  await assert.rejects(
+    () => service.addPayment('missing', { method: 'cash', amount: 1 }),
+    NotFoundError
+  );
+  await assert.rejects(() => service.close('missing', USER_ID), NotFoundError);
+  await assert.rejects(() => service.cancel('missing'), NotFoundError);
+  await assert.rejects(() => service.reopen('missing'), NotFoundError);
+
+  const cancelled = await service.open(ACCOUNT_ID, USER_ID);
+  await service.cancel(cancelled.id);
+  await assert.rejects(
+    () => service.addPayment(cancelled.id, { method: 'cash', amount: 1 }),
+    /non-open sale/
+  );
+  await assert.rejects(() => service.close(cancelled.id, USER_ID), /Sale is not open/);
+  await assert.rejects(() => service.reopen(cancelled.id), /only reopen closed sales/i);
+
+  const closed = await service.open(ACCOUNT_ID, USER_ID);
+  await service.addItem(closed.id, {
+    itemType: 'service',
+    nameSnapshot: 'Consulta',
+    unitPrice: 10
+  });
+  await service.addPayment(closed.id, { method: 'cash', amount: 10 });
+  await service.close(closed.id, USER_ID);
+  const item = service.getItems(closed.id)[0]!;
+  await assert.rejects(() => service.updateItem(item.id, { quantity: 2 }), /non-open sale/);
+  await assert.rejects(() => service.removeItem(item.id), /non-open sale/);
+  await assert.rejects(() => service.close(closed.id, USER_ID), /Sale is not open/);
+  await assert.rejects(() => service.cancel(closed.id), /Cannot cancel a closed sale/);
+});
+
+test('CounterSalesService closes safely without cash register and reports non-Error stock failures', async () => {
+  const noRegister = new CounterSalesService({
+    cashService: {
+      async getOpenRegister() {
+        return null;
+      },
+      async recordMovement() {
+        throw new Error('must not record without register');
+      }
+    }
+  });
+  const sale = await noRegister.open(ACCOUNT_ID, USER_ID);
+  await noRegister.addItem(sale.id, {
+    itemType: 'service',
+    nameSnapshot: 'Consulta',
+    unitPrice: 20
+  });
+  await noRegister.addPayment(sale.id, {
+    method: 'cash',
+    amount: 20,
+    reference: null,
+    notes: null
+  });
+  const closed = await noRegister.close(sale.id, USER_ID);
+  assert.equal(closed.cashMovements, undefined);
+
+  const failingInventory = new CounterSalesService({
+    inventoryService: {
+      async consumeForSale() {
+        throw 'estoque indisponível';
+      }
+    }
+  });
+  const inventorySale = await failingInventory.open(ACCOUNT_ID, USER_ID);
+  await failingInventory.addItem(inventorySale.id, {
+    itemType: 'product',
+    nameSnapshot: 'Produto',
+    codeSnapshot: 'SKU-STRING-ERROR',
+    unitPrice: 5
+  });
+  await failingInventory.addPayment(inventorySale.id, { method: 'pix', amount: 5 });
+  await assert.rejects(
+    () => failingInventory.close(inventorySale.id, USER_ID),
+    /estoque indisponível/
+  );
 });

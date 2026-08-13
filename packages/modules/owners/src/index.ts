@@ -297,6 +297,10 @@ export class OwnersService {
     });
   }
 
+  public listByAccount(accountId: AccountId, search?: string): readonly OwnerSummary[] {
+    return this.list(search).filter((owner) => owner.accountId === accountId);
+  }
+
   public getOrThrow(ownerId: OwnerId): OwnerSummary {
     const owner = this.#owners.get(ownerId);
     if (!owner) {
@@ -306,10 +310,18 @@ export class OwnersService {
     return owner;
   }
 
+  public getForAccountOrThrow(ownerId: OwnerId, expectedAccountId: AccountId): OwnerSummary {
+    const owner = this.getOrThrow(ownerId);
+    if (owner.accountId !== expectedAccountId) {
+      throw new NotFoundError('Owner not found', { ownerId });
+    }
+    return owner;
+  }
+
   public create(accountId: AccountId, payload: CreateOwnerRequest): OwnerSummary {
     const fullName = requireNonEmptyString(payload.fullName, 'fullName');
     const documentId = requireOptionalString(payload.documentId);
-    const duplicate = this.list().find(
+    const duplicate = this.listByAccount(accountId).find(
       (owner) =>
         owner.fullName.toLowerCase() === fullName.toLowerCase() &&
         documentId !== undefined &&
@@ -358,8 +370,14 @@ export class OwnersService {
     return owner;
   }
 
-  public update(ownerId: OwnerId, payload: UpdateOwnerRequest): OwnerSummary {
-    const current = this.getOrThrow(ownerId);
+  public update(
+    ownerId: OwnerId,
+    payload: UpdateOwnerRequest,
+    expectedAccountId?: AccountId
+  ): OwnerSummary {
+    const current = expectedAccountId
+      ? this.getForAccountOrThrow(ownerId, expectedAccountId)
+      : this.getOrThrow(ownerId);
     const updated: OwnerSummary = {
       ...current,
       fullName:

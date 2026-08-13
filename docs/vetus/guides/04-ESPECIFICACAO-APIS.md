@@ -103,8 +103,8 @@ POST /auth/login
 
 ```json
 {
-  "accessToken": "eyJhbGciOiJIUzI1NiIs...",
-  "refreshToken": "eyJhbGciOiJIUzI1NiIs...",
+  "accessToken": "<access-token>",
+  "refreshToken": "<refresh-token>",
   "expiresIn": 600,
   "user": {
     "id": "uuid",
@@ -126,7 +126,7 @@ POST /auth/refresh
 
 ```json
 {
-  "refreshToken": "eyJhbGciOiJIUzI1NiIs..."
+  "refreshToken": "<refresh-token>"
 }
 ```
 

@@ -460,7 +460,7 @@ export class SectorBedService {
       SELECT id, patient_id, encounter_id, bed_id, admitted_at
       FROM inpatient_stays
       WHERE account_id = ${accountId}
-        AND status::text IN ('admitted', 'active')
+        AND status::text IN ('admitted', 'active', 'stable', 'transferred')
         AND bed_id IS NOT NULL
     `);
 

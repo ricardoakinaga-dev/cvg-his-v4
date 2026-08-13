@@ -62,7 +62,7 @@ Nenhum outro app de frontend sera considerado trilha ativa para evolucao do prod
 
 ### 3. Coerencia com roadmap
 
-O plano enterprise define `apps/spa` como frontend oficial desde Sprint 1 do plano de implementacao premium enterprise (0194-PLANO-DE-SPRINTS-IMPLEMENTACAO-PREMIUM-ENTERPRISE.md).
+O roadmap enterprise define `apps/spa` como frontend oficial na trilha premium atual ([`Enterprise/0350-ROADMAP-FECHAMENTO-GAP-96-2026-04-24.md`](../Enterprise/0350-ROADMAP-FECHAMENTO-GAP-96-2026-04-24.md)).
 
 ---
 

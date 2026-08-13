@@ -8,8 +8,10 @@ import { fileURLToPath } from 'node:url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = resolve(__dirname, '../..');
 const composeFile = resolve(rootDir, 'docker-compose.dev.yml');
-const databaseUrl =
-  process.env.DATABASE_URL ?? 'postgres://postgres:postgres@localhost:5433/cvg_his_v2_test';
+const defaultDatabaseUrl = new URL('postgres://localhost:5433/cvg_his_v2_test');
+defaultDatabaseUrl.username = 'postgres';
+defaultDatabaseUrl.password = 'postgres';
+const databaseUrl = process.env.DATABASE_URL ?? defaultDatabaseUrl.toString();
 const skipSetup = process.env.SKIP_DB_SETUP === 'true';
 const requireFromSharedDatabase = createRequire(
   resolve(rootDir, 'packages/shared/database/package.json')
@@ -280,7 +282,7 @@ main().catch((error) => {
     '• To use an existing PostgreSQL instance, set: SKIP_DB_SETUP=true and DATABASE_URL'
   );
   console.error(
-    '  Example: SKIP_DB_SETUP=true DATABASE_URL=postgres://user:pass@host:5432/mydb pnpm test:db'
+    '  Example: SKIP_DB_SETUP=true DATABASE_URL="$DATABASE_URL_TEST" pnpm test:db'
   );
   console.error('• To use Docker, ensure Docker is running and docker-compose is available.');
   console.error('• For CI environments, ensure PostgreSQL is pre-configured via DATABASE_URL.');

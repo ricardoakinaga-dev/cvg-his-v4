@@ -72,14 +72,10 @@ export async function handleBillingRoutes(
   }
 
   // GET /billing/:encounterId/items — list billing items for an encounter
-  if (
-    pathname.startsWith('/billing/') &&
-    pathname.endsWith('/items') &&
-    request.method === 'GET'
-  ) {
+  if (pathname.startsWith('/billing/') && pathname.endsWith('/items') && request.method === 'GET') {
     const principal = requirePrincipal(request, 'billing.read');
     const encounterId = pathname.split('/')[2];
-    const items = await billing.listItems(encounterId as never);
+    const items = await billing.listItems(encounterId as never, principal.user.accountId as never);
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
@@ -105,14 +101,19 @@ export async function handleBillingRoutes(
   ) {
     const principal = requirePrincipal(request, 'billing.read');
     const encounterId = pathname.split('/')[2];
-    const record = await billing.findByEncounter(encounterId as never);
+    const record = await billing.findByEncounter(
+      encounterId as never,
+      principal.user.accountId as never
+    );
     if (!record) {
       response.statusCode = 404;
-      response.end(JSON.stringify({
-        error: 'Billing record not found',
-        code: 'BILLING_RECORD_NOT_FOUND',
-        encounterId
-      }));
+      response.end(
+        JSON.stringify({
+          error: 'Billing record not found',
+          code: 'BILLING_RECORD_NOT_FOUND',
+          encounterId
+        })
+      );
       return true;
     }
     appendAudit(audit, {
@@ -147,7 +148,7 @@ export async function handleBillingRoutes(
       },
       request
     );
-    const record = await billing.createEstimate(payload);
+    const record = await billing.createEstimate(payload, principal.user.accountId as never);
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
@@ -181,7 +182,11 @@ export async function handleBillingRoutes(
       },
       request
     );
-    const item = await billing.addItem(principal.user.id as never, payload);
+    const item = await billing.addItem(
+      principal.user.id as never,
+      payload,
+      principal.user.accountId as never
+    );
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
@@ -219,17 +224,26 @@ export async function handleBillingRoutes(
       },
       request
     );
-    const existingRecord = await billing.findByEncounter(encounterId as never);
+    const existingRecord = await billing.findByEncounter(
+      encounterId as never,
+      principal.user.accountId as never
+    );
     if (!existingRecord) {
       response.statusCode = 404;
-      response.end(JSON.stringify({
-        error: 'Billing record not found',
-        code: 'BILLING_RECORD_NOT_FOUND',
-        encounterId
-      }));
+      response.end(
+        JSON.stringify({
+          error: 'Billing record not found',
+          code: 'BILLING_RECORD_NOT_FOUND',
+          encounterId
+        })
+      );
       return true;
     }
-    const record = await billing.updateStatus(encounterId as never, payload);
+    const record = await billing.updateStatus(
+      encounterId as never,
+      payload,
+      principal.user.accountId as never
+    );
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,

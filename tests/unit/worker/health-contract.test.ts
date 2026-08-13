@@ -21,6 +21,7 @@ describe('worker health contract', () => {
         ticksCompleted: 5,
         lastTickAt: '2026-04-17T00:00:00.000Z',
         lastError: null,
+        configuredAccountCount: 2,
         initialized: true
       }
     );
@@ -45,6 +46,7 @@ describe('worker health contract', () => {
         ticksCompleted: 0,
         lastTickAt: null,
         lastError: 'connection refused',
+        configuredAccountCount: 2,
         initialized: true
       }
     );
@@ -67,5 +69,58 @@ describe('worker health contract', () => {
     expect(response.liveness.live).toBe(true);
     expect(response.liveness.initialized).toBe(false);
     expect(response.readiness.ready).toBe(false);
+  });
+
+  it('rejects production and staging readiness when no worker accounts are configured', () => {
+    for (const environment of ['production', 'staging']) {
+      const response = createWorkerReadinessResponse(
+        'worker',
+        environment,
+        '0.1.0',
+        { headers: {} } as never,
+        {
+          databaseConfigured: true,
+          databaseHealthy: true,
+          databaseDetail: 'database connected',
+          persistenceMode: 'database',
+          ticksCompleted: 0,
+          lastTickAt: null,
+          lastError: null,
+          configuredAccountCount: 0,
+          initialized: true
+        }
+      );
+
+      expect(response.ok).toBe(false);
+      expect(response.readiness.ready).toBe(false);
+      expect(response.readiness.productionReady).toBe(false);
+      expect(response.dependencies.worker.state).toBe('not-configured');
+      expect(response.dependencies.worker.detail).toContain('WORKER_ACCOUNT_IDS');
+    }
+  });
+
+  it('keeps readiness fail-closed after an account batch failure', () => {
+    const response = createWorkerReadinessResponse(
+      'worker',
+      'production',
+      '0.1.0',
+      { headers: {} } as never,
+      {
+        databaseConfigured: true,
+        databaseHealthy: true,
+        databaseDetail: 'database connected',
+        persistenceMode: 'database',
+        ticksCompleted: 4,
+        lastTickAt: '2026-08-12T10:00:00.000Z',
+        lastError: 'Worker account batch failed for 1 account(s)',
+        configuredAccountCount: 2,
+        initialized: true
+      }
+    );
+
+    expect(response.ok).toBe(false);
+    expect(response.readiness.ready).toBe(false);
+    expect(response.readiness.productionReady).toBe(false);
+    expect(response.dependencies.worker.state).toBe('degraded');
   });
 });

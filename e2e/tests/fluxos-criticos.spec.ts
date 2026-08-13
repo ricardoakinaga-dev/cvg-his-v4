@@ -1,3 +1,7 @@
+import { randomUUID } from 'node:crypto';
+
+import type { APIRequestContext, APIResponse } from '@playwright/test';
+
 import { test, expect } from '../fixtures/cvg-his.fixture';
 
 /**
@@ -69,9 +73,66 @@ function buildAppointmentPayload(
   };
 }
 
-async function loginAs(apiContext: import('@playwright/test').APIRequestContext, username: string, password: string) {
+function futureOperationalSlot(daysFromNow: number, hourUtc: number): string {
+  const slot = new Date();
+  slot.setUTCDate(slot.getUTCDate() + daysFromNow);
+  slot.setUTCHours(hourUtc, 0, 0, 0);
+  return slot.toISOString();
+}
+
+async function expectStatus(response: APIResponse, expectedStatus: number): Promise<void> {
+  if (response.status() !== expectedStatus) {
+    const body = await response.text();
+    expect(response.status(), `Unexpected response from ${response.url()}: ${body}`).toBe(
+      expectedStatus
+    );
+  }
+}
+
+async function createSchedulingProfessional(
+  apiContext: APIRequestContext,
+  flowTag: string
+): Promise<string> {
+  const fixtureId = randomUUID();
+  const username = `${flowTag}_${fixtureId}`;
+  const userResponse = await apiContext.post('/users', {
+    data: {
+      username,
+      email: `${username}@cvg.local`,
+      password: 'Scheduling123!',
+      roleCode: 'veterinarian',
+      displayName: `Veterinário ${flowTag}`
+    }
+  });
+  await expectStatus(userResponse, 201);
+  const user = (await userResponse.json()) as { id: string };
+  expect(user.id).toBeTruthy();
+
+  const staffResponse = await apiContext.post('/staff', {
+    data: {
+      employeeCode: `${flowTag}-${fixtureId}`,
+      fullName: `Veterinário ${flowTag}`,
+      userId: user.id,
+      department: 'Clinica',
+      jobTitle: 'Medico Veterinario'
+    }
+  });
+  await expectStatus(staffResponse, 201);
+  const staff = (await staffResponse.json()) as { id: string; userId: string };
+  expect(staff).toMatchObject({ userId: user.id });
+  expect(staff.id).toBeTruthy();
+  return staff.id;
+}
+
+const E2E_ACCOUNT_SLUG = process.env.E2E_ACCOUNT_SLUG?.trim() || 'default';
+
+async function loginAs(
+  apiContext: import('@playwright/test').APIRequestContext,
+  username: string,
+  password: string
+) {
   const response = await apiContext.post('/auth/login', {
-    data: { username, password }
+    data: { accountSlug: E2E_ACCOUNT_SLUG, username, password }
   });
   expect(response.ok()).toBeTruthy();
   const session = await response.json();
@@ -113,7 +174,11 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
 
       // 2. Login as new user
       const loginRes = await apiContext.post('/auth/login', {
-        data: { username: newUsername, password: 'Reception123!' }
+        data: {
+          accountSlug: E2E_ACCOUNT_SLUG,
+          username: newUsername,
+          password: 'Reception123!'
+        }
       });
       expect(loginRes.ok()).toBeTruthy();
       const session = await loginRes.json();
@@ -201,7 +266,7 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
 
       // 4. Verify veterinarian can access clinical operations
       const vetLoginRes = await apiContext.post('/auth/login', {
-        data: { username: vetUsername, password: 'Vet1234!' }
+        data: { accountSlug: E2E_ACCOUNT_SLUG, username: vetUsername, password: 'Vet1234!' }
       });
       expect(vetLoginRes.ok()).toBeTruthy();
       const vetSession = await vetLoginRes.json();
@@ -251,28 +316,22 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
       expect(patient.primaryOwnerId).toBe(ownerId);
       console.log(`   ✅ Paciente criado: ${patientId} (tutor: ${ownerId})`);
 
-      // 3. Get available professional from staff
-      const staffRes = await apiContext.get('/staff');
-      expect(staffRes.ok()).toBeTruthy();
-      const staffList = await staffRes.json();
-      expect(staffList.items.length).toBeGreaterThan(0);
-      professionalUserId = staffList.items[0].id;
+      // 3. Create an eligible professional dedicated to this scheduling flow
+      professionalUserId = await createSchedulingProfessional(apiContext, 'flow3-vet');
       console.log(`   ✅ Profissional elegível: ${professionalUserId}`);
 
       // 4. Create appointment with eligible professional
-      const startAt = new Date();
-      startAt.setDate(startAt.getDate() + 1);
-      startAt.setHours(14, 0, 0, 0);
+      const scheduledAt = futureOperationalSlot(10, 9);
       const appointmentRes = await apiContext.post('/appointments', {
         data: buildAppointmentPayload(
           patientId,
           ownerId,
           professionalUserId,
-          startAt.toISOString(),
+          scheduledAt,
           'Consulta de rotina - Flow 3 E2E'
         )
       });
-      expect(appointmentRes.ok()).toBeTruthy();
+      await expectStatus(appointmentRes, 201);
       const appointment = await appointmentRes.json();
       appointmentId = appointment.id;
       expect(appointment.id).toBeTruthy();
@@ -312,34 +371,42 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
       const ownerRes = await apiContext.post('/owners', {
         data: buildOwnerPayload('Fernanda Lima E2E', `e2e-flow4-${Date.now()}`)
       });
+      await expectStatus(ownerRes, 201);
       const owner = await ownerRes.json();
       flow4OwnerId = owner.id;
+      expect(flow4OwnerId).toBeTruthy();
 
       const patientRes = await apiContext.post('/patients', {
         data: buildPatientPayload(flow4OwnerId, 'Bella E2E', 'feline', 'female')
       });
+      await expectStatus(patientRes, 201);
       const patient = await patientRes.json();
       flow4PatientId = patient.id;
+      expect(patient).toMatchObject({ primaryOwnerId: flow4OwnerId });
 
-      const staffRes = await apiContext.get('/staff');
-      const staffList = await staffRes.json();
-      flow4ProfessionalUserId =
-        staffList.items.find((item: any) => item.id !== 'staff_admin')?.id ?? staffList.items[0].id;
+      flow4ProfessionalUserId = await createSchedulingProfessional(apiContext, 'flow4-vet');
 
-      const startAt = new Date();
-      startAt.setDate(startAt.getDate() + 2);
-      startAt.setHours(15, 0, 0, 0);
+      const scheduledAt = futureOperationalSlot(11, 10);
       const appointmentRes = await apiContext.post('/appointments', {
         data: buildAppointmentPayload(
           flow4PatientId,
           flow4OwnerId,
           flow4ProfessionalUserId,
-          startAt.toISOString(),
+          scheduledAt,
           'Consulta de rotina - Flow 4 E2E'
         )
       });
+      await expectStatus(appointmentRes, 201);
       const appointment = await appointmentRes.json();
       flow4AppointmentId = appointment.id;
+      expect(appointment).toMatchObject({
+        patientId: flow4PatientId,
+        ownerId: flow4OwnerId,
+        practitionerStaffId: flow4ProfessionalUserId,
+        scheduledAt,
+        status: 'scheduled'
+      });
+      expect(flow4AppointmentId).toBeTruthy();
       console.log(`   ✅ Agendamento criado: ${flow4AppointmentId}`);
 
       // Check-in the appointment (creates queue entry)
@@ -571,17 +638,35 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
     let flow7EncounterId: string;
     let inventoryItemId: string;
     let initialQuantity: number;
+    let inventoryHeaders: { Authorization: string };
 
     test.beforeAll(async ({ apiContext }) => {
-      const ownerRes = await apiContext.post('/owners', {
-        data: buildOwnerPayload('Marcos Pereira E2E', `e2e-flow7-${Date.now()}`)
+      const fixtureId = randomUUID();
+      const inventoryUsername = `inventory_e2e_${fixtureId}`;
+      const inventoryPassword = 'Inventory123!';
+      const inventoryUserRes = await apiContext.post('/users', {
+        data: {
+          username: inventoryUsername,
+          email: `${inventoryUsername}@cvg.local`,
+          password: inventoryPassword,
+          roleCode: 'inventory',
+          displayName: 'Estoque E2E'
+        }
       });
+      expect(inventoryUserRes.status()).toBe(201);
+      inventoryHeaders = await loginAs(apiContext, inventoryUsername, inventoryPassword);
+
+      const ownerRes = await apiContext.post('/owners', {
+        data: buildOwnerPayload('Marcos Pereira E2E', `e2e-flow7-${fixtureId}`)
+      });
+      expect(ownerRes.status()).toBe(201);
       const owner = await ownerRes.json();
       flow7OwnerId = owner.id;
 
       const patientRes = await apiContext.post('/patients', {
         data: buildPatientPayload(flow7OwnerId, 'Luna E2E', 'feline', 'female')
       });
+      expect(patientRes.status()).toBe(201);
       const patient = await patientRes.json();
       flow7PatientId = patient.id;
 
@@ -594,24 +679,31 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
           reason: 'Consulta com consumo de estoque - Flow 7 E2E'
         }
       });
+      expect(encounterRes.status()).toBe(201);
       const encounter = await encounterRes.json();
       flow7EncounterId = encounter.id;
 
-      // Get initial inventory
-      const inventoryRes = await apiContext.get('/inventory');
-      expect(inventoryRes.ok()).toBeTruthy();
-      const inventory = await inventoryRes.json();
-      expect(inventory.items.length).toBeGreaterThan(0);
-      inventoryItemId = inventory.items[0].id;
-      initialQuantity = inventory.items[0].onHandQuantity;
+      const initialItemRes = await apiContext.post('/inventory', {
+        // Fixture provisioning uses the administrator, which is explicitly exempt
+        // from the inventory business-hours ABAC rule. The flow itself continues
+        // with the inventory-role credentials below.
+        data: {
+          sku: `E2E-FLOW7-${fixtureId}`,
+          name: 'Material de consumo E2E',
+          unit: 'unidade',
+          onHandQuantity: 20,
+          reorderLevel: 5,
+          unitCostAmount: 12.5
+        }
+      });
+      expect(initialItemRes.status()).toBe(201);
+      const initialItem = await initialItemRes.json();
+      inventoryItemId = initialItem.id;
+      initialQuantity = initialItem.onHandQuantity;
       console.log(`   ✅ Estoque inicial: item ${inventoryItemId} = ${initialQuantity} unidades`);
     });
 
-    test('should consume inventory item and verify stock movement', async ({
-      apiContext,
-      testUser
-    }) => {
-      const inventoryHeaders = await loginAs(apiContext, 'inventory', 'seed_inventory');
+    test('should consume inventory item and verify stock movement', async ({ apiContext }) => {
       // 1. Consume inventory item during encounter
       const consumeRes = await apiContext.post('/inventory/consumptions', {
         headers: inventoryHeaders,
@@ -680,7 +772,11 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
 
       // 2. Login and verify access works
       const loginRes = await apiContext.post('/auth/login', {
-        data: { username: flow8Username, password: 'Inactive123!' }
+        data: {
+          accountSlug: E2E_ACCOUNT_SLUG,
+          username: flow8Username,
+          password: 'Inactive123!'
+        }
       });
       expect(loginRes.ok()).toBeTruthy();
       const session = await loginRes.json();
@@ -735,17 +831,38 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
     let flow9PatientId: string;
     let flow9EncounterId: string;
     let flow9SurgeryCaseId: string;
+    let vetUserId: string;
+    let vetHeaders: { Authorization: string };
 
     test.beforeAll(async ({ apiContext }) => {
-      const ownerRes = await apiContext.post('/owners', {
-        data: buildOwnerPayload('Juliana Costa E2E', `e2e-flow9-${Date.now()}`)
+      const fixtureId = randomUUID();
+      const vetUsername = `surgery_vet_e2e_${fixtureId}`;
+      const vetPassword = 'SurgeryVet123!';
+      const vetUserRes = await apiContext.post('/users', {
+        data: {
+          username: vetUsername,
+          email: `${vetUsername}@cvg.local`,
+          password: vetPassword,
+          roleCode: 'veterinarian',
+          displayName: 'Cirurgião E2E'
+        }
       });
+      expect(vetUserRes.status()).toBe(201);
+      const vetUser = await vetUserRes.json();
+      vetUserId = vetUser.id;
+      vetHeaders = await loginAs(apiContext, vetUsername, vetPassword);
+
+      const ownerRes = await apiContext.post('/owners', {
+        data: buildOwnerPayload('Juliana Costa E2E', `e2e-flow9-${fixtureId}`)
+      });
+      expect(ownerRes.status()).toBe(201);
       const owner = await ownerRes.json();
       flow9OwnerId = owner.id;
 
       const patientRes = await apiContext.post('/patients', {
         data: buildPatientPayload(flow9OwnerId, 'Bob E2E', 'canine', 'male')
       });
+      expect(patientRes.status()).toBe(201);
       const patient = await patientRes.json();
       flow9PatientId = patient.id;
 
@@ -758,12 +875,12 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
           reason: 'Encaminhamento cirurgico - Flow 9 E2E'
         }
       });
+      expect(encounterRes.status()).toBe(201);
       const encounter = await encounterRes.json();
       flow9EncounterId = encounter.id;
     });
 
-    test('should request surgery and update status', async ({ apiContext, testUser }) => {
-      const vetHeaders = await loginAs(apiContext, 'vet', 'seed_vet');
+    test('should request surgery and update status', async ({ apiContext }) => {
       // 1. Request surgery case
       const surgeryRes = await apiContext.post('/surgeries', {
         headers: vetHeaders,
@@ -771,7 +888,7 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
           encounterId: flow9EncounterId,
           patientId: flow9PatientId,
           procedureName: 'Ortopedia de quadril',
-          surgeonUserId: 'user_vet',
+          surgeonUserId: vetUserId,
           scheduledAt: new Date(Date.now() + 86400000).toISOString(),
           preparationNotes: 'Cirurgia ortopedica - Flow 9 E2E'
         }

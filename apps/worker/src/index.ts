@@ -1,6 +1,6 @@
 import { loadWorkerConfig } from '@cvg-his-v2/shared-config';
+import { getPool } from '@cvg-his-v2/shared-database';
 import { createLogger } from '@cvg-his-v2/shared-logging';
-import { runWithTenantContext } from '@cvg-his-v2/tenant-context';
 import { createCorrelationId, sleep } from '@cvg-his-v2/shared-utils';
 import { createServer } from 'node:http';
 
@@ -15,13 +15,19 @@ import {
   createWorkerLivenessResponse,
   createWorkerReadinessResponse
 } from './health.js';
+import { loadWorkerAccountConfig } from './account-config.js';
+import {
+  assertWorkerAccountsAreActive,
+  createPostgresTenantTransactionRunner,
+  runWorkerAccounts,
+  type TenantTransactionRunner
+} from './account-runner.js';
 
 const config = loadWorkerConfig(process.env);
+const workerAccountConfig = loadWorkerAccountConfig(process.env, config.environment);
 const logger = createLogger(config.appName);
 let workerObservabilityShutdown: (() => Promise<void>) | null = null;
-const workerAccountId =
-  process.env.WORKER_ACCOUNT_ID?.trim() ||
-  (config.environment === 'development' || config.environment === 'test' ? 'acc_cvg_demo' : '');
+const workerReportsUserId = process.env.WORKER_REPORTS_USER_ID?.trim();
 
 const workerState = {
   startedAt: new Date().toISOString(),
@@ -61,7 +67,8 @@ async function main() {
   });
 
   const bootstrap = await bootstrapWorkerServices({
-    databaseUrl: config.databaseUrl
+    databaseUrl: config.databaseUrl,
+    environment: config.environment
   });
   workerState.databaseHealthy = bootstrap.databaseHealthy;
   workerState.persistenceMode = bootstrap.notificationRepository ? 'database' : 'in-memory';
@@ -84,7 +91,8 @@ async function main() {
     service: config.appName,
     databaseHealthy: bootstrap.databaseHealthy,
     databaseDetail: bootstrap.databaseDetail,
-    persistenceMode: workerState.persistenceMode
+    persistenceMode: workerState.persistenceMode,
+    configuredAccountCount: workerAccountConfig.accountIds.length
   });
   logger.info('worker observability state', {
     enabled: observability.enabled,
@@ -104,8 +112,12 @@ async function main() {
     reportRepository: bootstrap.reportRepository
   });
 
-  if (workerAccountId) {
-    await reports.hydrateFromDatabase(workerAccountId as never);
+  const tenantTransaction: TenantTransactionRunner = bootstrap.notificationRepository
+    ? createPostgresTenantTransactionRunner(getPool())
+    : async (operation) => operation();
+
+  if (bootstrap.notificationRepository) {
+    await assertWorkerAccountsAreActive(getPool(), workerAccountConfig.accountIds);
   }
 
   const healthServer = createServer(async (req, res) => {
@@ -120,6 +132,7 @@ async function main() {
           ticksCompleted: workerState.ticksCompleted,
           lastTickAt: workerState.lastTickAt,
           lastError: workerState.lastError,
+          configuredAccountCount: workerAccountConfig.accountIds.length,
           initialized: true
         }),
         worker: {
@@ -151,6 +164,7 @@ async function main() {
         ticksCompleted: workerState.ticksCompleted,
         lastTickAt: workerState.lastTickAt,
         lastError: workerState.lastError,
+        configuredAccountCount: workerAccountConfig.accountIds.length,
         initialized: true
       });
       res.writeHead(payload.readiness.ready ? 200 : 503);
@@ -164,6 +178,7 @@ async function main() {
         ticksCompleted: workerState.ticksCompleted,
         lastTickAt: workerState.lastTickAt,
         lastError: workerState.lastError,
+        configuredAccountCount: workerAccountConfig.accountIds.length,
         initialized: true
       });
       res.writeHead(payload.readiness.ready ? 200 : 503);
@@ -191,6 +206,7 @@ async function main() {
             lastError: workerState.lastError,
             databaseHealthy: workerState.databaseHealthy,
             persistenceMode: workerState.persistenceMode,
+            configuredAccountCount: workerAccountConfig.accountIds.length,
             memory: process.memoryUsage(),
             uptime: process.uptime()
           })
@@ -207,90 +223,69 @@ async function main() {
   });
 
   while (true) {
-    const correlationId = createCorrelationId('worker');
     const tickStart = Date.now();
     try {
-      const tickContext = {
-        service: config.appName,
-        environment: config.environment,
-        correlationId,
-        persistenceMode: workerState.persistenceMode,
-        databaseHealthy: workerState.databaseHealthy,
-        databaseDetail: 'connected'
-      };
-
-      await withWorkerSpan(
-        'worker.notifications.tick',
-        {
-          'worker.correlation_id': correlationId,
-          'worker.persistence_mode': workerState.persistenceMode,
-          'worker.database_healthy': workerState.databaseHealthy
+      await runWorkerAccounts({
+        accountIds: workerAccountConfig.accountIds,
+        baseContext: {
+          service: config.appName,
+          environment: config.environment,
+          persistenceMode: workerState.persistenceMode,
+          databaseHealthy: workerState.databaseHealthy,
+          databaseDetail: bootstrap.databaseDetail
         },
-        async () => {
-          await runWithTenantContext(
-            {
-              tenantId: workerAccountId || correlationId,
-              accountId: workerAccountId || undefined,
-              correlationId
-            },
-            () => runWorkerTick(logger, tickContext, notifications)
-          );
-        }
-      );
-
-      await withWorkerSpan(
-        'worker.event_bus.tick',
-        {
-          'worker.correlation_id': correlationId,
-          'worker.persistence_mode': workerState.persistenceMode,
-          'worker.database_healthy': workerState.databaseHealthy
-        },
-        async () => {
-          await runWithTenantContext(
-            {
-              tenantId: workerAccountId || correlationId,
-              accountId: workerAccountId || undefined,
-              correlationId
-            },
-            () => runEventBusTick(logger, tickContext, eventBus)
-          );
-        }
-      );
-
-      if (workerAccountId) {
-        await withWorkerSpan(
-          'worker.reports.scheduled.tick',
-          {
-            'worker.correlation_id': correlationId,
-            'worker.persistence_mode': workerState.persistenceMode,
-            'worker.database_healthy': workerState.databaseHealthy
-          },
-          async () => {
-            await runWithTenantContext(
+        createCorrelationId: () => createCorrelationId('worker'),
+        resolveRunAsUserId: (accountId) => workerReportsUserId || accountId,
+        transaction: tenantTransaction,
+        operations: {
+          notifications: (context) =>
+            withWorkerSpan(
+              'worker.notifications.tick',
               {
-                tenantId: workerAccountId,
-                accountId: workerAccountId,
-                correlationId
+                'worker.account_id': context.accountId,
+                'worker.correlation_id': context.correlationId,
+                'worker.persistence_mode': workerState.persistenceMode,
+                'worker.database_healthy': workerState.databaseHealthy
               },
-              () =>
-                runScheduledReportsTick(
+              () => runWorkerTick(logger, context, notifications)
+            ),
+          eventBus: (context) =>
+            withWorkerSpan(
+              'worker.event_bus.tick',
+              {
+                'worker.account_id': context.accountId,
+                'worker.correlation_id': context.correlationId,
+                'worker.persistence_mode': workerState.persistenceMode,
+                'worker.database_healthy': workerState.databaseHealthy
+              },
+              () => runEventBusTick(logger, context, eventBus)
+            ),
+          scheduledReports: (context) =>
+            withWorkerSpan(
+              'worker.reports.scheduled.tick',
+              {
+                'worker.account_id': context.accountId,
+                'worker.correlation_id': context.correlationId,
+                'worker.persistence_mode': workerState.persistenceMode,
+                'worker.database_healthy': workerState.databaseHealthy
+              },
+              async () => {
+                await reports.hydrateFromDatabase(context.accountId);
+                await runScheduledReportsTick(
                   logger,
-                  {
-                    ...tickContext,
-                    accountId: workerAccountId as never,
-                    runAsUserId: (process.env.WORKER_REPORTS_USER_ID?.trim() || workerAccountId) as never
-                  },
+                  context,
                   reports,
                   bootstrap.reportSources
-                )
-            );
-          }
-        );
-      }
+                );
+              }
+            )
+        }
+      });
 
       workerState.ticksCompleted++;
       workerState.lastTickAt = new Date().toISOString();
       workerState.lastTickDurationMs = Date.now() - tickStart;
+      workerState.lastError = null;
     } catch (error) {
       workerState.errors++;
       workerState.lastError = error instanceof Error ? error.message : String(error);

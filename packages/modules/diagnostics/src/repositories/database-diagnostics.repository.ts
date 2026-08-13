@@ -1,4 +1,5 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
+import { NotFoundError } from '@cvg-his-v2/shared-errors';
 import type { DatabaseClient } from '@cvg-his-v2/shared-database';
 import { diagnosticOrders } from '@cvg-his-v2/shared-database';
 import type {
@@ -12,7 +13,10 @@ import type {
 export interface DiagnosticOrderRepository {
   create(order: DiagnosticOrderSummary): Promise<void>;
   update(order: DiagnosticOrderSummary): Promise<void>;
-  findById(id: DiagnosticOrderId): Promise<DiagnosticOrderSummary | null>;
+  findById(
+    accountId: AccountId,
+    id: DiagnosticOrderId
+  ): Promise<DiagnosticOrderSummary | null>;
   findAll(accountId: AccountId): Promise<readonly DiagnosticOrderSummary[]>;
   findByEncounterId(encounterId: EncounterId): Promise<readonly DiagnosticOrderSummary[]>;
 }
@@ -48,7 +52,7 @@ export class DatabaseDiagnosticOrderRepository implements DiagnosticOrderReposit
   }
 
   public async update(order: DiagnosticOrderSummary): Promise<void> {
-    await this.#db
+    const updated = await this.#db
       .update(diagnosticOrders)
       .set({
         status: order.status,
@@ -62,14 +66,35 @@ export class DatabaseDiagnosticOrderRepository implements DiagnosticOrderReposit
         signatureHash: order.signatureHash ?? null,
         updatedAt: new Date(order.updatedAt)
       })
-      .where(eq(diagnosticOrders.id, order.id));
+      .where(
+        and(
+          eq(diagnosticOrders.accountId, order.accountId),
+          eq(diagnosticOrders.id, order.id)
+        )
+      )
+      .returning({ id: diagnosticOrders.id });
+
+    if (updated.length === 0) {
+      throw new NotFoundError('Diagnostic order not found for account', {
+        accountId: order.accountId,
+        orderId: order.id
+      });
+    }
   }
 
-  public async findById(id: DiagnosticOrderId): Promise<DiagnosticOrderSummary | null> {
+  public async findById(
+    accountId: AccountId,
+    id: DiagnosticOrderId
+  ): Promise<DiagnosticOrderSummary | null> {
     const result = await this.#db
       .select()
       .from(diagnosticOrders)
-      .where(eq(diagnosticOrders.id, id))
+      .where(
+        and(
+          eq(diagnosticOrders.accountId, accountId),
+          eq(diagnosticOrders.id, id)
+        )
+      )
       .limit(1);
 
     if (result.length === 0) {

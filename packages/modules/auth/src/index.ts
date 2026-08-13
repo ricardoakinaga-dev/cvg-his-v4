@@ -88,17 +88,25 @@ export class AuthService {
   }
 
   public async login(
-    input: { readonly username: string; readonly password: string },
+    input: { readonly accountSlug?: string; readonly username: string; readonly password: string },
     correlationId: string
   ): Promise<AuthSessionResponse | LoginMfaRequiredResponse> {
-    const username = requireNonEmptyString(input.username, 'username');
-    const password = requireNonEmptyString(input.password, 'password');
+    const username = requireNonEmptyString(input.username, 'username').trim().toLowerCase();
+    requireNonEmptyString(input.password, 'password');
+    const password = input.password;
+    const accountSlug = input.accountSlug?.trim()
+      ? requireNonEmptyString(input.accountSlug, 'accountSlug').trim().toLowerCase()
+      : undefined;
+    const resolvedLoginAccountId = accountSlug
+      ? await this.#users.resolveAccountIdBySlug(accountSlug)
+      : undefined;
+    const loginIdentifier = accountSlug ? `${accountSlug.toLowerCase()}:${username}` : username;
 
-    if (this.#bruteForce?.isPasswordLocked(username)) {
-      const remaining = this.#bruteForce.getRemainingLockSeconds(username);
+    if (this.#bruteForce?.isPasswordLocked(loginIdentifier)) {
+      const remaining = this.#bruteForce.getRemainingLockSeconds(loginIdentifier);
       this.#audit.write({
         actorId: 'anonymous',
-        accountId: 'acc_cvg_demo' as never,
+        accountId: (resolvedLoginAccountId ?? 'unknown') as never,
         module: 'auth',
         action: 'login_blocked_locked',
         entityType: 'user',
@@ -110,15 +118,15 @@ export class AuthService {
       throw new AuthenticationError('Account temporarily locked due to too many failed attempts');
     }
 
-    const user = this.#users.findByUsername(username);
+    const user = await this.#users.findForLogin(accountSlug, username);
 
     if (!user || !(await this.#users.verifyPassword(user, password))) {
       if (this.#bruteForce) {
-        this.#bruteForce.recordPasswordFailure(username);
+        this.#bruteForce.recordPasswordFailure(loginIdentifier);
       }
       this.#audit.write({
         actorId: user?.id ?? 'anonymous',
-        accountId: (user?.accountId ?? 'acc_cvg_demo') as never,
+        accountId: (user?.accountId ?? resolvedLoginAccountId ?? 'unknown') as never,
         module: 'auth',
         action: 'login_failed',
         entityType: 'user',
@@ -131,7 +139,7 @@ export class AuthService {
     }
 
     if (this.#bruteForce) {
-      this.#bruteForce.recordPasswordSuccess(username);
+      this.#bruteForce.recordPasswordSuccess(loginIdentifier);
     }
 
     if (user.status !== 'active') {
@@ -219,22 +227,37 @@ export class AuthService {
     return this.#completeLogin(user, correlationId);
   }
 
-  #completeLogin(user: UserRecord, correlationId: string): AuthSessionResponse {
-    const session = this.#createSession(user);
+  async #completeLogin(user: UserRecord, correlationId: string): Promise<AuthSessionResponse> {
+    const session = await this.#createSession(user);
+    try {
+      await this.#audit.writeDurable({
+        actorId: user.id,
+        accountId: user.accountId,
+        module: 'auth',
+        action: 'login',
+        entityType: 'session',
+        entityId: session.sessionId,
+        correlationId,
+        payloadSummary: `User ${user.username} authenticated`,
+        riskLevel: 'medium'
+      });
+    } catch (error) {
+      this.#sessions.delete(session.sessionId);
+      if (this.#sessionRepository) {
+        try {
+          await this.#sessionRepository.delete(session.sessionId, session.accountId);
+        } catch (cleanupError) {
+          throw new AggregateError(
+            [error, cleanupError],
+            'Login audit failed and the persisted session could not be removed'
+          );
+        }
+      }
+      throw error;
+    }
+
     const principal = this.#buildPrincipal(user, session);
     const tokens = this.#createTokens(session);
-
-    this.#audit.write({
-      actorId: user.id,
-      accountId: user.accountId,
-      module: 'auth',
-      action: 'login',
-      entityType: 'session',
-      entityId: session.sessionId,
-      correlationId,
-      payloadSummary: `User ${user.username} authenticated`,
-      riskLevel: 'medium'
-    });
 
     return {
       ...tokens,
@@ -470,7 +493,7 @@ export class AuthService {
 
     for (const userId of targetUserIds) {
       const user = this.#users.getOrThrow(userId);
-      const persistedSessions = await this.#sessionRepository.findByUserId(userId);
+      const persistedSessions = await this.#sessionRepository.findByUserId(userId, user.accountId);
 
       for (const session of persistedSessions) {
         const existing = this.#sessions.get(session.sessionId);
@@ -484,7 +507,7 @@ export class AuthService {
     }
   }
 
-  #createSession(user: UserRecord): SessionRecord {
+  async #createSession(user: UserRecord): Promise<SessionRecord> {
     const authTime = nowIso();
     const session: SessionRecord = {
       sessionId: createCorrelationId('sess') as SessionId,
@@ -499,13 +522,11 @@ export class AuthService {
       refreshNonce: createCorrelationId('rnonce')
     };
 
-    this.#sessions.set(session.sessionId, session);
-
     if (this.#sessionRepository) {
-      this.#sessionRepository.create(session).catch((err) => {
-        console.error('Failed to persist session to database:', err);
-      });
+      await this.#sessionRepository.create(session);
     }
+
+    this.#sessions.set(session.sessionId, session);
 
     return session;
   }

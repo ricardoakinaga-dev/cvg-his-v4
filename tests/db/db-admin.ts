@@ -51,7 +51,7 @@ export async function withTestDatabaseLock<T>(callback: () => Promise<T>): Promi
 
 async function databaseExists(client: Pool, databaseName: string): Promise<boolean> {
   const result = await client.query('SELECT 1 FROM pg_database WHERE datname = $1', [databaseName]);
-  return result.rowCount > 0;
+  return (result.rowCount ?? 0) > 0;
 }
 
 function sleep(ms: number): Promise<void> {

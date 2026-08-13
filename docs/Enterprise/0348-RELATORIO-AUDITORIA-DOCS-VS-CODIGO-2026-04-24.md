@@ -1,5 +1,7 @@
 # 0348 - RELATORIO DE AUDITORIA DOCS ENTERPRISE VS CODIGO - 2026-04-24
 
+> **Documento histórico (24/04/2026).** O OpenAPI atual foi validado posteriormente com 293 paths; os números e scores deste relatório não representam sozinhos o estado de 11/08/2026.
+
 **Taxonomia:** `CANONICO`
 **Papel no sistema documental:** comparacao entre a linha mestra `docs/Enterprise` e o estado construido do programa
 **Ler em conjunto com:** `0346-RELATORIO-AUDITORIA-FINAL-96-2026-04-22.md`, `0347-RELATORIO-CICLO-VETUS-PARIDADE-COMERCIAL-2026-04-24.md`, `0100-EXECUTION-TRACKER.md`, `200-BACKLOG-MASTER.md`, `301-RISK-REGISTER.md`

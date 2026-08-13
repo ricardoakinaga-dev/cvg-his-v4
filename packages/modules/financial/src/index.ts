@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import type { BillingService } from '@cvg-his-v2/module-billing';
 import type { EncountersService } from '@cvg-his-v2/module-encounters';
 import type { OwnersService } from '@cvg-his-v2/module-owners';
@@ -873,9 +875,23 @@ export class EncounterFinancialService {
     this.#onReceivablePaid = options.onReceivablePaid;
   }
 
-  public async syncEncounter(encounterId: EncounterId): Promise<void> {
+  #getEncounterForAccount(encounterId: EncounterId, expectedAccountId?: AccountId) {
     const encounter = this.#encounters.getOrThrow(encounterId);
-    const billingRecord = await this.#billing.getByEncounterOrThrow(encounterId);
+    if (expectedAccountId && encounter.accountId !== expectedAccountId) {
+      throw new NotFoundError('Encounter not found', { encounterId });
+    }
+    return encounter;
+  }
+
+  public async syncEncounter(
+    encounterId: EncounterId,
+    expectedAccountId?: AccountId
+  ): Promise<void> {
+    const encounter = this.#getEncounterForAccount(encounterId, expectedAccountId);
+    const billingRecord = await this.#billing.getByEncounterOrThrow(
+      encounterId,
+      expectedAccountId
+    );
     const items = await this.#billing.listItems(encounterId);
     const total = roundCurrency(items.reduce((sum, item) => sum + item.totalAmount, 0));
     const existingAccount = await this.#repository.findFinancialAccountByEncounter(encounterId);
@@ -892,7 +908,7 @@ export class EncounterFinancialService {
     const now = nowIso();
 
     const account: EncounterFinancialAccountRecord = {
-      id: existingAccount?.id ?? createCorrelationId('efa'),
+      id: existingAccount?.id ?? randomUUID(),
       accountId: encounter.accountId,
       encounterId: encounter.id,
       financialStatus: deriveFinancialStatus(balanceDue, paidAmount, total),
@@ -912,7 +928,7 @@ export class EncounterFinancialService {
 
     if (existingReceivables.length === 0) {
       const receivable: EncounterReceivableRecord = {
-        id: createCorrelationId('er'),
+        id: randomUUID(),
         accountId: encounter.accountId,
         encounterId: encounter.id,
         financialAccountId: account.id,
@@ -947,9 +963,9 @@ export class EncounterFinancialService {
     }
   }
 
-  public async getSummary(encounterId: EncounterId) {
-    await this.syncEncounter(encounterId);
-    const encounter = this.#encounters.getOrThrow(encounterId);
+  public async getSummary(encounterId: EncounterId, expectedAccountId?: AccountId) {
+    await this.syncEncounter(encounterId, expectedAccountId);
+    const encounter = this.#getEncounterForAccount(encounterId, expectedAccountId);
     const patient = this.#patients.getOrThrow(encounter.patientId);
     const owner = this.#owners.getOrThrow(encounter.ownerId);
     const account = await this.#repository.findFinancialAccountByEncounter(encounterId);
@@ -1002,9 +1018,10 @@ export class EncounterFinancialService {
   public async closeEncounterFinancial(
     encounterId: EncounterId,
     actorUserId: UserId,
-    input: CloseEncounterFinancialInput
+    input: CloseEncounterFinancialInput,
+    expectedAccountId?: AccountId
   ) {
-    await this.syncEncounter(encounterId);
+    await this.syncEncounter(encounterId, expectedAccountId);
     const account = await this.#repository.findFinancialAccountByEncounter(encounterId);
     if (!account) {
       throw new NotFoundError('Encounter financial account not found', { encounterId });
@@ -1034,7 +1051,7 @@ export class EncounterFinancialService {
     if (existingPayments.length === 0) {
       const now = nowIso();
       const receivables: EncounterReceivableRecord[] = installments.map((installment, index) => ({
-        id: createCorrelationId('er'),
+        id: randomUUID(),
         accountId: account.accountId,
         encounterId,
         financialAccountId: account.id,
@@ -1064,19 +1081,27 @@ export class EncounterFinancialService {
     });
 
     if (input.paidAmount && input.paidAmount > 0) {
-      await this.recordPaymentForEncounter(encounterId, {
-        amountPaid: input.paidAmount,
-        notes: input.notes ?? 'Settlement captured during financial close',
-        paidByUserId: actorUserId
-      });
+      await this.recordPaymentForEncounter(
+        encounterId,
+        {
+          amountPaid: input.paidAmount,
+          notes: input.notes ?? 'Settlement captured during financial close',
+          paidByUserId: actorUserId
+        },
+        expectedAccountId
+      );
     }
 
-    return this.getSummary(encounterId);
+    return this.getSummary(encounterId, expectedAccountId);
   }
 
-  public async settleReceivable(receivableId: string, input: SettleEncounterReceivableInput) {
+  public async settleReceivable(
+    receivableId: string,
+    input: SettleEncounterReceivableInput,
+    expectedAccountId?: AccountId
+  ) {
     const receivable = await this.#repository.findReceivableById(receivableId);
-    if (!receivable) {
+    if (!receivable || (expectedAccountId && receivable.accountId !== expectedAccountId)) {
       throw new NotFoundError('Encounter receivable not found', { receivableId });
     }
     const amountPaid = roundCurrency(input.amountPaid);
@@ -1112,17 +1137,23 @@ export class EncounterFinancialService {
 
   public async recordPaymentForBillingRecord(
     billingRecordId: BillingRecordId,
-    input: SettleEncounterReceivableInput
+    input: SettleEncounterReceivableInput,
+    expectedAccountId?: AccountId
   ) {
-    const billingRecord = this.#billing.getOrThrow(billingRecordId);
-    return this.recordPaymentForEncounter(billingRecord.encounterId, input);
+    const billingRecord = this.#billing.getOrThrow(billingRecordId, expectedAccountId);
+    return this.recordPaymentForEncounter(
+      billingRecord.encounterId,
+      input,
+      expectedAccountId
+    );
   }
 
   public async recordPaymentForEncounter(
     encounterId: EncounterId,
-    input: SettleEncounterReceivableInput
+    input: SettleEncounterReceivableInput,
+    expectedAccountId?: AccountId
   ) {
-    await this.syncEncounter(encounterId);
+    await this.syncEncounter(encounterId, expectedAccountId);
     const account = await this.#repository.findFinancialAccountByEncounter(encounterId);
     if (!account) {
       throw new NotFoundError('Encounter financial account not found', { encounterId });
@@ -1172,7 +1203,7 @@ export class EncounterFinancialService {
     }
 
     await this.#applyPayment(encounterId, account.id, allocations);
-    return this.getSummary(encounterId);
+    return this.getSummary(encounterId, expectedAccountId);
   }
 
   public async listReceivables(params: {
@@ -1287,7 +1318,7 @@ export class EncounterFinancialService {
       await this.#repository.updateReceivable(updatedReceivable);
 
       const payment: EncounterReceivablePaymentRecord = {
-        id: createCorrelationId('erp'),
+        id: randomUUID(),
         accountId: account.accountId,
         encounterId,
         financialAccountId,

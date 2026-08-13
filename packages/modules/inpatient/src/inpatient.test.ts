@@ -38,6 +38,97 @@ test('InpatientService admit creates stay linked to encounter', () => {
   assert.equal(service.list(encounter.id).length, 1);
 });
 
+test('InpatientService admit rejects cross-tenant and mismatched-patient requests', () => {
+  const { service, encounter } = createService();
+  const payload = {
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    unit: 'UTI',
+    ward: 'Ala A',
+    bed: 'B12'
+  };
+
+  assert.throws(() => service.admit(payload, 'acc_other' as never), NotFoundError);
+  assert.throws(
+    () => service.admit({ ...payload, patientId: 'patient_other' }),
+    /Patient does not belong to encounter/
+  );
+  assert.equal(service.list().length, 0);
+});
+
+test('InpatientService scopes handover, worklist and stay lookup by account', () => {
+  const { service, encounter } = createService();
+  const stay = service.admit({
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    unit: 'UTI',
+    ward: 'Ala A',
+    bed: 'B12'
+  });
+  service.createDailyCharge('user_1' as never, {
+    stayId: stay.id,
+    chargeDate: '2026-08-12',
+    description: 'Diária',
+    quantity: 1,
+    unitAmount: 100
+  });
+
+  assert.equal(service.buildHandoverPreview({ accountId: 'acc_test' as never }).items.length, 1);
+  assert.equal(service.buildHandoverPreview({ accountId: 'acc_other' as never }).items.length, 0);
+  assert.equal(service.listDailyChargeWorklist({ accountId: 'acc_test' as never }).length, 1);
+  assert.equal(service.listDailyChargeWorklist({ accountId: 'acc_other' as never }).length, 0);
+  assert.throws(() => service.getForAccountOrThrow('acc_other' as never, stay.id), NotFoundError);
+});
+
+test('InpatientService admit creates a database-compatible UUID stay ID', () => {
+  const { service, encounter } = createService();
+
+  const stay = service.admit({
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    unit: 'UTI',
+    ward: 'Ala A',
+    bed: 'B12'
+  });
+
+  assert.match(stay.id, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+});
+
+test('InpatientService exposes persistence failures and rolls back the admission', async () => {
+  const encounter = {
+    id: 'encounter_1',
+    accountId: 'acc_test',
+    patientId: 'patient_1'
+  };
+  const service = new InpatientService(
+    {
+      getOrThrow: () => encounter,
+      waitForPersistence: async () => {}
+    } as never,
+    {
+      stayRepository: {
+        create: async () => {
+          throw new Error('inpatient persistence unavailable');
+        },
+        update: async () => {},
+        findById: async () => null,
+        findByEncounterId: async () => []
+      }
+    }
+  );
+
+  const stay = service.admit({
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    unit: 'UTI',
+    ward: 'Ala A',
+    bed: 'B12'
+  });
+
+  await assert.rejects(service.waitForPersistence(), /inpatient persistence unavailable/);
+  assert.throws(() => service.getOrThrow(stay.id), NotFoundError);
+});
+
 test('InpatientService list filters stays by patient across encounters', () => {
   const encounters = {
     getOrThrow(encounterId: string) {
@@ -273,7 +364,6 @@ test('InpatientService updateStatus blocks invalid transitions', () => {
     status: 'discharged',
     dischargeReason: 'Alta clinica'
   });
-
 
   assert.throws(
     () => service.updateStatus(stay.id, { status: 'admitted' }),

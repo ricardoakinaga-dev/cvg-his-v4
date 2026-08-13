@@ -171,7 +171,7 @@ describe('WH-002 — Webhook Delivery Dispatch and Delivery Log', () => {
     const webhook = await webhooksService.register(
       TEST_USER_ID as never,
       TEST_ACCOUNT_ID as never,
-      { url: 'http://localhost:99999/webhook', events: ['billing.record.created'] }
+      { url: 'http://127.0.0.1:65534/webhook', events: ['billing.record.created'] }
     );
 
     cleanupRegistry.register('webhooks', webhook.id);
@@ -245,7 +245,7 @@ describe('WH-003 — Delivery Log Cascade Delete', () => {
     const webhook = await webhooksService.register(
       TEST_USER_ID as never,
       TEST_ACCOUNT_ID as never,
-      { url: 'http://localhost:99999/delivery-test', events: ['billing.record.created'] }
+      { url: 'http://127.0.0.1:65534/delivery-test', events: ['billing.record.created'] }
     );
 
     cleanupRegistry.register('webhooks', webhook.id);

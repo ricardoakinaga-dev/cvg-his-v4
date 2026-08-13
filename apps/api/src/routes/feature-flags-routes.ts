@@ -7,9 +7,10 @@ import type {
 } from '@cvg-his-v2/shared-feature-flags';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 import type { DatabaseFeatureFlagRepository } from '@cvg-his-v2/module-feature-flags';
+import { ValidationError } from '@cvg-his-v2/shared-errors';
 
 import { appendAudit } from '../helpers/audit-helper.js';
-import { readJsonBody } from '../helpers/common.js';
+import { readJsonBody, validateRequestBody } from '../helpers/common.js';
 
 export interface FeatureFlagsRoutesHandlers {
   featureFlagRepository: DatabaseFeatureFlagRepository;
@@ -220,7 +221,57 @@ export async function handleFeatureFlagsRoutes(
   if (pathname === '/flags' && method === 'POST') {
     const principal = requirePrincipal(request, 'flags.admin');
     const accountId = principal.user.accountId;
-    const body = (await readJsonBody(request)) as CreateFeatureFlagRequest;
+    const rawBody = (await readJsonBody(request)) as Record<string, unknown>;
+    validateRequestBody(
+      rawBody,
+      {
+        key: { type: 'string', required: true, minLength: 3, maxLength: 128 },
+        owner: { type: 'string', required: true, minLength: 2, maxLength: 64 },
+        description: { type: 'string', required: true, minLength: 3, maxLength: 4_000 },
+        defaultValue: { type: 'boolean', required: true },
+        scopes: { type: 'array' },
+        expiresAt: { type: 'string' },
+        auditRequired: { type: 'boolean' },
+        tags: { type: 'array' }
+      },
+      correlationId
+    );
+
+    if (!/^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/.test(String(rawBody.key))) {
+      throw new ValidationError('Feature flag key has an invalid format', {
+        correlationId,
+        field: 'key'
+      });
+    }
+
+    const allowedScopes: readonly FeatureFlagScope[] = [
+      'global',
+      'environment',
+      'tenant',
+      'account',
+      'user'
+    ];
+    if (
+      Array.isArray(rawBody.scopes) &&
+      rawBody.scopes.some((scope) => typeof scope !== 'string' || !allowedScopes.includes(scope as FeatureFlagScope))
+    ) {
+      throw new ValidationError('scopes contains an unsupported feature flag scope', {
+        correlationId,
+        field: 'scopes'
+      });
+    }
+
+    if (
+      typeof rawBody.expiresAt === 'string' &&
+      !Number.isFinite(new Date(rawBody.expiresAt).getTime())
+    ) {
+      throw new ValidationError('expiresAt must be a valid ISO date', {
+        correlationId,
+        field: 'expiresAt'
+      });
+    }
+
+    const body = rawBody as unknown as CreateFeatureFlagRequest;
 
     const flag = {
       key: body.key,

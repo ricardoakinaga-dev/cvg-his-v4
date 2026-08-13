@@ -37,7 +37,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, type ComponentPublicInstance } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch, type ComponentPublicInstance } from 'vue';
 
 export interface DsModalProps {
   open: boolean;
@@ -61,6 +61,7 @@ const emit = defineEmits<{
 
 const modalId = computed(() => `ds-modal-${Math.random().toString(36).slice(2, 8)}`);
 const modalRef = ref<HTMLElement | null>(null);
+const previousFocusRef = ref<HTMLElement | null>(null);
 
 const classes = computed(() => ['ds-modal', `ds-modal--${props.size}`]);
 
@@ -94,10 +95,48 @@ function handleKeydown(event: KeyboardEvent) {
 function onModalMounted(el: Element | ComponentPublicInstance | null) {
   if (el && (el as HTMLElement).querySelector) {
     modalRef.value = el as HTMLElement;
-    const focusable = modalRef.value?.querySelector<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-    focusable?.focus();
+    focusFirstElement();
   }
 }
+
+function focusFirstElement() {
+  const focusable = modalRef.value?.querySelector<HTMLElement>(
+    'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+  );
+  focusable?.focus();
+}
+
+function releaseModalState(restoreFocus = true) {
+  document.body.classList.remove('ds-modal-open');
+  if (restoreFocus && previousFocusRef.value?.isConnected) {
+    previousFocusRef.value.focus();
+  }
+  previousFocusRef.value = null;
+  modalRef.value = null;
+}
+
+watch(
+  () => props.open,
+  async (open) => {
+    if (open) {
+      previousFocusRef.value = document.activeElement as HTMLElement | null;
+      document.body.classList.add('ds-modal-open');
+      await nextTick();
+      focusFirstElement();
+      return;
+    }
+
+    await nextTick();
+    releaseModalState();
+  },
+  { immediate: true }
+);
+
+onBeforeUnmount(() => {
+  if (props.open) {
+    releaseModalState();
+  }
+});
 </script>
 
 <style scoped>
@@ -109,7 +148,13 @@ function onModalMounted(el: Element | ComponentPublicInstance | null) {
   align-items: center;
   justify-content: center;
   z-index: var(--z-modal, 400);
-  padding: 24px;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding:
+    max(24px, env(safe-area-inset-top))
+    max(24px, env(safe-area-inset-right))
+    max(24px, env(safe-area-inset-bottom))
+    max(24px, env(safe-area-inset-left));
 }
 
 .ds-modal {
@@ -117,7 +162,7 @@ function onModalMounted(el: Element | ComponentPublicInstance | null) {
   border-radius: var(--radius-lg, 8px);
   box-shadow: var(--shadow-xl, 0 20px 25px -5px rgba(0, 0, 0, 0.1));
   width: 100%;
-  max-height: 90vh;
+  max-height: min(90vh, calc(100dvh - 48px));
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -161,6 +206,8 @@ function onModalMounted(el: Element | ComponentPublicInstance | null) {
   font-size: 24px;
   cursor: pointer;
   color: var(--color-text-secondary, #475569);
+  min-width: var(--touch-min, 44px);
+  min-height: var(--touch-min, 44px);
   padding: 4px 8px;
   border-radius: var(--radius-sm, 4px);
   line-height: 1;
@@ -182,5 +229,44 @@ function onModalMounted(el: Element | ComponentPublicInstance | null) {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+  flex-wrap: wrap;
+}
+
+:global(body.ds-modal-open) {
+  overflow: hidden;
+}
+
+@media (max-width: 600px) {
+  .ds-modal-overlay {
+    align-items: flex-end;
+    padding:
+      max(12px, env(safe-area-inset-top))
+      max(8px, env(safe-area-inset-right))
+      max(8px, env(safe-area-inset-bottom))
+      max(8px, env(safe-area-inset-left));
+  }
+
+  .ds-modal {
+    max-height: calc(100dvh - max(20px, env(safe-area-inset-top)));
+    border-radius: var(--radius-lg, 8px) var(--radius-lg, 8px) 0 0;
+  }
+
+  .ds-modal__header {
+    padding: 12px 16px;
+  }
+
+  .ds-modal__body {
+    padding: 16px;
+  }
+
+  .ds-modal__footer {
+    display: grid;
+    grid-template-columns: 1fr;
+    padding: 12px 16px max(12px, env(safe-area-inset-bottom));
+  }
+
+  .ds-modal__footer :deep(.ds-btn) {
+    width: 100%;
+  }
 }
 </style>

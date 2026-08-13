@@ -356,4 +356,167 @@ describe('FiscalService coverage guard', () => {
     expect(next.alerts.some((alert) => alert.title.includes('Ciclo fiscal documental'))).toBe(true);
     expect(next.pendingScopes).toContain('emissão NFS-e transacional');
   });
+
+  it('enforces validation, duplicate protection and partial-update fallbacks for fiscal catalogs', async () => {
+    const service = new FiscalService();
+    const suffix = `${process.pid}-${Date.now()}`;
+
+    await expect(service.createIcmsTable({ code: ' ', percent: 10 })).rejects.toThrow(
+      'code is required'
+    );
+    await expect(
+      service.createIcmsTable({ code: `ICMS-INVALID-${suffix}`, percent: 101 })
+    ).rejects.toThrow('percent must be a number between 0 and 100');
+    const icms = await service.createIcmsTable({ code: `ICMS-${suffix}`, percent: 17 });
+    expect(icms.description).toBe('ICMS 17%');
+    await expect(
+      service.createIcmsTable({ code: icms.code.toLowerCase(), percent: 17 })
+    ).rejects.toThrow('code already exists');
+    const icmsSecond = await service.createIcmsTable({
+      code: `ICMS-SECOND-${suffix}`,
+      description: 'Second ICMS',
+      percent: 12
+    });
+    await expect(service.updateIcmsTable(icmsSecond.id, { code: icms.code })).rejects.toThrow(
+      'code already exists'
+    );
+    expect(await service.updateIcmsTable(icms.id, {})).toMatchObject(icms);
+    expect(await service.updateIcmsTable(`missing-${suffix}`, {})).toBeNull();
+
+    const ipi = await service.createIpiTable({ code: `IPI-${suffix}`, percent: 5 });
+    expect(ipi.description).toBe('IPI 5%');
+    await expect(service.createIpiTable({ code: ipi.code, percent: 5 })).rejects.toThrow(
+      'code already exists'
+    );
+    expect(await service.updateIpiTable(ipi.id, {})).toMatchObject(ipi);
+    expect(await service.updateIpiTable(`missing-${suffix}`, {})).toBeNull();
+
+    const pis = await service.createPisTable({ code: `PIS-${suffix}`, percent: 1.65 });
+    expect(pis.description).toBe('PIS 1.65%');
+    await expect(service.createPisTable({ code: pis.code, percent: 1.65 })).rejects.toThrow(
+      'code already exists'
+    );
+    expect(await service.updatePisTable(pis.id, {})).toMatchObject(pis);
+    expect(await service.updatePisTable(`missing-${suffix}`, {})).toBeNull();
+
+    const cofins = await service.createCofinsTable({ code: `COFINS-${suffix}`, percent: 7.6 });
+    expect(cofins.description).toBe('COFINS 7.6%');
+    await expect(service.createCofinsTable({ code: cofins.code, percent: 7.6 })).rejects.toThrow(
+      'code already exists'
+    );
+    expect(await service.updateCofinsTable(cofins.id, {})).toMatchObject(cofins);
+    expect(await service.updateCofinsTable(`missing-${suffix}`, {})).toBeNull();
+
+    const ibsCbs = await service.createIbsCbsTable({
+      code: `IBSCBS-${suffix}`,
+      ibsPercent: 8.8,
+      cbsPercent: 3.2
+    });
+    expect(ibsCbs.description).toBe(`IBS/CBS ${ibsCbs.code}`);
+    await expect(
+      service.createIbsCbsTable({
+        code: ibsCbs.code,
+        ibsPercent: 8.8,
+        cbsPercent: 3.2
+      })
+    ).rejects.toThrow('code already exists');
+    expect(await service.updateIbsCbsTable(ibsCbs.id, {})).toMatchObject(ibsCbs);
+    expect(await service.updateIbsCbsTable(`missing-${suffix}`, {})).toBeNull();
+  });
+
+  it('normalizes CFOP, ICMS matrix and NFS-e layout edge cases without weakening validation', async () => {
+    const service = new FiscalService();
+    const suffix = `${process.pid}-${Date.now()}`;
+    const cfopCode = `ENT-${suffix}`;
+    const cfop = await service.createCfop({
+      code: cfopCode,
+      description: 'Enterprise CFOP'
+    });
+    expect(cfop).toMatchObject({
+      section: 'saida',
+      category: 'geral',
+      applicableTo: ['nfe', 'nfce', 'nfse', 'cte'],
+      icmsRelevant: false,
+      pisCofinsRelevant: false,
+      ipiRelevant: false
+    });
+    await expect(service.createCfop({ code: cfopCode, description: 'Duplicate' })).rejects.toThrow(
+      'code already exists'
+    );
+    await expect(
+      service.createCfop({
+        code: `INVALID-${suffix}`,
+        description: 'Invalid section',
+        section: 'invalid' as never
+      })
+    ).rejects.toThrow('section must be entrada or saida');
+    await expect(
+      service.createCfop({
+        code: `EMPTY-${suffix}`,
+        description: 'Empty applicability',
+        applicableTo: []
+      })
+    ).rejects.toThrow('applicableTo must include valid fiscal document types');
+    expect(await service.updateCfop(cfopCode, {})).toMatchObject(cfop);
+    expect(await service.updateCfop(`missing-${suffix}`, {})).toBeNull();
+
+    await expect(
+      service.createIcmsMatrix({ ufOrigin: 'S', ufDestination: 'RJ', rate: 12 })
+    ).rejects.toThrow('ufOrigin must be a valid UF');
+    await expect(
+      service.createIcmsMatrix({ ufOrigin: 'AC', ufDestination: 'AC', rate: -1 })
+    ).rejects.toThrow('rate must be a number between 0 and 100');
+    const internalMatrix = await service.createIcmsMatrix({
+      ufOrigin: 'AC',
+      ufDestination: 'AC',
+      rate: 19
+    });
+    expect(internalMatrix.operationType).toBe('interna');
+    await expect(
+      service.createIcmsMatrix({ ufOrigin: 'AC', ufDestination: 'AC', rate: 19 })
+    ).rejects.toThrow('matrix entry already exists');
+    const interstateMatrix = await service.createIcmsMatrix({
+      ufOrigin: 'AP',
+      ufDestination: 'RR',
+      rate: 12,
+      operationType: 'interestadual',
+      cst: '020'
+    });
+    expect(interstateMatrix.operationType).toBe('interestadual');
+
+    const layout = await service.createNfseLayout({
+      city: '  Enterprise City  ',
+      state: ' es ',
+      provider: ' Enterprise Provider ',
+      version: ' v1 ',
+      environment: 'homologacao'
+    });
+    expect(layout).toMatchObject({
+      city: 'Enterprise City',
+      state: 'ES',
+      active: false,
+      municipalityCode: '',
+      serviceCode: '',
+      serviceFocus: ''
+    });
+    expect(
+      await service.updateNfseLayout(layout.id, {
+        city: ' ',
+        state: ' ',
+        provider: ' ',
+        version: ' ',
+        municipalityCode: ' 3205309 ',
+        serviceCode: ' 0407 ',
+        serviceFocus: ' Enterprise focus '
+      })
+    ).toMatchObject({
+      city: 'Enterprise City',
+      state: 'ES',
+      provider: 'Enterprise Provider',
+      version: 'v1',
+      municipalityCode: '3205309',
+      serviceCode: '0407',
+      serviceFocus: 'Enterprise focus'
+    });
+  });
 });

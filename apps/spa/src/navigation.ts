@@ -60,8 +60,7 @@ export const navGroups: AppNavGroup[] = [
           { label: 'Esteira de Exames', path: '/exam-orders', icon: '🧪', keywords: ['esteira de exames', 'exames'] },
           { label: 'Vacinas e Vermífugos', path: '/vaccines-dewormers', icon: '💉', keywords: ['vacinas', 'vermifugos'] },
           { label: 'Orçamentos', path: '/quotes', icon: '📝', keywords: ['orcamentos', 'quotes'] },
-          { label: 'Resgate de Pontos', path: '/loyalty', icon: '🎯', keywords: ['fidelidade', 'pontos', 'resgate'] },
-          { label: 'Vendas (beta)', path: '/sales/beta', icon: '💸', keywords: ['vendas beta'] }
+          { label: 'Resgate de Pontos', path: '/loyalty', icon: '🎯', keywords: ['fidelidade', 'pontos', 'resgate'] }
         ]
       },
       {

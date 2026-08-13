@@ -192,8 +192,7 @@ function findOwner(
   const documentId = optionalText(input.documentId);
   const fullName = requiredText(input.fullName, 'owner.fullName').toLowerCase();
 
-  return owners.list().find((owner) => {
-    if (owner.accountId !== accountId) return false;
+  return owners.listByAccount(accountId as never).find((owner) => {
     if (legacyVetusId && owner.legacyVetusId === legacyVetusId) return true;
     if (documentId && owner.documentId === documentId) return true;
     return owner.fullName.toLowerCase() === fullName;
@@ -209,8 +208,7 @@ function findPatient(
   const legacyVetusId = optionalText(input.legacyVetusId);
   const name = requiredText(input.name, 'patient.name').toLowerCase();
 
-  return patients.list().find((patient) => {
-    if (patient.accountId !== accountId) return false;
+  return patients.listByAccount(accountId as never).find((patient) => {
     if (patient.primaryOwnerId !== ownerId) return false;
     if (legacyVetusId && patient.legacyVetusId === legacyVetusId) return true;
     return patient.name.toLowerCase() === name;
@@ -233,7 +231,7 @@ async function upsertOwner(
       originalCreatedAt: existing.originalCreatedAt ?? optionalText(payload.owner.originalCreatedAt),
       administrativeNotes: mergeText(existing.administrativeNotes, importNote),
       contacts: existing.contacts.length ? existing.contacts : contacts
-    });
+    }, principal.user.accountId as never);
     await owners.waitForPersistence();
     return { owner, created: false };
   }
@@ -268,7 +266,7 @@ async function upsertPatient(
       breed: existing.breed ?? optionalText(payload.patient.breed),
       baseWeightKg: existing.baseWeightKg ?? normalizeWeight(payload.patient.baseWeightKg),
       generalNotes: mergeText(existing.generalNotes, patientNotes)
-    });
+    }, principal.user.accountId as never);
     await patients.waitForPersistence();
     return { patient, created: false };
   }

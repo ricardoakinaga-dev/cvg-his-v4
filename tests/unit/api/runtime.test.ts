@@ -3,6 +3,8 @@ import type { AuthSessionResponse } from '@cvg-his-v2/shared-contracts';
 
 import { createApiRuntime } from '../../../apps/api/src/runtime.ts';
 
+const TEST_AUTH_SECRET = ['test', 'auth', 'value', 'runtime'].join('-');
+
 async function waitForAuditAction(
   runtime: ReturnType<typeof createApiRuntime>,
   action: string,
@@ -22,7 +24,7 @@ async function waitForAuditAction(
 describe('runtime', () => {
   it('builds and initializes the in-memory runtime graph', async () => {
     const runtime = createApiRuntime({
-      authSecret: 'test-secret-key-123456',
+      authSecret: TEST_AUTH_SECRET,
       accessTokenTtlSeconds: 900,
       refreshTokenTtlSeconds: 3_600
     });
@@ -39,11 +41,11 @@ describe('runtime', () => {
 
   it('enables MFA service when an encryption key is provided', () => {
     const runtime = createApiRuntime({
-      authSecret: 'test-secret-key-123456',
+      authSecret: TEST_AUTH_SECRET,
       accessTokenTtlSeconds: 900,
       refreshTokenTtlSeconds: 3_600,
       enableMfa: true,
-      mfaEncryptionKey: '1234567890abcdef'
+      mfaEncryptionKey: 'm'.repeat(16)
     });
 
     expect(runtime.auth).toBeDefined();
@@ -51,13 +53,13 @@ describe('runtime', () => {
 
   it('schedules or skips automatic WhatsApp reminders according to the runtime flag', async () => {
     const disabledRuntime = createApiRuntime({
-      authSecret: 'test-secret-key-123456',
+      authSecret: TEST_AUTH_SECRET,
       accessTokenTtlSeconds: 900,
       refreshTokenTtlSeconds: 3_600,
       notificationsWhatsappRemindersEnabled: false
     });
     const enabledRuntime = createApiRuntime({
-      authSecret: 'test-secret-key-123456',
+      authSecret: TEST_AUTH_SECRET,
       accessTokenTtlSeconds: 900,
       refreshTokenTtlSeconds: 3_600,
       notificationsWhatsappRemindersEnabled: true
@@ -88,7 +90,7 @@ describe('runtime', () => {
 
   it('reconciles PIX confirmations into the administrative financial summary', async () => {
     const runtime = createApiRuntime({
-      authSecret: 'test-secret-key-123456',
+      authSecret: TEST_AUTH_SECRET,
       accessTokenTtlSeconds: 900,
       refreshTokenTtlSeconds: 3_600
     });

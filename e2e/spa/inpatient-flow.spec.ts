@@ -4,6 +4,7 @@ import {
   ApiCall,
   CleanupTracker,
   loginViaToken,
+  getE2EAccessToken,
   CreatedResource
 } from './fixtures/spa-fixture';
 
@@ -63,11 +64,7 @@ test.describe('Fluxo de Internação (Inpatient)', () => {
   test('navega para internação, valida lista, Bed Board e detalhe', async ({ page }) => {
     const mainContent = page.getByRole('main');
     const pageHeaderTitle = mainContent.locator('.app-page-header__title');
-    const token = process.env.E2E_AUTH_TOKEN;
-    if (!token) {
-      test.skip(true, 'E2E_AUTH_TOKEN not available');
-      return;
-    }
+    const token = await getE2EAccessToken();
 
     const apiCall = new ApiCall(token);
     const cleanup = new CleanupTracker(apiCall);
@@ -86,6 +83,15 @@ test.describe('Fluxo de Internação (Inpatient)', () => {
       const encounter = await createEncounterViaApi(apiCall, patient.id, owner.id);
       cleanup.track({ type: 'encounter', id: encounter.id });
       console.log(`   ✅ Encounter: ${encounter.id}`);
+
+      const stay = await apiCall.post('/inpatient/admit', {
+        encounterId: encounter.id,
+        patientId: patient.id,
+        unit: 'Hospital CVG',
+        ward: 'Ala E2E',
+        bed: `Leito ${Date.now()}`
+      });
+      console.log(`   ✅ Inpatient stay: ${stay.id}`);
 
       // ── Step 1: Login ──
       console.log('   🔐 Logging in...');
@@ -128,40 +134,27 @@ test.describe('Fluxo de Internação (Inpatient)', () => {
 
       // ── Step 4: Return to Inpatient list ──
       console.log('   📋 Returning to Inpatient list...');
-      await page.goto(`${SPA_URL}/inpatient`);
+      await page.goto(`${SPA_URL}/inpatient?patientId=${encodeURIComponent(patient.id)}`);
       await page.waitForLoadState('networkidle');
 
-      // ── Step 5: Check for active admissions ──
-      const hasActiveAdmissions = !(await page
-        .getByText('Nenhuma internacao ativa')
-        .isVisible()
-        .catch(() => false));
+      // ── Step 5: Validate the admission created by this test ──
+      const stayRow = page.locator('tr', { hasText: patient.name });
+      await expect(stayRow).toContainText('Internado', { timeout: 15000 });
+      await stayRow.getByRole('link', { name: 'Ver' }).click();
+      await expect(page).toHaveURL(new RegExp(`/inpatient/${stay.id}$`), { timeout: 10000 });
 
-      if (hasActiveAdmissions) {
-        console.log('   ℹ️  Active admissions found — validating detail page');
+      await expect(
+        mainContent.getByRole('heading', { name: /Detalhes da Internação/ })
+      ).toBeVisible({ timeout: 15000 });
+      await expect(mainContent.getByText('Ala E2E', { exact: true })).toBeVisible();
+      console.log('   ✅ Inpatient detail page loaded');
 
-        const verButton = page.getByRole('button', { name: 'Ver' }).first();
-        if (await verButton.isVisible({ timeout: 5000 }).catch(() => false)) {
-          await verButton.click();
-          await page.waitForURL(/\/inpatient\/inp-/, { timeout: 10000 });
-
-          // Validate detail page
-          await expect(
-            mainContent.getByRole('heading', { name: /Detalhes da Internacao/ })
-          ).toBeVisible({ timeout: 15000 });
-          console.log('   ✅ Inpatient detail page loaded');
-
-          // Check for action buttons
-          const hasDischargeBtn = await page
-            .getByRole('button', { name: 'Dar Alta' })
-            .isVisible({ timeout: 3000 })
-            .catch(() => false);
-          console.log(`   ℹ️  Discharge button available: ${hasDischargeBtn}`);
-        }
-      } else {
-        console.log('   ℹ️  No active admissions — empty state validated');
-        await expect(page.getByText('Nenhuma internacao ativa')).toBeVisible({ timeout: 10000 });
-      }
+      await page.getByRole('button', { name: 'Dar Alta', exact: true }).click();
+      await page.locator('#dischargeReason').fill('Alta clínica validada no fluxo E2E');
+      await page.getByRole('button', { name: 'Confirmar Alta', exact: true }).click();
+      await expect(page.getByText('Alta registrada com sucesso!')).toBeVisible({ timeout: 15000 });
+      await expect(page.getByText('Alta clínica validada no fluxo E2E')).toBeVisible();
+      console.log('   ✅ Inpatient discharge completed');
 
       // ── Step 6: Verify navigation back to list ──
       console.log('   🔙 Verifying navigation back to list...');
@@ -181,11 +174,7 @@ test.describe('Fluxo de Internação (Inpatient)', () => {
   test('valida elementos da lista de internação', async ({ page }) => {
     const mainContent = page.getByRole('main');
     const pageHeaderTitle = mainContent.locator('.app-page-header__title');
-    const token = process.env.E2E_AUTH_TOKEN;
-    if (!token) {
-      test.skip(true, 'E2E_AUTH_TOKEN not available');
-      return;
-    }
+    await getE2EAccessToken();
 
     await loginViaToken(page);
     await expect(page).not.toHaveURL(/\/login/, { timeout: 10000 });

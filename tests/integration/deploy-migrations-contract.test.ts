@@ -9,14 +9,18 @@ describe('Deploy and Migration Contracts', () => {
   it('cutover script applies the canonical migration before starting application services', () => {
     const cutoverScript = readFileSync('infra/scripts/cutover-v2.sh', 'utf8');
 
-    const migrateCall = 'DATABASE_URL="$db_url" npx tsx packages/db/src/migrate.ts';
+    const migrateCall = 'DATABASE_URL="$DATABASE_ADMIN_URL" npx tsx packages/db/src/migrate.ts';
+    const provisionRoleCall = 'DATABASE_ADMIN_URL="$DATABASE_ADMIN_URL" DATABASE_URL="$DATABASE_URL" node scripts/provision-database-runtime-role.mjs';
     const startAppsCall = 'docker_compose up -d cvg-his-v2-api cvg-his-v2-worker cvg-his-v2-spa';
 
     expect(cutoverScript).toContain(migrateCall);
+    expect(cutoverScript).toContain(provisionRoleCall);
     expect(cutoverScript).toContain(startAppsCall);
     expect(cutoverScript.indexOf(migrateCall)).toBeGreaterThan(-1);
+    expect(cutoverScript.indexOf(provisionRoleCall)).toBeGreaterThan(-1);
     expect(cutoverScript.indexOf(startAppsCall)).toBeGreaterThan(-1);
-    expect(cutoverScript.indexOf(migrateCall)).toBeLessThan(cutoverScript.indexOf(startAppsCall));
+    expect(cutoverScript.indexOf(migrateCall)).toBeLessThan(cutoverScript.indexOf(provisionRoleCall));
+    expect(cutoverScript.indexOf(provisionRoleCall)).toBeLessThan(cutoverScript.indexOf(startAppsCall));
   });
 
   it('test bootstrap uses the same canonical migrate-then-seed order', () => {

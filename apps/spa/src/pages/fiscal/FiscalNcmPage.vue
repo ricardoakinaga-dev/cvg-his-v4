@@ -120,4 +120,14 @@ onMounted(load);
   gap: 12px;
   align-items: end;
 }
+
+@media (max-width: 720px) {
+  .search-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .search-bar :deep(.ds-btn) {
+    width: 100%;
+  }
+}
 </style>

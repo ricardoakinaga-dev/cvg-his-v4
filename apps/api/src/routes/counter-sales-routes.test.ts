@@ -3,7 +3,7 @@ import { Writable } from 'node:stream';
 import test from 'node:test';
 
 import { CounterSalesService } from '@cvg-his-v2/module-counter-sales';
-import { ConflictError } from '@cvg-his-v2/shared-errors';
+import { ConflictError, NotFoundError } from '@cvg-his-v2/shared-errors';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 
 import { handleCounterSalesRoutes } from './counter-sales-routes.js';
@@ -147,6 +147,38 @@ test('handleCounterSalesRoutes opens and lists counter sales', async () => {
   const payload = listResponse.bodyJson<{ items: Array<{ id: string }> }>();
   assert.equal(payload.items.length, 1);
   assert.equal(payload.items[0]?.id, sale.id);
+});
+
+test('handleCounterSalesRoutes rejects a foreign-account owner before opening a sale', async () => {
+  const counterSales = new CounterSalesService();
+  const response = new MockResponse();
+
+  await assert.rejects(
+    () =>
+      handleCounterSalesRoutes(
+        '/counter-sales',
+        {
+          method: 'POST',
+          [Symbol.asyncIterator]: async function* () {
+            yield Buffer.from(JSON.stringify({ ownerId: 'owner-foreign' }));
+          }
+        } as never,
+        response as never,
+        'corr-cs-tenant',
+        {
+          counterSales,
+          owners: {
+            getForAccountOrThrow() {
+              throw new NotFoundError('Owner not found');
+            }
+          } as never,
+          audit: createAudit() as never,
+          requirePrincipal: () => createPrincipal()
+        }
+      ),
+    NotFoundError
+  );
+  assert.equal(counterSales.list(createPrincipal().user.accountId).length, 0);
 });
 
 test('handleCounterSalesRoutes exposes the commercial dashboard', async () => {
