@@ -102,7 +102,7 @@ pnpm test:db:stop
 | `test:db:start`    | Sobe PostgreSQL 16 em porta 5433                             | Docker                        |
 | `test:db`          | Validação estrutural do banco (migrations, FKs, constraints) | Banco rodando                 |
 | `test:integration` | Todas as integrações (DB + fundacionais + factories)         | Banco rodando                 |
-| `test:critical`    | Suíte crítica: DB (151) + fundacionais (11) = 162 testes     | Banco rodando                 |
+| `test:critical`    | Suíte crítica: 14 arquivos e 220 testes                     | Banco rodando                 |
 | `test:runner:clean`| Mata `vitest` órfão e remove bancos efêmeros sem conexões    | PostgreSQL local opcional     |
 | `test:e2e`         | 8 fluxos críticos via Playwright API context                 | API rodando em localhost:3000 |
 | `test:all`         | test:critical + test:e2e                                     | Banco + API rodando           |
@@ -120,19 +120,17 @@ pnpm test:db:stop
 
 ## Limitações Atuais
 
-1. **Dual RBAC**: Seed usa `vet/enfermagem/recepcao`; AccessControlService usa `veterinarian/nurse/reception`. Testes funcionam com AccessControlService codes.
-2. **4 módulos sem persistência DB**: BillingService, InventoryService, SchedulingService, UsersService usam Maps em memória. Dados perdidos em restart.
-3. **Migration não idempotente**: `CREATE TYPE` sem `IF NOT EXISTS`. O risco foi reduzido com banco efêmero por execução, lock administrativo e cleanup operacional, mas a limitação histórica da migration ainda existe.
-4. **Sem CI pipeline**: Validação depende de execução manual.
-5. **Sem cobertura configurada**: Não há métrica de coverage para módulos ou API.
+1. **E2E visual depende do runtime do navegador**: os gates locais cobertos nesta rodada passaram — SPA funcional não visual 26/26, responsivo 4/4, visual 12/12 e mobile visual 1/1 — com snapshots canônicos reconciliados. A confirmação em CI/staging com navegador suportado continua necessária como evidência externa de release.
+2. **Evidência operacional externa pendente**: o repositório não consegue produzir sozinho URL de workflow GitHub, relatório de restore real e evidência do deploy-alvo; esses artefatos permanecem pré-requisitos de produção.
+3. **Validação de papel runtime depende do ambiente**: `pnpm validate:database-role` exige uma URL administrativa e uma URL de runtime configuradas; o script e o teste de contrato estão cobertos localmente.
 
 ## Resultado Consolidado
 
 | Fase                               | Testes  | Passaram | Falharam | Status |
 | ---------------------------------- | ------- | -------- | -------- | ------ |
-| Phase 2 — DB Validation            | 151     | 151      | 0        | ✅     |
-| Phase 3 — Foundational Integration | 11      | 11       | 0        | ✅     |
-| Phase 4 — Critical Flows E2E       | 8       | 8        | 0        | ✅     |
-| **Total**                          | **170** | **170**  | **0**    | **✅** |
+| Phase 2 — DB Validation            | histórico | histórico | 0        | ✅     |
+| Phase 3 — Foundational Integration | histórico | histórico | 0        | ✅     |
+| Phase 4 — Critical Flows E2E       | histórico | histórico | 0        | ✅     |
+| **Gate crítico atual**             | **220**   | **220**   | **0**    | **✅** |
 
-**Decisão:** Aprovado para continuação interna. Não apto para homologação ou produção (ver `final-system-validation-report.md`).
+**Decisão:** o gate crítico local está aprovado; a decisão de homologação/produção depende do relatório atual em `docs/2026-08-15-relatorio-auditoria-e-correcoes.md` e das evidências externas pendentes.

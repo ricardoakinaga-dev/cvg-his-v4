@@ -2,8 +2,10 @@
 
 **Status:** vivo
 **Data de criacao:** 2026-03-31
-**Ultima verificacao executavel:** 2026-08-12 — `pnpm typecheck`, `pnpm build`, `pnpm lint`, `pnpm test`, `pnpm test:critical`, `pnpm test:coverage` e `pnpm security:enterprise` passam após o fechamento P1 e a remediação de dependências; aceite enterprise final ainda depende dos itens residuais registrados no relatório vivo.
+**Ultima verificacao executavel:** 2026-08-16 — `pnpm typecheck`, `pnpm build`, `pnpm lint`, `pnpm test`, `pnpm test:critical`, `pnpm test:coverage`, `pnpm security:enterprise` e os gates SPA browser locais passam; aceite enterprise final ainda depende das evidências externas registradas no relatório vivo.
 **Base:** docs/460-qualidade-testes-e-gates.md, docs/131-checklist-cutover-servidor.md, docs/470-politica-migracao-e-deploy.md
+
+> Os gates SPA locais foram reconciliados: funcional não visual 26/26, responsivo 4/4, visual 12/12 e mobile visual 1/1. Os snapshots canônicos foram verificados após a atualização; repetir em CI/staging continua obrigatório para produzir evidência externa de release.
 
 ---
 
@@ -30,20 +32,23 @@
 
 ### Typecheck e Build
 
-- [ ] `pnpm typecheck` — verde (0 erros de tipo)
-- [ ] `pnpm build` — verde (todos os apps compilam)
+- [x] `pnpm typecheck` — verde (0 erros de tipo)
+- [x] `pnpm build` — verde (todos os apps compilam)
 
 ### Testes
 
-- [ ] `pnpm --filter @cvg-his-v2/module-staff test` — verde
-- [ ] `pnpm --filter @cvg-his-v2/module-users test` — verde
-- [ ] `pnpm --filter @cvg-his-v2/module-scheduling test` — verde
-- [ ] `pnpm --filter @cvg-his-v2/spa test` — verde
-- [ ] `pnpm test:critical` — verde com banco de teste preparado
+- [x] `pnpm --filter @cvg-his-v2/module-staff test` — verde
+- [x] `pnpm --filter @cvg-his-v2/module-users test` — verde
+- [x] `pnpm --filter @cvg-his-v2/module-scheduling test` — verde
+- [x] `pnpm --filter @cvg-his-v2/spa test` — verde (166 arquivos, 979 testes)
+- [x] `pnpm test:critical` — verde com banco de teste preparado
   - Pre-requisito: `pnpm test:db:start` (PostgreSQL 16 na porta 5433)
   - Execucao: `DATABASE_URL_TEST="<test-database-url>" pnpm test:critical`
-  - Meta: 100% dos testes passando (atual: 171 testes)
+  - Meta: 100% dos testes passando (atual: 220 testes)
 - [x] `pnpm security:enterprise` — verde; secret scan limpo e zero vulnerabilidades conhecidas de qualquer severidade em `pnpm audit --audit-level=low`
+- [x] `npx playwright test --config playwright-spa.config.ts --grep-invert "Visual"` — verde (26/26 fluxos SPA funcionais)
+- [x] `npx playwright test --config playwright-spa.config.ts e2e/spa/visual/visual-regression.spec.ts` — verde (12/12 cenários visuais)
+- [x] `npx playwright test --config playwright-spa.config.ts e2e/spa/master-search-360-mobile.spec.ts` — verde (1/1 cenário visual mobile)
 - [ ] `pnpm test:e2e` — verde com API rodando em localhost:3000
   - Pre-requisito: API rodando com DATABASE_URL configurado
   - Execucao: `npx playwright test e2e/tests/fluxos-criticos.spec.ts`
@@ -52,8 +57,8 @@
 ### Resultado esperado
 
 ```
-Test Files  4 passed (4)
-Tests       171 passed (171)
+Test Files  14 passed (14)
+Tests       220 passed (220)
 ```
 
 ---
@@ -90,15 +95,15 @@ Tests       171 passed (171)
 
 ### Migration
 
-- [ ] As migrations Drizzle `0000` a `0058_auth_sessions_rls.sql` aplicam em banco limpo
-- [x] `pnpm validate:rls` — 98/98 tabelas tenant protegidas, sem exceções
-- [ ] Comando: `DATABASE_URL=<url> tsx packages/db/src/migrate.ts`
-- [ ] Resultado atual reproduzido: 125 tabelas, 38 ENUM types, 266 foreign keys criadas
+- [x] As migrations Drizzle `0000` a `0069_inventory_optimistic_concurrency.sql` aplicam em banco limpo
+- [x] `pnpm validate:rls` — 119/119 tabelas tenant protegidas, sem exceções
+- [x] Comando: `DATABASE_ADMIN_URL=<url-admin> tsx packages/db/src/migrate.ts`
+- [x] Resultado atual reproduzido: 147 tabelas, 43 ENUM types, 518 foreign keys criadas
 
 ### Seed
 
 - [ ] Seed Drizzle executa sem erro
-- [ ] Comando: `DATABASE_URL=<url> ADMIN_EMAIL=<email> ADMIN_PASSWORD=<senha> tsx packages/db/src/seed.ts`
+- [ ] Comando: `DATABASE_ADMIN_URL=<url-admin> ADMIN_EMAIL=<email> ADMIN_PASSWORD=<senha> tsx packages/db/src/seed.ts`
 - [ ] Resultado: roles, permissions, account, unit populados
 
 ### Integridade

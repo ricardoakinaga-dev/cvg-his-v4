@@ -1,8 +1,8 @@
 # 130 - Instalacao e Publicacao do CVG-HIS V2
 
 **Status:** vivo
-**Data de validacao:** 2026-04-12
-**Ultima atualizacao:** 2026-04-12 — config fail-fast, security baseline e rotacao de segredos
+**Data de validacao:** 2026-08-15
+**Ultima atualizacao:** 2026-08-15 — frontend canonico compilando e cadeia Drizzle reconciliada até `0069`
 
 ## Escopo
 
@@ -139,8 +139,8 @@ A trilha oficial de persistencia e migracao do CVG-HIS V2 e o Drizzle ORM.
 - **Seed:** `packages/db/src/seed.ts`
 - **Runner:** `tsx packages/db/src/migrate.ts`
 
-A cadeia viva atual vai de `0000_vengeful_pet_avengers.sql` ate `0012_audit_events_alignment.sql`.
-O runner oficial `packages/db/src/migrate.ts` aplica automaticamente todas as migrations `.sql` em ordem, ignorando apenas arquivos `.revert.sql`.
+A cadeia viva atual vai de `0000_vengeful_pet_avengers.sql` ate `0069_inventory_optimistic_concurrency.sql`.
+O runner oficial `packages/db/src/migrate.ts` aplica automaticamente todas as migrations forward `.sql` em ordem, ignorando apenas arquivos `.revert.sql` e `.seed.sql`.
 
 ### Aplicacao em producao
 
@@ -173,7 +173,7 @@ Para evitar reaproveitamento acidental de imagem antiga, usar a sequencia abaixo
 docker compose --env-file .env.v2 -f docker-compose.v2.yml down --remove-orphans
 docker compose --env-file .env.v2 -f docker-compose.v2.yml build --no-cache cvg-his-v2-api cvg-his-v2-worker cvg-his-v2-spa
 docker compose --env-file .env.v2 -f docker-compose.v2.yml up -d postgres redis
-DATABASE_URL=postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@127.0.0.1:5432/$POSTGRES_DB npx tsx packages/db/src/migrate.ts
+DATABASE_ADMIN_URL=postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@127.0.0.1:5432/$POSTGRES_DB npx tsx packages/db/src/migrate.ts
 docker compose --env-file .env.v2 -f docker-compose.v2.yml up -d cvg-his-v2-api cvg-his-v2-worker cvg-his-v2-spa
 ```
 

@@ -17,6 +17,9 @@ async function stabilizeMobile360(page: Page): Promise<void> {
         max-width: 100vw !important;
         overflow-x: hidden !important;
       }
+      html {
+        scroll-behavior: auto !important;
+      }
     `
   });
 }
@@ -30,12 +33,36 @@ async function expectNoDocumentHorizontalOverflow(page: Page, context: string): 
   expect(overflow, `${context} should not create document-level horizontal overflow`).toBeLessThanOrEqual(1);
 }
 
-async function expectVisibleInsideViewport(locator: Locator, label: string): Promise<void> {
-  await locator.scrollIntoViewIfNeeded();
-  await expect(locator, `${label} should be visible after mobile scroll`).toBeVisible();
-  await expect(locator, `${label} should fit inside the mobile viewport`).toBeInViewport({
-    ratio: 0.8
+async function expectVisibleInsideViewport(
+  page: Page,
+  locator: Locator,
+  label: string
+): Promise<void> {
+  await locator.evaluate((element) => {
+    element.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' });
   });
+  await expect(locator, `${label} should be visible after mobile scroll`).toBeVisible();
+  const viewport = page.viewportSize();
+  const bounds = await locator.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return { top: rect.top, right: rect.right, bottom: rect.bottom, left: rect.left };
+  });
+  expect(viewport).not.toBeNull();
+  expect(bounds.top, `${label} should start inside the mobile viewport`).toBeGreaterThanOrEqual(-1);
+  expect(bounds.left, `${label} should start inside the mobile viewport`).toBeGreaterThanOrEqual(-1);
+  expect(bounds.bottom, `${label} should end inside the mobile viewport`).toBeLessThanOrEqual(
+    (viewport?.height ?? 0) + 1
+  );
+  expect(bounds.right, `${label} should end inside the mobile viewport`).toBeLessThanOrEqual(
+    (viewport?.width ?? 0) + 1
+  );
+}
+
+async function clickAtCenter(page: Page, locator: Locator): Promise<void> {
+  const box = await locator.boundingBox();
+  expect(box).not.toBeNull();
+  if (!box) return;
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
 }
 
 async function captureMobileEvidence(
@@ -43,9 +70,20 @@ async function captureMobileEvidence(
   testInfo: TestInfo,
   filename: string
 ): Promise<void> {
+  const evidenceRegion = page.locator('main').first();
+  await expect(evidenceRegion, `${filename} should have a main evidence region`).toBeVisible();
+  const bounds = await evidenceRegion.boundingBox();
+  expect(bounds, `${filename} should have measurable evidence bounds`).not.toBeNull();
+  if (!bounds) return;
   const screenshot = await page.screenshot({
     path: testInfo.outputPath(filename),
-    fullPage: false
+    animations: 'disabled',
+    clip: {
+      x: Math.max(0, bounds.x),
+      y: Math.max(0, bounds.y),
+      width: Math.max(1, bounds.width),
+      height: Math.max(1, bounds.height)
+    }
   });
 
   expect(screenshot.length, `${filename} should contain rendered pixels`).toBeGreaterThan(10_000);
@@ -113,10 +151,10 @@ test.describe('Busca Mestre 360 mobile visual', () => {
     await stabilizeMobile360(page);
 
     await page.getByPlaceholder(/buscar por tutor, paciente/i).fill(patientName);
-    await page.getByRole('button', { name: 'Buscar', exact: true }).click();
+    await clickAtCenter(page, page.getByRole('button', { name: 'Buscar', exact: true }));
 
     const prioritySummary = page.getByLabel('Resumo Prioridade 360');
-    await expectVisibleInsideViewport(prioritySummary, 'Resumo Prioridade 360');
+    await expectVisibleInsideViewport(page, prioritySummary, 'Resumo Prioridade 360');
     await expect(prioritySummary).toContainText('Exames pendentes');
     await expectNoDocumentHorizontalOverflow(page, 'Busca Mestre mobile');
     await captureMobileEvidence(page, testInfo, 'mobile-360-master-search.png');
@@ -128,7 +166,7 @@ test.describe('Busca Mestre 360 mobile visual', () => {
 
     await expect(page).toHaveURL(new RegExp(`/patients/${patient.id}$`), { timeout: 15000 });
     const cockpit360 = page.getByLabel('Cockpit 360 do paciente');
-    await expectVisibleInsideViewport(cockpit360, 'Cockpit 360 do paciente');
+    await expectVisibleInsideViewport(page, cockpit360, 'Cockpit 360 do paciente');
     await expect(cockpit360).toContainText('1 exame(s) pendente(s)');
     await expectNoDocumentHorizontalOverflow(page, 'Cockpit 360 mobile');
     await captureMobileEvidence(page, testInfo, 'mobile-360-cockpit.png');
@@ -142,10 +180,10 @@ test.describe('Busca Mestre 360 mobile visual', () => {
 
     const receptionSearch = page.getByRole('search');
     await receptionSearch.getByPlaceholder(/buscar tutor ou paciente/i).fill(patientName);
-    await receptionSearch.getByRole('button', { name: 'Buscar', exact: true }).click();
+    await clickAtCenter(page, receptionSearch.getByRole('button', { name: 'Buscar', exact: true }));
 
     const quickActions = page.getByLabel('Acoes rapidas contextuais da recepcao');
-    await expectVisibleInsideViewport(quickActions, 'Acoes rapidas contextuais da recepcao');
+    await expectVisibleInsideViewport(page, quickActions, 'Acoes rapidas contextuais da recepcao');
     await expect(quickActions).toContainText('Prioridade 360');
     await expect(quickActions).toContainText('Exames pendentes');
     await expectNoDocumentHorizontalOverflow(page, 'Recepcao mobile');

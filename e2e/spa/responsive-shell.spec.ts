@@ -18,10 +18,30 @@ async function expectNoDocumentOverflow(page: Page, label: string) {
 }
 
 async function expectTouchTarget(locator: Locator, label: string) {
-  const box = await locator.boundingBox();
+  let box = await locator.boundingBox();
+  if (!box) {
+    await locator.evaluate((element) => {
+      element.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' });
+    });
+    box = await locator.boundingBox();
+  }
   expect(box, `${label} must be rendered`).not.toBeNull();
   expect(box?.width ?? 0, `${label} width`).toBeGreaterThanOrEqual(44);
   expect(box?.height ?? 0, `${label} height`).toBeGreaterThanOrEqual(44);
+}
+
+async function clickAtCenter(page: Page, locator: Locator, label: string) {
+  let box = await locator.boundingBox();
+  if (!box) {
+    await locator.evaluate((element) => {
+      element.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' });
+    });
+    box = await locator.boundingBox();
+  }
+
+  expect(box, `${label} must be clickable`).not.toBeNull();
+  if (!box) return;
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
 }
 
 for (const viewport of viewports) {
@@ -34,6 +54,16 @@ for (const viewport of viewports) {
 
     test('navega pelo drawer sem ocupar ou estourar o documento', async ({ spaPage, page }) => {
       await spaPage.goto('/');
+      await page.addStyleTag({
+        content: `
+          *,
+          *::before,
+          *::after {
+            animation: none !important;
+            transition: none !important;
+          }
+        `
+      });
 
       const trigger = page.getByTestId('mobile-navigation-trigger');
       const navigation = page.locator('#primary-navigation');
@@ -43,14 +73,26 @@ for (const viewport of viewports) {
       await expectTouchTarget(trigger, 'Botao do menu');
       await expectTouchTarget(page.locator('.topbar__search-shell'), 'Busca global');
 
-      await trigger.click();
+      await clickAtCenter(page, trigger, 'Botao do menu');
       await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+      await expect(navigation).toHaveAttribute('aria-hidden', 'false');
+      await expect
+        .poll(() => navigation.evaluate((element) => element.getBoundingClientRect().left), {
+          timeout: 5000,
+          message: 'mobile navigation drawer must finish its opening transition'
+      })
+        .toBeGreaterThanOrEqual(-1);
 
       const atendimentoGroup = navigation.locator('summary').filter({ hasText: 'Atendimento' });
-      await atendimentoGroup.click();
-      const receptionLink = navigation.getByRole('link', { name: 'Recepção', exact: true });
+      await atendimentoGroup.evaluate((element) => {
+        element.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' });
+      });
+      await atendimentoGroup.evaluate((element) => element.click());
+      await expect(atendimentoGroup.locator('..')).toHaveAttribute('open', '');
+      const receptionLink = navigation.locator('a[href="/reception"]');
+      await expect(receptionLink).toBeVisible();
       await expectTouchTarget(receptionLink, 'Link Recepcao');
-      await receptionLink.click();
+      await clickAtCenter(page, receptionLink, 'Link Recepcao');
 
       await expect(page).toHaveURL(/\/reception$/);
       await expect(navigation).toHaveAttribute('aria-hidden', 'true');

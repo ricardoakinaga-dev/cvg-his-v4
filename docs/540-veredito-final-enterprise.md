@@ -4,6 +4,8 @@
 **Base:** relatorios das ondas 1-4, score final (530), riscos residuais (531)
 **Atualizacao:** 2026-03-31 — Ciclo 1 executado (ver doc 550), hardening final (ver doc 560), veredito operacional (ver doc 561)
 
+> **Snapshot histórico.** Este veredito preserva o fechamento da rodada de março. Para decisão atual, consulte `docs/2026-08-15-relatorio-auditoria-e-correcoes.md`.
+
 ---
 
 ## Resumo Executivo

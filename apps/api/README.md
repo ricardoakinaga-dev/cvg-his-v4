@@ -26,7 +26,11 @@ API principal do CVG-HIS V2.
 - `GET /users` — listagem de usuarios
 - `GET /users/:id` — inspecao de usuario
 - `PATCH /users/:id` — atualizacao de usuario
-- `GET /staff` — listagem de profissionais (seed-only)
+- `GET /staff` — listagem de profissionais persistentes por conta
+- `GET /staff/:id` — detalhe de profissional
+- `POST /staff` — criação de profissional
+- `PATCH /staff/:id` — atualização de profissional
+- `POST /staff/:id/toggle-active` — ativação/inativação sem apagar histórico
 
 ### Tutores e Pacientes
 

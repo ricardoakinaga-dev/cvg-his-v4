@@ -4,6 +4,8 @@
 **Status:** Final
 **Base:** estado real do repositorio, docs vivos 480-587
 
+> **Snapshot histórico.** A consolidação abaixo antecede a migração do frontend canônico para `apps/spa` e não deve orientar deploy. O estado vigente está em `docs/README.md` e `docs/2026-08-15-relatorio-auditoria-e-correcoes.md`.
+
 ---
 
 ## 1. Arquitetura Atual Consolidada

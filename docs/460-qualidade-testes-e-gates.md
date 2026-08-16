@@ -1,8 +1,8 @@
 # 460 - Qualidade, Testes e Gates
 
 **Status:** vivo
-**Data de validacao:** 2026-08-12
-**Ultima atualizacao:** 2026-08-12 — P1 fechado; audit zero, RLS de sessões 98/98, cobertura e regressões completa/ampliada validados
+**Data de validacao:** 2026-08-16
+**Ultima atualizacao:** 2026-08-16 — gates browser locais reconciliados; métricas e gates verificados contra o worktree atual
 
 ## Objetivo
 
@@ -30,6 +30,9 @@ O pipeline CI em `.github/workflows/ci.yml` executa automaticamente em pushes e 
 | `build`            | `pnpm build`                           | typecheck  |
 | `test-unit`        | `pnpm test`                            | typecheck  |
 | `test-integration` | `pnpm test:critical` com PostgreSQL 16 | typecheck  |
+| `deploy-documentation` | guardrail de documentação + `pnpm deploy:check` | typecheck |
+| `test-e2e-spa`      | fluxos SPA funcionais com Playwright | build       |
+| `test-visual`       | regressão visual Playwright | build       |
 
 O job `test-integration` provisiona um servico PostgreSQL 16 via GitHub Actions services na porta 5433.
 
@@ -42,6 +45,8 @@ O job `test-integration` provisiona um servico PostgreSQL 16 via GitHub Actions 
 | `test` (unit)   | ✅                          | —                |
 | `test:critical` | ✅ (com PostgreSQL service) | —                |
 | `test:e2e`      | ❌ (requer browser)         | ✅ local/staging |
+| `test-e2e-spa`  | ✅ (browser Playwright)     | ✅             |
+| `test-visual`   | ✅ (browser Playwright)     | ✅             |
 | `release:check` | ❌ (agregacao manual)       | ✅               |
 
 ## Setup do banco de teste
@@ -91,7 +96,7 @@ O script `test:critical:bootstrap` valida conectividade, cria/reseta o banco, ap
 ### O que o globalSetup faz
 
 1. Cria/reseta o banco `cvg_his_v2_test`
-2. Aplica a migration Drizzle `0000_vengeful_pet_avengers.sql`
+2. Aplica toda a cadeia Drizzle forward de `0000_vengeful_pet_avengers.sql` a `0069_inventory_optimistic_concurrency.sql`, ignorando apenas `.revert.sql` e `.seed.sql`
 3. Executa o seed Drizzle (`packages/db/src/seed.ts`)
 4. Verifica integridade do schema (tables, enums, FKs)
 
@@ -99,14 +104,14 @@ O script `test:critical:bootstrap` valida conectividade, cria/reseta o banco, ap
 
 - o repositorio possui testes em `apps/api`, `packages/modules`, `tests/integration` e `e2e/tests`
 - a trilha de validacao existe e e executavel com banco configurado
-- `pnpm test:critical` executa 171 testes (DB + integrações fundacionais)
+- `pnpm test:critical` executa 220 testes (DB + integrações fundacionais)
 - modulos `staff`, `users` e `scheduling` agora possuem suites dedicadas acionadas pelos proprios `package.json`
-- `apps/web` agora possui regressao guiada minima para shell HTML, rotas principais, labels funcionais e servidor instanciavel sem depender de bind local
+- `apps/spa` agora possui regressao guiada para shell HTML, rotas principais, labels funcionais e fluxos operacionais do frontend canonico
 - `apps/api` agora possui cobertura HTTP dedicada para queue lifecycle e update de triage
 - `apps/api/src/server.test.ts` foi endurecido para validar sem `listen()` real, o que deixa a suite reproduzivel em sandbox e CI restrito
 - o bootstrap production-like falha sem PostgreSQL saudável e os catálogos não fazem fallback silencioso para memória
 - a migration `0057_auth_sessions.sql` habilita persistência de sessões no repositório canônico
-- a migration `0058_auth_sessions_rls.sql` isola sessões por conta; o gate estático cobre 98/98 tabelas tenant
+- a migration `0058_auth_sessions_rls.sql` isola sessões por conta; o gate estático cobre 119/119 tabelas tenant
 
 ## Suites dedicadas relevantes
 
@@ -120,7 +125,7 @@ O script `test:critical:bootstrap` valida conectividade, cria/reseta o banco, ap
 
 ### Última evidência reproduzida
 
-Em 12/08/2026, a API passou em **233/233** testes, a suíte crítica em **4 arquivos e 171/171**, a SPA em **165 arquivos e 969/969**, a integração ampliada em **131 arquivos e 1.682/1.682**, e a suíte completa do monorepo foi executada sem falhas. A cobertura formal passou com **85,60% statements/lines, 88,97% functions e 80,96% branches**; o threshold global de 80% permanece enforceado. `validate:rls` passou com **98/98 tabelas tenant protegidas**. O gate `pnpm security:enterprise` passou com secret scan limpo e `pnpm audit --audit-level=low` sem vulnerabilidades conhecidas; qualquer advisory de severidade baixa ou superior agora bloqueia o gate.
+Em 16/08/2026, a API passou em **253/253** testes, a suíte crítica em **14 arquivos e 220/220**, a suíte completa do monorepo terminou com exit 0 e a SPA passou em **166/166 arquivos e 979/979 testes**. O build/typecheck/lint do SPA também passaram. A cobertura formal atual passou com **81,81% statements/lines, 82,23% functions e 80,48% branches**; o threshold global de 80% permanece enforceado. `validate:rls` passou com **119/119 tabelas tenant protegidas**. O gate `pnpm security:enterprise` passou com secret scan limpo e `pnpm audit --audit-level=low` sem vulnerabilidades conhecidas; qualquer advisory de severidade baixa ou superior agora bloqueia o gate. A suíte SPA E2E funcional não visual passou em **26/26**, a responsiva em **4/4**, a regressão visual em **12/12** e o cenário visual mobile em **1/1**. Os snapshots canônicos foram reconciliados com a navegação atual e verificados; a repetição em CI/staging continua necessária para evidência externa de release.
 
 ## Criterio de qualidade para nota 85
 
@@ -153,6 +158,8 @@ coverage: {
 | `pnpm test:critical` | Executa testes criticos de integracao  |
 | `pnpm test:integration` | Executa a matriz ampliada com PostgreSQL |
 | `pnpm validate:rls` | Valida cobertura estática das políticas tenant |
+
+`pnpm test` executa os workspaces com `--workspace-concurrency=1`. Isso é intencional: cada pacote que usa o setup Vitest pode criar ou resetar um PostgreSQL efêmero, e concorrência entre resets destrutivos causa pressão de memória compartilhada e encerra conexões de outros testes.
 
 ### Relatorios
 

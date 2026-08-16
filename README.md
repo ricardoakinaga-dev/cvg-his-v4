@@ -114,20 +114,36 @@ docker compose --env-file .env.v2 -f docker-compose.v2.yml up -d postgres redis
 O caminho canonico de schema para deploy atual e Drizzle via [`packages/db/src/migrate.ts`](packages/db/src/migrate.ts).
 
 ```bash
-DATABASE_URL=postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@127.0.0.1:5432/$POSTGRES_DB \
+DATABASE_ADMIN_URL=postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@127.0.0.1:5432/$POSTGRES_DB \
 npx tsx packages/db/src/migrate.ts
 ```
 
 Opcionalmente, para seed inicial de admin:
 
 ```bash
-DATABASE_URL=postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@127.0.0.1:5432/$POSTGRES_DB \
+DATABASE_ADMIN_URL=postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@127.0.0.1:5432/$POSTGRES_DB \
 ADMIN_EMAIL=admin@example.com \
 ADMIN_PASSWORD=troque-esta-senha \
 npx tsx packages/db/src/seed.ts
 ```
 
 Regra importante: nao aplique ao mesmo tempo o fluxo de `packages/db` e os SQLs de `packages/shared/database`. Para deploy atual, use somente `packages/db`.
+
+Após migration e seed, a API e o worker devem usar `DATABASE_URL` apontando para a role restrita de runtime, nunca para a role administrativa. O cutover provisiona e valida essa role com:
+
+```bash
+DATABASE_ADMIN_URL="$DATABASE_ADMIN_URL" \
+DATABASE_URL="$DATABASE_RUNTIME_URL_DOCKER" \
+node scripts/provision-database-runtime-role.mjs
+```
+
+Para validar uma role já provisionada sem alterá-la:
+
+```bash
+DATABASE_ADMIN_URL="$DATABASE_ADMIN_URL" \
+DATABASE_URL="$DATABASE_RUNTIME_URL_DOCKER" \
+pnpm validate:database-role
+```
 
 ### 7. Subir a aplicacao
 

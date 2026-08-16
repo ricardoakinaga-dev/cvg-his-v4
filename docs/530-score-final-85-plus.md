@@ -3,6 +3,8 @@
 **Data:** 2026-03-31
 **Base:** relatorios das ondas 1-4 (docs/491-494), estado real do repositorio
 
+> **Snapshot histórico.** Os scores e contagens deste documento não substituem a reavaliação de 15/08/2026. Use `docs/2026-08-15-relatorio-auditoria-e-correcoes.md` para o estado atual.
+
 ---
 
 ## Formula

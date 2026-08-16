@@ -83,12 +83,14 @@ describe('AppLayout responsive navigation', () => {
     expect(trigger.attributes('aria-expanded')).toBe('true');
     expect(wrapper.get('.app-layout').classes()).toContain('app-layout--mobile-nav-open');
     expect(wrapper.get('#primary-navigation').attributes('aria-hidden')).toBe('false');
-    expect(wrapper.get('[data-testid="mobile-navigation-backdrop"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="mobile-navigation-backdrop"]').exists()).toBe(true);
     expect(document.body.classList.contains('mobile-navigation-open')).toBe(true);
 
     await wrapper.get('[data-testid="mobile-navigation-backdrop"]').trigger('click');
+    await wrapper.vm.$nextTick();
 
     expect(trigger.attributes('aria-expanded')).toBe('false');
+    expect(document.activeElement).toBe(trigger.element);
     expect(document.body.classList.contains('mobile-navigation-open')).toBe(false);
   });
 
@@ -99,6 +101,34 @@ describe('AppLayout responsive navigation', () => {
 
     expect(wrapper.find('.sidebar__group-label').exists()).toBe(true);
     expect(wrapper.get('[data-testid="mobile-account-actions"]').text()).toContain('Sair');
+  });
+
+  it('keeps a user-opened navigation group expanded after the reactive render settles', async () => {
+    mockCompactViewport();
+    const { wrapper } = await mountLayout();
+    await wrapper.get('[data-testid="mobile-navigation-trigger"]').trigger('click');
+    const atendimentoSummary = wrapper
+      .findAll('summary')
+      .find((summary) => summary.text().includes('Atendimento'));
+
+    expect(atendimentoSummary).toBeDefined();
+    await atendimentoSummary!.trigger('click');
+    await wrapper.get('.sidebar__content').trigger('scroll');
+    await flushPromises();
+
+    const atendimentoGroup = atendimentoSummary!.element.closest('details');
+    expect(atendimentoGroup?.hasAttribute('open')).toBe(true);
+    expect(wrapper.find('[to="/reception"]').exists()).toBe(true);
+  });
+
+  it('does not require matchMedia when the delayed sidebar scroll callback runs', async () => {
+    mockCompactViewport();
+    const { wrapper } = await mountLayout();
+
+    vi.stubGlobal('matchMedia', undefined);
+    await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+
+    expect(wrapper.exists()).toBe(true);
   });
 
   it('closes the drawer with Escape and after route navigation', async () => {

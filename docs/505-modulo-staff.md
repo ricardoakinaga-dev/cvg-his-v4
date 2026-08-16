@@ -24,9 +24,11 @@ Prover cadastro administrativo real de profissionais/equipe, com persistência e
   - `PATCH /staff/:id`
   - `POST /staff/:id/toggle-active`
 - UI:
-  - `apps/web/src/pages/staff.ts`
+  - `apps/spa/src/pages/staff/StaffListPage.vue`
+  - `apps/spa/src/pages/staff/StaffFormPage.vue`
+  - `apps/spa/src/pages/staff/StaffDetailPage.vue`
   - rota `/staff`
-  - navegação administrativa já exposta em `apps/web/src/index.ts`
+  - navegação administrativa já exposta em `apps/spa/src/navigation.ts`
 
 ## Regras de negócio relevantes
 

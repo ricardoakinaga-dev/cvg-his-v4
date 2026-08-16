@@ -151,26 +151,29 @@ test('createEnvFeatureFlagProvider enables explicitly configured keys and falls 
     'auth.oidc.enabled',
     'runtime.distributed_state.enabled'
   ]);
+  const context = {
+    environment: 'staging' as const,
+    now: new Date('2026-08-15T00:00:00.000Z')
+  };
 
-  const enabledDecision = provider.evaluate(TEST_FLAG, {
-    environment: 'staging'
-  }) as FlagDecision;
-  assert.deepEqual(enabledDecision, createFlagDecision(TEST_FLAG, { environment: 'staging' }, {
-    enabled: true,
-    provider: 'env-bootstrap',
-    reason: 'bootstrap',
-    metadata: {
-      enabledByEnv: true
-    }
-  }));
+  const enabledDecision = provider.evaluate(TEST_FLAG, context) as FlagDecision;
+  assert.deepEqual(
+    enabledDecision,
+    createFlagDecision(TEST_FLAG, context, {
+      enabled: true,
+      provider: 'env-bootstrap',
+      reason: 'bootstrap',
+      metadata: {
+        enabledByEnv: true
+      }
+    })
+  );
 
   const disabledDecision = provider.evaluate({
     ...TEST_FLAG,
     key: 'auth.webauthn.enabled',
     defaultValue: false
-  }, {
-    environment: 'staging'
-  }) as FlagDecision;
+  }, context) as FlagDecision;
   assert.equal(disabledDecision.enabled, false);
   assert.equal(disabledDecision.reason, 'default');
 });

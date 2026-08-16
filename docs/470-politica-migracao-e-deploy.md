@@ -1,8 +1,8 @@
 # 470 - Politica de Migracao e Deploy
 
 **Status:** vivo
-**Data de validacao:** 2026-03-31
-**Ultima atualizacao:** 2026-03-31 — B001: trilha oficial declarada
+**Data de validacao:** 2026-08-15
+**Ultima atualizacao:** 2026-08-15 — cadeia Drizzle reconciliada até `0069`
 
 ## Decisao oficial de trilha de migrations
 
@@ -16,8 +16,8 @@ A trilha oficial de persistencia e migracao do CVG-HIS V2 e:
 - **Runner:** `tsx packages/db/src/migrate.ts`
 - **Config:** `packages/db/drizzle.config.ts`
 
-A cadeia oficial vai de `0000_vengeful_pet_avengers.sql` ate `0012_audit_events_alignment.sql`.
-O runner `packages/db/src/migrate.ts` e a unica fonte de verdade para aplicar essa sequencia.
+A cadeia oficial vai de `0000_vengeful_pet_avengers.sql` ate `0069_inventory_optimistic_concurrency.sql`.
+O runner `packages/db/src/migrate.ts` e a unica fonte de verdade para aplicar todas as migrations forward `.sql` nessa sequencia, ignorando apenas `.revert.sql` e `.seed.sql`.
 
 ### Trilha legacy: SQL incremental (deprecada)
 
@@ -85,4 +85,4 @@ Essa e a sequencia recomendada para evitar reaproveitamento acidental de imagem 
 - [x] proxy sabe para onde o trafego esta indo de fato
 - [x] validacoes pos-deploy usam as portas e endpoints corretos
 - [x] CI pipeline valida typecheck, build e testes com PostgreSQL
-- [x] `prepare-test-db.mjs` deve usar a mesma trilha canônica de migrations do deploy
+- [x] `prepare-test-db.mjs` usa a mesma trilha canônica de migrations do deploy

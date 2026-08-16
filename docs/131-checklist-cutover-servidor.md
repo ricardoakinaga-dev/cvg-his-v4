@@ -1,7 +1,7 @@
 # 131 - Checklist de Cutover no Servidor
 
 **Status:** vivo
-**Data de validacao:** 2026-04-12
+**Data de validacao:** 2026-08-15
 
 ## Pre-cutover
 
@@ -15,9 +15,10 @@
 
 ## Banco
 
-- confirmar `DATABASE_URL` do ambiente
+- confirmar `DATABASE_ADMIN_URL` para migrations e `DATABASE_URL` para a role restrita de runtime
 - aplicar toda a cadeia Drizzle via `tsx packages/db/src/migrate.ts`
 - executar seed Drizzle via `tsx packages/db/src/seed.ts` (com ADMIN_EMAIL/ADMIN_PASSWORD)
+- executar `DATABASE_ADMIN_URL="$DATABASE_ADMIN_URL" DATABASE_URL="$DATABASE_URL" pnpm validate:database-role`
 - validar tabelas e constraints essenciais
 - confirmar que nao ha divergencia de schema entre o ambiente e a politica oficial
 
@@ -67,7 +68,7 @@ docker compose --env-file .env.v2 -f docker-compose.v2.yml down --remove-orphans
 pnpm deploy:check
 docker compose --env-file .env.v2 -f docker-compose.v2.yml build --no-cache cvg-his-v2-api cvg-his-v2-worker cvg-his-v2-spa
 docker compose --env-file .env.v2 -f docker-compose.v2.yml up -d postgres redis
-DATABASE_URL=postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@127.0.0.1:5432/$POSTGRES_DB npx tsx packages/db/src/migrate.ts
+DATABASE_ADMIN_URL=postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@127.0.0.1:5432/$POSTGRES_DB npx tsx packages/db/src/migrate.ts
 docker compose --env-file .env.v2 -f docker-compose.v2.yml up -d cvg-his-v2-api cvg-his-v2-worker cvg-his-v2-spa
 ```
 

@@ -2,6 +2,8 @@
 
 **Objetivo:** detalhar o que esta aderente, parcialmente aderente ou desalinhado entre a documentacao e a implementacao atual.
 
+> **Snapshot histórico:** esta matriz registra a fotografia documental de 11/08/2026. As divergências de índice, migrations, SPA e README apontadas aqui foram reconciliadas parcialmente na execução de 15/08; para a situação atual, use [`2026-08-15-relatorio-auditoria-e-correcoes.md`](2026-08-15-relatorio-auditoria-e-correcoes.md).
+
 ## 1. Indice e governanca da pasta `docs`
 
 | Item | Evidencia | Avaliacao | Nota |

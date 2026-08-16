@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Locator, type Page } from '@playwright/test';
 import { stabilizeVisual, waitForPageSettled, pageProfiles } from './stabilize-visual';
 import { loginViaToken } from '../fixtures/spa-fixture';
 
@@ -31,6 +31,14 @@ const VISUAL_OWNER_NAME = 'Maria Visual Snapshot';
 const VISUAL_OWNER_DOCUMENT = 'VISUAL-OWNER-001';
 const VISUAL_PATIENT_NAME = 'Luna Visual Snapshot';
 const VISUAL_APPOINTMENT_AT = '2030-01-15T10:00:00.000Z';
+const VISUAL_MOTION_RESET_CSS = `
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+`;
 
 interface VisualOwner {
   readonly id: string;
@@ -45,8 +53,33 @@ interface VisualPatient {
   readonly createdAt?: string;
 }
 
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript((css) => {
+    const installMotionReset = () => {
+      if (!document.documentElement || document.getElementById('e2e-visual-motion-reset')) return;
+      const style = document.createElement('style');
+      style.id = 'e2e-visual-motion-reset';
+      style.textContent = css;
+      document.documentElement.appendChild(style);
+    };
+
+    if (document.documentElement) {
+      installMotionReset();
+    } else {
+      document.addEventListener('DOMContentLoaded', installMotionReset, { once: true });
+    }
+  }, VISUAL_MOTION_RESET_CSS);
+});
+
+async function clickVisualControl(page: Page, locator: Locator): Promise<void> {
+  const box = await locator.boundingBox();
+  expect(box).not.toBeNull();
+  if (!box) return;
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+}
+
 test.describe('Visual Regression — List Pages', () => {
-  test.use({ viewport: { width: 1280, height: 720 } });
+  test.use({ viewport: { width: 1280, height: 720 }, reducedMotion: 'reduce' });
 
   test('login page', async ({ page }) => {
     await page.goto(`${SPA_URL}/login`);
@@ -72,7 +105,7 @@ test.describe('Visual Regression — List Pages', () => {
       await page
         .getByPlaceholder('Buscar tutor por nome, ID, CPF/CNPJ, RG, telefone ou e-mail')
         .fill(owner.name);
-      await page.getByRole('button', { name: 'Filtrar', exact: true }).click();
+      await clickVisualControl(page, page.getByRole('button', { name: 'Filtrar', exact: true }));
       await expect(page.getByRole('heading', { name: owner.name, exact: true })).toBeVisible();
       await normalizeVisualText(page, {
         [owner.id]: 'owner-visual-snapshot',
@@ -104,12 +137,14 @@ test.describe('Visual Regression — List Pages', () => {
           'Buscar paciente por nome, ID, tutor, CPF/CNPJ, RG, telefone, microchip ou raça'
         )
         .fill(patient.name);
-      await page.getByRole('button', { name: 'Buscar', exact: true }).click();
+      await clickVisualControl(page, page.getByRole('button', { name: 'Buscar', exact: true }));
       const patientCard = page
         .getByRole('heading', { name: patient.name, exact: true })
         .last();
       await expect(patientCard).toBeVisible();
-      await patientCard.scrollIntoViewIfNeeded();
+      await patientCard.evaluate((element) => {
+        element.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' });
+      });
       await normalizeVisualText(page, {
         [owner.id]: 'owner-visual-snapshot',
         [patient.id]: 'patient-visual-snapshot',
@@ -141,13 +176,15 @@ test.describe('Visual Regression — List Pages', () => {
       await navigateTo(page, '/appointments');
       await selectAppointmentDate(page, appointment.scheduledDate);
       const weekViewButton = page.getByRole('button', { name: 'Semana', exact: true });
-      await weekViewButton.click();
+      await clickVisualControl(page, weekViewButton);
       await expect(weekViewButton).toHaveClass(/view-toggle__button--active/);
       await page.waitForLoadState('networkidle');
       await page.getByPlaceholder('Pesquisar Cliente').fill(patient.name);
       const appointmentCard = page.getByText(patient.name, { exact: true });
       await expect(appointmentCard).toBeVisible();
-      await appointmentCard.scrollIntoViewIfNeeded();
+      await appointmentCard.evaluate((element) => {
+        element.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' });
+      });
       await normalizeVisualText(page, {
         [owner.id]: 'owner-visual-snapshot',
         [patient.id]: 'patient-visual-snapshot',
@@ -239,7 +276,7 @@ test.describe('Visual Regression — List Pages', () => {
 });
 
 test.describe('Visual Regression — Detail Pages', () => {
-  test.use({ viewport: { width: 1280, height: 720 } });
+  test.use({ viewport: { width: 1280, height: 720 }, reducedMotion: 'reduce' });
 
   test('owner detail page', async ({ page }) => {
     const token = await ensureAuthToken(page);
@@ -563,17 +600,18 @@ async function cancelVisualAppointment(token: string, appointmentId: string): Pr
 async function navigateTo(page: Page, route: string): Promise<void> {
   await page.goto(`${SPA_URL}${route}`);
   await page.waitForLoadState('networkidle');
+  await page.addStyleTag({ content: VISUAL_MOTION_RESET_CSS });
 }
 
 async function selectAppointmentDate(page: Page, date: string): Promise<void> {
   const target = page.getByRole('button', { name: date, exact: true });
   for (let month = 0; month < 120; month += 1) {
     if (await target.isVisible()) {
-      await target.click();
+      await clickVisualControl(page, target);
       await page.waitForLoadState('networkidle');
       return;
     }
-    await page.locator('.mini-calendar__header button').last().click();
+    await clickVisualControl(page, page.locator('.mini-calendar__header button').last());
   }
   throw new Error(`Could not select visual appointment date ${date}`);
 }

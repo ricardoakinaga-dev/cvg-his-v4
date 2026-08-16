@@ -3,6 +3,8 @@
 **Data:** 2026-03-31
 **Base:** `docs/511-backlog-gaps-funcionais.md`, relatorios das ondas 1-4, score final (530)
 
+> **Snapshot histórico.** Parte dos riscos abaixo foi tratada depois desta rodada (incluindo CI, coverage, CRUD de staff e persistência de módulos). A situação atual está em `docs/2026-08-15-relatorio-auditoria-e-correcoes.md`.
+
 ---
 
 ## Riscos Residuais Altos

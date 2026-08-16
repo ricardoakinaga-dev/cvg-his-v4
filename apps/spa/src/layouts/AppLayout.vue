@@ -93,7 +93,7 @@
       class="sidebar"
       role="navigation"
       aria-label="Navegacao principal"
-      :aria-hidden="isCompactViewport ? String(!isMobileNavigationOpen) : undefined"
+      :aria-hidden="isCompactViewport ? !isMobileNavigationOpen : undefined"
     >
       <div class="sidebar__mobile-header">
         <div>
@@ -129,6 +129,7 @@
             class="sidebar__group"
             :class="{ 'sidebar__group--active': matchingNavGroup?.id === group.id }"
             :open="shouldOpenGroup(group.id)"
+            @toggle="handleNavigationGroupToggle(group.id, $event)"
           >
             <summary class="sidebar__group-summary">
               <span class="sidebar__group-summary-text">
@@ -410,6 +411,7 @@ const isSidebarScrolled = ref(false);
 const isSidebarNearBottom = ref(false);
 const isCompactViewport = ref(false);
 const isMobileNavigationOpen = ref(false);
+const navigationGroupOverrides = ref(new Map<string, boolean>());
 const compactViewportQuery = '(max-width: 1024px)';
 let compactViewportMedia: MediaQueryList | null = null;
 
@@ -705,7 +707,18 @@ function isActivePath(path: string): boolean {
 
 function shouldOpenGroup(groupId: string): boolean {
   if (searchQuery.value.trim()) return true;
+  const override = navigationGroupOverrides.value.get(groupId);
+  if (override !== undefined) return override;
   return matchingNavGroup.value?.id === groupId || groupId === 'dashboards';
+}
+
+function handleNavigationGroupToggle(groupId: string, event: Event) {
+  const details = event.currentTarget;
+  if (!(details instanceof HTMLDetailsElement)) return;
+
+  const nextOverrides = new Map(navigationGroupOverrides.value);
+  nextOverrides.set(groupId, details.open);
+  navigationGroupOverrides.value = nextOverrides;
 }
 
 function openPalette() {
@@ -729,7 +742,15 @@ function toggleNavigation() {
   isMobileNavigationOpen.value = !isMobileNavigationOpen.value;
 }
 
-function closeMobileNavigation(restoreFocus = true) {
+function closeMobileNavigation() {
+  closeMobileNavigationWithFocus(true);
+}
+
+function closeMobileNavigationWithoutFocus() {
+  closeMobileNavigationWithFocus(false);
+}
+
+function closeMobileNavigationWithFocus(restoreFocus: boolean) {
   const wasOpen = isMobileNavigationOpen.value;
   isMobileNavigationOpen.value = false;
   if (wasOpen && restoreFocus) {
@@ -895,7 +916,14 @@ function scrollActiveSidebarItemIntoView() {
   activeItem.closest('details')?.setAttribute('open', 'true');
 
   window.requestAnimationFrame(() => {
-    activeItem.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+    const prefersReducedMotion =
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    activeItem.scrollIntoView({
+      block: 'nearest',
+      inline: 'nearest',
+      behavior: prefersReducedMotion ? 'auto' : 'smooth'
+    });
     syncSidebarScrollState();
   });
 }
@@ -940,7 +968,7 @@ watch(totalItems, (nextTotal) => {
 watch(
   () => route.fullPath,
   async () => {
-    closeMobileNavigation(false);
+    closeMobileNavigationWithoutFocus();
     syncHistoryPosition();
     await nextTick();
     scrollActiveSidebarItemIntoView();

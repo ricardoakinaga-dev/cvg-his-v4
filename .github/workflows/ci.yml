@@ -53,6 +53,29 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+  deploy-documentation:
+    name: Deploy documentation guardrails
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+
+      - name: Test migration/documentation guardrail
+        run: pnpm test:deployment-guardrails
+
+      - name: Validate canonical deploy surface
+        run: pnpm deploy:check
+
   sast:
     name: SAST (Semgrep)
     runs-on: ubuntu-22.04
