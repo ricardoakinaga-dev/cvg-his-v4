@@ -220,7 +220,7 @@ Arquivos RED previstos:
 1. Baseline B1/B2a e primeiro RED de tentativa reservada — concluído (`EVT-0038`).
 2. GREEN mínimo no B1 atual, incluindo integridade de timestamp/provider/reserva/replay e rollback — concluído (`EVT-0041`, 18/18).
 3. Extração para `packages/modules/pix`, exports/dependências e shims da API — implementado; aguarda revisão independente específica da extração.
-4. Após essa revisão, escrever/rodar REDs de verifier/raw body, incluindo dummy-key/comparação 32/32 instrumentável e clock injetado.
+4. Escrever/rodar REDs de verifier/raw body, incluindo dummy-key/comparação 32/32 instrumentável e clock injetado — concluído com `EVT-0043`/`EVT-0044`; o leitor/verificador está verde em 24/24, mas ainda não há rota HTTP.
 5. Escrever/rodar REDs de migration/RLS/ACL/receipt/delivery/principal, reconciler/init/Helm reruns e implementar `0111`.
 6. Implementar ingresso/rota/composição/OpenAPI somente após seus REDs; HTTP deve usar socket bruto (`node:net`) para framing/abort/headers duplicados, e produção deve falhar fechado no bootstrap API/worker.
 7. Implementar o primitive shared `runPixProviderSettlementTransaction` e seus REDs; só depois escrever/rodar REDs do consumer e implementar claim, principal, chamada única ao B1 estendido e fenced completion na mesma UoW; o consumer não possui staging financeiro.

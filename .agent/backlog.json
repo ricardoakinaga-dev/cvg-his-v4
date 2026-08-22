@@ -81,7 +81,7 @@
         ".agent/gates/verified-CVG-002B2a.json",
         ".agent/gates/verified-CVG-002B1.json"
       ],
-      "next_action": "Start the raw-body/HMAC verifier and socket-boundary RED sequence while preserving the extracted 18/18 B1 regression; callback, migration, principal and worker remain gated by later evidence."
+      "next_action": "Write authenticated JSON parser and append-only receipt/delivery REDs while preserving the extracted 18/18 B1 and 25/25 raw-body/HMAC regressions; callback, migration, principal and worker remain gated by later evidence."
     },
     {
       "id": "CVG-003",
