@@ -275,4 +275,19 @@ describe('DatabasePixTransactionRepository coverage guard', () => {
     expect(unfiltered).toHaveLength(2);
     expect(filtered).toEqual([expect.objectContaining({ transactionId: 'pix_tx_3', provider: 'local-pix' })]);
   });
+
+  it('lists canonical settlement transaction ids directly from the tenant proof table', async () => {
+    queryMock.mockResolvedValueOnce({
+      rows: [{ transaction_id: 'pix_tx_1' }, { transaction_id: 'pix_tx_2' }]
+    });
+    const repository = new DatabasePixTransactionRepository();
+
+    const transactionIds = await repository.listCanonicalSettlementTransactionIds('acc_pix');
+
+    expect(queryMock).toHaveBeenCalledWith(
+      expect.stringContaining('FROM encounter_non_cash_receipts'),
+      ['acc_pix']
+    );
+    expect(transactionIds).toEqual(['pix_tx_1', 'pix_tx_2']);
+  });
 });

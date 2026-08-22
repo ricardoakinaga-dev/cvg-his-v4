@@ -13,7 +13,10 @@ import {
   InMemoryFinancialPayablesRepository
 } from '@cvg-his-v2/module-financial';
 
-import { handleFinancialRoutes } from './financial-routes.js';
+import {
+  derivePixReconciliationState,
+  handleFinancialRoutes
+} from './financial-routes.js';
 
 class MockResponse extends Writable {
   public statusCode = 200;
@@ -101,6 +104,110 @@ function handlers() {
     requirePrincipal: () => principal()
   };
 }
+
+test('derivePixReconciliationState requires a real non-cash receivable link', () => {
+  const transaction = {
+    status: 'completed',
+    billingRecordId: 'billing-pix-1',
+    billingSettlementStatus: 'applied',
+    cashReconciliationStatus: 'not_applicable'
+  } as const;
+
+  assert.equal(derivePixReconciliationState(transaction as never, true), 'reconciled');
+  assert.equal(derivePixReconciliationState(transaction as never, false), 'attention_required');
+  assert.equal(
+    derivePixReconciliationState(
+      { ...transaction, cashReconciliationStatus: 'skipped_no_open_register' } as never,
+      true
+    ),
+    'attention_required'
+  );
+  assert.equal(
+    derivePixReconciliationState(
+      { ...transaction, cashReconciliationStatus: 'applied' } as never,
+      true
+    ),
+    'reconciled'
+  );
+});
+
+test('financial PIX reconciliation keeps a notes-only legacy match in attention', async () => {
+  const routeHandlers = {
+    ...handlers(),
+    billing: {
+      getOrThrow() {
+        return { id: 'billing-pix-notes', encounterId: 'enc-pix-notes' };
+      }
+    },
+    encounterFinancial: {
+      async getSummary() {
+        return {
+          encounterStatus: 'closed',
+          financialStatus: 'paid',
+          patientId: 'patient-pix-notes',
+          patientName: 'Luna',
+          ownerId: 'owner-pix-notes',
+          ownerName: 'Maria',
+          receivables: [
+            { id: 'receivable-pix-notes', installmentLabel: 'Parcela 1/1', status: 'settled' }
+          ],
+          payments: [
+            {
+              id: 'payment-pix-notes',
+              receivableId: 'receivable-pix-notes',
+              amountPaid: 125.5,
+              externalReferenceType: 'other',
+              externalReferenceId: null,
+              notes: 'legacy recovery for pix-notes-only'
+            }
+          ]
+        };
+      }
+    },
+    pixTransactions: {
+      async list() {
+        return [
+          {
+            transactionId: 'pix-notes-only',
+            provider: 'local-pix',
+            accountId: 'acc-finance-1',
+            billingRecordId: 'billing-pix-notes',
+            amount: 125.5,
+            currency: 'BRL',
+            description: 'PIX legado',
+            qrCodePayload: 'payload',
+            qrCodeBase64: 'base64',
+            expiresAt: '2026-05-01T11:00:00.000Z',
+            status: 'completed',
+            createdAt: '2026-05-01T10:00:00.000Z',
+            updatedAt: '2026-05-01T10:05:00.000Z',
+            completedAt: '2026-05-01T10:05:00.000Z',
+            billingSettlementStatus: 'applied',
+            cashReconciliationStatus: 'not_applicable'
+          }
+        ];
+      }
+    }
+  } as never;
+  const response = new MockResponse();
+
+  await handleFinancialRoutes(
+    '/financial/reconciliation',
+    request('GET', '/financial/reconciliation'),
+    response as never,
+    'corr-pix-notes',
+    routeHandlers
+  );
+
+  const payload = response.bodyJson<{
+    readonly data: ReadonlyArray<{
+      readonly reconciliationState: string;
+      readonly receivablePaymentIds: readonly string[];
+    }>;
+  }>();
+  assert.equal(payload.data[0]?.reconciliationState, 'attention_required');
+  assert.deepEqual(payload.data[0]?.receivablePaymentIds, ['payment-pix-notes']);
+});
 
 test('handleFinancialRoutes exposes the canonical ledger and reconciliation result', async () => {
   const routeHandlers = handlers();

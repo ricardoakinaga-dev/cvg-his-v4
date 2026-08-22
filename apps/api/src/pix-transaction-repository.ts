@@ -11,6 +11,7 @@ export type PixBillingSettlementStatus =
   | 'failed';
 export type PixCashReconciliationStatus =
   | 'pending'
+  | 'not_applicable'
   | 'applied'
   | 'skipped_no_open_register'
   | 'failed';
@@ -96,6 +97,7 @@ export interface PixTransactionRepository {
     input: UpdatePixCashReconciliationInput
   ): Promise<PixTransactionRecord | null>;
   list(filters?: ListPixTransactionsFilters): Promise<readonly PixTransactionRecord[]>;
+  listCanonicalSettlementTransactionIds(accountId: string): Promise<readonly string[]>;
 }
 
 function cloneRecord(record: PixTransactionRecord): PixTransactionRecord {
@@ -244,6 +246,12 @@ export class InMemoryPixTransactionRepository implements PixTransactionRepositor
     return items
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
       .map((item) => cloneRecord(item));
+  }
+
+  async listCanonicalSettlementTransactionIds(accountId: string): Promise<readonly string[]> {
+    // The in-memory gateway cannot create the PostgreSQL-authoritative proof.
+    void accountId;
+    return [];
   }
 }
 
@@ -446,6 +454,19 @@ export class DatabasePixTransactionRepository implements PixTransactionRepositor
         params
       );
       return result.rows.map((row: Record<string, unknown>) => mapRow(row));
+    });
+  }
+
+  async listCanonicalSettlementTransactionIds(accountId: string): Promise<readonly string[]> {
+    return withTenantQuery(getPool(), async (client) => {
+      const result = await client.query<{ readonly transaction_id: string }>(
+        `SELECT transaction_id
+           FROM encounter_non_cash_receipts
+          WHERE account_id = $1
+          ORDER BY confirmed_at DESC`,
+        [accountId]
+      );
+      return result.rows.map((row) => row.transaction_id);
     });
   }
 }

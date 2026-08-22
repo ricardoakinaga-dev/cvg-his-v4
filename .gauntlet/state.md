@@ -18,10 +18,10 @@ Deliver a behaviorally proven Premium Enterprise veterinary ERP MVP with secure 
 | `QB-SEC-02` | Authorization/tenancy | Every setup/auth/admin path enforces actor-action-resource-tenant with default deny, RLS and auditable allow/deny behavior. | zero unauthorized or cross-tenant success | negative HTTP/database tests | yes | P0 | partial unit evidence only | real PostgreSQL required | NOT_RUN |
 | `QB-DATA-01` | Atomicity/idempotency | Empty install creates exactly one consistent tenant/account/unit/admin/role graph; races, failure and retry leave no partial or duplicate state. | all defined invariants under concurrency/failure | PostgreSQL integration tests and state queries | yes | P0 | transaction/lock code exists; no behavioral proof | disposable empty DB; retries disabled | NOT_RUN |
 | `QB-AUTH-01` | Session lifecycle | Login, MFA where required, refresh, revocation and expiry remain authoritative across restart and two API instances; replay is rejected. | all success/deny/restart/replay cases | HTTP + PostgreSQL/Redis integration | yes | P0 | security hardening unit tests pass; multi-instance proof absent | real Redis/PostgreSQL required | PARTIAL |
-| `QB-CORE-01` | Product core | A scheduled or walk-in visit reaches clinical completion and manual/cash receipt with consistent command, stock, ledger, cash, payment, audit and outbox state. | one complete rejecting vertical journey | PostgreSQL-backed SPA/API E2E with state queries | yes | P0 | atomic cash-receipt sub-slice passed PostgreSQL/RLS, rollback, replay and concurrency tests; inventory, non-cash and full SPA/API journey remain | no external provider required | PARTIAL |
+| `QB-CORE-01` | Product core | A scheduled or walk-in visit reaches clinical completion and manual/cash receipt with consistent command, stock, ledger, cash, payment, audit and outbox state. | one complete rejecting vertical journey | PostgreSQL-backed SPA/API E2E with state queries | yes | P0 | atomic cash receipt and direct confirmed-PIX DB-core sub-slices passed PostgreSQL/RLS, rollback, replay and concurrency tests; inventory, provider boundary, card and full SPA/API journey remain | no external provider required | PARTIAL |
 | `QB-PARITY-01` | Vetus parity | All eleven general and three clinical reference areas pass self-contained journeys without API shortcuts, retries or skips. | 11/11 general and 3/3 clinical | strict parity audit plus durable E2E artifacts | yes | P0 | 0/11 and 0/3; structural coverage 95/100 | current revision and artifacts required | FAIL |
 | `QB-UX-01` | UX/accessibility | Critical desktop/mobile flows have loading, empty, error and recovery states and meet WCAG 2.2 AA, including keyboard/focus/target/auth criteria. | no blocking critical-flow violations | automated accessibility plus manual keyboard/responsive review | yes | P1 | no current complete audit | representative viewports and real UI | NOT_RUN |
-| `QB-REL-01` | Engineering quality | Build, typecheck, lint, unit, integration and critical E2E are green; meaningful global and changed-code coverage is at least 80%; no required skip/retry hides failure. | every required gate passes | project commands, coverage artifacts and harness mutation check | yes | P0 | API 304/304, SPA 1.001/1.001, vertical DB 35/35, workspace typecheck and coverage 86,27% lines/80,17% branches pass; critical E2E and all release gates remain | current checkpoint evidence; not a release verdict | PARTIAL |
+| `QB-REL-01` | Engineering quality | Build, typecheck, lint, unit, integration and critical E2E are green; meaningful global and changed-code coverage is at least 80%; no required skip/retry hides failure. | every required gate passes | project commands, coverage artifacts and harness mutation check | yes | P0 | latest B1 core: PostgreSQL 14/14, API 306/306 and coverage 1.520/1.520 at 84,11% lines/80,14% branches; earlier SPA 1.001/1.001 remains current, while critical E2E and all release gates remain | current checkpoint evidence; not a release verdict | PARTIAL |
 | `QB-OPS-01` | Operations | Deploy/rollback, backup/restore, failover, alerts/traces and agreed performance SLOs pass in an authorized target-like environment. | all approved operational procedures pass | runtime observations and durable external artifacts | yes | P0 release | no current target evidence; runbook conflict | human environment/RTO/RPO authority required | BLOCKED |
 | `QB-MKT-01` | Competitive outcome | MVP presents one unified multi-location workspace with contextual patient/client records, automation/charge capture, client communication/portal and comparable reporting/integration extensibility. | critical differentiated workflows are usable, not menu placeholders | product journey review against sourced market matrix | yes | P1 | broad surfaces exist; functional depth unverified | market claims guide priorities, not release proof | NOT_RUN |
 
@@ -30,7 +30,7 @@ Deliver a behaviorally proven Premium Enterprise veterinary ERP MVP with secure 
 | Dimension | Status | Actual evidence | Target | Confidence | Trend |
 | --- | --- | --- | --- | --- | --- |
 | Security and identity | FAIL | raw setup token is logged; targeted hardening tests pass | all required security criteria PASS | high | baseline |
-| Product core | PARTIAL | atomic cash receipt creates payment, cash, journal, receipt, audit and outbox consistently; broader journey remains | complete encounter-to-receipt | high | improving |
+| Product core | PARTIAL | atomic cash and direct confirmed-PIX cores create their scoped payment/journal/proof/audit/outbox effects consistently; inventory, provider boundary, card and broader journey remain | complete encounter-to-receipt | high | improving |
 | Vetus parity | FAIL | strict audit reports 0/11 and 0/3 | 11/11 and 3/3 | high | baseline |
 | UX/accessibility | NOT_RUN | no current full WCAG/runtime audit | WCAG 2.2 AA critical flows | medium | baseline |
 | Engineering quality | PARTIAL | API/SPA/typecheck/coverage and CVG-002A integration pass; critical E2E/release suite not complete | all gates plus >=80% coverage | high | improving |
@@ -48,7 +48,7 @@ Deliver a behaviorally proven Premium Enterprise veterinary ERP MVP with secure 
 
 ## Rounds
 
-Round 0 completed discovery and froze Quality Bar v1. Rounds 1-3 delivered local recoverability and credential-bound, database-authoritative MFA login/enrollment state. Round 4 delivered `CVG-002A`: one tenant-safe PostgreSQL transaction for encounter cash receipt, append-only proof, idempotent recovery, legacy-bypass closure and concurrency guards against cash close/reopen/delete. `QB-AUTH-01`, `QB-CORE-01` and `QB-REL-01` remain PARTIAL because their broader cluster, product-journey and release criteria are not yet fully certified.
+Round 0 completed discovery and froze Quality Bar v1. Rounds 1-3 delivered local recoverability and credential-bound, database-authoritative MFA login/enrollment state. Round 4 delivered `CVG-002A`: one tenant-safe PostgreSQL transaction for encounter cash receipt, append-only proof, idempotent recovery, legacy-bypass closure and concurrency guards against cash close/reopen/delete. Round 5 delivered `CVG-002B1`: provider-scoped inbox/idempotency and direct confirmed-PIX settlement with exact cents, tenant/RLS isolation, 13 per-write failpoint rollbacks, concurrency, canonical financial links and no physical cash movement. `QB-AUTH-01`, `QB-CORE-01` and `QB-REL-01` remain PARTIAL because their broader cluster, product-journey and release criteria are not yet fully certified.
 
 ## Open Gaps
 
@@ -56,12 +56,12 @@ Round 0 completed discovery and froze Quality Bar v1. Rounds 1-3 delivered local
 - Prove a durable, one-time, atomic installation sentinel and least-privilege bootstrap against real PostgreSQL.
 - Certify session refresh/revocation and MFA rollout across two physical replicas and Redis races in a target-like environment.
 - Add HTTP/PostgreSQL/Redis/SPA evidence before moving `CVG-001` to VERIFY.
-- Extend the verified cash-only receipt into the full scheduled/walk-in journey with stock and non-cash payment methods.
+- Connect the verified direct PIX core to a signed durable callback/worker/SPA flow, then add card, stock and the full scheduled/walk-in journey.
 - Add a dedicated HTTP-to-UoW-to-PostgreSQL receipt E2E and the remaining critical browser E2E gates.
 
 ## Stop Decision
 
 - State: ACTIVE
 - Reason: Required P0 criteria fail or have not run; target-environment work is externally blocked but local safe work remains.
-- Last integrated verification: `CVG-002A` vertical 35/35, API 304/304, SPA 1.001/1.001, workspace typecheck, coverage 1.519/1.519 at 86,27% lines/80,17% branches, dependency/secret scans and independent review PASS.
-- Next largest locally actionable gap: complete the encounter-to-receipt journey beyond cash, including stock, PIX/card and a dedicated HTTP/SPA E2E.
+- Last integrated verification: `CVG-002B1` PostgreSQL 14/14, API 306/306, coverage 1.520/1.520 at 84,11% lines/80,14% branches, typecheck/lint, dependency/secret scans and independent review PASS; earlier SPA 1.001/1.001 evidence remains current.
+- Next largest locally actionable gap: `CVG-002B2` signed callback, durable dispatch/worker registration, restart reconciliation and coherent SPA PIX flow.

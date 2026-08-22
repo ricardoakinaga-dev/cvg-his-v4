@@ -1,0 +1,78 @@
+{
+  "record_id": "GATE-CVG-002B1-IR-002",
+  "timestamp": "2026-08-22T14:05:59-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-002B1 atomic confirmed-PIX settlement core",
+  "scope_ref": "CVG-002",
+  "version": 2,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The DB-core scope, authority, transaction boundaries and the CVG-002B2 HTTP/provider boundary are explicit and non-overlapping.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-002B.md",
+        ".agent/plans/premium-enterprise-mvp.md",
+        ".agent/instruction-scope.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This gate authorizes only the direct tenant-UoW confirmed-PIX DB core in a disposable environment; signed callback, freshness, external replay, worker restart, outbound dispatch, real providers, card, inventory, browser E2E and production remain outside it."
+    },
+    {
+      "id": "IR-002",
+      "description": "The failure-first sequence, lock model, failpoints and provider-scoped idempotency are executable without a network call inside the PostgreSQL transaction.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-002B.md",
+        ".agent/artifacts/document-corpus-audit.md",
+        ".agent/artifacts/market-benchmark.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The clarification does not grant behavioral acceptance; focused PostgreSQL/RLS, concurrency, failpoint and regression evidence plus independent re-review are still required."
+    },
+    {
+      "id": "IR-003",
+      "description": "The original HTTP wording is corrected without weakening the overall CVG-002B acceptance surface; the deferred boundary remains mandatory in CVG-002B2.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-002B.md",
+        ".agent/gates/implementation-ready-CVG-002B1.json",
+        ".agent/verification.jsonl"
+      ],
+      "confidence": "HIGH",
+      "limitations": "No B1 evidence may be cited as proof of an HTTP callback, signature verification, provider dispatch, consumer wiring or crash recovery across callback and worker."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-002B.md",
+    ".agent/gates/implementation-ready-CVG-002B1.json",
+    ".agent/plans/premium-enterprise-mvp.md",
+    ".agent/artifacts/document-corpus-audit.md",
+    ".agent/artifacts/market-benchmark.md"
+  ],
+  "confidence": "HIGH",
+  "gaps": [],
+  "conditions": [],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner)",
+    "scope": "CVG-002B1 atomic confirmed-PIX settlement core",
+    "decision": "Authorize continued reversible repository implementation and disposable PostgreSQL/provider simulation for the clarified CVG-002B1 DB core; CVG-002B2, production, credentials, external mutation and release remain excluded.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-002B1-IR-002",
+    "expires_or_revalidates": "Revalidate before CVG-002B2, outbound provider mutation, real credentials, production deployment, irreversible migration or release acceptance."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "next_action": "Complete negative and failpoint coverage for the direct confirmed-PIX DB core, then run regression and independent re-review.",
+  "revalidation_triggers": [
+    "CVG-002B1 DB-core scope or acceptance changes",
+    "A test disproves the transaction, lock or provider-scoped idempotency model",
+    "A HIGH/CRITICAL risk cannot be controlled within the bounded command",
+    "HTTP callback, worker integration, outbound provider calls, real credentials, production or irreversible data mutation enter scope"
+  ],
+  "supersedes": "GATE-CVG-002B1-IR-001"
+}

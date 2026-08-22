@@ -16,6 +16,7 @@ import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 
 import { appendAudit } from '../helpers/audit-helper.js';
 import type { PixTransactionRepository } from '../pix-transaction-repository.js';
+import { derivePixReconciliationState } from './financial-routes.js';
 
 export interface AdministrativeReportsRoutesHandlers {
   billing: BillingService;
@@ -240,6 +241,7 @@ export async function handleAdministrativeReportsRoutes(
     billingRecordsRaw,
     openReceivablesRaw,
     pixTransactionsRaw,
+    canonicalPixSettlementTransactionIds,
     quotesRaw,
     commercialDashboard,
     counterSalesRaw,
@@ -249,6 +251,9 @@ export async function handleAdministrativeReportsRoutes(
     handlers.billing.listAuthoritative({ accountId: principal.user.accountId }),
     listOpenReceivables(handlers.encounterFinancial, principal.user.accountId),
     handlers.pixTransactions.list({ accountId: principal.user.accountId }),
+    handlers.pixTransactions.listCanonicalSettlementTransactionIds(
+      principal.user.accountId
+    ),
     Promise.resolve(handlers.quotes.list(principal.user.accountId as never)),
     handlers.counterSales.getCommercialDashboard(
       principal.user.accountId as never,
@@ -295,12 +300,10 @@ export async function handleAdministrativeReportsRoutes(
   );
 
   const pixCompleted = pixTransactions.filter((row) => row.status === 'completed');
-  const pixReconciled = pixCompleted.filter(
-    (row) =>
-      (row.billingSettlementStatus === 'applied'
-        || row.billingSettlementStatus === 'not_applicable')
-      && (row.cashReconciliationStatus === 'applied'
-        || row.cashReconciliationStatus === 'skipped_no_open_register')
+  const canonicalPixSettlementIds = new Set(canonicalPixSettlementTransactionIds);
+  const pixReconciled = pixCompleted.filter((row) =>
+    derivePixReconciliationState(row, canonicalPixSettlementIds.has(row.transactionId))
+      === 'reconciled'
   );
   const pixAttention = pixCompleted.filter((row) => !pixReconciled.includes(row));
 

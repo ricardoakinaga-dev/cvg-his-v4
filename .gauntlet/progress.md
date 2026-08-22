@@ -2,9 +2,9 @@
 
 - Goal: Deliver a behaviorally proven Premium Enterprise veterinary ERP MVP.
 - Phase: BUILD
-- Current round: 4
-- Active workstreams: `CVG-002` encounter-to-receipt; the bounded `CVG-002A` atomic cash-receipt sub-slice is complete.
-- Largest current gap: the cash-only receipt is proven, but the complete scheduled/walk-in journey still lacks integrated inventory, PIX/card and dedicated HTTP/SPA E2E evidence.
-- Latest verification: independent review APPROVE; PostgreSQL/RLS vertical 35/35; API 304/304; SPA 1.001/1.001; workspace typecheck PASS; coverage 1.519/1.519 with 86,27% lines and 80,17% branches; dependency and secret scans PASS.
+- Current round: 5
+- Active workstreams: `CVG-002` encounter-to-receipt; bounded `CVG-002A` cash and `CVG-002B1` direct confirmed-PIX DB cores are verified.
+- Largest current gap: PIX still lacks the signed callback, durable dispatcher/worker restart path and coherent SPA integration; card, inventory linkage and the complete scheduled/walk-in E2E remain later milestones.
+- Latest verification: independent review APPROVE with no CRITICAL/HIGH/MEDIUM findings; PostgreSQL B1 14/14; API 306/306; coverage 1.520/1.520 with 84,11% lines and 80,14% branches; typecheck/lint, dependency audit, secret scan and diff check PASS; earlier SPA 1.001/1.001 remains current.
 - Blockers: Target environment, provider decisions and production authority block only their dependent future work.
-- Next action: extend `CVG-002` with stock and non-cash payment behavior, then add a dedicated HTTP-to-PostgreSQL receipt E2E and the complete critical browser journey.
+- Next action: freeze the `CVG-002B2` contract/gate, then implement signed callback plus durable dispatch/worker/restart and SPA PIX integration before card/inventory/E2E expansion.

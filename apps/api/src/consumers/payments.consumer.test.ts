@@ -21,7 +21,13 @@ function createMockBillingService() {
         return { id: recordId, status: 'settled' } as never;
       },
       getOrThrow(recordId: never): never {
-        return { id: recordId, encounterId: 'enc_test_1' } as never;
+        return {
+          id: recordId,
+          accountId: 'acc_test',
+          encounterId: 'enc_test_1',
+          currency: 'BRL',
+          subtotalAmount: 150
+        } as never;
       }
     },
     { settles }

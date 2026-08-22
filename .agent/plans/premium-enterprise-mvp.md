@@ -9,6 +9,10 @@ Transform the current broad, partially implemented veterinary ERP into a behavio
 - [x] (2026-08-22T01:57:16-03:00) Classified the repository and recovered the active August documentation authority, dirty worktree and current verification failures.
 - [x] (2026-08-22T02:12:00-03:00) Finished deterministic coverage of all 1,445 documentation artifacts and froze Quality Bar v1 without weakening a required criterion.
 - [x] (2026-08-22T02:12:00-03:00) Bounded `CVG-001` from independent planning, TDD and security reviews; the implementation-ready decision is recorded separately and does not imply verification.
+- [x] (2026-08-22T13:16:00-03:00) Delivered and independently approved `CVG-002A`, the atomic cash-receipt sub-slice, with PostgreSQL/RLS, API, SPA, coverage, security and concurrency evidence.
+- [x] (2026-08-22T13:32:41-03:00) Mapped and froze `CVG-002B`; independent payment, inventory, SPA/E2E, documentation and transaction reviews reordered delivery behind a DB-first durable payment spine.
+- [x] (2026-08-22T14:42:00-03:00) Executed and independently approved the `CVG-002B1` RED/GREEN loop for atomic confirmed-PIX settlement; the bounded DB core is verified while HTTP/provider/worker/SPA work remains deferred to `CVG-002B2`.
+- [ ] Freeze and execute `CVG-002B2` for signed callback, durable dispatch/worker wiring, restart recovery and coherent SPA PIX integration.
 - [ ] Complete `CVG-001` through TDD, integrated runtime proof and independent critique.
 - [ ] Execute the remaining backlog in dependency order, preserving fresh evidence and explicit human/external boundaries.
 
@@ -29,6 +33,12 @@ Transform the current broad, partially implemented veterinary ERP into a behavio
 - Observation: The current in-memory session/user cache cannot make an already-running second API instance aware of setup or later revocation, and refresh rotation is not compare-and-swap.
   Evidence: current auth/users/session repository call graph and independent security review.
   Impact: PostgreSQL/Redis state must be authoritative on miss/refresh/request; cache-only green tests are insufficient.
+- Observation: Recovery after commit `0fa3ac4` found the runtime repository pointer and gate pointer stale while code, upstream and verification consistently show `CVG-002A` complete.
+  Evidence: `git rev-parse HEAD`, `git rev-parse @{u}`, `.agent/state.json`, `.agent/execution-log.jsonl` and `VFY-CVG-002A-CASH-001` on 2026-08-22.
+  Impact: Reconcile the controller before new work, clear the mismatched `CVG-001` gate pointer and require a scoped implementation-ready gate for `CVG-002B`.
+- Observation: The current payment composition cannot provide durable non-cash settlement: provider calls precede local durability, card state is in memory, production consumers are registered in the API while only the worker processes the guarded outbox, and the SPA PIX contract cannot authenticate or decode the API response.
+  Evidence: `apps/api/src/routes/payments-routes.ts`, `apps/api/src/consumers/payments.consumer.ts`, `apps/api/src/runtime.ts`, `apps/worker/src/runner.ts`, `apps/spa/src/services/pix.ts` and five independent read-only mapping/review lanes on 2026-08-22.
+  Impact: Freeze a transaction-local settlement command and durable saga boundaries before connecting charge/inventory or writing browser happy paths; do not place provider network calls inside the tenant UoW.
 
 ## Decision Log
 
@@ -61,6 +71,12 @@ Transform the current broad, partially implemented veterinary ERP into a behavio
   Alternatives: restart every replica; publish cache invalidations only; retain cache authority.
   Reason: Correctness must not depend on delivery of an invalidation event.
   Consequences: request/refresh paths perform bounded repository synchronization and refresh nonce changes use compare-and-swap; performance is measured later.
+  Date/Author: 2026-08-22 / root integrator.
+- Decision: Implement non-cash settlement as transaction-local commands plus an outbox saga, beginning with an atomic confirmed-PIX application command.
+  Context: A single PostgreSQL transaction cannot roll back a provider call, and current PIX/card consumers, persistence and worker registration admit loss, duplication and restart drift.
+  Alternatives: Keep direct provider calls inside the request UoW; connect inventory to current consumers; implement UI paths before durability.
+  Reason: DB-first commands provide rejecting atomicity/idempotency evidence while outbound dispatch can use stable provider keys outside locks and reconcile after failure.
+  Consequences: `CVG-002B1` is authorized first; PIX dispatch/callback, card durability, inventory charge capture and browser E2E remain explicit later milestones and cannot inherit a PASS.
   Date/Author: 2026-08-22 / root integrator.
 
 ## Outcomes & Retrospective

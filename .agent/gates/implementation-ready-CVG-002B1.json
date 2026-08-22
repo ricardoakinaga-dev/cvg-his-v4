@@ -1,0 +1,78 @@
+{
+  "record_id": "GATE-CVG-002B1-IR-001",
+  "timestamp": "2026-08-22T13:32:41-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-002B1 atomic confirmed-PIX settlement core",
+  "scope_ref": "CVG-002",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "Scope, authority, dependencies, transaction boundaries and excluded external commitments are explicit.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-002B.md",
+        ".agent/plans/premium-enterprise-mvp.md",
+        ".agent/instruction-scope.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The gate authorizes only the DB-first confirmed-PIX settlement core in a disposable environment; outbound dispatch, real provider callbacks, card, inventory linkage, browser E2E and production remain outside this gate."
+    },
+    {
+      "id": "IR-002",
+      "description": "The failure-first implementation sequence and lock/idempotency model are executable without network calls inside PostgreSQL transactions.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-002B.md",
+        ".agent/artifacts/document-corpus-audit.md",
+        ".agent/artifacts/market-benchmark.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The schema and command remain hypotheses until RED tests, failpoints, concurrency, restart and RLS observations execute against PostgreSQL."
+    },
+    {
+      "id": "IR-003",
+      "description": "Acceptance, negative cases, regression surface and evidence destinations are frozen before implementation.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-002B.md",
+        ".gauntlet/state.md",
+        ".agent/verification.jsonl"
+      ],
+      "confidence": "HIGH",
+      "limitations": "No CVG-002B1 behavior has passed. This readiness decision cannot support a payment, provider, product-core, parity, production or release verdict."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-002B.md",
+    ".agent/plans/premium-enterprise-mvp.md",
+    ".agent/artifacts/document-corpus-audit.md",
+    ".agent/artifacts/market-benchmark.md",
+    ".gauntlet/state.md"
+  ],
+  "confidence": "HIGH",
+  "gaps": [],
+  "conditions": [],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner)",
+    "scope": "CVG-002B1 atomic confirmed-PIX settlement core",
+    "decision": "Authorize reversible repository implementation and disposable PostgreSQL/provider simulation for the bounded CVG-002B1 core; production, credentials, external mutation and release remain excluded.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-002B1-IR-001",
+    "expires_or_revalidates": "Revalidate before outbound provider mutation, real credentials, production deployment, irreversible migration or release acceptance."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "next_action": "Enter BUILD/IMPLEMENT and execute the first rejecting PostgreSQL/HTTP tests for atomic confirmed-PIX settlement.",
+  "revalidation_triggers": [
+    "CVG-002B1 scope or acceptance changes",
+    "A test disproves the DB-first settlement, lock or idempotency model",
+    "A HIGH/CRITICAL risk cannot be controlled within the bounded command",
+    "Outbound provider calls, real credentials, production or irreversible data mutation enter scope"
+  ],
+  "supersedes": null
+}

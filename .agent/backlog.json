@@ -26,17 +26,18 @@
       "priority": "P0",
       "status": "IN_PROGRESS",
       "origin": "PLAT-001, BILL-001/002, INV-001, CASH-001 and E2E-006/007 in the active August backlog",
-      "dependencies": [
-        "CVG-001"
-      ],
+      "dependencies": [],
       "owner": "root integrator",
       "acceptance_summary": "A scheduled or walk-in encounter reaches manual/cash settlement with clinical charge, inventory, ledger, cash, payment, audit and outbox consistency under rollback, replay, restart and two tenants.",
       "evidence_refs": [
         ".agent/tasks/CVG-002A.md",
+        ".agent/tasks/CVG-002B.md",
+        ".agent/gates/implementation-ready-CVG-002B1.json",
+        ".agent/gates/implementation-ready-CVG-002B1-v2.json",
         ".agent/verification.jsonl",
         ".gauntlet/state.md"
       ],
-      "next_action": "Extend the verified cash-receipt sub-slice into the complete scheduled/walk-in journey with inventory and non-cash methods, then add dedicated HTTP-to-PostgreSQL E2E evidence."
+      "next_action": "Freeze a CVG-002B2 task contract and IMPLEMENTATION_READY gate for signed callback, durable dispatch/worker restart and coherent SPA PIX integration; do not extend the CVG-002B1 PASS beyond its direct DB core."
     },
     {
       "id": "CVG-003",

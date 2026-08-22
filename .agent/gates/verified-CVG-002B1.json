@@ -1,0 +1,78 @@
+{
+  "record_id": "GATE-CVG-002B1-VFY-001",
+  "timestamp": "2026-08-22T14:42:00-03:00",
+  "gate_id": "VERIFIED",
+  "scope": "CVG-002B1 atomic confirmed-PIX settlement core",
+  "scope_ref": "CVG-002",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-001-ACCEPTANCE-EVIDENCE",
+      "description": "The bounded direct confirmed-PIX command satisfies its atomicity, exact-value, idempotency, concurrency, tenant-isolation, append-only proof and no-cash-movement acceptance contract.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002B1-PIX-001",
+        ".agent/tasks/CVG-002B.md",
+        "tests/integration/database/confirmed-pix-settlement-command.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Acceptance applies only to direct execution inside the tenant UoW with a durable completed PIX transaction; HTTP/provider/worker/SPA behavior is not part of this criterion."
+    },
+    {
+      "id": "V-002-REGRESSION-RISK",
+      "description": "Focused database, cash/PIX, route, repository and consumer regressions plus the full API suite, global coverage and static security checks are current and passing.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002B1-PIX-001",
+        "apps/api/src/routes/financial-routes.ts",
+        "apps/api/src/routes/administrative-reports-routes.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The current pass does not replace the complete browser, provider-sandbox, card, inventory, deployment or release regression gates."
+    },
+    {
+      "id": "V-003-LIMITATIONS-AUTHORITY",
+      "description": "The verified boundary, excluded higher-risk surfaces and revalidation triggers are explicit; no production, release or provider authority is inferred.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002B1-PIX-001",
+        ".agent/tasks/CVG-002B.md",
+        ".agent/gates/implementation-ready-CVG-002B1-v2.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "CVG-002B2 and later milestones require new gates; the parent CVG-002 task, Quality Bar and release remain PARTIAL or unverified."
+    }
+  ],
+  "evidence": [
+    ".agent/verification.jsonl#VFY-CVG-002B1-PIX-001",
+    ".agent/tasks/CVG-002B.md",
+    "packages/db/migrations/0109_encounter_non_cash_receipts.sql",
+    "apps/api/src/commands/confirmed-pix-settlement.ts",
+    "apps/api/src/confirmed-pix-settlement-repository.ts",
+    "tests/integration/database/confirmed-pix-settlement-command.test.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [],
+  "conditions": [],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "Automated bounded verification policy",
+    "scope": "CVG-002B1 atomic confirmed-PIX settlement core",
+    "decision": "No additional human acceptance is required to record the executed local DB-core verification; excluded provider, production and release decisions remain separately governed.",
+    "evidence_ref": ".agent/verification.jsonl#VFY-CVG-002B1-PIX-001",
+    "expires_or_revalidates": "Revalidate on any command, schema, reconciliation-policy or test-harness mutation and before CVG-002B2, provider, production or release use."
+  },
+  "residual_risk": "MEDIUM",
+  "decision": "PASS",
+  "next_action": "Freeze a separate CVG-002B2 contract and implementation-ready gate for signed callback, durable dispatch/worker restart and coherent SPA PIX integration.",
+  "revalidation_triggers": [
+    "The confirmed-PIX command, migration, proof schema or reconciliation policy changes",
+    "A later focused, integration, API, coverage or security check fails",
+    "HTTP callback, provider dispatch, worker restart, real credentials, SPA, card, inventory, production or release enters the claimed scope"
+  ],
+  "supersedes": null
+}

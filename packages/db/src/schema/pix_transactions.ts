@@ -1,4 +1,14 @@
-import { index, numeric, pgTable, text, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import {
+  index,
+  numeric,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+  varchar
+} from 'drizzle-orm/pg-core';
 
 import { accounts } from './accounts.js';
 
@@ -39,6 +49,13 @@ export const pixTransactions = pgTable(
     cashMovementId: varchar('cash_movement_id', { length: 255 })
   },
   (table) => ({
+    accountTransactionUnique: uniqueIndex('idx_pix_transactions_account_transaction_unique').on(
+      table.accountId,
+      table.transactionId
+    ),
+    accountProviderEventUnique: uniqueIndex('uidx_pix_transactions_account_provider_event')
+      .on(table.accountId, table.provider, table.providerWebhookEventId)
+      .where(sql`${table.providerWebhookEventId} IS NOT NULL`),
     providerTransactionIdx: index('idx_pix_transactions_provider_tx').on(
       table.provider,
       table.providerTransactionId

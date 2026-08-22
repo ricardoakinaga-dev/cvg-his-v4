@@ -219,7 +219,7 @@ async function buildReceivablesAgingReport(
   };
 }
 
-function deriveReconciliationState(
+export function derivePixReconciliationState(
   transaction: PixTransactionRecord,
   hasReceivableLink: boolean
 ): 'pending' | 'attention_required' | 'reconciled' {
@@ -232,7 +232,10 @@ function deriveReconciliationState(
     || transaction.billingSettlementStatus === 'not_applicable';
   const cashApplied =
     transaction.cashReconciliationStatus === 'applied'
-    || transaction.cashReconciliationStatus === 'skipped_no_open_register';
+    || (
+      transaction.cashReconciliationStatus === 'not_applicable'
+      && hasReceivableLink
+    );
   const receivableApplied = !transaction.billingRecordId || hasReceivableLink;
 
   if (billingApplied && cashApplied && receivableApplied) {
@@ -316,7 +319,10 @@ async function listReconciliationRows(
     const matchedReceivables = financialSummary
       ? financialSummary.receivables.filter((receivable) => receivableIds.includes(receivable.id))
       : [];
-    const reconciliationState = deriveReconciliationState(transaction, effectivePayments.length > 0);
+    const reconciliationState = derivePixReconciliationState(
+      transaction,
+      matchedPayments.length > 0
+    );
 
     const row = {
       transactionId: transaction.transactionId,

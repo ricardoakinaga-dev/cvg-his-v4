@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import {
   index,
   integer,
@@ -138,6 +139,11 @@ export const encounterReceivablePayments = pgTable(
       table.externalReferenceType,
       table.externalReferenceId
     ),
+    accountPixExternalReferenceUnique: uniqueIndex('uidx_erp_pix_external_reference')
+      .on(table.accountId, table.externalReferenceId)
+      .where(
+        sql`${table.externalReferenceType} = 'pix_transaction' AND ${table.externalReferenceId} IS NOT NULL`
+      ),
     accountFinancialPaidAtIdx: index('idx_erp_account_financial_paid_at').on(
       table.accountId,
       table.financialAccountId,

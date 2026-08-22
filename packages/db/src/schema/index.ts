@@ -18,6 +18,7 @@ export * from './documents.js';
 export * from './delivery_guarantees.js';
 export * from './encounter_billing_items.js';
 export * from './encounter_cash_receipts.js';
+export * from './encounter_non_cash_receipts.js';
 export * from './encounter_financial_accounts.js';
 export * from './encounter_documents.js';
 export * from './encounters.js';

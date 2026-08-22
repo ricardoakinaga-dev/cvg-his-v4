@@ -121,7 +121,8 @@ test('handleAdministrativeReportsRoutes returns aggregated administrative hubs',
         ]
       } as never,
       encounterFinancial: {
-        async listReceivables() {
+        async listReceivables(params: { readonly status?: string }) {
+          assert.equal(params.status, 'open');
           return {
             data: [
               {
@@ -141,6 +142,10 @@ test('handleAdministrativeReportsRoutes returns aggregated administrative hubs',
         }
       } as never,
       pixTransactions: {
+        async listCanonicalSettlementTransactionIds(accountId: string) {
+          assert.equal(accountId, 'acc-1');
+          return ['pix-1'];
+        },
         async list() {
           return [
             {
@@ -148,6 +153,17 @@ test('handleAdministrativeReportsRoutes returns aggregated administrative hubs',
               provider: 'local-pix',
               status: 'completed',
               amount: 120,
+              createdAt: now,
+              completedAt: now,
+              billingSettlementStatus: 'applied',
+              billingRecordId: 'bill-2',
+              cashReconciliationStatus: 'not_applicable'
+            },
+            {
+              transactionId: 'pix-legacy-skipped',
+              provider: 'local-pix',
+              status: 'completed',
+              amount: 50,
               createdAt: now,
               completedAt: now,
               billingSettlementStatus: 'applied',
@@ -281,7 +297,11 @@ test('handleAdministrativeReportsRoutes returns aggregated administrative hubs',
   const payload = response.bodyJson<{
     executive: { outstandingReceivables: number; quotePipelineAmount: number };
     domains: {
-      financial: { billing: { totalRecords: number }; receivables: { overdueCount: number } };
+      financial: {
+        billing: { totalRecords: number };
+        receivables: { overdueCount: number };
+        pix: { reconciledCount: number; attentionRequiredCount: number };
+      };
       commercial: { counterSales: { grossRevenue: number } };
       cash: { hasOpenRegister: boolean };
       fiscal: { activeTaxes: number };
@@ -293,6 +313,8 @@ test('handleAdministrativeReportsRoutes returns aggregated administrative hubs',
   assert.equal(payload.executive.quotePipelineAmount, 480);
   assert.equal(payload.domains.financial.billing.totalRecords, 2);
   assert.equal(payload.domains.financial.receivables.overdueCount, 1);
+  assert.equal(payload.domains.financial.pix.reconciledCount, 1);
+  assert.equal(payload.domains.financial.pix.attentionRequiredCount, 1);
   assert.equal(payload.domains.commercial.counterSales.grossRevenue, 220);
   assert.equal(payload.domains.cash.hasOpenRegister, true);
   assert.equal(payload.domains.fiscal.activeTaxes, 4);

@@ -386,6 +386,8 @@ describe('financial-routes', () => {
           id: 'payment-1',
           receivableId: 'rec-1',
           amountPaid: 150,
+          externalReferenceType: 'pix_transaction',
+          externalReferenceId: 'pix-1',
           notes: 'pagarme_qr_cash_123'
         }
       ]
