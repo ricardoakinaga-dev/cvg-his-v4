@@ -242,6 +242,7 @@ export const billingRecords = pgTable('billing_records', {
   subtotalAmount: numeric('subtotal_amount', { precision: 12, scale: 2 }).notNull().default('0'),
   currency: varchar('currency', { length: 3 }).notNull().default('BRL'),
   administrativeNotes: varchar('administrative_notes', { length: 2000 }),
+  activePaymentAttemptId: varchar('active_payment_attempt_id', { length: 255 }),
   createdAt: timestamp('created_at').notNull(),
   updatedAt: timestamp('updated_at').notNull()
 });

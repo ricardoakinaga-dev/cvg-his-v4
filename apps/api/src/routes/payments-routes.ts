@@ -9,7 +9,7 @@ import type { CorrelationId, ModuleName } from '@cvg-his-v2/shared-types';
 import type { ApiKeysService } from '@cvg-his-v2/module-api-keys';
 import type { AuditService } from '@cvg-his-v2/module-audit';
 import type { BillingService } from '@cvg-his-v2/module-billing';
-import { ValidationError } from '@cvg-his-v2/shared-errors';
+import { AppError, ValidationError } from '@cvg-his-v2/shared-errors';
 import { readJsonBody, validateRequestBody } from '../helpers/common.js';
 import { requireApiKey } from '../helpers/auth-helpers.js';
 import { appendAudit } from '../helpers/audit-helper.js';
@@ -46,8 +46,7 @@ export function handlePaymentsRoutes(
       eventBus,
       paymentGateway,
       apiKeys,
-      audit,
-      billing
+      audit
     });
   }
 
@@ -86,7 +85,12 @@ export function handlePaymentsRoutes(
 
   // POST /payments/pix/intents/:intentId/confirm — confirm PIX payment
   if (pathname.match(/^\/payments\/pix\/intents\/[^/]+\/confirm$/) && request.method === 'POST') {
-    return handlePixIntentConfirm(request, pathname, response, correlationId, { eventBus, paymentGateway, apiKeys, audit });
+    return handlePixIntentConfirm(request, pathname, response, correlationId, {
+      eventBus,
+      paymentGateway,
+      apiKeys,
+      audit
+    });
   }
 
   return false;
@@ -100,9 +104,8 @@ async function handlePixIntentCreate(
     eventBus,
     paymentGateway,
     apiKeys,
-    audit,
-    billing
-  }: Pick<PaymentsHandlers, 'eventBus' | 'paymentGateway' | 'apiKeys' | 'audit' | 'billing'>
+    audit
+  }: Pick<PaymentsHandlers, 'eventBus' | 'paymentGateway' | 'apiKeys' | 'audit'>
 ): Promise<boolean> {
   const apiKeyPrincipal = await requireApiKey(request, 'payments.manage', apiKeys);
   const body = (await readJsonBody(request)) as Record<string, unknown>;
@@ -122,22 +125,16 @@ async function handlePixIntentCreate(
 
   const billingRecordId =
     typeof body.billingRecordId === 'string' ? body.billingRecordId : undefined;
-  if (billingRecordId) {
-    const record = billing.getOrThrow(billingRecordId as never);
-    if (record.accountId !== apiKeyPrincipal.apiKey.accountId) {
-      throw new ValidationError('billingRecordId does not belong to the API key account');
-    }
-    if (record.currency !== 'BRL' || record.subtotalAmount !== body.amount) {
-      throw new ValidationError('amount must match the billing record balance');
-    }
-    if (record.status === 'settled') {
-      throw new ValidationError('billing record is already settled');
-    }
+  if (billingRecordId !== undefined) {
+    throw new AppError(
+      'LEGACY_BILLING_PIX_DISABLED',
+      'Billing-linked PIX requests must use the encounter PIX attempt endpoint',
+      409
+    );
   }
 
   const intent = await paymentGateway.createPixIntent({
     accountId: apiKeyPrincipal.apiKey.accountId,
-    billingRecordId,
     amount: body.amount,
     description: String(body.description),
     expirationMinutes:
@@ -444,7 +441,9 @@ async function handleCardIntentCapture(
     if (record.status === 'settled') {
       response.statusCode = 409;
       response.setHeader('content-type', 'application/json');
-      response.end(JSON.stringify({ code: 'PAYMENT_ALREADY_SETTLED', message: 'Payment already settled' }));
+      response.end(
+        JSON.stringify({ code: 'PAYMENT_ALREADY_SETTLED', message: 'Payment already settled' })
+      );
       return true;
     }
   }
@@ -629,7 +628,9 @@ async function handlePixIntentConfirm(
   if (!paymentGateway.confirmPayment) {
     response.statusCode = 501;
     response.setHeader('content-type', 'application/json');
-    response.end(JSON.stringify({ code: 'NOT_IMPLEMENTED', message: 'Payment confirmation not available' }));
+    response.end(
+      JSON.stringify({ code: 'NOT_IMPLEMENTED', message: 'Payment confirmation not available' })
+    );
     return true;
   }
 

@@ -1,4 +1,5 @@
 import { getPool } from '@cvg-his-v2/shared-database';
+import { ConflictError } from '@cvg-his-v2/shared-errors';
 import { withTenantQuery } from '@cvg-his-v2/tenant-context';
 import type {
   AccountId,
@@ -43,6 +44,31 @@ export class DatabaseBillingRepository implements BillingRepository {
 
   async updateRecord(record: BillingRecordSummary): Promise<void> {
     return withTenantQuery(getPool(), async (client) => {
+      const current = await client.query<{
+        readonly active_payment_attempt_id: string | null;
+        readonly currency: string;
+        readonly status: string;
+        readonly subtotal_amount: string;
+      }>(
+        `SELECT status, subtotal_amount, currency, active_payment_attempt_id::text
+           FROM billing_records
+          WHERE id = $1 AND account_id = $2
+          FOR UPDATE`,
+        [record.id, record.accountId]
+      );
+      const locked = current.rows[0];
+      if (
+        locked?.active_payment_attempt_id
+        && (
+          locked.status !== record.status
+          || Number(locked.subtotal_amount) !== record.subtotalAmount
+          || locked.currency !== record.currency
+        )
+      ) {
+        throw new ConflictError('Billing record already has a payment in progress', {
+          recordId: record.id
+        });
+      }
       await client.query(
         `UPDATE billing_records
          SET status = $3, subtotal_amount = $4, administrative_notes = $5, updated_at = $6
@@ -98,6 +124,18 @@ export class DatabaseBillingRepository implements BillingRepository {
 
   async createItem(item: BillingItemSummary): Promise<void> {
     return withTenantQuery(getPool(), async (client) => {
+      const billing = await client.query<{ readonly active_payment_attempt_id: string | null }>(
+        `SELECT active_payment_attempt_id::text
+           FROM billing_records
+          WHERE account_id = $1 AND id = $2
+          FOR UPDATE`,
+        [item.accountId, item.billingRecordId]
+      );
+      if (billing.rows[0]?.active_payment_attempt_id) {
+        throw new ConflictError('Billing record already has a payment in progress', {
+          recordId: item.billingRecordId
+        });
+      }
       await client.query(
         `INSERT INTO billing_items (
            id, account_id, billing_record_id, encounter_id, item_type, description,

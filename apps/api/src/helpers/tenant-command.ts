@@ -11,6 +11,7 @@ import { AppError, ValidationError } from '@cvg-his-v2/shared-errors';
 
 export interface TenantCommandInput<T> {
   readonly request: IncomingMessage;
+  readonly idempotencyKey?: string;
   readonly accountId: string;
   readonly actorUserId: string;
   readonly correlationId: string;
@@ -31,7 +32,7 @@ export function createTenantCommandRunner(options: {
     // to acquire a second idempotency record on the same connection.
     if (getDatabaseTransactionScope()) return input.command();
 
-    const idempotencyKey = readIdempotencyKey(input.request);
+    const idempotencyKey = input.idempotencyKey ?? readIdempotencyKey(input.request);
     if (idempotencyKey && idempotencyKey.length > 255) {
       throw new ValidationError('Idempotency-Key header must contain at most 255 characters');
     }

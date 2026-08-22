@@ -2005,6 +2005,137 @@ paths:
               schema:
                 $ref: '#/components/schemas/EncounterFinancialSummary'
 
+  /encounters/{encounterId}/payments/pix-attempts:
+    post:
+      operationId: requestEncounterPixPaymentAttempt
+      summary: Request an asynchronous PIX payment for a closed encounter
+      description: Creates or replays the unique durable PIX dispatch attempt for the authoritative open BRL billing balance. The amount and provider cannot be supplied by the client.
+      tags: [Financial, Payments]
+      parameters:
+        - name: encounterId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 255
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestEncounterPixPaymentAttempt'
+      responses:
+        '202':
+          description: PIX dispatch attempt accepted or replayed
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EncounterPixPaymentAttempt'
+        '400':
+          description: Invalid path, body, or idempotency key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Missing billing management permission
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Billing is ineligible, already reserved, or the idempotency key conflicts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Tenant principal exceeded the PIX attempt request limit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Encounter or billing record not found in the active account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: PIX dispatch capability is unavailable in this runtime
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /payments/pix-attempts/{attemptId}:
+    get:
+      operationId: getEncounterPixPaymentAttempt
+      summary: Poll a tenant-scoped PIX payment attempt
+      description: Returns the current public attempt state without recording a durable audit event for each poll.
+      tags: [Financial, Payments]
+      parameters:
+        - name: attemptId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Current PIX payment attempt
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EncounterPixPaymentAttempt'
+        '400':
+          description: Invalid attempt identifier
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Missing billing read permission
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Attempt not found in the active account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Tenant principal exceeded the PIX polling limit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /encounters/{encounterId}/cash-receipts:
     post:
       operationId: createEncounterCashReceipt
@@ -13206,6 +13337,87 @@ components:
         notes:
           type: string
           maxLength: 500
+
+    RequestEncounterPixPaymentAttempt:
+      type: object
+      additionalProperties: false
+      maxProperties: 0
+
+    EncounterPixPaymentAttemptError:
+      type: object
+      required: [code, message]
+      additionalProperties: false
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+
+    EncounterPixPaymentAttempt:
+      type: object
+      required:
+        - id
+        - encounterId
+        - billingRecordId
+        - state
+        - amountCents
+        - currency
+        - qrCodePayload
+        - qrCodeBase64
+        - expiresAt
+        - error
+        - createdAt
+        - updatedAt
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        encounterId:
+          type: string
+          format: uuid
+        billingRecordId:
+          type: string
+        state:
+          type: string
+          enum:
+            - pending_dispatch
+            - awaiting_confirmation
+            - confirmed_pending_apply
+            - settled
+            - expired
+            - cancelled
+            - dispatch_failed
+            - reconciliation_required
+        amountCents:
+          type: integer
+          format: int64
+          minimum: 1
+        currency:
+          type: string
+          enum: [BRL]
+        qrCodePayload:
+          type: string
+          nullable: true
+        qrCodeBase64:
+          type: string
+          format: byte
+          nullable: true
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        error:
+          type: object
+          allOf:
+            - $ref: '#/components/schemas/EncounterPixPaymentAttemptError'
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
 
     EncounterCashReceipt:
       type: object

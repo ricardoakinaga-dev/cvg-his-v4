@@ -55,6 +55,7 @@ interface BillingRow {
   readonly status: string;
   readonly subtotal_amount: string;
   readonly currency: string;
+  readonly active_payment_attempt_id: string | null;
 }
 
 interface FinancialAccountRow {
@@ -139,7 +140,7 @@ export class DatabaseEncounterCashReceiptRepository implements EncounterCashRece
     }
 
     const billingResult = await client.query<BillingRow>(
-      `SELECT id, status, subtotal_amount, currency
+      `SELECT id, status, subtotal_amount, currency, active_payment_attempt_id::text
          FROM billing_records
         WHERE account_id = $1 AND encounter_id = $2
         FOR UPDATE`,
@@ -149,6 +150,13 @@ export class DatabaseEncounterCashReceiptRepository implements EncounterCashRece
     if (!billing) fail('BILLING_RECORD_NOT_FOUND', 'Billing record not found', 404);
     if (billing.status !== 'open') {
       fail('BILLING_NOT_RECEIVABLE', 'Billing record is not eligible for cash receipt', 409);
+    }
+    if (billing.active_payment_attempt_id !== null) {
+      fail(
+        'BILLING_PAYMENT_RESERVED',
+        'Billing record already has a payment in progress',
+        409
+      );
     }
     if (billing.currency !== 'BRL' || money(billing.subtotal_amount) <= 0) {
       fail('BILLING_NOT_RECEIVABLE', 'Billing must contain a positive BRL balance', 409);

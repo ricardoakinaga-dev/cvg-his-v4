@@ -35,6 +35,9 @@ export const billingRecords = pgTable(
     subtotalAmount: numeric('subtotal_amount', { precision: 12, scale: 2 }).notNull().default('0'),
     currency: text('currency').notNull().default('BRL'),
     administrativeNotes: text('administrative_notes'),
+    // Migration 0110 adds the deferred (account, attempt, billing) FK after both sides exist,
+    // avoiding a circular schema-module import here.
+    activePaymentAttemptId: uuid('active_payment_attempt_id'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
   },
@@ -43,6 +46,9 @@ export const billingRecords = pgTable(
       table.accountId,
       table.id
     ),
+    accountIdIdEncounterIdUnique: uniqueIndex(
+      'idx_billing_records_account_id_id_encounter_id_unique'
+    ).on(table.accountId, table.id, table.encounterId),
     accountEncounterUnique: uniqueIndex('uidx_billing_records_account_encounter').on(
       table.accountId,
       table.encounterId
@@ -53,6 +59,11 @@ export const billingRecords = pgTable(
       table.patientId
     ),
     accountOwnerIdx: index('idx_billing_records_account_owner').on(table.accountId, table.ownerId),
+    accountActivePaymentAttemptUnique: uniqueIndex(
+      'uidx_billing_records_account_active_payment_attempt'
+    )
+      .on(table.accountId, table.activePaymentAttemptId)
+      .where(sql`${table.activePaymentAttemptId} is not null`),
     statusChk: check(
       'billing_records_status_chk',
       sql`${table.status} in ('draft', 'estimated', 'open', 'settled')`

@@ -12,7 +12,9 @@ Transform the current broad, partially implemented veterinary ERP into a behavio
 - [x] (2026-08-22T13:16:00-03:00) Delivered and independently approved `CVG-002A`, the atomic cash-receipt sub-slice, with PostgreSQL/RLS, API, SPA, coverage, security and concurrency evidence.
 - [x] (2026-08-22T13:32:41-03:00) Mapped and froze `CVG-002B`; independent payment, inventory, SPA/E2E, documentation and transaction reviews reordered delivery behind a DB-first durable payment spine.
 - [x] (2026-08-22T14:42:00-03:00) Executed and independently approved the `CVG-002B1` RED/GREEN loop for atomic confirmed-PIX settlement; the bounded DB core is verified while HTTP/provider/worker/SPA work remains deferred to `CVG-002B2`.
-- [ ] Freeze and execute `CVG-002B2` for signed callback, durable dispatch/worker wiring, restart recovery and coherent SPA PIX integration.
+- [x] (2026-08-22T14:55:20-03:00) Froze `CVG-002B2` into non-overlapping `B2a` durable outbound, `B2b` signed inbound/worker/B1 and `B2c` SPA/E2E slices after five independent read-only reviews.
+- [x] (2026-08-22T18:06:00-03:00) Executed and independently approved `CVG-002B2a`: durable exact-cents request, fenced synthetic dispatcher, opt-in worker and bearer polling API; signed callback, settlement worker and browser integration remain excluded.
+- [ ] Execute separately gated `CVG-002B2b/B2c` for signed callback, durable settlement worker and coherent SPA/restart E2E.
 - [ ] Complete `CVG-001` through TDD, integrated runtime proof and independent critique.
 - [ ] Execute the remaining backlog in dependency order, preserving fresh evidence and explicit human/external boundaries.
 

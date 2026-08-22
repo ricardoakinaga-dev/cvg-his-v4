@@ -182,6 +182,7 @@ import {
 } from './card-transaction-repository.js';
 import type { LaboratoryResultImportRepository } from './laboratory-result-import-repository.js';
 import type { EncounterCashReceiptRepository } from './encounter-cash-receipt-repository.js';
+import type { EncounterPixPaymentAttemptRepository } from './encounter-pix-payment-attempt-repository.js';
 
 function sanitizeAuditValue(value: string): string {
   return value.replace(/[;\n\r=]/g, ' ').trim();
@@ -250,6 +251,7 @@ export interface RuntimeRepositories {
   readonly pixTransaction?: PixTransactionRepository;
   readonly cardTransaction?: CardTransactionRepository;
   readonly encounterCashReceipt?: EncounterCashReceiptRepository;
+  readonly encounterPixPaymentAttempt?: EncounterPixPaymentAttemptRepository;
 }
 
 export interface ApiRuntimeOptions {

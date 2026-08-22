@@ -3,10 +3,7 @@ import { Readable, Writable } from 'node:stream';
 import test from 'node:test';
 
 import { ChaosEngine } from '@cvg-his-v2/chaos';
-import type {
-  PersistedSessionRecord,
-  SessionRepository
-} from '@cvg-his-v2/module-auth';
+import type { PersistedSessionRecord, SessionRepository } from '@cvg-his-v2/module-auth';
 import { createRateLimiter } from '@cvg-his-v2/shared-rate-limiter';
 import {
   ClamAvAttachmentSecurityScanner,
@@ -384,10 +381,10 @@ test('repository-backed authentication fails closed when session synchronization
     async rotateRefreshNonce(params) {
       const existing = sessions.get(params.sessionId);
       if (
-        !existing
-        || !existing.active
-        || existing.revokedAt
-        || existing.refreshNonce !== params.expectedRefreshNonce
+        !existing ||
+        !existing.active ||
+        existing.revokedAt ||
+        existing.refreshNonce !== params.expectedRefreshNonce
       ) {
         return null;
       }
@@ -516,7 +513,10 @@ test('catalog stores honor the in-memory persistence mode', async () => {
 
   assert.equal(response.statusCode, 200);
   const payload = response.bodyJson<{ items: Array<{ name: string }> }>();
-  assert.equal(payload.items.some((breed) => breed.name === 'Golden Retriever'), true);
+  assert.equal(
+    payload.items.some((breed) => breed.name === 'Golden Retriever'),
+    true
+  );
 });
 
 test('tenant command envelope replays the complete HTTP response without repeating the mutation', async () => {
@@ -563,6 +563,89 @@ test('tenant command envelope replays the complete HTTP response without repeati
   assert.equal(replay.statusCode, 201);
   assert.deepEqual(replay.bodyJson(), first.bodyJson());
   assert.equal(commandCalls, 1);
+});
+
+test('PIX attempt replay authenticates first and stores only a derived ledger key', async () => {
+  const rawKey = 'customer-visible-pix-request-key';
+  const ledgerKeys: string[] = [];
+  const replaySnapshot = {
+    statusCode: 202,
+    headers: { 'content-type': 'application/json' },
+    bodyBase64: Buffer.from(JSON.stringify({ state: 'pending_dispatch' })).toString('base64')
+  };
+  const server = createServerUnderTest({
+    unitOfWork: {
+      async execute(
+        context: { idempotencyKey?: string },
+        _payload: unknown,
+        _command: () => Promise<unknown>
+      ) {
+        ledgerKeys.push(context.idempotencyKey ?? 'missing');
+        return { value: replaySnapshot, replayed: true };
+      }
+    } as never
+  });
+  const adminToken = await login(server, 'admin', 'seed_admin');
+  const request = {
+    method: 'POST',
+    url: '/encounters/00000000-0000-0000-0000-000000000101/payments/pix-attempts',
+    headers: {
+      'content-type': 'application/json',
+      'idempotency-key': rawKey,
+      host: 'localhost'
+    },
+    body: {}
+  } as const;
+
+  const authorizedReplay = await performRequest(server, {
+    ...request,
+    headers: { ...request.headers, authorization: `Bearer ${adminToken}` }
+  });
+  const unauthorizedReplay = await performRequest(server, {
+    ...request
+  });
+
+  assert.equal(authorizedReplay.statusCode, 202);
+  assert.deepEqual(authorizedReplay.bodyJson(), { state: 'pending_dispatch' });
+  assert.equal(ledgerKeys.length, 1);
+  assert.notEqual(ledgerKeys[0], rawKey);
+  assert.match(ledgerKeys[0] ?? '', /^pix-attempt-sha256:[a-f0-9]{64}$/);
+  assert.equal(unauthorizedReplay.statusCode, 401);
+  assert.equal(ledgerKeys.length, 1);
+});
+
+test('PIX attempt POST is rate limited before idempotency ledger execution', async () => {
+  let ledgerCalls = 0;
+  const server = createServerUnderTest({
+    pixPaymentAttemptRateLimiter: {
+      async check() {
+        return { blocked: true, limit: 120, remaining: 0, reset: 123, retryAfterMs: 5_001 };
+      }
+    },
+    unitOfWork: {
+      async execute() {
+        ledgerCalls += 1;
+        throw new Error('ledger must not run');
+      }
+    } as never
+  });
+  const adminToken = await login(server, 'admin', 'seed_admin');
+  const response = await performRequest(server, {
+    method: 'POST',
+    url: '/encounters/00000000-0000-0000-0000-000000000101/payments/pix-attempts',
+    headers: {
+      authorization: `Bearer ${adminToken}`,
+      'content-type': 'application/json',
+      'idempotency-key': 'rate-limited-pix-attempt',
+      host: 'localhost'
+    },
+    body: {}
+  });
+
+  assert.equal(response.statusCode, 429);
+  assert.equal(response.getHeader('retry-after'), '6');
+  assert.equal(response.bodyJson<{ code: string }>().code, 'RATE_LIMITED');
+  assert.equal(ledgerCalls, 0);
 });
 
 test('CORS rejects an origin outside the allowlist', async () => {
@@ -762,7 +845,12 @@ test('SLO endpoint exposes compliance, error budget and Prometheus gauges', asyn
   assert.equal(payload.report.overallStatus, 'critical');
   assert.equal(payload.report.errorBudgetExhausted, true);
   assert.equal(payload.runbook.metrics, '/metrics');
-  assert.equal(payload.report.slos.some((slo) => slo.id === 'api-error-rate' && slo.category === 'reliability'), true);
+  assert.equal(
+    payload.report.slos.some(
+      (slo) => slo.id === 'api-error-rate' && slo.category === 'reliability'
+    ),
+    true
+  );
 
   const aliasResponse = await performRequest(server, {
     method: 'GET',
@@ -783,8 +871,14 @@ test('SLO endpoint exposes compliance, error budget and Prometheus gauges', asyn
   });
   assert.equal(metricsResponse.statusCode, 200);
   const metricsText = metricsResponse.bodyText();
-  assert.match(metricsText, /^app_slo_status\{slo_id="api-error-rate",category="reliability"\} 2$/m);
-  assert.match(metricsText, /^app_slo_burn_rate\{slo_id="api-error-rate",category="reliability"\} 100$/m);
+  assert.match(
+    metricsText,
+    /^app_slo_status\{slo_id="api-error-rate",category="reliability"\} 2$/m
+  );
+  assert.match(
+    metricsText,
+    /^app_slo_burn_rate\{slo_id="api-error-rate",category="reliability"\} 100$/m
+  );
   assert.match(metricsText, /^app_active_requests 1$/m);
 
   resetActiveRequestsCount();
@@ -837,7 +931,7 @@ test('chaos operations expose effective runtime state, runbooks and metrics', as
       url: '/chaos/experiments/database-failure/start',
       headers: {
         ...chaosHeaders,
-        'content-type': 'application/json',
+        'content-type': 'application/json'
       },
       body: { durationMs: 60_000 }
     });
@@ -848,7 +942,7 @@ test('chaos operations expose effective runtime state, runbooks and metrics', as
       url: '/chaos/experiments/redis-failure/start',
       headers: {
         ...chaosHeaders,
-        'content-type': 'application/json',
+        'content-type': 'application/json'
       },
       body: { durationMs: 60_000 }
     });
@@ -859,7 +953,7 @@ test('chaos operations expose effective runtime state, runbooks and metrics', as
       url: '/chaos/experiments/worker-failure/start',
       headers: {
         ...chaosHeaders,
-        'content-type': 'application/json',
+        'content-type': 'application/json'
       },
       body: { durationMs: 60_000, faultDelayMs: 5 }
     });
@@ -895,9 +989,14 @@ test('chaos operations expose effective runtime state, runbooks and metrics', as
     assert.equal(experimentsPayload.runtimeState.workerReady, false);
     assert.equal(experimentsPayload.runtimeState.redisHealthy, false);
     assert.equal(experimentsPayload.runtimeState.rateLimiterMode, 'in-memory-fallback');
-    assert.equal(experimentsPayload.runtimeState.activeExperimentIds.includes('database-failure'), true);
+    assert.equal(
+      experimentsPayload.runtimeState.activeExperimentIds.includes('database-failure'),
+      true
+    );
 
-    const databaseExperiment = experimentsPayload.experiments.find((item) => item.id === 'database-failure');
+    const databaseExperiment = experimentsPayload.experiments.find(
+      (item) => item.id === 'database-failure'
+    );
     assert.equal(databaseExperiment?.active, true);
     assert.equal(
       databaseExperiment?.runbook?.path,
@@ -959,7 +1058,10 @@ test('bootstrap serves extracted OpenAPI and docs routes over HTTP semantics', a
   });
   assert.equal(openApiResponse.statusCode, 200);
   assert.equal(openApiResponse.getHeader('content-type'), 'application/json');
-  const openApiPayload = openApiResponse.bodyJson<{ openapi: string; paths: Record<string, unknown> }>();
+  const openApiPayload = openApiResponse.bodyJson<{
+    openapi: string;
+    paths: Record<string, unknown>;
+  }>();
   assert.equal(openApiPayload.openapi, '3.0.3');
   assert.ok(Object.keys(openApiPayload.paths).length > 0);
 
@@ -1772,9 +1874,17 @@ test('catalog endpoints respect frontend search filters over HTTP semantics', as
     }
   });
   assert.equal(activeServicesResponse.statusCode, 200);
-  const activeServices = activeServicesResponse.bodyJson<{ items: Array<{ code: string | null; active: boolean }> }>();
-  assert.equal(activeServices.items.some((item) => item.code === 'SRV-FILTRO-001'), true);
-  assert.equal(activeServices.items.some((item) => item.code === 'SRV-INATIVO-001'), false);
+  const activeServices = activeServicesResponse.bodyJson<{
+    items: Array<{ code: string | null; active: boolean }>;
+  }>();
+  assert.equal(
+    activeServices.items.some((item) => item.code === 'SRV-FILTRO-001'),
+    true
+  );
+  assert.equal(
+    activeServices.items.some((item) => item.code === 'SRV-INATIVO-001'),
+    false
+  );
 
   const createTermResponse = await performRequest(server, {
     method: 'POST',
@@ -1795,7 +1905,11 @@ test('catalog endpoints respect frontend search filters over HTTP semantics', as
     }
   });
   assert.equal(createTermResponse.statusCode, 201);
-  const createdTerm = createTermResponse.bodyJson<{ id: string; code: string | null; usageContext: string }>();
+  const createdTerm = createTermResponse.bodyJson<{
+    id: string;
+    code: string | null;
+    usageContext: string;
+  }>();
   assert.equal(createdTerm.code, 'TERM-INTERNACAO-001');
   assert.equal(createdTerm.usageContext, 'internacao');
 
@@ -1845,7 +1959,11 @@ test('catalog endpoints respect frontend search filters over HTTP semantics', as
     }
   });
   assert.equal(createBreedResponse.statusCode, 201);
-  const createdBreed = createBreedResponse.bodyJson<{ id: string; code: string | null; species: string }>();
+  const createdBreed = createBreedResponse.bodyJson<{
+    id: string;
+    code: string | null;
+    species: string;
+  }>();
   assert.equal(createdBreed.code, 'CAN-GOLD-001');
   assert.equal(createdBreed.species, 'canine');
 
@@ -1871,8 +1989,13 @@ test('catalog endpoints respect frontend search filters over HTTP semantics', as
     }
   });
   assert.equal(vetusAliasBreedResponse.statusCode, 200);
-  const vetusAliasBreeds = vetusAliasBreedResponse.bodyJson<{ items: Array<{ code: string | null }> }>();
-  assert.equal(vetusAliasBreeds.items.some((item) => item.code === 'CAN-GOLD-001'), true);
+  const vetusAliasBreeds = vetusAliasBreedResponse.bodyJson<{
+    items: Array<{ code: string | null }>;
+  }>();
+  assert.equal(
+    vetusAliasBreeds.items.some((item) => item.code === 'CAN-GOLD-001'),
+    true
+  );
 
   const updateBreedResponse = await performRequest(server, {
     method: 'PATCH',
@@ -1907,7 +2030,11 @@ test('catalog endpoints respect frontend search filters over HTTP semantics', as
     }
   });
   assert.equal(createSpeciesResponse.statusCode, 201);
-  const createdSpecies = createSpeciesResponse.bodyJson<{ id: string; code: string | null; systemCode: string }>();
+  const createdSpecies = createSpeciesResponse.bodyJson<{
+    id: string;
+    code: string | null;
+    systemCode: string;
+  }>();
   assert.equal(createdSpecies.code, 'LAGOMORPH-001');
   assert.equal(createdSpecies.systemCode, 'other');
 
@@ -1933,8 +2060,13 @@ test('catalog endpoints respect frontend search filters over HTTP semantics', as
     }
   });
   assert.equal(vetusAliasSpeciesResponse.statusCode, 200);
-  const vetusAliasSpecies = vetusAliasSpeciesResponse.bodyJson<{ items: Array<{ code: string | null }> }>();
-  assert.equal(vetusAliasSpecies.items.some((item) => item.code === 'LAGOMORPH-001'), true);
+  const vetusAliasSpecies = vetusAliasSpeciesResponse.bodyJson<{
+    items: Array<{ code: string | null }>;
+  }>();
+  assert.equal(
+    vetusAliasSpecies.items.some((item) => item.code === 'LAGOMORPH-001'),
+    true
+  );
 
   const updateSpeciesResponse = await performRequest(server, {
     method: 'PATCH',
@@ -2002,8 +2134,13 @@ test('catalog endpoints respect frontend search filters over HTTP semantics', as
     }
   });
   assert.equal(vetusAliasCoatColorsResponse.statusCode, 200);
-  const vetusAliasCoatColors = vetusAliasCoatColorsResponse.bodyJson<{ items: Array<{ code: string | null }> }>();
-  assert.equal(vetusAliasCoatColors.items.some((item) => item.code === 'COAT-CHOCOLATE-001'), true);
+  const vetusAliasCoatColors = vetusAliasCoatColorsResponse.bodyJson<{
+    items: Array<{ code: string | null }>;
+  }>();
+  assert.equal(
+    vetusAliasCoatColors.items.some((item) => item.code === 'COAT-CHOCOLATE-001'),
+    true
+  );
 
   const updateCoatColorResponse = await performRequest(server, {
     method: 'PATCH',
@@ -2064,7 +2201,9 @@ test('catalog endpoints respect frontend search filters over HTTP semantics', as
     }
   });
   assert.equal(customerGroupsResponse.statusCode, 200);
-  const customerGroups = customerGroupsResponse.bodyJson<{ items: Array<{ code: string | null }> }>();
+  const customerGroups = customerGroupsResponse.bodyJson<{
+    items: Array<{ code: string | null }>;
+  }>();
   assert.equal(customerGroups.items.length, 1);
   assert.equal(customerGroups.items[0]?.code, 'CUSTOMER-GROUP-001');
 
@@ -2077,8 +2216,13 @@ test('catalog endpoints respect frontend search filters over HTTP semantics', as
     }
   });
   assert.equal(vetusAliasCustomerGroupsResponse.statusCode, 200);
-  const vetusAliasCustomerGroups = vetusAliasCustomerGroupsResponse.bodyJson<{ items: Array<{ code: string | null }> }>();
-  assert.equal(vetusAliasCustomerGroups.items.some((item) => item.code === 'CUSTOMER-GROUP-001'), true);
+  const vetusAliasCustomerGroups = vetusAliasCustomerGroupsResponse.bodyJson<{
+    items: Array<{ code: string | null }>;
+  }>();
+  assert.equal(
+    vetusAliasCustomerGroups.items.some((item) => item.code === 'CUSTOMER-GROUP-001'),
+    true
+  );
 
   const updateCustomerGroupResponse = await performRequest(server, {
     method: 'PATCH',
@@ -2094,7 +2238,10 @@ test('catalog endpoints respect frontend search filters over HTTP semantics', as
     }
   });
   assert.equal(updateCustomerGroupResponse.statusCode, 200);
-  assert.equal(updateCustomerGroupResponse.bodyJson<{ active: boolean; name: string }>().active, false);
+  assert.equal(
+    updateCustomerGroupResponse.bodyJson<{ active: boolean; name: string }>().active,
+    false
+  );
 
   const createPreventiveResponse = await performRequest(server, {
     method: 'POST',
@@ -2145,7 +2292,9 @@ test('catalog endpoints respect frontend search filters over HTTP semantics', as
     }
   });
   assert.equal(preventiveListResponse.statusCode, 200);
-  const preventiveEvents = preventiveListResponse.bodyJson<{ items: Array<{ id: string; status: string }> }>();
+  const preventiveEvents = preventiveListResponse.bodyJson<{
+    items: Array<{ id: string; status: string }>;
+  }>();
   assert.equal(preventiveEvents.items.length, 1);
   assert.equal(preventiveEvents.items[0]?.id, createdPreventive.id);
 
@@ -2204,7 +2353,10 @@ test('catalog endpoints respect frontend search filters over HTTP semantics', as
   const includeExecutedPreventive = includeExecutedPreventiveResponse.bodyJson<{
     items: Array<{ status: string }>;
   }>();
-  assert.equal(includeExecutedPreventive.items.some((item) => item.status === 'executed'), true);
+  assert.equal(
+    includeExecutedPreventive.items.some((item) => item.status === 'executed'),
+    true
+  );
 
   const preventiveEmailResponse = await performRequest(server, {
     method: 'POST',
@@ -2269,8 +2421,14 @@ test('API keys unlock integration catalog and PIX intent creation over HTTP sema
   });
   assert.equal(listKeyResponse.statusCode, 200);
   const apiKeyList = listKeyResponse.bodyJson<{ items: Array<{ id: string; keyHash?: string }> }>();
-  assert.equal(apiKeyList.items.some((item) => item.id === createdKey.apiKey.id), true);
-  assert.equal(apiKeyList.items.some((item) => 'keyHash' in item), false);
+  assert.equal(
+    apiKeyList.items.some((item) => item.id === createdKey.apiKey.id),
+    true
+  );
+  assert.equal(
+    apiKeyList.items.some((item) => 'keyHash' in item),
+    false
+  );
 
   const catalogResponse = await performRequest(server, {
     method: 'GET',
@@ -2318,6 +2476,26 @@ test('API keys unlock integration catalog and PIX intent creation over HTTP sema
   assert.equal(payment.status, 'pending');
   assert.ok(payment.eventId);
   assert.ok(payment.qrCodePayload.length > 0);
+
+  const legacyBillingPixResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/payments/pix/intents',
+    headers: {
+      'x-api-key': createdKey.rawKey,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      billingRecordId: 'legacy-billing-link-is-disabled',
+      amount: 149.9,
+      description: 'Consulta de acompanhamento'
+    }
+  });
+  assert.equal(legacyBillingPixResponse.statusCode, 409);
+  assert.equal(
+    legacyBillingPixResponse.bodyJson<{ code: string }>().code,
+    'LEGACY_BILLING_PIX_DISABLED'
+  );
 
   const cardIntentResponse = await performRequest(server, {
     method: 'POST',

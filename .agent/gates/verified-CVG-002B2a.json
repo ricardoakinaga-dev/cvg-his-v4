@@ -1,0 +1,81 @@
+{
+  "record_id": "GATE-CVG-002B2A-VFY-001",
+  "timestamp": "2026-08-22T18:06:00-03:00",
+  "gate_id": "VERIFIED",
+  "scope": "CVG-002B2a durable synthetic PIX request and fenced dispatcher core",
+  "scope_ref": "CVG-002B2A",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-001-ACCEPTANCE-EVIDENCE",
+      "description": "A tenant-scoped request persists exact-cents state before provider work and the fenced dispatcher survives replay, takeover, crash and timeout without duplicate local or external intent.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002B2A-PIX-001",
+        ".agent/tasks/CVG-002B2.md",
+        "tests/integration/database/pix-payment-attempt-command.test.ts",
+        "tests/integration/database/pix-payment-dispatch.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Only the explicitly non-production synthetic outbound boundary is verified; signed inbound, B1 settlement consumption, SPA and real providers are excluded."
+    },
+    {
+      "id": "V-002-SECURITY-REGRESSION",
+      "description": "Tenant authority, RLS, composed foreign keys, rate limits, idempotency, timeout ambiguity, synthetic-provider production guards and regressions are current and passing.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002B2A-PIX-001",
+        "apps/api/src/routes/pix-payment-attempt-routes.ts",
+        "apps/worker/src/jobs/pix-payment-dispatcher.ts",
+        "packages/db/migrations/0110_encounter_payment_attempts.sql"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This local verification is not provider homologation, production migration, deployment or release evidence."
+    },
+    {
+      "id": "V-003-INDEPENDENT-CRITIQUE",
+      "description": "Independent security and final T4 reviews found no remaining CRITICAL, HIGH or MEDIUM issue in the bounded B2a checkpoint.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002B2A-PIX-001",
+        ".agent/execution-log.jsonl#EVT-0024"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Any expansion into B2b, B2c, external systems or production requires a new gate and new critique."
+    }
+  ],
+  "evidence": [
+    ".agent/verification.jsonl#VFY-CVG-002B2A-PIX-001",
+    ".agent/tasks/CVG-002B2.md",
+    "packages/db/migrations/0110_encounter_payment_attempts.sql",
+    "apps/api/src/commands/request-encounter-pix-payment.ts",
+    "apps/api/src/encounter-pix-payment-attempt-repository.ts",
+    "apps/api/src/routes/pix-payment-attempt-routes.ts",
+    "apps/worker/src/jobs/pix-payment-dispatcher.ts",
+    "apps/worker/src/pix-payment-dispatch-repository.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [],
+  "conditions": [],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "Automated bounded verification policy",
+    "scope": "CVG-002B2a durable synthetic PIX request and fenced dispatcher core",
+    "decision": "Repository-local synthetic verification may be recorded without additional human acceptance; external provider, production and release authority remain excluded.",
+    "evidence_ref": ".agent/verification.jsonl#VFY-CVG-002B2A-PIX-001",
+    "expires_or_revalidates": "Revalidate on schema, request, dispatcher, provider, worker composition or test-harness mutation and before any B2b/B2c, external or production use."
+  },
+  "residual_risk": "MEDIUM",
+  "decision": "PASS",
+  "next_action": "Freeze a separate implementation-ready CVG-002B2b gate for signed inbound receipts and durable B1 settlement consumption.",
+  "revalidation_triggers": [
+    "The attempt schema, request command, dispatcher fencing, timeout policy or synthetic provider changes",
+    "A focused, integration, API, coverage, RLS or security check fails",
+    "Signed callback, settlement worker, SPA, real provider, credentials, production or release enters the claimed scope"
+  ],
+  "supersedes": null
+}

@@ -17,6 +17,7 @@ import {
   createWorkerReadinessResponse
 } from './health.js';
 import { refreshWorkerAccounts } from './account-discovery.js';
+import { runPixPaymentDispatchTick } from './jobs/local-pix-payment-dispatch-provider.js';
 
 const config = loadWorkerConfig(process.env);
 const logger = createLogger(config.appName);
@@ -62,7 +63,10 @@ async function main() {
   });
 
   const bootstrap = await bootstrapWorkerServices({
-    databaseUrl: config.databaseUrl
+    databaseUrl: config.databaseUrl,
+    environment: config.environment,
+    allowSyntheticPixProvider: process.env.WORKER_PIX_SYNTHETIC_ENABLED === '1',
+    pixDispatcherWorkerId: process.env.WORKER_INSTANCE_ID
   });
   workerState.databaseHealthy = bootstrap.databaseHealthy;
   workerState.persistenceMode = bootstrap.notificationRepository ? 'database' : 'in-memory';
@@ -253,6 +257,7 @@ async function main() {
   while (true) {
     const correlationId = createCorrelationId('worker');
     const tickStart = Date.now();
+    let isolatedTickError: string | null = null;
     try {
       if (Date.now() - lastAccountRefreshAt >= ACCOUNT_REFRESH_INTERVAL_MS) {
         await refreshAccounts(true);
@@ -269,6 +274,39 @@ async function main() {
 
       for (const accountId of workerAccountIds) {
         const tenantContext = { tenantId: accountId, accountId, correlationId };
+        const pixPaymentDispatch = bootstrap.pixPaymentDispatch;
+        if (pixPaymentDispatch) {
+          await withWorkerSpan(
+            'worker.pix_payment.dispatch.tick',
+            {
+              'worker.correlation_id': correlationId,
+              'worker.account_id': accountId,
+              'worker.persistence_mode': workerState.persistenceMode,
+              'worker.database_healthy': workerState.databaseHealthy
+            },
+            async () => {
+              const [outcome] = await runPixPaymentDispatchTick(pixPaymentDispatch.dispatcher, [
+                accountId
+              ]);
+              if (!outcome || outcome.status === 'failed') {
+                const error = outcome?.error;
+                isolatedTickError = error instanceof Error ? error.message : String(error);
+                workerState.errors++;
+                logger.error('worker PIX payment dispatch tick failed', {
+                  accountId,
+                  error: isolatedTickError
+                });
+                return;
+              }
+              const result = outcome.result;
+              logger.info('worker PIX payment dispatch tick complete', {
+                accountId,
+                status: result?.status ?? 'idle',
+                attemptId: result && 'attemptId' in result ? result.attemptId : undefined
+              });
+            }
+          );
+        }
         await withWorkerSpan(
           'worker.notifications.tick',
           {
@@ -330,7 +368,7 @@ async function main() {
       workerState.ticksCompleted++;
       workerState.lastTickAt = new Date().toISOString();
       workerState.lastTickDurationMs = Date.now() - tickStart;
-      workerState.lastError = null;
+      workerState.lastError = isolatedTickError;
     } catch (error) {
       workerState.errors++;
       workerState.lastError = error instanceof Error ? error.message : String(error);

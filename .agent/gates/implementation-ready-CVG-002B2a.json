@@ -1,0 +1,81 @@
+{
+  "record_id": "GATE-CVG-002B2A-IR-001",
+  "timestamp": "2026-08-22T14:55:20-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-002B2a durable synthetic PIX attempt and dispatcher core",
+  "scope_ref": "CVG-002B2A",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The B2a durable-attempt/dispatcher boundary, B2b callback/worker boundary, B2c SPA/E2E boundary and external homologation boundary are explicit and non-overlapping.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-002B2.md",
+        ".agent/tasks/CVG-002B.md",
+        ".agent/gates/verified-CVG-002B1.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Only local provider-neutral attempt persistence, a disposable synthetic dispatcher, canonical read API and their tests are authorized; callback, settlement worker, full SPA, Pagar.me and production are excluded."
+    },
+    {
+      "id": "IR-002",
+      "description": "The state machine, exact-cents model, idempotency keys, claim/lease/fencing rules, transaction boundaries and failure/restart observations are executable without network inside PostgreSQL transactions.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-002B2.md",
+        "packages/modules/event-bus/src/event-bus.service.ts",
+        "packages/shared/database/src/tenant-unit-of-work.ts",
+        "tests/integration/database/outbox-delivery.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Generic outbox lease evidence is reusable architecture evidence only; B2a must still add PIX-specific rejecting tests for every accepted claim, external-call and fenced persistence guarantee."
+    },
+    {
+      "id": "IR-003",
+      "description": "The RED-first files, negative/security cases, regression surface, coverage target, review loop and human/external exclusions are concrete enough to start the smallest coherent implementation.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-002B2.md",
+        ".agent/plans/premium-enterprise-mvp.md",
+        ".gauntlet/state.md",
+        ".agent/instruction-scope.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Implementation readiness grants no behavioral, callback, browser, homologation or release PASS; fresh PostgreSQL/RLS, restart, API/worker regression, coverage, security and independent review evidence remains mandatory."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-002B2.md",
+    ".agent/tasks/CVG-002B.md",
+    ".agent/gates/verified-CVG-002B1.json",
+    ".agent/plans/premium-enterprise-mvp.md",
+    "packages/modules/event-bus/src/event-bus.service.ts",
+    "packages/shared/database/src/tenant-unit-of-work.ts",
+    "tests/integration/database/outbox-delivery.test.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [],
+  "conditions": [],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner)",
+    "scope": "CVG-002B2a durable synthetic PIX attempt and dispatcher core",
+    "decision": "Authorize reversible repository implementation, disposable PostgreSQL and an explicitly non-production synthetic provider for the bounded durable PIX attempt/dispatcher core; callback, real providers, credentials, external mutation, production and release remain excluded.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-002B2A-IR-001",
+    "expires_or_revalidates": "Revalidate before callback work, worker settlement, real provider/sandbox/credentials, external mutation, production, migration deployment or release acceptance."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "next_action": "Write and execute the first rejecting PostgreSQL test for RequestEncounterPixPayment before implementing migration or command code.",
+  "revalidation_triggers": [
+    "B2a scope, state machine, money model or transaction/network boundary changes",
+    "A test disproves stable provider idempotency, lease fencing, tenant isolation or crash recovery",
+    "Callback, settlement worker, real provider, credentials, external mutation, production or release enters scope"
+  ],
+  "supersedes": null
+}

@@ -1,3 +1,7 @@
+import { createHash } from 'node:crypto';
+import { hostname } from 'node:os';
+import type { Pool } from 'pg';
+
 import {
   createDatabaseClient,
   checkDatabaseHealth,
@@ -13,7 +17,10 @@ import { DatabaseOutboxRepository } from '@cvg-his-v2/module-event-bus';
 import { DatabaseReportRepository } from '@cvg-his-v2/module-reports';
 import { CashService, DatabaseCashRepository } from '@cvg-his-v2/module-cash';
 import { CommissionsService, DatabaseCommissionRepository } from '@cvg-his-v2/module-commissions';
-import { CounterSalesService, DatabaseCounterSalesRepository } from '@cvg-his-v2/module-counter-sales';
+import {
+  CounterSalesService,
+  DatabaseCounterSalesRepository
+} from '@cvg-his-v2/module-counter-sales';
 import {
   DatabaseEncounterFinancialRepository,
   DatabaseFinancialPayablesRepository,
@@ -24,11 +31,42 @@ import type { OutboxRepository } from '@cvg-his-v2/module-event-bus';
 import type { ReportRepository } from '@cvg-his-v2/module-reports';
 import { createLogger } from '@cvg-his-v2/shared-logging';
 import type { AdministrativeExecutiveReportSources } from './runner.js';
+import {
+  PixPaymentDispatchConfigurationError,
+  PixPaymentDispatcher
+} from './jobs/pix-payment-dispatcher.js';
+import { DatabasePixPaymentDispatchRepository } from './pix-payment-dispatch-repository.js';
+import { LocalPixPaymentDispatchProvider } from './jobs/local-pix-payment-dispatch-provider.js';
 
 const logger = createLogger('worker-bootstrap');
 
 export interface WorkerBootstrapOptions {
   readonly databaseUrl?: string;
+  readonly environment?: string;
+  readonly allowSyntheticPixProvider?: boolean;
+  readonly pixDispatcherWorkerId?: string;
+}
+
+export const PIX_PAYMENT_DISPATCH_DEFAULTS = Object.freeze({
+  leaseMs: 60_000,
+  retryBaseMs: 1_000,
+  providerTimeoutMs: 15_000
+});
+
+export interface SyntheticPixPaymentDispatchRuntimeOptions {
+  readonly allowSyntheticProviders: boolean;
+  readonly environment?: string;
+  readonly pool: Pool;
+  readonly workerId?: string;
+}
+
+export interface WorkerPixPaymentDispatchRuntime {
+  readonly dispatcher: PixPaymentDispatcher;
+  readonly providerKey: 'local-pix';
+  readonly workerId: string;
+  readonly leaseMs: number;
+  readonly retryBaseMs: number;
+  readonly providerTimeoutMs: number;
 }
 
 export interface WorkerBootstrapResult {
@@ -41,6 +79,78 @@ export interface WorkerBootstrapResult {
   readonly unitOfWork?: TenantUnitOfWork;
   readonly reportRepository?: ReportRepository;
   readonly reportSources?: AdministrativeExecutiveReportSources;
+  readonly pixPaymentDispatch?: WorkerPixPaymentDispatchRuntime;
+}
+
+function normalizedEnvironment(environment?: string): string {
+  const normalized = (environment ?? process.env.NODE_ENV ?? 'production').trim().toLowerCase();
+  if (!normalized || normalized.includes('\0') || Buffer.byteLength(normalized, 'utf8') > 32) {
+    throw new Error('PIX dispatcher environment is invalid');
+  }
+  return normalized;
+}
+
+function assertSyntheticEnvironment(environment?: string): string {
+  const normalized = normalizedEnvironment(environment);
+  const processEnvironment = process.env.NODE_ENV
+    ? normalizedEnvironment(process.env.NODE_ENV)
+    : normalized;
+  if (
+    normalized === 'production' ||
+    normalized === 'prod' ||
+    processEnvironment === 'production' ||
+    processEnvironment === 'prod'
+  ) {
+    throw new PixPaymentDispatchConfigurationError(
+      'SYNTHETIC_PIX_PROVIDER_DISABLED',
+      'Synthetic PIX providers require an explicit non-production environment'
+    );
+  }
+  return normalized;
+}
+
+function resolvePixDispatcherWorkerId(workerId?: string): string {
+  if (workerId !== undefined) {
+    if (
+      workerId !== workerId.trim() ||
+      !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/.test(workerId) ||
+      Buffer.byteLength(workerId, 'utf8') > 160
+    ) {
+      throw new Error('PIX dispatcher worker id is invalid');
+    }
+    return workerId;
+  }
+
+  const hostFingerprint = createHash('sha256')
+    .update(hostname(), 'utf8')
+    .digest('hex')
+    .slice(0, 16);
+  return `pix-dispatch-${hostFingerprint}-${process.pid}`;
+}
+
+export function createSyntheticPixPaymentDispatchRuntime(
+  options: SyntheticPixPaymentDispatchRuntimeOptions
+): WorkerPixPaymentDispatchRuntime | undefined {
+  if (options.allowSyntheticProviders !== true) return undefined;
+  const environment = assertSyntheticEnvironment(options.environment);
+  const workerId = resolvePixDispatcherWorkerId(options.workerId);
+  const provider = new LocalPixPaymentDispatchProvider();
+  const dispatcher = new PixPaymentDispatcher(
+    new DatabasePixPaymentDispatchRepository(options.pool),
+    provider,
+    {
+      workerId,
+      ...PIX_PAYMENT_DISPATCH_DEFAULTS,
+      allowSyntheticProviders: true,
+      environment
+    }
+  );
+  return Object.freeze({
+    dispatcher,
+    providerKey: provider.key,
+    workerId,
+    ...PIX_PAYMENT_DISPATCH_DEFAULTS
+  });
 }
 
 async function loadPersistedAccountIds(): Promise<readonly string[]> {
@@ -59,6 +169,9 @@ async function loadPersistedAccountIds(): Promise<readonly string[]> {
 export async function bootstrapWorkerServices(
   options: WorkerBootstrapOptions = {}
 ): Promise<WorkerBootstrapResult> {
+  if (options.allowSyntheticPixProvider === true) {
+    assertSyntheticEnvironment(options.environment);
+  }
   if (!options.databaseUrl) {
     return {
       databaseHealthy: false,
@@ -144,7 +257,13 @@ export async function bootstrapWorkerServices(
       outboxRepository: new DatabaseOutboxRepository(),
       unitOfWork: deliveryGuaranteesReady ? createTenantUnitOfWork(getPool()) : undefined,
       reportRepository: new DatabaseReportRepository(),
-      reportSources: createDatabaseReportSources()
+      reportSources: createDatabaseReportSources(),
+      pixPaymentDispatch: createSyntheticPixPaymentDispatchRuntime({
+        allowSyntheticProviders: options.allowSyntheticPixProvider === true,
+        environment: options.environment,
+        pool: getPool(),
+        workerId: options.pixDispatcherWorkerId
+      })
     };
   } catch (error) {
     if (process.env.NODE_ENV === 'production' || process.env.DATABASE_REQUIRE_RLS_ROLE === '1') {

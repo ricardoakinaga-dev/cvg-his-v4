@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+  foreignKey,
   index,
   numeric,
   pgTable,
@@ -11,6 +12,7 @@ import {
 } from 'drizzle-orm/pg-core';
 
 import { accounts } from './accounts.js';
+import { encounterPaymentAttempts } from './encounter_payment_attempts.js';
 
 export const pixTransactions = pgTable(
   'pix_transactions',
@@ -21,6 +23,7 @@ export const pixTransactions = pgTable(
       .notNull()
       .references(() => accounts.id, { onDelete: 'cascade' }),
     billingRecordId: varchar('billing_record_id', { length: 255 }),
+    paymentAttemptId: uuid('payment_attempt_id'),
     amount: numeric('amount', { precision: 12, scale: 2 }).notNull(),
     currency: varchar('currency', { length: 3 }).notNull().default('BRL'),
     description: varchar('description', { length: 255 }).notNull(),
@@ -56,6 +59,16 @@ export const pixTransactions = pgTable(
     accountProviderEventUnique: uniqueIndex('uidx_pix_transactions_account_provider_event')
       .on(table.accountId, table.provider, table.providerWebhookEventId)
       .where(sql`${table.providerWebhookEventId} IS NOT NULL`),
+    accountPaymentAttemptUnique: uniqueIndex(
+      'uidx_pix_transactions_account_payment_attempt'
+    )
+      .on(table.accountId, table.paymentAttemptId)
+      .where(sql`${table.paymentAttemptId} IS NOT NULL`),
+    accountPaymentAttemptFk: foreignKey({
+      name: 'pix_transactions_account_payment_attempt_fk',
+      columns: [table.accountId, table.paymentAttemptId],
+      foreignColumns: [encounterPaymentAttempts.accountId, encounterPaymentAttempts.id]
+    }).onDelete('restrict'),
     providerTransactionIdx: index('idx_pix_transactions_provider_tx').on(
       table.provider,
       table.providerTransactionId

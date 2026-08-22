@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { URL } from 'node:url';
 
@@ -106,6 +107,13 @@ import { handleAdministrativeReportsRoutes } from './routes/administrative-repor
 import { handleDischargesRoutes } from './routes/discharges-routes.js';
 import { handleBillingRoutes } from './routes/billing-routes.js';
 import { EncounterCashReceiptCommand } from './commands/encounter-cash-receipt.js';
+import { RequestEncounterPixPaymentCommand } from './commands/request-encounter-pix-payment.js';
+import { assertEncounterHasNoActivePixAttempt } from './encounter-pix-payment-attempt-repository.js';
+import {
+  applyPixPaymentAttemptRateLimit,
+  handlePixPaymentAttemptRoutes,
+  requirePixPaymentAttemptIdempotencyKey
+} from './routes/pix-payment-attempt-routes.js';
 import { handleExpensesCatalogRoutes } from './routes/expenses-catalog-routes.js';
 import { handlePrescriptionRoutes } from './routes/prescription-routes.js';
 import { handlePrescriptionExecutionsRoutes } from './routes/prescription-executions-routes.js';
@@ -261,6 +269,7 @@ export interface ApiServerOptions {
   readonly authRateLimitMaxRequests?: number;
   readonly authRateLimitWindowMs?: number;
   readonly authRateLimiter?: Pick<ReturnType<typeof createAuthRateLimiter>, 'check'>;
+  readonly pixPaymentAttemptRateLimiter?: Pick<ReturnType<typeof createAuthRateLimiter>, 'check'>;
   readonly trustedProxyCidrs?: readonly string[];
   readonly enableMfa?: boolean;
   readonly mfaEncryptionKey?: string;
@@ -354,6 +363,10 @@ function isProductionLikeEnvironment(environment: string): boolean {
     environment === 'prod' ||
     environment === 'stage'
   );
+}
+
+function isLocalDevelopmentOrTestEnvironment(environment: string): boolean {
+  return environment === 'development' || environment === 'dev' || environment === 'test';
 }
 
 export function assertProductionProviderReadiness(
@@ -3504,6 +3517,18 @@ function shouldUseTenantCommand(pathname: string, method: string | undefined): b
   return true;
 }
 
+function isPixPaymentAttemptCreate(pathname: string, method: string | undefined): boolean {
+  return method === 'POST' && /^\/encounters\/[^/]+\/payments\/pix-attempts$/.test(pathname);
+}
+
+function derivePixPaymentAttemptLedgerKey(requestKey: string): string {
+  const digest = createHash('sha256')
+    .update('cvg:pix-attempt-ledger:v1\0', 'utf8')
+    .update(requestKey, 'utf8')
+    .digest('hex');
+  return `pix-attempt-sha256:${digest}`;
+}
+
 async function readTenantCommandPayload(request: IncomingMessage, url: URL): Promise<JsonValue> {
   const body = await readJsonBodyOrEmpty(
     request,
@@ -3617,6 +3642,14 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
   const encounterCashReceiptCommand = encounterCashReceiptRepository
     ? new EncounterCashReceiptCommand(encounterCashReceiptRepository)
     : undefined;
+  const encounterPixPaymentAttemptRepository = options.repositories?.encounterPixPaymentAttempt;
+  const encounterPixPaymentAttemptCommand = encounterPixPaymentAttemptRepository
+    ? new RequestEncounterPixPaymentCommand(encounterPixPaymentAttemptRepository, {
+        allowSyntheticProviders:
+          options.pixMockMode === true &&
+          isLocalDevelopmentOrTestEnvironment(options.environment)
+      })
+    : undefined;
   // Local providers are deliberately limited to development/test environments.
   const hasPagarmeCredentials = Boolean(options.pagarmeApiKey && options.pagarmePixKey);
   assertProductionProviderReadiness(options);
@@ -3701,6 +3734,16 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
     createAuthRateLimiter(logger, {
       authRateLimitWindowMs: options.authRateLimitWindowMs,
       authRateLimitMaxRequests: options.authRateLimitMaxRequests,
+      redisUrl: options.redisUrl,
+      runtimeDistributedStateEnabled: effectiveRuntimeDistributedStateEnabled,
+      requireDistributed: ['production', 'prod', 'staging', 'stage'].includes(options.environment)
+    });
+
+  const pixPaymentAttemptRateLimiter =
+    options.pixPaymentAttemptRateLimiter ??
+    createAuthRateLimiter(logger, {
+      authRateLimitWindowMs: 60_000,
+      authRateLimitMaxRequests: 120,
       redisUrl: options.redisUrl,
       runtimeDistributedStateEnabled: effectiveRuntimeDistributedStateEnabled,
       requireDistributed: ['production', 'prod', 'staging', 'stage'].includes(options.environment)
@@ -5341,6 +5384,13 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                 encounterId
               );
             }
+            if (encounterPixPaymentAttemptRepository) {
+              await assertEncounterHasNoActivePixAttempt(
+                encounterPixPaymentAttemptRepository,
+                principal.user.accountId,
+                encounterId
+              );
+            }
             const encounter = encounters.reopenEncounter(
               encounterId as never,
               principal.user.id,
@@ -5365,15 +5415,29 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           }
 
           if (
-            encounterCashReceiptCommand
-            && encounterCashReceiptRepository
-            && await handleEncounterCashReceiptRoutes(pathname, request, response, {
+            encounterPixPaymentAttemptCommand &&
+            encounterPixPaymentAttemptRepository &&
+            (await handlePixPaymentAttemptRoutes(pathname, request, response, {
+              command: encounterPixPaymentAttemptCommand,
+              repository: encounterPixPaymentAttemptRepository,
+              providerKey: 'local-pix',
+              rateLimiter: pixPaymentAttemptRateLimiter,
+              requirePrincipal
+            }))
+          ) {
+            return;
+          }
+
+          if (
+            encounterCashReceiptCommand &&
+            encounterCashReceiptRepository &&
+            (await handleEncounterCashReceiptRoutes(pathname, request, response, {
               command: encounterCashReceiptCommand,
               repository: encounterCashReceiptRepository,
               audit,
               correlationId,
               requirePrincipal
-            })
+            }))
           ) {
             return;
           }
@@ -7210,15 +7274,44 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           };
 
           if (shouldUseTenantCommand(pathname, request.method) && tenantCtx.accountId) {
-            const payload = await readTenantCommandPayload(request, url);
+            const pixAttemptPrincipal = isPixPaymentAttemptCreate(pathname, request.method)
+              ? requirePrincipal(request, 'billing.manage')
+              : undefined;
+            if (
+              pixAttemptPrincipal &&
+              (await applyPixPaymentAttemptRateLimit(
+                response,
+                pixPaymentAttemptRateLimiter,
+                pixAttemptPrincipal,
+                'POST /encounters/:id/payments/pix-attempts'
+              ))
+            ) {
+              return;
+            }
+            const pixAttemptRequestKey = pixAttemptPrincipal
+              ? requirePixPaymentAttemptIdempotencyKey(request)
+              : undefined;
+            const requestPayload = await readTenantCommandPayload(request, url);
+            const payload: JsonValue = pixAttemptPrincipal
+              ? {
+                  request: requestPayload,
+                  authenticatedActorUserId: pixAttemptPrincipal.user.id
+                }
+              : requestPayload;
             const realResponse = response;
             const buffered = createBufferedResponse(realResponse);
             response = buffered.response;
             try {
               const execution = await runTenantCommand({
                 request,
+                ...(pixAttemptRequestKey
+                  ? { idempotencyKey: derivePixPaymentAttemptLedgerKey(pixAttemptRequestKey) }
+                  : {}),
                 accountId: tenantCtx.accountId,
-                actorUserId: tenantCtx.userId ?? `api-key:${tenantCtx.accountId}`,
+                actorUserId:
+                  pixAttemptPrincipal?.user.id ??
+                  tenantCtx.userId ??
+                  `api-key:${tenantCtx.accountId}`,
                 correlationId,
                 operation: `${request.method ?? 'UNKNOWN'} ${pathname}`,
                 payload,

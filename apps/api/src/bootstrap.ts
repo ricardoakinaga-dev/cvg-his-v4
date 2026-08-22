@@ -169,6 +169,7 @@ import type { RuntimeRepositories } from './runtime.js';
 import type { PersistenceMode } from './app-state.js';
 import { DatabasePixTransactionRepository } from './pix-transaction-repository.js';
 import { DatabaseEncounterCashReceiptRepository } from './encounter-cash-receipt-repository.js';
+import { DatabaseEncounterPixPaymentAttemptRepository } from './encounter-pix-payment-attempt-repository.js';
 import { DatabasePrescriptionRepository } from './repositories/database-prescription.repository.js';
 
 export interface BootstrapOptions {
@@ -386,7 +387,8 @@ export const productionDatabaseRepositoryKeys = [
   'financialPayables',
   'ledger',
   'pixTransaction',
-  'encounterCashReceipt'
+  'encounterCashReceipt',
+  'encounterPixPaymentAttempt'
 ] as const satisfies readonly (keyof RuntimeRepositories)[];
 
 export function isProductionLikeEnvironment(
@@ -1119,6 +1121,9 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
       const outboxTablesReady = await databaseTableExists('outbox_events');
       const pixTablesReady = await databaseTableExists('pix_transactions');
       const encounterCashReceiptsReady = await databaseTableExists('encounter_cash_receipts');
+      const encounterPixPaymentAttemptsReady = await databaseTableExists(
+        'encounter_payment_attempts'
+      );
       const laboratoryResultImportsReady = await databaseTableExists('laboratory_result_imports');
 
       results.repositories = {
@@ -1219,6 +1224,9 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
         pixTransaction: pixTablesReady ? new DatabasePixTransactionRepository() : undefined,
         encounterCashReceipt: encounterCashReceiptsReady
           ? new DatabaseEncounterCashReceiptRepository()
+          : undefined,
+        encounterPixPaymentAttempt: encounterPixPaymentAttemptsReady
+          ? new DatabaseEncounterPixPaymentAttemptRepository()
           : undefined
       };
       if (productionLike) {

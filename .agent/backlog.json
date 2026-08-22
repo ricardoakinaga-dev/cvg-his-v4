@@ -32,12 +32,34 @@
       "evidence_refs": [
         ".agent/tasks/CVG-002A.md",
         ".agent/tasks/CVG-002B.md",
+        ".agent/tasks/CVG-002B2.md",
         ".agent/gates/implementation-ready-CVG-002B1.json",
         ".agent/gates/implementation-ready-CVG-002B1-v2.json",
+        ".agent/gates/implementation-ready-CVG-002B2a.json",
+        ".agent/gates/verified-CVG-002B2a.json",
         ".agent/verification.jsonl",
         ".gauntlet/state.md"
       ],
-      "next_action": "Freeze a CVG-002B2 task contract and IMPLEMENTATION_READY gate for signed callback, durable dispatch/worker restart and coherent SPA PIX integration; do not extend the CVG-002B1 PASS beyond its direct DB core."
+      "next_action": "Freeze a CVG-002B2b implementation-ready gate for signed inbound receipts and durable B1 settlement consumption; SPA remains separately gated B2c work."
+    },
+    {
+      "id": "CVG-002B2A",
+      "title": "Persist and dispatch a durable synthetic PIX attempt",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "COMPLETED",
+      "origin": "CVG-002B2 decomposition after worker/outbox, security, SPA/E2E, saga and TDD reviews",
+      "dependencies": [],
+      "owner": "B2a root integrator",
+      "acceptance_summary": "A tenant-scoped request persists exact-cents pending_dispatch state before any provider call; a dedicated lease/fenced dispatcher calls only an explicitly non-production idempotent provider outside UoW and survives concurrency, crash and restart without duplicate local or external intent.",
+      "evidence_refs": [
+        ".agent/tasks/CVG-002B2.md",
+        ".agent/gates/implementation-ready-CVG-002B2a.json",
+        ".agent/gates/verified-CVG-002B2a.json",
+        ".agent/gates/verified-CVG-002B1.json",
+        ".agent/verification.jsonl"
+      ],
+      "next_action": "No further B2a implementation is authorized; revalidate on trigger and advance only through the parent B2b gate."
     },
     {
       "id": "CVG-003",

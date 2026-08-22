@@ -12,3 +12,4 @@ export * from './stock-alert-job.js';
 export * from './pix-payment-job.js';
 export * from './commission-job.js';
 export * from './scheduled-report-job.js';
+export * from './local-pix-payment-dispatch-provider.js';
