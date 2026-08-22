@@ -21,8 +21,8 @@
       "limitations": "Only the explicitly non-production synthetic outbound boundary is verified; signed inbound, B1 settlement consumption, SPA and real providers are excluded."
     },
     {
-      "id": "V-002-SECURITY-REGRESSION",
-      "description": "Tenant authority, RLS, composed foreign keys, rate limits, idempotency, timeout ambiguity, synthetic-provider production guards and regressions are current and passing.",
+      "id": "V-002-REGRESSION-RISK",
+      "description": "Tenant authority, RLS, composed foreign keys, rate limits, idempotency, timeout ambiguity, synthetic-provider production guards and the credible regression surface are current and passing.",
       "required": true,
       "status": "PASS",
       "evidence_refs": [
@@ -35,8 +35,8 @@
       "limitations": "This local verification is not provider homologation, production migration, deployment or release evidence."
     },
     {
-      "id": "V-003-INDEPENDENT-CRITIQUE",
-      "description": "Independent security and final T4 reviews found no remaining CRITICAL, HIGH or MEDIUM issue in the bounded B2a checkpoint.",
+      "id": "V-003-LIMITATIONS-AUTHORITY",
+      "description": "The bounded limitations, independent T4 critique, residual risk and excluded production/provider authority are explicit and supported by current evidence.",
       "required": true,
       "status": "PASS",
       "evidence_refs": [

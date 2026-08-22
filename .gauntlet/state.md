@@ -48,7 +48,7 @@ Deliver a behaviorally proven Premium Enterprise veterinary ERP MVP with secure 
 
 ## Rounds
 
-Round 0 completed discovery and froze Quality Bar v1. Rounds 1-3 delivered local recoverability and credential-bound, database-authoritative MFA login/enrollment state. Round 4 delivered `CVG-002A`: one tenant-safe PostgreSQL transaction for encounter cash receipt, append-only proof, idempotent recovery, legacy-bypass closure and concurrency guards against cash close/reopen/delete. Round 5 delivered `CVG-002B1`: provider-scoped inbox/idempotency and direct confirmed-PIX settlement with exact cents, tenant/RLS isolation, 13 per-write failpoint rollbacks, concurrency, canonical financial links and no physical cash movement. `QB-AUTH-01`, `QB-CORE-01` and `QB-REL-01` remain PARTIAL because their broader cluster, product-journey and release criteria are not yet fully certified.
+Round 0 completed discovery and froze Quality Bar v1. Rounds 1-3 delivered local recoverability and credential-bound, database-authoritative MFA login/enrollment state. Round 4 delivered `CVG-002A`: one tenant-safe PostgreSQL transaction for encounter cash receipt, append-only proof, idempotent recovery, legacy-bypass closure and concurrency guards against cash close/reopen/delete. Round 5 delivered `CVG-002B1`: provider-scoped inbox/idempotency and direct confirmed-PIX settlement with exact cents, tenant/RLS isolation, 13 per-write failpoint rollbacks, concurrency, canonical financial links and no physical cash movement. Round 6 delivered `CVG-002B2a`: durable exact-cents outbound request, fenced synthetic dispatcher, opt-in worker and internal bearer polling API. B2b architecture/security/TDD research is consolidated but remains `TODO` and ungated. `QB-AUTH-01`, `QB-CORE-01` and `QB-REL-01` remain PARTIAL because their broader cluster, product-journey and release criteria are not yet fully certified.
 
 ## Open Gaps
 
@@ -63,5 +63,5 @@ Round 0 completed discovery and froze Quality Bar v1. Rounds 1-3 delivered local
 
 - State: ACTIVE
 - Reason: Required P0 criteria fail or have not run; target-environment work is externally blocked but local safe work remains.
-- Last integrated verification: `CVG-002B1` PostgreSQL 14/14, API 306/306, coverage 1.520/1.520 at 84,11% lines/80,14% branches, typecheck/lint, dependency/secret scans and independent review PASS; earlier SPA 1.001/1.001 evidence remains current.
-- Next largest locally actionable gap: `CVG-002B2` signed callback, durable dispatch/worker registration, restart reconciliation and coherent SPA PIX flow.
+- Last integrated verification: `CVG-002B2a` PostgreSQL 33/33, API 317/317 and worker 40/40 passed again after its checkpoint; its VERIFIED gate records coverage 1.646/1.646 at 83% lines/80,3% branches plus typecheck/lint, OpenAPI, RLS, dependency/secret scans and independent review PASS. Earlier SPA 1.001/1.001 evidence remains bounded and current.
+- Next largest locally actionable gap: independently review and gate `CVG-002B2b`, then implement the signed synthetic callback, immutable receipt, dedicated settlement queue/service principal and atomic B1 worker; coherent SPA remains separate `B2c` work.

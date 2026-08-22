@@ -47,7 +47,7 @@
       "title": "Persist and dispatch a durable synthetic PIX attempt",
       "stage": "BUILD",
       "priority": "P0",
-      "status": "COMPLETED",
+      "status": "DONE",
       "origin": "CVG-002B2 decomposition after worker/outbox, security, SPA/E2E, saga and TDD reviews",
       "dependencies": [],
       "owner": "B2a root integrator",
@@ -56,10 +56,31 @@
         ".agent/tasks/CVG-002B2.md",
         ".agent/gates/implementation-ready-CVG-002B2a.json",
         ".agent/gates/verified-CVG-002B2a.json",
+        ".agent/verification.jsonl#VFY-CVG-002B2A-RECOVERY-001",
         ".agent/gates/verified-CVG-002B1.json",
         ".agent/verification.jsonl"
       ],
       "next_action": "No further B2a implementation is authorized; revalidate on trigger and advance only through the parent B2b gate."
+    },
+    {
+      "id": "CVG-002B2B",
+      "title": "Ingest signed synthetic PIX receipts and apply them durably through B1",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "TODO",
+      "origin": "CVG-002B2 decomposition plus independent architecture, security, official-research and TDD reviews",
+      "dependencies": [
+        "CVG-002B2A"
+      ],
+      "owner": "B2b root integrator",
+      "acceptance_summary": "A raw-body HMAC-authenticated synthetic callback durably persists an immutable tenant receipt and dedicated delivery before ACK; a fenced worker resolves a non-interactive service principal and invokes only the shared B1 core, which owns billing-first staging plus settlement before the same UoW completes delivery under replay, concurrency, restart and RLS without legacy settlement or secret leakage.",
+      "evidence_refs": [
+        ".agent/tasks/CVG-002B2B.md",
+        "docs/2026-08-22-handoff-cvg-002b2.md",
+        ".agent/gates/verified-CVG-002B2a.json",
+        ".agent/gates/verified-CVG-002B1.json"
+      ],
+      "next_action": "Obtain a fresh independent review of the pre-gate contract, then record HIGH-risk bounded authority and an IMPLEMENTATION_READY gate before writing RED tests."
     },
     {
       "id": "CVG-003",

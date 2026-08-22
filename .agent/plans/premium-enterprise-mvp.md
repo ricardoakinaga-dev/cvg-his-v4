@@ -14,7 +14,8 @@ Transform the current broad, partially implemented veterinary ERP into a behavio
 - [x] (2026-08-22T14:42:00-03:00) Executed and independently approved the `CVG-002B1` RED/GREEN loop for atomic confirmed-PIX settlement; the bounded DB core is verified while HTTP/provider/worker/SPA work remains deferred to `CVG-002B2`.
 - [x] (2026-08-22T14:55:20-03:00) Froze `CVG-002B2` into non-overlapping `B2a` durable outbound, `B2b` signed inbound/worker/B1 and `B2c` SPA/E2E slices after five independent read-only reviews.
 - [x] (2026-08-22T18:06:00-03:00) Executed and independently approved `CVG-002B2a`: durable exact-cents request, fenced synthetic dispatcher, opt-in worker and bearer polling API; signed callback, settlement worker and browser integration remain excluded.
-- [ ] Execute separately gated `CVG-002B2b/B2c` for signed callback, durable settlement worker and coherent SPA/restart E2E.
+- [x] (2026-08-22T18:50:00-03:00) Consolidated B2b code mapping, official-source research and independent architecture/security/TDD reviews into `.agent/tasks/CVG-002B2B.md` and a session handoff; no B2b implementation or gate PASS is claimed.
+- [ ] Obtain an independent final review and `IMPLEMENTATION_READY` gate for `CVG-002B2b`, then execute its RED/GREEN loop; gate `B2c` separately for coherent SPA/restart E2E.
 - [ ] Complete `CVG-001` through TDD, integrated runtime proof and independent critique.
 - [ ] Execute the remaining backlog in dependency order, preserving fresh evidence and explicit human/external boundaries.
 
