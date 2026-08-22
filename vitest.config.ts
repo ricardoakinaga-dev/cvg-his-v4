@@ -63,6 +63,7 @@ export default defineConfig({
         'apps/api/src/payment-gateway.ts',
         'apps/api/src/runtime-repositories.ts',
         'apps/api/src/pix-transaction-repository.ts',
+        'apps/api/src/encounter-cash-receipt-repository.ts',
         'apps/api/src/consumers/**',
         'apps/api/src/helpers/auth-helpers.ts',
         'apps/api/src/helpers/common.ts',

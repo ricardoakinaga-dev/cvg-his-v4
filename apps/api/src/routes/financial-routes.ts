@@ -44,6 +44,15 @@ function json(response: ServerResponse, statusCode: number, payload: unknown): t
   return true;
 }
 
+function manualSettlementDisabledResponse(correlationId: string) {
+  return {
+    code: 'MANUAL_SETTLEMENT_DISABLED',
+    message: 'Manual settlement is disabled. Record the receipt through the cash-receipts endpoint.',
+    details: { receiptPath: '/encounters/:id/cash-receipts' },
+    correlationId
+  } as const;
+}
+
 function normalizePage(value: string | null, fallback: number): number {
   const parsed = Number(value ?? String(fallback));
   return Number.isFinite(parsed) ? parsed : fallback;
@@ -861,15 +870,18 @@ export async function handleFinancialRoutes(
   ) {
     const principal = requirePrincipal(request, 'billing.manage');
     const encounterId = requireNonEmptyString(pathname.split('/')[2], 'encounterId');
-    const payload = (await readJsonBody(request)) as Record<string, unknown>;
+    const rawPayload = await readJsonBody(request);
+    const payload =
+      typeof rawPayload === 'object' && rawPayload !== null && !Array.isArray(rawPayload)
+        ? rawPayload as Record<string, unknown>
+        : {};
+    if (Object.prototype.hasOwnProperty.call(payload, 'paidAmount')) {
+      return json(response, 409, manualSettlementDisabledResponse(correlationId));
+    }
     const summary = await encounterFinancial.closeEncounterFinancial(
       encounterId as never,
       principal.user.id as never,
       {
-        paidAmount:
-          typeof payload.paidAmount === 'number' && Number.isFinite(payload.paidAmount)
-            ? payload.paidAmount
-            : undefined,
         notes: typeof payload.notes === 'string' ? payload.notes : null,
         installments: Array.isArray(payload.installments)
           ? payload.installments
@@ -1036,28 +1048,9 @@ export async function handleFinancialRoutes(
     && pathname.endsWith('/settle')
     && request.method === 'POST'
   ) {
-    const principal = requirePrincipal(request, 'billing.manage');
-    const receivableId = requireNonEmptyString(pathname.split('/')[3], 'receivableId');
-    const payload = (await readJsonBody(request)) as Record<string, unknown>;
-    const settled = await encounterFinancial.settleReceivable(receivableId, {
-      amountPaid: Number(payload.amountPaid),
-      notes: typeof payload.notes === 'string' ? payload.notes : null,
-      paidByUserId: principal.user.id as never
-    });
-
-    appendAudit(audit, {
-      actorId: principal.user.id,
-      accountId: principal.user.accountId,
-      module: 'billing',
-      action: 'settle_receivable',
-      entityType: 'encounter-receivable',
-      entityId: receivableId,
-      payloadSummary: `Encounter receivable ${receivableId} settled`,
-      riskLevel: 'medium',
-      correlationId
-    });
-
-    return json(response, 200, settled);
+    requirePrincipal(request, 'billing.manage');
+    requireNonEmptyString(pathname.split('/')[3], 'receivableId');
+    return json(response, 409, manualSettlementDisabledResponse(correlationId));
   }
 
   return false;

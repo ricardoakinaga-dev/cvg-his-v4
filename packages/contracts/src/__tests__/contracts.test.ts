@@ -493,7 +493,7 @@ describe('API Contract Integration', () => {
   });
 
   it('should have complete endpoint metadata', () => {
-    expect(contractEndpoints.length).toBe(56);
+    expect(contractEndpoints.length).toBe(60);
 
     const availabilityEndpoints = contractEndpoints.filter(e => e.domain === 'availability');
     const typeConfigEndpoints = contractEndpoints.filter(e => e.domain === 'typeConfig');
@@ -519,7 +519,7 @@ describe('API Contract Integration', () => {
     expect(patientsEndpoints.length).toBe(5);
     expect(encountersEndpoints.length).toBe(5);
     expect(encounterBillingEndpoints.length).toBe(5);
-    expect(encounterFinancialEndpoints.length).toBe(2);
+    expect(encounterFinancialEndpoints.length).toBe(6);
     expect(productEndpoints.length).toBe(4);
     expect(serviceEndpoints.length).toBe(4);
   });

@@ -4,6 +4,7 @@ import type { Pool, PoolClient, QueryResult } from 'pg';
 
 import {
   createTenantUnitOfWork,
+  getTenantTransactionContext,
   hashIdempotencyPayload,
   runInTenantTransaction
 } from '@cvg-his-v2/shared-database';
@@ -83,6 +84,28 @@ function createPoolDouble(options?: {
 }
 
 describe('TenantUnitOfWork', () => {
+  it('exposes the active transaction context only while the command is executing', async () => {
+    const { pool } = createPoolDouble();
+    const unitOfWork = createTenantUnitOfWork(pool);
+
+    expect(getTenantTransactionContext()).toBeUndefined();
+    await unitOfWork.execute(
+      {
+        accountId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        actorUserId: '11111111-1111-1111-1111-111111111111',
+        correlationId: 'corr-context',
+        operation: 'test.context',
+        idempotencyKey: 'idem-context'
+      },
+      {},
+      async (transaction) => {
+        expect(getTenantTransactionContext()).toBe(transaction);
+        return { ok: true };
+      }
+    );
+    expect(getTenantTransactionContext()).toBeUndefined();
+  });
+
   it('starts one transaction and establishes tenant context before the command', async () => {
     const { pool, queries, release } = createPoolDouble();
     const unitOfWork = createTenantUnitOfWork(pool);

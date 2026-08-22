@@ -188,7 +188,6 @@
     >
       <DsInput id="newStatus" v-model="newStatus" type="select" label="Novo Status" required>
         <option value="open">Aberto</option>
-        <option value="settled">Quitado</option>
       </DsInput>
 
       <DsInput
@@ -260,7 +259,7 @@ const showStatusModal = ref(false);
 const addingItem = ref(false);
 const updatingStatus = ref(false);
 const addItemError = ref('');
-const newStatus = ref<BillingStatus>('open');
+const newStatus = ref<Exclude<BillingStatus, 'settled'>>('open');
 const adminNotes = ref('');
 
 const addItemForm = ref({
@@ -399,12 +398,22 @@ const headerNextSteps = computed<PageNextStep[]>(() => {
       }
     ];
   }
-  if (record.value.status === 'estimated' || record.value.status === 'open') {
+  if (record.value.status === 'estimated') {
     return [
       {
-        key: 'settle',
-        label: 'Fechar cobrança',
-        description: formatCurrency(record.value.subtotalAmount)
+        key: 'open-billing',
+        label: 'Abrir cobrança',
+        description: 'Confirma que os itens estão prontos para recebimento'
+      }
+    ];
+  }
+  if (record.value.status === 'open') {
+    return [
+      {
+        key: 'receive',
+        label: 'Registrar recebimento',
+        description: formatCurrency(record.value.subtotalAmount),
+        to: `/encounters/${encounterId}`
       }
     ];
   }
@@ -436,13 +445,20 @@ const headerPrimaryAction = computed<PageAction | null>(() => {
       onClick: handleCreateEstimate
     };
   }
-  if (record.value.status === 'estimated' || record.value.status === 'open') {
+  if (record.value.status === 'estimated') {
     return {
       key: 'status',
       label: 'Atualizar Status',
       onClick: () => {
         showStatusModal.value = true;
       }
+    };
+  }
+  if (record.value.status === 'open') {
+    return {
+      key: 'receive',
+      label: 'Registrar recebimento',
+      to: `/encounters/${encounterId}`
     };
   }
   return {

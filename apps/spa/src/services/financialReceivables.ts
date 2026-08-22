@@ -15,12 +15,5 @@ export const financialReceivablesService = {
     return apiRequest<FinancialReceivableListResponse>(
       query ? `/financial/receivables?${query}` : '/financial/receivables'
     );
-  },
-
-  async settle(receivableId: string, payload: { amountPaid: number; notes?: string | null }): Promise<unknown> {
-    return apiRequest(`/financial/receivables/${encodeURIComponent(receivableId)}/settle`, {
-      method: 'POST',
-      body: JSON.stringify(payload)
-    });
   }
 };

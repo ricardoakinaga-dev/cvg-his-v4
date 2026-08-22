@@ -145,6 +145,7 @@ export async function apiRequest<T = unknown>(
 ): Promise<T> {
   const { skipAuth, headers: customHeaders, ...restOptions } = options;
   const method = (restOptions.method ?? 'GET').toUpperCase();
+  const isMutation = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
 
   const url = path.startsWith('http') ? path : `${API_BASE}/api${path}`;
   const correlationId = generateCorrelationId();
@@ -153,6 +154,9 @@ export async function apiRequest<T = unknown>(
   headers.set('Content-Type', 'application/json');
   headers.set('X-Correlation-Id', correlationId);
   headers.set('X-Request-Id', correlationId);
+  if (isMutation && !headers.has('Idempotency-Key')) {
+    headers.set('Idempotency-Key', correlationId);
+  }
 
   if (!skipAuth) {
     const token = await getAccessToken();
@@ -198,13 +202,13 @@ export async function apiRequest<T = unknown>(
   }
 
   if (response.status === 204) {
-    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+    if (isMutation) {
       await invalidateClientCaches(path);
     }
     return undefined as T;
   }
 
-  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+  if (isMutation) {
     await invalidateClientCaches(path);
   }
 

@@ -1,8 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { ValidationError } from '@cvg-his-v2/shared-errors';
-import type { JsonValue } from '@cvg-his-v2/shared-database';
+import { AppError, ValidationError } from '@cvg-his-v2/shared-errors';
+import {
+  IdempotencyConflictError,
+  IdempotencyInProgressError,
+  type JsonValue
+} from '@cvg-his-v2/shared-database';
 
 import { createTenantCommandRunner } from '../helpers/tenant-command.js';
 
@@ -56,4 +60,63 @@ test('tenant command runner requires idempotency keys in production-like environ
     }),
     (error: unknown) => error instanceof ValidationError
   );
+});
+
+test('tenant command runner rejects oversized idempotency keys before database execution', async () => {
+  let executed = false;
+  const runner = createTenantCommandRunner({
+    environment: 'production',
+    unitOfWork: {
+      async execute() {
+        executed = true;
+        return { value: {}, replayed: false };
+      }
+    } as never
+  });
+
+  await assert.rejects(
+    () => runner({
+      request: request({ 'idempotency-key': 'x'.repeat(256) }),
+      accountId: '00000000-0000-0000-0000-000000000001',
+      actorUserId: '00000000-0000-0000-0000-000000000002',
+      correlationId: 'corr-oversized-idempotency',
+      operation: 'encounter.cash-receipt.create',
+      payload: {},
+      command: async () => 'never'
+    }),
+    (error: unknown) => error instanceof ValidationError
+  );
+  assert.equal(executed, false);
+});
+
+test('tenant command runner maps idempotency races to stable 409 application errors', async () => {
+  for (const [failure, expectedCode] of [
+    [new IdempotencyConflictError(), 'IDEMPOTENCY_CONFLICT'],
+    [new IdempotencyInProgressError(), 'IDEMPOTENCY_IN_PROGRESS']
+  ] as const) {
+    const runner = createTenantCommandRunner({
+      environment: 'production',
+      unitOfWork: {
+        execute: async () => {
+          throw failure;
+        }
+      } as never
+    });
+
+    await assert.rejects(
+      () => runner({
+        request: request({ 'idempotency-key': `request-${expectedCode}` }),
+        accountId: '00000000-0000-0000-0000-000000000001',
+        actorUserId: '00000000-0000-0000-0000-000000000002',
+        correlationId: 'corr-idempotency',
+        operation: 'encounter.cash-receipt.create',
+        payload: {},
+        command: async () => 'never'
+      }),
+      (error: unknown) =>
+        error instanceof AppError
+        && error.statusCode === 409
+        && error.code === expectedCode
+    );
+  }
 });

@@ -19,23 +19,65 @@ function createService() {
 }
 
 function createRepository(overrides?: Partial<BillingRepository>): BillingRepository {
+  const records = new Map<string, Parameters<BillingRepository['createRecord']>[0]>();
+  const items = new Map<string, Parameters<BillingRepository['createItem']>[0][]>();
   return {
-    async createRecord() {},
-    async updateRecord() {},
-    async findRecordById() {
-      return null;
+    async createRecord(record) {
+      records.set(record.id, record);
+      await overrides?.createRecord?.(record);
     },
-    async findRecordByEncounter() {
-      return null;
+    async updateRecord(record) {
+      records.set(record.id, record);
+      await overrides?.updateRecord?.(record);
     },
-    async findRecordsByAccountId() {
-      return [];
+    async findRecordById(accountId, id) {
+      if (overrides?.findRecordById) {
+        const record = await overrides.findRecordById(accountId, id);
+        if (record) records.set(record.id, record);
+        return record;
+      }
+      const record = records.get(id);
+      return record?.accountId === accountId ? record : null;
     },
-    async createItem() {},
-    async findItemsByRecord() {
-      return [];
+    async findRecordByEncounter(accountId, encounterId) {
+      if (overrides?.findRecordByEncounter) {
+        const record = await overrides.findRecordByEncounter(accountId, encounterId);
+        if (record) records.set(record.id, record);
+        return record;
+      }
+      return [...records.values()].find(
+        (record) => record.accountId === accountId && record.encounterId === encounterId
+      ) ?? null;
     },
-    ...overrides
+    async findRecordsByAccountId(accountId) {
+      if (overrides?.findRecordsByAccountId) {
+        const persistedRecords = await overrides.findRecordsByAccountId(accountId);
+        for (const record of persistedRecords) records.set(record.id, record);
+        return persistedRecords;
+      }
+      return [...records.values()].filter((record) => record.accountId === accountId);
+    },
+    async createItem(item) {
+      const nextItems = [item, ...(items.get(item.billingRecordId) ?? [])];
+      items.set(item.billingRecordId, nextItems);
+      const record = records.get(item.billingRecordId);
+      if (record) {
+        records.set(record.id, {
+          ...record,
+          subtotalAmount: nextItems.reduce((total, current) => total + current.totalAmount, 0),
+          updatedAt: item.createdAt
+        });
+      }
+      await overrides?.createItem?.(item);
+    },
+    async findItemsByRecord(accountId, recordId) {
+      if (overrides?.findItemsByRecord) {
+        const persistedItems = await overrides.findItemsByRecord(accountId, recordId);
+        items.set(recordId, [...persistedItems]);
+        return persistedItems;
+      }
+      return (items.get(recordId) ?? []).filter((item) => item.accountId === accountId);
+    },
   };
 }
 
@@ -379,6 +421,89 @@ test('BillingService hydrates records and items from repository', async () => {
   assert.equal(service.list().length, 1);
   assert.equal(service.getOrThrow('bill_repo_1' as never).status, 'open');
   assert.equal((await service.listItems('encounter_repo' as never)).length, 1);
+});
+
+test('BillingService refreshes cached records from the authoritative repository', async () => {
+  let persistedStatus: 'open' | 'settled' = 'open';
+  const persistedRecord = () => ({
+    id: 'bill_repo_authoritative' as never,
+    accountId: 'acc_test' as never,
+    encounterId: 'encounter_repo' as never,
+    patientId: 'patient_1' as never,
+    ownerId: 'owner_1' as never,
+    status: persistedStatus,
+    subtotalAmount: 90,
+    currency: 'BRL' as const,
+    createdAt: '2026-04-13T00:00:00.000Z',
+    updatedAt: '2026-04-13T00:00:00.000Z'
+  });
+  const repository = createRepository({
+    async findRecordsByAccountId() {
+      return [persistedRecord()];
+    },
+    async findRecordByEncounter() {
+      return persistedRecord();
+    }
+  });
+  const service = new BillingService(
+    {
+      getOrThrow(encounterId: string) {
+        return {
+          id: encounterId,
+          accountId: 'acc_test',
+          patientId: 'patient_1',
+          ownerId: 'owner_1'
+        };
+      }
+    } as never,
+    { repository }
+  );
+
+  await service.hydrateFromDatabase('acc_test' as never);
+  assert.equal((await service.findByEncounter('encounter_repo' as never))?.status, 'open');
+
+  persistedStatus = 'settled';
+
+  assert.equal((await service.findByEncounter('encounter_repo' as never))?.status, 'settled');
+  await assert.rejects(
+    () =>
+      service.addItem('finance_1' as never, {
+        encounterId: 'encounter_repo',
+        itemType: 'service',
+        description: 'Item tardio',
+        quantity: 1,
+        unitPriceAmount: 10
+      }),
+    ConflictError
+  );
+});
+
+test('BillingService lists repository state authoritatively for a tenant', async () => {
+  const repository = createRepository({
+    async findRecordsByAccountId(accountId) {
+      assert.equal(accountId, 'acc_test');
+      return [
+        {
+          id: 'bill_repo_list' as never,
+          accountId,
+          encounterId: 'encounter_repo' as never,
+          patientId: 'patient_1' as never,
+          ownerId: 'owner_1' as never,
+          status: 'settled',
+          subtotalAmount: 90,
+          currency: 'BRL',
+          createdAt: '2026-04-13T00:00:00.000Z',
+          updatedAt: '2026-04-13T00:00:00.000Z'
+        }
+      ];
+    }
+  });
+  const service = new BillingService({ getOrThrow() {} } as never, { repository });
+
+  const records = await service.listAuthoritative({ accountId: 'acc_test' });
+
+  assert.equal(records.length, 1);
+  assert.equal(records[0]?.status, 'settled');
 });
 
 test('BillingService reuses repository record and triggers callbacks only on real status changes', async () => {

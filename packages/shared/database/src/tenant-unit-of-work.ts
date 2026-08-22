@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHash, randomUUID } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 
@@ -52,6 +53,12 @@ export interface TenantTransactionContext {
   readonly audit: {
     append(input: TransactionalAuditInput): Promise<string>;
   };
+}
+
+const tenantTransactionStorage = new AsyncLocalStorage<TenantTransactionContext>();
+
+export function getTenantTransactionContext(): TenantTransactionContext | undefined {
+  return tenantTransactionStorage.getStore();
 }
 
 export interface TenantUnitOfWorkResult<T extends JsonValue> {
@@ -393,11 +400,15 @@ export function createTenantUnitOfWork(pool: Pool): TenantUnitOfWork {
         if (inserted.rowCount !== 1) throw new IdempotencyInProgressError();
 
         const activeScope = getDatabaseTransactionScope();
-        const value = await command(createTransactionContext(
+        const transaction = createTransactionContext(
           client,
           context,
           () => activeScope?.isActive() === true
-        ));
+        );
+        const value = await tenantTransactionStorage.run(
+          transaction,
+          () => command(transaction)
+        );
         const serialized = canonicalize(value);
         if (Buffer.byteLength(serialized, 'utf8') > MAX_RESPONSE_BYTES) {
           throw new Error('Idempotency response exceeds 256 KiB');

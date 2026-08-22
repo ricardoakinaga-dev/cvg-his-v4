@@ -4,7 +4,7 @@ import { test } from 'vitest';
 import { ConflictError, NotFoundError } from '@cvg-his-v2/shared-errors';
 import type { AccountId, UserId } from '@cvg-his-v2/shared-types';
 
-import { CashService } from './index.js';
+import { CashService, type CashMovementRecord } from './index.js';
 
 function createService() {
   return new CashService();
@@ -214,4 +214,61 @@ test('CashService closeRegister rejects if already closed', async () => {
     () => service.closeRegister(reg.id, USER_ID, { closingAmount: 100 }),
     ConflictError
   );
+});
+
+test('CashService uses the balance derived under the repository close lock', async () => {
+  const now = '2026-08-22T12:00:00.000Z';
+  const register = {
+    id: '00000000-0000-4000-8000-000000000001',
+    accountId: ACCOUNT_ID,
+    openedByUserId: USER_ID,
+    closedByUserId: null,
+    openingAmount: 100,
+    closingAmount: null,
+    expectedClosingAmount: null,
+    difference: null,
+    status: 'open' as const,
+    openedAt: now,
+    closedAt: null,
+    notes: null,
+    createdAt: now,
+    updatedAt: now
+  };
+  let closeCalls = 0;
+  const service = new CashService({
+    repository: {
+      async findRegistersByAccount() {
+        return [register];
+      },
+      async findMovementsByRegister() {
+        return [];
+      },
+      async closeRegisterWithMovement(
+        _accountId: AccountId,
+        _registerId: string,
+        _closingAmount: number,
+        _closedByUserId: UserId,
+        _closedAt: string,
+        _updatedAt: string,
+        movement: CashMovementRecord
+      ) {
+        closeCalls += 1;
+        return {
+          expectedClosingAmount: 150,
+          difference: -10,
+          movement: { ...movement, runningBalance: 150 }
+        };
+      },
+      async calculateCurrentBalance() {
+        throw new Error('stale balance must not be read before the close lock');
+      }
+    } as never
+  });
+  await service.hydrateFromDatabase(ACCOUNT_ID);
+
+  const result = await service.closeRegister(register.id, USER_ID, { closingAmount: 140 });
+
+  assert.equal(closeCalls, 1);
+  assert.equal(result.register.expectedClosingAmount, 150);
+  assert.equal(result.difference, -10);
 });

@@ -155,7 +155,7 @@ describe('financial-routes', () => {
     expect(response.bodyJson<{ encounterId: string }>().encounterId).toBe('enc-1');
   });
 
-  it('closes encounter financial account with normalized payload', async () => {
+  it('closes encounter financial account without recording a payment', async () => {
     const response = new MockResponse();
     const closeEncounterFinancial = vi.fn(async () => ({
       encounterId: 'enc-1',
@@ -167,7 +167,6 @@ describe('financial-routes', () => {
     const handled = await handleFinancialRoutes(
       '/encounters/enc-1/financial-close',
       createJsonRequest('POST', '/encounters/enc-1/financial-close', {
-        paidAmount: 50,
         notes: 'Fechamento administrativo',
         installments: [
           {
@@ -192,7 +191,6 @@ describe('financial-routes', () => {
     expect(handled).toBe(true);
     expect(requirePrincipal).toHaveBeenCalledWith(expect.anything(), 'billing.manage');
     expect(closeEncounterFinancial).toHaveBeenCalledWith('enc-1', 'user-1', {
-      paidAmount: 50,
       notes: 'Fechamento administrativo',
       installments: [
         {
@@ -206,6 +204,41 @@ describe('financial-routes', () => {
     expect(response.statusCode).toBe(200);
     expect(response.bodyJson<{ financialClosed: boolean }>().financialClosed).toBe(true);
   });
+
+  it.each([50, 0, null, '50'])(
+    'rejects manual paidAmount %j during financial close',
+    async (paidAmount) => {
+      const response = new MockResponse();
+      const closeEncounterFinancial = vi.fn();
+
+      const handled = await handleFinancialRoutes(
+        '/encounters/enc-1/financial-close',
+        createJsonRequest('POST', '/encounters/enc-1/financial-close', {
+          paidAmount,
+          installments: [{ amount: 50 }]
+        }) as never,
+        response as never,
+        'corr-financial-close-manual-payment',
+        {
+          encounterFinancial: { closeEncounterFinancial } as never,
+          billing: {} as never,
+          audit: { write: vi.fn() } as never,
+          pixTransactions: { list: vi.fn() } as never,
+          requirePrincipal: vi.fn(() => createPrincipal() as never)
+        }
+      );
+
+      expect(handled).toBe(true);
+      expect(closeEncounterFinancial).not.toHaveBeenCalled();
+      expect(response.statusCode).toBe(409);
+      expect(response.bodyJson()).toEqual({
+        code: 'MANUAL_SETTLEMENT_DISABLED',
+        message: 'Manual settlement is disabled. Record the receipt through the cash-receipts endpoint.',
+        details: { receiptPath: '/encounters/:id/cash-receipts' },
+        correlationId: 'corr-financial-close-manual-payment'
+      });
+    }
+  );
 
   it('builds an aging report from open receivables across pages', async () => {
     const response = new MockResponse();
@@ -408,7 +441,7 @@ describe('financial-routes', () => {
     });
   });
 
-  it('settles a receivable from JSON payload', async () => {
+  it('rejects the legacy manual receivable settlement route without tenant disclosure', async () => {
     const response = new MockResponse();
     const settleReceivable = vi.fn(async () => ({
       id: 'rec-1',
@@ -434,12 +467,14 @@ describe('financial-routes', () => {
     );
 
     expect(handled).toBe(true);
-    expect(settleReceivable).toHaveBeenCalledWith('rec-1', {
-      amountPaid: 90,
-      notes: 'PIX manual',
-      paidByUserId: 'user-1'
+    expect(settleReceivable).not.toHaveBeenCalled();
+    expect(response.statusCode).toBe(409);
+    expect(response.bodyJson()).toEqual({
+      code: 'MANUAL_SETTLEMENT_DISABLED',
+      message: 'Manual settlement is disabled. Record the receipt through the cash-receipts endpoint.',
+      details: { receiptPath: '/encounters/:id/cash-receipts' },
+      correlationId: 'corr-financial-5'
     });
-    expect(response.statusCode).toBe(200);
-    expect(response.bodyJson<{ status: string }>().status).toBe('settled');
+    expect(response.body).not.toContain('acc-1');
   });
 });

@@ -56,6 +56,8 @@ const backendRoutePatterns = [
   /^\/encounters\/[^/]+\/close$/,
   /^\/encounters\/[^/]+\/financial-close$/,
   /^\/encounters\/[^/]+\/financial-summary$/,
+  /^\/encounters\/[^/]+\/cash-receipts$/,
+  /^\/encounters\/[^/]+\/cash-receipts\/[^/]+$/,
   /^\/encounters\/[^/]+\/summary$/,
   /^\/encounters\/[^/]+\/timeline$/,
   /^\/encounters\/[^/]+\/transition$/,

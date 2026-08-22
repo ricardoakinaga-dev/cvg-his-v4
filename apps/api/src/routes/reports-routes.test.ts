@@ -87,7 +87,7 @@ function handlers(
   return {
     reports,
     billing: {
-      list: () => [
+      listAuthoritative: async () => [
         {
           accountId: 'acc-reports-1',
           subtotalAmount: 300

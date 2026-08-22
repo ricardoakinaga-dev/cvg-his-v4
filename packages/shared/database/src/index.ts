@@ -32,6 +32,7 @@ export {
 export * from './schemas/index.js';
 export {
   createTenantUnitOfWork,
+  getTenantTransactionContext,
   hashIdempotencyPayload,
   IdempotencyConflictError,
   IdempotencyInProgressError,

@@ -89,6 +89,10 @@ import { handlePaymentsRoutes } from './routes/payments-routes.js';
 import { handleEmailRoutes } from './routes/email-routes.js';
 import { handleSmsRoutes } from './routes/sms-routes.js';
 import { handleFinancialRoutes } from './routes/financial-routes.js';
+import {
+  assertEncounterHasNoCashReceipt,
+  handleEncounterCashReceiptRoutes
+} from './routes/encounter-cash-receipt-routes.js';
 import { handleCashRoutes } from './routes/cash-routes.js';
 import { handleSchedulingRoutes } from './routes/scheduling-routes.js';
 import { handleAgendaConfigRoutes } from './routes/agenda-config-routes.js';
@@ -101,6 +105,7 @@ import { handleFeatureFlagsRoutes } from './routes/feature-flags-routes.js';
 import { handleAdministrativeReportsRoutes } from './routes/administrative-reports-routes.js';
 import { handleDischargesRoutes } from './routes/discharges-routes.js';
 import { handleBillingRoutes } from './routes/billing-routes.js';
+import { EncounterCashReceiptCommand } from './commands/encounter-cash-receipt.js';
 import { handleExpensesCatalogRoutes } from './routes/expenses-catalog-routes.js';
 import { handlePrescriptionRoutes } from './routes/prescription-routes.js';
 import { handlePrescriptionExecutionsRoutes } from './routes/prescription-executions-routes.js';
@@ -329,7 +334,7 @@ const DEFAULT_CORS_ALLOWED_ORIGINS = [
 ] as const;
 const DEFAULT_CORS_ALLOW_METHODS = 'GET,POST,PUT,PATCH,DELETE,OPTIONS';
 const DEFAULT_CORS_ALLOW_HEADERS =
-  'accept, authorization, content-type, x-correlation-id, x-request-id';
+  'accept, authorization, content-type, idempotency-key, x-correlation-id, x-request-id';
 const DEFAULT_CORS_EXPOSE_HEADERS =
   'x-correlation-id, x-request-id, x-trace-id, traceparent, tracestate';
 const WEBAUTHN_CHALLENGE_TTL_MS = 5 * 60 * 1000;
@@ -3608,6 +3613,10 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
     environment: options.environment,
     unitOfWork: options.unitOfWork
   });
+  const encounterCashReceiptRepository = options.repositories?.encounterCashReceipt;
+  const encounterCashReceiptCommand = encounterCashReceiptRepository
+    ? new EncounterCashReceiptCommand(encounterCashReceiptRepository)
+    : undefined;
   // Local providers are deliberately limited to development/test environments.
   const hasPagarmeCredentials = Boolean(options.pagarmeApiKey && options.pagarmePixKey);
   assertProductionProviderReadiness(options);
@@ -5325,6 +5334,13 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
             const encounterId = requireNonEmptyString(pathname.split('/')[2], 'encounterId');
             requireEncounterForAccount(encounterId, principal.user.accountId);
             const payload = (await readJsonBody(request)) as { readonly reason: string };
+            if (encounterCashReceiptRepository) {
+              await assertEncounterHasNoCashReceipt(
+                encounterCashReceiptRepository,
+                principal.user.accountId,
+                encounterId
+              );
+            }
             const encounter = encounters.reopenEncounter(
               encounterId as never,
               principal.user.id,
@@ -5345,6 +5361,20 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
             );
             response.statusCode = 200;
             response.end(JSON.stringify(encounter));
+            return;
+          }
+
+          if (
+            encounterCashReceiptCommand
+            && encounterCashReceiptRepository
+            && await handleEncounterCashReceiptRoutes(pathname, request, response, {
+              command: encounterCashReceiptCommand,
+              repository: encounterCashReceiptRepository,
+              audit,
+              correlationId,
+              requirePrincipal
+            })
+          ) {
             return;
           }
 
@@ -5482,7 +5512,15 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
             const principal = requirePrincipal(request, 'encounters.manage');
             const encounterId = requireNonEmptyString(pathname.split('/')[2], 'encounterId');
             requireEncounterForAccount(encounterId, principal.user.accountId);
+            if (encounterCashReceiptRepository) {
+              await assertEncounterHasNoCashReceipt(
+                encounterCashReceiptRepository,
+                principal.user.accountId,
+                encounterId
+              );
+            }
             encounters.deleteEncounter(encounterId as never);
+            await encounters.waitForPersistence();
             appendAudit(
               principal.user.id,
               principal.user.accountId,

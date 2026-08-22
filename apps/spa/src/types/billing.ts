@@ -50,7 +50,7 @@ export interface CreateBillingItemRequest {
 }
 
 export interface UpdateBillingStatusRequest {
-  status: BillingStatus;
+  status: Exclude<BillingStatus, 'settled'>;
   administrativeNotes?: string;
 }
 

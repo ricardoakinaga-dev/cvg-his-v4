@@ -175,46 +175,39 @@ export class CashService {
     if (register.status === 'closed') throw new ConflictError('Register is already closed');
 
     const closingAmount = requirePositiveNumber(input.closingAmount, 'closingAmount');
-    const currentBalance = await this.getCurrentBalance(registerId);
-    const difference = Math.round((closingAmount - currentBalance) * 100) / 100;
     const now = nowIso();
-
-    const updated: CashRegisterSummary = {
-      ...register,
-      status: 'closed',
-      closedByUserId,
-      closingAmount: Math.round(closingAmount * 100) / 100,
-      expectedClosingAmount: Math.round(currentBalance * 100) / 100,
-      difference,
-      closedAt: now,
-      updatedAt: now
-    };
-    const closingMovement: CashMovementSummary = {
+    let currentBalance: number;
+    let difference: number;
+    let closingMovement: CashMovementSummary = {
       id: this.#nextId('cm'),
       cashRegisterId: registerId,
       accountId: register.accountId,
       movementType: 'closing',
       amount: closingAmount,
-      runningBalance: currentBalance,
+      runningBalance: 0,
       reference: null,
       notes: input.notes?.trim() ?? null,
       createdByUserId: closedByUserId,
       createdAt: now
     };
-    if (this.#repository) {
-      if (this.#repository.closeRegisterWithMovement) {
-        await this.#repository.closeRegisterWithMovement(
+    if (this.#repository?.closeRegisterWithMovement) {
+      const closed = await this.#repository.closeRegisterWithMovement(
           register.accountId,
           registerId,
           closingAmount,
-          currentBalance,
-          difference,
           closedByUserId,
           now,
           now,
           closingMovement
-        );
-      } else {
+      );
+      currentBalance = closed.expectedClosingAmount;
+      difference = closed.difference;
+      closingMovement = closed.movement;
+    } else {
+      currentBalance = await this.getCurrentBalance(registerId);
+      difference = Math.round((closingAmount - currentBalance) * 100) / 100;
+      closingMovement = { ...closingMovement, runningBalance: currentBalance };
+      if (this.#repository) {
         await this.#repository.closeRegister(
           registerId,
           closingAmount,
@@ -227,6 +220,17 @@ export class CashService {
         await this.#repository.createMovement(closingMovement);
       }
     }
+
+    const updated: CashRegisterSummary = {
+      ...register,
+      status: 'closed',
+      closedByUserId,
+      closingAmount: Math.round(closingAmount * 100) / 100,
+      expectedClosingAmount: Math.round(currentBalance * 100) / 100,
+      difference,
+      closedAt: now,
+      updatedAt: now
+    };
 
     this.#registers.set(registerId, updated);
     this.#movements.set(closingMovement.id, closingMovement);

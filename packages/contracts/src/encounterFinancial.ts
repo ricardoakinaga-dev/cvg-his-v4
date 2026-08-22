@@ -5,7 +5,10 @@ import { nullableTrimmedText, uuidSchema } from './common.js';
 export const encounterFinancialStatusSchema = z.enum(['pending', 'partial', 'paid']);
 export const encounterReceivableStatusSchema = z.enum(['open', 'settled']);
 export const encounterFinancialEncounterParamSchema = z.object({ encounterId: uuidSchema });
-export const encounterReceivableParamSchema = z.object({ receivableId: uuidSchema });
+export const encounterCashReceiptParamSchema = z.object({
+  encounterId: uuidSchema,
+  receiptId: uuidSchema
+});
 
 export const encounterReceivablePaymentResponseSchema = z.object({
   id: uuidSchema,
@@ -74,15 +77,50 @@ export const encounterFinancialInstallmentInputSchema = z.object({
   notes: nullableTrimmedText
 });
 
-export const closeEncounterFinancialBodySchema = z.object({
-  paidAmount: z.coerce.number().nonnegative().max(999999999.99).default(0),
-  notes: nullableTrimmedText,
-  installments: z.array(encounterFinancialInstallmentInputSchema).max(24).optional()
+export const closeEncounterFinancialBodySchema = z
+  .object({
+    notes: nullableTrimmedText,
+    installments: z.array(encounterFinancialInstallmentInputSchema).max(24).optional()
+  })
+  .strict();
+
+const positiveMoneySchema = z
+  .number()
+  .positive()
+  .max(999999999.99)
+  .refine(
+    (value) => Math.abs(value * 100 - Math.round(value * 100)) < 1e-8,
+    'Amount must have at most two decimal places'
+  );
+
+export const encounterCashReceiptIdempotencyHeadersSchema = z.object({
+  'idempotency-key': z.string().trim().min(1).max(255)
 });
 
-export const settleEncounterReceivableBodySchema = z.object({
-  amountPaid: z.coerce.number().positive().max(999999999.99),
-  notes: nullableTrimmedText
+export const createEncounterCashReceiptBodySchema = z
+  .object({
+    cashRegisterId: uuidSchema,
+    expectedAmount: positiveMoneySchema,
+    notes: z.string().trim().min(1).max(500).optional()
+  })
+  .strict();
+
+export const encounterCashReceiptResponseSchema = z.object({
+  id: uuidSchema,
+  accountId: uuidSchema,
+  encounterId: uuidSchema,
+  billingRecordId: z.string().trim().min(1),
+  financialAccountId: uuidSchema,
+  receivableId: uuidSchema,
+  receivablePaymentId: uuidSchema,
+  cashRegisterId: uuidSchema,
+  cashMovementId: uuidSchema,
+  journalEntryId: uuidSchema,
+  amount: z.coerce.number().positive(),
+  currency: z.literal('BRL'),
+  receivedAt: z.coerce.date(),
+  receivedByUserId: uuidSchema,
+  notes: z.string().optional()
 });
 
 export const listEncounterReceivablesQuerySchema = z.object({
@@ -109,7 +147,8 @@ export type EncounterReceivablePaymentResponse = z.infer<typeof encounterReceiva
 export type EncounterReceivableListItemResponse = z.infer<typeof encounterReceivableListItemResponseSchema>;
 export type EncounterReceivableListResponse = z.infer<typeof encounterReceivableListResponseSchema>;
 export type CloseEncounterFinancialBody = z.infer<typeof closeEncounterFinancialBodySchema>;
-export type SettleEncounterReceivableBody = z.infer<typeof settleEncounterReceivableBodySchema>;
+export type CreateEncounterCashReceiptBody = z.infer<typeof createEncounterCashReceiptBodySchema>;
+export type EncounterCashReceiptResponse = z.infer<typeof encounterCashReceiptResponseSchema>;
 export type ListEncounterReceivablesQuery = z.infer<typeof listEncounterReceivablesQuerySchema>;
 
 export const encounterFinancialContract = {
@@ -132,11 +171,24 @@ export const encounterFinancialContract = {
     query: listEncounterReceivablesQuerySchema,
     responses: { 200: encounterReceivableListResponseSchema }
   },
-  settleReceivable: {
+  createCashReceipt: {
     method: 'POST' as const,
-    path: '/financial/receivables/:receivableId/settle',
-    params: encounterReceivableParamSchema,
-    body: settleEncounterReceivableBodySchema,
-    responses: { 200: encounterReceivableResponseSchema }
+    path: '/encounters/:encounterId/cash-receipts',
+    params: encounterFinancialEncounterParamSchema,
+    headers: encounterCashReceiptIdempotencyHeadersSchema,
+    body: createEncounterCashReceiptBodySchema,
+    responses: { 201: encounterCashReceiptResponseSchema }
+  },
+  getCashReceiptForEncounter: {
+    method: 'GET' as const,
+    path: '/encounters/:encounterId/cash-receipts',
+    params: encounterFinancialEncounterParamSchema,
+    responses: { 200: encounterCashReceiptResponseSchema }
+  },
+  getCashReceipt: {
+    method: 'GET' as const,
+    path: '/encounters/:encounterId/cash-receipts/:receiptId',
+    params: encounterCashReceiptParamSchema,
+    responses: { 200: encounterCashReceiptResponseSchema }
   }
 } as const;

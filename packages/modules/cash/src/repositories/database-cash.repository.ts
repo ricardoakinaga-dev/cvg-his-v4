@@ -1,5 +1,11 @@
 import { sql } from 'drizzle-orm';
-import { getPool, withTenantTransaction } from '@cvg-his-v2/shared-database';
+import {
+  createScopedDatabaseClient,
+  getPool,
+  runInTenantTransaction,
+  withTenantTransaction,
+  type DatabaseClient
+} from '@cvg-his-v2/shared-database';
 import { withTenantQuery } from '@cvg-his-v2/tenant-context';
 import type { AccountId, UserId } from '@cvg-his-v2/shared-types';
 
@@ -52,13 +58,15 @@ export interface CashRepository {
     accountId: AccountId,
     id: string,
     closingAmount: number,
-    expectedClosingAmount: number,
-    difference: number,
     closedByUserId: UserId,
     closedAt: string,
     updatedAt: string,
     movement: CashMovementRecord
-  ): Promise<void>;
+  ): Promise<{
+    readonly expectedClosingAmount: number;
+    readonly difference: number;
+    readonly movement: CashMovementRecord;
+  }>;
   findOpenRegister(accountId: AccountId): Promise<CashRegisterRecord | null>;
   findRegistersByAccount(
     accountId: AccountId,
@@ -86,6 +94,22 @@ export interface CashRepository {
 }
 
 export class DatabaseCashRepository implements CashRepository {
+  readonly #poolOverride?: Parameters<typeof runInTenantTransaction>[0];
+
+  constructor(poolOverride?: Parameters<typeof runInTenantTransaction>[0]) {
+    this.#poolOverride = poolOverride;
+  }
+
+  async #withTenantTransaction<T>(
+    accountId: AccountId,
+    operation: (database: DatabaseClient) => Promise<T>
+  ): Promise<T> {
+    if (!this.#poolOverride) return withTenantTransaction(accountId, operation);
+    return runInTenantTransaction(this.#poolOverride, accountId, (client) =>
+      operation(createScopedDatabaseClient(client))
+    );
+  }
+
   async openRegisterWithMovement(
     register: CashRegisterRecord,
     movement: CashMovementRecord
@@ -153,14 +177,36 @@ export class DatabaseCashRepository implements CashRepository {
     accountId: AccountId,
     id: string,
     closingAmount: number,
-    expectedClosingAmount: number,
-    difference: number,
     closedByUserId: UserId,
     closedAt: string,
     updatedAt: string,
     movement: CashMovementRecord
-  ): Promise<void> {
-    await withTenantTransaction(accountId, async (database) => {
+  ): Promise<{
+    readonly expectedClosingAmount: number;
+    readonly difference: number;
+    readonly movement: CashMovementRecord;
+  }> {
+    return this.#withTenantTransaction(accountId, async (database) => {
+      const registerResult = await database.execute(sql`SELECT id
+        FROM cash_registers
+        WHERE id = ${id} AND account_id = ${accountId} AND status = 'open'
+        FOR UPDATE`);
+      if (registerResult.rows.length !== 1) {
+        throw new Error('Cash register was already closed or is outside the current account');
+      }
+
+      const balanceResult = await database.execute(sql`SELECT running_balance
+        FROM cash_movements
+        WHERE cash_register_id = ${id} AND account_id = ${accountId}
+        ORDER BY created_at DESC, id DESC
+        LIMIT 1`);
+      const expectedClosingAmount = Number(balanceResult.rows[0]?.running_balance ?? 0);
+      const difference = Math.round((closingAmount - expectedClosingAmount) * 100) / 100;
+      const authoritativeMovement: CashMovementRecord = {
+        ...movement,
+        runningBalance: expectedClosingAmount
+      };
+
       const result = await database.execute(sql`UPDATE cash_registers
         SET status = 'closed', closing_amount = ${closingAmount},
             expected_closing_amount = ${expectedClosingAmount}, difference = ${difference},
@@ -173,9 +219,11 @@ export class DatabaseCashRepository implements CashRepository {
 
       await database.execute(sql`INSERT INTO cash_movements
         (id, cash_register_id, account_id, movement_type, amount, running_balance, reference, notes, created_by_user_id, created_at)
-        VALUES (${movement.id}, ${movement.cashRegisterId}, ${movement.accountId},
-          ${movement.movementType}, ${movement.amount}, ${movement.runningBalance},
-          ${movement.reference}, ${movement.notes}, ${movement.createdByUserId}, ${new Date(movement.createdAt)})`);
+        VALUES (${authoritativeMovement.id}, ${authoritativeMovement.cashRegisterId}, ${authoritativeMovement.accountId},
+          ${authoritativeMovement.movementType}, ${authoritativeMovement.amount}, ${authoritativeMovement.runningBalance},
+          ${authoritativeMovement.reference}, ${authoritativeMovement.notes}, ${authoritativeMovement.createdByUserId}, ${new Date(authoritativeMovement.createdAt)})`);
+
+      return { expectedClosingAmount, difference, movement: authoritativeMovement };
     });
   }
 

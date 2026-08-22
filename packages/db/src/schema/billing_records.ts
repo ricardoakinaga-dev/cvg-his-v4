@@ -1,5 +1,14 @@
 import { sql } from 'drizzle-orm';
-import { check, index, numeric, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import {
+  check,
+  index,
+  numeric,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid
+} from 'drizzle-orm/pg-core';
 
 import { accounts } from './accounts.js';
 import { encounters } from './encounters.js';
@@ -30,12 +39,19 @@ export const billingRecords = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
   },
   (table) => ({
+    accountIdIdUnique: uniqueIndex('idx_billing_records_account_id_id_unique').on(
+      table.accountId,
+      table.id
+    ),
     accountEncounterUnique: uniqueIndex('uidx_billing_records_account_encounter').on(
       table.accountId,
       table.encounterId
     ),
     accountStatusIdx: index('idx_billing_records_account_status').on(table.accountId, table.status),
-    accountPatientIdx: index('idx_billing_records_account_patient').on(table.accountId, table.patientId),
+    accountPatientIdx: index('idx_billing_records_account_patient').on(
+      table.accountId,
+      table.patientId
+    ),
     accountOwnerIdx: index('idx_billing_records_account_owner').on(table.accountId, table.ownerId),
     statusChk: check(
       'billing_records_status_chk',

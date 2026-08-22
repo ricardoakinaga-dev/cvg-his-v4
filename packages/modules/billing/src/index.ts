@@ -77,11 +77,6 @@ export class BillingService {
   public async findByEncounter(
     encounterId: EncounterId
   ): Promise<BillingRecordSummary | null> {
-    const existingId = this.#recordByEncounterId.get(encounterId);
-    if (existingId) {
-      return this.getOrThrow(existingId);
-    }
-
     const encounter = this.#encounters.getOrThrow(encounterId);
 
     if (this.#repository) {
@@ -93,6 +88,18 @@ export class BillingService {
         this.#items.set(record.id, [...items]);
         return record;
       }
+      const staleId = this.#recordByEncounterId.get(encounterId);
+      if (staleId) {
+        this.#recordByEncounterId.delete(encounterId);
+        this.#records.delete(staleId);
+        this.#items.delete(staleId);
+      }
+      return null;
+    }
+
+    const existingId = this.#recordByEncounterId.get(encounterId);
+    if (existingId) {
+      return this.getOrThrow(existingId);
     }
 
     return null;
@@ -147,6 +154,28 @@ export class BillingService {
       )
       .filter((record) =>
         normalized.ownerId ? record.ownerId === normalized.ownerId : true
+      );
+  }
+
+  public async listAuthoritative(
+    filters: BillingRecordFilters & { readonly accountId: string }
+  ): Promise<readonly BillingRecordSummary[]> {
+    if (!this.#repository) return this.list(filters);
+
+    const records = await this.#repository.findRecordsByAccountId(filters.accountId as AccountId);
+    for (const record of records) {
+      this.#records.set(record.id, record);
+      this.#recordByEncounterId.set(record.encounterId, record.id);
+    }
+    return records
+      .filter((record) =>
+        filters.encounterId ? record.encounterId === filters.encounterId : true
+      )
+      .filter((record) =>
+        filters.patientId ? record.patientId === filters.patientId : true
+      )
+      .filter((record) =>
+        filters.ownerId ? record.ownerId === filters.ownerId : true
       );
   }
 

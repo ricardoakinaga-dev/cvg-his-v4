@@ -91,6 +91,8 @@ tags:
     description: Billing and financial records
   - name: Financial
     description: Financial operations, receivables, reconciliation and admin controls
+  - name: Cash
+    description: Cash drawer operations and method-specific cash receipts
   - name: Inventory
     description: Inventory and stock management
   - name: Commercial
@@ -1829,6 +1831,26 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Encounter'
+    delete:
+      operationId: deleteEncounter
+      summary: Delete an encounter without financial receipt artifacts
+      tags: [Encounters]
+      parameters:
+        - name: encounterId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Encounter deleted
+        '409':
+          description: Encounter has a durable receipt and requires an explicit financial reversal
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /encounters/{encounterId}/timeline:
     get:
@@ -1905,6 +1927,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Encounter'
+        '409':
+          description: Encounter has a durable receipt and requires an explicit financial reversal
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /encounters/{encounterId}/transition:
     post:
@@ -1954,7 +1982,7 @@ paths:
     post:
       operationId: closeEncounterFinancial
       summary: Close encounter financial account
-      description: Defines receivable installments and optional closure payment for encounter finance.
+      description: Defines receivable installments. Payments must use a method-specific receipt endpoint.
       tags: [Financial]
       parameters:
         - name: encounterId
@@ -1976,6 +2004,106 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EncounterFinancialSummary'
+
+  /encounters/{encounterId}/cash-receipts:
+    post:
+      operationId: createEncounterCashReceipt
+      summary: Record a full cash receipt for a closed encounter
+      description: Atomically settles the full BRL billing balance and writes the receivable payment, cash drawer movement, balanced journal entry, audit event and outbox event.
+      tags: [Financial, Cash]
+      parameters:
+        - name: encounterId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 255
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEncounterCashReceiptRequest'
+      responses:
+        '201':
+          description: Cash receipt committed
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EncounterCashReceipt'
+        '409':
+          description: Billing amount changed, settlement is ineligible, or the idempotency key conflicts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      operationId: getEncounterCashReceiptByEncounter
+      summary: Recover the unique cash receipt for an encounter
+      tags: [Financial, Cash]
+      parameters:
+        - name: encounterId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Cash receipt
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EncounterCashReceipt'
+        '404':
+          description: Cash receipt not found in the active account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /encounters/{encounterId}/cash-receipts/{receiptId}:
+    get:
+      operationId: getEncounterCashReceipt
+      summary: Get an encounter cash receipt
+      tags: [Financial, Cash]
+      parameters:
+        - name: encounterId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: receiptId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Cash receipt
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EncounterCashReceipt'
+        '404':
+          description: Cash receipt not found in the active account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /appointments:
     get:
@@ -2821,15 +2949,16 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              required: [status]
-              properties:
-                status:
-                  type: string
-                  enum: [pending, confirmed, cancelled, refunded]
+              $ref: '#/components/schemas/UpdateBillingStatusRequest'
       responses:
         '200':
           description: Billing status updated
+        '409':
+          description: Backward transition or manual settlement is not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /billing/estimate:
     post:
@@ -3252,8 +3381,9 @@ paths:
   /financial/receivables/{receivableId}/settle:
     post:
       operationId: settleFinancialReceivable
-      summary: Settle a receivable
-      description: Applies a manual settlement payment to a receivable.
+      summary: Disabled manual receivable settlement
+      description: Manual settlement is disabled. Use a method-specific receipt endpoint such as POST /encounters/{encounterId}/cash-receipts.
+      deprecated: true
       tags: [Financial]
       parameters:
         - name: receivableId
@@ -3262,19 +3392,13 @@ paths:
           schema:
             type: string
             format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SettleReceivableRequest'
       responses:
-        '200':
-          description: Settled receivable
+        '409':
+          description: Manual settlement is disabled
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/EncounterFinancialReceivable'
+                $ref: '#/components/schemas/ErrorResponse'
 
   /fiscal/summary:
     get:
@@ -13058,8 +13182,6 @@ components:
     EncounterFinancialCloseRequest:
       type: object
       properties:
-        paidAmount:
-          type: number
         notes:
           type: string
           nullable: true
@@ -13067,6 +13189,84 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/EncounterFinancialInstallmentRequest'
+
+    CreateEncounterCashReceiptRequest:
+      type: object
+      required: [cashRegisterId, expectedAmount]
+      additionalProperties: false
+      properties:
+        cashRegisterId:
+          type: string
+          format: uuid
+        expectedAmount:
+          type: number
+          format: double
+          exclusiveMinimum: 0
+          multipleOf: 0.01
+        notes:
+          type: string
+          maxLength: 500
+
+    EncounterCashReceipt:
+      type: object
+      required:
+        - id
+        - accountId
+        - encounterId
+        - billingRecordId
+        - financialAccountId
+        - receivableId
+        - receivablePaymentId
+        - cashRegisterId
+        - cashMovementId
+        - journalEntryId
+        - amount
+        - currency
+        - receivedAt
+        - receivedByUserId
+      properties:
+        id:
+          type: string
+          format: uuid
+        accountId:
+          type: string
+          format: uuid
+        encounterId:
+          type: string
+          format: uuid
+        billingRecordId:
+          type: string
+        financialAccountId:
+          type: string
+          format: uuid
+        receivableId:
+          type: string
+          format: uuid
+        receivablePaymentId:
+          type: string
+          format: uuid
+        cashRegisterId:
+          type: string
+          format: uuid
+        cashMovementId:
+          type: string
+          format: uuid
+        journalEntryId:
+          type: string
+          format: uuid
+        amount:
+          type: number
+        currency:
+          type: string
+          enum: [BRL]
+        receivedAt:
+          type: string
+          format: date-time
+        receivedByUserId:
+          type: string
+          format: uuid
+        notes:
+          type: string
 
     SettleReceivableRequest:
       type: object
@@ -16159,10 +16359,11 @@ components:
     UpdateBillingStatusRequest:
       type: object
       required: [status]
+      additionalProperties: false
       properties:
         status:
           type: string
-          enum: [draft, estimated, open, settled]
+          enum: [draft, estimated, open]
         administrativeNotes:
           type: string
 

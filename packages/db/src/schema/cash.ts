@@ -1,4 +1,14 @@
-import { index, numeric, pgTable, text, timestamp, uuid, pgEnum } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import {
+  index,
+  numeric,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid
+} from 'drizzle-orm/pg-core';
 
 import { accounts } from './accounts.js';
 import { users } from './users.js';
@@ -8,18 +18,18 @@ import { users } from './users.js';
 // =====================
 
 export const cashRegisterStatusEnum = pgEnum('cash_register_status', [
-  'open',    // Aberto
-  'closed'   // Fechado
+  'open', // Aberto
+  'closed' // Fechado
 ]);
 
 export const cashMovementTypeEnum = pgEnum('cash_movement_type', [
-  'opening',       // Abertura (saldo inicial)
-  'closing',       // Fechamento (saldo final informado)
-  'payment',       // Entrada por pagamento
-  'supply',        // Suprimento (entrada de dinheiro)
-  'deposit',       // Depósito bancário (saída da gaveta)
-  'withdrawal',    // Sangria (saída de dinheiro)
-  'adjustment'     // Ajuste
+  'opening', // Abertura (saldo inicial)
+  'closing', // Fechamento (saldo final informado)
+  'payment', // Entrada por pagamento
+  'supply', // Suprimento (entrada de dinheiro)
+  'deposit', // Depósito bancário (saída da gaveta)
+  'withdrawal', // Sangria (saída de dinheiro)
+  'adjustment' // Ajuste
 ]);
 
 // =====================
@@ -36,8 +46,7 @@ export const cashRegisters = pgTable(
     openedByUserId: uuid('opened_by_user_id')
       .notNull()
       .references(() => users.id),
-    closedByUserId: uuid('closed_by_user_id')
-      .references(() => users.id),
+    closedByUserId: uuid('closed_by_user_id').references(() => users.id),
     openingAmount: numeric('opening_amount', { precision: 12, scale: 2 }).notNull(),
     closingAmount: numeric('closing_amount', { precision: 12, scale: 2 }),
     expectedClosingAmount: numeric('expected_closing_amount', { precision: 12, scale: 2 }),
@@ -50,6 +59,13 @@ export const cashRegisters = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
   },
   (table) => ({
+    oneOpenPerAccountUnique: uniqueIndex('uidx_cash_registers_one_open_per_account')
+      .on(table.accountId)
+      .where(sql`${table.status} = 'open'`),
+    accountIdIdUnique: uniqueIndex('idx_cash_registers_account_id_id_unique').on(
+      table.accountId,
+      table.id
+    ),
     accountStatusIdx: index('idx_cash_registers_account_status').on(table.accountId, table.status),
     openedAtIdx: index('idx_cash_registers_opened_at').on(table.accountId, table.openedAt),
     openedByIdx: index('idx_cash_registers_opened_by').on(table.openedByUserId)
@@ -75,13 +91,19 @@ export const cashMovements = pgTable(
     runningBalance: numeric('running_balance', { precision: 12, scale: 2 }).notNull(),
     reference: text('reference'),
     notes: text('notes'),
-    createdByUserId: uuid('created_by_user_id')
-      .references(() => users.id),
+    createdByUserId: uuid('created_by_user_id').references(() => users.id),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
   },
   (table) => ({
+    accountIdIdUnique: uniqueIndex('idx_cash_movements_account_id_id_unique').on(
+      table.accountId,
+      table.id
+    ),
     cashRegisterIdx: index('idx_cash_movements_register').on(table.cashRegisterId),
-    accountTypeIdx: index('idx_cash_movements_account_type').on(table.accountId, table.movementType),
+    accountTypeIdx: index('idx_cash_movements_account_type').on(
+      table.accountId,
+      table.movementType
+    ),
     createdAtIdx: index('idx_cash_movements_created_at').on(table.accountId, table.createdAt)
   })
 );

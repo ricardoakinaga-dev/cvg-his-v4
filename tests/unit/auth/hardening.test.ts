@@ -7,7 +7,11 @@ import { StaffService } from '@cvg-his-v2/module-staff';
 import { UsersService } from '@cvg-his-v2/module-users';
 import { AuthenticationError } from '@cvg-his-v2/shared-errors';
 
-import { AuthService, BruteForceProtection } from '@cvg-his-v2/module-auth';
+import {
+  AuthService,
+  BruteForceProtection,
+  InMemoryMfaLoginChallengeRepository
+} from '@cvg-his-v2/module-auth';
 
 const SEED_ADMIN_PASSWORD = 'seed_admin';
 const SEED_VET_PASSWORD = 'seed_vet';
@@ -27,7 +31,8 @@ function createAuthService(bf?: BruteForceProtection, mfa?: MfaService) {
     accessControl,
     audit,
     mfa,
-    bruteForce: bf
+    bruteForce: bf,
+    mfaChallengeRepository: new InMemoryMfaLoginChallengeRepository()
   });
 }
 

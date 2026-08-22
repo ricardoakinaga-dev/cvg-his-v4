@@ -356,6 +356,34 @@ export const contractEndpoints = [
     description: 'Perform formal financial close of encounter account'
   },
   {
+    domain: 'encounterFinancial',
+    operation: 'listReceivables',
+    method: 'GET',
+    path: '/financial/receivables',
+    description: 'List encounter receivables without mutating settlement state'
+  },
+  {
+    domain: 'encounterFinancial',
+    operation: 'createCashReceipt',
+    method: 'POST',
+    path: '/encounters/:encounterId/cash-receipts',
+    description: 'Atomically receive the full encounter balance in an open cash register'
+  },
+  {
+    domain: 'encounterFinancial',
+    operation: 'getCashReceiptForEncounter',
+    method: 'GET',
+    path: '/encounters/:encounterId/cash-receipts',
+    description: 'Recover the unique durable receipt for an encounter'
+  },
+  {
+    domain: 'encounterFinancial',
+    operation: 'getCashReceipt',
+    method: 'GET',
+    path: '/encounters/:encounterId/cash-receipts/:receiptId',
+    description: 'Read the durable cash receipt for an encounter'
+  },
+  {
     domain: 'products',
     operation: 'create',
     method: 'POST',

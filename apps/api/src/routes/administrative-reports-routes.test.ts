@@ -101,7 +101,7 @@ test('handleAdministrativeReportsRoutes returns aggregated administrative hubs',
     'corr-admin-report-1',
     {
       billing: {
-        list: () => [
+        listAuthoritative: async () => [
           {
             id: 'bill-1',
             accountId: 'acc-1',

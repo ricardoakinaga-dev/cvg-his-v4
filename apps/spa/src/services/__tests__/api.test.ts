@@ -114,7 +114,9 @@ describe('apiRequest', () => {
 
       expect(deleteCachedRequest).toHaveBeenCalledTimes(1);
       expect(localStorage.getItem('pwa-cache-owners')).toBeNull();
-      expect((mockFetch.mock.calls[0]?.[1] as RequestInit).credentials).toBe('include');
+      const requestInit = mockFetch.mock.calls[0]?.[1] as RequestInit;
+      expect(requestInit.credentials).toBe('include');
+      expect((requestInit.headers as Headers).get('Idempotency-Key')).toMatch(/^spa-/);
     } finally {
       cleanup();
     }

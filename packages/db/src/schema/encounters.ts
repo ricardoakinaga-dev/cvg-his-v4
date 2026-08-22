@@ -1,4 +1,4 @@
-import { index, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { index, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 import { accounts } from './accounts.js';
 import { owners } from './owners.js';
@@ -32,6 +32,10 @@ export const encounters = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
   },
   (table) => ({
+    accountIdIdUnique: uniqueIndex('idx_encounters_account_id_id_unique').on(
+      table.accountId,
+      table.id
+    ),
     patientIdIdx: index('idx_encounters_patient_id').on(table.patientId),
     accountStatusIdx: index('idx_encounters_account_status').on(table.accountId, table.status)
   })

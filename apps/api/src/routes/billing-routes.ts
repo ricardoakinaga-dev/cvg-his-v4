@@ -19,6 +19,24 @@ import { requireEnum, requireOptionalString } from '@cvg-his-v2/shared-validatio
 import { appendAudit } from '../helpers/audit-helper.js';
 import { readJsonBody } from '../helpers/common.js';
 
+function manualSettlementDisabledResponse(correlationId: string) {
+  return {
+    code: 'MANUAL_SETTLEMENT_DISABLED',
+    message: 'Manual settlement is disabled. Record the receipt through the cash-receipts endpoint.',
+    details: { receiptPath: '/encounters/:id/cash-receipts' },
+    correlationId
+  } as const;
+}
+
+function settlementIrreversibleResponse(correlationId: string, receiptPath: string) {
+  return {
+    code: 'BILLING_SETTLEMENT_IRREVERSIBLE',
+    message: 'A settled billing record requires an explicit financial reversal',
+    details: { receiptPath },
+    correlationId
+  } as const;
+}
+
 export interface BillingRoutesHandlers {
   billing: BillingService;
   audit: AuditService;
@@ -54,7 +72,7 @@ export async function handleBillingRoutes(
       patientId: url.searchParams.get('patientId') || undefined,
       ownerId: url.searchParams.get('ownerId') || undefined
     };
-    const items = await billing.list(filters);
+    const items = await billing.listAuthoritative(filters);
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
@@ -213,6 +231,9 @@ export async function handleBillingRoutes(
       throw new ValidationError('Billing status request must be a JSON object');
     }
     const payloadObject = rawPayload as Record<string, unknown>;
+    const allowedFields = new Set(['status', 'administrativeNotes']);
+    const unexpectedField = Object.keys(payloadObject).find((field) => !allowedFields.has(field));
+    if (unexpectedField) throw new ValidationError(`Unknown field '${unexpectedField}'`);
     const payload = {
       status: requireEnum(payloadObject.status, 'status', [
         'draft',
@@ -222,6 +243,11 @@ export async function handleBillingRoutes(
       ]),
       administrativeNotes: requireOptionalString(payloadObject.administrativeNotes)
     } satisfies UpdateBillingStatusRequest;
+    if (payload.status === 'settled') {
+      response.statusCode = 409;
+      response.end(JSON.stringify(manualSettlementDisabledResponse(correlationId)));
+      return true;
+    }
     enforceAbac(
       'billing.manage',
       principal,
@@ -242,6 +268,14 @@ export async function handleBillingRoutes(
         code: 'BILLING_RECORD_NOT_FOUND',
         encounterId
       }));
+      return true;
+    }
+    if (existingRecord.status === 'settled') {
+      response.statusCode = 409;
+      response.end(JSON.stringify(settlementIrreversibleResponse(
+        correlationId,
+        `/encounters/${encounterId}/cash-receipts`
+      )));
       return true;
     }
     const record = await billing.updateStatus(encounterId as never, payload);

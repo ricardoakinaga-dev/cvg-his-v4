@@ -246,7 +246,7 @@ export async function handleAdministrativeReportsRoutes(
     openRegister,
     fiscalSummary
   ] = await Promise.all([
-    Promise.resolve(handlers.billing.list()),
+    handlers.billing.listAuthoritative({ accountId: principal.user.accountId }),
     listOpenReceivables(handlers.encounterFinancial, principal.user.accountId),
     handlers.pixTransactions.list({ accountId: principal.user.accountId }),
     Promise.resolve(handlers.quotes.list(principal.user.accountId as never)),

@@ -10,6 +10,30 @@ import type {
   EncounterFinancialSummary
 } from '@/types/encounter';
 
+export interface EncounterCashReceipt {
+  readonly id: string;
+  readonly accountId: string;
+  readonly encounterId: string;
+  readonly billingRecordId: string;
+  readonly financialAccountId: string;
+  readonly receivableId: string;
+  readonly receivablePaymentId: string;
+  readonly cashRegisterId: string;
+  readonly cashMovementId: string;
+  readonly journalEntryId: string;
+  readonly amount: number;
+  readonly currency: 'BRL';
+  readonly receivedAt: string;
+  readonly receivedByUserId: string;
+  readonly notes?: string;
+}
+
+export interface CreateEncounterCashReceiptRequest {
+  readonly cashRegisterId: string;
+  readonly expectedAmount: number;
+  readonly notes?: string;
+}
+
 export const encounterService = {
   async list(): Promise<EncounterSummary[]> {
     const response = await apiRequest<EncountersListResponse>('/encounters');
@@ -57,7 +81,6 @@ export const encounterService = {
   async closeFinancial(
     id: string,
     payload: {
-      paidAmount: number;
       notes?: string | null;
       installments?: Array<{ label?: string; amount: number; dueAt?: string | null; notes?: string | null }>;
     }
@@ -66,5 +89,21 @@ export const encounterService = {
       method: 'POST',
       body: JSON.stringify(payload)
     });
+  },
+
+  async createCashReceipt(
+    id: string,
+    payload: CreateEncounterCashReceiptRequest,
+    idempotencyKey: string
+  ): Promise<EncounterCashReceipt> {
+    return apiRequest<EncounterCashReceipt>(`/encounters/${id}/cash-receipts`, {
+      method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey },
+      body: JSON.stringify(payload)
+    });
+  },
+
+  async getCashReceiptForEncounter(id: string): Promise<EncounterCashReceipt> {
+    return apiRequest<EncounterCashReceipt>(`/encounters/${id}/cash-receipts`);
   }
 };

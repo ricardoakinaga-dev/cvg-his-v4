@@ -1,7 +1,13 @@
 import type { IncomingMessage } from 'node:http';
 
-import { getDatabaseTransactionScope, type JsonValue, type TenantUnitOfWork } from '@cvg-his-v2/shared-database';
-import { ValidationError } from '@cvg-his-v2/shared-errors';
+import {
+  getDatabaseTransactionScope,
+  IdempotencyConflictError,
+  IdempotencyInProgressError,
+  type JsonValue,
+  type TenantUnitOfWork
+} from '@cvg-his-v2/shared-database';
+import { AppError, ValidationError } from '@cvg-his-v2/shared-errors';
 
 export interface TenantCommandInput<T> {
   readonly request: IncomingMessage;
@@ -26,6 +32,9 @@ export function createTenantCommandRunner(options: {
     if (getDatabaseTransactionScope()) return input.command();
 
     const idempotencyKey = readIdempotencyKey(input.request);
+    if (idempotencyKey && idempotencyKey.length > 255) {
+      throw new ValidationError('Idempotency-Key header must contain at most 255 characters');
+    }
     if (isProductionLikeEnvironment(options.environment) && !idempotencyKey) {
       throw new ValidationError('Idempotency-Key header is required for mutating commands');
     }
@@ -33,21 +42,28 @@ export function createTenantCommandRunner(options: {
       return input.command();
     }
 
-    const execution = await options.unitOfWork.execute(
-      {
-        accountId: input.accountId,
-        actorUserId: input.actorUserId,
-        correlationId: input.correlationId,
-        operation: input.operation,
-        idempotencyKey
-      },
-      input.payload,
-      async () => {
-        const value = await input.command();
-        return (value === undefined ? null : value) as unknown as JsonValue;
+    try {
+      const execution = await options.unitOfWork.execute(
+        {
+          accountId: input.accountId,
+          actorUserId: input.actorUserId,
+          correlationId: input.correlationId,
+          operation: input.operation,
+          idempotencyKey
+        },
+        input.payload,
+        async () => {
+          const value = await input.command();
+          return (value === undefined ? null : value) as unknown as JsonValue;
+        }
+      );
+      return execution.value as unknown as T;
+    } catch (error) {
+      if (error instanceof IdempotencyConflictError || error instanceof IdempotencyInProgressError) {
+        throw new AppError(error.code, error.message, 409);
       }
-    );
-    return execution.value as unknown as T;
+      throw error;
+    }
   };
 }
 

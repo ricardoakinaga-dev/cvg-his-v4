@@ -181,6 +181,7 @@ import {
   type CardTransactionRepository
 } from './card-transaction-repository.js';
 import type { LaboratoryResultImportRepository } from './laboratory-result-import-repository.js';
+import type { EncounterCashReceiptRepository } from './encounter-cash-receipt-repository.js';
 
 function sanitizeAuditValue(value: string): string {
   return value.replace(/[;\n\r=]/g, ' ').trim();
@@ -248,6 +249,7 @@ export interface RuntimeRepositories {
   readonly ledger?: FinancialLedgerRepository;
   readonly pixTransaction?: PixTransactionRepository;
   readonly cardTransaction?: CardTransactionRepository;
+  readonly encounterCashReceipt?: EncounterCashReceiptRepository;
 }
 
 export interface ApiRuntimeOptions {
@@ -1026,7 +1028,7 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
       }) satisfies LgpdDataProvider,
       financial: (async (_subjectId, context) => ({
         source: 'BillingService',
-        billingRecords: billing.list({
+        billingRecords: await billing.listAuthoritative({
           accountId: context.accountId,
           patientId: context.subjectType === 'patient' ? context.subjectId : undefined,
           ownerId: context.subjectType === 'owner' ? context.subjectId : undefined

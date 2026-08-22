@@ -453,7 +453,7 @@ describe('BillingDetailPage', () => {
     expect(wrapper.text()).toContain('Erro ao adicionar item');
   });
 
-  it('shows update status button for estimated/open records', async () => {
+  it('allows an estimated record to be opened without offering settlement', async () => {
     mockGetByEncounterFn.mockResolvedValue({ ...mockRecord, status: 'estimated' as const });
 
     const BillingDetailPage = (await import('../BillingDetailPage.vue')).default;
@@ -462,6 +462,25 @@ describe('BillingDetailPage', () => {
     await flushPromises();
     const statusBtn = wrapper.findAll('button').find((b) => b.text().includes('Atualizar Status'));
     expect(statusBtn).toBeTruthy();
+    await statusBtn!.trigger('click');
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('#newStatus').findAll('option').map((option) => option.attributes('value'))).toEqual([
+      'open'
+    ]);
+    expect(wrapper.text()).not.toContain('Quitado');
+  });
+
+  it('routes open billing records to the encounter receipt flow', async () => {
+    mockGetByEncounterFn.mockResolvedValue({ ...mockRecord, status: 'open' as const });
+
+    const wrapper = await mountBillingDetailPage();
+    await flushPromises();
+
+    const receiptLink = wrapper.findAll('a').find((link) => link.text().includes('Registrar recebimento'));
+    expect(receiptLink).toBeTruthy();
+    expect(receiptLink!.attributes('href')).toBe('/encounters/enc-1');
+    expect(wrapper.text()).not.toContain('Fechar cobrança');
+    expect(wrapper.findAll('button').some((button) => button.text().includes('Atualizar Status'))).toBe(false);
   });
 
   it('does not show update status button for draft records', async () => {

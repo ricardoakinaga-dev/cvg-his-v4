@@ -77,6 +77,9 @@ function createMockBilling() {
     list: async (_filters?: unknown) => [
       { id: 'br-1', encounterId: 'enc-1', status: 'estimated' }
     ],
+    listAuthoritative: async (_filters?: unknown) => [
+      { id: 'br-1', encounterId: 'enc-1', status: 'estimated' }
+    ],
     listItems: async (_encounterId: string) => [{ id: 'bi-1', description: 'item 1' }],
     findByEncounter: async (_encounterId: string) => ({
       id: 'br-1',
@@ -166,7 +169,7 @@ test('handleBillingRoutes GET /billing with encounterId filter', async () => {
   let receivedFilters: unknown;
   const mockBilling = {
     ...createMockBilling(),
-    list: async (filters?: unknown) => {
+    listAuthoritative: async (filters?: unknown) => {
       receivedFilters = filters;
       return [{ id: 'br-1', encounterId: 'enc-1', patientId: 'pat-1', ownerId: 'owner-1' }];
     }
@@ -383,6 +386,81 @@ test('handleBillingRoutes PATCH /billing/:encounterId/status updates status expl
   assert.deepEqual(receivedPayload, {
     status: 'open',
     administrativeNotes: 'Aberto para cobrança'
+  });
+});
+
+test('handleBillingRoutes rejects public manual settlement without tenant disclosure', async () => {
+  const response = new MockResponse();
+  let statusUpdated = false;
+  const mockBilling = {
+    ...createMockBilling(),
+    updateStatus: async () => {
+      statusUpdated = true;
+      return { id: 'br-1', encounterId: 'enc-1', status: 'settled' };
+    }
+  };
+
+  const handled = await handleBillingRoutes(
+    '/billing/enc-1/status',
+    createJsonRequest('PATCH', '/billing/enc-1/status', {
+      status: 'settled',
+      administrativeNotes: 'Pagamento manual'
+    }) as never,
+    response as never,
+    'corr-billing-manual-settlement',
+    {
+      billing: mockBilling as never,
+      audit: createMockAudit() as never,
+      requirePrincipal: () => createPrincipal(),
+      enforceAbac: () => {}
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(statusUpdated, false);
+  assert.equal(response.statusCode, 409);
+  assert.deepEqual(response.bodyJson(), {
+    code: 'MANUAL_SETTLEMENT_DISABLED',
+    message: 'Manual settlement is disabled. Record the receipt through the cash-receipts endpoint.',
+    details: { receiptPath: '/encounters/:id/cash-receipts' },
+    correlationId: 'corr-billing-manual-settlement'
+  });
+  assert.equal(response.bodyJson<{ accountId?: string }>().accountId, undefined);
+});
+
+test('handleBillingRoutes rejects reopening a settled billing record with a stable conflict', async () => {
+  const response = new MockResponse();
+  let statusUpdated = false;
+  const mockBilling = {
+    ...createMockBilling(),
+    findByEncounter: async () => ({ id: 'br-1', encounterId: 'enc-1', status: 'settled' }),
+    updateStatus: async () => {
+      statusUpdated = true;
+      return {};
+    }
+  };
+
+  const handled = await handleBillingRoutes(
+    '/billing/enc-1/status',
+    createJsonRequest('PATCH', '/billing/enc-1/status', { status: 'open' }) as never,
+    response as never,
+    'corr-billing-settled',
+    {
+      billing: mockBilling as never,
+      audit: createMockAudit() as never,
+      requirePrincipal: () => createPrincipal(),
+      enforceAbac: () => {}
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(statusUpdated, false);
+  assert.equal(response.statusCode, 409);
+  assert.deepEqual(response.bodyJson(), {
+    code: 'BILLING_SETTLEMENT_IRREVERSIBLE',
+    message: 'A settled billing record requires an explicit financial reversal',
+    details: { receiptPath: '/encounters/enc-1/cash-receipts' },
+    correlationId: 'corr-billing-settled'
   });
 });
 

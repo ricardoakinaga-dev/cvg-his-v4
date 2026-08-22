@@ -316,7 +316,9 @@ async function buildReportRows(
     ),
     handlers.cash.findOpenRegister(principal.user.accountId as never)
   ]);
-  const billing = handlers.billing.list().filter((item) => item.accountId === principal.user.accountId);
+  const billing = await handlers.billing.listAuthoritative({
+    accountId: principal.user.accountId
+  });
   const quotes = handlers.quotes.list(principal.user.accountId as never);
   const openBalance = openRegister
     ? await handlers.cash.getCurrentBalance(openRegister.id)

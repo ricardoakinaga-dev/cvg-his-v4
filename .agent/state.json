@@ -14,20 +14,20 @@
   "blast_radius": "CROSS_SYSTEM",
   "status": "IN_PROGRESS",
   "active_execplan": ".agent/plans/premium-enterprise-mvp.md",
-  "active_task": "CVG-001",
+  "active_task": "CVG-002",
   "verification_state": "PARTIAL",
-  "repository_state": "git c8e94027a7eb21f1a6c70f97a43a9e86f570136a; branch agent/sync-v4-full-program; dirty worktree observed with 54 tracked/untracked entries before MFA checkpoint commit",
+  "repository_state": "CVG-002A checkpoint content verified from base git 30be6b3c8bec7bdc59246e62e0eda0c7ba1721c2 on branch agent/sync-v4-full-program; commit and push are the next repository operations",
   "instruction_scope_refs": [
     ".agent/instruction-scope.md"
   ],
   "last_gate_record": ".agent/gates/implementation-ready-CVG-001.json",
-  "last_event_id": "EVT-0008",
-  "state_revision": 5,
+  "last_event_id": "EVT-0009",
+  "state_revision": 6,
   "next_gate": "VERIFIED",
-  "next_action": "Implement CVG-002A encounter cash receipt as one PostgreSQL transaction and disable legacy manual-settlement paths that can create ghost cash",
+  "next_action": "Continue CVG-002 with the remaining scheduled/walk-in, inventory and non-cash payment journey, then add a dedicated HTTP-to-PostgreSQL E2E for the receipt command",
   "blocked_by": [],
   "human_approval_required": [
     "Production go-live, credential rotation, provider selection, fiscal homologation, and residual HIGH/CRITICAL risk acceptance remain outside repository implementation authority"
   ],
-  "updated_at": "2026-08-22T11:39:47-03:00"
+  "updated_at": "2026-08-22T13:16:00-03:00"
 }

@@ -226,6 +226,22 @@
                     Fechar Financeiro
                   </DsButton>
                   <DsButton
+                    v-if="canReceiveCash"
+                    variant="primary"
+                    :loading="preparingCashReceipt"
+                    @click="prepareCashReceipt"
+                  >
+                    Receber em dinheiro
+                  </DsButton>
+                  <DsButton
+                    v-else-if="requiresOpenBilling"
+                    variant="secondary"
+                    tag="a"
+                    :to="`/billing/${encounter.id}`"
+                  >
+                    Abrir cobrança
+                  </DsButton>
+                  <DsButton
                     v-if="canTransition"
                     variant="secondary"
                     @click="showTransitionModal = true"
@@ -465,10 +481,6 @@
       @close="showFinancialCloseModal = false"
     >
       <div class="form-field">
-        <label for="financialPaidAmount" class="form-field__label">Valor pago</label>
-        <DsInput id="financialPaidAmount" v-model.number="financialPaidAmount" type="number" />
-      </div>
-      <div class="form-field">
         <label for="financialNotes" class="form-field__label">Notas</label>
         <DsInput
           id="financialNotes"
@@ -483,6 +495,41 @@
           {{ closingFinancial ? 'Fechando...' : 'Confirmar fechamento' }}
         </DsButton>
         <DsButton variant="ghost" @click="showFinancialCloseModal = false">Cancelar</DsButton>
+      </template>
+    </DsModal>
+
+    <DsModal
+      :open="showCashReceiptModal"
+      :teleport="false"
+      title="Receber em dinheiro"
+      size="md"
+      @close="showCashReceiptModal = false"
+    >
+      <div class="detail-grid">
+        <div class="detail-row">
+          <span class="detail-row__label">Valor integral</span>
+          <strong>{{ formatMoney(financialSummary?.total ?? 0) }}</strong>
+        </div>
+        <div class="detail-row">
+          <span class="detail-row__label">Caixa aberto</span>
+          <span>{{ cashReceiptRegisterId }}</span>
+        </div>
+      </div>
+      <div class="form-field">
+        <label for="cashReceiptNotes" class="form-field__label">Notas</label>
+        <DsInput
+          id="cashReceiptNotes"
+          v-model="cashReceiptNotes"
+          type="textarea"
+          :rows="3"
+          placeholder="Observações do recebimento"
+        />
+      </div>
+      <template #footer>
+        <DsButton variant="primary" :loading="receivingCash" @click="handleCashReceipt">
+          {{ receivingCash ? 'Recebendo...' : 'Confirmar recebimento' }}
+        </DsButton>
+        <DsButton variant="ghost" @click="showCashReceiptModal = false">Cancelar</DsButton>
       </template>
     </DsModal>
 
@@ -517,6 +564,8 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { encounterService } from '@/services/encounter';
+import { cashService } from '@/services/cash';
+import { billingService } from '@/services/billing';
 import { clinicalHandoffService } from '@/services/clinicalHandoff';
 import { attachmentService } from '@/services/attachments';
 import type {
@@ -526,6 +575,7 @@ import type {
   EncounterSummaryResponse
 } from '@/types/encounter';
 import type { ClinicalHandoffPriority, ClinicalHandoffSummary } from '@/types/clinicalHandoff';
+import type { BillingStatus } from '@/types/billing';
 import {
   visitTypeLabel,
   encounterStatusLabel,
@@ -558,12 +608,17 @@ const error = ref('');
 const clinicalHandoffError = ref('');
 const showTransitionModal = ref(false);
 const showFinancialCloseModal = ref(false);
+const showCashReceiptModal = ref(false);
 const showCloseModal = ref(false);
 const closeReason = ref('');
 const closing = ref(false);
 const closingFinancial = ref(false);
-const financialPaidAmount = ref(0);
 const financialNotes = ref('');
+const preparingCashReceipt = ref(false);
+const receivingCash = ref(false);
+const cashReceiptRegisterId = ref('');
+const cashReceiptNotes = ref('');
+const cashReceiptAttempt = ref<{ readonly fingerprint: string; readonly key: string } | null>(null);
 const entityCache = useEntityCache();
 const attachments = ref<any[]>([]);
 const attachmentsLoading = ref(false);
@@ -574,6 +629,24 @@ const patientName = ref('');
 const ownerName = ref('');
 const financialSummary = ref<EncounterFinancialSummary | null>(null);
 const encounterSummary = ref<EncounterSummaryResponse | null>(null);
+const billingStatus = ref<BillingStatus | null>(null);
+const hasFullUnpaidBalance = computed(() => {
+  const summary = financialSummary.value;
+  return Boolean(
+    encounter.value?.status === 'closed'
+    && summary
+    && summary.total > 0
+    && summary.paidAmount === 0
+    && summary.balanceDue === summary.total
+  );
+});
+const canReceiveCash = computed(() => hasFullUnpaidBalance.value && billingStatus.value === 'open');
+const requiresOpenBilling = computed(() =>
+  hasFullUnpaidBalance.value
+  && billingStatus.value !== null
+  && billingStatus.value !== 'open'
+  && billingStatus.value !== 'settled'
+);
 const activeWorkflowStep = ref('summary');
 const clinicalHandoff = ref<ClinicalHandoffSummary | null>(null);
 const clinicalHandoffLoading = ref(false);
@@ -910,6 +983,11 @@ async function refreshEnterpriseSummary() {
       financialSummary.value = null;
     }
   } finally {
+    try {
+      billingStatus.value = (await billingService.getByEncounter(encounter.value.id)).status;
+    } catch {
+      billingStatus.value = null;
+    }
     financialLoading.value = false;
   }
 }
@@ -919,7 +997,6 @@ async function handleFinancialClose() {
   closingFinancial.value = true;
   try {
     financialSummary.value = await encounterService.closeFinancial(encounter.value.id, {
-      paidAmount: Number(financialPaidAmount.value || 0),
       notes: financialNotes.value.trim() || null
     });
     showFinancialCloseModal.value = false;
@@ -929,6 +1006,59 @@ async function handleFinancialClose() {
     alert(err instanceof Error ? err.message : 'Erro ao fechar financeiro');
   } finally {
     closingFinancial.value = false;
+  }
+}
+
+async function prepareCashReceipt() {
+  preparingCashReceipt.value = true;
+  try {
+    const dashboard = await cashService.getDashboard();
+    if (!dashboard.openRegister) {
+      alert('Abra um caixa antes de registrar o recebimento em dinheiro');
+      return;
+    }
+    cashReceiptRegisterId.value = dashboard.openRegister.id;
+    showCashReceiptModal.value = true;
+  } catch (err: unknown) {
+    alert(err instanceof Error ? err.message : 'Erro ao consultar o caixa aberto');
+  } finally {
+    preparingCashReceipt.value = false;
+  }
+}
+
+function createCashReceiptIdempotencyKey(): string {
+  return globalThis.crypto?.randomUUID?.()
+    ?? `cash-receipt-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+async function handleCashReceipt() {
+  const summary = financialSummary.value;
+  if (!encounter.value || !summary || !cashReceiptRegisterId.value) return;
+  const payload = {
+    cashRegisterId: cashReceiptRegisterId.value,
+    expectedAmount: summary.total,
+    notes: cashReceiptNotes.value.trim() || undefined
+  };
+  const fingerprint = JSON.stringify({ encounterId: encounter.value.id, ...payload });
+  const attempt = cashReceiptAttempt.value?.fingerprint === fingerprint
+    ? cashReceiptAttempt.value
+    : { fingerprint, key: createCashReceiptIdempotencyKey() };
+  cashReceiptAttempt.value = attempt;
+  receivingCash.value = true;
+  try {
+    await encounterService.createCashReceipt(
+      encounter.value.id,
+      payload,
+      attempt.key
+    );
+    cashReceiptAttempt.value = null;
+    showCashReceiptModal.value = false;
+    cashReceiptNotes.value = '';
+    await refreshEnterpriseSummary();
+  } catch (err: unknown) {
+    alert(err instanceof Error ? err.message : 'Erro ao registrar recebimento em dinheiro');
+  } finally {
+    receivingCash.value = false;
   }
 }
 
