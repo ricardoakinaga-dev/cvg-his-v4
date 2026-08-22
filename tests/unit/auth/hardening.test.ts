@@ -262,16 +262,20 @@ describe('AuthService with BruteForceProtection', () => {
     const mfa = new MfaService();
     const auth = createAuthService(bf, mfa);
 
-    await auth.login({ username: 'admin', password: SEED_ADMIN_PASSWORD }, 'corr-mfa-2');
+    const challenge = await auth.login(
+      { username: 'admin', password: SEED_ADMIN_PASSWORD },
+      'corr-mfa-2'
+    );
+    const challengeId = (challenge as { challengeId: string }).challengeId;
     expect(bf.getMfaFailureCount('user_admin')).toBe(0);
 
     await expect(
-      auth.completeMfaLogin({ userId: 'user_admin', token: '000000' }, 'corr-mfa-3')
+      auth.completeMfaLogin({ userId: 'user_admin', token: '000000', challengeId }, 'corr-mfa-3')
     ).rejects.toThrow(AuthenticationError);
     expect(bf.getMfaFailureCount('user_admin')).toBe(1);
 
     await expect(
-      auth.completeMfaLogin({ userId: 'user_admin', token: '000001' }, 'corr-mfa-4')
+      auth.completeMfaLogin({ userId: 'user_admin', token: '000001', challengeId }, 'corr-mfa-4')
     ).rejects.toThrow(AuthenticationError);
     expect(bf.getMfaFailureCount('user_admin')).toBe(2);
   });
@@ -281,20 +285,33 @@ describe('AuthService with BruteForceProtection', () => {
     const mfa = new MfaService();
     const auth = createAuthService(bf, mfa);
 
-    await auth.login({ username: 'admin', password: SEED_ADMIN_PASSWORD }, 'corr-mfa-lock-1');
+    const challenge = await auth.login(
+      { username: 'admin', password: SEED_ADMIN_PASSWORD },
+      'corr-mfa-lock-1'
+    );
+    const challengeId = (challenge as { challengeId: string }).challengeId;
 
     await expect(
-      auth.completeMfaLogin({ userId: 'user_admin', token: '000000' }, 'corr-mfa-lock-2')
+      auth.completeMfaLogin(
+        { userId: 'user_admin', token: '000000', challengeId },
+        'corr-mfa-lock-2'
+      )
     ).rejects.toThrow(AuthenticationError);
 
     await expect(
-      auth.completeMfaLogin({ userId: 'user_admin', token: '000001' }, 'corr-mfa-lock-3')
+      auth.completeMfaLogin(
+        { userId: 'user_admin', token: '000001', challengeId },
+        'corr-mfa-lock-3'
+      )
     ).rejects.toThrow(AuthenticationError);
 
     expect(bf.isMfaLocked('user_admin')).toBe(true);
 
     await expect(
-      auth.completeMfaLogin({ userId: 'user_admin', token: '000002' }, 'corr-mfa-lock-4')
+      auth.completeMfaLogin(
+        { userId: 'user_admin', token: '000002', challengeId },
+        'corr-mfa-lock-4'
+      )
     ).rejects.toThrow(AuthenticationError);
   });
 

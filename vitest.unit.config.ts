@@ -1,14 +1,13 @@
 import { defineConfig } from 'vitest/config';
 import { resolve } from 'node:path';
 
+import { createWorkspaceAliases } from './vitest.alias.js';
+
 const root = resolve(__dirname);
 
 export default defineConfig({
   resolve: {
-    alias: {
-      '@cvg-his-v2/tenant-context': resolve(root, 'packages/tenant-context/src/index.ts'),
-      '@cvg-his-v2/module-mfa': resolve(root, 'packages/modules/mfa/src/index.ts')
-    }
+    alias: createWorkspaceAliases(root)
   },
   test: {
     globals: true,

@@ -304,9 +304,25 @@ export function getCurrentSloSnapshot(now = Date.now()): CurrentSloSnapshot {
 // Update Functions (called periodically or on state changes)
 // ============================================================================
 
+/**
+ * Mirrors the in-flight request gauge so decrements can be floored at zero.
+ *
+ * An unbalanced decrement (a request that fails before the increment runs, or
+ * an error path that decrements twice) would otherwise drive the gauge
+ * permanently negative and make in-flight/capacity dashboards unreadable.
+ */
+let activeRequestsCount = 0;
+
 export function updateAppMetrics(options: {
   uptime: number;
-  activeRequests: number;
+  /**
+   * Optional override for the in-flight request gauge.
+   *
+   * Normally omitted: the gauge is owned by `incrementActiveRequests` /
+   * `decrementActiveRequests`. Passing a value here overwrites live tracking,
+   * so only supply it when the caller is the authoritative source.
+   */
+  activeRequests?: number;
   dbHealthy: boolean;
   persistenceMode: string;
   redisHealthy: boolean;
@@ -314,7 +330,10 @@ export function updateAppMetrics(options: {
   runtimeDistributedStateEnabled: boolean;
 }): void {
   appUptimeSeconds.set(options.uptime);
-  appActiveRequests.set(options.activeRequests);
+  if (typeof options.activeRequests === 'number') {
+    activeRequestsCount = Math.max(0, options.activeRequests);
+    appActiveRequests.set(activeRequestsCount);
+  }
   appDbHealthy.set(options.dbHealthy ? 1 : 0);
   appRedisHealthy.set(options.redisHealthy ? 1 : 0);
   appRuntimeDistributedStateEnabled.set(options.runtimeDistributedStateEnabled ? 1 : 0);
@@ -354,14 +373,17 @@ export function updateSloMetrics(
 }
 
 export function incrementActiveRequests(): void {
-  appActiveRequests.inc();
+  activeRequestsCount += 1;
+  appActiveRequests.set(activeRequestsCount);
 }
 
 export function decrementActiveRequests(): void {
-  appActiveRequests.dec();
+  activeRequestsCount = Math.max(0, activeRequestsCount - 1);
+  appActiveRequests.set(activeRequestsCount);
 }
 
 export function resetActiveRequestsCount(): void {
+  activeRequestsCount = 0;
   appActiveRequests.set(0);
 }
 

@@ -85,6 +85,12 @@ export const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: false, title: 'Login', breadcrumb: 'Login' }
   },
   {
+    path: '/setup',
+    name: 'Setup',
+    component: () => import('@/pages/setup/SetupPage.vue'),
+    meta: { requiresAuth: false, title: 'Configuração inicial', breadcrumb: 'Configuração inicial' }
+  },
+  {
     path: '/',
     component: () => import('@/layouts/AppLayout.vue'),
     meta: { requiresAuth: true },

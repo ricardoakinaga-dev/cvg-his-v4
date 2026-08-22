@@ -34,7 +34,7 @@
     },
     "api": {
       "type": "object",
-      "required": ["service", "probes", "env", "auth"],
+      "required": ["service", "probes", "env", "auth", "setup"],
       "properties": {
         "replicaCount": { "type": "integer", "minimum": 1 },
         "service": {
@@ -89,7 +89,25 @@
             "secretKey": { "type": "string", "minLength": 1 },
             "value": { "type": "string" }
           }
+        },
+        "setup": {
+          "type": "object",
+          "required": ["secretKey"],
+          "properties": {
+            "existingSecret": { "type": "string" },
+            "secretKey": { "type": "string", "minLength": 1 },
+            "value": { "type": "string" }
+          }
         }
+      }
+    },
+    "databaseMaintenance": {
+      "type": "object",
+      "required": ["enabled", "backoffLimit", "activeDeadlineSeconds"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "backoffLimit": { "type": "integer", "minimum": 0 },
+        "activeDeadlineSeconds": { "type": "integer", "minimum": 1 }
       }
     },
     "worker": {

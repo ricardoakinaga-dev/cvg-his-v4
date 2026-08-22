@@ -203,6 +203,7 @@ async function applyMigration(client: PoolClient, file: MigrationFile): Promise<
 export async function runMigrations(): Promise<void> {
   const client = await pool.connect();
   try {
+    await client.query("SELECT pg_advisory_lock(hashtext('cvg-his-v2:migrations'))");
     await ensureMigrationsTable(client);
     const files = getMigrationFiles();
     const appliedMigrations = await getAppliedMigrations(client);
@@ -218,6 +219,7 @@ export async function runMigrations(): Promise<void> {
 
     console.info('Migrations applied successfully.');
   } finally {
+    await client.query("SELECT pg_advisory_unlock(hashtext('cvg-his-v2:migrations'))").catch(() => undefined);
     client.release();
     await closeDbConnection();
   }

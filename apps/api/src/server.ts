@@ -79,6 +79,7 @@ import {
   getClientIp,
   handleAuthRoutes
 } from './routes/auth-routes.js';
+import { handleSetupRoutes } from './routes/setup-routes.js';
 import { handleOpenApiRoutes } from './routes/openapi-routes.js';
 import { handleFiscalRoutes } from './routes/fiscal-routes.js';
 import { handleHealthRoutes } from './routes/health-routes.js';
@@ -155,10 +156,12 @@ import {
 } from './helpers/attachment-download-token.js';
 import {
   getMetricsText,
+  decrementActiveRequests,
   httpErrorsTotal,
   httpRequestDurationSeconds,
   httpRequestsTotal,
   normalizeRoute,
+  incrementActiveRequests,
   recordRequestSloObservation,
   updateAppMetrics,
   createFeatureFlagMetricsCollector
@@ -219,6 +222,28 @@ import {
   type VetusImportLogRepository
 } from './repositories/vetus-import-log-repository.js';
 
+export function buildAuthenticatedActorAttributes(
+  principal: AuthenticatedPrincipal,
+  memberships: {
+    readonly teams: readonly { readonly id: string }[];
+    readonly sectors: readonly { readonly id: string; readonly code: string }[];
+  }
+): ActorAttributes {
+  return {
+    userId: principal.user.id as never,
+    accountId: principal.user.accountId as never,
+    roleCodes: principal.access.roleCodes,
+    department: undefined,
+    jobTitle: undefined,
+    staffId: undefined,
+    branchIds: [],
+    teamIds: memberships.teams.map((team) => team.id),
+    sectorIds: memberships.sectors.map((sector) => sector.id),
+    sectorCodes: memberships.sectors.map((sector) => sector.code),
+    isActive: principal.user.status === 'active'
+  };
+}
+
 export interface ApiServerOptions {
   readonly appName: string;
   readonly environment: string;
@@ -230,6 +255,7 @@ export interface ApiServerOptions {
   readonly refreshTokenTtlSeconds: number;
   readonly authRateLimitMaxRequests?: number;
   readonly authRateLimitWindowMs?: number;
+  readonly authRateLimiter?: Pick<ReturnType<typeof createAuthRateLimiter>, 'check'>;
   readonly trustedProxyCidrs?: readonly string[];
   readonly enableMfa?: boolean;
   readonly mfaEncryptionKey?: string;
@@ -252,6 +278,8 @@ export interface ApiServerOptions {
   /** Keeps auxiliary catalog stores aligned with the persistence mode selected by bootstrap. */
   readonly useDatabaseCatalogStores?: boolean;
   readonly vetusImportLogRepository?: VetusImportLogRepository;
+  /** Token required by the first-run setup wizard. Setup is disabled when absent. */
+  readonly setupBootstrapToken?: string;
   readonly pagarmeApiKey?: string;
   readonly pagarmePixKey?: string;
   readonly nfseProvider?: NfseProvider;
@@ -3655,13 +3683,15 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
 
   // Rate limiter for auth endpoints (GAP-11: uses createAuthRateLimiter helper)
   // GAP-05: runtimeDistributedStateEnabled gates Redis backend for distributed rate limiting
-  const authRateLimiter = createAuthRateLimiter(logger, {
-    authRateLimitWindowMs: options.authRateLimitWindowMs,
-    authRateLimitMaxRequests: options.authRateLimitMaxRequests,
-    redisUrl: options.redisUrl,
-    runtimeDistributedStateEnabled: effectiveRuntimeDistributedStateEnabled,
-    requireDistributed: ['production', 'prod', 'staging', 'stage'].includes(options.environment)
-  });
+  const authRateLimiter =
+    options.authRateLimiter ??
+    createAuthRateLimiter(logger, {
+      authRateLimitWindowMs: options.authRateLimitWindowMs,
+      authRateLimitMaxRequests: options.authRateLimitMaxRequests,
+      redisUrl: options.redisUrl,
+      runtimeDistributedStateEnabled: effectiveRuntimeDistributedStateEnabled,
+      requireDistributed: ['production', 'prod', 'staging', 'stage'].includes(options.environment)
+    });
 
   // ABAC engine — layered on top of RBAC for fine-grained policy enforcement
   const abacEngine = new AbacEngine();
@@ -3701,29 +3731,9 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
   /**
    * Build ABAC actor attributes from the authenticated principal.
    */
-  function buildActorAttributes(
-    principal: AuthenticatedPrincipal,
-    request?: IncomingMessage
-  ): ActorAttributes {
+  function buildActorAttributes(principal: AuthenticatedPrincipal): ActorAttributes {
     const memberships = accessControl.listMemberships(principal.user.id as never);
-    const branchIdHeader = request?.headers['x-branch-id'];
-    const branchIds =
-      typeof branchIdHeader === 'string' && branchIdHeader.trim().length > 0
-        ? [branchIdHeader.trim()]
-        : [];
-    return {
-      userId: principal.user.id as never,
-      accountId: principal.user.accountId as never,
-      roleCodes: principal.access.roleCodes,
-      department: undefined,
-      jobTitle: undefined,
-      staffId: undefined,
-      branchIds,
-      teamIds: memberships.teams.map((t) => t.id),
-      sectorIds: memberships.sectors.map((s) => s.id),
-      sectorCodes: memberships.sectors.map((s) => s.code),
-      isActive: principal.user.status === 'active'
-    };
+    return buildAuthenticatedActorAttributes(principal, memberships);
   }
 
   /**
@@ -3751,7 +3761,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
     resource: ResourceAttributes,
     request: IncomingMessage
   ): void {
-    const actor = buildActorAttributes(principal, request);
+    const actor = buildActorAttributes(principal);
     const environment = buildEnvironmentAttributes(request);
     abacEngine.enforce(actionCode, actor, resource, environment);
   }
@@ -3843,6 +3853,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
   registerChaosExperimentOnce(chaos, workerFailureExperiment);
   registerChaosExperimentOnce(chaos, apiLatencyExperiment);
 
+  const failedAccessTokenSynchronizations = new WeakSet<IncomingMessage>();
   const server = createServer((request: IncomingMessage, response: ServerResponse) => {
     // Apply W3C trace context propagation before handling
     tracingMiddleware(request, response, () => {
@@ -3856,6 +3867,16 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
   return Object.assign(server, { ready });
 
   async function handleRequest(request: IncomingMessage, response: ServerResponse) {
+    incrementActiveRequests();
+    let activeRequest = true;
+    const finishActiveRequest = () => {
+      if (!activeRequest) return;
+      activeRequest = false;
+      decrementActiveRequests();
+    };
+    response.once('finish', finishActiveRequest);
+    response.once('close', finishActiveRequest);
+
     const parentCtx = extractTraceContext(request);
     const span = createSpan(
       `HTTP ${request.method ?? 'UNKNOWN'} ${request.url ?? '/'}`,
@@ -3957,7 +3978,6 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
         });
         updateAppMetrics({
           uptime: Math.round(process.uptime()),
-          activeRequests: 0,
           dbHealthy: operationalState.databaseHealthy,
           persistenceMode: operationalState.persistenceMode,
           redisHealthy: operationalState.redisHealthy,
@@ -3970,6 +3990,26 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
         response.statusCode = 200;
         response.end(metricsText);
         return;
+      }
+
+      // Synchronize before any privileged route, including the early chaos
+      // endpoints below. A failed repository check is remembered for the
+      // request so synchronous route guards cannot fall back to stale cache.
+      let accountId: string | undefined;
+      let userId: string | undefined;
+      const authHeader = request.headers['authorization'];
+      if (authHeader) {
+        const accessToken = extractBearerToken(authHeader);
+        if (accessToken) {
+          try {
+            await auth.synchronizeAccessToken(accessToken, correlationId);
+            const principal = auth.authenticateAccessToken(accessToken);
+            accountId = principal.user.accountId;
+            userId = principal.user.id;
+          } catch {
+            failedAccessTokenSynchronizations.add(request);
+          }
+        }
       }
 
       // Chaos engineering endpoints are privileged because experiments can alter process-wide behavior.
@@ -4049,22 +4089,6 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
         pathname.match(/^\/attachments\/[^/]+\/content$/) && url.searchParams.has('token')
           ? verifyAttachmentDownloadToken(options.authSecret, url.searchParams.get('token') ?? '')
           : null;
-      let accountId: string | undefined = undefined;
-      let userId: string | undefined;
-      const authHeader = request.headers['authorization'];
-      if (authHeader) {
-        const accessToken = extractBearerToken(authHeader);
-        if (accessToken) {
-          try {
-            const principal = auth.authenticateAccessToken(accessToken);
-            accountId = principal.user.accountId;
-            userId = principal.user.id;
-          } catch {
-            // Token invalid or expired - will be rejected at route level if needed
-          }
-        }
-      }
-
       // API key requests also need tenant context before route-level auth runs.
       if (!accountId) {
         const apiKeyValue = readHeader(request, 'x-api-key') ?? readHeader(request, 'X-API-Key');
@@ -4088,6 +4112,14 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
         pathname.startsWith('/api/auth/') ||
         pathname === '/webhooks/whatsapp/inbound' ||
         pathname === '/api/webhooks/whatsapp/inbound';
+
+      // Health, metrics and OpenAPI already returned above, so anything reaching
+      // here is tenant-scoped. Without a verified identity there is no account to
+      // scope the request to: answer 401 rather than letting tenant resolution
+      // fail as an unhandled 500.
+      if (!isPublicTenantlessRoute && !accountId) {
+        throw new AuthenticationError();
+      }
 
       const tenantCtx = isPublicTenantlessRoute
         ? {
@@ -4122,6 +4154,20 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
       return await withSpanContext(span, async () =>
         runWithTenantContext(tenantCtx, async () => {
           const dispatchRequest = async (): Promise<void> => {
+          // First-run provisioning is checked before the authenticated auth
+          // routes: it is the only path that may create an account without one.
+          if (
+            await handleSetupRoutes(pathname, request, response, correlationId, {
+              setupRateLimiter: authRateLimiter,
+              logger,
+              setupBootstrapToken: options.setupBootstrapToken,
+              trustedProxyCidrs: options.trustedProxyCidrs,
+              getPool: users.persistenceMode === 'database' ? getPool : undefined
+            })
+          ) {
+            return;
+          }
+
           if (
             await handleAuthRoutes(pathname, request, response, correlationId, {
               auth,
@@ -7166,6 +7212,9 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
     const accessToken = extractBearerToken(readHeader(request, 'authorization'));
     if (!accessToken) {
       throw new AuthenticationError();
+    }
+    if (failedAccessTokenSynchronizations.has(request)) {
+      throw new AuthenticationError('Session could not be verified');
     }
 
     const principal = auth.authenticateAccessToken(accessToken);

@@ -4,7 +4,10 @@ import { promisify } from 'node:util';
 import { NotFoundError } from '@cvg-his-v2/shared-errors';
 import type { AccountId, UserId, UserSummary } from '@cvg-his-v2/shared-types';
 import { nowIso } from '@cvg-his-v2/shared-utils';
-import type { UsersRepository } from './repositories/database-users.repository.js';
+import type {
+  UserRecord as RepositoryUserRecord,
+  UsersRepository
+} from './repositories/database-users.repository.js';
 
 export interface UserRecord extends UserSummary {
   readonly passwordHash: string;
@@ -19,12 +22,26 @@ export interface UsersServiceOptions {
 const SCRYPT_KEYLEN = 64;
 const SCRYPT_SALT_LENGTH = 16;
 const SEED_SALT = 'cvg-his-v2-seed-salt-v1';
+const LEGACY_SHA256_PATTERN = /^[a-f0-9]{64}$/i;
 
 const scryptAsync = promisify(scrypt);
 
+/**
+ * Seed users carry well-known credentials, so this must fail closed.
+ *
+ * An unset NODE_ENV is treated as untrusted rather than as development: a
+ * deployment that simply forgets the variable would otherwise expose working
+ * admin accounts with published passwords.
+ */
 function isSeedEnvironment(): boolean {
   const env = process.env.NODE_ENV;
-  return !env || env === 'development' || env === 'test';
+  return env === 'development' || env === 'test';
+}
+
+function timingSafeEqualString(a: string, b: string): boolean {
+  const bufferA = Buffer.from(a, 'utf8');
+  const bufferB = Buffer.from(b, 'utf8');
+  return bufferA.length === bufferB.length && timingSafeEqual(bufferA, bufferB);
 }
 
 export async function hashPassword(password: string): Promise<string> {
@@ -37,7 +54,12 @@ export async function comparePassword(password: string, passwordHash: string): P
   const parts = passwordHash.split(':');
   if (parts.length !== 2) {
     // Backward compatibility for legacy Drizzle seed values stored as plain SHA-256 hex.
-    return createHash('sha256').update(password).digest('hex') === passwordHash;
+    // Unsalted SHA-256 is not an acceptable password hash: these records should be
+    // migrated to scrypt (see hashPassword) on the owner's next successful login.
+    return timingSafeEqualString(
+      createHash('sha256').update(password).digest('hex'),
+      passwordHash
+    );
   }
   const saltHex = parts[0];
   const hashHex = parts[1];
@@ -46,8 +68,7 @@ export async function comparePassword(password: string, passwordHash: string): P
     if (!isSeedEnvironment()) {
       return false;
     }
-    const expectedPassword = hashHex;
-    return password === expectedPassword;
+    return timingSafeEqualString(password, hashHex);
   }
 
   try {
@@ -185,22 +206,7 @@ export class UsersService {
     if (!this.#repository) return;
     const dbUsers = await this.#repository.findAll();
     for (const dbUser of dbUsers) {
-      if (this.#users.has(dbUser.id as UserId)) continue;
-      const roleCodes = await this.#repository.findRoleCodesByUserId(dbUser.id as UserId);
-      const userRecord: UserRecord = {
-        id: dbUser.id as UserId,
-        accountId: dbUser.accountId,
-        username: dbUser.username || dbUser.email.split('@')[0],
-        email: dbUser.email,
-        displayName: dbUser.fullName,
-        status: dbUser.isActive ? 'active' : 'inactive',
-        staffId: '' as never,
-        createdAt: dbUser.createdAt,
-        updatedAt: dbUser.updatedAt,
-        passwordHash: dbUser.passwordHash,
-        roleCodes
-      };
-      this.#indexUser(userRecord);
+      this.#indexUser(await this.#materializeUser(dbUser));
     }
   }
 
@@ -237,8 +243,91 @@ export class UsersService {
     return this.#ambiguousUsernames.has(username) ? undefined : this.#usersByUsername.get(username);
   }
 
+  /**
+   * Resolves the current repository value and refreshes the process-local index.
+   * The synchronous lookup remains available for already-synchronized request paths.
+   */
+  public async resolveByUsername(
+    username: string,
+    accountId?: AccountId
+  ): Promise<UserRecord | undefined> {
+    if (!this.#repository) {
+      return this.findByUsername(username, accountId);
+    }
+
+    if (!accountId) {
+      await this.hydrateFromDatabase();
+      return this.findByUsername(username);
+    }
+
+    const repositoryUser = await this.#repository.findByUsername(accountId, username);
+    if (!repositoryUser) {
+      return undefined;
+    }
+
+    const user = await this.#materializeUser(repositoryUser);
+    this.#indexUser(user);
+    return user;
+  }
+
+  /** Refreshes a user by id so authorization never depends on a stale local object. */
+  public async resolveById(
+    userId: UserId,
+    accountId?: AccountId
+  ): Promise<UserRecord | undefined> {
+    if (!this.#repository) {
+      const cached = this.#users.get(userId);
+      return cached && (!accountId || cached.accountId === accountId) ? cached : undefined;
+    }
+
+    const repositoryUser = await this.#repository.findById(userId, accountId);
+    if (!repositoryUser || (accountId && repositoryUser.accountId !== accountId)) {
+      return undefined;
+    }
+
+    const user = await this.#materializeUser(repositoryUser);
+    this.#indexUser(user);
+    return user;
+  }
+
   public async verifyPassword(user: UserRecord, password: string): Promise<boolean> {
-    return comparePassword(password, user.passwordHash);
+    const isValid = await comparePassword(password, user.passwordHash);
+    if (!isValid || !LEGACY_SHA256_PATTERN.test(user.passwordHash)) {
+      return isValid;
+    }
+
+    const passwordHash = await hashPassword(password);
+    const updatedUser: UserRecord = {
+      ...user,
+      passwordHash,
+      updatedAt: nowIso()
+    };
+    if (!this.#repository) {
+      this.#indexUser(updatedUser);
+      return true;
+    }
+
+    const upgraded = await this.#repository.upgradePasswordHash({
+      userId: user.id,
+      accountId: user.accountId,
+      expectedPasswordHash: user.passwordHash,
+      passwordHash
+    });
+    if (upgraded) {
+      this.#indexUser(updatedUser);
+      return true;
+    }
+
+    // A failed compare-and-swap means the credential changed after validation.
+    // Re-read and verify the current hash: concurrent upgrades of the same
+    // password remain valid, while a concurrent password reset fails closed.
+    const repositoryUser = await this.#repository.findById(user.id, user.accountId);
+    if (!repositoryUser) {
+      return false;
+    }
+    const currentUser = await this.#materializeUser(repositoryUser);
+    this.#indexUser(currentUser);
+    return comparePassword(password, currentUser.passwordHash);
   }
 
   public async create(input: {
@@ -341,6 +430,26 @@ export class UsersService {
     return this.update(userId, changes);
   }
 
+  async #materializeUser(repositoryUser: RepositoryUserRecord): Promise<UserRecord> {
+    const roleCodes = await this.#repository!.findRoleCodesByUserId(
+      repositoryUser.id,
+      repositoryUser.accountId
+    );
+    return {
+      id: repositoryUser.id,
+      accountId: repositoryUser.accountId,
+      username: repositoryUser.username || repositoryUser.email.split('@')[0],
+      email: repositoryUser.email,
+      displayName: repositoryUser.fullName,
+      status: repositoryUser.isActive ? 'active' : 'inactive',
+      staffId: '' as never,
+      createdAt: repositoryUser.createdAt,
+      updatedAt: repositoryUser.updatedAt,
+      passwordHash: repositoryUser.passwordHash,
+      roleCodes
+    };
+  }
+
   #indexUser(user: UserRecord): void {
     const existing = this.#usersByUsername.get(user.username);
     if (existing && existing.accountId !== user.accountId) {
@@ -361,6 +470,7 @@ function stripSecrets(user: UserRecord): UserSummary {
 
 export {
   DatabaseUsersRepository,
+  type UpgradePasswordHashInput,
   type UsersRepository
 } from './repositories/database-users.repository.js';
 

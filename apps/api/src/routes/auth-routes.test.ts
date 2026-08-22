@@ -87,6 +87,31 @@ function createPrincipal(): AuthenticatedPrincipal {
   };
 }
 
+function createSingleAttemptRateLimiter() {
+  const attempts = new Map<string, number>();
+
+  return {
+    check: async (input: {
+      ip: string;
+      route: string;
+      accountId?: string;
+      userId?: string;
+      tenantId?: string;
+    }) => {
+      const key = JSON.stringify(input);
+      const count = (attempts.get(key) ?? 0) + 1;
+      attempts.set(key, count);
+      return {
+        limit: 1,
+        remaining: count > 1 ? 0 : 1 - count,
+        reset: Date.now() + 60_000,
+        blocked: count > 1,
+        retryAfterMs: count > 1 ? 60_000 : 0
+      };
+    }
+  };
+}
+
 test('handleAuthRoutes returns the current authenticated session payload', async () => {
   const principal = createPrincipal();
   const response = new MockResponse();
@@ -260,6 +285,131 @@ test('handleAuthRoutes POST /auth/login returns a session on success', async () 
   assert.match(String(response.getHeader('set-cookie')), /cvg_his_refresh=refresh-1/);
   assert.match(String(response.getHeader('set-cookie')), /HttpOnly/);
   assert.match(String(response.getHeader('set-cookie')), /SameSite=Strict/);
+});
+
+test('login rate limiting normalizes the username and cannot be bypassed by changing IP', async () => {
+  const authRateLimiter = createSingleAttemptRateLimiter();
+  const handlers = {
+    auth: {
+      login: async () => ({ accessToken: 'token-1', refreshToken: 'refresh-1' })
+    } as never,
+    authRateLimiter,
+    logger: { error: () => {} },
+    appName: 'test-app',
+    featureFlags: { authOidcEnabled: false, authWebauthnEnabled: false },
+    webauthnChallenges: new Map(),
+    webauthnChallengeTtlMs: DEFAULT_WEBAUTHN_CHALLENGE_TTL_MS,
+    oidcConfig: null,
+    oidcStateStore: createInMemoryOidcStateStore(),
+    oidcStateTtlMs: 60_000,
+    requirePrincipal: () => createPrincipal(),
+    appendAudit: () => {}
+  };
+
+  for (const [index, username] of ['admin', ' admin '] .entries()) {
+    const response = new MockResponse();
+    await handleAuthRoutes(
+      '/auth/login',
+      {
+        method: 'POST',
+        url: '/auth/login',
+        headers: {},
+        socket: { remoteAddress: `192.0.2.${index + 1}` },
+        [Symbol.asyncIterator]: async function* () {
+          yield Buffer.from(JSON.stringify({ username, password: 'secret' }));
+        }
+      } as never,
+      response as never,
+      `corr-auth-normalized-${index}`,
+      handlers
+    );
+
+    assert.equal(response.statusCode, index === 0 ? 200 : 429);
+  }
+});
+
+test('login rate limiting does not share an IP-only bucket across distinct users', async () => {
+  const authRateLimiter = createSingleAttemptRateLimiter();
+  const handlers = {
+    auth: {
+      login: async () => ({ accessToken: 'token-1', refreshToken: 'refresh-1' })
+    } as never,
+    authRateLimiter,
+    logger: { error: () => {} },
+    appName: 'test-app',
+    featureFlags: { authOidcEnabled: false, authWebauthnEnabled: false },
+    webauthnChallenges: new Map(),
+    webauthnChallengeTtlMs: DEFAULT_WEBAUTHN_CHALLENGE_TTL_MS,
+    oidcConfig: null,
+    oidcStateStore: createInMemoryOidcStateStore(),
+    oidcStateTtlMs: 60_000,
+    requirePrincipal: () => createPrincipal(),
+    appendAudit: () => {}
+  };
+
+  for (const username of ['admin', 'reception']) {
+    const response = new MockResponse();
+    await handleAuthRoutes(
+      '/auth/login',
+      {
+        method: 'POST',
+        url: '/auth/login',
+        headers: {},
+        socket: { remoteAddress: '203.0.113.10' },
+        [Symbol.asyncIterator]: async function* () {
+          yield Buffer.from(JSON.stringify({ username, password: 'secret' }));
+        }
+      } as never,
+      response as never,
+      `corr-auth-shared-proxy-${username}`,
+      handlers
+    );
+
+    assert.equal(response.statusCode, 200);
+  }
+});
+
+test('MFA rate limiting uses the verified body identity instead of a caller-controlled header', async () => {
+  const authRateLimiter = createSingleAttemptRateLimiter();
+  const handlers = {
+    auth: {
+      completeMfaLogin: async () => ({ accessToken: 'token-1', refreshToken: 'refresh-1' })
+    } as never,
+    authRateLimiter,
+    logger: { error: () => {} },
+    appName: 'test-app',
+    featureFlags: { authOidcEnabled: false, authWebauthnEnabled: false },
+    webauthnChallenges: new Map(),
+    webauthnChallengeTtlMs: DEFAULT_WEBAUTHN_CHALLENGE_TTL_MS,
+    oidcConfig: null,
+    oidcStateStore: createInMemoryOidcStateStore(),
+    oidcStateTtlMs: 60_000,
+    requirePrincipal: () => createPrincipal(),
+    appendAudit: () => {}
+  };
+
+  for (const [index, headerUserId] of ['attacker-choice-1', 'attacker-choice-2'].entries()) {
+    const response = new MockResponse();
+    await handleAuthRoutes(
+      '/auth/login/mfa',
+      {
+        method: 'POST',
+        url: '/auth/login/mfa',
+        headers: { 'x-mfa-user-id': headerUserId },
+        socket: { remoteAddress: `198.51.100.${index + 1}` },
+        [Symbol.asyncIterator]: async function* () {
+          yield Buffer.from(
+            JSON.stringify({ userId: 'user-1', token: '123456', challengeId: 'challenge-1' })
+          );
+        }
+      } as never,
+      response as never,
+      `corr-auth-mfa-limit-${index}`,
+      handlers
+    );
+
+    assert.equal(response.statusCode, index === 0 ? 200 : 429);
+  }
 });
 
 test('handleAuthRoutes POST /auth/refresh consumes the HttpOnly refresh cookie and does not expose it', async () => {

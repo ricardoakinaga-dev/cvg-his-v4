@@ -831,8 +831,8 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
       const blockedRes = await apiContext.get('/owners', {
         headers: { Authorization: `Bearer ${accessToken}` }
       });
-      expect(blockedRes.status()).toBe(403);
-      console.log(`   ✅ User blocked from /owners after inactivation (403)`);
+      expect(blockedRes.status()).toBe(401);
+      console.log(`   ✅ User session rejected after inactivation (401)`);
 
       // 5. Verify blocked from creating appointments
       const blockedApptRes = await apiContext.post('/appointments', {
@@ -845,8 +845,8 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
         ),
         headers: { Authorization: `Bearer ${accessToken}` }
       });
-      expect(blockedApptRes.status()).toBe(403);
-      console.log(`   ✅ User blocked from /appointments after inactivation (403)`);
+      expect(blockedApptRes.status()).toBe(401);
+      console.log(`   ✅ User session rejected for /appointments after inactivation (401)`);
 
       console.log(`   🎉 Flow 8 complete: Inativação → Bloqueio Operacional verified`);
     });

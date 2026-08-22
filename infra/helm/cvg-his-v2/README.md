@@ -19,6 +19,11 @@ Este chart agora segue uma trilha multiambiente explícita:
   - alinhamento dos probes operacionais da API e do worker
   - ausência de `Secret` gerado pelo chart em `staging/prod`
   - presença de PostgreSQL/Redis embutidos apenas em `dev`
+- A manutenção executa `packages/db/dist/migrate.js` antes de reconciliar grants
+  das roles de API/worker. Em PostgreSQL externo, um Job bloqueante roda em
+  `pre-install`/`pre-upgrade`. No PostgreSQL embutido, init containers da API e
+  do worker concluem as duas etapas antes dos containers da aplicação; o runner
+  de migration usa advisory lock para serializar réplicas concorrentes.
 
 ## Render por ambiente
 
@@ -27,8 +32,13 @@ Desenvolvimento:
 ```bash
 helm template cvg-his-v2-dev infra/helm/cvg-his-v2 \
   -f infra/helm/cvg-his-v2/values.yaml \
-  -f infra/helm/cvg-his-v2/values.dev.yaml
+  -f infra/helm/cvg-his-v2/values.dev.yaml \
+  --set-string api.setup.value="$(openssl rand -hex 32)"
 ```
+
+O token de setup nunca tem valor fixo no repositório. Gere-o no momento do deploy
+ou forneça `api.setup.existingSecret`; sem uma dessas opções, o provisionamento
+inicial permanece deliberadamente desabilitado.
 
 Staging:
 
@@ -55,7 +65,8 @@ pnpm validate:helm
 ## Convenção de secrets
 
 - `api.auth.existingSecret`: secret com `AUTH_SECRET`
-- `postgresql.existingSecret`: Secret com `api-url`, `worker-url` e `password`; API e worker usam roles PostgreSQL diferentes. Em ambiente externo, provisione as roles com `NOSUPERUSER NOBYPASSRLS` antes do deploy.
+- `api.setup.existingSecret`: secret com `SETUP_BOOTSTRAP_TOKEN`; a chave pode ser removida após o primeiro provisionamento, pois a referência é opcional e o endpoint volta a falhar fechado sem ela
+- `postgresql.existingSecret`: Secret com `url` administrativa, `api-url`, `worker-url` e `password`; API e worker usam roles PostgreSQL diferentes. A URL administrativa é restrita aos Jobs de migration/reconciliação. Em ambiente externo, provisione as roles com `NOSUPERUSER NOBYPASSRLS` antes do deploy.
 - `api.attachmentStorage.existingSecret`: Secret privado com `endpoint`, `bucket`, `access-key` e `secret-key` para S3/MinIO; o API também exige `ATTACHMENT_SCANNER_HOST` apontando para ClamAV em staging/produção.
 - `api.attachmentScanner.existingSecret`: Secret com `host` e, opcionalmente, `port`/`timeout-ms` do ClamAV; sem esse secret o API permanece fail-closed em ambientes staging/produção.
 - `redis.existingSecret`: secret com `url`
@@ -64,6 +75,11 @@ Em `dev`, o chart pode gerar os secrets locais.
 Em `staging/prod`, a recomendação é sempre usar `existingSecret`.
 
 ## Upgrade seguro
+
+Em PostgreSQL externo, migrations e grants são um hook bloqueante: o Helm
+interrompe o release se o Job falhar. Em PostgreSQL embutido, init containers
+mantêm API/worker fora de Ready até a manutenção idempotente terminar, portanto
+`--wait --atomic` também é seguro na primeira instalação.
 
 ```bash
 helm upgrade --install cvg-his-v2-prod infra/helm/cvg-his-v2 \

@@ -37,6 +37,11 @@ api:
     secretKey: AUTH_SECRET
     value: ""
 
+  setup:
+    existingSecret: ""
+    secretKey: SETUP_BOOTSTRAP_TOKEN
+    value: ""
+
   attachmentStorage:
     existingSecret: ""
     secretKeys:
@@ -108,6 +113,14 @@ api:
     OTEL_SERVICE_NAME: cvg-his-v2-api
     OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
     OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: ""
+
+# Canonical schema migration and least-privilege role reconciliation hooks.
+# External PostgreSQL secrets must expose the administrative URL under
+# postgresql.secretKeys.url. Embedded PostgreSQL runs these after first install.
+databaseMaintenance:
+  enabled: true
+  backoffLimit: 3
+  activeDeadlineSeconds: 900
 
 # ──────────────────────────────────────────────
 # Worker Service

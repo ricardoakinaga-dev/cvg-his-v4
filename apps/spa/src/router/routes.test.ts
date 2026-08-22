@@ -10,6 +10,13 @@ function findChildRoute(path: string) {
 }
 
 describe('router convergence', () => {
+  it('exposes setup as a public route without accepting route props', () => {
+    const setupRoute = routes.find((route) => route.path === '/setup');
+
+    expect(setupRoute?.meta?.requiresAuth).toBe(false);
+    expect(setupRoute?.props).toBeUndefined();
+  });
+
   it('keeps every navbar item backed by a SPA route', () => {
     const missingRoutes = flattenAllNavItems()
       .map((item) => item.path)

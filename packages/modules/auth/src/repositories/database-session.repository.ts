@@ -1,9 +1,10 @@
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import type { DatabaseClient } from '@cvg-his-v2/shared-database';
 import { sessions } from '@cvg-his-v2/shared-database';
 import type { SessionId, UserId, AccountId } from '@cvg-his-v2/shared-types';
 import type {
   PersistedSessionRecord,
+  RotateRefreshNonceParams,
   SessionRepository,
   UpdateSessionParams
 } from './session.repository.js';
@@ -58,6 +59,30 @@ export class DatabaseSessionRepository implements SessionRepository {
     await this.#db.update(sessions).set(updateData).where(eq(sessions.id, session.sessionId));
   }
 
+  public async rotateRefreshNonce(
+    params: RotateRefreshNonceParams
+  ): Promise<PersistedSessionRecord | null> {
+    const result = await this.#db
+      .update(sessions)
+      .set({
+        refreshNonce: params.refreshNonce,
+        expiresAt: new Date(params.expiresAt),
+        refreshExpiresAt: new Date(params.refreshExpiresAt),
+        updatedAt: new Date()
+      })
+      .where(
+        and(
+          eq(sessions.id, params.sessionId),
+          eq(sessions.refreshNonce, params.expectedRefreshNonce),
+          eq(sessions.active, true),
+          isNull(sessions.revokedAt)
+        )
+      )
+      .returning();
+
+    return result[0] ? this.mapRow(result[0]) : null;
+  }
+
   public async findById(id: SessionId): Promise<PersistedSessionRecord | null> {
     const result = await this.#db.select().from(sessions).where(eq(sessions.id, id)).limit(1);
 
@@ -65,7 +90,16 @@ export class DatabaseSessionRepository implements SessionRepository {
       return null;
     }
 
-    const row = result[0];
+    return this.mapRow(result[0]);
+  }
+
+  public async findByUserId(userId: string): Promise<readonly PersistedSessionRecord[]> {
+    const result = await this.#db.select().from(sessions).where(eq(sessions.userId, userId));
+
+    return result.map((row) => this.mapRow(row));
+  }
+
+  private mapRow(row: typeof sessions.$inferSelect): PersistedSessionRecord {
     return {
       sessionId: row.id as SessionId,
       userId: row.userId as UserId,
@@ -79,24 +113,6 @@ export class DatabaseSessionRepository implements SessionRepository {
       refreshNonce: row.refreshNonce,
       revokedAt: row.revokedAt?.toISOString()
     };
-  }
-
-  public async findByUserId(userId: string): Promise<readonly PersistedSessionRecord[]> {
-    const result = await this.#db.select().from(sessions).where(eq(sessions.userId, userId));
-
-    return result.map((row) => ({
-      sessionId: row.id as SessionId,
-      userId: row.userId as UserId,
-      accountId: row.accountId as AccountId,
-      createdAt: row.createdAt.toISOString(),
-      authTime: row.authTime.toISOString(),
-      expiresAt: row.expiresAt.toISOString(),
-      refreshExpiresAt: row.refreshExpiresAt.toISOString(),
-      active: row.active,
-      roleCodes: row.roleCodes as readonly string[],
-      refreshNonce: row.refreshNonce,
-      revokedAt: row.revokedAt?.toISOString()
-    }));
   }
 
   public async delete(id: SessionId): Promise<void> {

@@ -48,7 +48,8 @@ describe('tenant context', () => {
       }),
       {
         fallbackAccountId: 'account-2',
-        fallbackUserId: 'user-2'
+        fallbackUserId: 'user-2',
+        allowHeaderIdentity: true
       }
     );
 
@@ -59,6 +60,30 @@ describe('tenant context', () => {
       userId: 'user-2',
       correlationId: 'corr-2'
     });
+  });
+
+  it('ignores identity headers when header identity is not explicitly allowed', () => {
+    expect(() =>
+      resolveTenantFromRequest(
+        createRequest({
+          'x-tenant-id': 'spoofed-tenant',
+          'x-account-id': 'spoofed-account',
+          'x-user-id': 'spoofed-user'
+        })
+      )
+    ).toThrow('Tenant ID is required');
+  });
+
+  it('never derives the account scope from headers on unauthenticated requests', () => {
+    expect(() =>
+      resolveTenantFromRequest(
+        createRequest({
+          'x-account-id': 'victim-account',
+          'x-user-id': 'victim-user'
+        }),
+        { defaultTenantId: 'trusted-tenant' }
+      )
+    ).toThrow('Account ID is required');
   });
 
   it('prefers the current async tenant context when one is already active', () => {
@@ -80,7 +105,8 @@ describe('tenant context', () => {
       resolveTenantFromRequest(
         createRequest({
           'x-tenant-id': 'tenant-3'
-        })
+        }),
+        { allowHeaderIdentity: true }
       )
     ).toThrow('Account ID is required');
   });

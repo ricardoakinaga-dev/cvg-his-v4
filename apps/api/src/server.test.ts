@@ -3,15 +3,60 @@ import { Readable, Writable } from 'node:stream';
 import test from 'node:test';
 
 import { ChaosEngine } from '@cvg-his-v2/chaos';
+import type {
+  PersistedSessionRecord,
+  SessionRepository
+} from '@cvg-his-v2/module-auth';
+import { createRateLimiter } from '@cvg-his-v2/shared-rate-limiter';
 import {
   ClamAvAttachmentSecurityScanner,
   S3CompatibleFileStorage
 } from '@cvg-his-v2/module-attachments';
 
 import { setAppState } from './app-state.js';
-import { recordRequestSloObservation, resetRequestSloObservations } from './metrics.js';
-import { assertProductionProviderReadiness, createApiServer } from './server.js';
-import type { RuntimeRepositories } from './runtime.js';
+import {
+  recordRequestSloObservation,
+  resetActiveRequestsCount,
+  resetRequestSloObservations
+} from './metrics.js';
+import {
+  assertProductionProviderReadiness,
+  buildAuthenticatedActorAttributes,
+  createApiServer
+} from './server.js';
+
+function createTestPrincipal() {
+  return {
+    user: {
+      id: 'user-1',
+      accountId: 'account-1',
+      username: 'admin',
+      email: 'admin@example.com',
+      displayName: 'Admin',
+      status: 'active' as const,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    },
+    session: {} as never,
+    access: {
+      roleCodes: ['admin'],
+      permissionCodes: [],
+      capabilities: []
+    }
+  } as never;
+}
+
+test('ABAC actor branches cannot be supplied by an HTTP request header', () => {
+  const actor = buildAuthenticatedActorAttributes(createTestPrincipal(), {
+    teams: [{ id: 'team-1' }],
+    sectors: [{ id: 'sector-1', code: 'reception' }]
+  });
+
+  assert.deepEqual(actor.branchIds, []);
+  assert.deepEqual(actor.teamIds, ['team-1']);
+  assert.deepEqual(actor.sectorIds, ['sector-1']);
+  assert.deepEqual(actor.sectorCodes, ['reception']);
+});
 
 class MockRequest extends Readable {
   public readonly method: string;
@@ -231,6 +276,22 @@ test('CORS preflight reflects an allowed origin', async () => {
   assert.match(response.getHeader('access-control-allow-methods') ?? '', /OPTIONS/);
 });
 
+test('serves a non-secret setup status even when bootstrap mutation is disabled', async () => {
+  const server = createServerUnderTest({ setupBootstrapToken: undefined });
+
+  const response = await performRequest(server, {
+    method: 'GET',
+    url: '/auth/setup/status',
+    headers: { host: 'localhost' }
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(response.bodyJson(), {
+    setupRequired: false,
+    setupAvailable: false
+  });
+});
+
 test('server falls back to LocalPix when PagarMe credentials are absent', async () => {
   assert.doesNotThrow(() =>
     createServerUnderTest({
@@ -242,42 +303,49 @@ test('server falls back to LocalPix when PagarMe credentials are absent', async 
 });
 
 test('canonical repository-backed test runtime does not load legacy seed principals', async () => {
+  const usersRepository = {
+    async create() {},
+    async update() {},
+    async upgradePasswordHash() {
+      return false;
+    },
+    async findById() {
+      return null;
+    },
+    async findByUsername() {
+      return null;
+    },
+    async findByEmail() {
+      return null;
+    },
+    async findAll() {
+      return [
+        {
+          id: '5c2b3750-783b-4cd7-bf8d-4ce982c1dabb' as never,
+          accountId: '65751ed5-07d3-44a2-830a-cc9dc8a0dbe4' as never,
+          username: 'dbadmin',
+          email: 'dbadmin@cvg.local',
+          passwordHash: 'cvg-his-v2-seed-salt-v1:seed_db_password',
+          fullName: 'Database Admin',
+          isActive: true,
+          createdAt: '2026-08-07T00:00:00.000Z',
+          updatedAt: '2026-08-07T00:00:00.000Z'
+        }
+      ];
+    },
+    async findRoleCodesByUserId() {
+      return ['admin'];
+    },
+    async findByAccountId() {
+      return [];
+    }
+  };
   const server = createServerUnderTest({
     preserveSeedUsersWithRepository: false,
     requireUuidEntityIdentifiers: true,
     repositories: {
-      users: {
-        async create() {},
-        async update() {},
-        async findById() {
-          return null;
-        },
-        async findByEmail() {
-          return null;
-        },
-        async findAll() {
-          return [
-            {
-              id: '5c2b3750-783b-4cd7-bf8d-4ce982c1dabb' as never,
-              accountId: '65751ed5-07d3-44a2-830a-cc9dc8a0dbe4' as never,
-              username: 'dbadmin',
-              email: 'dbadmin@cvg.local',
-              passwordHash: 'cvg-his-v2-seed-salt-v1:seed_db_password',
-              fullName: 'Database Admin',
-              isActive: true,
-              createdAt: '2026-08-07T00:00:00.000Z',
-              updatedAt: '2026-08-07T00:00:00.000Z'
-            }
-          ];
-        },
-        async findRoleCodesByUserId() {
-          return ['admin'];
-        },
-        async findByAccountId() {
-          return [];
-        }
-      }
-    } as RuntimeRepositories
+      users: usersRepository
+    }
   });
   await server.ready;
 
@@ -296,6 +364,138 @@ test('canonical repository-backed test runtime does not load legacy seed princip
 
   assert.equal(canonicalLogin.statusCode, 200);
   assert.equal(legacyLogin.statusCode, 401);
+});
+
+test('repository-backed authentication fails closed when session synchronization is unavailable', async () => {
+  const accountId = '65751ed5-07d3-44a2-830a-cc9dc8a0dbe4' as never;
+  const userId = '5c2b3750-783b-4cd7-bf8d-4ce982c1dabb' as never;
+  const sessions = new Map<string, PersistedSessionRecord>();
+  let sessionReadsAvailable = true;
+  const sessionRepository: SessionRepository = {
+    async create(session) {
+      sessions.set(session.sessionId, { ...session });
+    },
+    async update(session) {
+      const existing = sessions.get(session.sessionId);
+      if (!existing) throw new Error('Session not found');
+      sessions.set(session.sessionId, { ...existing, ...session } as PersistedSessionRecord);
+    },
+    async rotateRefreshNonce(params) {
+      const existing = sessions.get(params.sessionId);
+      if (
+        !existing
+        || !existing.active
+        || existing.revokedAt
+        || existing.refreshNonce !== params.expectedRefreshNonce
+      ) {
+        return null;
+      }
+      const rotated = {
+        ...existing,
+        refreshNonce: params.refreshNonce,
+        expiresAt: params.expiresAt,
+        refreshExpiresAt: params.refreshExpiresAt
+      };
+      sessions.set(params.sessionId, rotated);
+      return rotated;
+    },
+    async findById(id) {
+      if (!sessionReadsAvailable) throw new Error('session repository unavailable');
+      const session = sessions.get(id);
+      return session ? { ...session } : null;
+    },
+    async findByUserId(targetUserId) {
+      return Array.from(sessions.values())
+        .filter((session) => session.userId === targetUserId)
+        .map((session) => ({ ...session }));
+    },
+    async delete(id) {
+      sessions.delete(id);
+    }
+  };
+  const usersRepository = {
+    async create() {},
+    async update() {},
+    async upgradePasswordHash() {
+      return false;
+    },
+    async findById(id: string) {
+      return id === userId
+        ? {
+            id: userId,
+            accountId,
+            username: 'admin',
+            email: 'admin@cvg.local',
+            passwordHash: 'cvg-his-v2-seed-salt-v1:seed_admin',
+            fullName: 'Admin CVG',
+            isActive: true,
+            createdAt: '2026-08-07T00:00:00.000Z',
+            updatedAt: '2026-08-07T00:00:00.000Z'
+          }
+        : null;
+    },
+    async findByUsername(targetAccountId: string, username: string) {
+      return targetAccountId === accountId && username === 'admin'
+        ? {
+            id: userId,
+            accountId,
+            username: 'admin',
+            email: 'admin@cvg.local',
+            passwordHash: 'cvg-his-v2-seed-salt-v1:seed_admin',
+            fullName: 'Admin CVG',
+            isActive: true,
+            createdAt: '2026-08-07T00:00:00.000Z',
+            updatedAt: '2026-08-07T00:00:00.000Z'
+          }
+        : null;
+    },
+    async findByEmail() {
+      return null;
+    },
+    async findAll() {
+      return [
+        {
+          id: userId,
+          accountId,
+          username: 'admin',
+          email: 'admin@cvg.local',
+          passwordHash: 'cvg-his-v2-seed-salt-v1:seed_admin',
+          fullName: 'Admin CVG',
+          isActive: true,
+          createdAt: '2026-08-07T00:00:00.000Z',
+          updatedAt: '2026-08-07T00:00:00.000Z'
+        }
+      ];
+    },
+    async findRoleCodesByUserId() {
+      return ['admin'];
+    },
+    async findByAccountId() {
+      return [];
+    }
+  };
+  const server = createServerUnderTest({
+    preserveSeedUsersWithRepository: false,
+    requireUuidEntityIdentifiers: true,
+    repositories: { users: usersRepository, session: sessionRepository }
+  });
+  await server.ready;
+  const accessToken = await login(server, 'admin', 'seed_admin');
+
+  sessionReadsAvailable = false;
+  const response = await performRequest(server, {
+    method: 'GET',
+    url: '/auth/session',
+    headers: { authorization: `Bearer ${accessToken}`, host: 'localhost' }
+  });
+  const earlyPrivilegedResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/chaos/experiments',
+    headers: { authorization: `Bearer ${accessToken}`, host: 'localhost' }
+  });
+
+  assert.equal(response.statusCode, 401);
+  assert.equal(earlyPrivilegedResponse.statusCode, 401);
 });
 
 test('catalog stores honor the in-memory persistence mode', async () => {
@@ -572,6 +772,7 @@ test('SLO endpoint exposes compliance, error budget and Prometheus gauges', asyn
   });
   assert.equal(aliasResponse.statusCode, 200);
 
+  resetActiveRequestsCount();
   const metricsResponse = await performRequest(server, {
     method: 'GET',
     url: '/metrics',
@@ -583,7 +784,9 @@ test('SLO endpoint exposes compliance, error budget and Prometheus gauges', asyn
   const metricsText = metricsResponse.bodyText();
   assert.match(metricsText, /^app_slo_status\{slo_id="api-error-rate",category="reliability"\} 2$/m);
   assert.match(metricsText, /^app_slo_burn_rate\{slo_id="api-error-rate",category="reliability"\} 100$/m);
+  assert.match(metricsText, /^app_active_requests 1$/m);
 
+  resetActiveRequestsCount();
   resetRequestSloObservations();
 });
 
@@ -605,7 +808,12 @@ test('chaos operations expose effective runtime state, runbooks and metrics', as
 
   const server = createServerUnderTest({
     redisUrl: 'redis://127.0.0.1:6379/0',
-    runtimeDistributedStateEnabled: true
+    runtimeDistributedStateEnabled: true,
+    authRateLimiter: createRateLimiter({
+      windowMs: 60_000,
+      maxRequests: 100,
+      name: 'chaos-test'
+    })
   });
   const accessToken = await login(server, 'admin', 'seed_admin');
   const unauthorized = await performRequest(server, {

@@ -27,6 +27,8 @@ api:
     VAULT_ENABLED: "true"
   auth:
     existingSecret: cvg-his-v2-prod-api-secrets
+  setup:
+    existingSecret: cvg-his-v2-prod-api-secrets
   attachmentStorage:
     existingSecret: cvg-his-v2-prod-attachment-storage
   attachmentScanner:

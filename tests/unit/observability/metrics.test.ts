@@ -81,7 +81,10 @@ describe('Metrics — App Metrics', () => {
     updateAppMetrics({
       uptime: 3600,
       dbHealthy: true,
-      persistenceMode: 'database'
+      persistenceMode: 'database',
+      redisHealthy: true,
+      rateLimiterMode: 'redis',
+      runtimeDistributedStateEnabled: true
     });
 
     const metrics = await getMetricsText();
@@ -94,7 +97,10 @@ describe('Metrics — App Metrics', () => {
     updateAppMetrics({
       uptime: 100,
       dbHealthy: false,
-      persistenceMode: 'in-memory'
+      persistenceMode: 'in-memory',
+      redisHealthy: false,
+      rateLimiterMode: 'in-memory',
+      runtimeDistributedStateEnabled: false
     });
 
     const metrics = await getMetricsText();

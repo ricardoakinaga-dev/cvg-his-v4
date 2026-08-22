@@ -140,6 +140,31 @@ describe('rls helpers', () => {
     });
   });
 
+  it('documents the global installation singleton as outside tenant RLS', () => {
+    const report = analyzeRlsMigrationCoverage([
+      {
+        name: '0103_installation_state.sql',
+        sql: `
+          CREATE TABLE installation_state (
+            singleton_id smallint PRIMARY KEY,
+            account_id UUID
+          );
+          REVOKE ALL PRIVILEGES ON TABLE installation_state FROM PUBLIC;
+        `
+      }
+    ]);
+
+    expect(report).toMatchObject({
+      totalTenantTables: 1,
+      exceptionTables: 1,
+      failingTables: 0
+    });
+    expect(report.tables[0]).toMatchObject({
+      tableName: 'installation_state',
+      status: 'documented_exception'
+    });
+  });
+
   it('sets the current account id in the postgres session', async () => {
     const client = createMockClient();
     client.query.mockResolvedValue({ rows: [] });

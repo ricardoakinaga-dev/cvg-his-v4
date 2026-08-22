@@ -72,6 +72,10 @@ app.kubernetes.io/component: spa
 {{- default (printf "%s-api" (include "cvg-his-v2.fullname" .)) .Values.api.auth.existingSecret }}
 {{- end }}
 
+{{- define "cvg-his-v2.api.setupSecretName" -}}
+{{- default (printf "%s-api-setup" (include "cvg-his-v2.fullname" .)) .Values.api.setup.existingSecret }}
+{{- end }}
+
 {{- define "cvg-his-v2.api.configmapName" -}}
 {{- printf "%s-api-config" (include "cvg-his-v2.fullname" .) }}
 {{- end }}
@@ -90,4 +94,35 @@ app.kubernetes.io/component: spa
 {{- else -}}
 {{- default "default" .Values.serviceAccount.name -}}
 {{- end -}}
+{{- end }}
+
+{{- define "cvg-his-v2.databaseMaintenance.initContainers" -}}
+- name: migrate-database
+  image: {{ .Values.api.image.registry }}/{{ .Values.api.image.repository }}:{{ .Values.api.image.tag | default .Chart.AppVersion }}
+  imagePullPolicy: {{ .Values.api.image.pullPolicy }}
+  command: ["node", "packages/db/dist/migrate.js"]
+  securityContext:
+    {{- toYaml .Values.securityContext | nindent 4 }}
+  env:
+    - name: DATABASE_URL
+      valueFrom:
+        secretKeyRef:
+          name: {{ include "cvg-his-v2.postgres.secretName" . }}
+          key: {{ .Values.postgresql.secretKeys.url }}
+- name: reconcile-runtime-roles
+  image: {{ .Values.api.image.registry }}/{{ .Values.api.image.repository }}:{{ .Values.api.image.tag | default .Chart.AppVersion }}
+  imagePullPolicy: {{ .Values.api.image.pullPolicy }}
+  command: ["node", "packages/db/dist/reconcile-runtime-roles.js"]
+  securityContext:
+    {{- toYaml .Values.securityContext | nindent 4 }}
+  env:
+    - name: DATABASE_URL
+      valueFrom:
+        secretKeyRef:
+          name: {{ include "cvg-his-v2.postgres.secretName" . }}
+          key: {{ .Values.postgresql.secretKeys.url }}
+    - name: POSTGRES_API_USER
+      value: {{ .Values.postgresql.auth.apiUsername | quote }}
+    - name: POSTGRES_WORKER_USER
+      value: {{ .Values.postgresql.auth.workerUsername | quote }}
 {{- end }}

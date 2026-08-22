@@ -129,7 +129,8 @@ export const API_CONFIG_FIELDS: readonly ConfigFieldDescriptor[] = [
   { app: 'api', key: 'VAULT_ROLE_ID', required: false, sensitive: true, description: 'Vault AppRole role_id used by the API bootstrap.' },
   { app: 'api', key: 'VAULT_SECRET_ID', required: false, sensitive: true, description: 'Vault AppRole secret_id used by the API bootstrap.' },
   { app: 'api', key: 'VAULT_NAMESPACE', required: false, description: 'Optional Vault Enterprise namespace header.' },
-  { app: 'api', key: 'VAULT_SECRET_PATH_PREFIX', required: false, defaultValue: 'secret/data/cvg-his-v2', description: 'Vault KV-v2 path prefix used for managed application secrets.' }
+  { app: 'api', key: 'VAULT_SECRET_PATH_PREFIX', required: false, defaultValue: 'secret/data/cvg-his-v2', description: 'Vault KV-v2 path prefix used for managed application secrets.' },
+  { app: 'api', key: 'SETUP_BOOTSTRAP_TOKEN', required: false, sensitive: true, description: 'High-entropy operator secret required to enable first-run setup. Setup mutation fails closed when unset; generate with a cryptographic secret generator and never log it.' }
 ];
 
 export const WORKER_CONFIG_FIELDS: readonly ConfigFieldDescriptor[] = [
@@ -218,6 +219,7 @@ export interface ApiAppConfig {
   readonly vaultSecretId?: string;
   readonly vaultNamespace?: string;
   readonly vaultSecretPathPrefix: string;
+  readonly setupBootstrapToken?: string;
 }
 
 export interface WebAppConfig {
@@ -513,7 +515,8 @@ const apiEnvSchema = z
     VAULT_ROLE_ID: optionalNonEmptyStringSchema,
     VAULT_SECRET_ID: optionalNonEmptyStringSchema,
     VAULT_NAMESPACE: optionalNonEmptyStringSchema,
-    VAULT_SECRET_PATH_PREFIX: optionalNonEmptyStringSchema.default('secret/data/cvg-his-v2')
+    VAULT_SECRET_PATH_PREFIX: optionalNonEmptyStringSchema.default('secret/data/cvg-his-v2'),
+    SETUP_BOOTSTRAP_TOKEN: optionalNonEmptyStringSchema
   })
   .superRefine((value, ctx) => {
     if (value.ENABLE_MFA && !value.MFA_SECRET_ENCRYPTION_KEY) {
@@ -655,7 +658,8 @@ export function loadApiConfig(env: NodeJS.ProcessEnv): ApiAppConfig {
     vaultRoleId: parsed.VAULT_ROLE_ID,
     vaultSecretId: parsed.VAULT_SECRET_ID,
     vaultNamespace: parsed.VAULT_NAMESPACE,
-    vaultSecretPathPrefix: parsed.VAULT_SECRET_PATH_PREFIX
+    vaultSecretPathPrefix: parsed.VAULT_SECRET_PATH_PREFIX,
+    setupBootstrapToken: parsed.SETUP_BOOTSTRAP_TOKEN
   };
 }
 

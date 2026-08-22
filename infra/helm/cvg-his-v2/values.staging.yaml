@@ -21,6 +21,8 @@ api:
     VAULT_ENABLED: "false"
   auth:
     existingSecret: cvg-his-v2-staging-api-secrets
+  setup:
+    existingSecret: cvg-his-v2-staging-api-secrets
   attachmentStorage:
     existingSecret: cvg-his-v2-staging-attachment-storage
   attachmentScanner:

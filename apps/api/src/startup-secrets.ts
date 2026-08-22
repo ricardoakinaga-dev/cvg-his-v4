@@ -28,7 +28,8 @@ const API_SECRET_PATHS: Readonly<Record<string, string>> = {
   PAGARME_PIX_KEY: 'pagarme',
   NFSE_API_KEY: 'nfse',
   NFSE_CERTIFICATE_BASE64: 'nfse',
-  NFSE_ISSUER_JSON: 'nfse'
+  NFSE_ISSUER_JSON: 'nfse',
+  SETUP_BOOTSTRAP_TOKEN: 'api_setup'
 };
 
 function isTruthy(value: string | undefined): boolean {

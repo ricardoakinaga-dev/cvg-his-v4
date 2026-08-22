@@ -8,6 +8,7 @@ import { createApiFeatureFlags, type ApiFeatureFlagsSnapshot } from './feature-f
 import { setAppState, type PersistenceMode } from './app-state.js';
 import { startApiObservability } from './observability.js';
 import { resolveApiStartup } from './startup-secrets.js';
+import { resolveSetupBootstrapToken } from './setup-token.js';
 import { DatabaseVetusImportLogRepository } from './repositories/vetus-import-log-repository.js';
 import {
   ClamAvAttachmentSecurityScanner,
@@ -246,10 +247,15 @@ async function main() {
     productionReady
   });
 
+  // Setup mutation remains disabled until an operator deliberately supplies a
+  // bootstrap secret. The secret is never generated or written to logs.
+  const setupToken = resolveSetupBootstrapToken(config.setupBootstrapToken);
+
   const server = createApiServer({
     appName: config.appName,
     environment: config.environment,
     version,
+    setupBootstrapToken: setupToken.token,
     corsAllowedOrigins: config.corsAllowedOrigins,
     authSecret: config.authSecret,
     authVerifierSecrets: config.authVerifierSecrets,

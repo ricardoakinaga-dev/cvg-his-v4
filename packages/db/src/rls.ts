@@ -30,7 +30,15 @@ export interface RlsMigrationCoverageReport {
   readonly tables: readonly RlsMigrationCoverageTable[];
 }
 
-const DEFAULT_RLS_EXCEPTION_TABLES = new Set<string>(['accounts', 'tenants', 'drizzle_migrations']);
+// These rows are intentionally global rather than tenant-scoped. Access to the
+// installation singleton is revoked and exposed only through installer-only
+// SECURITY DEFINER functions in migration 0103.
+const DEFAULT_RLS_EXCEPTION_TABLES = new Set<string>([
+  'accounts',
+  'tenants',
+  'drizzle_migrations',
+  'installation_state'
+]);
 
 function stripSqlComments(sql: string): string {
   return sql.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/--.*$/gm, ' ');

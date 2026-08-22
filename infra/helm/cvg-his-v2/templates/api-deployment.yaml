@@ -48,6 +48,10 @@ spec:
       {{- end }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if and .Values.databaseMaintenance.enabled .Values.postgresql.enabled }}
+      initContainers:
+        {{- include "cvg-his-v2.databaseMaintenance.initContainers" . | nindent 8 }}
+      {{- end }}
       containers:
         - name: api
           image: {{ .Values.api.image.registry }}/{{ .Values.api.image.repository }}:{{ .Values.api.image.tag | default .Chart.AppVersion }}
@@ -67,6 +71,14 @@ spec:
                 secretKeyRef:
                   name: {{ include "cvg-his-v2.api.secretName" . }}
                   key: {{ .Values.api.auth.secretKey }}
+            {{- if or .Values.api.setup.existingSecret .Values.api.setup.value }}
+            - name: SETUP_BOOTSTRAP_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cvg-his-v2.api.setupSecretName" . }}
+                  key: {{ .Values.api.setup.secretKey }}
+                  optional: true
+            {{- end }}
             # DATABASE_URL injected via secretRef
             - name: DATABASE_URL
               valueFrom:

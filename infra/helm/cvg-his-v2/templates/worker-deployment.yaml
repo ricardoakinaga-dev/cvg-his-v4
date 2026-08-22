@@ -48,6 +48,10 @@ spec:
       {{- end }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if and .Values.databaseMaintenance.enabled .Values.postgresql.enabled }}
+      initContainers:
+        {{- include "cvg-his-v2.databaseMaintenance.initContainers" . | nindent 8 }}
+      {{- end }}
       containers:
         - name: worker
           image: {{ .Values.worker.image.registry }}/{{ .Values.worker.image.repository }}:{{ .Values.worker.image.tag | default .Chart.AppVersion }}

@@ -344,13 +344,14 @@ function toBrowserSession(session: AuthSessionResponse): BrowserAuthSessionRespo
   };
 }
 
-function sendAuthSession(
+export function sendAuthSession(
   response: ServerResponse,
   session: AuthSessionResponse,
-  handlers: Pick<AuthRoutesHandlers, 'refreshCookieMaxAgeSeconds' | 'secureCookies'>
+  handlers: Pick<AuthRoutesHandlers, 'refreshCookieMaxAgeSeconds' | 'secureCookies'>,
+  statusCode = 200
 ): true {
   setRefreshCookie(response, session.refreshToken, handlers);
-  return sendJson(response, 200, toBrowserSession(session));
+  return sendJson(response, statusCode, toBrowserSession(session));
 }
 
 function sendRateLimited(response: ServerResponse, rateLimitInfo: AuthRateLimitInfo): boolean {
@@ -372,6 +373,40 @@ function sendRateLimited(response: ServerResponse, rateLimitInfo: AuthRateLimitI
     })
   );
   return true;
+}
+
+function normalizeRateLimitDimension(value: unknown): string | undefined {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+async function checkAuthAttemptRateLimit(
+  authRateLimiter: AuthRateLimiter,
+  input: {
+    readonly ip: string;
+    readonly route: string;
+    readonly accountId?: unknown;
+    readonly userId?: unknown;
+  }
+): Promise<AuthRateLimitInfo> {
+  const identity = normalizeRateLimitDimension(input.userId);
+  if (identity) {
+    return authRateLimiter.check({
+      ip: 'identity',
+      route: `${input.route}:identity`,
+      accountId: normalizeRateLimitDimension(input.accountId),
+      userId: identity
+    });
+  }
+
+  return authRateLimiter.check({
+    ip: input.ip,
+    route: `${input.route}:ip`
+  });
 }
 
 function normalizeIpAddress(value: string): string {
@@ -508,7 +543,7 @@ export async function handleAuthRoutes(
 
   if (pathname === '/auth/login' && request.method === 'POST') {
     const payload = (await readJsonBody(request).catch(() => ({}))) as LoginRequest;
-    const rateLimitInfo = await authRateLimiter.check({
+    const rateLimitInfo = await checkAuthAttemptRateLimit(authRateLimiter, {
       ip: getClientIp(request, trustedProxyCidrs),
       route: '/auth/login',
       accountId: payload.accountId,
@@ -616,20 +651,20 @@ export async function handleAuthRoutes(
   }
 
   if (pathname === '/auth/login/mfa' && request.method === 'POST') {
-    const rateLimitInfo = await authRateLimiter.check({
-      ip: getClientIp(request, trustedProxyCidrs),
-      route: '/auth/login/mfa',
-      userId: request.headers['x-mfa-user-id']?.toString()
-    });
-    if (sendRateLimited(response, rateLimitInfo)) {
-      return true;
-    }
-
     const payload = (await readJsonBody(request)) as {
       userId: string;
       token: string;
       challengeId: string;
     };
+    const rateLimitInfo = await checkAuthAttemptRateLimit(authRateLimiter, {
+      ip: getClientIp(request, trustedProxyCidrs),
+      route: '/auth/login/mfa',
+      userId: payload.userId
+    });
+    if (sendRateLimited(response, rateLimitInfo)) {
+      return true;
+    }
+
     const result = await auth.completeMfaLogin(
       { userId: payload.userId, token: payload.token, challengeId: payload.challengeId },
       correlationId

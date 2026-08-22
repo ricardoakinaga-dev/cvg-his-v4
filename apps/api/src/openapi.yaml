@@ -483,6 +483,151 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /auth/setup/status:
+    get:
+      operationId: authSetupStatus
+      summary: Report whether first-run setup is pending
+      description: |
+        Reports whether the installation still needs its initial super
+        administrator. Public so the SPA can route a fresh install to the setup
+        wizard instead of a login form that cannot succeed.
+      tags: [Authentication]
+      security: []
+      responses:
+        '200':
+          description: Installation state
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [setupRequired, setupAvailable]
+                properties:
+                  setupRequired:
+                    type: boolean
+                  setupAvailable:
+                    type: boolean
+                    description: Whether an operator bootstrap secret is configured and setup mutation is enabled.
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Installation state cannot be determined
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/setup:
+    post:
+      operationId: authSetupProvision
+      summary: Provision the initial clinic and super administrator
+      description: |
+        Creates the tenant, account, unit, role catalog and the first super
+        administrator, then requires authentication through the normal login
+        flow on any API replica.
+
+        Only works before the durable installation sentinel is completed and
+        requires the explicitly configured SETUP_BOOTSTRAP_TOKEN. No credential
+        is generated or logged when configuration is absent. Rejected with 409
+        once the installation has been provisioned.
+      tags: [Authentication]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, clinicName, adminUsername, adminEmail, adminPassword]
+              properties:
+                token:
+                  type: string
+                  minLength: 43
+                  description: Bootstrap token that authorizes first-run setup.
+                clinicName:
+                  type: string
+                  maxLength: 255
+                adminUsername:
+                  type: string
+                  pattern: '^[a-zA-Z0-9._-]{3,128}$'
+                adminFullName:
+                  type: string
+                  maxLength: 255
+                adminEmail:
+                  type: string
+                  format: email
+                adminPassword:
+                  type: string
+                  minLength: 12
+                  maxLength: 128
+            example:
+              token: replace-with-64-character-random-hex-bootstrap-secret-generated-offline
+              clinicName: Clínica Veterinária Central
+              adminUsername: admin
+              adminFullName: Maria Silva
+              adminEmail: admin@clinica.com.br
+              adminPassword: SenhaForte2026!
+      responses:
+        '201':
+          description: Installation provisioned; authenticate through the normal login flow
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [setupCompleted, requiresLogin]
+                properties:
+                  setupCompleted:
+                    type: boolean
+                    enum: [true]
+                  requiresLogin:
+                    type: boolean
+                    enum: [true]
+        '400':
+          description: Invalid payload or weak administrator password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Invalid bootstrap token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Installation has already been provisioned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '413':
+          description: Setup payload exceeds the supported body limit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Installation transaction failed before completion
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Setup is disabled or installation state cannot be determined
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /auth/login:
     post:
       operationId: authLogin

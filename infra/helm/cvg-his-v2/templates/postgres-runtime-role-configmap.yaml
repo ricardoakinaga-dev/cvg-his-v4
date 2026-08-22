@@ -9,34 +9,128 @@ data:
   init-runtime-role.sh: |-
     #!/bin/sh
     set -eu
+    validate_role_name() {
+      case "$1" in
+        ''|*[!A-Za-z0-9_]*) echo "Invalid PostgreSQL role name" >&2; exit 1 ;;
+      esac
+    }
+    validate_role_name "$POSTGRES_API_USER"
+    validate_role_name "$POSTGRES_WORKER_USER"
+    if [ "$POSTGRES_API_USER" = "$POSTGRES_WORKER_USER" ]; then
+      echo "POSTGRES_API_USER and POSTGRES_WORKER_USER must be different" >&2
+      exit 1
+    fi
+    if [ "$POSTGRES_API_USER" = "cvg_installer" ] || [ "$POSTGRES_WORKER_USER" = "cvg_installer" ]; then
+      echo "Runtime login roles cannot use the reserved cvg_installer capability name" >&2
+      exit 1
+    fi
     until pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB" >/dev/null 2>&1; do sleep 1; done
     psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
       --set=api_user="$POSTGRES_API_USER" --set=api_password="$POSTGRES_API_PASSWORD" \
       --set=worker_user="$POSTGRES_WORKER_USER" --set=worker_password="$POSTGRES_WORKER_PASSWORD" \
       --set=db_name="$POSTGRES_DB" <<'SQL'
+    SELECT 'CREATE ROLE cvg_installer NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS'
+    WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'cvg_installer')\gexec
     SELECT format('CREATE ROLE %I LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD %L', :'api_user', :'api_password')
     WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'api_user')\gexec
     SELECT format('CREATE ROLE %I LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD %L', :'worker_user', :'worker_password')
     WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'worker_user')\gexec
+    ALTER ROLE cvg_installer NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
     ALTER ROLE :"api_user" LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD :'api_password';
     ALTER ROLE :"worker_user" LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD :'worker_password';
+    REVOKE cvg_installer FROM :"worker_user";
+    GRANT cvg_installer TO :"api_user";
     GRANT CONNECT ON DATABASE :"db_name" TO :"api_user";
     GRANT CONNECT ON DATABASE :"db_name" TO :"worker_user";
     GRANT USAGE ON SCHEMA public TO :"api_user", :"worker_user";
-    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO :"api_user", :"worker_user";
-    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO :"api_user", :"worker_user";
+
+    SELECT format('GRANT USAGE ON SCHEMA %I TO %I', nspname, :'api_user')
+    FROM pg_namespace WHERE nspname = 'app'\gexec
+    SELECT format('GRANT USAGE ON SCHEMA %I TO %I', nspname, :'worker_user')
+    FROM pg_namespace WHERE nspname = 'app'\gexec
+    SELECT 'GRANT USAGE ON SCHEMA app TO cvg_installer'
+    WHERE EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'app')\gexec
+
+    REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM :"api_user", :"worker_user";
+    REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public FROM :"api_user", :"worker_user";
+    SELECT format('REVOKE ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA %I FROM %I', nspname, :'api_user')
+    FROM pg_namespace WHERE nspname = 'app'\gexec
+    SELECT format('REVOKE ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA %I FROM %I', nspname, :'worker_user')
+    FROM pg_namespace WHERE nspname = 'app'\gexec
+    SELECT format('REVOKE ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA %I FROM PUBLIC', nspname)
+    FROM pg_namespace WHERE nspname = 'app'\gexec
+
     SELECT format('GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.%I TO %I', c.relname, :'api_user')
     FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-    WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p') AND c.relname <> 'audit_events'\gexec
-    SELECT format('GRANT INSERT, SELECT ON TABLE public.%I TO %I', c.relname, :'api_user')
-    FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-    WHERE n.nspname = 'public' AND c.relname = 'audit_events'\gexec
+    WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p') AND c.relrowsecurity\gexec
     SELECT format('GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.%I TO %I', c.relname, :'worker_user')
     FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-    WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p') AND c.relname <> 'audit_events'\gexec
-    SELECT format('GRANT INSERT, SELECT ON TABLE public.%I TO %I', c.relname, :'worker_user')
+    WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p') AND c.relrowsecurity\gexec
+
+    SELECT format('GRANT SELECT ON TABLE public.%I TO %I', candidate.table_name, :'api_user')
+    FROM (
+      VALUES ('accounts'), ('tenants'), ('roles'), ('permissions'), ('role_permissions'),
+             ('user_roles'), ('cfop_entries'), ('cofins_tables'), ('ibs_cbs_tables'),
+             ('icms_rules'), ('icms_tables'), ('ipi_tables'), ('ncm_entries'),
+             ('nfse_layouts'), ('pis_cofins_rules'), ('pis_tables')
+    ) AS candidate(table_name)
+    JOIN pg_class c ON c.relname = candidate.table_name
+    JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public'\gexec
+    SELECT format('GRANT SELECT ON TABLE public.%I TO %I', candidate.table_name, :'worker_user')
+    FROM (
+      VALUES ('accounts'), ('tenants'), ('roles'), ('permissions'), ('role_permissions'),
+             ('user_roles'), ('cfop_entries'), ('cofins_tables'), ('ibs_cbs_tables'),
+             ('icms_rules'), ('icms_tables'), ('ipi_tables'), ('ncm_entries'),
+             ('nfse_layouts'), ('pis_cofins_rules'), ('pis_tables')
+    ) AS candidate(table_name)
+    JOIN pg_class c ON c.relname = candidate.table_name
+    JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public'\gexec
+
+    SELECT format('GRANT %s ON TABLE public.%I TO %I', candidate.privileges, candidate.table_name, :'api_user')
+    FROM (
+      VALUES ('roles', 'INSERT'),
+             ('permissions', 'INSERT'),
+             ('role_permissions', 'INSERT, DELETE'),
+             ('user_roles', 'INSERT, DELETE'),
+             ('cfop_entries', 'INSERT, UPDATE'),
+             ('icms_tables', 'INSERT, UPDATE'),
+             ('ipi_tables', 'INSERT, UPDATE'),
+             ('pis_tables', 'INSERT, UPDATE'),
+             ('cofins_tables', 'INSERT, UPDATE'),
+             ('ibs_cbs_tables', 'INSERT, UPDATE'),
+             ('icms_rules', 'INSERT'),
+             ('nfse_layouts', 'INSERT, UPDATE')
+    ) AS candidate(table_name, privileges)
+    JOIN pg_class c ON c.relname = candidate.table_name
+    JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public'\gexec
+
+    SELECT format('GRANT USAGE, SELECT ON SEQUENCE public.%I TO %I', c.relname, :'api_user')
+    FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public' AND c.relkind = 'S'\gexec
+    SELECT format('GRANT USAGE, SELECT ON SEQUENCE public.%I TO %I', c.relname, :'worker_user')
+    FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public' AND c.relkind = 'S'\gexec
+
+    SELECT format('GRANT EXECUTE ON FUNCTION %s TO %I', p.oid::regprocedure, :'api_user')
+    FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'app' AND p.proname IN ('current_account_id', 'has_account_context')\gexec
+    SELECT format('GRANT EXECUTE ON FUNCTION %s TO %I', p.oid::regprocedure, :'worker_user')
+    FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'app' AND p.proname IN ('current_account_id', 'has_account_context')\gexec
+    SELECT format('GRANT EXECUTE ON FUNCTION %s TO cvg_installer', p.oid::regprocedure)
+    FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'app'
+      AND p.proname IN ('is_initial_setup_required', 'provision_initial_installation')\gexec
+
+    SELECT format('REVOKE UPDATE, DELETE, TRUNCATE ON TABLE public.%I FROM %I', c.relname, :'api_user')
     FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
     WHERE n.nspname = 'public' AND c.relname = 'audit_events'\gexec
-    REVOKE UPDATE, DELETE, TRUNCATE ON TABLE public.audit_events FROM :"api_user", :"worker_user";
+    SELECT format('REVOKE UPDATE, DELETE, TRUNCATE ON TABLE public.%I FROM %I', c.relname, :'worker_user')
+    FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public' AND c.relname = 'audit_events'\gexec
+
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON TABLES FROM :"api_user", :"worker_user";
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON SEQUENCES FROM :"api_user", :"worker_user";
+    REVOKE CREATE ON SCHEMA public FROM PUBLIC;
     SQL
 {{- end }}

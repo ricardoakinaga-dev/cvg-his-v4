@@ -1,5 +1,3 @@
-import { createHash } from 'node:crypto';
-
 import { and, eq, inArray } from 'drizzle-orm';
 
 import { closeDbConnection, db } from './connection.js';
@@ -13,6 +11,7 @@ import {
   userRoles,
   users
 } from './schema/index.js';
+import { hashSeedPassword } from './password.js';
 
 const DEFAULT_TENANT_SLUG = 'default';
 const DEFAULT_ACCOUNT_SLUG = 'default';
@@ -237,10 +236,6 @@ const rolePermissionMap: Record<string, string[]> = {
   ]
 };
 
-function hashPassword(rawPassword: string): string {
-  return createHash('sha256').update(rawPassword).digest('hex');
-}
-
 async function ensureAccountAndUnit(
   options: AccountUnitSeedOptions
 ): Promise<{ accountId: string; unitId: string }> {
@@ -400,7 +395,7 @@ async function seedAdminUser(
       username:
         credentials?.username?.trim() || process.env.ADMIN_USERNAME?.trim() || adminEmail.split('@')[0]!,
       email: adminEmail,
-      passwordHash: hashPassword(adminPassword),
+      passwordHash: await hashSeedPassword(adminPassword),
       fullName: credentials?.fullName ?? 'Administrador Seed'
     })
     .onConflictDoNothing({ target: [users.accountId, users.email] });

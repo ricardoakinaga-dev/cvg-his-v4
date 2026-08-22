@@ -5,17 +5,20 @@ import { AccessControlService } from '@cvg-his-v2/module-access-control';
 import { AuditService } from '@cvg-his-v2/module-audit';
 import { MfaService } from '@cvg-his-v2/module-mfa';
 import { StaffService } from '@cvg-his-v2/module-staff';
-import { UsersService } from '@cvg-his-v2/module-users';
+import { createSeedUsers, UsersService } from '@cvg-his-v2/module-users';
+import type { UsersRepository } from '@cvg-his-v2/module-users';
 import { AuthenticationError } from '@cvg-his-v2/shared-errors';
+import type { AccountId, UserId } from '@cvg-his-v2/shared-types';
 import { getTenantContext } from '@cvg-his-v2/tenant-context';
 
-import { AuthService } from './index.js';
+import { AuthService, BruteForceProtection } from './index.js';
 import { InMemorySessionRepository } from './repositories/in-memory-session.repository.js';
 import type { SessionRepository } from './repositories/session.repository.js';
 import { generateCurrentTOTP } from './totp-wrapper.js';
 
 const SEED_PASSWORD = 'seed_admin';
 const ACCOUNT_ID = 'acc_cvg_demo';
+type RepositoryUserRecord = NonNullable<Awaited<ReturnType<UsersRepository['findById']>>>;
 
 function createAuthService(
   options: {
@@ -23,9 +26,11 @@ function createAuthService(
     readonly sessionRepository?: SessionRepository;
     readonly secret?: string;
     readonly verifierSecrets?: readonly string[];
+    readonly users?: UsersService;
+    readonly bruteForce?: BruteForceProtection;
   } = {}
 ) {
-  const users = new UsersService();
+  const users = options.users ?? new UsersService();
   const staff = new StaffService();
   const accessControl = new AccessControlService();
   const audit = new AuditService();
@@ -40,8 +45,59 @@ function createAuthService(
     accessControl,
     audit,
     mfa: options.mfa,
-    sessionRepository: options.sessionRepository
+    sessionRepository: options.sessionRepository,
+    bruteForce: options.bruteForce
   });
+}
+
+function createMutableRoleUsersRepository(): {
+  readonly repository: UsersRepository;
+  setRoleCodes(roleCodes: readonly string[]): void;
+} {
+  const seedAdmin = createSeedUsers()[0];
+  const repositoryUser: RepositoryUserRecord = {
+    id: seedAdmin.id,
+    accountId: seedAdmin.accountId,
+    username: seedAdmin.username,
+    email: seedAdmin.email,
+    passwordHash: seedAdmin.passwordHash,
+    fullName: seedAdmin.displayName,
+    isActive: true,
+    createdAt: seedAdmin.createdAt,
+    updatedAt: seedAdmin.updatedAt
+  };
+  let currentRoleCodes: readonly string[] = [...seedAdmin.roleCodes];
+  const repository: UsersRepository = {
+    create: async () => undefined,
+    update: async () => undefined,
+    upgradePasswordHash: async () => false,
+    findById: async (id: UserId, accountId?: AccountId) =>
+      id === repositoryUser.id && (!accountId || accountId === repositoryUser.accountId)
+        ? { ...repositoryUser }
+        : null,
+    findByUsername: async (accountId: AccountId, username: string) =>
+      accountId === repositoryUser.accountId && username === repositoryUser.username
+        ? { ...repositoryUser }
+        : null,
+    findByEmail: async (accountId: AccountId, email: string) =>
+      accountId === repositoryUser.accountId && email === repositoryUser.email
+        ? { ...repositoryUser }
+        : null,
+    findAll: async () => [{ ...repositoryUser }],
+    findRoleCodesByUserId: async (id: UserId, accountId?: AccountId) =>
+      id === repositoryUser.id && (!accountId || accountId === repositoryUser.accountId)
+        ? [...currentRoleCodes]
+        : [],
+    findByAccountId: async (accountId: AccountId) =>
+      accountId === repositoryUser.accountId ? [{ ...repositoryUser }] : []
+  };
+
+  return {
+    repository,
+    setRoleCodes: (roleCodes) => {
+      currentRoleCodes = [...roleCodes];
+    }
+  };
 }
 
 test('AuthService: login with valid credentials returns session (no MFA)', async () => {
@@ -127,6 +183,120 @@ test('AuthService: completeMfaLogin returns session after valid TOTP', async () 
   assert.equal(session.principal.user.username, 'admin');
 });
 
+test('AuthService: MFA challenge created on one instance completes on another', async () => {
+  const sessionRepository = new InMemorySessionRepository();
+  const mfa = {
+    isMfaRequired: () => true,
+    isMfaActive: async () => true,
+    verifyLogin: async () => true
+  } as unknown as MfaService;
+  const authA = createAuthService({ mfa, sessionRepository });
+  const authB = createAuthService({ mfa, sessionRepository });
+
+  const loginResult = await authA.login(
+    { username: 'admin', password: SEED_PASSWORD },
+    'corr-distributed-mfa-login'
+  );
+  assert.ok('requiresMfa' in loginResult);
+
+  const attempts = await Promise.allSettled([
+    authB.completeMfaLogin(
+      {
+        userId: 'user_admin',
+        token: '123456',
+        challengeId: loginResult.challengeId!
+      },
+      'corr-distributed-mfa-complete-a'
+    ),
+    authB.completeMfaLogin(
+      {
+        userId: 'user_admin',
+        token: '123456',
+        challengeId: loginResult.challengeId!
+      },
+      'corr-distributed-mfa-complete-b'
+    )
+  ]);
+
+  const completed = attempts.find((attempt) => attempt.status === 'fulfilled');
+  const rejected = attempts.find((attempt) => attempt.status === 'rejected');
+  assert.ok(completed && completed.status === 'fulfilled');
+  assert.ok(rejected && rejected.status === 'rejected');
+  assert.ok(rejected.reason instanceof AuthenticationError);
+  assert.equal(completed.value.principal.user.username, 'admin');
+  assert.ok('accessToken' in completed.value);
+
+  await assert.rejects(
+    () =>
+      authA.completeMfaLogin(
+        {
+          userId: 'user_admin',
+          token: '123456',
+          challengeId: loginResult.challengeId!
+        },
+        'corr-distributed-mfa-reuse'
+      ),
+    AuthenticationError
+  );
+});
+
+test('AuthService: MFA challenge keeps lockout authoritative across instances', async () => {
+  const bruteForceA = new BruteForceProtection({
+    maxAttempts: 1,
+    lockoutDurationSeconds: 60,
+    trackingWindowSeconds: 60
+  });
+  const bruteForceB = new BruteForceProtection({
+    maxAttempts: 1,
+    lockoutDurationSeconds: 60,
+    trackingWindowSeconds: 60
+  });
+  let verificationAttempts = 0;
+  const mfa = {
+    isMfaRequired: () => true,
+    isMfaActive: async () => true,
+    verifyLogin: async () => {
+      verificationAttempts += 1;
+      return false;
+    }
+  } as unknown as MfaService;
+  const authA = createAuthService({ mfa, bruteForce: bruteForceA });
+  const authB = createAuthService({ mfa, bruteForce: bruteForceB });
+
+  const loginResult = await authA.login(
+    { username: 'admin', password: SEED_PASSWORD },
+    'corr-distributed-mfa-lock-login'
+  );
+  assert.ok('requiresMfa' in loginResult);
+
+  await assert.rejects(
+    () =>
+      authB.completeMfaLogin(
+        {
+          userId: 'user_admin',
+          token: '000000',
+          challengeId: loginResult.challengeId!
+        },
+        'corr-distributed-mfa-lock-failure'
+      ),
+    /Invalid MFA code/
+  );
+
+  await assert.rejects(
+    () =>
+      authA.completeMfaLogin(
+        {
+          userId: 'user_admin',
+          token: '000001',
+          challengeId: loginResult.challengeId!
+        },
+        'corr-distributed-mfa-lock-blocked'
+      ),
+    /Account temporarily locked/
+  );
+  assert.equal(verificationAttempts, 1);
+});
+
 test('AuthService: active MFA still requires the second factor after password login', async () => {
   const mfa = {
     isMfaRequired: () => true,
@@ -196,6 +366,204 @@ test('AuthService: hydrateFromRepository restores persisted session cache for ac
   assert.equal(principal.user.id, login.principal.user.id);
   assert.equal(refreshed.principal.session.sessionId, login.principal.session.sessionId);
   assert.notEqual(refreshed.refreshToken, login.refreshToken);
+});
+
+test('AuthService: hot instance synchronizes a newly-created session before sync verification', async () => {
+  const sessionRepository = new InMemorySessionRepository();
+  const authA = createAuthService({ sessionRepository });
+  const authB = createAuthService({ sessionRepository });
+
+  const login = await authA.login(
+    { username: 'admin', password: SEED_PASSWORD },
+    'corr-hot-session-login'
+  );
+  assert.ok('accessToken' in login);
+
+  await authB.synchronizeAccessToken(login.accessToken, 'corr-hot-session-sync');
+  const principal = authB.authenticateAccessToken(login.accessToken);
+
+  assert.equal(principal.session.sessionId, login.principal.session.sessionId);
+  assert.equal(principal.user.accountId, ACCOUNT_ID);
+});
+
+test('AuthService: synchronized authorization drops roles revoked in the user repository', async () => {
+  const roleRepository = createMutableRoleUsersRepository();
+  const users = new UsersService(
+    { repository: roleRepository.repository, seedUsersEnabled: false },
+    []
+  );
+  await users.hydrateFromDatabase();
+  const sessionRepository = new InMemorySessionRepository();
+  const auth = createAuthService({ users, sessionRepository });
+
+  const login = await auth.login(
+    { username: 'admin', password: SEED_PASSWORD, accountId: ACCOUNT_ID },
+    'corr-role-revocation-login'
+  );
+  assert.ok('accessToken' in login);
+  assert.deepEqual(login.principal.access.roleCodes, ['admin']);
+
+  roleRepository.setRoleCodes(['reception']);
+  await auth.synchronizeAccessToken(login.accessToken, 'corr-role-revocation-sync');
+
+  const synchronized = auth.authenticateAccessToken(login.accessToken);
+  assert.deepEqual(synchronized.access.roleCodes, ['reception']);
+  assert.equal(synchronized.access.roleCodes.includes('admin'), false);
+
+  const refreshed = await auth.refresh(
+    { refreshToken: login.refreshToken },
+    'corr-role-revocation-refresh'
+  );
+  assert.deepEqual(refreshed.principal.access.roleCodes, ['reception']);
+  assert.equal(refreshed.principal.access.roleCodes.includes('admin'), false);
+});
+
+test('AuthService: exactly one hot instance wins concurrent refresh nonce rotation', async () => {
+  const sessionRepository = new InMemorySessionRepository();
+  const authA = createAuthService({ sessionRepository });
+  const authB = createAuthService({ sessionRepository });
+
+  const login = await authA.login(
+    { username: 'admin', password: SEED_PASSWORD },
+    'corr-concurrent-refresh-login'
+  );
+  assert.ok('accessToken' in login);
+
+  const results = await Promise.allSettled([
+    authA.refresh({ refreshToken: login.refreshToken }, 'corr-concurrent-refresh-a'),
+    authB.refresh({ refreshToken: login.refreshToken }, 'corr-concurrent-refresh-b')
+  ]);
+
+  assert.equal(results.filter((result) => result.status === 'fulfilled').length, 1);
+  assert.equal(results.filter((result) => result.status === 'rejected').length, 1);
+  const rejection = results.find((result) => result.status === 'rejected');
+  assert.ok(rejection && rejection.status === 'rejected');
+  assert.ok(rejection.reason instanceof AuthenticationError);
+
+  await assert.rejects(
+    () => authA.refresh({ refreshToken: login.refreshToken }, 'corr-refresh-replay'),
+    AuthenticationError
+  );
+});
+
+test('AuthService: cross-instance logout is authoritative for access and refresh', async () => {
+  const sessionRepository = new InMemorySessionRepository();
+  const authA = createAuthService({ sessionRepository });
+  const authB = createAuthService({ sessionRepository });
+
+  const login = await authA.login(
+    { username: 'admin', password: SEED_PASSWORD },
+    'corr-cross-logout-login'
+  );
+  assert.ok('accessToken' in login);
+
+  await authB.logout({ refreshToken: login.refreshToken }, 'corr-cross-logout-b');
+
+  await assert.rejects(
+    () => authA.synchronizeAccessToken(login.accessToken, 'corr-cross-logout-sync'),
+    AuthenticationError
+  );
+  await assert.rejects(
+    () => authA.refresh({ refreshToken: login.refreshToken }, 'corr-cross-logout-refresh'),
+    AuthenticationError
+  );
+});
+
+test('AuthService: hot instance revokes every persisted sibling session', async () => {
+  const sessionRepository = new InMemorySessionRepository();
+  const authA = createAuthService({ sessionRepository });
+  const authB = createAuthService({ sessionRepository });
+
+  const first = await authA.login(
+    { username: 'admin', password: SEED_PASSWORD },
+    'corr-hot-revoke-all-first'
+  );
+  const second = await authA.login(
+    { username: 'admin', password: SEED_PASSWORD },
+    'corr-hot-revoke-all-second'
+  );
+  assert.ok('accessToken' in first);
+  assert.ok('accessToken' in second);
+
+  await authB.synchronizeAccessToken(second.accessToken, 'corr-hot-revoke-all-sync');
+  const revoked = await authB.revokeOtherSessions(
+    second.principal.session.sessionId,
+    'corr-hot-revoke-all'
+  );
+
+  assert.equal(revoked, 1);
+  await assert.rejects(
+    () => authA.synchronizeAccessToken(first.accessToken, 'corr-hot-revoke-all-verify'),
+    AuthenticationError
+  );
+});
+
+test('AuthService: hot instance can revoke a persisted sibling not present in its cache', async () => {
+  const sessionRepository = new InMemorySessionRepository();
+  const authA = createAuthService({ sessionRepository });
+  const authB = createAuthService({ sessionRepository });
+
+  const first = await authA.login(
+    { username: 'admin', password: SEED_PASSWORD },
+    'corr-hot-revoke-target-first'
+  );
+  const second = await authA.login(
+    { username: 'admin', password: SEED_PASSWORD },
+    'corr-hot-revoke-target-second'
+  );
+  assert.ok('accessToken' in first);
+  assert.ok('accessToken' in second);
+
+  await authB.synchronizeAccessToken(second.accessToken, 'corr-hot-revoke-target-sync');
+  const revoked = await authB.revokeSessionForUser(
+    second.principal.session.sessionId,
+    first.principal.session.sessionId,
+    'corr-hot-revoke-target'
+  );
+
+  assert.equal(revoked, true);
+  await assert.rejects(
+    () => authA.synchronizeAccessToken(first.accessToken, 'corr-hot-revoke-target-verify'),
+    AuthenticationError
+  );
+});
+
+test('InMemorySessionRepository: refresh nonce compare-and-swap is atomic', async () => {
+  const repository = new InMemorySessionRepository();
+  const sessionId = 'sess_atomic' as never;
+  await repository.create({
+    sessionId,
+    userId: 'user_admin' as never,
+    accountId: ACCOUNT_ID as never,
+    createdAt: '2026-08-22T10:00:00.000Z',
+    authTime: '2026-08-22T10:00:00.000Z',
+    expiresAt: '2026-08-22T10:15:00.000Z',
+    refreshExpiresAt: '2026-08-29T10:00:00.000Z',
+    active: true,
+    roleCodes: ['admin'],
+    refreshNonce: 'nonce-original'
+  });
+
+  const attempts = await Promise.all([
+    repository.rotateRefreshNonce({
+      sessionId,
+      expectedRefreshNonce: 'nonce-original',
+      refreshNonce: 'nonce-a',
+      expiresAt: '2026-08-22T10:20:00.000Z',
+      refreshExpiresAt: '2026-08-29T10:05:00.000Z'
+    }),
+    repository.rotateRefreshNonce({
+      sessionId,
+      expectedRefreshNonce: 'nonce-original',
+      refreshNonce: 'nonce-b',
+      expiresAt: '2026-08-22T10:20:00.000Z',
+      refreshExpiresAt: '2026-08-29T10:05:00.000Z'
+    })
+  ]);
+
+  assert.equal(attempts.filter(Boolean).length, 1);
+  const persisted = await repository.findById(sessionId);
+  assert.ok(persisted?.refreshNonce === 'nonce-a' || persisted?.refreshNonce === 'nonce-b');
 });
 
 test('AuthService: revoked session cannot be refreshed', async () => {
@@ -300,6 +668,7 @@ test('AuthService: session revocations persist inside the session tenant context
       tenantContexts.push(getTenantContext()?.accountId);
       return delegate.update(session);
     },
+    rotateRefreshNonce: (params) => delegate.rotateRefreshNonce(params),
     findById: (id) => delegate.findById(id),
     findByUserId: (userId) => delegate.findByUserId(userId),
     delete: (id) => delegate.delete(id)

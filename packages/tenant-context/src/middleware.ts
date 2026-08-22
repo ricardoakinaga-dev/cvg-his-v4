@@ -5,6 +5,16 @@ export interface TenantMiddlewareOptions {
   readonly defaultTenantId?: string;
   readonly fallbackAccountId?: string;
   readonly fallbackUserId?: string;
+  /**
+   * Allows `x-tenant-id`, `x-account-id` and `x-user-id` request headers to
+   * establish the tenant scope when no authenticated identity was resolved.
+   *
+   * Defaults to `false`: the tenant scope drives PostgreSQL RLS
+   * (`app.current_account_id`), so trusting client headers would let an
+   * unauthenticated caller pick which tenant's rows the connection can read.
+   * Enable only for trusted, non-public callers (tooling and tests).
+   */
+  readonly allowHeaderIdentity?: boolean;
 }
 
 export function resolveTenantFromRequest(
@@ -12,11 +22,20 @@ export function resolveTenantFromRequest(
   options: TenantMiddlewareOptions = {}
 ): TenantContext {
   const correlationId = (request.headers['x-correlation-id'] as string) ?? 'unknown';
+  const allowHeaderIdentity = options.allowHeaderIdentity === true;
 
-  const tenantId = options.defaultTenantId ?? (request.headers['x-tenant-id'] as string);
+  const headerTenantId = allowHeaderIdentity
+    ? (request.headers['x-tenant-id'] as string | undefined)
+    : undefined;
+  const headerAccountId = allowHeaderIdentity
+    ? (request.headers['x-account-id'] as string | undefined)
+    : undefined;
+  const headerUserId = allowHeaderIdentity
+    ? (request.headers['x-user-id'] as string | undefined)
+    : undefined;
 
-  const accountId =
-    options.fallbackAccountId ?? (request.headers['x-account-id'] as string | undefined);
+  const tenantId = options.defaultTenantId ?? headerTenantId;
+  const accountId = options.fallbackAccountId ?? headerAccountId;
 
   if (!tenantId) {
     throw new Error(
@@ -34,7 +53,7 @@ export function resolveTenantFromRequest(
     tenantId,
     accountId,
     branchId: request.headers['x-branch-id'] as string | undefined,
-    userId: options.fallbackUserId ?? (request.headers['x-user-id'] as string | undefined),
+    userId: options.fallbackUserId ?? headerUserId,
     correlationId
   };
 }

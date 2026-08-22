@@ -69,6 +69,7 @@ function validateStaticChart() {
   assert(chart.apiVersion === 'v2', 'Chart.yaml must use apiVersion v2');
   assert(chart.name === 'cvg-his-v2', 'Chart.yaml name must be cvg-his-v2');
   assert(base.api?.image?.repository, 'values.yaml must define api.image.repository');
+  assert(base.api?.setup?.secretKey, 'values.yaml must define the setup bootstrap secret key');
   assert(base.worker?.image?.repository, 'values.yaml must define worker.image.repository');
   assert(base.spa?.image?.repository, 'values.yaml must define spa.image.repository');
 
@@ -79,6 +80,7 @@ function validateStaticChart() {
     'configmap.yaml',
     'poddisruptionbudgets.yaml',
     'secrets.yaml',
+    'database-maintenance-jobs.yaml',
     'postgres-statefulset.yaml',
     'redis-statefulset.yaml'
   ];
@@ -88,12 +90,57 @@ function validateStaticChart() {
     assert(fs.existsSync(templatePath), `Required Helm template not found: templates/${template}`);
   }
 
+  const apiDeploymentTemplate = fs.readFileSync(
+    path.join(chartDir, 'templates', 'api-deployment.yaml'),
+    'utf8'
+  );
+  const apiSecretsTemplate = fs.readFileSync(
+    path.join(chartDir, 'templates', 'secrets.yaml'),
+    'utf8'
+  );
+  const dockerCompose = fs.readFileSync(path.join(rootDir, 'docker-compose.v2.yml'), 'utf8');
+  const databaseMaintenanceJobs = fs.readFileSync(
+    path.join(chartDir, 'templates', 'database-maintenance-jobs.yaml'),
+    'utf8'
+  );
+  assert(
+    apiDeploymentTemplate.includes('name: SETUP_BOOTSTRAP_TOKEN')
+      && apiDeploymentTemplate.includes('cvg-his-v2.api.setupSecretName'),
+    'API deployment must load SETUP_BOOTSTRAP_TOKEN from the configured setup Secret'
+  );
+  assert(
+    apiSecretsTemplate.includes('.Values.api.setup.value')
+      && apiSecretsTemplate.includes('.Values.api.setup.secretKey'),
+    'Helm must support an operator-provided setup token without hardcoding it'
+  );
+  assert(
+    dockerCompose.includes('SETUP_BOOTSTRAP_TOKEN: ${SETUP_BOOTSTRAP_TOKEN:-}'),
+    'docker-compose.v2.yml must forward the operator-provided setup bootstrap token'
+  );
+  assert(
+    databaseMaintenanceJobs.includes('packages/db/dist/migrate.js')
+      && databaseMaintenanceJobs.includes('packages/db/dist/reconcile-runtime-roles.js')
+      && databaseMaintenanceJobs.includes('"helm.sh/hook-weight": "-10"'),
+    'Helm must run canonical database migrations before runtime-role reconciliation'
+  );
+  const helmHelpers = fs.readFileSync(path.join(chartDir, 'templates', '_helpers.tpl'), 'utf8');
+  assert(
+    helmHelpers.includes('cvg-his-v2.databaseMaintenance.initContainers')
+      && helmHelpers.includes('packages/db/dist/migrate.js')
+      && helmHelpers.includes('packages/db/dist/reconcile-runtime-roles.js'),
+    'Embedded PostgreSQL must migrate and reconcile roles before application containers start'
+  );
+
   for (const environment of environments) {
     const values = readYamlFile(environment.values);
     if (environment.expectManagedSecrets) {
       assert(values.api?.auth?.value, `${environment.name}: expected managed API auth secret value`);
     } else {
       assert(values.api?.auth?.existingSecret, `${environment.name}: expected API existingSecret`);
+      assert(
+        values.api?.setup?.existingSecret,
+        `${environment.name}: expected setup bootstrap existingSecret`
+      );
     }
 
     if (environment.expectEmbeddedDatastores) {
@@ -168,6 +215,25 @@ for (const environment of environments) {
 
   const apiContainer = apiDeployment.spec.template.spec.containers[0];
   const workerContainer = workerDeployment.spec.template.spec.containers[0];
+  const setupTokenEnv = apiContainer.env?.find(
+    (entry) => entry.name === 'SETUP_BOOTSTRAP_TOKEN'
+  );
+
+  if (environment.name === 'dev') {
+    assert(
+      !setupTokenEnv,
+      'dev: setup must remain fail-closed until the operator provides a generated token'
+    );
+  } else {
+    assert(
+      setupTokenEnv?.valueFrom?.secretKeyRef?.name,
+      `${environment.name}: API must load SETUP_BOOTSTRAP_TOKEN from a Secret`
+    );
+    assert(
+      setupTokenEnv.valueFrom.secretKeyRef.key === 'SETUP_BOOTSTRAP_TOKEN',
+      `${environment.name}: setup bootstrap token must use the canonical Secret key`
+    );
+  }
 
   if (environment.expectApiProbes) {
     assert(

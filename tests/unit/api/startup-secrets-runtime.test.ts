@@ -10,6 +10,7 @@ const { loadApiConfigMock, createSecretsManagerMock } = vi.hoisted(() => ({
     databaseUrl: env.DATABASE_URL,
     pagarmeApiKey: env.PAGARME_API_KEY,
     pagarmePixKey: env.PAGARME_PIX_KEY,
+    setupBootstrapToken: env.SETUP_BOOTSTRAP_TOKEN,
     appName: env.APP_NAME ?? 'cvg-his-v2-api'
   })),
   createSecretsManagerMock: vi.fn()
@@ -53,7 +54,8 @@ describe('startup-secrets runtime coverage', () => {
       { key: 'PAGARME_PIX_KEY', path: 'staging/pagarme', required: false },
       { key: 'NFSE_API_KEY', path: 'staging/nfse', required: false },
       { key: 'NFSE_CERTIFICATE_BASE64', path: 'staging/nfse', required: false },
-      { key: 'NFSE_ISSUER_JSON', path: 'staging/nfse', required: false }
+      { key: 'NFSE_ISSUER_JSON', path: 'staging/nfse', required: false },
+      { key: 'SETUP_BOOTSTRAP_TOKEN', path: 'staging/api_setup', required: false }
     ]);
   });
 
@@ -75,7 +77,8 @@ describe('startup-secrets runtime coverage', () => {
       { key: 'PAGARME_PIX_KEY', path: 'development/pagarme', required: false },
       { key: 'NFSE_API_KEY', path: 'development/nfse', required: false },
       { key: 'NFSE_CERTIFICATE_BASE64', path: 'development/nfse', required: false },
-      { key: 'NFSE_ISSUER_JSON', path: 'development/nfse', required: false }
+      { key: 'NFSE_ISSUER_JSON', path: 'development/nfse', required: false },
+      { key: 'SETUP_BOOTSTRAP_TOKEN', path: 'development/api_setup', required: false }
     ]);
   });
 
@@ -83,7 +86,8 @@ describe('startup-secrets runtime coverage', () => {
     const getMany = vi.fn(async () => ({
       AUTH_SECRET: 'vault-auth-secret',
       DATABASE_URL: '   ',
-      PAGARME_API_KEY: 'vault-pagarme'
+      PAGARME_API_KEY: 'vault-pagarme',
+      SETUP_BOOTSTRAP_TOKEN: 'vault-setup-token'
     }));
 
     const resolved = await resolveApiEnvironmentWithSecrets(
@@ -107,12 +111,14 @@ describe('startup-secrets runtime coverage', () => {
       { key: 'PAGARME_API_KEY', path: 'production/pagarme', required: false },
       { key: 'NFSE_API_KEY', path: 'production/nfse', required: false },
       { key: 'NFSE_CERTIFICATE_BASE64', path: 'production/nfse', required: false },
-      { key: 'NFSE_ISSUER_JSON', path: 'production/nfse', required: false }
+      { key: 'NFSE_ISSUER_JSON', path: 'production/nfse', required: false },
+      { key: 'SETUP_BOOTSTRAP_TOKEN', path: 'production/api_setup', required: false }
     ]);
     expect(resolved.AUTH_SECRET).toBe('vault-auth-secret');
     expect(resolved.DATABASE_URL).toBe('postgres://already-set');
     expect(resolved.PAGARME_API_KEY).toBe('vault-pagarme');
     expect(resolved.PAGARME_PIX_KEY).toBe('env-pix-key');
+    expect(resolved.SETUP_BOOTSTRAP_TOKEN).toBe('vault-setup-token');
   });
 
   it('skips secrets manager reads when all managed values are already configured', async () => {
@@ -133,7 +139,8 @@ describe('startup-secrets runtime coverage', () => {
         PAGARME_PIX_KEY: 'configured-pix',
         NFSE_API_KEY: 'configured-nfse',
         NFSE_CERTIFICATE_BASE64: 'configured-cert',
-        NFSE_ISSUER_JSON: '{"cnpj":"configured"}'
+        NFSE_ISSUER_JSON: '{"cnpj":"configured"}',
+        SETUP_BOOTSTRAP_TOKEN: 'configured-setup-token'
       },
       { provider: 'vault', getMany } as never
     );
@@ -142,6 +149,7 @@ describe('startup-secrets runtime coverage', () => {
     expect(resolved.AUTH_SECRET).toBe('configured-auth');
     expect(resolved.AUTH_SECRET_PREVIOUS).toBe('configured-prev-auth');
     expect(resolved.MFA_SECRET_ENCRYPTION_KEY).toBe('configured-mfa-secret');
+    expect(resolved.SETUP_BOOTSTRAP_TOKEN).toBe('configured-setup-token');
   });
 
   it('resolves startup by wiring the secrets manager into loadApiConfig', async () => {
@@ -153,7 +161,8 @@ describe('startup-secrets runtime coverage', () => {
         AUTH_SECRET_VERSION: '2026-q2',
         DATABASE_URL: 'postgres://vault-db',
         PAGARME_API_KEY: 'vault-pagarme',
-        PAGARME_PIX_KEY: 'vault-pix'
+        PAGARME_PIX_KEY: 'vault-pix',
+        SETUP_BOOTSTRAP_TOKEN: 'vault-setup-token'
       }))
     };
     createSecretsManagerMock.mockResolvedValue(secretsManager);
@@ -183,7 +192,8 @@ describe('startup-secrets runtime coverage', () => {
         AUTH_SECRET_VERSION: '2026-q2',
         DATABASE_URL: 'postgres://vault-db',
         PAGARME_API_KEY: 'vault-pagarme',
-        PAGARME_PIX_KEY: 'vault-pix'
+        PAGARME_PIX_KEY: 'vault-pix',
+        SETUP_BOOTSTRAP_TOKEN: 'vault-setup-token'
       })
     );
     expect(startup.secretsManager).toBe(secretsManager);
@@ -192,6 +202,7 @@ describe('startup-secrets runtime coverage', () => {
     expect(startup.config.authVerifierSecrets).toEqual(['vault-prev-auth-secret']);
     expect(startup.config.authSecretVersion).toBe('2026-q2');
     expect(startup.config.authSecret).toBe('vault-auth-secret');
+    expect(startup.config.setupBootstrapToken).toBe('vault-setup-token');
   });
 
   it('reports rotation as not ready without secret version metadata in production', () => {

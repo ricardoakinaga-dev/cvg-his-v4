@@ -1,11 +1,14 @@
 import assert from 'node:assert/strict';
+import { execFile } from 'node:child_process';
 import test from 'node:test';
 
 import {
   RateLimiter,
   createRateLimiter,
   InMemoryRateLimiterStore,
-  type RateLimitKey
+  RedisRateLimiterStore,
+  type RateLimitKey,
+  type RateLimiterStore
 } from './index.js';
 
 function createTestKey(overrides: Partial<RateLimitKey> = {}): RateLimitKey {
@@ -178,3 +181,236 @@ test('InMemoryRateLimiterStore: resetAll clears all entries', async () => {
   assert.equal(await store.get('key1'), undefined);
   assert.equal(await store.get('key2'), undefined);
 });
+
+test('RateLimiter: atomically enforces a shared limit across concurrent instances', async () => {
+  const store = new InMemoryRateLimiterStore();
+  const firstLimiter = new RateLimiter({ windowMs: 60_000, maxRequests: 5 }, store);
+  const secondLimiter = new RateLimiter({ windowMs: 60_000, maxRequests: 5 }, store);
+
+  const results = await Promise.all(
+    Array.from({ length: 100 }, (_, index) =>
+      (index % 2 === 0 ? firstLimiter : secondLimiter).check(createTestKey())
+    )
+  );
+
+  assert.equal(
+    results.filter((result) => !result.blocked).length,
+    5,
+    'exactly maxRequests concurrent attempts may pass'
+  );
+  assert.equal(results.filter((result) => result.blocked).length, 95);
+});
+
+test('RateLimiter: fails closed when the atomic store operation is unavailable', async () => {
+  const unavailableStore: RateLimiterStore = {
+    increment: async () => {
+      throw new Error('distributed store unavailable');
+    },
+    get: async () => undefined,
+    set: async () => undefined,
+    reset: async () => undefined,
+    resetAll: async () => undefined
+  };
+  const limiter = new RateLimiter({ windowMs: 60_000, maxRequests: 5 }, unavailableStore);
+
+  await assert.rejects(
+    limiter.check(createTestKey()),
+    /distributed store unavailable/,
+    'a store outage must never fall back to an independent local counter'
+  );
+});
+
+test('RedisRateLimiterStore: waits for active operations before closing its connection', async () => {
+  let releaseIncrement: (() => void) | undefined;
+  let markIncrementStarted: (() => void) | undefined;
+  const incrementStarted = new Promise<void>((resolve) => {
+    markIncrementStarted = resolve;
+  });
+  const incrementReleased = new Promise<void>((resolve) => {
+    releaseIncrement = resolve;
+  });
+  let quitCalls = 0;
+  const fakeClient = {
+    eval: async () => {
+      markIncrementStarted?.();
+      await incrementReleased;
+      return [1, Date.now() + 60_000, 0];
+    },
+    ref: () => undefined,
+    unref: () => undefined,
+    isOpen: true,
+    quit: async () => {
+      quitCalls += 1;
+      return 'OK';
+    }
+  };
+  const store = new RedisRateLimiterStore({ redisUrl: 'redis://unused.test:6379' });
+  Object.assign(store as unknown as { clientPromise: Promise<unknown> }, {
+    clientPromise: Promise.resolve(fakeClient)
+  });
+
+  const increment = store.increment('close-race', {
+    now: Date.now(),
+    windowMs: 60_000,
+    maxRequests: 5
+  });
+  await incrementStarted;
+  const close = store.close();
+  await new Promise<void>((resolve) => setImmediate(resolve));
+
+  assert.equal(quitCalls, 0, 'close must not quit while an atomic increment is active');
+  releaseIncrement?.();
+  await Promise.all([increment, close]);
+  assert.equal(quitCalls, 1);
+});
+
+test('RedisRateLimiterStore: discards a failed client so a later operation can recover', async () => {
+  let disconnectCalls = 0;
+  const failedClient = {
+    eval: async () => {
+      throw new Error('connection closed');
+    },
+    ref: () => undefined,
+    unref: () => undefined,
+    isOpen: true,
+    disconnect: async () => {
+      disconnectCalls += 1;
+    }
+  };
+  const recoveredClient = {
+    eval: async () => [1, Date.now() + 60_000, 0],
+    ref: () => undefined,
+    unref: () => undefined,
+    isOpen: true
+  };
+  const store = new RedisRateLimiterStore({ redisUrl: 'redis://unused.test:6379' });
+  const internalStore = store as unknown as { clientPromise: Promise<unknown> | undefined };
+  internalStore.clientPromise = Promise.resolve(failedClient);
+
+  await assert.rejects(
+    store.increment('outage-recovery', {
+      now: Date.now(),
+      windowMs: 60_000,
+      maxRequests: 5
+    }),
+    /Redis rate limiter unavailable/
+  );
+
+  assert.equal(internalStore.clientPromise, undefined);
+  assert.equal(disconnectCalls, 1);
+
+  internalStore.clientPromise = Promise.resolve(recoveredClient);
+  const recovered = await store.increment('outage-recovery', {
+    now: Date.now(),
+    windowMs: 60_000,
+    maxRequests: 5
+  });
+  assert.equal(recovered.blocked, false);
+  assert.equal(recovered.count, 1);
+});
+
+test('RedisRateLimiterStore: rejects a real unavailable endpoint within a bounded deadline', async () => {
+  const moduleUrl = new URL('./index.js', import.meta.url).href;
+  const probe = `
+    import { RedisRateLimiterStore } from ${JSON.stringify(moduleUrl)};
+    const store = new RedisRateLimiterStore({ redisUrl: 'redis://127.0.0.1:1' });
+    try {
+      await store.increment('unavailable', { now: Date.now(), windowMs: 60000, maxRequests: 1 });
+      console.log('UNEXPECTED_SUCCESS');
+    } catch (error) {
+      console.log(error instanceof Error ? error.message : String(error));
+    } finally {
+      await store.close();
+    }
+  `;
+  const startedAt = Date.now();
+  const result = await new Promise<{
+    error: Error | null;
+    stdout: string;
+    stderr: string;
+  }>((resolve) => {
+    execFile(
+      process.execPath,
+      ['--input-type=module', '--eval', probe],
+      { timeout: 4_000 },
+      (error, stdout, stderr) => resolve({ error, stdout, stderr })
+    );
+  });
+
+  assert.equal(result.error, null, result.stderr || result.error?.message);
+  assert.match(result.stdout, /Redis rate limiter unavailable/);
+  assert.ok(Date.now() - startedAt < 4_000, 'unavailable Redis must reject before the deadline');
+});
+
+test(
+  'RedisRateLimiterStore: atomically enforces a shared limit across two connections',
+  { skip: !process.env.REDIS_RATE_LIMITER_TEST_URL },
+  async () => {
+    const redisUrl = process.env.REDIS_RATE_LIMITER_TEST_URL;
+    assert.ok(redisUrl, 'REDIS_RATE_LIMITER_TEST_URL is required for this integration test');
+
+    const keyPrefix = `rate-limit:test:${process.pid}:${Date.now()}`;
+    const firstStore = new RedisRateLimiterStore({ redisUrl, keyPrefix });
+    const secondStore = new RedisRateLimiterStore({ redisUrl, keyPrefix });
+    const firstLimiter = new RateLimiter({ windowMs: 60_000, maxRequests: 7 }, firstStore);
+    const secondLimiter = new RateLimiter({ windowMs: 60_000, maxRequests: 7 }, secondStore);
+
+    try {
+      const results = await Promise.all(
+        Array.from({ length: 200 }, (_, index) =>
+          (index % 2 === 0 ? firstLimiter : secondLimiter).check(createTestKey())
+        )
+      );
+
+      assert.equal(
+        results.filter((result) => !result.blocked).length,
+        7,
+        'Redis must make the increment and allow/block decision atomically'
+      );
+      assert.equal(results.filter((result) => result.blocked).length, 193);
+    } finally {
+      try {
+        await firstStore.resetAll();
+      } finally {
+        await Promise.all([firstStore.close(), secondStore.close()]);
+      }
+    }
+  }
+);
+
+test(
+  'RedisRateLimiterStore: uses Redis time so a skewed node cannot reopen the window',
+  { skip: !process.env.REDIS_RATE_LIMITER_TEST_URL },
+  async () => {
+    const redisUrl = process.env.REDIS_RATE_LIMITER_TEST_URL;
+    assert.ok(redisUrl, 'REDIS_RATE_LIMITER_TEST_URL is required for this integration test');
+
+    const keyPrefix = `rate-limit:clock:${process.pid}:${Date.now()}`;
+    const firstStore = new RedisRateLimiterStore({ redisUrl, keyPrefix });
+    const secondStore = new RedisRateLimiterStore({ redisUrl, keyPrefix });
+    const realNow = Date.now();
+
+    try {
+      const first = await firstStore.increment('shared', {
+        now: realNow,
+        windowMs: 60_000,
+        maxRequests: 1
+      });
+      const skewed = await secondStore.increment('shared', {
+        now: realNow + 60_001,
+        windowMs: 60_000,
+        maxRequests: 1
+      });
+
+      assert.equal(first.blocked, false);
+      assert.equal(skewed.blocked, true, 'application-node time must not control Redis windows');
+      assert.equal(skewed.resetAt, first.resetAt);
+    } finally {
+      try {
+        await firstStore.resetAll();
+      } finally {
+        await Promise.all([firstStore.close(), secondStore.close()]);
+      }
+    }
+  }
+);

@@ -339,6 +339,11 @@ jobs:
 
       - name: Run unit tests
         run: pnpm test
+        env:
+          # Declared explicitly: seed accounts (and other test-only affordances)
+          # are gated on an explicit development/test environment, never on an
+          # unset NODE_ENV.
+          NODE_ENV: test
 
   integration-tests:
     name: Integration Tests

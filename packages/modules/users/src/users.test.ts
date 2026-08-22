@@ -11,9 +11,13 @@ import type { UsersRepository } from './repositories/database-users.repository.j
 class InMemoryUsersRepository implements UsersRepository {
   readonly created: Array<Record<string, unknown>> = [];
   readonly updated: Array<Record<string, unknown>> = [];
+  successfulPasswordUpgrades = 0;
   readonly #users = new Map<UserId, Record<string, unknown>>();
 
-  constructor(initialUsers: Array<Record<string, unknown>> = []) {
+  constructor(
+    initialUsers: Array<Record<string, unknown>> = [],
+    readonly concurrentPasswordHash?: string
+  ) {
     for (const user of initialUsers) {
       this.#users.set(user.id as UserId, user);
     }
@@ -21,12 +25,47 @@ class InMemoryUsersRepository implements UsersRepository {
 
   async create(user: any): Promise<void> {
     this.created.push(user);
-    this.#users.set(user.id, user);
+    this.#users.set(user.id, {
+      ...user,
+      roleCodes: user.roleCode ? [user.roleCode] : []
+    });
   }
 
   async update(user: any): Promise<void> {
     this.updated.push(user);
     this.#users.set(user.id, user);
+  }
+
+  async upgradePasswordHash(input: {
+    readonly userId: UserId;
+    readonly accountId: AccountId;
+    readonly expectedPasswordHash: string;
+    readonly passwordHash: string;
+  }): Promise<boolean> {
+    if (this.concurrentPasswordHash) {
+      const existing = this.#users.get(input.userId);
+      if (existing) {
+        this.#users.set(input.userId, {
+          ...existing,
+          passwordHash: this.concurrentPasswordHash
+        });
+      }
+      return false;
+    }
+    const existing = this.#users.get(input.userId);
+    if (
+      !existing
+      || existing.accountId !== input.accountId
+      || existing.passwordHash !== input.expectedPasswordHash
+    ) {
+      return false;
+    }
+    this.#users.set(input.userId, {
+      ...existing,
+      passwordHash: input.passwordHash
+    });
+    this.successfulPasswordUpgrades += 1;
+    return true;
   }
 
   async findById(id: UserId): Promise<any | null> {
@@ -37,6 +76,14 @@ class InMemoryUsersRepository implements UsersRepository {
     return (
       Array.from(this.#users.values()).find(
         (user) => user.accountId === accountId && user.email === email
+      ) ?? null
+    );
+  }
+
+  async findByUsername(accountId: AccountId, username: string): Promise<any | null> {
+    return (
+      Array.from(this.#users.values()).find(
+        (user) => user.accountId === accountId && user.username === username
       ) ?? null
     );
   }
@@ -128,6 +175,76 @@ describe('UsersService', () => {
     expect(await comparePassword('wrong', legacyHash)).toBe(false);
   });
 
+  it('atomically upgrades a valid legacy sha256 password to scrypt', async () => {
+    const legacyHash = createHash('sha256').update('LegacyPass123!').digest('hex');
+    const repository = new InMemoryUsersRepository([
+      {
+        id: 'user_legacy' as UserId,
+        accountId: 'acc_legacy' as AccountId,
+        username: 'legacy_user',
+        email: 'legacy-user@cvg.local',
+        passwordHash: legacyHash,
+        fullName: 'Legacy User',
+        isActive: true,
+        roleCodes: ['admin'],
+        createdAt: '2026-04-01T10:00:00.000Z',
+        updatedAt: '2026-04-01T10:00:00.000Z'
+      }
+    ]);
+    const firstInstance = new UsersService({ repository }, []);
+    const secondInstance = new UsersService({ repository }, []);
+    const firstUser = await firstInstance.resolveByUsername(
+      'legacy_user',
+      'acc_legacy' as AccountId
+    );
+    const secondUser = await secondInstance.resolveByUsername(
+      'legacy_user',
+      'acc_legacy' as AccountId
+    );
+
+    const results = await Promise.all([
+      firstInstance.verifyPassword(firstUser!, 'LegacyPass123!'),
+      secondInstance.verifyPassword(secondUser!, 'LegacyPass123!')
+    ]);
+    const upgraded = await firstInstance.resolveById(
+      'user_legacy' as UserId,
+      'acc_legacy' as AccountId
+    );
+
+    expect(results).toEqual([true, true]);
+    expect(repository.successfulPasswordUpgrades).toBe(1);
+    expect(upgraded?.passwordHash).not.toBe(legacyHash);
+    expect(upgraded?.passwordHash.split(':')).toHaveLength(2);
+    expect(await comparePassword('LegacyPass123!', upgraded!.passwordHash)).toBe(true);
+  });
+
+  it('fails closed when a legacy password upgrade loses a concurrent compare-and-swap', async () => {
+    const legacyHash = createHash('sha256').update('LegacyPass123!').digest('hex');
+    const resetPasswordHash = await hashPassword('ReplacementPass456!');
+    const repository = new InMemoryUsersRepository(
+      [
+        {
+          id: 'user_legacy_race' as UserId,
+          accountId: 'acc_legacy' as AccountId,
+          username: 'legacy_race',
+          email: 'legacy-race@cvg.local',
+          passwordHash: legacyHash,
+          fullName: 'Legacy Race',
+          isActive: true,
+          roleCodes: ['admin'],
+          createdAt: '2026-04-01T10:00:00.000Z',
+          updatedAt: '2026-04-01T10:00:00.000Z'
+        }
+      ],
+      resetPasswordHash
+    );
+    const repoService = new UsersService({ repository }, []);
+    await repoService.hydrateFromDatabase();
+
+    const user = repoService.getOrThrow('user_legacy_race' as UserId);
+    await expect(repoService.verifyPassword(user, 'LegacyPass123!')).resolves.toBe(false);
+  });
+
   it('hydrates repository users and supports lookup by username afterwards', async () => {
     const repository = new InMemoryUsersRepository([
       {
@@ -151,6 +268,49 @@ describe('UsersService', () => {
     expect(hydrated?.email).toBe('hydrated@cvg.local');
     expect(hydrated?.roleCodes).toEqual(['admin']);
     expect(await hydratedService.verifyPassword(hydrated!, 'HydratedPass123!')).toBe(true);
+  });
+
+  it('resolves a user created by another hot instance without full rehydration', async () => {
+    const repository = new InMemoryUsersRepository();
+    const hotReader = new UsersService({ repository }, []);
+    const writer = new UsersService({ repository }, []);
+
+    const created = await writer.create({
+      accountId: 'acc_shared' as AccountId,
+      username: 'late_user',
+      email: 'late-user@cvg.local',
+      password: 'LateUserPass123!',
+      roleCode: 'admin'
+    });
+
+    const resolved = await hotReader.resolveByUsername(
+      'late_user',
+      'acc_shared' as AccountId
+    );
+
+    expect(resolved?.id).toBe(created.id);
+    expect(resolved?.roleCodes).toEqual(['admin']);
+    expect(await hotReader.verifyPassword(resolved!, 'LateUserPass123!')).toBe(true);
+  });
+
+  it('refreshes a cached user from the repository by id', async () => {
+    const repository = new InMemoryUsersRepository();
+    const writer = new UsersService({ repository }, []);
+    const reader = new UsersService({ repository }, []);
+    const created = await writer.create({
+      accountId: 'acc_shared' as AccountId,
+      username: 'status_user',
+      email: 'status-user@cvg.local',
+      password: 'StatusUserPass123!',
+      roleCode: 'admin'
+    });
+
+    await reader.resolveById(created.id, 'acc_shared' as AccountId);
+    await writer.update(created.id, { status: 'inactive' });
+
+    const refreshed = await reader.resolveById(created.id, 'acc_shared' as AccountId);
+
+    expect(refreshed?.status).toBe('inactive');
   });
 
   it('does not resolve an unscoped username shared by multiple accounts', async () => {

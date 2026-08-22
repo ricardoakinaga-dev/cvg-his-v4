@@ -21,11 +21,20 @@ export interface UserRecord {
 export interface UsersRepository {
   create(user: UserRecord): Promise<void>;
   update(user: UserRecord): Promise<void>;
-  findById(id: UserId): Promise<UserRecord | null>;
+  upgradePasswordHash(input: UpgradePasswordHashInput): Promise<boolean>;
+  findById(id: UserId, accountId?: AccountId): Promise<UserRecord | null>;
+  findByUsername(accountId: AccountId, username: string): Promise<UserRecord | null>;
   findByEmail(accountId: AccountId, email: string): Promise<UserRecord | null>;
   findAll(): Promise<readonly UserRecord[]>;
-  findRoleCodesByUserId(id: UserId): Promise<readonly string[]>;
+  findRoleCodesByUserId(id: UserId, accountId?: AccountId): Promise<readonly string[]>;
   findByAccountId(accountId: AccountId): Promise<readonly UserRecord[]>;
+}
+
+export interface UpgradePasswordHashInput {
+  readonly userId: UserId;
+  readonly accountId: AccountId;
+  readonly expectedPasswordHash: string;
+  readonly passwordHash: string;
 }
 
 export class DatabaseUsersRepository implements UsersRepository {
@@ -75,9 +84,41 @@ export class DatabaseUsersRepository implements UsersRepository {
     });
   }
 
-  async findById(id: UserId): Promise<UserRecord | null> {
-    return withTenantQuery(getPool(), async (client) => {
+  async upgradePasswordHash(input: UpgradePasswordHashInput): Promise<boolean> {
+    return withTenantQueryExplicit(getPool(), input.accountId, async (client) => {
+      const result = await client.query(
+        `UPDATE users
+         SET password_hash = $4, updated_at = NOW()
+         WHERE id = $1 AND account_id = $2 AND password_hash = $3
+         RETURNING id`,
+        [
+          input.userId,
+          input.accountId,
+          input.expectedPasswordHash,
+          input.passwordHash
+        ]
+      );
+      return result.rowCount === 1;
+    });
+  }
+
+  async findById(id: UserId, accountId?: AccountId): Promise<UserRecord | null> {
+    const query = async (client: { query: typeof getPool.prototype.query }) => {
       const result = await client.query('SELECT * FROM users WHERE id = $1', [id]);
+      if (result.rows.length === 0) return null;
+      return this.mapRow(result.rows[0]);
+    };
+    return accountId
+      ? withTenantQueryExplicit(getPool(), accountId, query)
+      : withTenantQuery(getPool(), query);
+  }
+
+  async findByUsername(accountId: AccountId, username: string): Promise<UserRecord | null> {
+    return withTenantQueryExplicit(getPool(), accountId, async (client) => {
+      const result = await client.query(
+        'SELECT * FROM users WHERE account_id = $1 AND username = $2 LIMIT 1',
+        [accountId, username]
+      );
       if (result.rows.length === 0) return null;
       return this.mapRow(result.rows[0]);
     });
@@ -104,15 +145,23 @@ export class DatabaseUsersRepository implements UsersRepository {
     return users.flat();
   }
 
-  async findRoleCodesByUserId(id: UserId): Promise<readonly string[]> {
-    const result = await getPool().query(
-      `SELECT r.name
-       FROM user_roles ur
-       JOIN roles r ON r.id = ur.role_id
-       WHERE ur.user_id = $1
-       ORDER BY r.name`,
-      [id]
-    );
+  async findRoleCodesByUserId(
+    id: UserId,
+    accountId?: AccountId
+  ): Promise<readonly string[]> {
+    const query = async (client: { query: typeof getPool.prototype.query }) =>
+      client.query(
+        `SELECT r.name
+         FROM user_roles ur
+         JOIN roles r ON r.id = ur.role_id
+         JOIN users u ON u.id = ur.user_id
+         WHERE ur.user_id = $1 AND ($2::uuid IS NULL OR u.account_id = $2)
+         ORDER BY r.name`,
+        [id, accountId ?? null]
+      );
+    const result = accountId
+      ? await withTenantQueryExplicit(getPool(), accountId, query)
+      : await query(getPool());
     return result.rows.map((row: Record<string, unknown>) => row.name as string);
   }
 

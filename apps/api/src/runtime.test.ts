@@ -86,37 +86,44 @@ test('login, session refresh and audit trail work end-to-end', async () => {
 });
 
 test('runtime initializes tenant-scoped repositories with the authenticated account context', async () => {
-  const repositories: RuntimeRepositories = {
-    users: {
-      async create() {},
-      async update() {},
-      async findById() {
-        return null;
-      },
-      async findByEmail() {
-        return null;
-      },
-      async findAll() {
-        return [
-          {
-            id: '5c2b3750-783b-4cd7-bf8d-4ce982c1dabb' as never,
-            accountId: REAL_ACCOUNT_ID,
-            email: 'admin@centroveterinarioguarapiranga.com',
-            passwordHash: 'cvg-his-v2-seed-salt-v1:seed_admin',
-            fullName: 'Admin CVG',
-            isActive: true,
-            createdAt: '2026-04-01T00:00:00.000Z',
-            updatedAt: '2026-04-01T00:00:00.000Z'
-          }
-        ];
-      },
-      async findRoleCodesByUserId() {
-        return ['admin'];
-      },
-      async findByAccountId() {
-        return [];
-      }
+  const usersRepository = {
+    async create() {},
+    async update() {},
+    async upgradePasswordHash() {
+      return false;
     },
+    async findById() {
+      return null;
+    },
+    async findByUsername() {
+      return null;
+    },
+    async findByEmail() {
+      return null;
+    },
+    async findAll() {
+      return [
+        {
+          id: '5c2b3750-783b-4cd7-bf8d-4ce982c1dabb' as never,
+          accountId: REAL_ACCOUNT_ID,
+          email: 'admin@centroveterinarioguarapiranga.com',
+          passwordHash: 'cvg-his-v2-seed-salt-v1:seed_admin',
+          fullName: 'Admin CVG',
+          isActive: true,
+          createdAt: '2026-04-01T00:00:00.000Z',
+          updatedAt: '2026-04-01T00:00:00.000Z'
+        }
+      ];
+    },
+    async findRoleCodesByUserId() {
+      return ['admin'];
+    },
+    async findByAccountId() {
+      return [];
+    }
+  };
+  const repositories: RuntimeRepositories = {
+    users: usersRepository,
     staff: {
       async create() {
         throw new Error('not implemented');

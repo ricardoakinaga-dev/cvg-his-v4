@@ -10,14 +10,12 @@
  * Registered via: eventBus.subscribe(inpatientHandlers.handlers)
  */
 import type { EventHandler, OutboxEvent } from '@cvg-his-v2/module-event-bus';
+import { createLogger } from '@cvg-his-v2/shared-logging';
+
+const logger = createLogger('inpatient-consumer');
 
 export interface InpatientConsumerOptions {
   // Add dependencies as needed (e.g., notifications, webhooks)
-}
-
-interface InpatientEventContext {
-  accountId: string;
-  [key: string]: unknown;
 }
 
 /**
@@ -43,16 +41,18 @@ export class InpatientEventHandlers {
   }
 
   async handle(event: OutboxEvent): Promise<void> {
-    const ctx = event.payload as InpatientEventContext;
-
     switch (event.eventType) {
       case 'inpatient.admitted':
-        // Currently a placeholder for future logic (e.g., send notification)
-        console.log('[InpatientEventHandlers] Patient admitted:', ctx);
-        break;
       case 'inpatient.discharged':
-        // Currently a placeholder for future logic (e.g., send notification)
-        console.log('[InpatientEventHandlers] Patient discharged:', ctx);
+        // Placeholder for future logic (e.g., send notification).
+        // The payload carries patient and owner data, so only non-identifying
+        // references are logged — clinical detail belongs in the audit trail.
+        logger.info('inpatient event received', {
+          eventId: event.id,
+          eventType: event.eventType,
+          accountId: event.accountId,
+          correlationId: event.correlationId
+        });
         break;
       default:
         break;

@@ -13,6 +13,7 @@ import { createLogger } from '@cvg-his-v2/shared-logging';
 import {
   DatabaseSessionRepository,
   type PersistedSessionRecord,
+  type RotateRefreshNonceParams,
   type SessionRepository,
   type UpdateSessionParams
 } from '@cvg-his-v2/module-auth';
@@ -440,6 +441,28 @@ class InMemorySessionRepository {
       return;
     }
     this.#sessions.set(session.sessionId, { ...existing, ...session } as PersistedSessionRecord);
+  }
+  async rotateRefreshNonce(
+    params: RotateRefreshNonceParams
+  ): Promise<PersistedSessionRecord | null> {
+    const existing = this.#sessions.get(params.sessionId);
+    if (
+      !existing
+      || !existing.active
+      || existing.revokedAt
+      || existing.refreshNonce !== params.expectedRefreshNonce
+    ) {
+      return null;
+    }
+
+    const rotated: PersistedSessionRecord = {
+      ...existing,
+      refreshNonce: params.refreshNonce,
+      expiresAt: params.expiresAt,
+      refreshExpiresAt: params.refreshExpiresAt
+    };
+    this.#sessions.set(params.sessionId, rotated);
+    return rotated;
   }
   async findById(id: SessionId): Promise<PersistedSessionRecord | null> {
     return this.#sessions.get(id) ?? null;

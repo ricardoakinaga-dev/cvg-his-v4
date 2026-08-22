@@ -20,7 +20,8 @@ describe('tenant-context middleware', () => {
         'x-account-id': 'acc-123',
         'x-branch-id': 'branch-7',
         'x-user-id': 'usr-9'
-      })
+      }),
+      { allowHeaderIdentity: true }
     );
 
     expect(context).toEqual({
@@ -30,6 +31,29 @@ describe('tenant-context middleware', () => {
       userId: 'usr-9',
       correlationId: 'corr-123'
     });
+  });
+
+  it('ignores identity headers unless header identity is explicitly allowed', () => {
+    expect(() =>
+      resolveTenantFromRequest(
+        createRequest({
+          'x-tenant-id': 'tenant-123',
+          'x-account-id': 'acc-123',
+          'x-user-id': 'usr-9'
+        })
+      )
+    ).toThrow(/Tenant ID is required/);
+  });
+
+  it('never lets headers supply the account scope for unauthenticated requests', () => {
+    expect(() =>
+      resolveTenantFromRequest(
+        createRequest({
+          'x-account-id': 'victim-account'
+        }),
+        { defaultTenantId: 'tenant-default' }
+      )
+    ).toThrow(/Account ID is required/);
   });
 
   it('uses fallback options and default correlation id when headers are missing', () => {
@@ -53,7 +77,8 @@ describe('tenant-context middleware', () => {
       resolveTenantFromRequest(
         createRequest({
           'x-account-id': 'acc-123'
-        })
+        }),
+        { allowHeaderIdentity: true }
       )
     ).toThrow(/Tenant ID is required/);
 
@@ -61,7 +86,8 @@ describe('tenant-context middleware', () => {
       resolveTenantFromRequest(
         createRequest({
           'x-tenant-id': 'tenant-123'
-        })
+        }),
+        { allowHeaderIdentity: true }
       )
     ).toThrow(/Account ID is required/);
   });
@@ -104,7 +130,8 @@ describe('tenant-context middleware', () => {
         'x-correlation-id': 'corr-fallback',
         'x-tenant-id': 'tenant-fallback',
         'x-account-id': 'acc-fallback'
-      })
+      }),
+      { allowHeaderIdentity: true }
     );
 
     expect(context.tenantId).toBe('tenant-fallback');

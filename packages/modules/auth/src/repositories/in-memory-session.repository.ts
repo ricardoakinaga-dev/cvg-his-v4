@@ -1,6 +1,7 @@
 import type { SessionId } from '@cvg-his-v2/shared-types';
 import type {
   PersistedSessionRecord,
+  RotateRefreshNonceParams,
   SessionRepository,
   UpdateSessionParams
 } from './session.repository.js';
@@ -17,11 +18,30 @@ export class InMemorySessionRepository implements SessionRepository {
     if (!existing) {
       throw new Error(`Session not found: ${session.sessionId}`);
     }
-    if ('active' in session && session.active === false) {
-      this.#sessions.delete(session.sessionId);
-      return;
-    }
     this.#sessions.set(session.sessionId, { ...existing, ...session } as PersistedSessionRecord);
+  }
+
+  async rotateRefreshNonce(
+    params: RotateRefreshNonceParams
+  ): Promise<PersistedSessionRecord | null> {
+    const existing = this.#sessions.get(params.sessionId);
+    if (
+      !existing
+      || !existing.active
+      || existing.revokedAt
+      || existing.refreshNonce !== params.expectedRefreshNonce
+    ) {
+      return null;
+    }
+
+    const rotated: PersistedSessionRecord = {
+      ...existing,
+      refreshNonce: params.refreshNonce,
+      expiresAt: params.expiresAt,
+      refreshExpiresAt: params.refreshExpiresAt
+    };
+    this.#sessions.set(params.sessionId, rotated);
+    return rotated;
   }
 
   async findById(id: SessionId): Promise<PersistedSessionRecord | null> {
