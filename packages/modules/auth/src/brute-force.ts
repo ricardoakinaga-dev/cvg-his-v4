@@ -25,6 +25,18 @@ export class BruteForceProtection {
     };
   }
 
+  getMaxAttempts(): number {
+    return this.#config.maxAttempts;
+  }
+
+  getLockoutDurationMs(): number {
+    return this.#config.lockoutDurationSeconds * 1000;
+  }
+
+  getTrackingWindowMs(): number {
+    return this.#config.trackingWindowSeconds * 1000;
+  }
+
   isPasswordLocked(identifier: string): boolean {
     return this.#isLocked(this.#passwordFailures, this.#normalize(identifier));
   }

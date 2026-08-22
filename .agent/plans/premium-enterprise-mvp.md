@@ -1,0 +1,169 @@
+# CVG HIS v4 Premium Enterprise MVP — ExecPlan
+
+## Purpose / Big Picture
+
+Transform the current broad, partially implemented veterinary ERP into a behaviorally proven Premium Enterprise MVP. Success is observable through real, revision-bound flows rather than files, screenshots or self-reported scores: secure installation and identity, the veterinary encounter-to-receipt backbone, eleven Vetus parity domains, provider homologation, and target-environment operational certification.
+
+## Progress
+
+- [x] (2026-08-22T01:57:16-03:00) Classified the repository and recovered the active August documentation authority, dirty worktree and current verification failures.
+- [x] (2026-08-22T02:12:00-03:00) Finished deterministic coverage of all 1,445 documentation artifacts and froze Quality Bar v1 without weakening a required criterion.
+- [x] (2026-08-22T02:12:00-03:00) Bounded `CVG-001` from independent planning, TDD and security reviews; the implementation-ready decision is recorded separately and does not imply verification.
+- [ ] Complete `CVG-001` through TDD, integrated runtime proof and independent critique.
+- [ ] Execute the remaining backlog in dependency order, preserving fresh evidence and explicit human/external boundaries.
+
+## Surprises & Discoveries
+
+- Observation: The repository's `readiness:enterprise` score is 95/100 while its strict Vetus audit reports 0/11 general and 0/3 clinical areas verified.
+  Evidence: `pnpm readiness:enterprise` and `pnpm vetus:parity:audit` executed on the current worktree.
+  Impact: Existence-based scores are not acceptance evidence; the Quality Bar must use rejecting behavioral checks.
+- Observation: The current first-access implementation generates and logs a raw bootstrap token when configuration is absent.
+  Evidence: `apps/api/src/index.ts` and `apps/api/src/setup-token.ts` in the dirty worktree.
+  Impact: `CVG-001` must eliminate secret logging and define fail-closed setup behavior before this path can pass.
+- Observation: The documented Game Day recommends in-memory writes during database failure, contradicting the active production fail-closed policy.
+  Evidence: `docs/game-day/README.md` compared with the active August 7 report/backlog.
+  Impact: The runbook must not be executed unchanged and operational certification remains open.
+- Observation: The setup predicate queries tenant-scoped `users` before tenant context exists, while production runtime is `NOBYPASSRLS`; the same empty observation can recur after successful setup.
+  Evidence: `apps/api/src/setup-provisioning.ts`, the user RLS migration and independent security/TDD reviews.
+  Impact: Installation completion needs a durable global singleton exposed only through narrow privileged functions; deleting the last user cannot reopen setup.
+- Observation: The current in-memory session/user cache cannot make an already-running second API instance aware of setup or later revocation, and refresh rotation is not compare-and-swap.
+  Evidence: current auth/users/session repository call graph and independent security review.
+  Impact: PostgreSQL/Redis state must be authoritative on miss/refresh/request; cache-only green tests are insufficient.
+
+## Decision Log
+
+- Decision: Treat the August 7 report, plan and backlog as the active documentation layer; treat July and `docs/docs2` as historical discovery input, and the untracked August 10 setup/security documents as a provisional overlay requiring governance.
+  Context: The corpus contains contradictory 42–96 scores and superseded “DONE” claims.
+  Alternatives: Continue the July backlog; average historical scores; trust the newest filename without checking governance.
+  Reason: `docs/README.md` names the August trio first, while archive manifests explicitly deny current authority.
+  Consequences: Current runtime/code evidence may still supersede documentation; the August 10 changes remain unverified.
+  Date/Author: 2026-08-22 / root integrator.
+- Decision: Sequence secure installation-to-session before encounter-to-receipt.
+  Context: A first admin, tenant boundary and shared session are prerequisites for faithful multi-tenant product journeys.
+  Alternatives: Start with cosmetic SPA parity or isolated domain pages.
+  Reason: The active audit and independent root-document review identify identity/tenant lifecycle as the highest-impact critical gap.
+  Consequences: External provider and broad UI work do not block the first slice.
+  Date/Author: 2026-08-22 / root integrator.
+- Decision: Require an explicit configured bootstrap secret and keep the status route readable while mutation fails closed when setup is disabled.
+  Context: Automatically generated credentials create an unrecoverable disclosure/logging dilemma and multi-instance drift.
+  Alternatives: Generate and print a token; hide the entire route; start the API only when the token exists.
+  Reason: A non-secret status permits a recoverable operator/UI state, while POST remains impossible without deliberate configuration.
+  Consequences: API/UI/OpenAPI distinguish `setupRequired` from `setupAvailable`; production configuration remains an operator responsibility.
+  Date/Author: 2026-08-22 / root integrator.
+- Decision: Use a durable installation singleton and a narrow database bootstrap capability rather than inferring installation from tenant-scoped users or granting global CRUD to the API role.
+  Context: RLS, user deletion, Compose/Helm grant drift and post-commit audit make the current transaction unsafe.
+  Alternatives: Count users with bypass RLS; use an account sentinel; grant the runtime broad global CRUD.
+  Reason: A one-way sentinel preserves the invariant across deletion/restart and a `SECURITY DEFINER` function can own one atomic, audited transaction with least privilege.
+  Consequences: Migration/grants require real PostgreSQL proof and explicit safe `search_path`; rollback must preserve already-completed installations.
+  Date/Author: 2026-08-22 / root integrator.
+- Decision: Treat database/session state as authoritative and process-local caches as disposable optimizations.
+  Context: Setup on instance A leaves hot instance B unable to login/authenticate reliably; non-CAS refresh admits races.
+  Alternatives: restart every replica; publish cache invalidations only; retain cache authority.
+  Reason: Correctness must not depend on delivery of an invalidation event.
+  Consequences: request/refresh paths perform bounded repository synchronization and refresh nonce changes use compare-and-swap; performance is measured later.
+  Date/Author: 2026-08-22 / root integrator.
+
+## Outcomes & Retrospective
+
+Work remains active. No Premium Enterprise, parity, security or release verdict has been earned. Update this section only with observed outcomes, limitations and lessons from completed milestones.
+
+## Context and Orientation
+
+The repository is a pnpm monorepo. `apps/api` is the canonical HTTP composition root, `apps/spa` is the Vue frontend, `apps/worker` handles asynchronous work, `packages/db` owns Drizzle schema/migrations, and `packages/modules/*` owns domain behavior. PostgreSQL and Redis are required for production-like verification. The current worktree already contains substantial uncommitted setup/auth/tenant/metrics changes; they belong to the user or prior work and must be preserved and reviewed as a candidate, not rewritten blindly.
+
+The current documentation authority is summarized by `docs/README.md` and the August 7 report/plan/backlog. `docs/vetus` is reference evidence for the legacy/product target. Archived documents are discovery evidence only. Runtime behavior and current tests outrank documentary completion claims.
+
+## Scope and Constraints
+
+- In scope: all implementation and verification needed to close the active Premium Enterprise MVP backlog, starting with `CVG-001`; current documentation reconciliation; real test/build/runtime evidence; independent reviews.
+- Out of scope without new authority: production mutation, credential rotation or disclosure, irreversible migration, provider/vendor commitments, fiscal/regulatory acceptance, production go-live and residual HIGH/CRITICAL risk acceptance.
+- Applicable instructions: user-supplied repository `AGENTS.md`; the named gauntlet, engineering-framework and orchestrate skills; ECC conventions; TDD, security-review and market-research skills.
+- Requirements/decisions: active August 7 report/plan/backlog; architecture docs `112`–`116`; ADRs subject to recorded drift; Vetus reference corpus; frozen Gauntlet Quality Bar.
+- Tier/risk/blast radius: `T4_CRITICAL` / `CRITICAL` / `CROSS_SYSTEM` because identity, sensitive veterinary data, financial state, tenancy, integrations, deployment and recovery all participate.
+- Authorization constraints: repository-local reversible implementation and synthetic test environments are authorized; external systems and destructive/production decisions require humans.
+
+## Architecture and Interfaces
+
+The required backbone is `client/owner -> animal/patient -> appointment/queue -> encounter/clinical state -> command/charges -> inventory/ledger/cash/payment -> audit/outbox`. Identity is `explicit bootstrap secret -> atomic tenant/account/unit/admin -> login/MFA -> HTTP-only refresh cookie -> shared authoritative session -> tenant/RBAC/RLS enforcement`. Every write must have an owning transaction or explicit idempotent saga, and every public route must validate input and enforce actor/action/resource/tenant at the server/database boundary.
+
+## Milestones
+
+### Milestone 1 — Secure installation-to-session
+
+- Outcome: An empty database can be provisioned exactly once and the resulting administrator remains authenticated safely across restart and two API instances.
+- Scope/dependencies: API setup/auth, PostgreSQL transaction/RLS, Redis/shared sessions, SPA wizard and Playwright; no external provider.
+- Demonstration: Start disposable PostgreSQL/Redis, migrate from empty, exercise setup through HTTP/SPA, race two valid setup calls, restart/switch API instance, refresh/login, and query tenant/role/audit state.
+- Acceptance/evidence: `QB-SEC-*`, `QB-DATA-*`, `QB-UX-*` and `QB-REL-*` criteria in `.gauntlet/state.md`, plus current verification ledger records.
+
+### Milestone 2 — Atomic encounter-to-receipt
+
+- Outcome: One scheduled or walk-in clinical visit reaches manual/cash settlement without inconsistent clinical, inventory or financial state.
+- Scope/dependencies: patient/owner, agenda/queue/encounter, command/billing, inventory, ledger/cash/payment, audit and outbox.
+- Demonstration: PostgreSQL-backed UI/API journey with rollback at each boundary, duplicate/replay, restart and cross-tenant deny cases.
+- Acceptance/evidence: the corresponding frozen core, data, security and regression criteria.
+
+### Milestone 3 — Vetus functional parity
+
+- Outcome: The eleven general and three clinical parity areas have self-contained, behaviorally rejecting journeys with no skips/retries.
+- Scope/dependencies: `CVG-002` plus domain state machines and evidence spine.
+- Demonstration: the active Vetus audit becomes 11/11 and 3/3 from runtime artifacts, not file existence.
+- Acceptance/evidence: durable PostgreSQL-backed E2E artifacts and domain reconciliation.
+
+### Milestone 4 — Providers and operational certification
+
+- Outcome: Selected provider chains and the authorized target environment meet integration, accessibility, performance, deploy, recovery and observability contracts.
+- Scope/dependencies: human provider/sandbox/topology/RTO/RPO decisions.
+- Demonstration: signed sandbox callbacks, reconciliation, Helm/Compose deployment as applicable, WCAG audit, SLO workload, backup/restore/failover and Game Day.
+- Acceptance/evidence: external records plus current runtime verification; release authority remains human.
+
+## Plan of Work
+
+For each milestone, freeze one bounded task contract and Quality Bar subset; obtain the required stage gate; write a rejecting test before the smallest coherent vertical implementation; run the real boundary; inspect persisted state, logs and side effects; request a fresh independent critique; fix the largest blocking gap; rerun the affected regression surface; and only then transition the backlog item from `IN_PROGRESS` to `VERIFY` and possibly `DONE`. Keep external/human blockers explicit while continuing safe local work on independent items.
+
+## Concrete Steps
+
+From `/home/ricardo/cvg-his-v4`:
+
+1. Finish and preserve the complete documentation-corpus audit with counts, hashes, authority classification, requirements, contradictions and open gates.
+2. Freeze `.gauntlet/state.md` v1 and write `.agent/tasks/CVG-001.md` plus `.agent/gates/implementation-ready-CVG-001.json`.
+3. Add failing unit/API/database/SPA E2E tests for `CVG-001`, then implement the smallest fail-closed correction and connected flow.
+4. Run focused tests, coverage, OpenAPI, typecheck/build, secret/dependency/security checks and the disposable PostgreSQL/Redis two-instance journey.
+5. Obtain an independent adversarial review, fix the largest valid gap and rerun invalidated evidence.
+
+## Validation and Acceptance
+
+| Criterion | Required | Procedure/environment | Expected observation | Evidence destination |
+| --- | --- | --- | --- | --- |
+| `QB-SEC-01` | yes | static/log capture plus unit/startup test | no secret is hardcoded, returned or logged; absent required setup configuration fails closed | `.agent/verification.jsonl` |
+| `QB-SEC-02` | yes | HTTP + PostgreSQL concurrency and cross-tenant tests | exactly one admin; unauthorized and cross-tenant attempts are denied and audited | `.agent/verification.jsonl` |
+| `QB-DATA-01` | yes | empty migration plus setup failure injection/retry | atomic consistent tenant/account/unit/role/user state; no partial install | `.agent/verification.jsonl` |
+| `QB-AUTH-01` | yes | login/MFA/refresh/revocation across restart/two instances | session lifecycle remains authoritative and replay resistant | `.agent/verification.jsonl` |
+| `QB-CORE-01` | yes | PostgreSQL-backed SPA/API encounter-to-receipt E2E | one coherent clinical-to-financial result and rollback/replay safety | `.agent/verification.jsonl` |
+| `QB-PARITY-01` | yes | strict Vetus behavioral audit | 11/11 general and 3/3 clinical with no skips/retries | `.agent/verification.jsonl` |
+| `QB-REL-01` | yes | project build/typecheck/lint/unit/integration/E2E/coverage gates | all required checks pass with meaningful global and changed-code coverage >=80% | `.agent/verification.jsonl` |
+| `QB-OPS-01` | yes | authorized target deploy/rollback/restore/failover/SLO checks | reproducible recovery and operational thresholds pass | `.agent/verification.jsonl` |
+
+## Risks and Human Decisions
+
+| Risk/decision | Evidence/confidence | Controls | Residual/authority | Trigger |
+| --- | --- | --- | --- | --- |
+| Bootstrap secret exposure | Raw token currently logged; high confidence | explicit secret, redaction tests, fail-closed startup/setup | CRITICAL until corrected; no acceptance inferred | any setup deployment |
+| Cross-tenant or privilege bypass | Broad multi-tenant surface; partial current evidence | server RBAC, PostgreSQL RLS, negative tests, audit | HIGH until integrated proof | identity/data changes |
+| Clinical/financial partial write | active backlog explicitly reports missing UoW/reconciliation | transaction/saga, idempotency, rollback/failure tests | CRITICAL for go-live | encounter-to-receipt implementation |
+| External provider behavior | sandbox/contracts/credentials absent or unverified | human selection, contract tests, signed webhooks, replay/reconciliation | BLOCKED only for dependent provider work | provider implementation/homologation |
+| Production recovery | RTO/RPO/Game Day evidence absent and current runbook unsafe | target restore/failover drill with approved authority | CRITICAL for release | production-readiness claim |
+
+## Idempotence and Recovery
+
+Control-plane files have one writer: the root integrator. Workers return read-only findings or disjoint implementation evidence. On continuation, inspect user instructions, `.agent/state.json`, the latest execution and verification records, backlog, this plan, current Git status and active task before acting. If a write or test stops mid-step, preserve the partial artifact, append a recovery/failure event and rerun only after reconciling code, persisted state and evidence freshness. Never reset the dirty worktree or execute the stale Game Day runbook.
+
+## Artifacts and Evidence
+
+- `docs/README.md` plus the August 7 trio: current documentary authority, subject to runtime evidence.
+- `docs/vetus`: target product/reference evidence, not current implementation proof.
+- `pnpm readiness:enterprise`: current 95/100 structural score; explicitly insufficient because strict parity fails.
+- `pnpm vetus:parity:audit`: current strict parity blocker list; report-only exit code does not mean parity PASS.
+- Targeted auth/tenant/metrics tests: 54/54 passed in the current dirty worktree; database-dependent global setup was unavailable.
+- API package suite: 276/277 passed; one Redis-dependent chaos test failed and remains a baseline limitation.
+
+Plan revision note, 2026-08-22: Initial T4 plan created from active-document discovery, current worktree inspection and current local baseline. Quality Bar v1 and the `CVG-001` task contract were frozen after all corpus, planning, TDD and security reviews returned; implementation evidence remains absent until Round 1 tests execute.

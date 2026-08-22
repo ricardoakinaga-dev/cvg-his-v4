@@ -120,14 +120,13 @@ DATABASE_URL=postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@127.0.0.1:5432/$POSTGR
 npx tsx packages/db/src/migrate.ts
 ```
 
-Opcionalmente, para seed inicial de admin:
+Para uma instalacao vazia, nao execute o seed. Configure um
+`SETUP_BOOTSTRAP_TOKEN` de alta entropia, suba a aplicacao e conclua o assistente
+de primeiro acesso em `/setup`. O procedimento canonico esta em
+[`docs/2026-08-10-primeiro-acesso-super-admin.md`](docs/2026-08-10-primeiro-acesso-super-admin.md).
 
-```bash
-DATABASE_URL=postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@127.0.0.1:5432/$POSTGRES_DB \
-ADMIN_EMAIL=admin@example.com \
-ADMIN_PASSWORD=troque-esta-senha \
-npx tsx packages/db/src/seed.ts
-```
+O seed fica restrito a ambientes locais descartaveis com dados sinteticos; ele
+nao e o mecanismo de bootstrap de staging ou producao.
 
 Regra importante: nao aplique ao mesmo tempo o fluxo de `packages/db` e os SQLs de `packages/shared/database`. Para deploy atual, use somente `packages/db`.
 

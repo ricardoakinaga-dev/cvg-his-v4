@@ -20,7 +20,7 @@ const files = {
   packageJson: read('package.json'),
   cutoverChecklist: read('docs/131-checklist-cutover-servidor.md'),
   deploySurface: read('docs/132-superficie-canonica-deploy-e-migracao.md'),
-  roadmap: read('docs/construcoes-futuras/2026-05-28-plano-executivo-backlog-roadmap-premium-enterprise.md')
+  roadmap: read('docs/2026-08-07-backlog-roadmap-resolucao-auditoria-cvg-his-v4.md')
 };
 
 const checks = [
@@ -96,10 +96,11 @@ const checks = [
       files.deploySurface?.includes('pnpm deploy:check')
   },
   {
-    label: 'roadmap F3 mantem backup/restore como criterio de saida',
+    label: 'roadmap atual mantem backup/restore como criterio de saida',
     ok:
-      files.roadmap?.includes('Plano de backup, restauração e operação') &&
-      files.roadmap?.includes('| F3-08 | Definir backup e restore testado |')
+      files.roadmap?.includes('| OPS-001 | Backup, restore e Game Day |') &&
+      files.roadmap?.includes('restore é comprovado') &&
+      files.roadmap?.includes('backup/restore, Game Day')
   }
 ];
 

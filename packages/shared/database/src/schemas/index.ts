@@ -1,4 +1,6 @@
+import { sql } from 'drizzle-orm';
 import {
+  check,
   pgTable,
   varchar,
   timestamp,
@@ -10,7 +12,8 @@ import {
   date,
   text,
   uuid,
-  primaryKey
+  primaryKey,
+  smallint
 } from 'drizzle-orm/pg-core';
 
 export const sessions = pgTable('sessions', {
@@ -502,8 +505,55 @@ export const mfaCredentials = pgTable('mfa_credentials', {
   createdAt: timestamp('created_at').notNull(),
   activatedAt: timestamp('activated_at'),
   lastUsedAt: timestamp('last_used_at'),
+  lastTotpCounter: integer('last_totp_counter'),
+  setupExpiresAt: timestamp('setup_expires_at', { withTimezone: true }),
+  secretKeyVersion: text('secret_key_version'),
   lastRecoveryCodesRegeneratedAt: timestamp('last_recovery_codes_regenerated_at')
 });
+
+export const mfaLoginChallenges = pgTable(
+  'auth_mfa_login_challenges',
+  {
+    accountId: uuid('account_id').notNull(),
+    userId: uuid('user_id').notNull(),
+    generation: uuid('generation').notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    attemptWindowStartedAt: timestamp('attempt_window_started_at', {
+      withTimezone: true
+    }).notNull(),
+    attemptCount: smallint('attempt_count').notNull().default(0),
+    maxAttempts: smallint('max_attempts').notNull(),
+    trackingWindowSeconds: integer('tracking_window_seconds').notNull(),
+    lockoutDurationSeconds: integer('lockout_duration_seconds').notNull(),
+    lockedUntil: timestamp('locked_until', { withTimezone: true }),
+    consumedAt: timestamp('consumed_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull()
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.accountId, table.userId] }),
+    attemptCountNonnegative: check(
+      'auth_mfa_login_challenges_attempt_count_nonnegative',
+      sql`${table.attemptCount} >= 0`
+    ),
+    maxAttemptsPositive: check(
+      'auth_mfa_login_challenges_max_attempts_positive',
+      sql`${table.maxAttempts} > 0`
+    ),
+    trackingWindowPositive: check(
+      'auth_mfa_login_challenges_tracking_window_positive',
+      sql`${table.trackingWindowSeconds} > 0`
+    ),
+    lockoutDurationPositive: check(
+      'auth_mfa_login_challenges_lockout_duration_positive',
+      sql`${table.lockoutDurationSeconds} > 0`
+    ),
+    attemptLimit: check(
+      'auth_mfa_login_challenges_attempt_limit',
+      sql`${table.attemptCount} <= ${table.maxAttempts}`
+    )
+  })
+);
 
 export const consentRecords = pgTable('consent_records', {
   id: uuid('id').defaultRandom().primaryKey(),

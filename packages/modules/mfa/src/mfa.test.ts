@@ -8,37 +8,137 @@ import {
   verifyTOTP
 } from './totp.js';
 import { encrypt, decrypt, validateMasterKey } from './crypto.js';
+import { InMemoryMfaRepository as ProductionInMemoryMfaRepository } from './repositories/in-memory-mfa.repository.js';
 
 const ACCOUNT_ID = '00000000-0000-4000-8000-000000000001';
 
 class InMemoryMfaRepository implements MfaRepository {
   readonly records = new Map<string, MfaRecord>();
+  beforeConsume?: () => void;
 
   async findByUserId(accountId: string, userId: string): Promise<MfaRecord | undefined> {
     return this.records.get(`${accountId}:${userId}`);
+  }
+
+  async beginSetup(record: MfaRecord): Promise<boolean> {
+    const key = `${record.accountId}:${record.userId}`;
+    if (this.records.get(key)?.isActive) return false;
+    this.records.set(key, { ...record, recoveryCodes: [...record.recoveryCodes] });
+    return true;
+  }
+
+  async activateSetup(
+    accountId: string,
+    userId: string,
+    credentialId: string,
+    matchedTotpCounter: number,
+    activatedAt: string
+  ): Promise<MfaRecord | undefined> {
+    const key = `${accountId}:${userId}`;
+    const existing = this.records.get(key);
+    if (
+      !existing ||
+      existing.credentialId !== credentialId ||
+      existing.isActive ||
+      !existing.setupExpiresAt ||
+      new Date(existing.setupExpiresAt).getTime() <= new Date(activatedAt).getTime()
+    ) return undefined;
+    const activated = {
+      ...existing,
+      isActive: true as const,
+      activatedAt,
+      setupExpiresAt: undefined,
+      lastTotpCounter: matchedTotpCounter
+    };
+    this.records.set(key, activated);
+    return activated;
   }
 
   async create(record: MfaRecord): Promise<void> {
     this.records.set(`${record.accountId}:${record.userId}`, record);
   }
 
-  async update(record: MfaRecord): Promise<void> {
-    this.records.set(`${record.accountId}:${record.userId}`, record);
+  async update(record: MfaRecord): Promise<boolean> {
+    const key = `${record.accountId}:${record.userId}`;
+    const existing = this.records.get(key);
+    if (!existing || existing.credentialId !== record.credentialId) return false;
+    this.records.set(key, {
+      ...record,
+      lastUsedAt: existing?.lastUsedAt,
+      lastTotpCounter: existing?.lastTotpCounter,
+      recoveryCodes: [...record.recoveryCodes]
+    });
+    return true;
   }
 
-  async delete(accountId: string, userId: string): Promise<void> {
-    this.records.delete(`${accountId}:${userId}`);
+  async consumeTotpCounter(
+    accountId: string,
+    userId: string,
+    credentialId: string,
+    counter: number,
+    usedAt: string
+  ): Promise<boolean> {
+    const key = `${accountId}:${userId}`;
+    const beforeConsume = this.beforeConsume;
+    this.beforeConsume = undefined;
+    beforeConsume?.();
+    const existing = this.records.get(key);
+    if (
+      !existing?.isActive ||
+      existing.credentialId !== credentialId ||
+      (existing.lastTotpCounter !== undefined && existing.lastTotpCounter >= counter)
+    ) {
+      return false;
+    }
+    this.records.set(key, { ...existing, lastTotpCounter: counter, lastUsedAt: usedAt });
+    return true;
+  }
+
+  async consumeRecoveryCode(
+    accountId: string,
+    userId: string,
+    credentialId: string,
+    recoveryCodeHash: string,
+    usedAt: string
+  ): Promise<boolean> {
+    const key = `${accountId}:${userId}`;
+    const existing = this.records.get(key);
+    if (
+      !existing?.isActive ||
+      existing.credentialId !== credentialId ||
+      !existing.recoveryCodes.includes(recoveryCodeHash)
+    ) {
+      return false;
+    }
+    this.records.set(key, {
+      ...existing,
+      recoveryCodes: existing.recoveryCodes.filter((code) => code !== recoveryCodeHash),
+      lastUsedAt: usedAt
+    });
+    return true;
+  }
+
+  async delete(accountId: string, userId: string, credentialId: string): Promise<boolean> {
+    const key = `${accountId}:${userId}`;
+    if (this.records.get(key)?.credentialId !== credentialId) return false;
+    return this.records.delete(key);
   }
 }
 
 describe('MfaService', () => {
   let repo: InMemoryMfaRepository;
   let service: MfaService;
+  let nowMs: number;
   const ENCRYPTION_KEY = 'test-mfa-encryption-key-for-unit-tests';
 
   beforeEach(() => {
+    nowMs = Date.now();
     repo = new InMemoryMfaRepository();
-    service = new MfaService({ repository: repo, encryptionKey: ENCRYPTION_KEY });
+    service = new MfaService({
+      repository: repo,
+      encryptionKey: ENCRYPTION_KEY,
+      clock: () => nowMs
+    });
   });
 
   describe('isMfaRequired', () => {
@@ -69,6 +169,28 @@ describe('MfaService', () => {
   });
 
   describe('initiateSetup', () => {
+    it('writes new credentials with the current key version during rotation', async () => {
+      const v1Key = 'test-mfa-encryption-key-version-one';
+      const v2Key = 'test-mfa-encryption-key-version-two';
+      const rotatingService = new MfaService({
+        repository: repo,
+        encryptionKey: v2Key,
+        encryptionKeyVersion: 'v2',
+        encryptionKeyring: { v1: v1Key },
+        clock: () => nowMs
+      });
+
+      const setup = await rotatingService.initiateSetup(
+        ACCOUNT_ID,
+        'user_current_key',
+        'user@example.com'
+      );
+
+      const pending = await repo.findByUserId(ACCOUNT_ID, 'user_current_key');
+      expect(pending?.secretKeyVersion).toBe('v2');
+      expect(decrypt(pending!.secret, v2Key)).toBe(setup.secret);
+    });
+
     it('returns secret, provisioning URI, and recovery codes', async () => {
       const result = await service.initiateSetup(ACCOUNT_ID, 'user_123', 'user@example.com');
 
@@ -108,7 +230,7 @@ describe('MfaService', () => {
 
       expect(record.userId).toBe('user_123');
       expect(record.isActive).toBe(true);
-      expect(record.recoveryCodes).toHaveLength(8);
+      expect(setup.recoveryCodes).toHaveLength(8);
     });
 
     it('persists encrypted secret to repository', async () => {
@@ -147,17 +269,184 @@ describe('MfaService', () => {
         'No pending MFA setup found'
       );
     });
+
+    it('rejects an expired persisted setup', async () => {
+      const setup = await service.initiateSetup(ACCOUNT_ID, 'user_123', 'user@example.com');
+      nowMs += 10 * 60 * 1000 + 1;
+
+      await expect(
+        service.confirmSetup(
+          ACCOUNT_ID,
+          'user_123',
+          generateCurrentTOTP(setup.secret, nowMs)
+        )
+      ).rejects.toThrow('No pending MFA setup found');
+      await expect(service.isMfaActive(ACCOUNT_ID, 'user_123')).resolves.toBe(false);
+    });
   });
 
   describe('verifyLogin', () => {
+    it('decrypts a v1 credential while v2 is the current write key', async () => {
+      const v1Key = 'test-mfa-encryption-key-version-one';
+      const v2Key = 'test-mfa-encryption-key-version-two';
+      const secret = generateSecret();
+      await repo.create({
+        credentialId: '00000000-0000-4000-8000-000000000030',
+        accountId: ACCOUNT_ID,
+        userId: 'user_rotating_key',
+        secret: encrypt(secret, v1Key),
+        secretKeyVersion: 'v1',
+        isActive: true,
+        recoveryCodes: [],
+        createdAt: new Date(nowMs).toISOString()
+      });
+      const rotatingService = new MfaService({
+        repository: repo,
+        encryptionKey: v2Key,
+        encryptionKeyVersion: 'v2',
+        encryptionKeyring: { v1: v1Key },
+        clock: () => nowMs
+      });
+
+      await expect(
+        rotatingService.verifyLogin(
+          ACCOUNT_ID,
+          'user_rotating_key',
+          generateCurrentTOTP(secret, nowMs)
+        )
+      ).resolves.toBe(true);
+    });
+
+    it('fails closed when a credential references an unknown key version', async () => {
+      const v1Key = 'test-mfa-encryption-key-version-one';
+      const v2Key = 'test-mfa-encryption-key-version-two';
+      const secret = generateSecret();
+      await repo.create({
+        credentialId: '00000000-0000-4000-8000-000000000031',
+        accountId: ACCOUNT_ID,
+        userId: 'user_unknown_key',
+        secret: encrypt(secret, v1Key),
+        secretKeyVersion: 'retired-version',
+        isActive: true,
+        recoveryCodes: [],
+        createdAt: new Date(nowMs).toISOString()
+      });
+      const rotatingService = new MfaService({
+        repository: repo,
+        encryptionKey: v2Key,
+        encryptionKeyVersion: 'v2',
+        encryptionKeyring: { v1: v1Key },
+        clock: () => nowMs
+      });
+
+      await expect(
+        rotatingService.verifyLogin(
+          ACCOUNT_ID,
+          'user_unknown_key',
+          generateCurrentTOTP(secret, nowMs)
+        )
+      ).rejects.toThrow('MFA credential encryption key is unavailable');
+      const unchanged = await repo.findByUserId(ACCOUNT_ID, 'user_unknown_key');
+      expect(unchanged?.lastTotpCounter).toBeUndefined();
+      expect(unchanged?.lastUsedAt).toBeUndefined();
+    });
+
     it('verifies login with valid TOTP for confirmed user', async () => {
       const setup = await service.initiateSetup(ACCOUNT_ID, 'user_123', 'user@example.com');
       const token = generateCurrentTOTP(setup.secret);
       await service.confirmSetup(ACCOUNT_ID, 'user_123', token);
+      await expect(service.verifyLogin(ACCOUNT_ID, 'user_123', token)).resolves.toBe(false);
+      nowMs += 30_000;
 
-      const result = await service.verifyLogin(ACCOUNT_ID, 'user_123', token);
+      const result = await service.verifyLogin(
+        ACCOUNT_ID,
+        'user_123',
+        generateCurrentTOTP(setup.secret, nowMs)
+      );
 
       expect(result).toBe(true);
+    });
+
+    it('rejects replay of an already accepted TOTP counter', async () => {
+      const setup = await service.initiateSetup(ACCOUNT_ID, 'user_123', 'user@example.com');
+      const token = generateCurrentTOTP(setup.secret);
+      await service.confirmSetup(ACCOUNT_ID, 'user_123', token);
+      nowMs += 30_000;
+      const nextToken = generateCurrentTOTP(setup.secret, nowMs);
+
+      await expect(service.verifyLogin(ACCOUNT_ID, 'user_123', nextToken)).resolves.toBe(true);
+      await expect(service.verifyLogin(ACCOUNT_ID, 'user_123', nextToken)).resolves.toBe(false);
+    });
+
+    it('does not reuse a login TOTP to disable the active factor', async () => {
+      const setup = await service.initiateSetup(ACCOUNT_ID, 'user_123', 'user@example.com');
+      const token = generateCurrentTOTP(setup.secret);
+      await service.confirmSetup(ACCOUNT_ID, 'user_123', token);
+      nowMs += 30_000;
+      const nextToken = generateCurrentTOTP(setup.secret, nowMs);
+      await expect(service.verifyLogin(ACCOUNT_ID, 'user_123', nextToken)).resolves.toBe(true);
+
+      await expect(service.disableMfa(ACCOUNT_ID, 'user_123', nextToken)).rejects.toThrow(
+        'Invalid TOTP code or recovery code'
+      );
+      await expect(service.isMfaActive(ACCOUNT_ID, 'user_123')).resolves.toBe(true);
+    });
+
+    it('accepts a TOTP counter exactly once across concurrent service instances', async () => {
+      const setup = await service.initiateSetup(ACCOUNT_ID, 'user_123', 'user@example.com');
+      const token = generateCurrentTOTP(setup.secret);
+      await service.confirmSetup(ACCOUNT_ID, 'user_123', token);
+      nowMs += 30_000;
+      const nextToken = generateCurrentTOTP(setup.secret, nowMs);
+      const secondService = new MfaService({
+        repository: repo,
+        encryptionKey: ENCRYPTION_KEY,
+        clock: () => nowMs
+      });
+
+      const results = await Promise.all([
+        service.verifyLogin(ACCOUNT_ID, 'user_123', nextToken),
+        secondService.verifyLogin(ACCOUNT_ID, 'user_123', nextToken)
+      ]);
+
+      expect(results.filter(Boolean)).toHaveLength(1);
+    });
+
+    it('does not consume a token validated against a credential replaced before CAS', async () => {
+      const setup = await service.initiateSetup(ACCOUNT_ID, 'user_123', 'user@example.com');
+      const token = generateCurrentTOTP(setup.secret);
+      await service.confirmSetup(ACCOUNT_ID, 'user_123', token);
+      const key = `${ACCOUNT_ID}:user_123`;
+      const original = repo.records.get(key);
+      expect(original).toBeDefined();
+      repo.beforeConsume = () => {
+        repo.records.set(
+          key,
+          {
+            ...original!,
+            credentialId: '00000000-0000-4000-8000-000000000002',
+            lastTotpCounter: undefined
+          }
+        );
+      };
+
+      await expect(service.verifyLogin(ACCOUNT_ID, 'user_123', token)).resolves.toBe(false);
+    });
+
+    it('does not let a pending replacement secret bypass an active factor', async () => {
+      const activeSetup = await service.initiateSetup(
+        ACCOUNT_ID,
+        'user_123',
+        'user@example.com'
+      );
+      await service.confirmSetup(
+        ACCOUNT_ID,
+        'user_123',
+        generateCurrentTOTP(activeSetup.secret)
+      );
+      await expect(
+        service.initiateSetup(ACCOUNT_ID, 'user_123', 'user@example.com')
+      ).rejects.toThrow('MFA is already active');
     });
 
     it('returns false for non-existent user', async () => {
@@ -168,6 +457,7 @@ describe('MfaService', () => {
 
     it('returns false for inactive MFA', async () => {
       await repo.create({
+        credentialId: '00000000-0000-4000-8000-000000000003',
         accountId: ACCOUNT_ID,
         userId: 'user_inactive',
         secret: 'SECRET',
@@ -191,13 +481,13 @@ describe('MfaService', () => {
       expect(result).toBe(false);
     });
 
-    it('verifies login for pending setup', async () => {
+    it('rejects login until pending setup is confirmed', async () => {
       const setup = await service.initiateSetup(ACCOUNT_ID, 'user_123', 'user@example.com');
       const token = generateCurrentTOTP(setup.secret);
 
       const result = await service.verifyLogin(ACCOUNT_ID, 'user_123', token);
 
-      expect(result).toBe(true);
+      expect(result).toBe(false);
     });
 
     it('rejects pending setup with wrong token', async () => {
@@ -212,8 +502,13 @@ describe('MfaService', () => {
       const setup = await service.initiateSetup(ACCOUNT_ID, 'user_123', 'user@example.com');
       const token = generateCurrentTOTP(setup.secret);
       await service.confirmSetup(ACCOUNT_ID, 'user_123', token);
+      nowMs += 30_000;
 
-      await service.verifyLogin(ACCOUNT_ID, 'user_123', token);
+      await service.verifyLogin(
+        ACCOUNT_ID,
+        'user_123',
+        generateCurrentTOTP(setup.secret, nowMs)
+      );
 
       const record = await repo.findByUserId(ACCOUNT_ID, 'user_123');
       expect(record?.lastUsedAt).toBeDefined();
@@ -248,6 +543,7 @@ describe('MfaService', () => {
 
     it('returns false for inactive MFA user', async () => {
       await repo.create({
+        credentialId: '00000000-0000-4000-8000-000000000004',
         accountId: ACCOUNT_ID,
         userId: 'user_inactive',
         secret: 'SECRET',
@@ -265,10 +561,15 @@ describe('MfaService', () => {
   describe('disableMfa', () => {
     it('disables MFA with valid TOTP', async () => {
       const setup = await service.initiateSetup(ACCOUNT_ID, 'user_123', 'user@example.com');
-      const token = generateCurrentTOTP(setup.secret);
+      const token = generateCurrentTOTP(setup.secret, nowMs);
       await service.confirmSetup(ACCOUNT_ID, 'user_123', token);
+      nowMs += 30_000;
 
-      await service.disableMfa(ACCOUNT_ID, 'user_123', token);
+      await service.disableMfa(
+        ACCOUNT_ID,
+        'user_123',
+        generateCurrentTOTP(setup.secret, nowMs)
+      );
 
       const record = await repo.findByUserId(ACCOUNT_ID, 'user_123');
       expect(record).toBeUndefined();
@@ -371,6 +672,31 @@ describe('MfaService', () => {
       await expect(noRepo.regenerateRecoveryCodes(ACCOUNT_ID, 'user_no_repo')).rejects.toThrow(
         'MFA is not configured'
       );
+    });
+  });
+});
+
+describe('InMemoryMfaRepository audit fields', () => {
+  it('does not regress lastUsedAt when a stale generic update is persisted', async () => {
+    const repository = new ProductionInMemoryMfaRepository();
+    const currentLastUsedAt = '2026-08-22T12:00:00.000Z';
+    const staleRecord: MfaRecord = {
+      credentialId: '00000000-0000-4000-8000-000000000020',
+      accountId: ACCOUNT_ID,
+      userId: 'user_audit',
+      secret: 'SECRET',
+      isActive: true,
+      recoveryCodes: ['old-code'],
+      createdAt: '2026-08-22T10:00:00.000Z',
+      lastUsedAt: '2026-08-22T11:00:00.000Z'
+    };
+    await repository.create({ ...staleRecord, lastUsedAt: currentLastUsedAt });
+
+    await repository.update({ ...staleRecord, recoveryCodes: ['new-code'] });
+
+    await expect(repository.findByUserId(ACCOUNT_ID, 'user_audit')).resolves.toMatchObject({
+      recoveryCodes: ['new-code'],
+      lastUsedAt: currentLastUsedAt
     });
   });
 });
@@ -482,10 +808,10 @@ describe('Crypto functions', () => {
   });
 });
 
-function generateCurrentTOTP(secret: string): string {
+function generateCurrentTOTP(secret: string, nowMs = Date.now()): string {
   const TOTP_DIGITS = 6;
   const TOTP_PERIOD = 30;
-  const counter = Math.floor(Date.now() / 1000 / TOTP_PERIOD);
+  const counter = Math.floor(nowMs / 1000 / TOTP_PERIOD);
   const key = base32ToBuffer(secret);
   const counterBuffer = Buffer.alloc(8);
   counterBuffer.writeBigUInt64BE(BigInt(counter));

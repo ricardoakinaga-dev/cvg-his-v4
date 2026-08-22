@@ -1,7 +1,7 @@
 # ADR-003 Arquitetura Canonica do V2
 
 **Data**: 2026-03-25
-**Status**: Aprovado
+**Status**: Parcialmente supersedido pelo ADR-007 (frontend)
 **Contexto**: Decisao sobre trilhas canonicas do repositorio
 
 ---
@@ -13,7 +13,7 @@ O V2 define uma arquitetura canonica com as seguintes trilhas de apps:
 | App       | Caminho       | Status   |
 | --------- | ------------- | -------- |
 | API V2    | `apps/api`    | Canonico |
-| Web V2    | `apps/web`    | Canonico |
+| SPA V2    | `apps/spa`    | Canonico conforme ADR-007 |
 | Worker V2 | `apps/worker` | Canonico |
 
 As trilhas legadas `apps/his-api`, `apps/his-web` e `apps/his-worker` sao **arquivadas** e nao devem ser usadas para desenvolvimento novo.
@@ -50,7 +50,7 @@ As trilhas legadas `apps/his-api`, `apps/his-web` e `apps/his-worker` sao **arqu
 | Legado            | Status    | Destino                                     |
 | ----------------- | --------- | ------------------------------------------- |
 | `apps/his-api`    | Arquivado | Funcionalidades migradas para `apps/api`    |
-| `apps/his-web`    | Arquivado | Funcionalidades migradas para `apps/web`    |
+| `apps/his-web`    | Arquivado | Funcionalidades migradas para `apps/spa`    |
 | `apps/his-worker` | Arquivado | Funcionalidades migradas para `apps/worker` |
 
 ---

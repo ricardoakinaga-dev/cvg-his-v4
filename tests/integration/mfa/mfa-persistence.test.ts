@@ -7,6 +7,8 @@ import * as schema from '@cvg-his-v2/shared-database';
 import {
   MfaService,
   DatabaseMfaRepository,
+  type MfaRecord,
+  type MfaRepository,
   encrypt,
   decrypt,
   generateSecret,
@@ -31,6 +33,92 @@ let db: ReturnType<typeof drizzle>;
 let repo: DatabaseMfaRepository;
 let service: MfaService;
 
+class TwoReaderBarrierMfaRepository implements MfaRepository {
+  readonly #delegate: MfaRepository;
+  readonly #ready: Promise<void>;
+  #releaseReady!: () => void;
+  #readerCount = 0;
+
+  constructor(delegate: MfaRepository) {
+    this.#delegate = delegate;
+    this.#ready = new Promise((resolve) => {
+      this.#releaseReady = resolve;
+    });
+  }
+
+  async findByUserId(accountId: string, userId: string): Promise<MfaRecord | undefined> {
+    const record = await this.#delegate.findByUserId(accountId, userId);
+    this.#readerCount += 1;
+    if (this.#readerCount === 2) this.#releaseReady();
+    await this.#ready;
+    return record;
+  }
+
+  beginSetup(record: MfaRecord): Promise<boolean> {
+    return this.#delegate.beginSetup(record);
+  }
+
+  activateSetup(
+    accountId: string,
+    userId: string,
+    credentialId: string,
+    matchedTotpCounter: number,
+    activatedAt: string
+  ): Promise<MfaRecord | undefined> {
+    return this.#delegate.activateSetup(
+      accountId,
+      userId,
+      credentialId,
+      matchedTotpCounter,
+      activatedAt
+    );
+  }
+
+  create(record: MfaRecord): Promise<void> {
+    return this.#delegate.create(record);
+  }
+
+  update(record: MfaRecord): Promise<boolean> {
+    return this.#delegate.update(record);
+  }
+
+  consumeTotpCounter(
+    accountId: string,
+    userId: string,
+    credentialId: string,
+    counter: number,
+    usedAt: string
+  ): Promise<boolean> {
+    return this.#delegate.consumeTotpCounter(
+      accountId,
+      userId,
+      credentialId,
+      counter,
+      usedAt
+    );
+  }
+
+  consumeRecoveryCode(
+    accountId: string,
+    userId: string,
+    credentialId: string,
+    recoveryCodeHash: string,
+    usedAt: string
+  ): Promise<boolean> {
+    return this.#delegate.consumeRecoveryCode(
+      accountId,
+      userId,
+      credentialId,
+      recoveryCodeHash,
+      usedAt
+    );
+  }
+
+  delete(accountId: string, userId: string, credentialId: string): Promise<boolean> {
+    return this.#delegate.delete(accountId, userId, credentialId);
+  }
+}
+
 function hashPassword(password: string): string {
   return createHash('sha256').update(password).digest('hex');
 }
@@ -48,7 +136,11 @@ beforeAll(async () => {
 
   db = drizzle(pool, { schema });
   repo = new DatabaseMfaRepository(db);
-  service = new MfaService({ repository: repo, encryptionKey: MFA_ENCRYPTION_KEY });
+  service = new MfaService({
+    repository: repo,
+    encryptionKey: MFA_ENCRYPTION_KEY,
+    encryptionKeyVersion: 'integration-v1'
+  });
 
   // Create test account and user via raw SQL (users/accounts tables not in shared-database schema)
   await pool.query(`
@@ -87,6 +179,28 @@ describe('MIT-001 — MFA Setup + Confirm with Database Persistence', () => {
     expect(setup.provisioningUri).toContain('otpauth://totp/');
     expect(setup.provisioningUri).toContain('CVG-HIS-V2');
     expect(setup.recoveryCodes).toHaveLength(8);
+    const pending = await queryOne<{
+      secret_encrypted: string;
+      recovery_codes_hash: string[];
+      is_active: boolean;
+      setup_expires_at: Date | null;
+      secret_key_version: string | null;
+    }>(
+      `SELECT secret_encrypted, recovery_codes_hash, is_active,
+              setup_expires_at, secret_key_version
+       FROM mfa_credentials
+       WHERE account_id = $1 AND user_id = $2`,
+      [TEST_ACCOUNT_ID, TEST_USER_ID]
+    );
+    expect(pending).toMatchObject({
+      is_active: false,
+      secret_key_version: 'integration-v1'
+    });
+    expect(pending?.setup_expires_at).not.toBeNull();
+    expect(pending?.secret_encrypted).not.toBe(setup.secret);
+    expect(pending?.recovery_codes_hash).toHaveLength(8);
+    expect(pending?.recovery_codes_hash.every((value) => value.length === 64)).toBe(true);
+    expect(JSON.stringify(pending)).not.toContain(setup.recoveryCodes[0]);
   });
 
   it('confirms setup and persists encrypted secret to database', async () => {
@@ -137,7 +251,11 @@ describe('MIT-002 — MFA Login with lastUsedAt Persistence', () => {
     const dbRecordBefore = await repo.findByUserId(TEST_ACCOUNT_ID, TEST_USER_ID);
     expect(dbRecordBefore!.lastUsedAt).toBeUndefined();
 
-    const isValid = await service.verifyLogin(TEST_ACCOUNT_ID, TEST_USER_ID, totpCode);
+    const isValid = await service.verifyLogin(
+      TEST_ACCOUNT_ID,
+      TEST_USER_ID,
+      generateCurrentTOTP(setup.secret, Date.now() + 30_000)
+    );
     expect(isValid).toBe(true);
 
     const dbRecordAfter = await repo.findByUserId(TEST_ACCOUNT_ID, TEST_USER_ID);
@@ -155,6 +273,31 @@ describe('MIT-002 — MFA Login with lastUsedAt Persistence', () => {
     expect(isValid).toBe(false);
   });
 
+  it('accepts a concurrent TOTP counter exactly once across repository instances', async () => {
+    await cleanupMfa(TEST_USER_ID);
+
+    const setup = await service.initiateSetup(TEST_ACCOUNT_ID, TEST_USER_ID, 'test@cvg-his-v2.com');
+    const totpCode = generateCurrentTOTP(setup.secret);
+    await service.confirmSetup(TEST_ACCOUNT_ID, TEST_USER_ID, totpCode);
+    const nextTotpCode = generateCurrentTOTP(setup.secret, Date.now() + 30_000);
+    const secondService = new MfaService({
+      repository: new DatabaseMfaRepository(db),
+      encryptionKey: MFA_ENCRYPTION_KEY
+    });
+
+    const results = await Promise.all([
+      service.verifyLogin(TEST_ACCOUNT_ID, TEST_USER_ID, nextTotpCode),
+      secondService.verifyLogin(TEST_ACCOUNT_ID, TEST_USER_ID, nextTotpCode)
+    ]);
+
+    expect(results.filter(Boolean)).toHaveLength(1);
+    const dbRow = await queryOne<{ last_totp_counter: number | null }>(
+      'SELECT last_totp_counter FROM mfa_credentials WHERE user_id = $1',
+      [TEST_USER_ID]
+    );
+    expect(dbRow?.last_totp_counter).not.toBeNull();
+  });
+
   it('verifies login with recovery code and consumes it', async () => {
     await cleanupMfa(TEST_USER_ID);
 
@@ -168,6 +311,62 @@ describe('MIT-002 — MFA Login with lastUsedAt Persistence', () => {
 
     const secondUse = await service.verifyLogin(TEST_ACCOUNT_ID, TEST_USER_ID, recoveryCode);
     expect(secondUse).toBe(false);
+  });
+
+  it('accepts a recovery code exactly once across concurrent repository instances', async () => {
+    await cleanupMfa(TEST_USER_ID);
+
+    const setup = await service.initiateSetup(TEST_ACCOUNT_ID, TEST_USER_ID, 'test@cvg-his-v2.com');
+    await service.confirmSetup(
+      TEST_ACCOUNT_ID,
+      TEST_USER_ID,
+      generateCurrentTOTP(setup.secret)
+    );
+    const secondService = new MfaService({
+      repository: new DatabaseMfaRepository(db),
+      encryptionKey: MFA_ENCRYPTION_KEY
+    });
+
+    const results = await Promise.all([
+      service.verifyLogin(TEST_ACCOUNT_ID, TEST_USER_ID, setup.recoveryCodes[0]),
+      secondService.verifyLogin(TEST_ACCOUNT_ID, TEST_USER_ID, setup.recoveryCodes[0])
+    ]);
+
+    expect(results.filter(Boolean)).toHaveLength(1);
+  });
+
+  it('does not resurrect a recovery code when different codes are consumed concurrently', async () => {
+    await cleanupMfa(TEST_USER_ID);
+
+    const setup = await service.initiateSetup(TEST_ACCOUNT_ID, TEST_USER_ID, 'test@cvg-his-v2.com');
+    await service.confirmSetup(
+      TEST_ACCOUNT_ID,
+      TEST_USER_ID,
+      generateCurrentTOTP(setup.secret)
+    );
+    const barrierRepository = new TwoReaderBarrierMfaRepository(
+      new DatabaseMfaRepository(db)
+    );
+    const firstService = new MfaService({
+      repository: barrierRepository,
+      encryptionKey: MFA_ENCRYPTION_KEY
+    });
+    const secondService = new MfaService({
+      repository: barrierRepository,
+      encryptionKey: MFA_ENCRYPTION_KEY
+    });
+    const firstCode = setup.recoveryCodes[0];
+    const secondCode = setup.recoveryCodes[1];
+
+    await expect(
+      Promise.all([
+        firstService.verifyLogin(TEST_ACCOUNT_ID, TEST_USER_ID, firstCode),
+        secondService.verifyLogin(TEST_ACCOUNT_ID, TEST_USER_ID, secondCode)
+      ])
+    ).resolves.toEqual([true, true]);
+
+    await expect(service.verifyLogin(TEST_ACCOUNT_ID, TEST_USER_ID, firstCode)).resolves.toBe(false);
+    await expect(service.verifyLogin(TEST_ACCOUNT_ID, TEST_USER_ID, secondCode)).resolves.toBe(false);
   });
 });
 
@@ -185,7 +384,11 @@ describe('MIT-003 — MFA Disable with Database Deletion', () => {
     const dbRecordBefore = await repo.findByUserId(TEST_ACCOUNT_ID, TEST_USER_ID);
     expect(dbRecordBefore).toBeDefined();
 
-    await service.disableMfa(TEST_ACCOUNT_ID, TEST_USER_ID, totpCode);
+    await service.disableMfa(
+      TEST_ACCOUNT_ID,
+      TEST_USER_ID,
+      generateCurrentTOTP(setup.secret, Date.now() + 30_000)
+    );
 
     const dbRecordAfter = await repo.findByUserId(TEST_ACCOUNT_ID, TEST_USER_ID);
     expect(dbRecordAfter).toBeUndefined();
@@ -230,6 +433,39 @@ describe('MIT-004 — Recovery Codes Regeneration with Persistence', () => {
     const isValidNew = await service.verifyLogin(TEST_ACCOUNT_ID, TEST_USER_ID, newCode);
     expect(isValidNew).toBe(true);
   });
+
+  it('does not regress lastUsedAt when a stale generic update arrives after login', async () => {
+    await cleanupMfa(TEST_USER_ID);
+
+    const setup = await service.initiateSetup(TEST_ACCOUNT_ID, TEST_USER_ID, 'test@cvg-his-v2.com');
+    await service.confirmSetup(
+      TEST_ACCOUNT_ID,
+      TEST_USER_ID,
+      generateCurrentTOTP(setup.secret)
+    );
+    const staleRecord = await repo.findByUserId(TEST_ACCOUNT_ID, TEST_USER_ID);
+    expect(staleRecord?.lastUsedAt).toBeUndefined();
+
+    await expect(
+      service.verifyLogin(
+        TEST_ACCOUNT_ID,
+        TEST_USER_ID,
+        generateCurrentTOTP(setup.secret, Date.now() + 30_000)
+      )
+    ).resolves.toBe(true);
+    const currentRecord = await repo.findByUserId(TEST_ACCOUNT_ID, TEST_USER_ID);
+    expect(currentRecord?.lastUsedAt).toBeDefined();
+
+    await repo.update({
+      ...staleRecord!,
+      recoveryCodes: [...staleRecord!.recoveryCodes],
+      lastRecoveryCodesRegeneratedAt: new Date().toISOString()
+    });
+
+    await expect(repo.findByUserId(TEST_ACCOUNT_ID, TEST_USER_ID)).resolves.toMatchObject({
+      lastUsedAt: currentRecord?.lastUsedAt
+    });
+  });
 });
 
 // ============================================================================
@@ -261,7 +497,11 @@ describe('MIT-005 — MFA Status from Database', () => {
     const totpCode = generateCurrentTOTP(setup.secret);
     await service.confirmSetup(TEST_ACCOUNT_ID, TEST_USER_ID, totpCode);
 
-    await service.disableMfa(TEST_ACCOUNT_ID, TEST_USER_ID, totpCode);
+    await service.disableMfa(
+      TEST_ACCOUNT_ID,
+      TEST_USER_ID,
+      generateCurrentTOTP(setup.secret, Date.now() + 30_000)
+    );
 
     const isActive = await service.isMfaActive(TEST_ACCOUNT_ID, TEST_USER_ID);
     expect(isActive).toBe(false);
@@ -303,10 +543,11 @@ describe('MIT-007 — mfa_credentials Table Structure', () => {
        WHERE table_name = 'mfa_credentials' 
        AND column_name IN ('id', 'user_id', 'secret_encrypted', 'is_active', 
            'recovery_codes_hash', 'created_at', 'activated_at', 'last_used_at',
-           'last_recovery_codes_regenerated_at')`,
+           'last_recovery_codes_regenerated_at', 'last_totp_counter',
+           'setup_expires_at', 'secret_key_version')`,
       []
     );
-    expect(result?.count).toBe(9);
+    expect(result?.count).toBe(12);
   });
 
   it('has unique index on user_id', async () => {
@@ -317,6 +558,80 @@ describe('MIT-007 — mfa_credentials Table Structure', () => {
       []
     );
     expect(result?.count).toBe(1);
+  });
+});
+
+// ============================================================================
+// MIT-008: PostgreSQL Clock Authority — setup TTL and activation CAS
+// ============================================================================
+describe('MIT-008 — PostgreSQL clock authority for MFA enrollment', () => {
+  it('derives created_at and setup_expires_at from PostgreSQL despite pod clock skew', async () => {
+    await cleanupMfa(TEST_USER_ID);
+    const podClockOneDayAhead = Date.now() + 24 * 60 * 60 * 1000;
+    const skewedService = new MfaService({
+      repository: repo,
+      encryptionKey: MFA_ENCRYPTION_KEY,
+      encryptionKeyVersion: 'integration-v1',
+      clock: () => podClockOneDayAhead,
+      setupTtlMs: 10 * 60 * 1000
+    });
+
+    await skewedService.initiateSetup(
+      TEST_ACCOUNT_ID,
+      TEST_USER_ID,
+      'test@cvg-his-v2.com'
+    );
+
+    const row = await queryOne<{
+      created_at: Date;
+      setup_expires_at: Date;
+      database_now: Date;
+    }>(
+      `SELECT created_at, setup_expires_at, clock_timestamp() AS database_now
+       FROM mfa_credentials
+       WHERE account_id = $1 AND user_id = $2`,
+      [TEST_ACCOUNT_ID, TEST_USER_ID]
+    );
+    expect(row).toBeDefined();
+    expect(Math.abs(row!.created_at.getTime() - row!.database_now.getTime())).toBeLessThan(5_000);
+    expect(
+      Math.abs(
+        row!.setup_expires_at.getTime() - row!.created_at.getTime() - 10 * 60 * 1000
+      )
+    ).toBeLessThan(10);
+  });
+
+  it('rejects activation expired by PostgreSQL even when the pod clock is behind', async () => {
+    await cleanupMfa(TEST_USER_ID);
+    const podClockFiveMinutesBehind = Date.now() - 5 * 60 * 1000;
+    const skewedService = new MfaService({
+      repository: repo,
+      encryptionKey: MFA_ENCRYPTION_KEY,
+      encryptionKeyVersion: 'integration-v1',
+      clock: () => podClockFiveMinutesBehind
+    });
+    const setup = await skewedService.initiateSetup(
+      TEST_ACCOUNT_ID,
+      TEST_USER_ID,
+      'test@cvg-his-v2.com'
+    );
+    await pool.query(
+      `UPDATE mfa_credentials
+       SET setup_expires_at = clock_timestamp() - interval '1 second'
+       WHERE account_id = $1 AND user_id = $2`,
+      [TEST_ACCOUNT_ID, TEST_USER_ID]
+    );
+
+    await expect(
+      skewedService.confirmSetup(
+        TEST_ACCOUNT_ID,
+        TEST_USER_ID,
+        generateCurrentTOTP(setup.secret, podClockFiveMinutesBehind)
+      )
+    ).rejects.toThrow('No pending MFA setup found');
+    await expect(repo.findByUserId(TEST_ACCOUNT_ID, TEST_USER_ID)).resolves.toMatchObject({
+      isActive: false
+    });
   });
 });
 
@@ -343,11 +658,11 @@ function base32ToBuffer(base32: string): Buffer {
   return Buffer.from(bytes);
 }
 
-function generateCurrentTOTP(secret: string): string {
+function generateCurrentTOTP(secret: string, nowMs = Date.now()): string {
   const { createHmac } = require('node:crypto');
   const TOTP_DIGITS = 6;
   const TOTP_PERIOD = 30;
-  const counter = Math.floor(Date.now() / 1000 / TOTP_PERIOD);
+  const counter = Math.floor(nowMs / 1000 / TOTP_PERIOD);
   const key = base32ToBuffer(secret);
   const counterBuffer = Buffer.alloc(8);
   counterBuffer.writeBigUInt64BE(BigInt(counter));

@@ -1,6 +1,7 @@
 import {
   boolean,
   index,
+  integer,
   jsonb,
   pgTable,
   text,
@@ -28,6 +29,9 @@ export const mfaCredentials = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     activatedAt: timestamp('activated_at', { withTimezone: true }),
     lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+    lastTotpCounter: integer('last_totp_counter'),
+    setupExpiresAt: timestamp('setup_expires_at', { withTimezone: true }),
+    secretKeyVersion: text('secret_key_version'),
     lastRecoveryCodesRegeneratedAt: timestamp('last_recovery_codes_regenerated_at', {
       withTimezone: true
     })

@@ -1,7 +1,7 @@
 # Fonte de verdade documental
 
 **Status:** vigente
-**Validado em:** 2026-07-11
+**Validado em:** 2026-08-22
 **Owner:** engenharia e produto CVG-HIS
 
 ## Regra central
@@ -12,12 +12,13 @@ Documento nao transforma uma funcionalidade em pronta. O estado real e determina
 
 | Tema | Fonte vigente |
 |---|---|
-| Estado do produto, UX e notas | `2026-07-11-relatorio-reauditoria-funcional-erp.md` |
-| Visao do produto premium | `2026-07-11-plano-produto-premium-erp-veterinario.md` |
-| Backlog executavel premium | `2026-07-11-backlog-premium-executavel.md` |
-| Roadmap 58 a 90+ | `2026-07-11-roadmap-premium-58-a-90.md` |
+| Estado do produto e auditoria | `2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md` |
+| Plano executivo vigente | `2026-08-07-plano-executivo-resolucao-auditoria-cvg-his-v4.md` |
+| Backlog e roadmap vigentes | `2026-08-07-backlog-roadmap-resolucao-auditoria-cvg-his-v4.md` |
+| Primeiro acesso e super administrador | `2026-08-10-primeiro-acesso-super-admin.md` |
+| Baselines anteriores de produto | documentos de julho de 2026, sem prevalencia sobre o programa de agosto |
 | Paridade Vetus e lacunas de evidencia | `2026-07-10-auditoria-paridade-funcional-vetus.md` |
-| Seguranca e runtime | `2026-07-09-auditoria-correcao-seguranca-runtime.md` |
+| Seguranca e runtime | comportamento/testes atuais; depois `2026-08-07-*` e, como baseline, `2026-07-09-auditoria-correcao-seguranca-runtime.md` |
 | Arquitetura | `112` a `116`, mais `adr/` |
 | Deploy | `130`, `131` e `132` |
 | Navegacao | `navigation-*` e `routine-state-model.md` |

@@ -412,6 +412,101 @@ test('MFA rate limiting uses the verified body identity instead of a caller-cont
   }
 });
 
+test('public MFA enrollment delegates tenant-scoped start and confirm operations to AuthService', async () => {
+  const calls: Array<{ operation: string; challengeId: string; value: string }> = [];
+  const principal = createPrincipal();
+  const handlers = {
+    auth: {
+      mfaService: {},
+      beginMfaEnrollment: async (
+        challengeId: string,
+        issuer: string,
+        correlationId: string
+      ) => {
+        calls.push({ operation: 'begin', challengeId, value: `${issuer}:${correlationId}` });
+        return {
+          secret: 'TESTSECRET',
+          provisioningUri: 'otpauth://totp/test',
+          recoveryCodes: ['AAAA-BBBB']
+        };
+      },
+      confirmMfaEnrollment: async (
+        challengeId: string,
+        token: string,
+        correlationId: string
+      ) => {
+        calls.push({ operation: 'confirm', challengeId, value: `${token}:${correlationId}` });
+        return {
+          accessToken: 'access-token',
+          refreshToken: 'refresh-token',
+          tokenType: 'Bearer',
+          principal
+        };
+      }
+    } as never,
+    authRateLimiter: {} as never,
+    logger: { error: () => {} },
+    appName: 'test-app',
+    featureFlags: { authOidcEnabled: false, authWebauthnEnabled: false },
+    webauthnChallenges: new Map(),
+    webauthnChallengeTtlMs: DEFAULT_WEBAUTHN_CHALLENGE_TTL_MS,
+    oidcConfig: null,
+    oidcStateStore: createInMemoryOidcStateStore(),
+    oidcStateTtlMs: 60_000,
+    requirePrincipal: () => principal,
+    appendAudit: () => {}
+  };
+
+  const startResponse = new MockResponse();
+  await handleAuthRoutes(
+    '/auth/mfa/enroll',
+    {
+      method: 'POST',
+      url: '/auth/mfa/enroll',
+      headers: {},
+      [Symbol.asyncIterator]: async function* () {
+        yield Buffer.from(JSON.stringify({ challengeId: 'challenge-1' }));
+      }
+    } as never,
+    startResponse as never,
+    'corr-enroll-start',
+    handlers
+  );
+
+  const confirmResponse = new MockResponse();
+  await handleAuthRoutes(
+    '/auth/mfa/enroll/confirm',
+    {
+      method: 'POST',
+      url: '/auth/mfa/enroll/confirm',
+      headers: {},
+      [Symbol.asyncIterator]: async function* () {
+        yield Buffer.from(JSON.stringify({ challengeId: 'challenge-1', token: '123456' }));
+      }
+    } as never,
+    confirmResponse as never,
+    'corr-enroll-confirm',
+    handlers
+  );
+
+  assert.equal(startResponse.statusCode, 200);
+  assert.equal(startResponse.bodyJson<{ secret: string }>().secret, 'TESTSECRET');
+  assert.equal(confirmResponse.statusCode, 200);
+  assert.equal(confirmResponse.bodyJson<{ accessToken: string }>().accessToken, 'access-token');
+  assert.deepEqual(calls, [
+    {
+      operation: 'begin',
+      challengeId: 'challenge-1',
+      value: 'test-app:corr-enroll-start'
+    },
+    {
+      operation: 'confirm',
+      challengeId: 'challenge-1',
+      value: '123456:corr-enroll-confirm'
+    }
+  ]);
+});
+
 test('handleAuthRoutes POST /auth/refresh consumes the HttpOnly refresh cookie and does not expose it', async () => {
   const response = new MockResponse();
   let receivedRefreshToken: string | undefined;

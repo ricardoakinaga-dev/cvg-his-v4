@@ -85,14 +85,18 @@ DATABASE_URL=postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@127.0.0.1:5432/$POSTGR
 npx tsx packages/db/src/migrate.ts
 ```
 
-### 7. Aplicar seed apenas se for intencional
+### 7. Preparar o primeiro acesso seguro
+
+Em instalacao vazia, nao execute o seed. Gere `SETUP_BOOTSTRAP_TOKEN` fora do
+repositorio e forneca-o a API pelo ambiente ou secret manager:
 
 ```bash
-DATABASE_URL=postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@127.0.0.1:5432/$POSTGRES_DB \
-ADMIN_EMAIL=admin@example.com \
-ADMIN_PASSWORD=troque-esta-senha \
-npx tsx packages/db/src/seed.ts
+export SETUP_BOOTSTRAP_TOKEN="$(openssl rand -hex 32)"
 ```
+
+Depois de subir a aplicacao, conclua `/setup` e remova o segredo do ambiente.
+Consulte `docs/2026-08-10-primeiro-acesso-super-admin.md`. O seed e permitido
+somente em ambiente local descartavel com dados sinteticos.
 
 ### 8. Subir aplicacao
 

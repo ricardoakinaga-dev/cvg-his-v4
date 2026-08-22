@@ -22,6 +22,7 @@ const API_SECRET_PATHS: Readonly<Record<string, string>> = {
   AUTH_SECRET_VERSION: 'api_version',
   MFA_SECRET_ENCRYPTION_KEY: 'mfa',
   MFA_SECRET_ENCRYPTION_KEY_VERSION: 'mfa_version',
+  MFA_SECRET_ENCRYPTION_KEYRING_JSON: 'mfa_keyring',
   DATABASE_URL: 'database',
   REDIS_URL: 'redis',
   PAGARME_API_KEY: 'pagarme',

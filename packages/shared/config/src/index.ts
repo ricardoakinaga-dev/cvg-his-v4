@@ -101,6 +101,8 @@ export const API_CONFIG_FIELDS: readonly ConfigFieldDescriptor[] = [
   { app: 'api', key: 'ATTACHMENT_STORAGE_S3_PATH_STYLE', required: false, defaultValue: 'true', description: 'Use path-style addressing for MinIO-compatible endpoints.' },
   { app: 'api', key: 'ENABLE_MFA', required: false, defaultValue: 'false', description: 'Enable MFA runtime wiring in the API.' },
   { app: 'api', key: 'MFA_SECRET_ENCRYPTION_KEY', required: false, sensitive: true, description: 'Encryption key used when MFA is enabled.' },
+  { app: 'api', key: 'MFA_SECRET_ENCRYPTION_KEY_VERSION', required: false, description: 'Version label written with newly encrypted MFA credentials.' },
+  { app: 'api', key: 'MFA_SECRET_ENCRYPTION_KEYRING_JSON', required: false, sensitive: true, description: 'JSON object mapping retained MFA key versions to decryption keys during rotation.' },
   { app: 'api', key: 'FEATURE_FLAGS_PROVIDER', required: false, defaultValue: 'env', description: 'Feature flag provider type. Currently supports "env" (bootstrap/development mode).' },
   { app: 'api', key: 'API_FEATURE_FLAGS', required: false, description: 'Comma-separated list of explicitly enabled feature flag keys for the API. Example: "auth.oidc.enabled,auth.webauthn.enabled".' },
   { app: 'api', key: 'RUNTIME_DISTRIBUTED_STATE_ENABLED', required: false, defaultValue: 'false', description: 'When true, enables distributed runtime state (Redis-backed session, encounter timeline, etc.).' },
@@ -190,6 +192,7 @@ export interface ApiAppConfig {
   readonly enableMfa: boolean;
   readonly mfaEncryptionKey?: string;
   readonly mfaEncryptionKeyVersion?: string;
+  readonly mfaEncryptionKeyring: Readonly<Record<string, string>>;
   readonly featureFlagsProvider: string;
   readonly apiFeatureFlags: readonly string[];
   readonly runtimeDistributedStateEnabled: boolean;
@@ -487,6 +490,7 @@ const apiEnvSchema = z
     ENABLE_MFA: booleanStringSchema.default(false),
     MFA_SECRET_ENCRYPTION_KEY: optionalNonEmptyStringSchema,
     MFA_SECRET_ENCRYPTION_KEY_VERSION: optionalNonEmptyStringSchema,
+    MFA_SECRET_ENCRYPTION_KEYRING_JSON: optionalNonEmptyStringSchema,
     FEATURE_FLAGS_PROVIDER: nonEmptyStringSchema.default('env'),
     API_FEATURE_FLAGS: optionalNonEmptyStringSchema,
     RUNTIME_DISTRIBUTED_STATE_ENABLED: booleanStringSchema.default(false),
@@ -524,6 +528,14 @@ const apiEnvSchema = z
         code: z.ZodIssueCode.custom,
         path: ['MFA_SECRET_ENCRYPTION_KEY'],
         message: 'MFA_SECRET_ENCRYPTION_KEY is required when ENABLE_MFA=true'
+      });
+    }
+
+    if (value.ENABLE_MFA && !value.MFA_SECRET_ENCRYPTION_KEY_VERSION) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['MFA_SECRET_ENCRYPTION_KEY_VERSION'],
+        message: 'MFA_SECRET_ENCRYPTION_KEY_VERSION is required when ENABLE_MFA=true'
       });
     }
 
@@ -630,6 +642,7 @@ export function loadApiConfig(env: NodeJS.ProcessEnv): ApiAppConfig {
     enableMfa: parsed.ENABLE_MFA,
     mfaEncryptionKey: parsed.MFA_SECRET_ENCRYPTION_KEY,
     mfaEncryptionKeyVersion: parsed.MFA_SECRET_ENCRYPTION_KEY_VERSION,
+    mfaEncryptionKeyring: parseMfaEncryptionKeyring(parsed.MFA_SECRET_ENCRYPTION_KEYRING_JSON),
     featureFlagsProvider: parsed.FEATURE_FLAGS_PROVIDER,
     apiFeatureFlags: parseFeatureFlagKeys(parsed.API_FEATURE_FLAGS),
     runtimeDistributedStateEnabled: parsed.RUNTIME_DISTRIBUTED_STATE_ENABLED,
@@ -671,6 +684,21 @@ function parseSecretList(value: string | undefined): readonly string[] {
     .split(',')
     .map((item) => item.trim())
     .filter((item) => item.length > 0);
+}
+
+function parseMfaEncryptionKeyring(value: string | undefined): Readonly<Record<string, string>> {
+  if (!value) return {};
+
+  try {
+    const parsedJson: unknown = JSON.parse(value);
+    const keyring = z.record(z.string().trim().min(1), z.string().min(16)).safeParse(parsedJson);
+    if (!keyring.success) throw new Error('invalid keyring shape');
+    return Object.freeze({ ...keyring.data });
+  } catch {
+    throw new Error(
+      'MFA_SECRET_ENCRYPTION_KEYRING_JSON must be a JSON object of non-empty versions to keys with at least 16 characters'
+    );
+  }
 }
 
 export function loadWebConfig(env: NodeJS.ProcessEnv): WebAppConfig {

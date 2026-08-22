@@ -679,14 +679,7 @@ export async function handleAuthRoutes(
     }
     const payload = (await readJsonBody(request)) as { challengeId: string };
     const challengeId = requireNonEmptyString(payload.challengeId, 'challengeId');
-    const user = auth.getPendingMfaEnrollmentUser(challengeId);
-    if (await mfaService.isMfaActive(user.accountId, user.id)) {
-      return sendJson(response, 409, {
-        code: 'MFA_ALREADY_ACTIVE',
-        message: 'MFA is already active'
-      });
-    }
-    const setup = await mfaService.initiateSetup(user.accountId, user.id, user.email, appName);
+    const setup = await auth.beginMfaEnrollment(challengeId, appName, correlationId);
     return sendJson(response, 200, setup);
   }
 
@@ -698,12 +691,7 @@ export async function handleAuthRoutes(
     const payload = (await readJsonBody(request)) as { challengeId: string; token: string };
     const challengeId = requireNonEmptyString(payload.challengeId, 'challengeId');
     const token = requireNonEmptyString(payload.token, 'token');
-    const user = auth.getPendingMfaEnrollmentUser(challengeId);
-    await mfaService.confirmSetup(user.accountId, user.id, token);
-    const result = await auth.completeMfaLogin(
-      { userId: user.id, token, challengeId },
-      correlationId
-    );
+    const result = await auth.confirmMfaEnrollment(challengeId, token, correlationId);
     return sendAuthSession(response, result, handlers);
   }
 

@@ -55,28 +55,116 @@ class InMemoryMfaRepository implements MfaRepository {
     return this.records.get(`${accountId}:${userId}`);
   }
 
+  async beginSetup(record: MfaRecord): Promise<boolean> {
+    const key = `${record.accountId}:${record.userId}`;
+    if (this.records.get(key)?.isActive) return false;
+    this.records.set(key, { ...record, recoveryCodes: [...record.recoveryCodes] });
+    return true;
+  }
+
+  async activateSetup(
+    accountId: string,
+    userId: string,
+    credentialId: string,
+    matchedTotpCounter: number,
+    activatedAt: string
+  ): Promise<MfaRecord | undefined> {
+    const key = `${accountId}:${userId}`;
+    const existing = this.records.get(key);
+    if (!existing || existing.credentialId !== credentialId || existing.isActive) return undefined;
+    const activated = {
+      ...existing,
+      isActive: true as const,
+      activatedAt,
+      setupExpiresAt: undefined,
+      lastTotpCounter: matchedTotpCounter
+    };
+    this.records.set(key, activated);
+    return activated;
+  }
+
   async create(record: MfaRecord): Promise<void> {
     this.records.set(`${record.accountId}:${record.userId}`, record);
   }
 
-  async update(record: MfaRecord): Promise<void> {
+  async update(record: MfaRecord): Promise<boolean> {
+    const key = `${record.accountId}:${record.userId}`;
+    const existing = this.records.get(key);
+    if (!existing || existing.credentialId !== record.credentialId) return false;
     this.updated.push(record);
-    this.records.set(`${record.accountId}:${record.userId}`, record);
+    this.records.set(key, {
+      ...record,
+      lastUsedAt: existing.lastUsedAt,
+      lastTotpCounter: existing.lastTotpCounter
+    });
+    return true;
   }
 
-  async delete(accountId: string, userId: string): Promise<void> {
+  async consumeTotpCounter(
+    accountId: string,
+    userId: string,
+    credentialId: string,
+    counter: number,
+    usedAt: string
+  ): Promise<boolean> {
+    const key = `${accountId}:${userId}`;
+    const existing = this.records.get(key);
+    if (
+      !existing?.isActive ||
+      existing.credentialId !== credentialId ||
+      (existing.lastTotpCounter !== undefined && existing.lastTotpCounter >= counter)
+    ) {
+      return false;
+    }
+    this.records.set(key, { ...existing, lastTotpCounter: counter, lastUsedAt: usedAt });
+    return true;
+  }
+
+  async consumeRecoveryCode(
+    accountId: string,
+    userId: string,
+    credentialId: string,
+    recoveryCodeHash: string,
+    usedAt: string
+  ): Promise<boolean> {
+    const key = `${accountId}:${userId}`;
+    const existing = this.records.get(key);
+    if (
+      !existing?.isActive ||
+      existing.credentialId !== credentialId ||
+      !existing.recoveryCodes.includes(recoveryCodeHash)
+    ) {
+      return false;
+    }
+    this.records.set(key, {
+      ...existing,
+      recoveryCodes: existing.recoveryCodes.filter((code) => code !== recoveryCodeHash),
+      lastUsedAt: usedAt
+    });
+    return true;
+  }
+
+  async delete(accountId: string, userId: string, credentialId: string): Promise<boolean> {
+    const key = `${accountId}:${userId}`;
+    if (this.records.get(key)?.credentialId !== credentialId) return false;
     this.deleted.push(userId);
-    this.records.delete(`${accountId}:${userId}`);
+    return this.records.delete(key);
   }
 }
 
 describe('MfaService coverage guard', () => {
   let repository: InMemoryMfaRepository;
   let service: MfaService;
+  let nowMs: number;
 
   beforeEach(() => {
+    nowMs = Date.now();
     repository = new InMemoryMfaRepository();
-    service = new MfaService({ repository, encryptionKey: ENCRYPTION_KEY });
+    service = new MfaService({
+      repository,
+      encryptionKey: ENCRYPTION_KEY,
+      clock: () => nowMs
+    });
   });
 
   it('confirms setup with encrypted persistence and clears pending setup state', async () => {
@@ -90,8 +178,7 @@ describe('MfaService coverage guard', () => {
     const confirmed = await service.confirmSetup(ACCOUNT_ID, 'user_secure', token);
 
     const persisted = repository.records.get(`${ACCOUNT_ID}:user_secure`);
-    expect(confirmed.secret).toBe(setup.secret);
-    expect(confirmed.recoveryCodes).toEqual(setup.recoveryCodes);
+    expect(confirmed.isActive).toBe(true);
     expect(persisted).toBeDefined();
     expect(persisted?.secret).not.toBe(setup.secret);
     expect(decrypt(persisted!.secret, ENCRYPTION_KEY)).toBe(setup.secret);
@@ -102,11 +189,11 @@ describe('MfaService coverage guard', () => {
     );
   });
 
-  it('verifies pending setup tokens before confirmation and rejects invalid pending tokens', async () => {
+  it('rejects pending setup tokens until confirmation', async () => {
     const setup = await service.initiateSetup(ACCOUNT_ID, 'user_pending', 'pending@example.com');
 
     expect(await service.verifyLogin(ACCOUNT_ID, 'user_pending', generateValidTotp(setup.secret))).toBe(
-      true
+      false
     );
     expect(await service.verifyLogin(ACCOUNT_ID, 'user_pending', '000000')).toBe(false);
   });
@@ -114,16 +201,18 @@ describe('MfaService coverage guard', () => {
   it('verifies stored TOTP logins and updates lastUsedAt in repository', async () => {
     const setup = await service.initiateSetup(ACCOUNT_ID, 'user_totp', 'totp@example.com');
     await service.confirmSetup(ACCOUNT_ID, 'user_totp', generateValidTotp(setup.secret));
+    nowMs += 30_000;
 
     const verified = await service.verifyLogin(
       ACCOUNT_ID,
       'user_totp',
-      generateValidTotp(setup.secret)
+      generateValidTotp(setup.secret, nowMs)
     );
 
     expect(verified).toBe(true);
-    expect(repository.updated.at(-1)?.userId).toBe('user_totp');
-    expect(repository.updated.at(-1)?.lastUsedAt).toBeDefined();
+    const persisted = repository.records.get(`${ACCOUNT_ID}:user_totp`);
+    expect(persisted?.lastUsedAt).toBeDefined();
+    expect(persisted?.lastTotpCounter).toBeTypeOf('number');
   });
 
   it('accepts recovery codes, consumes them and supports disabling MFA with recovery fallback', async () => {
@@ -175,6 +264,7 @@ describe('MfaService coverage guard', () => {
     );
 
     repository.records.set(`${ACCOUNT_ID}:user_inactive`, {
+      credentialId: '00000000-0000-4000-8000-000000000005',
       accountId: ACCOUNT_ID,
       userId: 'user_inactive',
       secret: 'ANYSECRET',

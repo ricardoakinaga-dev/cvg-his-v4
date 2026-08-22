@@ -60,6 +60,7 @@ export * from './counterSales.js';
 export * from './quotes.js';
 export * from './staff.js';
 export * from './mfa_credentials.js';
+export * from './mfa_login_challenges.js';
 export * from './notifications.js';
 export * from './feature_flags.js';
 export * from './consent_records.js';

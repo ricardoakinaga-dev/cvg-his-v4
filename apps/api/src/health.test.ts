@@ -4,7 +4,9 @@ import test from 'node:test';
 import {
   assertProductionDatabaseReadiness,
   findMissingProductionRepositories,
+  hasRequiredDatabaseColumns,
   isProductionLikeEnvironment,
+  mfaCredentialRequiredColumns,
   productionDatabaseRepositoryKeys,
   resolveProductionReadiness
 } from './bootstrap.js';
@@ -50,6 +52,27 @@ function createRuntimeRepositories(
     ...overrides
   };
 }
+
+test('MFA repository readiness requires the distributed enrollment columns', () => {
+  assert.deepEqual(mfaCredentialRequiredColumns, [
+    'id',
+    'account_id',
+    'user_id',
+    'setup_expires_at',
+    'secret_key_version'
+  ]);
+  assert.equal(
+    hasRequiredDatabaseColumns(
+      ['id', 'account_id', 'user_id', 'setup_expires_at'],
+      mfaCredentialRequiredColumns
+    ),
+    false
+  );
+  assert.equal(
+    hasRequiredDatabaseColumns(mfaCredentialRequiredColumns, mfaCredentialRequiredColumns),
+    true
+  );
+});
 
 test('createHealthResponse returns a healthy payload in in-memory mode', () => {
   const response = createHealthResponse(

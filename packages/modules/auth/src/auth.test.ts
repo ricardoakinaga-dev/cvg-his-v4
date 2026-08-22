@@ -3,7 +3,7 @@ import { test } from 'vitest';
 
 import { AccessControlService } from '@cvg-his-v2/module-access-control';
 import { AuditService } from '@cvg-his-v2/module-audit';
-import { MfaService } from '@cvg-his-v2/module-mfa';
+import { InMemoryMfaRepository, MfaService } from '@cvg-his-v2/module-mfa';
 import { StaffService } from '@cvg-his-v2/module-staff';
 import { createSeedUsers, UsersService } from '@cvg-his-v2/module-users';
 import type { UsersRepository } from '@cvg-his-v2/module-users';
@@ -11,7 +11,11 @@ import { AuthenticationError } from '@cvg-his-v2/shared-errors';
 import type { AccountId, UserId } from '@cvg-his-v2/shared-types';
 import { getTenantContext } from '@cvg-his-v2/tenant-context';
 
-import { AuthService, BruteForceProtection } from './index.js';
+import {
+  AuthService,
+  BruteForceProtection,
+  InMemoryMfaLoginChallengeRepository
+} from './index.js';
 import { InMemorySessionRepository } from './repositories/in-memory-session.repository.js';
 import type { SessionRepository } from './repositories/session.repository.js';
 import { generateCurrentTOTP } from './totp-wrapper.js';
@@ -28,6 +32,7 @@ function createAuthService(
     readonly verifierSecrets?: readonly string[];
     readonly users?: UsersService;
     readonly bruteForce?: BruteForceProtection;
+    readonly mfaChallengeRepository?: InMemoryMfaLoginChallengeRepository;
   } = {}
 ) {
   const users = options.users ?? new UsersService();
@@ -46,7 +51,8 @@ function createAuthService(
     audit,
     mfa: options.mfa,
     sessionRepository: options.sessionRepository,
-    bruteForce: options.bruteForce
+    bruteForce: options.bruteForce,
+    mfaChallengeRepository: options.mfaChallengeRepository
   });
 }
 
@@ -150,6 +156,79 @@ test('AuthService: login requires MFA for critical role when MFA is enabled', as
   assert.equal(auth.getPendingMfaEnrollmentUser(result.challengeId).id, 'user_admin');
 });
 
+test('AuthService: MFA enrollment stays inside the tenant context from the login challenge', async () => {
+  const observedContexts: Array<{ operation: string; accountId: string | undefined }> = [];
+  const mfa = {
+    isMfaRequired: () => true,
+    isMfaActive: async () => {
+      observedContexts.push({
+        operation: 'status',
+        accountId: getTenantContext()?.accountId
+      });
+      return false;
+    },
+    initiateSetup: async () => {
+      observedContexts.push({
+        operation: 'initiate',
+        accountId: getTenantContext()?.accountId
+      });
+      return {
+        secret: 'TESTSECRET',
+        provisioningUri: 'otpauth://totp/test',
+        recoveryCodes: ['AAAA-BBBB']
+      };
+    },
+    confirmSetup: async () => {
+      observedContexts.push({
+        operation: 'confirm',
+        accountId: getTenantContext()?.accountId
+      });
+      return {
+        credentialId: '00000000-0000-4000-8000-000000000010',
+        accountId: ACCOUNT_ID,
+        userId: 'user_admin',
+        secret: 'TESTSECRET',
+        isActive: true,
+        recoveryCodes: ['AAAA-BBBB'],
+        createdAt: new Date().toISOString()
+      };
+    },
+    verifyLogin: async () => {
+      observedContexts.push({
+        operation: 'verify',
+        accountId: getTenantContext()?.accountId
+      });
+      return true;
+    }
+  } as unknown as MfaService;
+  const auth = createAuthService({ mfa });
+  const loginResult = await auth.login(
+    { username: 'admin', password: SEED_PASSWORD },
+    'corr-enroll-login'
+  );
+  assert.ok('requiresMfa' in loginResult);
+
+  const setup = await auth.beginMfaEnrollment(
+    loginResult.challengeId!,
+    'CVG-HIS-V2',
+    'corr-enroll-start'
+  );
+  const session = await auth.confirmMfaEnrollment(
+    loginResult.challengeId!,
+    '123456',
+    'corr-enroll-confirm'
+  );
+
+  assert.equal(setup.secret, 'TESTSECRET');
+  assert.equal(session.principal.user.username, 'admin');
+  assert.deepEqual(observedContexts, [
+    { operation: 'status', accountId: ACCOUNT_ID },
+    { operation: 'status', accountId: ACCOUNT_ID },
+    { operation: 'initiate', accountId: ACCOUNT_ID },
+    { operation: 'confirm', accountId: ACCOUNT_ID }
+  ]);
+});
+
 test('AuthService: login does not require MFA for non-critical role', async () => {
   const mfa = new MfaService();
   const auth = createAuthService({ mfa });
@@ -162,7 +241,7 @@ test('AuthService: login does not require MFA for non-critical role', async () =
 });
 
 test('AuthService: completeMfaLogin returns session after valid TOTP', async () => {
-  const mfa = new MfaService();
+  const mfa = new MfaService({ repository: new InMemoryMfaRepository() });
   const auth = createAuthService({ mfa });
 
   const loginResult = await auth.login(
@@ -173,9 +252,14 @@ test('AuthService: completeMfaLogin returns session after valid TOTP', async () 
 
   const setup = await mfa.initiateSetup(ACCOUNT_ID, 'user_admin', 'admin@cvg-his.local');
   const token = generateCurrentTOTP(setup.secret);
+  await mfa.confirmSetup(ACCOUNT_ID, 'user_admin', token);
 
   const session = await auth.completeMfaLogin(
-    { userId: 'user_admin', token, challengeId: loginResult.challengeId! },
+    {
+      userId: 'user_admin',
+      token: setup.recoveryCodes[0],
+      challengeId: loginResult.challengeId!
+    },
     'corr-test-mfa2-complete'
   );
 
@@ -185,13 +269,14 @@ test('AuthService: completeMfaLogin returns session after valid TOTP', async () 
 
 test('AuthService: MFA challenge created on one instance completes on another', async () => {
   const sessionRepository = new InMemorySessionRepository();
+  const mfaChallengeRepository = new InMemoryMfaLoginChallengeRepository();
   const mfa = {
     isMfaRequired: () => true,
     isMfaActive: async () => true,
     verifyLogin: async () => true
   } as unknown as MfaService;
-  const authA = createAuthService({ mfa, sessionRepository });
-  const authB = createAuthService({ mfa, sessionRepository });
+  const authA = createAuthService({ mfa, sessionRepository, mfaChallengeRepository });
+  const authB = createAuthService({ mfa, sessionRepository, mfaChallengeRepository });
 
   const loginResult = await authA.login(
     { username: 'admin', password: SEED_PASSWORD },
@@ -225,6 +310,8 @@ test('AuthService: MFA challenge created on one instance completes on another', 
   assert.ok(rejected.reason instanceof AuthenticationError);
   assert.equal(completed.value.principal.user.username, 'admin');
   assert.ok('accessToken' in completed.value);
+  assert.equal(mfaChallengeRepository.getIssueCount(), 1);
+  assert.equal(mfaChallengeRepository.getConsumeCount(), 1);
 
   await assert.rejects(
     () =>
@@ -240,7 +327,82 @@ test('AuthService: MFA challenge created on one instance completes on another', 
   );
 });
 
+test('AuthService: a newer password login invalidates the older MFA challenge', async () => {
+  const mfaChallengeRepository = new InMemoryMfaLoginChallengeRepository();
+  const mfa = {
+    isMfaRequired: () => true,
+    isMfaActive: async () => true,
+    verifyLogin: async () => true
+  } as unknown as MfaService;
+  const auth = createAuthService({ mfa, mfaChallengeRepository });
+
+  const first = await auth.login(
+    { username: 'admin', password: SEED_PASSWORD },
+    'corr-mfa-generation-first'
+  );
+  const second = await auth.login(
+    { username: 'admin', password: SEED_PASSWORD },
+    'corr-mfa-generation-second'
+  );
+  assert.ok('requiresMfa' in first);
+  assert.ok('requiresMfa' in second);
+
+  await assert.rejects(
+    () =>
+      auth.completeMfaLogin(
+        {
+          userId: 'user_admin',
+          token: '123456',
+          challengeId: first.challengeId!
+        },
+        'corr-mfa-generation-stale'
+      ),
+    /missing or expired/
+  );
+  await assert.doesNotReject(() =>
+    auth.completeMfaLogin(
+      {
+        userId: 'user_admin',
+        token: '123456',
+        challengeId: second.challengeId!
+      },
+      'corr-mfa-generation-current'
+    )
+  );
+});
+
+test('AuthService: rejects a tampered signed MFA challenge locator', async () => {
+  const mfa = {
+    isMfaRequired: () => true,
+    isMfaActive: async () => true,
+    verifyLogin: async () => true
+  } as unknown as MfaService;
+  const auth = createAuthService({
+    mfa,
+    mfaChallengeRepository: new InMemoryMfaLoginChallengeRepository()
+  });
+  const login = await auth.login(
+    { username: 'admin', password: SEED_PASSWORD },
+    'corr-mfa-tamper-login'
+  );
+  assert.ok('requiresMfa' in login);
+  const challenge = login.challengeId!;
+  const separator = challenge.indexOf('.');
+  const tamperedCharacter = challenge[separator + 2] === 'A' ? 'B' : 'A';
+  const tampered = `${challenge.slice(0, separator + 2)}${tamperedCharacter}${challenge.slice(separator + 3)}`;
+
+  await assert.rejects(
+    () =>
+      auth.completeMfaLogin(
+        { userId: 'user_admin', token: '123456', challengeId: tampered },
+        'corr-mfa-tamper-complete'
+      ),
+    AuthenticationError
+  );
+});
+
 test('AuthService: MFA challenge keeps lockout authoritative across instances', async () => {
+  const mfaChallengeRepository = new InMemoryMfaLoginChallengeRepository();
   const bruteForceA = new BruteForceProtection({
     maxAttempts: 1,
     lockoutDurationSeconds: 60,
@@ -260,8 +422,8 @@ test('AuthService: MFA challenge keeps lockout authoritative across instances', 
       return false;
     }
   } as unknown as MfaService;
-  const authA = createAuthService({ mfa, bruteForce: bruteForceA });
-  const authB = createAuthService({ mfa, bruteForce: bruteForceB });
+  const authA = createAuthService({ mfa, bruteForce: bruteForceA, mfaChallengeRepository });
+  const authB = createAuthService({ mfa, bruteForce: bruteForceB, mfaChallengeRepository });
 
   const loginResult = await authA.login(
     { username: 'admin', password: SEED_PASSWORD },
@@ -282,13 +444,19 @@ test('AuthService: MFA challenge keeps lockout authoritative across instances', 
     /Invalid MFA code/
   );
 
+  const retryLogin = await authA.login(
+    { username: 'admin', password: SEED_PASSWORD },
+    'corr-distributed-mfa-lock-relogin'
+  );
+  assert.ok('requiresMfa' in retryLogin);
+
   await assert.rejects(
     () =>
       authA.completeMfaLogin(
         {
           userId: 'user_admin',
           token: '000001',
-          challengeId: loginResult.challengeId!
+          challengeId: retryLogin.challengeId!
         },
         'corr-distributed-mfa-lock-blocked'
       ),

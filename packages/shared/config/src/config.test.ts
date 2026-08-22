@@ -143,6 +143,9 @@ describe('config module', () => {
       env.AUTH_SECRET_PREVIOUS = 'a-second-very-long-secret-that-is-at-least-32-chars';
       env.AUTH_SECRET_VERSION = '2026-q2';
       env.MFA_SECRET_ENCRYPTION_KEY_VERSION = '2026-h1';
+      env.MFA_SECRET_ENCRYPTION_KEYRING_JSON = JSON.stringify({
+        '2025-h2': 'a-previous-32-char-secret-key-for-mfa'
+      });
       const config = loadApiConfig(env as NodeJS.ProcessEnv);
       expect(config.enableMfa).toBe(true);
       expect(config.mfaEncryptionKey).toBe('a-32-char-secret-key-for-mfa!!');
@@ -151,12 +154,34 @@ describe('config module', () => {
       ]);
       expect(config.authSecretVersion).toBe('2026-q2');
       expect(config.mfaEncryptionKeyVersion).toBe('2026-h1');
+      expect(config.mfaEncryptionKeyring).toEqual({
+        '2025-h2': 'a-previous-32-char-secret-key-for-mfa'
+      });
+    });
+
+    it('rejects an invalid MFA encryption keyring before startup', () => {
+      const env = cleanApiEnv();
+      env.MFA_SECRET_ENCRYPTION_KEYRING_JSON = '{"v1":42}';
+
+      expect(() => loadApiConfig(env as NodeJS.ProcessEnv)).toThrow(
+        /MFA_SECRET_ENCRYPTION_KEYRING_JSON/
+      );
     });
 
     it('throws when ENABLE_MFA=true but no MFA_SECRET_ENCRYPTION_KEY', () => {
       const env = cleanApiEnv();
       env.ENABLE_MFA = 'true';
       expect(() => loadApiConfig(env as NodeJS.ProcessEnv)).toThrow();
+    });
+
+    it('throws when ENABLE_MFA=true but the current encryption key has no version', () => {
+      const env = cleanApiEnv();
+      env.ENABLE_MFA = 'true';
+      env.MFA_SECRET_ENCRYPTION_KEY = 'a-32-char-secret-key-for-mfa!!';
+
+      expect(() => loadApiConfig(env as NodeJS.ProcessEnv)).toThrow(
+        /MFA_SECRET_ENCRYPTION_KEY_VERSION/
+      );
     });
 
     it('accepts otlp headers as key=value format', () => {

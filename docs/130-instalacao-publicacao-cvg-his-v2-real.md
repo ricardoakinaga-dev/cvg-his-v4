@@ -67,6 +67,8 @@ Nao usar como runtime oficial:
 - `FILE_STORAGE_PATH=/srv/cvg-his-v2/storage`
 - `ENABLE_MFA=false`
 - `MFA_SECRET_ENCRYPTION_KEY=<obrigatorio se ENABLE_MFA=true>`
+- `MFA_SECRET_ENCRYPTION_KEY_VERSION=<versao da chave atual>`
+- `MFA_SECRET_ENCRYPTION_KEYRING_JSON=<JSON versao:chave para leitura durante rotacao>`
 - `OTEL_ENABLED=false`
 - `OTEL_SERVICE_NAME=cvg-his-v2-api`
 - `OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf`
@@ -136,11 +138,13 @@ A trilha oficial de persistencia e migracao do CVG-HIS V2 e o Drizzle ORM.
 
 - **Migrations:** `packages/db/migrations/`
 - **Schema:** `packages/db/src/schema/`
-- **Seed:** `packages/db/src/seed.ts`
+- **Seed local sintetico:** `packages/db/src/seed.ts` (nao usar como bootstrap de staging/producao)
 - **Runner:** `tsx packages/db/src/migrate.ts`
 
-A cadeia viva atual vai de `0000_vengeful_pet_avengers.sql` ate `0012_audit_events_alignment.sql`.
-O runner oficial `packages/db/src/migrate.ts` aplica automaticamente todas as migrations `.sql` em ordem, ignorando apenas arquivos `.revert.sql`.
+A cadeia viva inicia em `0000_vengeful_pet_avengers.sql` e evolui por migrations
+ordenadas no mesmo diretorio. Nao congele neste runbook o numero da ultima
+migration: o runner oficial `packages/db/src/migrate.ts` aplica automaticamente
+todas as migrations `.sql` em ordem, ignorando apenas arquivos `.revert.sql`.
 
 ### Aplicacao em producao
 
@@ -149,11 +153,12 @@ O runner oficial `packages/db/src/migrate.ts` aplica automaticamente todas as mi
 DATABASE_URL=postgres://USER:PASS@HOST:5432/cvg_his_v2 \
   tsx packages/db/src/migrate.ts
 
-# Executar seed (requer ADMIN_EMAIL e ADMIN_PASSWORD)
-DATABASE_URL=postgres://USER:PASS@HOST:5432/cvg_his_v2 \
-  ADMIN_EMAIL=admin@cvg.local ADMIN_PASSWORD=Admin123! \
-  tsx packages/db/src/seed.ts
+# Antes de subir a API de uma instalacao vazia, fornecer por secret manager:
+export SETUP_BOOTSTRAP_TOKEN="$(openssl rand -hex 32)"
 ```
+
+Depois do deploy, conclua o assistente `/setup` e remova o segredo do ambiente.
+O contrato completo esta em `docs/2026-08-10-primeiro-acesso-super-admin.md`.
 
 ### Trilha SQL legacy (deprecada)
 
@@ -315,6 +320,7 @@ Regras operacionais:
 
 - rotacionar `AUTH_SECRET`, credenciais de banco, Redis e integracoes no minimo a cada `90` dias
 - rotacionar `MFA_SECRET_ENCRYPTION_KEY` em janela controlada semestral
+- durante a rotacao, publicar a nova chave/versao para escrita e manter as versoes antigas em `MFA_SECRET_ENCRYPTION_KEYRING_JSON` ate a recriptografia das credenciais; versoes desconhecidas falham fechadas
 - executar rotacao imediata em caso de vazamento, incidente, troca de operador ou restauracao de ambiente
 - registrar evidencia operacional de cada rotacao
 

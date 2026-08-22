@@ -1,7 +1,7 @@
 # 131 - Checklist de Cutover no Servidor
 
 **Status:** vivo
-**Data de validacao:** 2026-04-12
+**Data de validacao:** 2026-08-22
 
 ## Pre-cutover
 
@@ -17,7 +17,8 @@
 
 - confirmar `DATABASE_URL` do ambiente
 - aplicar toda a cadeia Drizzle via `tsx packages/db/src/migrate.ts`
-- executar seed Drizzle via `tsx packages/db/src/seed.ts` (com ADMIN_EMAIL/ADMIN_PASSWORD)
+- em instalacao vazia, configurar `SETUP_BOOTSTRAP_TOKEN` por secret manager e concluir `/setup`; nao executar seed
+- apos o primeiro acesso, remover `SETUP_BOOTSTRAP_TOKEN` e fazer rollout da API
 - validar tabelas e constraints essenciais
 - confirmar que nao ha divergencia de schema entre o ambiente e a politica oficial
 

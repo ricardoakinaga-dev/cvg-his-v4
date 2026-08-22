@@ -12,23 +12,107 @@ import {
   validateMasterKey
 } from '@cvg-his-v2/module-mfa';
 
+const ACCOUNT_ID = 'acc_test';
+
 class InMemoryMfaRepository implements MfaRepository {
   readonly records = new Map<string, MfaRecord>();
 
-  async findByUserId(userId: string): Promise<MfaRecord | undefined> {
-    return this.records.get(userId);
+  async findByUserId(accountId: string, userId: string): Promise<MfaRecord | undefined> {
+    return this.records.get(`${accountId}:${userId}`);
+  }
+
+  async beginSetup(record: MfaRecord): Promise<boolean> {
+    const key = `${record.accountId}:${record.userId}`;
+    if (this.records.get(key)?.isActive) return false;
+    this.records.set(key, { ...record, recoveryCodes: [...record.recoveryCodes] });
+    return true;
+  }
+
+  async activateSetup(
+    accountId: string,
+    userId: string,
+    credentialId: string,
+    matchedTotpCounter: number,
+    activatedAt: string
+  ): Promise<MfaRecord | undefined> {
+    const key = `${accountId}:${userId}`;
+    const existing = this.records.get(key);
+    if (!existing || existing.credentialId !== credentialId || existing.isActive) return undefined;
+    const activated = {
+      ...existing,
+      isActive: true as const,
+      activatedAt,
+      setupExpiresAt: undefined,
+      lastTotpCounter: matchedTotpCounter
+    };
+    this.records.set(key, activated);
+    return activated;
   }
 
   async create(record: MfaRecord): Promise<void> {
-    this.records.set(record.userId, record);
+    this.records.set(`${record.accountId}:${record.userId}`, record);
   }
 
-  async update(record: MfaRecord): Promise<void> {
-    this.records.set(record.userId, record);
+  async update(record: MfaRecord): Promise<boolean> {
+    const key = `${record.accountId}:${record.userId}`;
+    const existing = this.records.get(key);
+    if (!existing || existing.credentialId !== record.credentialId) return false;
+    this.records.set(key, {
+      ...record,
+      lastUsedAt: existing.lastUsedAt,
+      lastTotpCounter: existing.lastTotpCounter
+    });
+    return true;
   }
 
-  async delete(userId: string): Promise<void> {
-    this.records.delete(userId);
+  async consumeTotpCounter(
+    accountId: string,
+    userId: string,
+    credentialId: string,
+    counter: number,
+    usedAt: string
+  ): Promise<boolean> {
+    const key = `${accountId}:${userId}`;
+    const existing = this.records.get(key);
+    if (
+      !existing?.isActive ||
+      existing.credentialId !== credentialId ||
+      (existing.lastTotpCounter !== undefined && existing.lastTotpCounter >= counter)
+    ) {
+      return false;
+    }
+    this.records.set(key, { ...existing, lastTotpCounter: counter, lastUsedAt: usedAt });
+    return true;
+  }
+
+  async consumeRecoveryCode(
+    accountId: string,
+    userId: string,
+    credentialId: string,
+    recoveryCodeHash: string,
+    usedAt: string
+  ): Promise<boolean> {
+    const key = `${accountId}:${userId}`;
+    const existing = this.records.get(key);
+    if (
+      !existing?.isActive ||
+      existing.credentialId !== credentialId ||
+      !existing.recoveryCodes.includes(recoveryCodeHash)
+    ) {
+      return false;
+    }
+    this.records.set(key, {
+      ...existing,
+      recoveryCodes: existing.recoveryCodes.filter((code) => code !== recoveryCodeHash),
+      lastUsedAt: usedAt
+    });
+    return true;
+  }
+
+  async delete(accountId: string, userId: string, credentialId: string): Promise<boolean> {
+    const key = `${accountId}:${userId}`;
+    if (this.records.get(key)?.credentialId !== credentialId) return false;
+    return this.records.delete(key);
   }
 }
 
@@ -74,7 +158,7 @@ describe('MfaService', () => {
 
   describe('initiateSetup', () => {
     it('generates secret, uri, and recovery codes', async () => {
-      const setup = await service.initiateSetup('user_1', 'user@example.com');
+      const setup = await service.initiateSetup(ACCOUNT_ID, 'user_1', 'user@example.com');
       expect(setup.secret).toBeDefined();
       expect(typeof setup.secret).toBe('string');
       expect(setup.secret.length).toBeGreaterThan(0);
@@ -83,26 +167,26 @@ describe('MfaService', () => {
     });
 
     it('returns provisioningUri containing the secret', async () => {
-      const setup = await service.initiateSetup('user_1', 'user@example.com');
+      const setup = await service.initiateSetup(ACCOUNT_ID, 'user_1', 'user@example.com');
       expect(setup.provisioningUri).toContain(setup.secret);
     });
 
     it('returns unique secrets each time', async () => {
-      const setup1 = await service.initiateSetup('user_1', 'user@example.com');
-      const setup2 = await service.initiateSetup('user_2', 'user@example.com');
+      const setup1 = await service.initiateSetup(ACCOUNT_ID, 'user_1', 'user@example.com');
+      const setup2 = await service.initiateSetup(ACCOUNT_ID, 'user_2', 'user@example.com');
       expect(setup1.secret).not.toBe(setup2.secret);
     });
   });
 
   describe('isMfaActive', () => {
     it('returns false when no MFA record exists', async () => {
-      expect(await service.isMfaActive('user_1')).toBe(false);
+      expect(await service.isMfaActive(ACCOUNT_ID, 'user_1')).toBe(false);
     });
   });
 
   describe('disableMfa', () => {
     it('throws when MFA is not configured', async () => {
-      await expect(service.disableMfa('user_no_mfa', '123456')).rejects.toThrow(
+      await expect(service.disableMfa(ACCOUNT_ID, 'user_no_mfa', '123456')).rejects.toThrow(
         'MFA is not configured'
       );
     });

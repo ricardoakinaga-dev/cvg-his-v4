@@ -1,4 +1,4 @@
-import { createHmac, randomBytes } from 'node:crypto';
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 
 const TOTP_DIGITS = 6;
 const TOTP_PERIOD = 30;
@@ -67,16 +67,36 @@ function getCurrentCounter(timeStep = Date.now()): number {
   return Math.floor(timeStep / 1000 / TOTP_PERIOD);
 }
 
-export function verifyTOTP(secret: string, token: string, window = TOTP_WINDOW): boolean {
+export function findMatchingTotpCounter(
+  secret: string,
+  token: string,
+  window = TOTP_WINDOW,
+  timeStep = Date.now()
+): number | undefined {
   const cleanToken = token.replace(/\s/g, '');
-  if (cleanToken.length !== TOTP_DIGITS) return false;
+  if (!/^\d{6}$/.test(cleanToken)) return undefined;
 
-  const counter = getCurrentCounter();
-  for (let i = -window; i <= window; i++) {
-    const expected = generateTOTPValue(secret, counter + i);
-    if (expected === cleanToken) return true;
+  const counter = getCurrentCounter(timeStep);
+  const offsets = [0];
+  for (let distance = 1; distance <= window; distance += 1) {
+    offsets.push(-distance, distance);
   }
-  return false;
+
+  const provided = Buffer.from(cleanToken);
+  let matchedCounter: number | undefined;
+  for (const offset of offsets) {
+    const candidateCounter = counter + offset;
+    if (candidateCounter < 0) continue;
+    const expected = Buffer.from(generateTOTPValue(secret, candidateCounter));
+    if (timingSafeEqual(expected, provided)) {
+      matchedCounter = Math.max(matchedCounter ?? candidateCounter, candidateCounter);
+    }
+  }
+  return matchedCounter;
+}
+
+export function verifyTOTP(secret: string, token: string, window = TOTP_WINDOW): boolean {
+  return findMatchingTotpCounter(secret, token, window) !== undefined;
 }
 
 function base32ToBuffer(base32: string): Buffer {

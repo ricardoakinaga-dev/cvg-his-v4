@@ -128,7 +128,7 @@ function createUsersService(): UsersService {
       roleCodes: []
     }
   ];
-  return new UsersService(undefined, users);
+  return new UsersService({ seedUsersEnabled: true }, users);
 }
 
 function createAccessHandlers(accessControl: AccessControlService, users = createUsersService()) {

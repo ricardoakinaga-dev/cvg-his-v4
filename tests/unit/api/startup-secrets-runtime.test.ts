@@ -48,6 +48,7 @@ describe('startup-secrets runtime coverage', () => {
       { key: 'AUTH_SECRET_VERSION', path: 'staging/api_version', required: false },
       { key: 'MFA_SECRET_ENCRYPTION_KEY', path: 'staging/mfa', required: true },
       { key: 'MFA_SECRET_ENCRYPTION_KEY_VERSION', path: 'staging/mfa_version', required: false },
+      { key: 'MFA_SECRET_ENCRYPTION_KEYRING_JSON', path: 'staging/mfa_keyring', required: false },
       { key: 'DATABASE_URL', path: 'staging/database', required: true },
       { key: 'REDIS_URL', path: 'staging/redis', required: false },
       { key: 'PAGARME_API_KEY', path: 'staging/pagarme', required: false },
@@ -71,6 +72,7 @@ describe('startup-secrets runtime coverage', () => {
       { key: 'AUTH_SECRET_VERSION', path: 'development/api_version', required: false },
       { key: 'MFA_SECRET_ENCRYPTION_KEY', path: 'development/mfa', required: false },
       { key: 'MFA_SECRET_ENCRYPTION_KEY_VERSION', path: 'development/mfa_version', required: false },
+      { key: 'MFA_SECRET_ENCRYPTION_KEYRING_JSON', path: 'development/mfa_keyring', required: false },
       { key: 'DATABASE_URL', path: 'development/database', required: false },
       { key: 'REDIS_URL', path: 'development/redis', required: false },
       { key: 'PAGARME_API_KEY', path: 'development/pagarme', required: false },
@@ -107,6 +109,7 @@ describe('startup-secrets runtime coverage', () => {
       { key: 'AUTH_SECRET_VERSION', path: 'production/api_version', required: false },
       { key: 'MFA_SECRET_ENCRYPTION_KEY', path: 'production/mfa', required: false },
       { key: 'MFA_SECRET_ENCRYPTION_KEY_VERSION', path: 'production/mfa_version', required: false },
+      { key: 'MFA_SECRET_ENCRYPTION_KEYRING_JSON', path: 'production/mfa_keyring', required: false },
       { key: 'REDIS_URL', path: 'production/redis', required: false },
       { key: 'PAGARME_API_KEY', path: 'production/pagarme', required: false },
       { key: 'NFSE_API_KEY', path: 'production/nfse', required: false },
@@ -133,6 +136,7 @@ describe('startup-secrets runtime coverage', () => {
         MFA_SECRET_ENCRYPTION_KEY: 'configured-mfa-secret',
         AUTH_SECRET_VERSION: '2026-q2',
         MFA_SECRET_ENCRYPTION_KEY_VERSION: '2026-h1',
+        MFA_SECRET_ENCRYPTION_KEYRING_JSON: '{"2025-h2":"configured-previous-mfa-secret"}',
         DATABASE_URL: 'postgres://configured',
         REDIS_URL: 'redis://configured',
         PAGARME_API_KEY: 'configured-pagarme',
@@ -149,6 +153,7 @@ describe('startup-secrets runtime coverage', () => {
     expect(resolved.AUTH_SECRET).toBe('configured-auth');
     expect(resolved.AUTH_SECRET_PREVIOUS).toBe('configured-prev-auth');
     expect(resolved.MFA_SECRET_ENCRYPTION_KEY).toBe('configured-mfa-secret');
+    expect(resolved.MFA_SECRET_ENCRYPTION_KEYRING_JSON).toContain('2025-h2');
     expect(resolved.SETUP_BOOTSTRAP_TOKEN).toBe('configured-setup-token');
   });
 

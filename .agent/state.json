@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "project": "CVG HIS v4",
+  "goal": "Entregar um ERP veterinario Premium Enterprise MVP com paridade funcional Vetus comprovada por comportamento e evidencia atual",
+  "project_profile": "BROWNFIELD",
+  "work_mode": "FEATURE",
+  "work_mode_overlays": [
+    "MIGRATION"
+  ],
+  "lifecycle_stage": "BUILD",
+  "active_activity": "IMPLEMENT",
+  "engineering_tier": "T4_CRITICAL",
+  "risk_level": "CRITICAL",
+  "blast_radius": "CROSS_SYSTEM",
+  "status": "IN_PROGRESS",
+  "active_execplan": ".agent/plans/premium-enterprise-mvp.md",
+  "active_task": "CVG-001",
+  "verification_state": "PARTIAL",
+  "repository_state": "git c8e94027a7eb21f1a6c70f97a43a9e86f570136a; branch agent/sync-v4-full-program; dirty worktree observed with 54 tracked/untracked entries before MFA checkpoint commit",
+  "instruction_scope_refs": [
+    ".agent/instruction-scope.md"
+  ],
+  "last_gate_record": ".agent/gates/implementation-ready-CVG-001.json",
+  "last_event_id": "EVT-0008",
+  "state_revision": 5,
+  "next_gate": "VERIFIED",
+  "next_action": "Implement CVG-002A encounter cash receipt as one PostgreSQL transaction and disable legacy manual-settlement paths that can create ghost cash",
+  "blocked_by": [],
+  "human_approval_required": [
+    "Production go-live, credential rotation, provider selection, fiscal homologation, and residual HIGH/CRITICAL risk acceptance remain outside repository implementation authority"
+  ],
+  "updated_at": "2026-08-22T11:39:47-03:00"
+}

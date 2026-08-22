@@ -1,7 +1,7 @@
 # ADR-007 Frontend Canonico do V2 - Consolidação da Decisão
 
 **Data**: 2026-03-26
-**Status**: Atualizado em 2026-04-12
+**Status**: Aprovado; supersede a decisao de frontend do ADR-003
 **Relacionado**: ADR-003, ENT-005, AUD-009-01
 **Contexto**: Corrigido conflito entre ADR e docs vivas - `apps/spa` e o frontend canonico, nao `apps/web`
 
@@ -29,17 +29,17 @@ Nenhum outro app de frontend sera considerado trilha ativa para evolucao do prod
 | Funcionalidade   | Shell premium, navegacao por dominio, autenticacao, todos os modulos operacionais         |
 | Testes          | Suite de testes unitarios e integracao em expansao (Sprint 1-2)                        |
 
-### `apps/web` — Legado (congelado)
+### `apps/web` — Removido da trilha ativa
 
 | Atributo         | Estado                                                        |
 | ---------------- | ------------------------------------------------------------- |
-| Pacote           | `@cvg-his-v2/web`                                            |
-| Framework        | Node.js HTTP server com HTML inline                           |
-| Dependencias     | `@cvg-his-v2/shared-auth-sdk`, `@cvg-his-v2/shared-config`  |
-| Build            | Compila e passa typecheck                                     |
-| Alvo arquitetura | Legado - usa stack anterior sem shell premium                 |
-| Funcionalidade   |smoke tests locais, referencia historica                        |
-| Status           | **Congelado** - nao recebe novas features, apenas manutencao residual |
+| Pacote           | Nao presente no repositorio atual                             |
+| Framework        | Nao aplicavel                                                  |
+| Dependencias     | Nao aplicavel                                                  |
+| Build            | Nao participa do build                                        |
+| Alvo arquitetura | Referencia historica apenas                                    |
+| Funcionalidade   | Nao aplicavel                                                  |
+| Status           | **Removido** - `apps/spa` e a unica trilha de frontend ativa  |
 
 ---
 

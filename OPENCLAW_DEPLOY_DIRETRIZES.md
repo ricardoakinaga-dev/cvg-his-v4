@@ -69,6 +69,7 @@ Minimo obrigatorio:
 - `POSTGRES_USER`
 - `POSTGRES_PASSWORD`
 - `AUTH_SECRET`
+- `SETUP_BOOTSTRAP_TOKEN` para uma instalacao vazia, removido apos o primeiro acesso
 - `AUTH_ACCESS_TOKEN_TTL_SECONDS`
 - `AUTH_REFRESH_TOKEN_TTL_SECONDS`
 - `WORKER_INTERVAL_MS`
@@ -77,6 +78,7 @@ Regras:
 
 - `POSTGRES_PASSWORD` nao pode ficar no placeholder
 - `AUTH_SECRET` deve ter pelo menos 32 caracteres validos
+- `SETUP_BOOTSTRAP_TOKEN` deve ser gerado fora do repositorio com alta entropia e nunca registrado
 - nao invente variaveis nao exigidas pelo compose sem necessidade operacional clara
 - se houver proxy ou dominio, eles devem ser tratados fora do compose atual, com configuracao explicitamente alinhada
 
@@ -86,9 +88,10 @@ O deploy atual deve aplicar schema apenas por:
 
 - [`packages/db/src/migrate.ts`](/root/.openclaw/workspace/cvg-his-v2/packages/db/src/migrate.ts)
 
-E seed inicial apenas por:
-
-- [`packages/db/src/seed.ts`](/root/.openclaw/workspace/cvg-his-v2/packages/db/src/seed.ts)
+O bootstrap de staging e producao nao usa seed. Depois das migrations, configure
+`SETUP_BOOTSTRAP_TOKEN`, suba a aplicacao e conclua `/setup` conforme
+`docs/2026-08-10-primeiro-acesso-super-admin.md`. `packages/db/src/seed.ts` fica
+restrito a ambientes locais descartaveis com dados sinteticos.
 
 O OpenClaw nao deve misturar:
 

@@ -8,7 +8,10 @@ import {
 import { AuditService } from '@cvg-his-v2/module-audit';
 import type { AuditRepository } from '@cvg-his-v2/module-audit';
 import { AuthService, BruteForceProtection } from '@cvg-his-v2/module-auth';
-import type { SessionRepository } from '@cvg-his-v2/module-auth';
+import type {
+  MfaLoginChallengeRepository,
+  SessionRepository
+} from '@cvg-his-v2/module-auth';
 import { ApiKeysService } from '@cvg-his-v2/module-api-keys';
 import { BillingService } from '@cvg-his-v2/module-billing';
 import { CommercialService } from '@cvg-his-v2/module-commercial';
@@ -231,6 +234,7 @@ export interface RuntimeRepositories {
   readonly staff?: StaffRepository;
   readonly staffTimeOff?: StaffTimeOffRepository;
   readonly mfa?: MfaRepository;
+  readonly mfaLoginChallenge?: MfaLoginChallengeRepository;
   readonly consent?: ConsentRepository;
   readonly dsr?: DsrRepository;
   readonly marketing?: MarketingRepository;
@@ -257,6 +261,8 @@ export interface ApiRuntimeOptions {
   readonly sectorBedOptions?: SectorBedServiceOptions;
   readonly enableMfa?: boolean;
   readonly mfaEncryptionKey?: string;
+  readonly mfaEncryptionKeyVersion?: string;
+  readonly mfaEncryptionKeyring?: Readonly<Record<string, string>>;
   /** Gates distributed runtime state (Redis-backed session, encounter timeline, etc.) */
   readonly runtimeDistributedStateEnabled?: boolean;
   /** Gates automatic WhatsApp reminder dispatch on appointment creation. */
@@ -961,7 +967,12 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
   if (options.enableMfa === true) {
     const encryptionKey = options.mfaEncryptionKey;
     validateMasterKey(encryptionKey);
-    mfa = new MfaService({ repository: repos.mfa, encryptionKey });
+    mfa = new MfaService({
+      repository: repos.mfa,
+      encryptionKey,
+      encryptionKeyVersion: options.mfaEncryptionKeyVersion,
+      encryptionKeyring: options.mfaEncryptionKeyring
+    });
   }
 
   const lgpd = new LgpdService({
@@ -1094,7 +1105,8 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
     accessControl,
     audit,
     mfa,
-    sessionRepository: repos.session
+    sessionRepository: repos.session,
+    mfaChallengeRepository: repos.mfaLoginChallenge
   });
 
   const serviceMap = {

@@ -9,10 +9,15 @@ import type {
 import { AccessControlService } from '@cvg-his-v2/module-access-control';
 import { AuditService } from '@cvg-his-v2/module-audit';
 import { BruteForceProtection } from './brute-force.js';
-import { MfaService } from '@cvg-his-v2/module-mfa';
+import { MfaService, type MfaSetupResponse } from '@cvg-his-v2/module-mfa';
 import { StaffService } from '@cvg-his-v2/module-staff';
 import { UsersService, type UserRecord } from '@cvg-his-v2/module-users';
-import { AuthenticationError, ForbiddenError, NotFoundError } from '@cvg-his-v2/shared-errors';
+import {
+  AuthenticationError,
+  ConflictError,
+  ForbiddenError,
+  NotFoundError
+} from '@cvg-his-v2/shared-errors';
 import type {
   AccessProfile,
   AuthenticatedPrincipal,
@@ -27,18 +32,28 @@ import type {
   PersistedSessionRecord,
   SessionRepository
 } from './repositories/session.repository.js';
+import type {
+  MfaLoginChallengeKey,
+  MfaLoginChallengeRepository
+} from './repositories/mfa-login-challenge.repository.js';
+import { InMemoryMfaLoginChallengeRepository } from './repositories/in-memory-mfa-login-challenge.repository.js';
 
 type SessionRecord = PersistedSessionRecord;
+const MFA_CHALLENGE_TTL_MS = 5 * 60 * 1000;
+const MFA_CHALLENGE_MAX_ATTEMPTS = 5;
+const MFA_CHALLENGE_LOCKOUT_DURATION_MS = 5 * 60 * 1000;
+const MFA_CHALLENGE_TRACKING_WINDOW_MS = 15 * 60 * 1000;
 
-interface PendingMfaLogin {
-  readonly accountId: string;
-  readonly userId: UserId;
-  readonly expiresAt: number;
-  readonly bruteForce: BruteForceProtection | undefined;
+const defaultMfaLoginChallengeRepository = new InMemoryMfaLoginChallengeRepository();
+
+interface MfaChallengeTokenPayload {
+  readonly typ: 'mfa_challenge';
+  readonly v: 1;
+  readonly account_id: string;
+  readonly sub: string;
+  readonly generation: string;
+  readonly exp: number;
 }
-
-// AuthService instances in the same process must see the same one-time challenge.
-const pendingMfaLogins = new Map<string, PendingMfaLogin>();
 
 interface TokenPayload {
   readonly typ: 'access' | 'refresh';
@@ -62,6 +77,7 @@ export interface AuthServiceOptions {
   readonly mfa?: MfaService;
   readonly sessionRepository?: SessionRepository;
   readonly bruteForce?: BruteForceProtection;
+  readonly mfaChallengeRepository?: MfaLoginChallengeRepository;
 }
 
 export class AuthService {
@@ -76,6 +92,7 @@ export class AuthService {
   readonly #mfa?: MfaService;
   readonly #sessionRepository?: SessionRepository;
   readonly #bruteForce?: BruteForceProtection;
+  readonly #mfaChallengeRepository: MfaLoginChallengeRepository;
   readonly #sessions = new Map<SessionId, SessionRecord>();
 
   public constructor(options: AuthServiceOptions) {
@@ -92,6 +109,8 @@ export class AuthService {
     this.#mfa = options.mfa;
     this.#sessionRepository = options.sessionRepository;
     this.#bruteForce = options.bruteForce;
+    this.#mfaChallengeRepository =
+      options.mfaChallengeRepository ?? defaultMfaLoginChallengeRepository;
   }
 
   public get mfaService(): MfaService | undefined {
@@ -152,15 +171,29 @@ export class AuthService {
     }
 
     if (this.#mfa && this.#mfa.isMfaRequired(user.roleCodes)) {
-      const challengeId = randomUUID();
-      const isMfaActive = await this.#runAsUser(user, correlationId, () =>
-        this.#mfa!.isMfaActive(user.accountId, user.id)
-      );
-      pendingMfaLogins.set(challengeId, {
-        accountId: user.accountId,
-        userId: user.id,
-        expiresAt: Date.now() + 5 * 60 * 1000,
-        bruteForce: this.#bruteForce
+      const generation = randomUUID();
+      const issued = await this.#runAsUser(user, correlationId, async () => {
+        const active = await this.#mfa!.isMfaActive(user.accountId, user.id);
+        const challenge = await this.#mfaChallengeRepository.issue({
+          accountId: user.accountId,
+          userId: user.id,
+          generation,
+          ttlMs: MFA_CHALLENGE_TTL_MS,
+          maxAttempts: this.#bruteForce?.getMaxAttempts() ?? MFA_CHALLENGE_MAX_ATTEMPTS,
+          trackingWindowMs:
+            this.#bruteForce?.getTrackingWindowMs() ?? MFA_CHALLENGE_TRACKING_WINDOW_MS,
+          lockoutDurationMs:
+            this.#bruteForce?.getLockoutDurationMs() ?? MFA_CHALLENGE_LOCKOUT_DURATION_MS
+        });
+        return { active, challenge };
+      });
+      const challengeId = this.#signMfaChallenge({
+        typ: 'mfa_challenge',
+        v: 1,
+        account_id: user.accountId,
+        sub: user.id,
+        generation,
+        exp: Math.floor(issued.challenge.expiresAt / 1000)
       });
       this.#audit.write({
         actorId: user.id,
@@ -176,9 +209,9 @@ export class AuthService {
       return {
         requiresMfa: true,
         userId: user.id,
-        mfaMethods: isMfaActive ? ['totp'] : [],
+        mfaMethods: issued.active ? ['totp'] : [],
         challengeId,
-        enrollmentRequired: !isMfaActive
+        enrollmentRequired: !issued.active
       };
     }
 
@@ -197,18 +230,22 @@ export class AuthService {
     const token = requireNonEmptyString(input.token, 'token');
     const challengeId = requireNonEmptyString(input.challengeId, 'challengeId');
     const userKey = userId as UserId;
-    const pendingEntry = pendingMfaLogins.get(challengeId);
-    if (!pendingEntry || pendingEntry.userId !== userKey || pendingEntry.expiresAt < Date.now()) {
-      pendingMfaLogins.delete(challengeId);
+    const challenge = this.#verifyMfaChallenge(challengeId);
+    if (challenge.sub !== userKey) {
       throw new AuthenticationError('MFA login challenge is missing or expired');
     }
-    const bruteForce = pendingEntry.bruteForce;
+    const pendingUser = this.#users.getOrThrow(userKey);
+    if (pendingUser.accountId !== challenge.account_id) {
+      throw new AuthenticationError('MFA login challenge is missing or expired');
+    }
+    const challengeKey = this.#toMfaChallengeKey(challenge);
+    const bruteForce = this.#bruteForce;
 
     if (bruteForce?.isMfaLocked(userId)) {
       const remaining = bruteForce.getRemainingLockSeconds(userId);
       this.#audit.write({
         actorId: userId,
-        accountId: pendingEntry.accountId as never,
+        accountId: challenge.account_id as never,
         module: 'auth',
         action: 'mfa_blocked_locked',
         entityType: 'user',
@@ -221,22 +258,35 @@ export class AuthService {
         'Account temporarily locked due to too many failed MFA attempts'
       );
     }
-    pendingMfaLogins.delete(challengeId);
 
-    const pendingUser = this.#users.getOrThrow(userKey);
+    const reserved = await this.#runAsUser(pendingUser, correlationId, () =>
+      this.#mfaChallengeRepository.reserveAttempt(challengeKey, Date.now())
+    );
+    if (!reserved) {
+      const currentChallenge = await this.#runAsUser(pendingUser, correlationId, () =>
+        this.#mfaChallengeRepository.inspect(challengeKey, Date.now())
+      );
+      if (
+        currentChallenge &&
+        currentChallenge.attemptCount >= currentChallenge.maxAttempts
+      ) {
+        throw new AuthenticationError(
+          'Account temporarily locked due to too many failed MFA attempts'
+        );
+      }
+      throw new AuthenticationError('MFA login challenge is missing or expired');
+    }
+
     const isValid = await this.#runAsUser(pendingUser, correlationId, () =>
-      this.#mfa!.verifyLogin(pendingEntry.accountId, userId, token)
+      this.#mfa!.verifyLogin(challenge.account_id, userId, token)
     );
     if (!isValid) {
       if (bruteForce) {
         bruteForce.recordMfaFailure(userId);
       }
-      if (pendingEntry.expiresAt >= Date.now()) {
-        pendingMfaLogins.set(challengeId, pendingEntry);
-      }
       this.#audit.write({
         actorId: userId,
-        accountId: pendingEntry.accountId as never,
+        accountId: challenge.account_id as never,
         module: 'auth',
         action: 'mfa_login_failed',
         entityType: 'user',
@@ -252,8 +302,15 @@ export class AuthService {
       bruteForce.recordMfaSuccess(userId);
     }
 
-    const user = this.#users.getOrThrow(userKey);
-    return this.#runAsUser(user, correlationId, () => this.#completeLogin(user, correlationId));
+    const consumed = await this.#runAsUser(pendingUser, correlationId, () =>
+      this.#mfaChallengeRepository.consume(challengeKey, Date.now())
+    );
+    if (!consumed) {
+      throw new AuthenticationError('MFA login challenge is missing or expired');
+    }
+    return this.#runAsUser(pendingUser, correlationId, () =>
+      this.#completeLogin(pendingUser, correlationId)
+    );
   }
 
   #runAsUser<T>(user: UserRecord, correlationId: string, operation: () => T): T {
@@ -269,12 +326,70 @@ export class AuthService {
   }
 
   public getPendingMfaEnrollmentUser(challengeId: string): UserRecord {
-    const challenge = pendingMfaLogins.get(challengeId);
-    if (!challenge || challenge.expiresAt < Date.now()) {
-      pendingMfaLogins.delete(challengeId);
+    const challenge = this.#verifyMfaChallenge(challengeId);
+    const user = this.#users.getOrThrow(challenge.sub as UserId);
+    if (user.accountId !== challenge.account_id) {
       throw new AuthenticationError('MFA login challenge is missing or expired');
     }
-    return this.#users.getOrThrow(challenge.userId);
+    return user;
+  }
+
+  public async beginMfaEnrollment(
+    challengeId: string,
+    issuer: string,
+    correlationId: string
+  ): Promise<MfaSetupResponse> {
+    if (!this.#mfa) {
+      throw new AuthenticationError('MFA is not configured on this server');
+    }
+
+    const normalizedChallengeId = requireNonEmptyString(challengeId, 'challengeId');
+    const challenge = this.#verifyMfaChallenge(normalizedChallengeId);
+    const user = this.getPendingMfaEnrollmentUser(normalizedChallengeId);
+    return this.#runAsUser(user, correlationId, async () => {
+      const persistedChallenge = await this.#mfaChallengeRepository.inspect(
+        this.#toMfaChallengeKey(challenge),
+        Date.now()
+      );
+      if (!persistedChallenge) {
+        throw new AuthenticationError('MFA login challenge is missing or expired');
+      }
+      if (await this.#mfa!.isMfaActive(user.accountId, user.id)) {
+        throw new ConflictError('MFA is already active');
+      }
+      return this.#mfa!.initiateSetup(user.accountId, user.id, user.email, issuer);
+    });
+  }
+
+  public async confirmMfaEnrollment(
+    challengeId: string,
+    token: string,
+    correlationId: string
+  ): Promise<AuthSessionResponse> {
+    if (!this.#mfa) {
+      throw new AuthenticationError('MFA is not configured on this server');
+    }
+
+    const normalizedChallengeId = requireNonEmptyString(challengeId, 'challengeId');
+    const normalizedToken = requireNonEmptyString(token, 'token');
+    const challenge = this.#verifyMfaChallenge(normalizedChallengeId);
+    const user = this.getPendingMfaEnrollmentUser(normalizedChallengeId);
+    return this.#runAsUser(user, correlationId, async () => {
+      const challengeKey = this.#toMfaChallengeKey(challenge);
+      const reserved = await this.#mfaChallengeRepository.reserveAttempt(
+        challengeKey,
+        Date.now()
+      );
+      if (!reserved) {
+        throw new AuthenticationError('MFA login challenge is missing or expired');
+      }
+      await this.#mfa!.confirmSetup(user.accountId, user.id, normalizedToken);
+      const consumed = await this.#mfaChallengeRepository.consume(challengeKey, Date.now());
+      if (!consumed) {
+        throw new AuthenticationError('MFA login challenge is missing or expired');
+      }
+      return this.#completeLogin(user, correlationId);
+    });
   }
 
   async #completeLogin(user: UserRecord, correlationId: string): Promise<AuthSessionResponse> {
@@ -774,6 +889,60 @@ export class AuthService {
     return `${encodedPayload}.${signature}`;
   }
 
+  #signMfaChallenge(payload: MfaChallengeTokenPayload): string {
+    const encodedPayload = Buffer.from(JSON.stringify(payload)).toString('base64url');
+    const signature = createHmac('sha256', this.#secret).update(encodedPayload).digest('base64url');
+    return `${encodedPayload}.${signature}`;
+  }
+
+  #verifyMfaChallenge(token: string): MfaChallengeTokenPayload {
+    const [encodedPayload, providedSignature] = token.split('.');
+    if (!encodedPayload || !providedSignature) {
+      throw new AuthenticationError('MFA login challenge is missing or expired');
+    }
+
+    const providedSignatureBuffer = Buffer.from(providedSignature, 'utf8');
+    const validSignature = this.#verifierSecrets.some((secret) => {
+      const expected = createHmac('sha256', secret).update(encodedPayload).digest('base64url');
+      const expectedBuffer = Buffer.from(expected, 'utf8');
+      return (
+        providedSignatureBuffer.length === expectedBuffer.length &&
+        timingSafeEqual(providedSignatureBuffer, expectedBuffer)
+      );
+    });
+    if (!validSignature) {
+      throw new AuthenticationError('MFA login challenge is missing or expired');
+    }
+
+    try {
+      const payload = JSON.parse(
+        Buffer.from(encodedPayload, 'base64url').toString('utf8')
+      ) as MfaChallengeTokenPayload;
+      if (
+        payload.typ !== 'mfa_challenge' ||
+        payload.v !== 1 ||
+        typeof payload.account_id !== 'string' ||
+        typeof payload.sub !== 'string' ||
+        typeof payload.generation !== 'string' ||
+        !Number.isInteger(payload.exp) ||
+        payload.exp <= 0
+      ) {
+        throw new Error('Invalid challenge payload');
+      }
+      return payload;
+    } catch {
+      throw new AuthenticationError('MFA login challenge is missing or expired');
+    }
+  }
+
+  #toMfaChallengeKey(payload: MfaChallengeTokenPayload): MfaLoginChallengeKey {
+    return {
+      accountId: payload.account_id,
+      userId: payload.sub,
+      generation: payload.generation
+    };
+  }
+
   #verifyToken(token: string, expectedType: 'access' | 'refresh'): TokenPayload {
     const [encodedPayload, providedSignature] = token.split('.');
     if (!encodedPayload || !providedSignature) {
@@ -862,6 +1031,14 @@ export type {
   UpdateSessionParams
 } from './repositories/session.repository.js';
 export { DatabaseSessionRepository } from './repositories/database-session.repository.js';
+export type {
+  IssueMfaLoginChallengeInput,
+  MfaLoginChallengeKey,
+  MfaLoginChallengeRecord,
+  MfaLoginChallengeRepository
+} from './repositories/mfa-login-challenge.repository.js';
+export { InMemoryMfaLoginChallengeRepository } from './repositories/in-memory-mfa-login-challenge.repository.js';
+export { DatabaseMfaLoginChallengeRepository } from './repositories/database-mfa-login-challenge.repository.js';
 export { BruteForceProtection } from './brute-force.js';
 
 // OIDC/SSO

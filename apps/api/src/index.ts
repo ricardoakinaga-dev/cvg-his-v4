@@ -266,6 +266,8 @@ async function main() {
     trustedProxyCidrs: config.trustedProxyCidrs,
     enableMfa: config.enableMfa,
     mfaEncryptionKey: config.mfaEncryptionKey,
+    mfaEncryptionKeyVersion: config.mfaEncryptionKeyVersion,
+    mfaEncryptionKeyring: config.mfaEncryptionKeyring,
     repositories: bootstrapResult.repositories,
     fileStorage,
     attachmentScanner,

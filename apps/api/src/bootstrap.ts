@@ -11,6 +11,7 @@ import {
 } from '@cvg-his-v2/shared-database';
 import { createLogger } from '@cvg-his-v2/shared-logging';
 import {
+  DatabaseMfaLoginChallengeRepository,
   DatabaseSessionRepository,
   type PersistedSessionRecord,
   type RotateRefreshNonceParams,
@@ -238,6 +239,22 @@ async function databaseTableExists(tableName: string): Promise<boolean> {
   return result.rows[0]?.exists === true;
 }
 
+export const mfaCredentialRequiredColumns = [
+  'id',
+  'account_id',
+  'user_id',
+  'setup_expires_at',
+  'secret_key_version'
+] as const;
+
+export function hasRequiredDatabaseColumns(
+  availableColumns: Iterable<string>,
+  requiredColumns: readonly string[]
+): boolean {
+  const available = new Set(availableColumns);
+  return requiredColumns.every((column) => available.has(column));
+}
+
 async function databaseTableHasColumns(
   tableName: string,
   requiredColumns: readonly string[]
@@ -248,8 +265,10 @@ async function databaseTableHasColumns(
      WHERE table_schema = 'public' AND table_name = $1`,
     [tableName]
   );
-  const availableColumns = new Set(result.rows.map((row) => row.column_name));
-  return requiredColumns.every((column) => availableColumns.has(column));
+  return hasRequiredDatabaseColumns(
+    result.rows.map((row) => row.column_name),
+    requiredColumns
+  );
 }
 
 export interface DependencyCheckResult {
@@ -355,6 +374,7 @@ export const productionDatabaseRepositoryKeys = [
   'staff',
   'staffTimeOff',
   'mfa',
+  'mfaLoginChallenge',
   'consent',
   'dsr',
   'marketing',
@@ -1088,7 +1108,12 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
         (await databaseTableExists('api_keys')) &&
         (await databaseTableExists('api_key_usage')) &&
         (await databaseTableExists('api_key_rate_limits'));
-      const mfaTablesReady = await databaseTableExists('mfa_credentials');
+      const mfaTablesReady =
+        (await databaseTableExists('mfa_credentials')) &&
+        (await databaseTableHasColumns('mfa_credentials', mfaCredentialRequiredColumns));
+      const mfaLoginChallengesReady = await databaseTableExists(
+        'auth_mfa_login_challenges'
+      );
       const outboxTablesReady = await databaseTableExists('outbox_events');
       const pixTablesReady = await databaseTableExists('pix_transactions');
       const laboratoryResultImportsReady = await databaseTableExists('laboratory_result_imports');
@@ -1180,6 +1205,9 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
           ? new DatabaseStaffTimeOffRepository()
           : undefined,
         mfa: mfaTablesReady ? new DatabaseMfaRepository(db) : undefined,
+        mfaLoginChallenge: mfaLoginChallengesReady
+          ? new DatabaseMfaLoginChallengeRepository(db)
+          : undefined,
         consent: consentTablesReady ? new DatabaseConsentRepository(db) : undefined,
         dsr: consentTablesReady ? new DatabaseDsrRepository(db) : undefined,
         webhook: webhookTablesReady ? new DatabaseWebhookRepository(db) : undefined,

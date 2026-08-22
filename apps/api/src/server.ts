@@ -259,6 +259,8 @@ export interface ApiServerOptions {
   readonly trustedProxyCidrs?: readonly string[];
   readonly enableMfa?: boolean;
   readonly mfaEncryptionKey?: string;
+  readonly mfaEncryptionKeyVersion?: string;
+  readonly mfaEncryptionKeyring?: Readonly<Record<string, string>>;
   readonly repositories?: RuntimeRepositories;
   readonly fileStorage?: FileStorage;
   readonly attachmentScanner?: AttachmentSecurityScanner;
@@ -3586,6 +3588,8 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
     refreshTokenTtlSeconds: options.refreshTokenTtlSeconds,
     enableMfa: options.enableMfa,
     mfaEncryptionKey: options.mfaEncryptionKey,
+    mfaEncryptionKeyVersion: options.mfaEncryptionKeyVersion,
+    mfaEncryptionKeyring: options.mfaEncryptionKeyring,
     repositories: options.repositories,
     fileStorage: options.fileStorage,
     attachmentScanner: options.attachmentScanner,

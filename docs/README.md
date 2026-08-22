@@ -1,6 +1,6 @@
 # CVG-HIS V4 - Documentacao ativa
 
-**Atualizado em:** 2026-08-07
+**Atualizado em:** 2026-08-22
 
 Esta pasta separa documentacao vigente, referencia do Vetus e historico. Uma afirmacao de funcionalidade so e considerada valida quando estiver sustentada por codigo executavel e teste comportamental.
 
@@ -9,15 +9,16 @@ Esta pasta separa documentacao vigente, referencia do Vetus e historico. Uma afi
 1. [`2026-08-07-plano-executivo-resolucao-auditoria-cvg-his-v4.md`](2026-08-07-plano-executivo-resolucao-auditoria-cvg-his-v4.md) - plano executivo vigente, marcos, gates, responsáveis e metas.
 2. [`2026-08-07-backlog-roadmap-resolucao-auditoria-cvg-his-v4.md`](2026-08-07-backlog-roadmap-resolucao-auditoria-cvg-his-v4.md) - backlog rastreável aos achados, dependências e critérios de aceite.
 3. [`2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md`](2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md) - baseline da auditoria técnica e funcional atual.
-4. [`2026-07-11-relatorio-reauditoria-funcional-erp.md`](2026-07-11-relatorio-reauditoria-funcional-erp.md) - baseline anterior, notas e bloqueios reproduzidos.
-5. [`2026-07-11-plano-produto-premium-erp-veterinario.md`](2026-07-11-plano-produto-premium-erp-veterinario.md) - visao funcional e arquitetura do ERP premium.
-6. [`2026-07-11-roadmap-premium-58-a-90.md`](2026-07-11-roadmap-premium-58-a-90.md) - roadmap anterior, preservado como referência histórica.
-7. [`2026-07-11-backlog-premium-executavel.md`](2026-07-11-backlog-premium-executavel.md) - backlog anterior, preservado como referência de IDs e execução.
-8. [`2026-07-11-execucao-onda-1-paridade-vetus.md`](2026-07-11-execucao-onda-1-paridade-vetus.md) - diario de implementacao e evidencias anteriores.
-9. [`2026-07-11-execucao-m0-sprint-1-fundacao-transacional.md`](2026-07-11-execucao-m0-sprint-1-fundacao-transacional.md) - evidencias e bloqueios anteriores de PLAT-001/002.
-10. [`2026-07-10-auditoria-paridade-funcional-vetus.md`](2026-07-10-auditoria-paridade-funcional-vetus.md) - contrato estrito de paridade e evidencias faltantes.
-11. [`430-fonte-de-verdade-documental.md`](430-fonte-de-verdade-documental.md) - regras de governanca e precedencia.
-12. [`vetus/README.md`](vetus/README.md) - acervo factual capturado do Vetus.
+4. [`2026-08-10-primeiro-acesso-super-admin.md`](2026-08-10-primeiro-acesso-super-admin.md) - procedimento vigente de bootstrap seguro sem seed em staging/producao.
+5. [`2026-07-11-relatorio-reauditoria-funcional-erp.md`](2026-07-11-relatorio-reauditoria-funcional-erp.md) - baseline anterior, notas e bloqueios reproduzidos.
+6. [`2026-07-11-plano-produto-premium-erp-veterinario.md`](2026-07-11-plano-produto-premium-erp-veterinario.md) - visao funcional e arquitetura do ERP premium.
+7. [`2026-07-11-roadmap-premium-58-a-90.md`](2026-07-11-roadmap-premium-58-a-90.md) - roadmap anterior, preservado como referência histórica.
+8. [`2026-07-11-backlog-premium-executavel.md`](2026-07-11-backlog-premium-executavel.md) - backlog anterior, preservado como referência de IDs e execução.
+9. [`2026-07-11-execucao-onda-1-paridade-vetus.md`](2026-07-11-execucao-onda-1-paridade-vetus.md) - diario de implementacao e evidencias anteriores.
+10. [`2026-07-11-execucao-m0-sprint-1-fundacao-transacional.md`](2026-07-11-execucao-m0-sprint-1-fundacao-transacional.md) - evidencias e bloqueios anteriores de PLAT-001/002.
+11. [`2026-07-10-auditoria-paridade-funcional-vetus.md`](2026-07-10-auditoria-paridade-funcional-vetus.md) - contrato estrito de paridade e evidencias faltantes.
+12. [`430-fonte-de-verdade-documental.md`](430-fonte-de-verdade-documental.md) - regras de governanca e precedencia.
+13. [`vetus/README.md`](vetus/README.md) - acervo factual capturado do Vetus.
 
 ## Documentacao vigente
 
@@ -58,9 +59,10 @@ Em divergencias, use esta ordem:
 
 1. comportamento reproduzido na aplicacao e testes sobre runtime real;
 2. codigo e contratos da API;
-3. auditorias de julho de 2026;
+3. programa ativo de 7 de agosto de 2026 e procedimentos posteriores explicitamente vigentes;
 4. arquitetura e ADRs vigentes;
-5. acervo Vetus como referencia de produto;
-6. historico em `docs2/`, apenas para contexto.
+5. auditorias de julho de 2026, como baseline anterior;
+6. acervo Vetus como referencia de produto;
+7. historico em `docs2/`, apenas para contexto.
 
 Relatorios antigos com notas de 85-96/100 foram arquivados porque mediam presenca de arquivos, planos ou implementacoes parciais e nao comprovavam a jornada completa.
