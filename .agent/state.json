@@ -8,26 +8,26 @@
     "MIGRATION"
   ],
   "lifecycle_stage": "BUILD",
-  "active_activity": "PLAN",
+  "active_activity": "TEST",
   "engineering_tier": "T4_CRITICAL",
   "risk_level": "CRITICAL",
   "blast_radius": "CROSS_SYSTEM",
   "status": "IN_PROGRESS",
   "active_execplan": ".agent/plans/premium-enterprise-mvp.md",
-  "active_task": "CVG-002",
+  "active_task": "CVG-002B2B",
   "verification_state": "PARTIAL",
-  "repository_state": "verified CVG-002B2a base 0dd18acc4d018dd9205f60d3b41bc01e8a98dac0 is published on agent/sync-v4-full-program; the intended B2b handoff/control-plane checkpoint preserves and excludes the pre-existing packages/design-system/tsconfig.vue.tsbuildinfo cache change",
+  "repository_state": "CVG-002B2 handoff commit e5f7cc89f2f751afae3b3ba59dd3cd03002ff3ae is published and synchronized on agent/sync-v4-full-program; B2b implementation-ready gate is operational; the sole pre-existing dirty path remains the preserved user-owned packages/design-system/tsconfig.vue.tsbuildinfo cache change",
   "instruction_scope_refs": [
     ".agent/instruction-scope.md"
   ],
-  "last_gate_record": null,
-  "last_event_id": "EVT-0032",
-  "state_revision": 25,
-  "next_gate": "IMPLEMENTATION_READY",
-  "next_action": "Read docs/2026-08-22-handoff-cvg-002b2.md, obtain a fresh independent review of .agent/tasks/CVG-002B2B.md, then record bounded HIGH-risk authority and an IMPLEMENTATION_READY gate before any B2b RED or implementation",
+  "last_gate_record": ".agent/gates/implementation-ready-CVG-002B2B.json",
+  "last_event_id": "EVT-0042",
+  "state_revision": 35,
+  "next_gate": "VERIFIED",
+  "next_action": "Start the next B2b RED sequence with the raw-body/HMAC verifier and socket-boundary tests; preserve the 18/18 B1 regression",
   "blocked_by": [],
   "human_approval_required": [
     "Production go-live, credential rotation, provider selection, fiscal homologation, and residual HIGH/CRITICAL risk acceptance remain outside repository implementation authority"
   ],
-  "updated_at": "2026-08-22T18:50:28-03:00"
+  "updated_at": "2026-08-22T19:58:52-03:00"
 }

@@ -38,6 +38,10 @@ interface OtherTenant {
   readonly actorUserId: string;
 }
 
+interface ReservedAttemptFixture {
+  readonly attemptId: string;
+}
+
 interface SettlementRecord {
   readonly id: string;
   readonly accountId: string;
@@ -155,6 +159,46 @@ async function createOtherTenant(pool: PoolType): Promise<OtherTenant> {
     [actorUserId, accountId, `other_pix_${suffix}`, `other-pix-${suffix}@example.com`]
   );
   return { accountId, actorUserId };
+}
+
+async function reservePendingAttempt(
+  pool: PoolType,
+  fixture: Fixture,
+  providerKey: 'local-pix' | 'mock' = PROVIDER
+): Promise<ReservedAttemptFixture> {
+  const attemptId = randomUUID();
+  const requestKeyHash = createHash('sha256').update(randomUUID()).digest('hex');
+  await pool.query(
+    `INSERT INTO encounter_payment_attempts (
+       id, account_id, encounter_id, billing_record_id, requested_by_user_id,
+       payment_method, provider_key, state, amount_cents, currency,
+       request_key_hash, provider_idempotency_key, next_attempt_at
+     ) VALUES ($1, $2, $3, $4, $5, 'pix', $6, 'pending_dispatch', $7, 'BRL', $8, $9, NULL)`,
+    [
+      attemptId,
+      fixture.accountId,
+      fixture.encounterId,
+      fixture.billingRecordId,
+      fixture.actorUserId,
+      providerKey,
+      AMOUNT_CENTS,
+      requestKeyHash,
+      `cvg:pix:create:v1:${attemptId}`
+    ]
+  );
+  await pool.query(
+    `UPDATE pix_transactions
+        SET payment_attempt_id = $3,
+            status = 'pending',
+            completed_at = NULL,
+            last_provider_sync_at = NULL,
+            billing_settlement_status = 'awaiting_payment',
+            cash_reconciliation_status = 'pending',
+            provider_webhook_event_id = NULL
+      WHERE account_id = $1 AND transaction_id = $2`,
+    [fixture.accountId, fixture.transactionId, attemptId]
+  );
+  return { attemptId };
 }
 
 function context(fixture: Pick<Fixture, 'accountId' | 'actorUserId'>, idempotencyKey: string) {
@@ -397,6 +441,104 @@ describe('atomic confirmed PIX settlement command', () => {
       total_credit: '125.50',
       pix_debit: '125.50',
       clinical_revenue_credit: '125.50'
+    });
+  });
+
+  it('lets the shared B1 stage a reserved pending PIX and settle the attempt atomically', async () => {
+    const fixture = await createFixture(adminPool);
+    const reserved = await reservePendingAttempt(adminPool, fixture);
+    const result = await executeSettlement(
+      restrictedPool,
+      fixture,
+      randomUUID(),
+      { ...input(fixture), attemptId: reserved.attemptId }
+    );
+
+    expect(result.replayed).toBe(false);
+    const state = await adminPool.query(
+      `SELECT billing.status AS billing_status,
+              billing.active_payment_attempt_id,
+              attempt.state AS attempt_state,
+              pix.status AS pix_status,
+              pix.billing_settlement_status,
+              pix.completed_at AS pix_completed_at
+         FROM billing_records AS billing
+         JOIN encounter_payment_attempts AS attempt
+           ON attempt.account_id = billing.account_id
+          AND attempt.id = $3
+         JOIN pix_transactions AS pix
+           ON pix.account_id = billing.account_id
+          AND pix.transaction_id = $2
+        WHERE billing.account_id = $1 AND billing.id = $4`,
+      [fixture.accountId, fixture.transactionId, reserved.attemptId, fixture.billingRecordId]
+    );
+
+    expect(state.rows[0]).toMatchObject({
+      billing_status: 'settled',
+      active_payment_attempt_id: null,
+      attempt_state: 'settled',
+      pix_status: 'completed',
+      billing_settlement_status: 'applied'
+    });
+    expect(state.rows[0]?.pix_completed_at).not.toBeNull();
+  });
+
+  it('rejects an attempt-linked PIX that was completed with a different provider timestamp', async () => {
+    const fixture = await createFixture(adminPool);
+    const reserved = await reservePendingAttempt(adminPool, fixture);
+    const storedTimestamp = new Date(Date.parse(fixture.confirmedAt) + 1_000).toISOString();
+    await adminPool.query(
+      `UPDATE pix_transactions
+          SET status = 'completed', completed_at = $3, last_provider_sync_at = $3
+        WHERE account_id = $1 AND transaction_id = $2`,
+      [fixture.accountId, fixture.transactionId, storedTimestamp]
+    );
+
+    await expect(
+      executeSettlement(
+        restrictedPool,
+        fixture,
+        randomUUID(),
+        { ...input(fixture), attemptId: reserved.attemptId }
+      )
+    ).rejects.toMatchObject<AppError>({
+      code: 'PIX_CONFIRMATION_TIME_MISMATCH',
+      statusCode: 409
+    });
+  });
+
+  it('rejects an attempt whose provider binding no longer matches the inbound provider', async () => {
+    const fixture = await createFixture(adminPool);
+    const reserved = await reservePendingAttempt(adminPool, fixture, 'mock');
+
+    await expect(
+      executeSettlement(
+        restrictedPool,
+        fixture,
+        randomUUID(),
+        { ...input(fixture), attemptId: reserved.attemptId }
+      )
+    ).rejects.toMatchObject<AppError>({
+      code: 'PIX_PAYMENT_ATTEMPT_PROVIDER_MISMATCH',
+      statusCode: 409
+    });
+  });
+
+  it('rejects replay of an attempt-bound event when the retry omits its attempt binding', async () => {
+    const fixture = await createFixture(adminPool);
+    const reserved = await reservePendingAttempt(adminPool, fixture);
+    await executeSettlement(
+      restrictedPool,
+      fixture,
+      randomUUID(),
+      { ...input(fixture), attemptId: reserved.attemptId }
+    );
+
+    await expect(
+      executeSettlement(restrictedPool, fixture, randomUUID(), input(fixture))
+    ).rejects.toMatchObject<AppError>({
+      code: 'CONFIRMED_PIX_EVENT_CONFLICT',
+      statusCode: 409
     });
   });
 
@@ -687,6 +829,9 @@ describe('atomic confirmed PIX settlement command', () => {
       'after_financial_account_settlement',
       'after_billing_settlement',
       'after_pix_settlement',
+      'after_pix_staging',
+      'after_attempt_confirmed_pending_apply',
+      'after_attempt_settlement',
       'after_journal_entry_insert',
       'after_journal_lines_insert',
       'after_proof_insert',
@@ -696,7 +841,15 @@ describe('atomic confirmed PIX settlement command', () => {
 
     for (const failurePoint of failurePoints) {
       const fixture = await createFixture(adminPool);
-      const payload = input(fixture);
+      const attemptFailure = failurePoint === 'after_pix_staging'
+        || failurePoint === 'after_attempt_confirmed_pending_apply'
+        || failurePoint === 'after_attempt_settlement';
+      const reserved = attemptFailure
+        ? await reservePendingAttempt(adminPool, fixture)
+        : undefined;
+      const payload = reserved
+        ? { ...input(fixture), attemptId: reserved.attemptId }
+        : input(fixture);
       const unitOfWork = createTenantUnitOfWork(restrictedPool);
       const repository = new DatabaseConfirmedPixSettlementRepository({
         onCheckpoint(checkpoint) {

@@ -34,3 +34,21 @@ export type {
 export type { PixProviderName } from './types.js';
 export { PagarMePixAdapter } from './adapters/pagarme.adapter.js';
 export type { PagarMePixAdapterOptions } from './adapters/pagarme.adapter.js';
+
+export {
+  ConfirmedPixSettlementCommand
+} from './confirmed-settlement/confirmed-pix-settlement-command.js';
+export type {
+  ConfirmedPixSettlementCommandOptions
+} from './confirmed-settlement/confirmed-pix-settlement-command.js';
+export {
+  DatabaseConfirmedPixSettlementRepository
+} from './confirmed-settlement/confirmed-pix-settlement-repository.js';
+export type {
+  ApplyConfirmedPixSettlementInput,
+  ConfirmedPixProvider,
+  ConfirmedPixSettlementCheckpoint,
+  ConfirmedPixSettlementRecord,
+  ConfirmedPixSettlementRepository,
+  DatabaseConfirmedPixSettlementRepositoryOptions
+} from './confirmed-settlement/confirmed-pix-settlement-repository.js';

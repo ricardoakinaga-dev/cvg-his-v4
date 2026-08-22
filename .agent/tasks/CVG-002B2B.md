@@ -2,14 +2,15 @@
 
 ## Estado do contrato
 
-- Status: `TODO`; contrato pré-gate consolidado, sem autorização de implementação.
-- Estágio/atividade: `BUILD` / `PLAN`.
+- Status: `IN_PROGRESS`; contrato consolidado e gate de implementação operacional.
+- Estágio/atividade: `BUILD` / `TEST`.
 - Pai: `CVG-002`; depende de `CVG-002B2A` `DONE/VERIFIED` e do núcleo `CVG-002B1` verificado.
 - Tier/risco/raio: `T4_CRITICAL` / risco residual esperado `HIGH` / `CROSS_SYSTEM`.
-- Próximo gate: `IMPLEMENTATION_READY` específico para `CVG-002B2B`.
-- Autoridade pretendida: código reversível no repositório, PostgreSQL descartável e provider sintético local. Provider real, credenciais, mutação externa, produção, deploy e release continuam proibidos.
+- Próximo gate: `VERIFIED` específico para `CVG-002B2B`.
+- Gate atual: `.agent/gates/implementation-ready-CVG-002B2B.json#GATE-CVG-002B2B-IR-001` (`PASS`, readiness only).
+- Autoridade vigente: código reversível no repositório, PostgreSQL descartável e provider sintético local. Provider real, credenciais, mutação externa, produção, deploy e release continuam proibidos.
 
-Este arquivo consolida o mapeamento do código e as revisões independentes de arquitetura, segurança e TDD executadas em 22 de agosto de 2026. Ele é uma especificação pré-gate, não evidência de comportamento entregue.
+Este arquivo consolida o mapeamento do código e as revisões independentes de arquitetura, segurança e TDD executadas em 22 de agosto de 2026. Ele continua sendo o contrato técnico, não evidência de que o B2b inteiro foi entregue. O gate de prontidão passou após duas rejeições corrigidas; cada RED/GREEN posterior ainda exige evidência própria.
 
 ## Problema e dependências bloqueantes identificadas
 
@@ -51,6 +52,7 @@ ASCII("v1.<timestamp>.<eventId>.") || rawBodyBuffer
 - `keyId` resolve por uma keyring injetada exatamente `{ accountId, secret }`; somente HMAC válido torna `accountId` autoridade. Query, path, bearer, `x-account-id` e corpo não escolhem tenant.
 - Capability sintética explícita; segredo com pelo menos 32 bytes; rota não montada e bootstrap fail-closed em `NODE_ENV=production`.
 - Nenhum raw body, assinatura, segredo, QR ou payload completo é persistido ou logado.
+- `Content-Type` deve ser exatamente `application/json` sem parâmetros; JSON com chaves duplicadas, objeto não fechado, valores desconhecidos ou campos ausentes é rejeitado depois da autenticação.
 
 Corpo JSON autenticado, fechado e allowlisted:
 
@@ -66,7 +68,7 @@ Corpo JSON autenticado, fechado e allowlisted:
 }
 ```
 
-Após autenticar, `accountId` do corpo deve coincidir com a conta ligada à chave. `billingRecordId`, transaction local, valor autoritativo e vínculos são sempre recarregados do PostgreSQL sob RLS.
+Após autenticar, `accountId` do corpo deve coincidir com a conta ligada à chave. Os dois UUIDs devem estar no formato canônico minúsculo RFC 4122; `providerTransactionId` deve casar `[A-Za-z0-9][A-Za-z0-9._:-]{0,254}`; `amountCents` deve ser inteiro seguro entre `1` e `999999999999`; `confirmedAt` deve ser exatamente RFC3339 UTC com milissegundos (`YYYY-MM-DDTHH:mm:ss.SSSZ`) e permanecer dentro do limite temporal do protocolo. `billingRecordId`, transaction local, valor autoritativo e vínculos são sempre recarregados do PostgreSQL sob RLS.
 
 Respostas externas:
 
@@ -92,6 +94,8 @@ Receipt append-only com:
 - nenhuma FK imediata para PIX, porque o callback pode anteceder o commit da correlação externa;
 - nenhuma coluna para raw body, assinatura, headers, secret, QR, payload completo ou erro bruto.
 
+Na entrada, `attemptId` deve referenciar uma tentativa B2a já commitada, ativa e pertencente à conta autenticada; a FK composta é imediata. Ausência, tenant diferente, estado incompatível ou divergência do attempt resulta em `404/409` opaco e não cria receipt. O callback pode anteceder somente o commit local da correlação/linha `pix_transactions`, nunca a criação do attempt que foi commitada antes da rede.
+
 Não existe unicidade “first event wins” por attempt. Eventos autenticados com IDs distintos permanecem como receipts forenses separados. Sob lock do attempt, o B1 aplica o primeiro evento semanticamente válido; evento posterior equivalente termina `applied` com código sanitizado de duplicata canônica e zero novo efeito, enquanto divergência vai a `reconciliation_required`. Assim um evento autenticado porém semanticamente inválido não bloqueia uma correção posterior.
 
 ### `pix_provider_event_deliveries`
@@ -102,9 +106,15 @@ Fila operacional separada, relação 1:1 com o receipt:
 - `attempts`, `max_attempts`, `next_attempt_at`;
 - `lease_owner`, `lease_token`, `lease_version`, `lease_expires_at` com invariantes all-or-none;
 - código de erro sanitizado, sem mensagem externa bruta;
-- `ENABLE/FORCE RLS` e claim por `FOR UPDATE SKIP LOCKED` com fencing.
+- `ENABLE/FORCE RLS`, grants mínimos explícitos e claim por `FOR UPDATE SKIP LOCKED` com fencing.
+
+ACL da migration (validada por roles descartáveis, não pelo papel de harness amplo): a identidade da API pode `INSERT/SELECT` receipts e deliveries, mas não `UPDATE/DELETE/TRUNCATE` receipts; a identidade do worker pode `SELECT` receipts/principals e `SELECT/UPDATE` deliveries, sem `UPDATE/DELETE` receipts; nenhum papel de runtime pode apagar ou truncar receipts.
+
+Essa ACL deve sobreviver ao reconciliador e ao bootstrap: `packages/db/src/reconcile-runtime-roles.ts`, `infra/postgres/init-runtime-role.sh` e o job Helm de manutenção devem revogar novamente as mutações proibidas depois de qualquer concessão ampla de tabelas RLS. A migration e os reconciliadores precisam ser idempotentes e a matriz deve ser testada com roles descartáveis que executem a reconciliação, não somente contra o papel de harness.
 
 Receipt e delivery são criados na mesma transação. Replay idêntico retorna o receipt existente e não cria trabalho; mesmo ID com fingerprint divergente retorna conflito sem mutação.
+
+`body_fingerprint` é `SHA256(UTF8("cvg.pix.raw-body.v1") || 0x00 || rawBodyBuffer)`. `claims_fingerprint` é `SHA256(UTF8("cvg.pix.claims.v1") || 0x00 || canonicalClaimsJson)`, onde `canonicalClaimsJson` é JSON UTF-8 sem espaços, com chaves nesta ordem exata: `type,accountId,attemptId,providerTransactionId,amountCents,currency,confirmedAt`; todos os valores já estão canonicalizados pelas regras do protocolo. Dois event IDs distintos no mesmo attempt são equivalentes somente quando `claims_fingerprint` coincide byte a byte; qualquer divergência é `reconciliation_required`. O event ID não participa da equivalência semântica.
 
 ### Identidade de serviço
 
@@ -114,6 +124,8 @@ Receipt e delivery são criados na mesma transação. Replay idêntico retorna o
 - criar `account_service_principals(account_id, purpose, user_id, is_active, ...)` com `purpose='pix-settlement'`, FK composta para `users(account_id,id)`, unicidade de mapping ativo e FORCE RLS;
 - resolver e revalidar mapping, usuário ativo, tipo `service`, login desabilitado e mesmo tenant dentro da UoW;
 - migration não cria usuário/mapping e não escolhe requester, primeiro usuário ativo, account UUID ou variável de ambiente como fallback.
+
+Os filtros são obrigatórios em toda entrada interativa: username, email, hidratação inicial, lookup em cache frio/quente, atualização de cache, refresh/session e MFA só resolvem `principal_kind='human' AND interactive_login_enabled=true AND is_active=true`. Um principal `service` não pode autenticar mesmo que tenha username/email, sessão prévia ou cache existente; revogar a flag invalida a resolução seguinte e não fabrica sessão nova.
 
 ## Fluxo durável e transação financeira
 
@@ -140,12 +152,24 @@ HTTP autenticado
 - O consumer não atualiza PIX, attempt ou billing antes de chamar B1. O B1 compartilhado é o único dono do staging, da terminalização da tentativa e dos efeitos financeiros.
 - Não existe estado financeiro intermediário visível: staging B1, terminalização da tentativa, settlement e `delivery=applied` commitam ou revertem juntos.
 - O callback nunca liquida e nunca bloqueia billing; ele apenas persiste receipt+delivery.
-- Ausência temporária de attempt/PIX é retry com backoff, pois o callback pode chegar antes do outbound local.
+- O attempt ausente, cross-tenant ou incompatível nunca é retryable: a FK/checagem de entrada rejeita o callback opacamente antes de criar receipt. Somente a ausência temporária de `pix_transactions`/correlação local, depois de um attempt válido, é retryable porque o callback pode chegar antes do segundo commit local do outbound.
+- Os estados de attempt aceitos na entrada são exatamente `pending_dispatch`, `awaiting_confirmation` e `confirmed_pending_apply`. `pending_dispatch` representa a janela em que o attempt já foi commitado antes da rede e o PIX/correlação ainda pode não existir; o worker aguarda somente a correlação. `settled` só é aceito no consumidor quando a prova financeira existente tem o mesmo `claims_fingerprint`; `dispatch_failed`, `expired`, `cancelled` e `reconciliation_required` são conflitos terminais e não criam receipt.
 - O mapping/usuário de serviço é revalidado sob a UoW e protegido contra revogação concorrente antes dos locks financeiros; principal ausente/revogado/inválido falha fechado e permanece observável/retryable.
 - Dois workers não duplicam efeito: claim/fence protege a delivery e inbox/idempotência do B1 protege o settlement.
 - Ordem de locks: service-principal mapping/user -> inbox/idempotência -> billing -> encounter/contas/recebíveis -> PIX -> attempt -> inserts -> fenced delivery CAS.
 - O ingresso/replay HTTP nunca toca PIX ou attempt. No caminho financeiro, nenhum código anterior ao B1 pode bloquear PIX/attempt e a ordem efetiva permanece `billing -> PIX -> attempt`.
 - Crash antes do commit deixa delivery recuperável; crash após commit já observa `applied` e o replay B1 canônico.
+
+### Máquina determinística de delivery, retry e fencing
+
+- Toda delivery nasce `pending`, `attempts=0`, `max_attempts=8`, `next_attempt_at=received_at`, sem lease. Cada claim elegível (`pending` com `next_attempt_at <= now`, ou `processing` com lease expirada) executa uma única transação `FOR UPDATE SKIP LOCKED`, incrementa `attempts` e `lease_version`, grava `state='processing'`, `lease_owner`, token aleatório e `lease_expires_at=now()+60s`, e comita antes da UoW financeira.
+- Todo write posterior da delivery exige o predicado completo `(account_id,id,state='processing',lease_owner,lease_token,lease_version)`; CAS com zero linhas é `STALE_FENCE`, lança e reverte a UoW financeira. Worker sem lease válido não toca receipt, principal, PIX, attempt ou billing.
+- Falha retryable é somente: `PIX_NOT_CORRELATED` (attempt válido sem linha PIX/correlação), indisponibilidade/revogação transitória do principal antes do limite ou erro PostgreSQL/transporte explicitamente classificado transitório. O consumer faz CAS `processing -> pending`, limpa lease, grava código sanitizado e agenda `next_attempt_at = now() + min(5 * 2^(attempts-1), 900) seconds`.
+- Falha semântica, divergência de claims, provider/tenant/valor/estado incompatível, JSON já autenticado porém inválido, ou tentativa cancelada/expirada é terminal: CAS `processing -> reconciliation_required`, limpa lease e grava apenas código allowlisted. Não há retry infinito nem exposição de mensagem externa.
+- Quando `attempts >= max_attempts`, qualquer nova falha retryable termina em `reconciliation_required`. Um principal reativado recupera uma delivery ainda `pending` antes do teto; uma delivery já terminal exige redrive operacional explícito, auditado e separado, que apenas a devolve a `pending` sem alterar receipt ou efeitos financeiros.
+- Sucesso financeiro faz CAS `processing -> applied` na mesma UoW do B1; replay equivalente de inbox também é `applied` com efeito financeiro zero. Crash antes de qualquer CAS deixa `processing` para takeover após 60s; crash depois do CAS observa `applied`.
+
+O worker não usa `createTenantUnitOfWork`/`idempotency_requests` para esta UoW: esse wrapper grava idempotência e pode devolver `completed` antes da resolução do principal, do inbox e do fenced CAS, além de impedir redrive controlado. Deve existir um primitive explícito, por exemplo `runPixProviderSettlementTransaction`, que abre uma transação tenant-scoped sem replay de resposta, cria `TenantTransactionContext` com actor service, e executa nesta ordem: lock/revalidação do mapping e usuário -> claim/read do receipt e inbox -> B1 -> CAS final da delivery. O `delivery.id + lease_version` é o fence, não uma chave de resposta genérica; qualquer erro faz rollback integral e o retry é decidido somente pela máquina acima. Esse seam compartilhado deve ter RED próprio e não pode ser contornado pelo worker.
 
 ## Fronteira legada
 
@@ -164,15 +188,16 @@ HTTP autenticado
 ## Contrato RED obrigatório
 
 1. Extensão B1: observação de locks prova `billing -> PIX -> attempt`; o próprio B1 faz PIX `completed`, attempt `confirmed_pending_apply -> settled`, limpa marker antes de atualizar billing e reverte tudo em failpoint posterior; PIX legado continua verde.
-2. Extração B1: testes 14/14 permanecem verdes através de `@cvg-his-v2/module-pix`; shims da API só reexportam.
+2. Extração B1: os testes legados e B1/B2 permanecem verdes através de `@cvg-his-v2/module-pix`; a suíte focada atual é 18/18 e os shims da API só reexportam.
 3. HMAC/raw body: vetor conhecido, whitespace/ordem/Unicode, bordas `±300/301`, digest malformado, headers duplicados, limite 65.536/65.537, chunked, length falso, encoding, UTF-8, BOM e abort.
-4. Ingress DB: receipt+delivery atômicos, failpoint entre inserts, replay/divergência, 20 callbacks concorrentes, dois IDs para o mesmo attempt sem first-event-wins, callback antes do PIX/correlação local, FK do attempt, RLS, append-only, catálogo e grants.
+4. Ingress DB: receipt+delivery atômicos, failpoint entre inserts, replay/divergência, 20 callbacks concorrentes, dois IDs para o mesmo attempt sem first-event-wins, evento inválido A seguido de correção válida B, equivalência por `claims_fingerprint` canônico, callback antes do PIX/correlação local, attempt inexistente/cross-tenant sem receipt, FK/estados do attempt, RLS, append-only, catálogo e grants.
 5. HTTP real: socket/chunks reais, rate limit, status/envelope, zero contexto tenant antes de HMAC, zero settlement no callback e respostas/logs sanitizados.
-6. Principal: ausente, humano, interativo, inativo, revogado durante consumo e cross-tenant falham fechado; ativação posterior recupera retry.
+6. Principal: ausente, humano, interativo, inativo, revogado durante consumo e cross-tenant falham fechado; ativação posterior recupera retry. REDs separados devem cobrir username, email, hidratação, cache frio/quente, refresh/session e MFA para provar que `service` nunca entra no login.
 7. Worker: consumer não faz staging fora do B1; dois pools/workers, lease expiry/takeover, stale fence, dois eventos distintos equivalentes/divergentes, restart após receipt commit e crash após B1 antes do retorno produzem um settlement e uma completion canônica.
 8. Rollback: failpoint após cada escrita do B1 e antes/depois do fenced delivery CAS deixa somente receipt+delivery retryable e nenhum efeito financeiro parcial.
-9. Legacy/boundaries: B2 não liquida por `/confirm`, event bus genérico, consumer legado ou import cross-app.
-10. Regressão/qualidade: B1, B2a, cash, outbox, API, worker, RLS, OpenAPI, typecheck, lint, coverage global >=80%, coverage dos seams críticos, secret/dependency scans e crítica independente.
+9. Shared-UoW/ACL: primitive sem `idempotency_requests` devolve sempre o controle ao consumer, o fence `delivery.id + lease_version` é obrigatório, redrive não herda resposta cacheada, e migration + reconciler + init + Helm preservam a matriz API/worker least-privilege após reruns.
+10. Legacy/boundaries: B2 não liquida por `/confirm`, event bus genérico, consumer legado ou import cross-app.
+11. Regressão/qualidade: B1, B2a, cash, outbox, API, worker, RLS, OpenAPI, typecheck, lint, coverage global >=80%, coverage dedicada dos seams críticos (incluindo `apps/worker`, rotas API e `packages/modules/pix`), secret/dependency scans e crítica independente.
 
 Arquivos RED previstos:
 
@@ -186,24 +211,29 @@ Arquivos RED previstos:
 - `tests/integration/database/pix-provider-settlement-consumer.test.ts`
 - `tests/integration/pix-provider-webhook-settlement-e2e.test.ts`
 - `tests/unit/architecture/pix-b2b-boundaries.test.ts`
+- `tests/unit/auth/service-principal-interactive-login.test.ts`
+- `tests/integration/rls/pix-provider-runtime-grants.test.ts`
+- `tests/integration/database/pix-provider-shared-uow.test.ts`
 
 ## Ordem de implementação após o gate
 
-1. Executar baseline B1/B2a e registrar o primeiro RED de tentativa reservada.
-2. Extrair o mesmo B1 para `packages/modules/pix`, com shims e regressão verde.
-3. Escrever/rodar REDs de verifier/raw body.
-4. Escrever/rodar REDs de migration/RLS/receipt/delivery/principal e implementar `0111`.
-5. Implementar ingresso/rota/composição/OpenAPI somente após seus REDs.
-6. Escrever/rodar REDs do consumer e implementar claim, principal, chamada única ao B1 estendido e fenced completion na mesma UoW; o consumer não possui staging financeiro.
-7. Rodar restart/concurrency multi-pool e harness de known-bad.
-8. Executar regressões, cobertura, segurança e crítica independente; somente então produzir `VERIFIED`.
+1. Baseline B1/B2a e primeiro RED de tentativa reservada — concluído (`EVT-0038`).
+2. GREEN mínimo no B1 atual, incluindo integridade de timestamp/provider/reserva/replay e rollback — concluído (`EVT-0041`, 18/18).
+3. Extração para `packages/modules/pix`, exports/dependências e shims da API — implementado; aguarda revisão independente específica da extração.
+4. Após essa revisão, escrever/rodar REDs de verifier/raw body, incluindo dummy-key/comparação 32/32 instrumentável e clock injetado.
+5. Escrever/rodar REDs de migration/RLS/ACL/receipt/delivery/principal, reconciler/init/Helm reruns e implementar `0111`.
+6. Implementar ingresso/rota/composição/OpenAPI somente após seus REDs; HTTP deve usar socket bruto (`node:net`) para framing/abort/headers duplicados, e produção deve falhar fechado no bootstrap API/worker.
+7. Implementar o primitive shared `runPixProviderSettlementTransaction` e seus REDs; só depois escrever/rodar REDs do consumer e implementar claim, principal, chamada única ao B1 estendido e fenced completion na mesma UoW; o consumer não possui staging financeiro.
+8. Rodar restart/concurrency multi-pool, revogação com barreiras determinísticas e harness de known-bad.
+9. Rodar uma configuração de cobertura dedicada que inclua explicitamente B1 extraído, `apps/worker`, rotas API e todos os seams críticos, com thresholds por seam além do global >=80%.
+10. Executar regressões, cobertura, segurança e crítica independente; somente então produzir `VERIFIED`.
 
 ## Ownership previsto
 
 - Extração/extensão B1: `packages/modules/pix/src/confirmed-settlement/*`, package exports/dependencies, shims da API e regressão B1. Um único writer possui esta etapa.
-- Dados: `packages/db/migrations/0111_*`, schemas/exports, runtime grants e testes PostgreSQL/RLS.
+- Dados: `packages/db/migrations/0111_*`, schemas/exports, runtime grants, `packages/db/src/reconcile-runtime-roles.ts`, `infra/postgres/init-runtime-role.sh`, Helm maintenance reruns e testes PostgreSQL/RLS/ACL.
 - Inbound API: raw reader, keyring/verifier, repository/command de receipt, rota, composition root, rate limit, OpenAPI e bloqueio legado.
-- Worker: repository de delivery, claim/fence/backoff, consumer B1, bootstrap/runner/health/metrics e testes.
+- Shared/worker: primitive `runPixProviderSettlementTransaction` sem idempotência de resposta, repository de delivery, claim/fence/backoff, consumer B1, bootstrap/runner/health/metrics e testes.
 - Integração: HTTP real, restart/concurrency multi-pool, boundary harness, cobertura, segurança e crítica independente.
 
 O worker depende da extração B1 integrada; inbound puro e migration RED podem avançar em paralelo somente com ownership de arquivos disjunto.
@@ -222,10 +252,10 @@ O worker depende da extração B1 integrada; inbound puro e migration RED podem 
 
 A documentação atual da Pagar.me consultada não congela um contrato V5 completo de assinatura/freshness. As páginas HMAC-SHA1 encontradas são legadas V2/V4. Portanto `local-pix` continua estritamente sintético e nenhum mecanismo de assinatura real Pagar.me é inferido neste recorte.
 
-## Critérios do gate pendente
+## Critérios do gate e revalidação
 
 - `IR-001`: limites B2b/B2c/provider real/produção, owners e dependências são explícitos.
-- `IR-002`: protocolo, autoridade tenant, schemas, principal, estados, atomicidade, locks, retries, migration, rollback e fronteira legada estão congelados.
-- `IR-003`: REDs executáveis cobrem raw bytes, replay divergente, dois tenants, callback antes do outbound, dois callbacks/workers, ambos os limites de restart, rollback por escrita, principal revogado, produção fail-closed, RLS, regressões, cobertura e revisão independente.
+- `IR-002`: protocolo/canonicalização, autoridade tenant, schemas/ACL/RLS, principal interativo, estados, atomicidade, locks, retries/fencing determinísticos, migration, rollback e fronteira legada estão congelados.
+- `IR-003`: REDs executáveis cobrem raw bytes via socket, dummy HMAC, JSON duplicado, replay divergente, attempt inexistente/cross-tenant, dois tenants, callback antes do PIX (não antes do attempt), dois callbacks/workers, ambos os limites de restart, rollback por escrita, principal revogado e cada caminho de login/cache/MFA, produção fail-closed, ACL/RLS least-privilege, regressões, cobertura dedicada e revisão independente.
 
-Decisão atual: `NO-GO` para implementação até existir `.agent/gates/implementation-ready-CVG-002B2b.json` revisado de forma independente e, por risco `HIGH`, uma autoridade explícita limitada ao recorte sintético/reversível.
+Decisão atual: `GO` apenas para a sequência reversível autorizada pelo gate `GATE-CVG-002B2B-IR-001`; `VERIFIED` continua pendente. Nenhum comportamento de callback, migration 0111, principal ou worker deve ser inferido da aprovação de prontidão ou da suíte 18/18.

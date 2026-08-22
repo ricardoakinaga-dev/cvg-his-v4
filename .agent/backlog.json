@@ -67,7 +67,7 @@
       "title": "Ingest signed synthetic PIX receipts and apply them durably through B1",
       "stage": "BUILD",
       "priority": "P0",
-      "status": "TODO",
+      "status": "IN_PROGRESS",
       "origin": "CVG-002B2 decomposition plus independent architecture, security, official-research and TDD reviews",
       "dependencies": [
         "CVG-002B2A"
@@ -77,10 +77,11 @@
       "evidence_refs": [
         ".agent/tasks/CVG-002B2B.md",
         "docs/2026-08-22-handoff-cvg-002b2.md",
+        ".agent/artifacts/CVG-002B2B-gate-review-2026-08-22.md",
         ".agent/gates/verified-CVG-002B2a.json",
         ".agent/gates/verified-CVG-002B1.json"
       ],
-      "next_action": "Obtain a fresh independent review of the pre-gate contract, then record HIGH-risk bounded authority and an IMPLEMENTATION_READY gate before writing RED tests."
+      "next_action": "Start the raw-body/HMAC verifier and socket-boundary RED sequence while preserving the extracted 18/18 B1 regression; callback, migration, principal and worker remain gated by later evidence."
     },
     {
       "id": "CVG-003",

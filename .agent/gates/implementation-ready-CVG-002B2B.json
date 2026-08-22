@@ -1,0 +1,92 @@
+{
+  "record_id": "GATE-CVG-002B2B-IR-001",
+  "timestamp": "2026-08-22T19:26:13-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-002B2B signed synthetic PIX inbound and durable shared-B1 settlement worker",
+  "scope_ref": "CVG-002B2B",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The bounded B2b synthetic inbound/shared-B1 worker slice, its owners and dependencies are explicit and non-overlapping with B2a, B2c, real providers and production.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-002B2B.md",
+        ".agent/tasks/CVG-002B2.md",
+        "docs/2026-08-22-handoff-cvg-002b2.md",
+        ".agent/artifacts/CVG-002B2B-gate-review-2026-08-22.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Only reversible repository code, disposable PostgreSQL and the explicit local synthetic provider are in scope; B2c SPA/E2E, real provider contracts, credentials, external mutation, production, deployment and release remain excluded."
+    },
+    {
+      "id": "IR-002",
+      "description": "The raw-body protocol, canonical claims and fingerprints, tenant authority, attempt states, receipt/delivery schemas, service-principal policy, ACL/RLS durability, shared no-replay worker transaction, lock order, retry/fencing machine, rollback and legacy boundary are frozen enough for a coherent implementation.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-002B2B.md",
+        "packages/shared/database/src/tenant-unit-of-work.ts",
+        "packages/db/src/reconcile-runtime-roles.ts",
+        "infra/postgres/init-runtime-role.sh",
+        "infra/helm/cvg-his-v2/templates/database-maintenance-jobs.yaml",
+        "packages/db/migrations/0110_encounter_payment_attempts.sql",
+        "apps/api/src/confirmed-pix-settlement-repository.ts",
+        "apps/worker/src/pix-payment-dispatch-repository.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The current code still contains the legacy/current seams named by the contract; this gate authorizes the RED/GREEN implementation work that must replace or isolate them. It is not evidence that migration 0111, the shared primitive, ACL changes or worker exist."
+    },
+    {
+      "id": "IR-003",
+      "description": "The RED-first files and executable checks cover raw socket/HMAC behavior, canonicalization, attempt preconditions, replay/divergence, two tenants, RLS/least privilege after reconciler reruns, service login/cache/MFA exclusion, B1 lock/staging, worker fencing/restart/rollback, production fail-closed, legacy boundaries, dedicated coverage, regressions and security review.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-002B2B.md",
+        ".agent/artifacts/CVG-002B2B-gate-review-2026-08-22.md",
+        ".agent/plans/premium-enterprise-mvp.md",
+        "tests/integration/database/confirmed-pix-settlement-command.test.ts",
+        "vitest.config.ts",
+        "apps/worker/package.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The baseline B1 is green, but B2b REDs, dedicated coverage and behavior are not yet executed; later implementation and verification gates are mandatory."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-002B2B.md",
+    ".agent/tasks/CVG-002B2.md",
+    "docs/2026-08-22-handoff-cvg-002b2.md",
+    ".agent/artifacts/CVG-002B2B-gate-review-2026-08-22.md",
+    ".agent/gates/verified-CVG-002B2a.json",
+    ".agent/gates/verified-CVG-002B1.json",
+    "packages/shared/database/src/tenant-unit-of-work.ts",
+    "packages/db/src/reconcile-runtime-roles.ts",
+    "infra/postgres/init-runtime-role.sh",
+    "infra/helm/cvg-his-v2/templates/database-maintenance-jobs.yaml"
+  ],
+  "confidence": "HIGH",
+  "gaps": [],
+  "conditions": [],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner)",
+    "scope": "CVG-002B2B signed synthetic PIX inbound and durable shared-B1 settlement worker",
+    "decision": "Authorize reversible repository implementation, disposable PostgreSQL and an explicitly local synthetic PIX provider for the bounded B2b inbound receipt/shared-B1 worker slice; real providers, credentials, external mutation, production, deployment and release remain excluded.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-002B2B-IR-001",
+    "expires_or_revalidates": "Revalidate before real provider contracts, credentials, external mutation, production ACL/deployment, irreversible migration, operational redrive authority or release acceptance; revalidate after changes to protocol, attempt/delivery states, lock order, service-principal policy, shared UoW, runtime grants or coverage configuration."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "next_action": "Write and execute the first rejecting B1/B2 attempt-reservation test before implementing migration, shared transaction primitive or B2b production code.",
+  "revalidation_triggers": [
+    "Any expansion from local synthetic provider/reversible code/disposable PostgreSQL to real provider, credentials, external mutation, production, deployment or release",
+    "Changes to attempt accepted states, claims canonicalization/fingerprint domains, delivery lease/CAS/backoff/max-attempt rules or billing-to-PIX-to-attempt lock order",
+    "Changes to service-principal login/cache/MFA filters, runtime ACL reconciler/init/Helm behavior or the shared no-replay worker transaction",
+    "A RED, role regression, coverage seam, security scan or independent review disproves the bounded readiness assumptions"
+  ],
+  "supersedes": null
+}

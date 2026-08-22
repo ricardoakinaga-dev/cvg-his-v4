@@ -41,6 +41,7 @@ export function createWorkspaceAliases(root: string): Record<string, string> {
     '@cvg-his-v2/module-prescriptions': from('packages/modules/prescriptions/src/index.ts'),
     '@cvg-his-v2/module-mfa': from('packages/modules/mfa/src/index.ts'),
     '@cvg-his-v2/module-ml': from('packages/modules/ml/src/index.ts'),
+    '@cvg-his-v2/module-pix': from('packages/modules/pix/src/index.ts'),
     '@cvg-his-v2/module-lgpd': from('packages/modules/lgpd/src/index.ts'),
     '@cvg-his-v2/module-counter-sales': from('packages/modules/counter-sales/src/index.ts'),
     '@cvg-his-v2/shared-auth-sdk': from('packages/shared/auth-sdk/src/index.ts'),
