@@ -335,6 +335,21 @@ Cursor pagination para grandes históricos, jornada clínica-financeira completa
 Redis failover real, provider, SPA/B2c, paridade Vetus, WCAG, operações,
 cobertura e release continuam gates separados.
 
+## Fechamento bounded — CVG-002C6 charge capture (23/08/2026)
+
+O RED inicial confirmou que o consumo inpatient gravava estoque sem gerar
+`billing_item`. O commit `ef4ee2d` adiciona preço assistencial separado do
+custo, origem `inventory_consumption` idempotente, captura financeira no mesmo
+UoW, retry de CAS e trigger SQL tenant/encounter-aware. A suíte HTTP/PostgreSQL
+passou `3/3`; o cutoff SQL passou `4/4`; inventory `21/21`; billing `16/16`;
+OpenAPI `337/390`; typechecks e audit de dependências passaram.
+
+A revisão final aprovou o slice sem Critical/High/Medium. Isso não promove o
+Quality Bar: discharge, cash receipt, journal e outbox ainda não estão no mesmo
+fluxo público, e seguem abertos failpoints, conflito same-key, CRUD do preço,
+cursor de auditoria, Redis failover, provider, SPA/B2c, paridade Vetus, WCAG,
+target operations, cobertura, deploy/restore e release.
+
 ## Handoff de auditoria clínica-financeira — 23/08/2026
 
 O handoff dedicado está em

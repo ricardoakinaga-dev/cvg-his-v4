@@ -1,0 +1,82 @@
+{
+  "record_id": "GATE-CVG-002C6-IR-001",
+  "timestamp": "2026-08-23T10:45:30-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-002C6 bounded inpatient inventory charge capture",
+  "scope_ref": "CVG-002C6",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The bounded inventory-to-billing slice, its owner, dependencies and explicit limits are recorded without claiming the complete clinical-financial journey.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/backlog.json",
+        ".agent/artifacts/CVG-002C6-clinical-financial-audit-2026-08-23.md",
+        "docs/2026-08-23-handoff-cvg-002c6-clinical-financial-audit.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Discharge, receipt, journal, outbox, provider, deployment and release remain outside this bounded gate."
+    },
+    {
+      "id": "IR-002",
+      "description": "The price source, inventory source idempotency, CAS retry, tenant/encounter database invariant and HTTP/UoW boundary are coherent enough for the bounded implementation.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/db/migrations/0117_inventory_charge_capture_contract.sql",
+        "packages/db/migrations/0118_inventory_consumption_stay_integrity.sql",
+        "apps/api/src/routes/inventory-routes.ts",
+        "packages/modules/inventory/src/index.ts",
+        "packages/modules/billing/src/index.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The source price is explicit on inventory_items; catalog/price-table linkage and full settlement remain future work."
+    },
+    {
+      "id": "IR-003",
+      "description": "The RED/GREEN tests cover real HTTP, PostgreSQL, replay, distinct-key concurrency, no-price rejection, two-tenant isolation and direct SQL stay integrity.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "tests/integration/database/inpatient-inventory-charge-capture-http-postgres.test.ts",
+        "tests/integration/database/inpatient-discharge-cutoff.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-002C6-IMPLEMENTATION-001",
+        ".agent/verification.jsonl#VFY-CVG-002C6-REGRESSION-001",
+        ".agent/verification.jsonl#VFY-CVG-002C6-REVIEW-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Same-key payload conflict, per-write failpoints, outbox semantics and the full admission-to-receipt journey remain open."
+    }
+  ],
+  "evidence": [
+    ".agent/artifacts/CVG-002C6-clinical-financial-audit-2026-08-23.md",
+    "docs/2026-08-23-handoff-cvg-002c6-clinical-financial-audit.md",
+    "tests/integration/database/inpatient-inventory-charge-capture-http-postgres.test.ts",
+    "packages/db/migrations/0117_inventory_charge_capture_contract.sql",
+    "packages/db/migrations/0118_inventory_consumption_stay_integrity.sql",
+    ".agent/verification.jsonl#VFY-CVG-002C6-IMPLEMENTATION-001"
+  ],
+  "confidence": "HIGH",
+  "gaps": [],
+  "conditions": [],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner)",
+    "scope": "CVG-002C6 bounded inpatient inventory charge capture",
+    "decision": "Authorize reversible repository implementation, disposable PostgreSQL and local HTTP verification for the bounded inpatient inventory charge-capture slice; full clinical-financial journey, production, providers, credentials, deployment and release remain excluded.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-002C6-IR-001",
+    "expires_or_revalidates": "Revalidate before expanding to external providers, credentials, production, deployment, irreversible migrations, full financial settlement or release acceptance."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "next_action": "Extend the bounded C6 slice into discharge, receipt, journal and outbox with failpoints and full HTTP/PostgreSQL evidence before any broader gate promotion.",
+  "revalidation_triggers": [
+    "Expansion from bounded inventory charge capture to full clinical-financial settlement",
+    "Changes to source price semantics, billing source uniqueness, transaction scope or database trigger invariants",
+    "A regression, security scan or independent review finds a Critical/High/Medium issue"
+  ],
+  "supersedes": null
+}

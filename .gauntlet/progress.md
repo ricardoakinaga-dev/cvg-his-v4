@@ -284,3 +284,21 @@ Próximo RED: criar
 expor a lacuna de charge capture e decidir o contrato de preço antes do GREEN.
 O Quality Bar e o ERP continuam `IN_PROGRESS/PARTIAL`, com provider, SPA,
 Vetus parity, WCAG, operações, cobertura e release separados.
+
+## Continuidade executada — CVG-002C6 (23/08/2026, 10:45 BRT)
+
+O RED de charge capture foi convertido em um GREEN bounded no commit
+`ef4ee2d`. A implementação separa preço assistencial de custo, registra billing
+item com origem `inventory_consumption`, mantém replay/concurrency por índice
+parcial tenantizado, reidrata após conflito de CAS e fecha no PostgreSQL as
+referências de stay inexistente, encounter divergente, cross-tenant e pós-alta.
+
+Evidência fresca: HTTP/PostgreSQL C6 `3/3`, cutoff SQL `4/4`, module-inventory
+`21/21`, module-billing `16/16`, typechecks PASS, OpenAPI `337/390` e
+`pnpm audit --audit-level=high` sem vulnerabilidades conhecidas. O review final
+foi APPROVE sem Critical/High/Medium no slice.
+
+O próximo trabalho continua sendo a jornada admission → handoff/permanence →
+inventory → discharge → billing → cash receipt → journal/audit/outbox, com
+failpoints e conflito de payload same-key. O programa permanece
+`IN_PROGRESS/PARTIAL`; nenhum gate externo ou de release foi promovido.

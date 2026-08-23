@@ -914,3 +914,42 @@ O handoff dedicado, o artefato e os ledgers foram publicados em
 11 PASS, 1 WARN histórico e 0 FAIL. Para retomar, leia o handoff dedicado e
 execute o RED de charge capture; não stageie o cache
 `packages/design-system/tsconfig.vue.tsbuildinfo`.
+
+## Registro de continuidade mais recente — CVG-002C6 (23/08/2026, 10:43 BRT)
+
+O slice de captura de cobrança de consumo inpatient foi implementado e
+publicado no commit `ef4ee2d` (`feat: capture inpatient inventory charges`).
+Este commit não encerra o programa; ele fecha apenas a fronteira bounded de
+estoque → billing item.
+
+### Evidência executada
+
+- RED inicial: consumo/movimento/idempotência persistiam com `billingItems=0` e
+  `billingRecords=0`;
+- GREEN HTTP/PostgreSQL com dois tenants: **3/3**;
+- cutoff SQL (pós-alta, stay inexistente, encounter divergente): **4/4**;
+- module-inventory: **21/21** e typecheck PASS;
+- module-billing: **16/16** e typecheck PASS;
+- shared-contracts e API typecheck: PASS;
+- OpenAPI: **337 paths / 390 schemas**;
+- `pnpm audit --audit-level=high`: sem vulnerabilidades conhecidas;
+- revisão independente final: APPROVE, sem Critical/High/Medium no slice.
+
+O cenário GREEN prova replay same-key, duas chaves distintas concorrentes com
+`201/201`, três consumos/movimentos/billing items, total `240`, saldo `4`,
+preço ausente com `422 PRICE_SOURCE_REQUIRED`, isolamento bearer A/B e tentativa
+SQL cross-tenant rejeitada com `23503`. A migration `0118` também preserva o
+cutoff de pós-alta no trigger existente.
+
+### Próximo passo obrigatório
+
+Retomar a jornada maior `admission → handoff/permanence → inventory →
+discharge → billing → cash receipt → journal/audit/outbox`, adicionando
+rollback/failpoints, conflito de payload same-key, CRUD unitário do preço e
+paginação de auditoria. Discharge, recibo, journal e outbox ainda não estão
+costurados neste endpoint; o Quality Bar e o ERP seguem `IN_PROGRESS/PARTIAL`.
+Provider real, Redis failover, SPA/B2c, paridade Vetus, WCAG, target
+operations, cobertura, deploy/restore e release continuam gates separados.
+
+O cache user-owned `packages/design-system/tsconfig.vue.tsbuildinfo` não foi
+estagiado nem commitado.

@@ -1,9 +1,10 @@
 # CVG-002C6 — auditoria da jornada clínica-financeira
 
 **Data:** 23 de agosto de 2026
-**Tipo:** handoff read-only / preparação de RED
+**Tipo:** handoff + evidência de implementação bounded
 **Programa:** `CVG-002` / `CVG-002C2`
-**Status:** não implementado; parent continua `IN_PROGRESS/PARTIAL`.
+**Status:** slice CVG-002C6 implementado e verificado; parent continua
+`IN_PROGRESS/PARTIAL`.
 
 ## Objetivo do registro
 
@@ -62,6 +63,62 @@ demonstrar:
 Preço de venda, custo, catálogo e charge capture são decisão de domínio; o
 teste deve deixar a lacuna explícita em vez de escolher silenciosamente um
 preço incorreto.
+
+## Atualização de execução — CVG-002C6 (23/08/2026)
+
+O RED foi executado e falhou pela ausência de captura financeira: a primeira
+execução HTTP/PostgreSQL passou o consumo clínico, mas encontrou
+`billingItems=0` e `billingRecords=0` enquanto o consumo/movimento/idempotência
+já estavam persistidos. A implementação foi então publicada no commit
+`ef4ee2d` (`feat: capture inpatient inventory charges`).
+
+### GREEN bounded comprovado
+
+- `POST /inventory/consumptions` agora exige uma stay inpatient tenantizada e
+  com o mesmo encounter antes de consumir estoque;
+- o item de estoque tem `chargeUnitPriceAmount` separado de
+  `unitCostAmount`, nullable para itens ainda não precificados e estritamente
+  positivo quando configurado;
+- o consumo inpatient cria um `billing_item` `supply` com
+  `source_entity_type=inventory_consumption`, preço determinístico e índice
+  parcial único por conta/origem;
+- consumo, movimento, billing item/record e as auditorias ficam no mesmo
+  comando/UoW HTTP; falhas reidratam os caches depois do rollback;
+- o CAS de estoque emite conflito estruturado e reidrata/re tenta uma vez,
+  permitindo duas chaves distintas concorrentes sem saldo perdido;
+- a função de trigger SQL mantém o cutoff pós-alta e agora rejeita stay
+  inexistente (`23503`), encounter incompatível (`23514`) e referência de
+  stay de outro tenant como “não encontrada”.
+
+### Evidência executada
+
+| Verificação | Resultado |
+| --- | ---: |
+| `inpatient-inventory-charge-capture-http-postgres.test.ts` | 3/3 |
+| `inpatient-discharge-cutoff.test.ts` | 4/4 |
+| `@cvg-his-v2/module-inventory` | 21/21 + typecheck |
+| `@cvg-his-v2/module-billing` | 16/16 + typecheck |
+| shared contracts / API typecheck | PASS |
+| OpenAPI | 337 paths / 390 schemas |
+| `pnpm audit --audit-level=high` | sem vulnerabilidades conhecidas |
+| `git diff --cached --check` antes do commit | PASS |
+
+O teste HTTP prova replay same-key, duas chaves distintas com `201/201`, três
+consumos/movimentos/billing items, total faturado `240`, saldo `4`, rejeição
+opaca A/B e ausência de mutação para item sem preço. O teste SQL de cutoff
+prova também stay inexistente, encounter divergente e referência cross-tenant.
+
+### Limites honestos para a retomada
+
+Este é um incremento bounded, não a jornada clínica-financeira completa. O
+endpoint ainda não fecha discharge, cash receipt, journal ou outbox na mesma
+jornada pública; o teste C6 não declara evento de outbox por consumo. Também
+permanece sem teste dedicado de conflito de payload para a mesma
+`Idempotency-Key`, CRUD unitário específico do novo preço e rollback/failpoint
+em cada escrita. O Quality Bar, CVG-002C6, CVG-002, CVG-002B2B e o ERP geral
+continuam `IN_PROGRESS/PARTIAL`; provider, Redis failover real, SPA/B2c,
+paridade Vetus, WCAG, target operations, cobertura, deploy/restore e release
+continuam gates separados.
 
 ## Não-gates
 

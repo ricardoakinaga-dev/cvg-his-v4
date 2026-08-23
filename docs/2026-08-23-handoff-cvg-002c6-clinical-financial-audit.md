@@ -139,3 +139,57 @@ Este handoff e os ledgers foram publicados em
 `HEAD == origin/agent/sync-v4-full-program`. O checker canônico retorna 11
 PASS, 1 WARN histórico de ownership paralelo e 0 FAIL. O único caminho dirty
 é o cache user-owned `packages/design-system/tsconfig.vue.tsbuildinfo`.
+
+## Atualização executada — implementação CVG-002C6
+
+O próximo RED foi executado contra HTTP real, PostgreSQL efêmero e dois
+tenants. A primeira execução falhou exatamente na lacuna esperada: consumo e
+movimento foram persistidos, porém não havia `billing_item`/`billing_record`
+para a origem `inventory_consumption`. O GREEN bounded foi publicado em
+`ef4ee2d` (`feat: capture inpatient inventory charges`).
+
+### O que mudou
+
+- `inventory_items.charge_unit_price_amount` separa preço assistencial de
+  custo, aceita `NULL` para item ainda sem preço e exige valor positivo quando
+  configurado;
+- contratos compartilhados, Drizzle/OpenAPI e repositório persistem o novo
+  campo;
+- billing aceita `inventory_consumption` e possui unicidade parcial tenantizada
+  para replay/concurrency;
+- `POST /inventory/consumptions` valida a stay/encounter no escopo da conta,
+  recusa preço ausente com `422 PRICE_SOURCE_REQUIRED`, grava o consumo e
+  captura o item financeiro no mesmo comando/UoW, com auditoria para billing e
+  inventory;
+- CAS de saldo produz `ConflictError` estruturado e reidrata/re tenta uma vez;
+- migration `0118_inventory_consumption_stay_integrity.sql` endurece o trigger
+  SQL já existente: stay inexistente (`23503`), encounter divergente (`23514`),
+  referência cross-tenant e pós-alta são rejeitados no banco.
+
+### Evidência fresca
+
+- `tests/integration/database/inpatient-inventory-charge-capture-http-postgres.test.ts`: **3/3**;
+- `tests/integration/database/inpatient-discharge-cutoff.test.ts`: **4/4**;
+- module-inventory: **21/21**; module-billing: **16/16**;
+- typechecks de inventory, billing, shared-contracts e API: **PASS**;
+- OpenAPI: **337 paths / 390 schemas**;
+- `pnpm audit --audit-level=high`: **No known vulnerabilities found**;
+- `git diff --check`: **PASS**; revisão independente final: **APPROVE**, sem
+  Critical/High/Medium no slice.
+
+O teste prova replay same-key, duas chaves distintas `201/201`, três
+consumos/movimentos/billing items, total `240`, saldo `4`, preço ausente sem
+mutação e isolamento A/B. A prova direta SQL também cobre stay inexistente,
+encounter incompatível e stay de outro tenant.
+
+### Retomada obrigatória
+
+O slice C6 não fecha a jornada inteira: discharge, cash receipt, journal e
+outbox ainda não estão costurados no mesmo fluxo público; não há failpoint por
+escrita, teste dedicado de conflito de payload same-key ou CRUD unitário do
+novo preço. O programa permanece `IN_PROGRESS/PARTIAL`, e os gates de provider,
+Redis failover real, SPA/B2c, paridade Vetus, WCAG, target operations,
+cobertura, deploy/restore e release continuam abertos.
+
+O cache user-owned
+`packages/design-system/tsconfig.vue.tsbuildinfo` permaneceu fora do commit.

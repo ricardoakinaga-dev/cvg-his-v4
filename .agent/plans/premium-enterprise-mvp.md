@@ -359,3 +359,15 @@ HTTP/PostgreSQL test covers admission -> inventory -> discharge -> receipt /
 ledger / audit / outbox with replay, concurrency and failpoints. The next
 bounded action is the RED named in `CVG-002C6`; no global or external gate is
 promoted.
+
+Plan revision note, 2026-08-23 (CVG-002C6 bounded GREEN): The rejecting RED was
+executed, then implementation `ef4ee2d` added a separate nullable-positive
+inventory charge price, source-idempotent `inventory_consumption` billing,
+structured CAS retry and database stay/encounter/tenant integrity. Fresh HTTP /
+PostgreSQL evidence is 3/3 for charge capture, 4/4 for discharge cutoff,
+inventory 21/21, billing 16/16, OpenAPI 337/390, typechecks PASS and audit has
+no known high vulnerabilities. The independent final review approved the
+bounded slice without Critical/High/Medium findings. The parent plan remains
+IN_PROGRESS/PARTIAL: discharge, receipt, journal and outbox are not yet one
+public journey, and payload-conflict, failpoint, price-CRUD and audit-cursor
+follow-ups remain open.
