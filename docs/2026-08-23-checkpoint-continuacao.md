@@ -752,3 +752,25 @@ verificação `VFY-DOCS-CONTINUATION-018`. O próximo trabalho é a matriz HTTP 
 da internação e a revisão do cache de auditoria em falha tardia, seguida da
 jornada clínica-financeira completa. O programa permanece
 `IN_PROGRESS/PARTIAL`.
+## Ponteiro final confirmado — 23/08/2026, 07:42 BRT
+
+Após a reconciliação final, `HEAD == origin/agent/sync-v4-full-program ==
+c8d78d058d7f95dc37fc7ec6802253419d048e0b`. A verificação correspondente é
+`VFY-DOCS-CONTINUATION-019`; o checker mantém 11 PASS, 1 WARN histórico e 0
+FAIL. O cache user-owned `packages/design-system/tsconfig.vue.tsbuildinfo`
+continua sendo o único caminho dirty e não deve ser staged.
+
+Ponto de entrada executável:
+
+```bash
+cd /home/ricardo/cvg-his-v4
+git switch agent/sync-v4-full-program
+git status --short
+git log -1 --oneline
+python3 /home/ricardo/.codex/skills/engineering-framework/scripts/check_state.py "$PWD"
+```
+
+Retomar pela matriz HTTP A/B da internação e pela revisão de auditoria em
+falha tardia; depois expandir admissão → handoff/permanência → estoque → alta
+→ billing → recebimento/ledger/auditoria/outbox. O estado global permanece
+`IN_PROGRESS/PARTIAL`.
