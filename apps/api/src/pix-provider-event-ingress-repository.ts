@@ -31,6 +31,10 @@ export interface PixProviderEventIngressResult {
   readonly deliveryId: string;
 }
 
+export interface PixProviderEventIngressRepository {
+  persist(input: PixProviderEventIngressInput): Promise<PixProviderEventIngressResult>;
+}
+
 export type PixProviderEventIngressCheckpoint = 'after_receipt_insert' | 'after_delivery_insert';
 
 export interface PixProviderEventIngressRepositoryOptions {
@@ -86,7 +90,7 @@ function conflict(): never {
   );
 }
 
-export class DatabasePixProviderEventIngressRepository {
+export class DatabasePixProviderEventIngressRepository implements PixProviderEventIngressRepository {
   readonly #pool: Pool;
   readonly #onCheckpoint?: PixProviderEventIngressRepositoryOptions['onCheckpoint'];
   readonly #nowSeconds: () => number;

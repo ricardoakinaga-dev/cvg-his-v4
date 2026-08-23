@@ -18,29 +18,15 @@ import {
   verifyPixProviderWebhook,
   type PixProviderWebhookKey
 } from '../pix-provider-webhook-verifier.js';
+import type { PixProviderEventIngressRepository } from '../pix-provider-event-ingress-repository.js';
+
+export type { PixProviderEventIngressRepository } from '../pix-provider-event-ingress-repository.js';
 
 export const PIX_PROVIDER_WEBHOOK_PATH = '/webhooks/pix/synthetic/v1';
 export const PIX_PROVIDER_WEBHOOK_MAX_BODY_BYTES = 65_536;
 
-export interface PixProviderEventIngressRepository {
-  persist(input: {
-    readonly rawBody: Buffer;
-    readonly claims: PixProviderWebhookClaims;
-    readonly providerEventId: string;
-    readonly correlationId: string;
-    readonly receivedAt: string;
-  }): Promise<{
-    readonly status: 'created' | 'replayed';
-    readonly eventId: string;
-    readonly deliveryId: string;
-  }>;
-}
-
 export interface PixProviderWebhookRateLimiter {
-  check(input: {
-    readonly ip: string;
-    readonly route: string;
-  }): Promise<{
+  check(input: { readonly ip: string; readonly route: string }): Promise<{
     readonly blocked: boolean;
     readonly limit: number;
     readonly remaining: number;
@@ -93,6 +79,14 @@ function sendUnavailable(response: ServerResponse, correlationId: string): true 
   return sendJson(response, 503, {
     code: 'PIX_WEBHOOK_UNAVAILABLE',
     message: 'PIX webhook ingestion is unavailable',
+    correlationId
+  });
+}
+
+function sendConflict(response: ServerResponse, correlationId: string): true {
+  return sendJson(response, 409, {
+    code: 'PIX_WEBHOOK_CONFLICT',
+    message: 'PIX webhook cannot be accepted',
     correlationId
   });
 }
@@ -175,10 +169,7 @@ export async function handlePixProviderWebhookRoutes(
         correlationId
       });
     }
-    if (
-      error instanceof RawRequestBodyAbortedError
-      || error instanceof RawRequestBodyStreamError
-    ) {
+    if (error instanceof RawRequestBodyAbortedError || error instanceof RawRequestBodyStreamError) {
       return sendInvalidBody(response, correlationId);
     }
     return sendUnavailable(response, correlationId);
@@ -219,17 +210,19 @@ export async function handlePixProviderWebhookRoutes(
     return sendUnavailable(response, correlationId);
   }
 
-  let result;
   try {
-    result = await handlers.repository.persist({
+    await handlers.repository.persist({
       rawBody,
       claims,
       providerEventId: verification.eventId,
-      correlationId,
+      correlationId: correlationId.slice(0, 255),
       receivedAt: new Date().toISOString()
     });
   } catch (error) {
-    if (error instanceof AppError) throw error;
+    if (error instanceof AppError) {
+      if (error.statusCode === 409) return sendConflict(response, correlationId);
+      if (error.statusCode === 400) return sendInvalidPayload(response, correlationId);
+    }
     return sendUnavailable(response, correlationId);
   }
 
@@ -245,9 +238,7 @@ export function assertPixProviderWebhookReadiness(options: {
   readonly repository?: PixProviderEventIngressRepository;
 }): void {
   if (isProductionLike(options.environment) && options.syntheticEnabled === true) {
-    throw new Error(
-      'Production-like API cannot mount the synthetic PIX webhook capability'
-    );
+    throw new Error('Production-like API cannot mount the synthetic PIX webhook capability');
   }
   if (!options.syntheticEnabled) return;
   if (!options.keyring || options.keyring.size === 0 || !options.repository) {

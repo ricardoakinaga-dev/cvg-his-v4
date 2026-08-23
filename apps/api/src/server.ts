@@ -8,6 +8,7 @@ import { createAuthRateLimiter } from './http/auth-rate-limiter.js';
 import {
   assertPixProviderWebhookReadiness,
   handlePixProviderWebhookRoutes,
+  PIX_PROVIDER_WEBHOOK_PATH,
   type PixProviderEventIngressRepository,
   type PixProviderWebhookRateLimiter
 } from './routes/pix-provider-webhook-routes.js';
@@ -3981,7 +3982,13 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
     response.setHeader('x-request-id', correlationId);
     response.setHeader('x-trace-id', span.context.traceId);
     applySecurityHeaders(request, response, options.environment);
-    const corsDecision = applyCorsPolicy(request, response, corsAllowedOrigins);
+    const requestPathname = new URL(request.url ?? '/', 'http://localhost').pathname;
+    const isSyntheticPixWebhook =
+      options.pixProviderWebhookSyntheticEnabled === true
+      && requestPathname === PIX_PROVIDER_WEBHOOK_PATH;
+    const corsDecision = isSyntheticPixWebhook
+      ? { allowed: true, message: '' }
+      : applyCorsPolicy(request, response, corsAllowedOrigins);
 
     // Inject trace context into response for downstream propagation
     response.setHeader('tracestate', `cvg-api`);
@@ -4210,8 +4217,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
         pathname.startsWith('/auth/') ||
         pathname.startsWith('/api/auth/') ||
         pathname === '/webhooks/whatsapp/inbound' ||
-        pathname === '/api/webhooks/whatsapp/inbound' ||
-        pathname === '/webhooks/pix/synthetic/v1';
+        pathname === '/api/webhooks/whatsapp/inbound';
 
       // Health, metrics and OpenAPI already returned above, so anything reaching
       // here is tenant-scoped. Without a verified identity there is no account to

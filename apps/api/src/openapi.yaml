@@ -6474,6 +6474,106 @@ paths:
               schema:
                 $ref: '#/components/schemas/LaboratoryResultImportReportResponse'
 
+  /webhooks/pix/synthetic/v1:
+    post:
+      operationId: receiveSyntheticPixWebhook
+      summary: Receive an authenticated synthetic PIX provider callback
+      description: >
+        Accepts a provider-signed callback, durably records its receipt and
+        delivery, and returns an opaque acknowledgement. This capability is
+        disabled by default and is intended for non-production integration
+        testing until a real provider contract is homologated.
+      tags: [Webhooks]
+      security: []
+      parameters:
+        - name: Content-Type
+          in: header
+          required: true
+          schema:
+            type: string
+            enum: [application/json]
+        - name: X-CVG-Pix-Key-Id
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 128
+        - name: X-CVG-Pix-Timestamp
+          in: header
+          required: true
+          schema:
+            type: string
+            pattern: '^[0-9]{1,10}$'
+        - name: X-CVG-Pix-Event-Id
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 255
+        - name: X-CVG-Pix-Signature
+          in: header
+          required: true
+          schema:
+            type: string
+            pattern: '^v1=[0-9a-fA-F]{64}$'
+        - name: Content-Encoding
+          in: header
+          required: false
+          schema:
+            type: string
+            enum: [identity]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PixProviderWebhookPayload'
+      responses:
+        '202':
+          description: Callback durably accepted for asynchronous processing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PixWebhookAcceptedResponse'
+        '400':
+          description: Invalid framing or authenticated payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Invalid provider signature or key binding
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Provider event conflicts with an existing durable attempt
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '413':
+          description: Request body exceeds the 64 KiB ingress limit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Per-IP callback rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Durable ingress is unavailable; provider should retry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /webhooks/whatsapp/inbound:
     post:
       operationId: receiveWhatsAppInbound
@@ -10440,6 +10540,53 @@ components:
           format: uuid
           description: Request correlation ID for tracing
 
+    PixProviderWebhookPayload:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - accountId
+        - attemptId
+        - providerTransactionId
+        - amountCents
+        - currency
+        - confirmedAt
+      properties:
+        type:
+          type: string
+          enum: [pix.payment.confirmed.v1]
+        accountId:
+          type: string
+          format: uuid
+        attemptId:
+          type: string
+          format: uuid
+        providerTransactionId:
+          type: string
+          minLength: 1
+          maxLength: 255
+          pattern: '^[A-Za-z0-9][A-Za-z0-9._:-]{0,254}$'
+        amountCents:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 999999999999
+        currency:
+          type: string
+          enum: [BRL]
+        confirmedAt:
+          type: string
+          format: date-time
+
+    PixWebhookAcceptedResponse:
+      type: object
+      additionalProperties: false
+      required: [accepted]
+      properties:
+        accepted:
+          type: boolean
+          enum: [true]
+
     HealthResponse:
       type: object
       properties:
@@ -12173,7 +12320,19 @@ components:
 
     BillingRecord:
       type: object
-      required: [id, accountId, encounterId, patientId, ownerId, status, subtotalAmount, currency, createdAt, updatedAt]
+      required:
+        [
+          id,
+          accountId,
+          encounterId,
+          patientId,
+          ownerId,
+          status,
+          subtotalAmount,
+          currency,
+          createdAt,
+          updatedAt
+        ]
       properties:
         id:
           type: string
@@ -12405,7 +12564,18 @@ components:
 
     CashReconciliation:
       type: object
-      required: [registerId, accountId, status, openingAmount, expectedAmount, totalIn, totalOut, movementCount, reconciledAt]
+      required:
+        [
+          registerId,
+          accountId,
+          status,
+          openingAmount,
+          expectedAmount,
+          totalIn,
+          totalOut,
+          movementCount,
+          reconciledAt
+        ]
       properties:
         registerId:
           type: string
@@ -13499,7 +13669,8 @@ components:
 
     CreateFinancialPayableRequest:
       type: object
-      required: [supplierName, description, category, costCenterCode, costCenterName, dueAt, totalAmount]
+      required:
+        [supplierName, description, category, costCenterCode, costCenterName, dueAt, totalAmount]
       properties:
         supplierName:
           type: string
@@ -13971,7 +14142,20 @@ components:
 
     FiscalNfseServiceLineSummary:
       type: object
-      required: [description, codigoServico, cnae, quantity, unitValue, totalValue, issRate, issValue, pisValue, cofinsValue, csllValue]
+      required:
+        [
+          description,
+          codigoServico,
+          cnae,
+          quantity,
+          unitValue,
+          totalValue,
+          issRate,
+          issValue,
+          pisValue,
+          cofinsValue,
+          csllValue
+        ]
       properties:
         description:
           type: string
@@ -14707,7 +14891,16 @@ components:
 
     WhatsAppAppointmentReport:
       type: object
-      required: [appointmentId, deliveryStatus, vendorProvider, vendorMessageId, lastError, correlationIds, events]
+      required:
+        [
+          appointmentId,
+          deliveryStatus,
+          vendorProvider,
+          vendorMessageId,
+          lastError,
+          correlationIds,
+          events
+        ]
       properties:
         appointmentId:
           type: string
@@ -14834,7 +15027,22 @@ components:
 
     Attachment:
       type: object
-      required: [id, accountId, linkedEntityType, linkedEntityId, category, fileName, storageKey, mimeType, checksum, source, scanStatus, uploadedByUserId, createdAt]
+      required:
+        [
+          id,
+          accountId,
+          linkedEntityType,
+          linkedEntityId,
+          category,
+          fileName,
+          storageKey,
+          mimeType,
+          checksum,
+          source,
+          scanStatus,
+          uploadedByUserId,
+          createdAt
+        ]
       properties:
         id:
           type: string
@@ -15019,7 +15227,18 @@ components:
     InpatientOccurrence:
       type: object
       required:
-        [id, accountId, stayId, encounterId, type, severity, title, description, authoredByUserId, createdAt]
+        [
+          id,
+          accountId,
+          stayId,
+          encounterId,
+          type,
+          severity,
+          title,
+          description,
+          authoredByUserId,
+          createdAt
+        ]
       properties:
         id:
           type: string
@@ -15899,7 +16118,22 @@ components:
 
     Prescription:
       type: object
-      required: [id, accountId, medicalRecordId, encounterId, patientId, entryType, title, content, authoredByUserId, version, createdAt, updatedAt, medicationName]
+      required:
+        [
+          id,
+          accountId,
+          medicalRecordId,
+          encounterId,
+          patientId,
+          entryType,
+          title,
+          content,
+          authoredByUserId,
+          version,
+          createdAt,
+          updatedAt,
+          medicationName
+        ]
       properties:
         id:
           type: string
@@ -16091,7 +16325,8 @@ components:
 
     PrescriptionDocument:
       type: object
-      required: [title, prescriptionId, issuedAt, header, owner, patient, medications, footer, printText]
+      required:
+        [title, prescriptionId, issuedAt, header, owner, patient, medications, footer, printText]
       properties:
         title:
           type: string
@@ -17671,7 +17906,17 @@ components:
 
     CommissionSourceLine:
       type: object
-      required: [staffId, staffName, itemKind, sourceType, sourceId, sourceDescription, baseAmount, occurredAt]
+      required:
+        [
+          staffId,
+          staffName,
+          itemKind,
+          sourceType,
+          sourceId,
+          sourceDescription,
+          baseAmount,
+          occurredAt
+        ]
       properties:
         staffId:
           type: string
