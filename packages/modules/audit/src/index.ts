@@ -127,7 +127,7 @@ export const DEFAULT_OPERATIONAL_AUDIT_REQUIREMENTS: readonly OperationalAuditRe
 ];
 
 export class AuditService {
-  readonly #events: AuditEventSummary[] = [];
+  #events: AuditEventSummary[] = [];
   readonly #auditRepository?: AuditRepository;
   #persistenceQueue: Promise<void> = Promise.resolve();
   #persistenceError?: unknown;
@@ -187,6 +187,24 @@ export class AuditService {
 
   public list(): readonly AuditEventSummary[] {
     return [...this.#events];
+  }
+
+  /**
+   * Rebuilds the hot audit cache from committed repository rows.
+   *
+   * Route-level audit writes happen before the surrounding tenant command
+   * commits. If that command rolls back, the database row disappears while
+   * the in-process event would otherwise remain visible to readers. The
+   * caller must invoke this after the transaction has released its client.
+   */
+  public async refreshFromDatabase(accountId?: AccountId): Promise<void> {
+    if (!this.#auditRepository) return;
+
+    const committed = await this.#auditRepository.list(accountId);
+    const retained = accountId ? this.#events.filter((event) => event.accountId !== accountId) : [];
+    this.#events = [...committed, ...retained].sort(
+      (left, right) => new Date(right.occurredAt).getTime() - new Date(left.occurredAt).getTime()
+    );
   }
 
   public getOperationalCoverageReport(

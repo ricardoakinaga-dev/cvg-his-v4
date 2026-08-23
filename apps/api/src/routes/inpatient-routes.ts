@@ -20,7 +20,11 @@ import type {
   MarkInpatientDailyChargeBilledRequest
 } from '@cvg-his-v2/shared-contracts';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
-import { getDatabaseTransactionScope, type JsonValue } from '@cvg-his-v2/shared-database';
+import {
+  getDatabaseTransactionScope,
+  runWithoutDatabaseTransactionScope,
+  type JsonValue
+} from '@cvg-his-v2/shared-database';
 import { ConflictError, NotFoundError } from '@cvg-his-v2/shared-errors';
 import type {
   InpatientDailyChargeSummary,
@@ -747,6 +751,9 @@ export async function handleInpatientRoutes(
         if (billing && typeof billing.refreshFromDatabase === 'function') {
           refreshOperations.push(billing.refreshFromDatabase(principal.user.accountId as never));
         }
+        if (typeof audit.refreshFromDatabase === 'function') {
+          refreshOperations.push(audit.refreshFromDatabase(principal.user.accountId as never));
+        }
         await Promise.allSettled(refreshOperations);
       };
       if (getDatabaseTransactionScope()) {
@@ -754,7 +761,9 @@ export async function handleInpatientRoutes(
         // query on that scope would fail and leave the process empty; defer
         // rehydration until the UoW has rolled back and released the client.
         setImmediate(() => {
-          void refreshCaches();
+          runWithoutDatabaseTransactionScope(() => {
+            void refreshCaches();
+          });
         });
       } else {
         await refreshCaches();

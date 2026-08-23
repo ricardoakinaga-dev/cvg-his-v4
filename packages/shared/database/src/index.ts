@@ -47,4 +47,8 @@ export {
   type TransactionalAuditInput,
   type TransactionalOutboxInput
 } from './tenant-unit-of-work.js';
-export { getDatabaseTransactionScope, type DatabaseTransactionScope } from './transaction-scope.js';
+export {
+  getDatabaseTransactionScope,
+  runWithoutDatabaseTransactionScope,
+  type DatabaseTransactionScope
+} from './transaction-scope.js';

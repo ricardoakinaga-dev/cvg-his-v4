@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { Readable, Writable } from 'node:stream';
 import test from 'node:test';
 
+import { AuditService } from '@cvg-his-v2/module-audit';
 import { EncountersService } from '@cvg-his-v2/module-encounters';
 import { InpatientService } from '@cvg-his-v2/module-inpatient';
 import { OwnersService } from '@cvg-his-v2/module-owners';
@@ -608,6 +609,7 @@ test('handleInpatientRoutes refreshes hot caches after a rolled-back daily-charg
   }));
   const refreshBilling = test.mock.fn(async () => {});
   const refreshInpatient = test.mock.fn(async () => {});
+  const refreshAudit = test.mock.fn(async () => {});
   inpatient.refreshAccount = refreshInpatient as never;
   const createResponse = new MockResponse();
 
@@ -629,7 +631,7 @@ test('handleInpatientRoutes refreshes hot caches after a rolled-back daily-charg
       inpatient,
       billing: { addItem: addBillingItem, refreshFromDatabase: refreshBilling } as never,
       sectorBedService: {} as never,
-      audit: { write: () => {} } as never,
+      audit: { write: () => {}, refreshFromDatabase: refreshAudit } as never,
       requirePrincipal: () => createPrincipal()
     }
   );
@@ -654,7 +656,7 @@ test('handleInpatientRoutes refreshes hot caches after a rolled-back daily-charg
         inpatient,
         billing: { addItem: addBillingItem, refreshFromDatabase: refreshBilling } as never,
         sectorBedService: {} as never,
-        audit: { write: () => {} } as never,
+        audit: { write: () => {}, refreshFromDatabase: refreshAudit } as never,
         requirePrincipal: () => createPrincipal(),
         runCommand: runCommand as never
       }
@@ -664,6 +666,89 @@ test('handleInpatientRoutes refreshes hot caches after a rolled-back daily-charg
 
   assert.equal(refreshBilling.mock.callCount(), 1);
   assert.equal(refreshInpatient.mock.callCount(), 1);
+  assert.equal(refreshAudit.mock.callCount(), 1);
+});
+
+test('handleInpatientRoutes removes a rolled-back audit event from the real cache', async () => {
+  const inpatient = createInpatientService();
+  const stay = inpatient.list()[0];
+  const audit = new AuditService({
+    auditRepository: {
+      async create(): Promise<void> {},
+      async list(): Promise<readonly never[]> {
+        return [];
+      },
+      async findById(): Promise<null> {
+        return null;
+      }
+    }
+  });
+  const createResponse = new MockResponse();
+
+  await handleInpatientRoutes(
+    `/inpatient/${stay.id}/daily-charges`,
+    new MockRequest({
+      method: 'POST',
+      url: `/inpatient/${stay.id}/daily-charges`,
+      body: {
+        description: 'Diaria audit rollback',
+        chargeDate: '2026-05-28',
+        quantity: 1,
+        unitAmount: 180
+      }
+    }) as never,
+    createResponse as never,
+    'corr-inpatient-audit-cache-create',
+    {
+      inpatient,
+      billing: { addItem: async () => ({}) } as never,
+      sectorBedService: {} as never,
+      audit,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  const charge = createResponse.bodyJson<{ id: string }>();
+  const runCommand = async <T>(input: { readonly command: () => Promise<T> }): Promise<T> => {
+    await input.command();
+    throw new Error('injected failure after daily-charge audit');
+  };
+
+  await assert.rejects(
+    handleInpatientRoutes(
+      `/inpatient/${stay.id}/daily-charges/${charge.id}/bill`,
+      new MockRequest({
+        method: 'POST',
+        url: `/inpatient/${stay.id}/daily-charges/${charge.id}/bill`,
+        body: {}
+      }) as never,
+      new MockResponse() as never,
+      'corr-inpatient-audit-cache-rollback',
+      {
+        inpatient,
+        billing: {
+          addItem: async () => ({
+            id: 'billitem_audit_rollback',
+            billingRecordId: 'bill_audit_rollback'
+          })
+        } as never,
+        sectorBedService: {} as never,
+        audit,
+        requirePrincipal: () => createPrincipal(),
+        runCommand: runCommand as never
+      }
+    ),
+    /injected failure after daily-charge audit/
+  );
+
+  await new Promise<void>((resolve) => setImmediate(resolve));
+
+  assert.equal(
+    audit
+      .list()
+      .some((event) => event.action === 'bill_daily_charge' && event.entityId === charge.id),
+    false
+  );
 });
 
 test('handleInpatientRoutes treats a repeated daily-charge billing request as idempotent', async () => {

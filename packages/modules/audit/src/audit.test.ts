@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import type { AccountId, AuditEventId } from '@cvg-his-v2/shared-types';
+import type { AccountId, AuditEventId, AuditEventSummary } from '@cvg-his-v2/shared-types';
 import { AuditService } from './index.js';
 import { InMemoryAuditRepository } from './repositories/in-memory-audit.repository.js';
 
@@ -188,7 +188,9 @@ describe('AuditService', () => {
     });
 
     const report = service.getOperationalCoverageReport('acc_1' as AccountId);
-    const requirement = report.requirements.find((item) => item.id === 'reports-delivery-alerts-read');
+    const requirement = report.requirements.find(
+      (item) => item.id === 'reports-delivery-alerts-read'
+    );
 
     expect(requirement).toBeDefined();
     expect(requirement?.covered).toBe(true);
@@ -247,6 +249,63 @@ describe('AuditService with repository', () => {
     await new Promise((r) => setTimeout(r, 10));
     const fromRepo = await repo.list();
     expect(fromRepo).toHaveLength(2);
+  });
+
+  it('rebuilds one account cache from committed rows after a rollback', async () => {
+    const committed: AuditEventSummary = {
+      eventId: 'evt_committed' as AuditEventId,
+      occurredAt: new Date().toISOString(),
+      actorId: 'user_rollback',
+      accountId: 'acc_rollback' as AccountId,
+      module: 'inpatient',
+      action: 'bill_daily_charge',
+      entityType: 'inpatient-daily-charge',
+      entityId: 'charge_committed',
+      correlationId: 'corr_committed',
+      payloadSummary: 'Committed event',
+      riskLevel: 'high'
+    };
+    const repository = {
+      async create(): Promise<void> {},
+      async list(accountId?: AccountId): Promise<readonly AuditEventSummary[]> {
+        return accountId === committed.accountId ? [committed] : [];
+      },
+      async findById(): Promise<AuditEventSummary | null> {
+        return null;
+      }
+    };
+    const rollbackService = new AuditService({ auditRepository: repository });
+
+    rollbackService.write({
+      actorId: 'user_rollback',
+      accountId: committed.accountId,
+      module: 'inpatient',
+      action: 'bill_daily_charge',
+      entityType: 'inpatient-daily-charge',
+      entityId: 'charge_rolled_back',
+      payloadSummary: 'Rolled-back event',
+      riskLevel: 'high'
+    });
+    rollbackService.write({
+      actorId: 'user_other',
+      accountId: 'acc_other' as AccountId,
+      module: 'owners',
+      action: 'create',
+      entityType: 'owner',
+      entityId: 'owner_other',
+      payloadSummary: 'Other account event',
+      riskLevel: 'low'
+    });
+
+    await rollbackService.refreshFromDatabase(committed.accountId);
+
+    expect(rollbackService.list()).toEqual([
+      committed,
+      expect.objectContaining({ accountId: 'acc_other', entityId: 'owner_other' })
+    ]);
+    expect(rollbackService.list().some((event) => event.entityId === 'charge_rolled_back')).toBe(
+      false
+    );
   });
 });
 
