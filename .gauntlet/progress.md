@@ -198,3 +198,16 @@ published as `432887f`. Run the billing-item/daily-charge rollback RED; preserve
   evidência de paridade.
 - Próximo RED: rollback billing ↔ diária; depois jornada clínica-financeira
   PostgreSQL/RLS. Estado global não promovido.
+
+## Progresso mais recente — recibo de caixa HTTP/UoW (23/08/2026, 07:09 BRT)
+
+O RED da rota que ignorava o runner e o RED do snapshot com
+`statusMessage: undefined` foram corrigidos em `3e278c8`. A evidência fresca é
+rota + buffer `10/10`, helpers `6/6`, comando PostgreSQL `8/8`, integração HTTP
+→ PostgreSQL `1/1`, typecheck PASS e diff check PASS. O teste confirma commit,
+replay, conflito e uma única cadeia financeira/auditável.
+
+A revisão independente aprovou sem P0/P1. O próximo gap local é P2: HTTP
+cross-tenant A/B com segundo token. Depois, continuar a jornada completa com
+PostgreSQL/RLS, replay, concorrência e failpoints; o ERP e os gates externos
+continuam `IN_PROGRESS/PARTIAL`.

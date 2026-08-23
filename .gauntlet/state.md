@@ -250,3 +250,18 @@ O Quality Bar continua congelado e o estado continua `ACTIVE`/
 recebimento com PostgreSQL/RLS, replay, concorrência e failpoint. Paridade Vetus,
 SPA/B2c, providers, Redis failover/clock-skew real, WCAG, cobertura, operações,
 deploy/restore e release permanecem gates separados.
+
+## Atualização — recibo de caixa HTTP/UoW (23/08/2026, 07:09 BRT)
+
+O commit `3e278c8` fecha a fronteira pública do recibo de caixa de forma
+limitada: a rota recebe o `runTenantCommand` real, a idempotência HTTP passa um
+payload JSON-safe e `response-buffer.snapshot()` omite opcionais indefinidos.
+Rota + buffer passaram `10/10`, helpers HTTP `6/6`, comando PostgreSQL `8/8`,
+HTTP/PostgreSQL `1/1`, typecheck da API e diff check.
+
+A crítica independente aprovou sem P0/P1. O P2 restante é a matriz HTTP
+cross-tenant A/B com um segundo token; a prova RLS/repository é separada. O
+Quality Bar permanece `ACTIVE`/`IN_PROGRESS/PARTIAL` e a próxima ação é essa
+matriz seguida da jornada admissão → handoff/permanência → estoque → alta →
+billing → recebimento/ledger/auditoria/outbox. Nenhum gate externo foi
+promovido.

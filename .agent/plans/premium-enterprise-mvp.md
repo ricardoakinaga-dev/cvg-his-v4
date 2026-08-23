@@ -295,3 +295,12 @@ portal, sandboxed APIs and governed assistive AI. The Quality Bar is unchanged:
 write the rollback RED, then implement the PostgreSQL/RLS clinical-financial
 UoW or explicit saga. No provider, production, SPA, Vetus, WCAG, operations or
 release gate is promoted.
+
+Plan revision note, 2026-08-23 (cash-receipt HTTP/UoW): The public cash-receipt
+route now executes through the tenant command runner, and response buffering is
+JSON-safe for idempotency snapshots. Fresh evidence is route+buffer 10/10,
+HTTP helpers 6/6, direct PostgreSQL command 8/8, published HTTP/PostgreSQL
+1/1, API typecheck PASS and diff check PASS. The independent critic approved
+without P0/P1; the remaining local P2 is an HTTP two-tenant A/B case. The plan
+still does not promote the ERP or any provider/production/parity/WCAG/release
+gate.

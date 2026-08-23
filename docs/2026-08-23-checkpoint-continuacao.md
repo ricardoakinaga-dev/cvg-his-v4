@@ -589,3 +589,51 @@ O registro acima foi publicado em `1f1017436ec51a6fc0928e1b4f575f92533caf42`
 `origin/agent/sync-v4-full-program`. Após `git fetch`, `HEAD` e `origin` estão
 iguais nesse hash. O único caminho dirty continua sendo o cache user-owned
 `packages/design-system/tsconfig.vue.tsbuildinfo`, fora do commit.
+
+## Registro de continuidade mais recente — recibo de caixa HTTP/UoW (23/08/2026, 07:05 BRT)
+
+Esta é a referência de retomada da próxima sessão para a fronteira pública de
+recebimento. O slice de implementação está em `3e278c8`
+(`fix: wire cash receipts through tenant commands`) e o artefato detalhado é
+[`CVG-002C2-cash-receipt-http-uow-2026-08-23.md`](../.agent/artifacts/CVG-002C2-cash-receipt-http-uow-2026-08-23.md).
+
+### O que foi fechado
+
+- `POST /encounters/:encounterId/cash-receipts` recebe o `runTenantCommand`
+  real no servidor e encaminha operação, `Idempotency-Key` e payload JSON-safe
+  ao runner antes de executar o comando financeiro;
+- a UoW global de mutações HTTP continua dona da transação/idempotência por
+  operação HTTP, e o runner aninhado passa pela transação já ativa sem abrir
+  uma segunda unidade de trabalho;
+- `response-buffer.snapshot()` não grava mais campos opcionais com valor
+  `undefined`, evitando rejeição do canonicalizador JSON durante o replay;
+- foi adicionada prova HTTP → PostgreSQL real com primeiro POST, replay
+  idempotente e conflito de payload, confirmando uma única cadeia de recibo,
+  pagamento, movimento, journal, auditoria, outbox e idempotência concluída.
+
+### Evidência fresca
+
+```text
+rota + response-buffer: 10/10
+HTTP helper: 6/6
+comando PostgreSQL de recibo: 8/8
+HTTP/PostgreSQL publicado: 1/1
+API typecheck: PASS
+git diff --check: PASS
+revisão independente: APPROVE, sem P0/P1
+```
+
+O teste usa banco PostgreSQL efêmero, autenticação pelo endpoint publicado e
+não executa limpeza destrutiva contra tabelas append-only. O cache user-owned
+`packages/design-system/tsconfig.vue.tsbuildinfo` permanece fora do commit.
+
+### Limite e próximo passo
+
+A revisão independente deixou apenas um P2 local: falta uma matriz HTTP de
+dois tenants com tokens distintos tentando acessar o encounter do outro. A
+prova RLS/repository existente cobre isolamento no banco, mas a matriz HTTP A/B
+deve ser adicionada junto com a expansão admissão → handoff/permanência →
+estoque → alta → billing → recebimento/ledger/auditoria/outbox, incluindo
+replay, concorrência e failpoints. O programa continua
+`IN_PROGRESS/PARTIAL`; Redis failover real, provider, SPA/B2c, paridade Vetus,
+WCAG, operações alvo, cobertura e release seguem gates abertos.

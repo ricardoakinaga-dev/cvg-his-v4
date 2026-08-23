@@ -41,7 +41,7 @@
         ".agent/verification.jsonl",
         ".gauntlet/state.md"
       ],
-      "next_action": "Resume from the latest CVG-002B2B/CVG-002C checkpoint: preserve the bounded 5/5 stale-fence process evidence, daily-charge source idempotency and rollback proof, exercise Redis failover/clock-skew under fail-closed policy, then expand admission -> handoff/permanence -> inventory -> discharge -> receipt with PostgreSQL/RLS REDs while keeping B2c/SPA separate."
+      "next_action": "Resume from the latest CVG-002B2B/CVG-002C checkpoint: preserve the bounded 5/5 stale-fence process evidence, daily-charge source idempotency and rollback proof, include the published cash-receipt HTTP/UoW commit/replay/conflict proof, add its two-tenant HTTP A/B case, exercise Redis failover/clock-skew under fail-closed policy, then expand admission -> handoff/permanence -> inventory -> discharge -> receipt with PostgreSQL/RLS REDs while keeping B2c/SPA separate."
     },
     {
       "id": "CVG-002B2A",
@@ -134,9 +134,16 @@
         ".agent/artifacts/CVG-002C-inpatient-daily-billing-rollback-2026-08-23.md",
         "apps/api/src/routes/inpatient-routes.test.ts",
         "tests/integration/database/inpatient-daily-charge-billing-rollback.test.ts",
-        ".agent/verification.jsonl#VFY-CVG-002D-DAILY-CHARGE-ROLLBACK-001"
+        ".agent/verification.jsonl#VFY-CVG-002D-DAILY-CHARGE-ROLLBACK-001",
+        ".agent/artifacts/CVG-002C2-cash-receipt-http-uow-2026-08-23.md",
+        "apps/api/src/helpers/response-buffer.ts",
+        "apps/api/src/helpers/response-buffer.test.ts",
+        "apps/api/src/routes/encounter-cash-receipt-routes.ts",
+        "apps/api/src/routes/encounter-cash-receipt-routes.test.ts",
+        "tests/integration/database/encounter-cash-receipt-http-postgres.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-002C2-CASH-RECEIPT-HTTP-001"
       ],
-      "next_action": "The stale-fence, daily-charge billing idempotency, discharge cutoff and rollback boundaries are locally verified. Keep Redis failover between processes open, then implement admission -> handoff/permanence -> inventory -> discharge -> item/receipt with PostgreSQL/RLS and a single UoW or explicit saga while preserving B2c/SPA, provider, parity, WCAG, target-operations, coverage and release gates."
+      "next_action": "The stale-fence, daily-charge billing idempotency, discharge cutoff, rollback and published cash-receipt HTTP/UoW boundaries are locally verified. Add the HTTP two-tenant A/B matrix, keep Redis failover between processes open, then implement admission -> handoff/permanence -> inventory -> discharge -> item/receipt with PostgreSQL/RLS and a single UoW or explicit saga while preserving B2c/SPA, provider, parity, WCAG, target-operations, coverage and release gates."
     },
     {
       "id": "CVG-002D",

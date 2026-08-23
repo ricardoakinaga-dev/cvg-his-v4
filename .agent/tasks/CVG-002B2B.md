@@ -490,3 +490,28 @@ handoff/permanência → estoque → alta → billing → recebimento com Postgr
 RLS, replay, concorrência e failpoint. Não repetir as fatias 0115/0116, DLQ,
 stale-fence ou rate-limit já registradas; não promover `VERIFIED`, provider,
 SPA, paridade Vetus, WCAG, operações ou release.
+
+## Handoff executado — recibo de caixa HTTP/UoW (23/08/2026, 07:05 BRT)
+
+O RED de fronteira HTTP identificado na revisão de rollback foi convertido em
+GREEN limitado. A rota de recibo de caixa agora usa `runTenantCommand` real
+quando montada pelo servidor, preservando o wrapper global de UoW/idempotência
+como autoridade da operação HTTP. O snapshot do response buffer também foi
+endurecido para omitir `statusMessage` indefinido antes da canonicalização JSON.
+
+Artefato: `.agent/artifacts/CVG-002C2-cash-receipt-http-uow-2026-08-23.md`.
+Implementação: `3e278c8` (`fix: wire cash receipts through tenant commands`).
+
+Evidência fresca: rota + buffer `10/10`, helpers HTTP `6/6`, comando
+PostgreSQL `8/8`, integração HTTP → PostgreSQL `1/1`, API typecheck PASS e
+`git diff --check` PASS. A integração publicou o primeiro recibo, repetiu a
+mesma chave e rejeitou payload divergente; a consulta confirmou exatamente um
+recibo/pagamento/movimento/journal/auditoria/outbox e uma idempotência concluída.
+
+A crítica independente aprovou a fatia sem P0/P1. Continua como P2 a prova
+HTTP cross-tenant com segundo token; a camada RLS/repository já possui matriz
+de isolamento. `CVG-002B2B` segue `IN_PROGRESS/PARTIAL`, e o próximo trabalho
+é a jornada admissão → handoff/permanência → estoque → alta → billing →
+recebimento/ledger/auditoria/outbox com replay, concorrência, dois tenants e
+failpoints. Nenhum gate de produção, provider, paridade, WCAG ou release foi
+promovido.
