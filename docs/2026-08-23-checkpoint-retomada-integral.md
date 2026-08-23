@@ -292,5 +292,6 @@ PostgreSQL/RLS e webhook HTTP retry/DLQ/lease fencing.
 Esta atualização documental foi publicada no commit `cef5d6392c82b60e9a13881fa1e8826c39accb7a`
 (`docs: record controlled critical retest`) e enviada para
 `origin/agent/sync-v4-full-program`. A reconciliação final confirmou `HEAD`
-igual ao remoto. O único caminho fora do commit continua sendo o cache
-user-owned `packages/design-system/tsconfig.vue.tsbuildinfo`.
+igual ao remoto no ponteiro de reconciliação `b7768ce822804fecfed7a9ff2fc0f744b438f26f`
+(`docs: reconcile retest publication pointer`). O único caminho fora do commit
+continua sendo o cache user-owned `packages/design-system/tsconfig.vue.tsbuildinfo`.

@@ -555,6 +555,7 @@ obrigatório, `username` obrigatório e tenant ausente no backfill PIX). Dois
 `teardownTimeout` não resolve. Próxima ação: ajustar fixtures e hook timeout,
 reexecutar focused/full e preservar `ACTIVE/IN_PROGRESS/PARTIAL` até 387/387.
 
-Publicação confirmada em `cef5d6392c82b60e9a13881fa1e8826c39accb7a`, com
-`HEAD` alinhado ao remoto. O cache user-owned do design-system continua
+Publicação do conteúdo confirmada em `cef5d6392c82b60e9a13881fa1e8826c39accb7a`;
+o ponteiro final é `b7768ce822804fecfed7a9ff2fc0f744b438f26f`, com `HEAD`
+alinhado ao remoto. O cache user-owned do design-system continua
 intencionalmente fora do commit.

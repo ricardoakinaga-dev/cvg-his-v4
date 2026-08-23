@@ -633,6 +633,7 @@ reproduzível. Stop decision permanece ACTIVE; nenhum gate global foi promovido.
 
 O checkpoint de continuidade, artefato, backlog, ExecPlan, estado e ledgers foi
 publicado em `cef5d6392c82b60e9a13881fa1e8826c39accb7a` e enviado para
-`origin/agent/sync-v4-full-program`. A reconciliação confirmou `HEAD == origin`;
+`origin/agent/sync-v4-full-program`. O ponteiro final de reconciliação é
+`b7768ce822804fecfed7a9ff2fc0f744b438f26f`; a reconciliação confirmou `HEAD == origin`;
 somente `packages/design-system/tsconfig.vue.tsbuildinfo` continua dirty e
 fora do stage. O stop decision e todos os gates permanecem inalterados.
