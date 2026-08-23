@@ -552,3 +552,14 @@ esta fronteira para admissao -> handoff/permanencia -> estoque -> alta ->
 billing -> recebimento/ledger/auditoria/outbox, com dois tenants, replay,
 concorrencia e PostgreSQL/RLS. Nao declarar producao, paridade Vetus, WCAG,
 providers, target operations, cobertura global ou release.
+
+## Publicação confirmada — rollback diaria/billing (23/08/2026, 06:39 BRT)
+
+O checkpoint de implementacao e documentação foi publicado em
+`ee04d92e5ed50c0cf6c6f46fca4c53d17d1ba36c`
+(`fix: make inpatient daily-charge billing atomic`) no branch
+`origin/agent/sync-v4-full-program`. Após `git fetch`, `HEAD` e
+`origin/agent/sync-v4-full-program` estavam iguais nesse hash. O único caminho
+dirty remanescente é o cache user-owned
+`packages/design-system/tsconfig.vue.tsbuildinfo`, deliberadamente fora do
+commit.
