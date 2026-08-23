@@ -31,6 +31,9 @@ fora de escopo é o cache gerado e pertencente ao usuário
 `packages/design-system/tsconfig.vue.tsbuildinfo`; ele não deve ser stageado,
 commitado, limpo ou revertido.
 
+O branch remoto deve permanecer igual ao `HEAD` após o commit final desta
+reconciliação; use `git log -1 --oneline` como ponteiro exato da sessão.
+
 Fontes canônicas:
 
 - [`../.agent/state.json`](../.agent/state.json)
