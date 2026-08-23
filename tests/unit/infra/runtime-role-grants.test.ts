@@ -7,6 +7,7 @@ import {
   API_GLOBAL_TABLE_MUTATIONS,
   API_SENSITIVE_TABLE_PRIVILEGES,
   RUNTIME_SENSITIVE_TABLES,
+  RUNTIME_SETTLEMENT_FUNCTIONS,
   WORKER_USER_READ_COLUMNS
 } from '../../../packages/db/src/runtime-role-policy';
 
@@ -27,6 +28,10 @@ const ingressMigration = readFileSync(
 );
 const settlementDlqMigration = readFileSync(
   resolve(root, 'packages/db/migrations/0114_pix_settlement_dlq_operator.sql'),
+  'utf8'
+);
+const settlementSearchPathMigration = readFileSync(
+  resolve(root, 'packages/db/migrations/0120_cash_receipt_consistency_search_path.sql'),
   'utf8'
 );
 
@@ -222,21 +227,54 @@ describe('runtime PostgreSQL role grants', () => {
     expect(composeStack).toContain('condition: service_completed_successfully');
   });
 
+  it('keeps the cash-settlement trigger helper in the runtime function allowlist', () => {
+    expect(RUNTIME_SETTLEMENT_FUNCTIONS).toEqual([
+      {
+        functionName: 'assert_encounter_cash_receipt_consistent',
+        argumentTypes: 'uuid, boolean'
+      }
+    ]);
+    expect(runtimeReconciler).toContain('RUNTIME_SETTLEMENT_FUNCTIONS');
+
+    for (const script of roleScripts) {
+      expect(script.content, `${script.path} must grant the cash consistency helper`).toContain(
+        'assert_encounter_cash_receipt_consistent'
+      );
+      expect(script.content).toMatch(
+        /pg_catalog\.oidvectortypes\((?:p|procedure)\.proargtypes\) = 'uuid, boolean'/
+      );
+    }
+    expect(settlementSearchPathMigration).toContain(
+      'ALTER FUNCTION app.assert_encounter_cash_receipt_consistent(uuid, boolean)'
+    );
+    expect(settlementSearchPathMigration).toContain(
+      'SET search_path = pg_catalog, public, app, pg_temp'
+    );
+  });
+
   it('keeps PIX settlement redrive behind a non-login capability function', () => {
     expect(settlementDlqMigration).toContain('CREATE ROLE cvg_pix_dlq_operator');
     expect(settlementDlqMigration).toContain('SECURITY DEFINER');
     expect(settlementDlqMigration).toContain('SET search_path = pg_catalog, public, app');
     expect(settlementDlqMigration).toContain("state = 'reconciliation_required'");
     expect(settlementDlqMigration).toContain("'pix_settlement_redrive'");
-    expect(settlementDlqMigration).toContain('GRANT SELECT ON TABLE public.pix_provider_event_deliveries TO cvg_pix_dlq_operator');
-    expect(settlementDlqMigration).toContain('GRANT UPDATE ON TABLE public.pix_provider_event_deliveries TO cvg_pix_dlq_operator');
-    expect(settlementDlqMigration).toContain('REVOKE ALL ON FUNCTION app.redrive_pix_provider_event_delivery');
+    expect(settlementDlqMigration).toContain(
+      'GRANT SELECT ON TABLE public.pix_provider_event_deliveries TO cvg_pix_dlq_operator'
+    );
+    expect(settlementDlqMigration).toContain(
+      'GRANT UPDATE ON TABLE public.pix_provider_event_deliveries TO cvg_pix_dlq_operator'
+    );
+    expect(settlementDlqMigration).toContain(
+      'REVOKE ALL ON FUNCTION app.redrive_pix_provider_event_delivery'
+    );
     expect(runtimeReconciler).toContain('redrive_pix_provider_event_delivery');
     expect(runtimeReconciler).toContain("'SELECT, UPDATE'");
     for (const script of roleScripts) {
       expect(script.content).toContain('cvg_pix_dlq_operator');
       expect(script.content).toContain('redrive_pix_provider_event_delivery');
-      expect(script.content).toContain('GRANT SELECT, UPDATE ON TABLE public.pix_provider_event_deliveries TO cvg_pix_dlq_operator');
+      expect(script.content).toContain(
+        'GRANT SELECT, UPDATE ON TABLE public.pix_provider_event_deliveries TO cvg_pix_dlq_operator'
+      );
     }
   });
 });

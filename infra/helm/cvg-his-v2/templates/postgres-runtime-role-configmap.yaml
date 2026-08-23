@@ -149,6 +149,16 @@ data:
     SELECT format('GRANT EXECUTE ON FUNCTION %s TO %I', p.oid::regprocedure, :'worker_user')
     FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
     WHERE n.nspname = 'app' AND p.proname IN ('current_account_id', 'has_account_context')\gexec
+    SELECT format('GRANT EXECUTE ON FUNCTION %s TO %I', p.oid::regprocedure, :'api_user')
+    FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'app'
+      AND p.proname = 'assert_encounter_cash_receipt_consistent'
+      AND pg_catalog.oidvectortypes(p.proargtypes) = 'uuid, boolean'\gexec
+    SELECT format('GRANT EXECUTE ON FUNCTION %s TO %I', p.oid::regprocedure, :'worker_user')
+    FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'app'
+      AND p.proname = 'assert_encounter_cash_receipt_consistent'
+      AND pg_catalog.oidvectortypes(p.proargtypes) = 'uuid, boolean'\gexec
     SELECT format('GRANT EXECUTE ON FUNCTION %s TO cvg_installer', p.oid::regprocedure)
     FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
     WHERE n.nspname = 'app'

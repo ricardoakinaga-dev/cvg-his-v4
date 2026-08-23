@@ -43,3 +43,18 @@ export const RUNTIME_SENSITIVE_TABLES = [
   'api_key_usage',
   'api_key_rate_limits'
 ] as const;
+
+/**
+ * Internal consistency helpers invoked by tenant-scoped database triggers.
+ *
+ * Runtime roles deliberately lose EXECUTE on every `app` function during
+ * reconciliation. These helpers are the narrow exception required when the
+ * API or worker mutates a linked cash-settlement artifact and PostgreSQL
+ * revalidates the receipt inside the same transaction.
+ */
+export const RUNTIME_SETTLEMENT_FUNCTIONS = [
+  {
+    functionName: 'assert_encounter_cash_receipt_consistent',
+    argumentTypes: 'uuid, boolean'
+  }
+] as const;

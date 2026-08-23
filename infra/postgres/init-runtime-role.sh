@@ -134,6 +134,14 @@ JOIN pg_namespace AS namespace ON namespace.oid = procedure.pronamespace
 WHERE namespace.nspname = 'app'
   AND procedure.proname IN ('current_account_id', 'has_account_context')
 \gexec
+
+SELECT format('GRANT EXECUTE ON FUNCTION %s TO %I', procedure.oid::regprocedure, :'runtime_user')
+FROM pg_proc AS procedure
+JOIN pg_namespace AS namespace ON namespace.oid = procedure.pronamespace
+WHERE namespace.nspname = 'app'
+  AND procedure.proname = 'assert_encounter_cash_receipt_consistent'
+  AND pg_catalog.oidvectortypes(procedure.proargtypes) = 'uuid, boolean'
+\gexec
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 SQL
 }

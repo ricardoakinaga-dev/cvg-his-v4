@@ -5,6 +5,7 @@ import {
   API_GLOBAL_TABLE_MUTATIONS,
   API_SENSITIVE_TABLE_PRIVILEGES,
   RUNTIME_SENSITIVE_TABLES,
+  RUNTIME_SETTLEMENT_FUNCTIONS,
   WORKER_USER_READ_COLUMNS
 } from './runtime-role-policy.js';
 
@@ -326,6 +327,23 @@ export async function reconcileRuntimeRoles(
          )`,
       [apiRole]
     );
+    for (const functionGrant of RUNTIME_SETTLEMENT_FUNCTIONS) {
+      await executeGeneratedStatements(
+        client,
+        `SELECT format(
+           'GRANT EXECUTE ON FUNCTION %s TO %I',
+           procedure.oid::regprocedure,
+           role_name
+         ) AS statement
+         FROM pg_proc procedure
+         JOIN pg_namespace namespace ON namespace.oid = procedure.pronamespace
+         CROSS JOIN unnest($3::text[]) AS role_name
+         WHERE namespace.nspname = 'app'
+           AND procedure.proname = $1::text
+           AND pg_catalog.oidvectortypes(procedure.proargtypes) = $2::text`,
+        [functionGrant.functionName, functionGrant.argumentTypes, [apiRole, workerRole]]
+      );
+    }
     await grantExistingTable(
       client,
       'pix_provider_event_deliveries',
