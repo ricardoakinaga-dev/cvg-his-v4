@@ -133,6 +133,23 @@ export class InpatientService {
     );
   }
 
+  /**
+   * Rebuilds one tenant's in-process inpatient state from committed rows.
+   * This is used after a failed tenant command so a rolled-back daily-charge
+   * mutation cannot remain visible to the next request in this API process.
+   */
+  public async refreshAccount(accountId: string): Promise<void> {
+    if (!this.#stayRepository) return;
+    for (const [stayId, stay] of this.#stays) {
+      if (stay.accountId !== accountId) continue;
+      this.#stays.delete(stayId);
+      this.#progress.delete(stayId);
+      this.#occurrences.delete(stayId);
+      this.#dailyCharges.delete(stayId);
+    }
+    await this.hydrateAccount(accountId);
+  }
+
   #enqueuePersist(operation: () => Promise<void>, rollback?: () => void | Promise<void>): void {
     this.#pendingPersist = this.#pendingPersist
       .catch(() => undefined)

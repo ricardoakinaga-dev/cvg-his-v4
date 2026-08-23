@@ -512,3 +512,43 @@ control-plane state`). Após `git fetch`, `HEAD` e
 `02f79278da71c4fe50b751fc05e4f3636b5d6f0e`. O único caminho dirty é o cache
 user-owned `packages/design-system/tsconfig.vue.tsbuildinfo`, deliberadamente
 fora dos commits.
+
+## Registro de continuidade — rollback diaria/billing (23/08/2026, 06:32 BRT)
+
+Este é o novo ponto de retomada da jornada clinico-financeira. A fatia
+`ERP-ATOMIC-002` foi implementada de forma limitada: a rota
+`POST /inpatient/:stayId/daily-charges/:chargeId/bill` agora executa a criacao
+do item de billing, a marcacao da diaria, a persistencia e a auditoria aguardada
+por `runTenantCommand`. Em falha do comando, os caches quentes de billing e
+internacao sao reidratados a partir do estado commitado para evitar item ou
+diaria fantasma em retries.
+
+Arquivos principais:
+
+- `apps/api/src/routes/inpatient-routes.ts`
+- `apps/api/src/server.ts`
+- `apps/api/src/routes/inpatient-routes.test.ts`
+- `packages/modules/billing/src/index.ts`
+- `packages/modules/inpatient/src/index.ts`
+- `tests/integration/database/inpatient-daily-charge-billing-rollback.test.ts`
+- [artefato CVG-002C rollback diaria/billing](../.agent/artifacts/CVG-002C-inpatient-daily-billing-rollback-2026-08-23.md)
+
+Evidencia executada nesta sessao:
+
+```bash
+pnpm --filter @cvg-his-v2/api build
+pnpm vitest run tests/integration/database/inpatient-daily-charge-billing-rollback.test.ts --config vitest.integration.config.ts --reporter=verbose
+NODE_ENV=test node --test apps/api/dist/routes/inpatient-routes.test.js
+git diff --check
+```
+
+Resultado: API build PASS, PostgreSQL efemero `1/1`, rota compilada de
+internacao `12/12` e `git diff --check` PASS. No failpoint apos
+`billing.addItem`, o banco permanece sem `billing_items`, sem `billing_records`,
+com a diaria `pending` e `billing_record_id = NULL`.
+
+O estado global continua `IN_PROGRESS/PARTIAL`. A proxima sessao deve expandir
+esta fronteira para admissao -> handoff/permanencia -> estoque -> alta ->
+billing -> recebimento/ledger/auditoria/outbox, com dois tenants, replay,
+concorrencia e PostgreSQL/RLS. Nao declarar producao, paridade Vetus, WCAG,
+providers, target operations, cobertura global ou release.

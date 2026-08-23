@@ -6965,6 +6965,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               sectorBedService,
               audit,
               requirePrincipal,
+              runCommand: runTenantCommand,
               onProgressAdded: ({ stay, progress, principal }) => {
                 medicalRecords.appendAdvancedCareEvent(
                   stay.encounterId as never,

@@ -91,12 +91,33 @@ export class BillingService {
   public async hydrateFromDatabase(accountId?: AccountId): Promise<void> {
     if (!this.#repository) return;
     if (!accountId) return;
+    this.clearAccountCache(accountId);
     const records = await this.#repository.findRecordsByAccountId(accountId);
     for (const record of records) {
       this.#records.set(record.id, record);
       this.#recordByEncounterId.set(record.encounterId, record.id);
       const items = await this.#repository.findItemsByRecord(record.accountId, record.id);
       this.#items.set(record.id, [...items]);
+    }
+  }
+
+  /**
+   * Rebuilds the in-process cache from committed database state after a
+   * transaction rollback. Repository-backed runtimes must never keep a
+   * rolled-back billing item visible to a retry.
+   */
+  public async refreshFromDatabase(accountId?: AccountId): Promise<void> {
+    await this.hydrateFromDatabase(accountId);
+  }
+
+  private clearAccountCache(accountId: AccountId): void {
+    for (const [recordId, record] of this.#records) {
+      if (record.accountId !== accountId) continue;
+      this.#records.delete(recordId);
+      this.#items.delete(recordId);
+      if (this.#recordByEncounterId.get(record.encounterId) === recordId) {
+        this.#recordByEncounterId.delete(record.encounterId);
+      }
     }
   }
 

@@ -20,12 +20,18 @@ import type {
   MarkInpatientDailyChargeBilledRequest
 } from '@cvg-his-v2/shared-contracts';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
+import type { JsonValue } from '@cvg-his-v2/shared-database';
 import { ConflictError, NotFoundError } from '@cvg-his-v2/shared-errors';
-import type { InpatientProgressSummary, InpatientStaySummary } from '@cvg-his-v2/shared-types';
+import type {
+  InpatientDailyChargeSummary,
+  InpatientProgressSummary,
+  InpatientStaySummary
+} from '@cvg-his-v2/shared-types';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 
-import { appendAudit } from '../helpers/audit-helper.js';
+import { appendAudit, appendAuditAndWait } from '../helpers/audit-helper.js';
 import { readJsonBody } from '../helpers/common.js';
+import type { TenantCommandInput, TenantCommandRunner } from '../helpers/tenant-command.js';
 
 const bedCollectionPaths = new Set(['/beds', '/boxes-de-internacao', '/box-internacao']);
 
@@ -60,6 +66,7 @@ export interface InpatientRoutesHandlers {
   sectorBedService: SectorBedService;
   audit: AuditService;
   requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
+  runCommand?: TenantCommandRunner;
   onProgressAdded?: (event: {
     stay: InpatientStaySummary;
     progress: InpatientProgressSummary;
@@ -80,6 +87,8 @@ export async function handleInpatientRoutes(
   handlers: InpatientRoutesHandlers
 ): Promise<boolean> {
   const { inpatient, billing, sectorBedService, audit, requirePrincipal: rp } = handlers;
+  const runCommand =
+    handlers.runCommand ?? (async <T>(input: TenantCommandInput<T>) => input.command());
 
   if (pathname === '/inpatient' && request.method === 'POST') {
     const principal = rp(request, 'inpatient.manage');
@@ -680,37 +689,67 @@ export async function handleInpatientRoutes(
       response.end(JSON.stringify(pendingCharge));
       return true;
     }
-    let billingRecordId = payload.billingRecordId;
+    let charge: InpatientDailyChargeSummary;
+    try {
+      charge = await runCommand({
+        request,
+        accountId: principal.user.accountId,
+        actorUserId: principal.user.id,
+        correlationId,
+        operation: 'inpatient.daily-charges.bill',
+        payload: { stayId, chargeId, ...payload } as unknown as JsonValue,
+        command: async () => {
+          let billingRecordId = payload.billingRecordId;
 
-    if (billing && pendingCharge && pendingCharge.status === 'pending') {
-      const billingItem = await billing.addItem(principal.user.id as never, {
-        encounterId: pendingCharge.encounterId,
-        itemType: 'daily_rate',
-        description: pendingCharge.description,
-        quantity: pendingCharge.quantity,
-        unitPriceAmount: pendingCharge.unitAmount,
-        sourceEntityType: 'inpatient_daily_charge',
-        sourceEntityId: pendingCharge.id
+          if (billing && pendingCharge && pendingCharge.status === 'pending') {
+            const billingItem = await billing.addItem(principal.user.id as never, {
+              encounterId: pendingCharge.encounterId,
+              itemType: 'daily_rate',
+              description: pendingCharge.description,
+              quantity: pendingCharge.quantity,
+              unitPriceAmount: pendingCharge.unitAmount,
+              sourceEntityType: 'inpatient_daily_charge',
+              sourceEntityId: pendingCharge.id
+            });
+            billingRecordId = billingItem.billingRecordId;
+          }
+
+          const updatedCharge = inpatient.markDailyChargeBilled(
+            stayId as never,
+            chargeId as never,
+            {
+              ...payload,
+              billingRecordId
+            }
+          );
+          await inpatient.waitForPersistence();
+          await appendAuditAndWait(audit, {
+            actorId: principal.user.id,
+            accountId: principal.user.accountId,
+            module: 'inpatient',
+            action: 'bill_daily_charge',
+            entityType: 'inpatient-daily-charge',
+            entityId: updatedCharge.id,
+            payloadSummary: `Inpatient daily charge billed`,
+            riskLevel: 'high',
+            correlationId
+          });
+          return updatedCharge;
+        }
       });
-      billingRecordId = billingItem.billingRecordId;
+    } catch (error) {
+      // BillingService and InpatientService keep hot caches for low-latency
+      // reads. Restore them from committed rows when the tenant command rolls
+      // back, otherwise a retry could observe a phantom billed charge/item.
+      const refreshOperations: Promise<unknown>[] = [
+        inpatient.refreshAccount(principal.user.accountId)
+      ];
+      if (billing && typeof billing.refreshFromDatabase === 'function') {
+        refreshOperations.push(billing.refreshFromDatabase(principal.user.accountId as never));
+      }
+      await Promise.allSettled(refreshOperations);
+      throw error;
     }
-
-    const charge = inpatient.markDailyChargeBilled(stayId as never, chargeId as never, {
-      ...payload,
-      billingRecordId
-    });
-    await inpatient.waitForPersistence();
-    appendAudit(audit, {
-      actorId: principal.user.id,
-      accountId: principal.user.accountId,
-      module: 'inpatient',
-      action: 'bill_daily_charge',
-      entityType: 'inpatient-daily-charge',
-      entityId: charge.id,
-      payloadSummary: `Inpatient daily charge billed`,
-      riskLevel: 'high',
-      correlationId
-    });
     response.statusCode = 200;
     response.end(JSON.stringify(charge));
     return true;

@@ -125,3 +125,11 @@ O resultado desta reexecução reconcilia a contagem anterior de 1.447/1.449
 arquivos sem reescrever os hashes históricos: aqueles números eram snapshots
 anteriores a novas inclusões. O digest acima é a referência para a retomada
 quando a sessão seguinte quiser confirmar que o corpus não mudou.
+
+## Continuação de implementação — 23/08/2026, 06:32 BRT
+
+Após a reauditoria documental, a primeira ação da barra clínica-financeira foi
+executada: RED/GREEN da operação `inpatient.daily-charges.bill`. A evidência
+está em `.agent/artifacts/CVG-002C-inpatient-daily-billing-rollback-2026-08-23.md`;
+ela deve ser lida junto com o checkpoint de continuidade e não altera o
+manifesto do corpus acima. O estado global continua `IN_PROGRESS/PARTIAL`.

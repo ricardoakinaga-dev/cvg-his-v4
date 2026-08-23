@@ -238,6 +238,34 @@ Arquivos RED previstos:
 7. Implementar o primitive shared `runPixProviderSettlementTransaction` e seus REDs; só depois escrever/rodar REDs do consumer e implementar claim, principal, chamada única ao B1 estendido e fenced completion na mesma UoW; o consumer não possui staging financeiro.
 8. Rodar restart/concurrency multi-pool, revogação com barreiras determinísticas e harness de known-bad.
 9. Rodar uma configuração de cobertura dedicada que inclua explicitamente B1 extraído, `apps/worker`, rotas API e todos os seams críticos, com thresholds por seam além do global >=80%.
+
+## Incremento clínico-financeiro — CVG-002C rollback diário (23/08/2026)
+
+O primeiro RED da jornada clínica-financeira foi executado fora do slice PIX.
+O endpoint de cobrança de diária ignorava o `TenantCommandRunner`; o teste de
+seam falhou com `commandCalls 0 !== 1`. O GREEN agora:
+
+- injeta `runTenantCommand` no dispatcher de internação;
+- executa `inpatient.daily-charges.bill` com `billing.addItem`, vínculo da
+  diária, persistência aguardada e audit `writeAndWait` na mesma operação;
+- reidrata Billing/Inpatient do PostgreSQL após rollback para que caches locais
+  não transformem uma falha em item/diária fantasma;
+- mantém a idempotência de origem da migration `0115` como segunda barreira.
+
+Evidência fresca e limitada:
+
+- rota: `12/12`;
+- módulo Billing: `16/16`;
+- módulo Inpatient: `17/17`;
+- PostgreSQL descartável com migrations 0000..0116: rollback `1/1`, com
+  `billing_items=0`, `billing_records=0`, diária `pending` e vínculo nulo;
+- typecheck/build da API e módulos dependentes: PASS.
+
+Artefato: `.agent/artifacts/CVG-002C-inpatient-daily-billing-rollback-2026-08-23.md`.
+Este incremento não fecha o parent `CVG-002B2B` nem `CVG-002`: admissão,
+handoff/permanência, estoque, alta, recebimento/ledger/outbox, RLS A/B,
+concurrency HTTP, SPA, providers, paridade, WCAG, target ops, cobertura e
+release continuam abertos.
 10. Executar regressões, cobertura, segurança e crítica independente; somente então produzir `VERIFIED`.
 
 ## Ownership previsto

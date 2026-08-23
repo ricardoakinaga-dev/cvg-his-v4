@@ -320,3 +320,19 @@ SPA, paridade Vetus `11/11 + 3/3`, WCAG 2.2 AA, cobertura significativa,
 deploy/restore/SLO e release. O status canônico permanece
 `CVG-002B2B IN_PROGRESS/PARTIAL`; nada nesta seção declara produção ou
 perfeição do ERP.
+
+### Atualização de implementação — rollback de diária clínica-financeira
+
+Na continuação de 23/08/2026, o RED da fronteira `billing.addItem` ↔
+`markDailyChargeBilled` foi convertido em GREEN local. A rota de cobrança agora
+usa `runTenantCommand` com a operação `inpatient.daily-charges.bill`, inclui a
+auditoria aguardada na mesma operação e reidrata caches após erro. A prova
+PostgreSQL descartável confirmou rollback de billing record e item (`0/0`),
+diária ainda `pending` e vínculo nulo após failpoint depois de
+`billing.addItem`. O artefato completo está em
+`.agent/artifacts/CVG-002C-inpatient-daily-billing-rollback-2026-08-23.md`.
+
+Isso atende somente a fronteira de atomicidade da diária. A barra congelada
+`ERP-CLIN-001` ainda exige a jornada admissão → handoff/permanência → estoque →
+alta → recebimento/ledger/audit/outbox, dois tenants, replay/concurrency e SPA;
+nenhuma alegação de produção ou perfeição foi alterada.
