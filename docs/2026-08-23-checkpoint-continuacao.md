@@ -637,3 +637,12 @@ estoque → alta → billing → recebimento/ledger/auditoria/outbox, incluindo
 replay, concorrência e failpoints. O programa continua
 `IN_PROGRESS/PARTIAL`; Redis failover real, provider, SPA/B2c, paridade Vetus,
 WCAG, operações alvo, cobertura e release seguem gates abertos.
+## Publicação confirmada — recibo de caixa HTTP/UoW (23/08/2026, 07:13 BRT)
+
+O commit de implementação `3e278c8` e o checkpoint documental/control-plane
+`d605351` foram publicados em `origin/agent/sync-v4-full-program`. Após
+`git fetch`, `HEAD == origin == d6053511a8ed686c60e2e4c0601678317cb4737d`.
+O checker canônico retorna 11 PASS, 1 WARN histórico de ownership paralelo e
+0 FAIL. O único caminho dirty é o cache user-owned
+`packages/design-system/tsconfig.vue.tsbuildinfo`, deliberadamente fora dos
+commits.
