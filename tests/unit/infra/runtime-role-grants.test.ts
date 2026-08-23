@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import {
   API_GLOBAL_TABLE_MUTATIONS,
   API_SENSITIVE_TABLE_PRIVILEGES,
+  RUNTIME_INSTALLER_MUTATIONS,
   RUNTIME_SENSITIVE_TABLES,
   RUNTIME_SETTLEMENT_FUNCTIONS,
   WORKER_USER_READ_COLUMNS
@@ -67,6 +68,40 @@ describe('runtime PostgreSQL role grants', () => {
     for (const script of roleScripts) {
       expect(script.content).not.toMatch(/GRANT (?:INSERT|UPDATE|DELETE)[^\n]*worker_user/i);
     }
+  });
+
+  it('revokes installer/governance mutations from the worker after broad RLS grants', () => {
+    expect(RUNTIME_INSTALLER_MUTATIONS).toEqual(API_GLOBAL_TABLE_MUTATIONS);
+    for (const script of roleScripts) {
+      const broadGrant = script.content.indexOf(
+        'GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.%I'
+      );
+      expect(broadGrant, `${script.path} must retain the broad RLS grant`).toBeGreaterThan(-1);
+      const workerRevoke = script.content.indexOf(
+        'REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLE public.%I FROM %I',
+        broadGrant
+      );
+      expect(
+        workerRevoke,
+        `${script.path} must revoke installer mutations after broad grant`
+      ).toBeGreaterThan(broadGrant);
+      for (const mutation of RUNTIME_INSTALLER_MUTATIONS) {
+        expect(
+          script.content.slice(workerRevoke),
+          `${script.path} must protect ${mutation.tableName}`
+        ).toContain(`('${mutation.tableName}', '${mutation.privileges}')`);
+      }
+    }
+
+    const reconcilerBroadGrant = runtimeReconciler.indexOf(
+      'GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.%I'
+    );
+    const reconcilerWorkerRevoke = runtimeReconciler.indexOf(
+      'REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLE public.%I FROM %I',
+      reconcilerBroadGrant
+    );
+    expect(reconcilerWorkerRevoke).toBeGreaterThan(reconcilerBroadGrant);
+    expect(runtimeReconciler).toContain('RUNTIME_INSTALLER_MUTATIONS');
   });
 
   it('preserves the least-privilege PIX receipt/delivery matrix after broad RLS grants', () => {

@@ -250,3 +250,38 @@ restore/release e demais gates externos.
 O checkpoint foi publicado em `b8fc3eccbfff7ab30e44ee92b109c08cc60159e2`
 (`docs: save restricted clinical financial checkpoint`) no branch
 `origin/agent/sync-v4-full-program`; `git fetch` confirmou `HEAD == origin`.
+
+## Checkpoint atual — worker real, ACL e SIGKILL (23/08/2026, 17:46 BRT)
+
+O próximo gate de `CVG-002C6` foi executado com o entrypoint real
+`apps/worker/src/index.ts` em processo filho, banco PostgreSQL efêmero e role
+LOGIN `NOSUPERUSER/NOBYPASSRLS`. O teste
+[`worker-runtime-entrypoint.test.ts`](../tests/integration/process/worker-runtime-entrypoint.test.ts)
+passou **1/1**: `/live` abriu, `/metrics` confirmou ticks reais, o processo foi
+encerrado por `SIGKILL`, reiniciou na mesma porta e terminou por `SIGTERM` com
+`code=0`. A saída não apresentou crash nem violação de ACL.
+
+O RED foi preservado no artefato
+[`CVG-002C6-worker-runtime-acl-sigkill-2026-08-23.md`](../.agent/artifacts/CVG-002C6-worker-runtime-acl-sigkill-2026-08-23.md): a role falhava com
+`forbiddenTablePrivileges=6`; uma correção parcial deixou dois privilégios e a
+correção final passou a revogar todo DML/truncate de tabelas de instalação e
+governança do worker. O catálogo é aplicado no reconciler, no init script e no
+template Helm; a suíte de contrato passou **11/11**.
+
+Limite obrigatório: `health` continua degradado porque o entrypoint ainda não
+registra os consumidores de produção `payments`, `billing` e `webhooks`. Isso
+não é readiness GREEN e não foi mascarado com consumidores no-op. A próxima
+sessão deve compor handlers reais (ou aprovar um manifesto explícito do worker)
+e repetir a prova de readiness/processamento, além da matriz completa de
+failpoints e da equivalência Helm aplicada.
+
+Validações adicionais deste checkpoint: `packages/db` typecheck, Prettier,
+syntax check do init script e `git diff --check` passaram. O estado do programa
+permanece `BUILD/VERIFY`, `IN_PROGRESS/PARTIAL`; o cache user-owned
+`packages/design-system/tsconfig.vue.tsbuildinfo` foi mantido fora do stage.
+
+A revisão independente posterior aprovou este gate como **APPROVE bounded**, sem
+Critical/High: a consulta positiva de privilégios é executada antes e depois
+do restart, e `/ready` observa o `503` degradado real. O residual Medium é
+deliberado e está registrado no artefato: ainda não há consumidores/eventos de
+domínio reais processados pelo worker.

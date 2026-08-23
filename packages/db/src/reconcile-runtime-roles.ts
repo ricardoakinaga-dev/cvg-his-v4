@@ -5,6 +5,7 @@ import {
   API_GLOBAL_TABLE_MUTATIONS,
   API_SENSITIVE_TABLE_PRIVILEGES,
   RUNTIME_SENSITIVE_TABLES,
+  RUNTIME_INSTALLER_MUTATIONS,
   RUNTIME_SETTLEMENT_FUNCTIONS,
   WORKER_USER_READ_COLUMNS
 } from './runtime-role-policy.js';
@@ -254,6 +255,14 @@ export async function reconcileRuntimeRoles(
          AND class.relrowsecurity`,
       [[apiRole, workerRole]]
     );
+    for (const mutation of RUNTIME_INSTALLER_MUTATIONS) {
+      await executeGeneratedStatements(
+        client,
+        `SELECT format('REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLE public.%I FROM %I', $1::text, $2::text) AS statement
+         WHERE to_regclass(format('public.%I', $1::text)) IS NOT NULL`,
+        [mutation.tableName, workerRole]
+      );
+    }
     for (const tableName of SHARED_READ_TABLES) {
       await grantExistingTable(client, tableName, 'SELECT', apiRole);
       await grantExistingTable(client, tableName, 'SELECT', workerRole);

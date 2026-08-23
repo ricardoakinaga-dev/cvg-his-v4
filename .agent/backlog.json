@@ -286,9 +286,13 @@
         ".agent/verification.jsonl#VFY-CVG-002C6-RUNTIME-ROLE-001",
         ".agent/verification.jsonl#VFY-CVG-002C6-RESTART-001",
         ".agent/verification.jsonl#VFY-CVG-002C6-SEARCH-PATH-RED-001",
-        ".agent/verification.jsonl#VFY-CVG-002C6-SEARCH-PATH-GREEN-001"
+        ".agent/verification.jsonl#VFY-CVG-002C6-SEARCH-PATH-GREEN-001",
+        ".agent/artifacts/CVG-002C6-worker-runtime-acl-sigkill-2026-08-23.md",
+        "tests/integration/process/worker-runtime-entrypoint.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-002C6-WORKER-ACL-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-002C6-WORKER-RETEST-001"
       ],
-      "next_action": "The restricted runtime vertical is GREEN bounded at 5/5 and the controlled restart/replay proof is GREEN bounded at 1/1. Before any promotion, add a true child-process SIGKILL harness, complete failpoints across admission/inventory/daily/discharge/close/receipt, execute the worker role independently, and close the Helm-vs-reconciler equivalence gap. Keep callback ghost, async cross-instance hydration, global RLS/FORCE RLS, Redis/provider/SPA/parity/WCAG/coverage/operations/deploy/release gates explicitly open and keep the user-owned tsbuildinfo cache out of scope."
+      "next_action": "Worker child-process execution is GREEN bounded for /live, loop ticks, SIGKILL and same-port restart, and worker installer/governance DML is revoked consistently in reconciler/init/Helm. Readiness remains degraded until real payments, billing and webhooks consumers are composed. Next, review/register those handlers or an explicit worker manifest, then execute the full failpoint matrix and prove applied Helm equivalence. Keep callback ghost, async cross-instance hydration, global RLS/FORCE RLS, Redis/provider/SPA/parity/WCAG/coverage/operations/deploy/release gates explicitly open and keep the user-owned tsbuildinfo cache out of scope."
     },
     {
       "id": "CVG-003",

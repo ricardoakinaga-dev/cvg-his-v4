@@ -482,3 +482,19 @@ failpoints em todas as escritas, worker independente e equivalência Helm. A
 barra global permanece `ACTIVE/IN_PROGRESS/PARTIAL`; SPA, providers, Redis,
 paridade, WCAG, cobertura, operações, deploy/restore e release continuam
 separados. O tsbuildinfo user-owned segue fora do stage.
+
+## Estado atual — worker process boundary (23/08/2026, 15:20 BRT)
+
+O worker agora tem evidência child-process **GREEN bounded** sob PostgreSQL
+descartável e role `NOSUPERUSER/NOBYPASSRLS`: `/live`, ticks reais, ACL proibida
+vazia antes/depois de `SIGKILL`, restart na mesma porta, `/ready` `503` com
+readiness false e `SIGTERM` limpo. A revogação de DML do worker está alinhada
+entre reconciler, init script e Helm; runtime grants passou **11/11**. A revisão
+independente aprovou sem Critical/High.
+
+O gate de readiness permanece aberto porque o entrypoint ainda não registra
+`payments`, `billing` e `webhooks`; não há prova de processamento de eventos
+reais. A próxima ação é compor/revisar os handlers/manifesto do worker, depois
+rodar failpoints cross-domain e equivalência Helm aplicada. O ERP e a Quality
+Bar seguem `ACTIVE/IN_PROGRESS/PARTIAL`, e o cache user-owned permanece fora do
+stage.

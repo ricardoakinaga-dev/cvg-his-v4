@@ -385,3 +385,19 @@ publish this bounded slice. The plan remains IN_PROGRESS/PARTIAL: real
 child-process SIGKILL, complete per-boundary failpoints, independent worker
 execution, Helm equivalence, global RLS/FORCE RLS and all external
 product/operations/release gates remain open.
+
+Plan revision note, 2026-08-23 (worker child-process ACL/SIGKILL): The real
+`apps/worker/src/index.ts` now has a bounded process proof under a disposable
+PostgreSQL LOGIN `NOSUPERUSER/NOBYPASSRLS` role. The RED exposed six forbidden
+worker table privileges, then two residual privileges after a partial revoke;
+the final policy revokes all worker DML/TRUNCATE on installer/governance tables
+after the broad RLS grant in reconciler, init and Helm. Fresh evidence is
+`worker-runtime-entrypoint.test.ts` **1/1**, with positive empty privilege
+assertions before/after restart, `/live`, real loop ticks, `/ready` HTTP 503,
+SIGKILL, same-port restart and clean SIGTERM; runtime grant contract is
+**11/11**. Independent review is APPROVE bounded with no Critical/High. The
+worker consumers `payments`, `billing` and `webhooks` remain unregistered, so
+readiness and domain-event processing are intentionally not promoted. Next:
+compose/review real handlers, then execute the complete failpoint matrix and
+applied Helm equivalence; all product, global RLS and release gates remain
+IN_PROGRESS/PARTIAL.

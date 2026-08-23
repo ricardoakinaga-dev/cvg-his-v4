@@ -99,6 +99,24 @@ data:
     FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
     WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p') AND c.relrowsecurity\gexec
 
+    SELECT format('REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLE public.%I FROM %I', candidate.table_name, :'worker_user')
+    FROM (
+      VALUES ('roles', 'INSERT'),
+             ('permissions', 'INSERT'),
+             ('role_permissions', 'INSERT, DELETE'),
+             ('user_roles', 'INSERT, DELETE'),
+             ('cfop_entries', 'INSERT, UPDATE'),
+             ('icms_tables', 'INSERT, UPDATE'),
+             ('ipi_tables', 'INSERT, UPDATE'),
+             ('pis_tables', 'INSERT, UPDATE'),
+             ('cofins_tables', 'INSERT, UPDATE'),
+             ('ibs_cbs_tables', 'INSERT, UPDATE'),
+             ('icms_rules', 'INSERT'),
+             ('nfse_layouts', 'INSERT, UPDATE')
+    ) AS candidate(table_name, privileges)
+    JOIN pg_class c ON c.relname = candidate.table_name
+    JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public'\gexec
+
     SELECT format('GRANT SELECT ON TABLE public.%I TO %I', candidate.table_name, :'api_user')
     FROM (
       VALUES ('accounts'), ('tenants'), ('roles'), ('permissions'), ('role_permissions'),

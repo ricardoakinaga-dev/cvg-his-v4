@@ -1176,3 +1176,64 @@ worker independente, equivalência Helm e gates globais permanecem abertos.
 
 O commit documental deste checkpoint é `b8fc3eccbfff7ab30e44ee92b109c08cc60159e2`;
 após o push, `HEAD == origin/agent/sync-v4-full-program`.
+
+## Continuação bounded — worker runtime ACL e SIGKILL (23/08/2026, 17:46 BRT)
+
+Foi escrito um RED de processo real para `apps/worker/src/index.ts` sob banco
+efêmero e role LOGIN `NOSUPERUSER/NOBYPASSRLS`. O primeiro resultado falhou no
+bootstrap por `forbiddenTablePrivileges=6`; depois de uma revogação parcial,
+duas mutações ainda escapavam porque a política rejeita qualquer DML em
+tabelas de instalação/governança. O GREEN final revoga
+`INSERT, UPDATE, DELETE, TRUNCATE` em todo o catálogo reservado ao instalador,
+sem retirar `SELECT` do worker, em três superfícies: reconciler, init script e
+Helm.
+
+Evidência fresca:
+
+- `tests/integration/process/worker-runtime-entrypoint.test.ts`: **1/1 PASS**;
+  `/live`, ticks reais em `/metrics`, `SIGKILL`, restart na mesma porta e
+  `SIGTERM` limpo; a verificação positiva de ACL exige lista vazia de
+  privilégios DML proibidos no primeiro e no segundo processo, e `/ready`
+  responde `503` com readiness degradada explícita;
+- `tests/unit/infra/runtime-role-grants.test.ts`: **11/11 PASS**;
+- `packages/db` typecheck, Prettier, `sh -n` e `git diff --check`: PASS.
+
+Artefato: [`.agent/artifacts/CVG-002C6-worker-runtime-acl-sigkill-2026-08-23.md`](../.agent/artifacts/CVG-002C6-worker-runtime-acl-sigkill-2026-08-23.md).
+
+O health do worker permanece **degraded** por falta de registro dos
+consumidores `payments`, `billing` e `webhooks`; o teste mantém esse 503 como
+residual explícito e não cria handlers fictícios. Portanto, este gate prova
+execução, ACL e recuperação de processo, mas não readiness de produção nem
+processamento de eventos. Próxima ação: registrar/revisar os handlers reais,
+repetir readiness, fechar failpoints cross-domain e executar equivalência Helm
+aplicada. A barra ERP/Quality Bar continua `IN_PROGRESS/PARTIAL` e o
+`tsconfig.vue.tsbuildinfo` user-owned continua fora do stage.
+
+A revisão independente depois do reforço do teste foi **APPROVE bounded**, sem
+Critical/High. O residual Medium é a ausência dos consumidores reais e,
+portanto, a falta de prova de processamento de eventos de domínio; readiness
+operacional completa continua bloqueada por esse gate.
+
+## Benchmark externo usado como guardrail de produto (23/08/2026)
+
+A revisão de produto foi atualizada apenas como referência de capacidades, não
+como evidência do repositório. Fontes oficiais atuais destacam, de forma
+convergente, prontuário SOAP/autosave, dashboard de pacientes e status,
+captura automática de cobrança ligada ao cuidado, inventário atualizado por
+administração, portal/comunicação com cliente, pagamentos integrados,
+multi-localidade, relatórios e integrações. Ver
+[Shepherd Features](https://www.shepherd.vet/features/),
+[IDEXX Practice Management](https://software.idexx.com/products),
+[Covetrus Ascend](https://software.covetrus.com/emea/veterinary-solutions/ascend-cloud-veterinary-software/),
+[Digitail](https://digitail.com/) e
+[Provet Enterprise](https://www.provet.cloud/smarter-veterinary-software).
+
+Esses sinais reforçam os critérios já congelados para a próxima jornada, mas
+não alteram a ordem de segurança: readiness/event bus, failpoints,
+idempotência, RLS e reconciliação observável vêm antes de qualquer alegação de
+ERP líder ou promoção de produção.
+
+Inventário documental desta retomada: `1452` arquivos sob `docs/`, `1129`
+textuais identificáveis por extensão e `53.869.477` bytes. Esse número é um
+inventário de continuidade; a fonte normativa desta sessão são as seções
+atuais deste arquivo, o handoff curto e o artefato do worker.

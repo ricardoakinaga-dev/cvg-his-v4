@@ -13,6 +13,29 @@ export const API_GLOBAL_TABLE_MUTATIONS = [
   { tableName: 'nfse_layouts', privileges: 'INSERT, UPDATE' }
 ] as const;
 
+/**
+ * Tables whose mutations are reserved for the installer capability role.
+ *
+ * The broad tenant-table grant is intentionally applied to both runtime
+ * roles, but the worker must not inherit these setup/governance mutations.
+ * Keeping this list next to the API mutation contract lets reconciliation and
+ * deployment ACLs close the same boundary after every broad grant.
+ */
+export const RUNTIME_INSTALLER_MUTATIONS = [
+  { tableName: 'roles', privileges: 'INSERT' },
+  { tableName: 'permissions', privileges: 'INSERT' },
+  { tableName: 'role_permissions', privileges: 'INSERT, DELETE' },
+  { tableName: 'user_roles', privileges: 'INSERT, DELETE' },
+  { tableName: 'cfop_entries', privileges: 'INSERT, UPDATE' },
+  { tableName: 'icms_tables', privileges: 'INSERT, UPDATE' },
+  { tableName: 'ipi_tables', privileges: 'INSERT, UPDATE' },
+  { tableName: 'pis_tables', privileges: 'INSERT, UPDATE' },
+  { tableName: 'cofins_tables', privileges: 'INSERT, UPDATE' },
+  { tableName: 'ibs_cbs_tables', privileges: 'INSERT, UPDATE' },
+  { tableName: 'icms_rules', privileges: 'INSERT' },
+  { tableName: 'nfse_layouts', privileges: 'INSERT, UPDATE' }
+] as const;
+
 /** Direct DML required by API-owned authentication and user repositories. */
 export const API_SENSITIVE_TABLE_PRIVILEGES = [
   { tableName: 'users', privileges: 'SELECT, INSERT, UPDATE' },

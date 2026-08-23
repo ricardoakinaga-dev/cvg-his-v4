@@ -427,3 +427,21 @@ Commits locais: `ee126a6` e `67bfe2d`. Artefato:
 Quality Bar global continua `IN_PROGRESS/PARTIAL`: ainda faltam SIGKILL de
 processo filho, failpoints por boundary, worker independente, equivalência Helm
 executada, RLS/FORCE RLS global e gates de produto/operação/release.
+
+## Iteração atual — worker ACL e recuperação de processo (23/08/2026, 15:20 BRT)
+
+O RED do worker real foi fechado bounded: a role `NOBYPASSRLS` falhava com seis
+privilégios proibidos e, após uma correção parcial, ainda havia dois. A política
+final revoga todo DML/truncate de tabelas de instalação/governança do worker
+após o grant amplo, em reconciler, init e Helm. A prova process-level passou
+**1/1** com `/live`, ticks reais, inspeção positiva de privilégios vazia antes e
+depois do restart, `/ready` HTTP `503`, `SIGKILL`, restart na mesma porta e
+`SIGTERM` limpo; o contrato de ACL passou **11/11**. A revisão independente foi
+**APPROVE bounded**, sem Critical/High.
+
+Stop decision: `ACTIVE`; não promover readiness nem a Quality Bar global. O
+residual Medium é explícito: `payments`, `billing` e `webhooks` ainda não são
+registrados, então não há processamento real de eventos de domínio. Próximo
+gate: compor/revisar esses handlers, repetir readiness e executar a matriz de
+failpoints e equivalência Helm aplicada. `tsconfig.vue.tsbuildinfo` continua
+user-owned e fora do stage.

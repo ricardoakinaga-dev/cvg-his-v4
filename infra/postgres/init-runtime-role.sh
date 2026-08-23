@@ -94,6 +94,34 @@ WHERE namespace.nspname = 'public'
   AND class.relrowsecurity
 \gexec
 
+-- Installer/governance mutations stay API/installer-only; the worker keeps
+-- read access to these shared tables but must not receive setup DML from the
+-- broad RLS grant above.
+SELECT format(
+  'REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLE public.%I FROM %I',
+  candidate.table_name,
+  :'worker_user'
+)
+FROM (
+  VALUES
+    ('roles', 'INSERT'),
+    ('permissions', 'INSERT'),
+    ('role_permissions', 'INSERT, DELETE'),
+    ('user_roles', 'INSERT, DELETE'),
+    ('cfop_entries', 'INSERT, UPDATE'),
+    ('icms_tables', 'INSERT, UPDATE'),
+    ('ipi_tables', 'INSERT, UPDATE'),
+    ('pis_tables', 'INSERT, UPDATE'),
+    ('cofins_tables', 'INSERT, UPDATE'),
+    ('ibs_cbs_tables', 'INSERT, UPDATE'),
+    ('icms_rules', 'INSERT'),
+    ('nfse_layouts', 'INSERT, UPDATE')
+) AS candidate(table_name, privileges)
+JOIN pg_class AS class ON class.relname = candidate.table_name
+JOIN pg_namespace AS namespace ON namespace.oid = class.relnamespace
+WHERE namespace.nspname = 'public';
+\gexec
+
 -- Audit is append-only for every runtime service role.
 SELECT format('REVOKE UPDATE, DELETE, TRUNCATE ON TABLE public.%I FROM %I', class.relname, :'runtime_user')
 FROM pg_class AS class
