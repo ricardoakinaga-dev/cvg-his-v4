@@ -149,11 +149,23 @@ For each milestone, freeze one bounded task contract and Quality Bar subset; obt
 
 From `/home/ricardo/cvg-his-v4`:
 
-1. Finish and preserve the complete documentation-corpus audit with counts, hashes, authority classification, requirements, contradictions and open gates.
-2. Freeze `.gauntlet/state.md` v1 and write `.agent/tasks/CVG-001.md` plus `.agent/gates/implementation-ready-CVG-001.json`.
-3. Add failing unit/API/database/SPA E2E tests for `CVG-001`, then implement the smallest fail-closed correction and connected flow.
-4. Run focused tests, coverage, OpenAPI, typecheck/build, secret/dependency/security checks and the disposable PostgreSQL/Redis two-instance journey.
-5. Obtain an independent adversarial review, fix the largest valid gap and rerun invalidated evidence.
+1. Completed on 2026-08-23: preserve the complete documentation-corpus audit
+   with counts, hashes, authority classification, requirements, contradictions
+   and open gates in `.agent/artifacts/document-corpus-audit.md` and
+   `docs/2026-08-23-checkpoint-continuacao.md`.
+2. Keep `.gauntlet/state.md` v1 and `.agent/tasks/CVG-001.md` as the secure
+   installation contract, but do not let their historical first-step wording
+   override the active `CVG-002B2B` continuation pointer.
+3. Close the current bounded B2b operational gap with RED tests first:
+   operator-facing PIX settlement DLQ query/redrive, runbook, alerts and
+   dashboard, without mutating financial artifacts outside the existing
+   repository contract.
+4. Define and test the multi-replica rate-limit policy and narrow the
+   authenticated pre-context principal projection; then execute the real
+   SIGKILL/restart matrix and rerun B1/B2a/ingress/HTTP regressions.
+5. Obtain a fresh independent adversarial review before any `VERIFIED` change;
+   gate B2c/SPA, Vetus parity, WCAG, providers, target operations and release
+   separately.
 
 ## Validation and Acceptance
 
@@ -192,3 +204,10 @@ Control-plane files have one writer: the root integrator. Workers return read-on
 - API package suite: 276/277 passed; one Redis-dependent chaos test failed and remains a baseline limitation.
 
 Plan revision note, 2026-08-22: Initial T4 plan created from active-document discovery, current worktree inspection and current local baseline. Quality Bar v1 and the `CVG-001` task contract were frozen after all corpus, planning, TDD and security reviews returned; implementation evidence remains absent until Round 1 tests execute.
+
+Plan revision note, 2026-08-23: The complete corpus inventory was reaudited at
+1.447 files and the active execution moved to the published `CVG-002B2B`
+API-key boundary checkpoint. The concrete steps were reconciled so a resumed
+agent starts from the operational DLQ/rate-limit/principal gaps instead of
+repeating the already completed corpus audit. This revision does not change the
+Quality Bar or promote any gate.

@@ -15,7 +15,8 @@
         ".agent/artifacts/document-corpus-audit.md",
         ".agent/artifacts/market-benchmark.md",
         ".agent/tasks/CVG-001.md",
-        ".gauntlet/state.md"
+        ".gauntlet/state.md",
+        "docs/2026-08-23-checkpoint-continuacao.md"
       ],
       "next_action": "Write and run the first RED tests for explicit-secret and durable installation-sentinel behavior."
     },
@@ -40,7 +41,7 @@
         ".agent/verification.jsonl",
         ".gauntlet/state.md"
       ],
-      "next_action": "Freeze a CVG-002B2b implementation-ready gate for signed inbound receipts and durable B1 settlement consumption; SPA remains separately gated B2c work."
+      "next_action": "Resume from the published CVG-002B2B checkpoint: add the operator-facing DLQ endpoint/runbook/alerts, define the multi-replica rate-limit policy and preserve the separate B2c/SPA gate."
     },
     {
       "id": "CVG-002B2A",
@@ -101,7 +102,8 @@
         ".agent/verification.jsonl#VFY-CVG-002B2B-PRINCIPAL-002",
         ".agent/verification.jsonl#VFY-CVG-002B2B-UOW-002",
         ".agent/verification.jsonl#VFY-CVG-002B2B-APIKEY-BOUNDARY-001",
-        ".agent/verification.jsonl#VFY-CVG-002B2B-HTTP-POSTGRES-003"
+        ".agent/verification.jsonl#VFY-CVG-002B2B-HTTP-POSTGRES-003",
+        "docs/2026-08-23-checkpoint-continuacao.md"
       ],
       "next_action": "Add the operator-facing DLQ endpoint/runbook/alerts, define the multi-replica rate-limit policy and minimal authenticated-principal projection, then rerun B1/B2a/ingress/HTTP regressions and reassess VERIFIED while preserving 18/18 B1, 35/35 verifier/keyring, 77/77 focused, 11/11 ingress, 13/13 HTTP, 4/4 HTTP-to-PostgreSQL, 8/8 ACL, 5/5 service-principal and 54/54 worker evidence."
     },

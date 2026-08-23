@@ -43,3 +43,18 @@
 - The extracted auth helper now enforces rate limiting before `last_used_at`; the repository consumes the counter atomically. Real HTTP→PostgreSQL evidence is 4/4: owner `410`, foreign opaque `404`, direct legacy `200`, and eight concurrent low-limit requests with two `201` plus six `429`.
 - Fresh bounded evidence is API-key service 13/13, mapper 3/3, auth helper 2/2, runtime ACL/RLS 1/1, shared-database/API builds and lint, RLS 153/154, OpenAPI 335/386, Helm static validation, secret scan and diff check. Implementation `62db87e`, documentation checkpoint `8d226d0` and final hash reconciliation `3c76ce0` are pushed; the design-system tsbuildinfo cache remains unstaged.
 - Remaining gate work: real process SIGKILL/restart, operator DLQ/runbook/alerts, multi-replica rate-limit benchmark/policy, minimal authenticated-principal narrowing, SPA/B2c, provider, Vetus parity, WCAG, target operations and release. The broad objective remains `IN_PROGRESS/PARTIAL`.
+
+## Checkpoint 2026-08-23 — documentação de continuidade
+
+- O inventário determinístico de `docs/` foi refeito: 1.447 arquivos, 90
+  diretórios, 53.728.402 bytes, manifesto `sha256`
+  `52ab7100d5272df769f61fb6323da250987b10f404a9fb8fc0fdf4198d19c5bf`.
+- O ponto de entrada para a próxima sessão é
+  `docs/2026-08-23-checkpoint-continuacao.md`; o handoff detalhado aponta para
+  ele e o ExecPlan deixou de repetir a auditoria documental já concluída.
+- A auditoria independente confirmou que a maior lacuna local continua sendo
+  DLQ operacional de settlement PIX: não há endpoint de operador, runbook,
+  alertas ou dashboard específicos. O worker já possui telemetria agregada e o
+  repository já possui redrive interno auditado.
+- Estado permanece `CVG-002B2B IN_PROGRESS/PARTIAL`; não houve promoção de
+  quality bar, produção, provider, SPA, paridade Vetus ou release.

@@ -17,13 +17,13 @@
   "repository_state": "CVG-002B parser/fingerprint plus durable 0111 receipt/delivery ingress checkpoint is committed as 61cdef4 and pushed to origin/agent/sync-v4-full-program; the explicit non-production HTTP callback boundary is committed as be1cb47 and hardened/pushed as bbbf902, with OpenAPI alignment follow-up 705052b. Implementation checkpoint 26f3281 and documentation synchronization 3cba876 were followed by implementation hardening 46b84cb, all pushed to origin/agent/sync-v4-full-program. The recovery/DLQ/legacy continuation is published as implementation fdb0995, documentation 75bfa72 and hash reconciliation 13dbd01. API-key boundary implementation `62db87e`, documentation checkpoint `8d226d0` and final hash reconciliation `3c76ce0` are now published: migration 0113 capability lookup/probe, strict native/string JSONB mapping, tenantized usage/rate-limit tables, worker/API ACL separation, mandatory helper rate limiting and atomic PostgreSQL consumption, plus real-repository HTTP→PostgreSQL evidence 4/4 (owner 410, foreign 404, direct 200, concurrent 2x201/6x429). It remains below VERIFIED because the pre-context principal is broader than the minimum projection, multi-replica rate-limit policy, real SIGKILL restart matrix, operational DLQ/runbook/alerts, provider, SPA and release evidence are open. Corrected 18/18 B1 remains extracted into module-pix with API shims, and the preserved user-owned packages/design-system/tsconfig.vue.tsbuildinfo cache remains outside scope",
   "instruction_scope_refs": [".agent/instruction-scope.md"],
   "last_gate_record": ".agent/gates/implementation-ready-CVG-002B2B.json",
-  "last_event_id": "EVT-0084",
-  "state_revision": 71,
+  "last_event_id": "EVT-0085",
+  "state_revision": 72,
   "next_gate": "VERIFIED",
   "next_action": "Add operational DLQ/runbook/alerts, define the multi-replica rate-limit policy and minimum principal projection, rerun B1/B2a/ingress/HTTP regressions and reassess VERIFIED while preserving 18/18 B1, 35/35 verifier/keyring, 77/77 focused, 11/11 ingress, 13/13 HTTP, 4/4 HTTP-to-PostgreSQL, 8/8 ACL, 5/5 service-principal and 54/54 worker evidence",
   "blocked_by": [],
   "human_approval_required": [
     "Production go-live, credential rotation, provider selection, fiscal homologation, and residual HIGH/CRITICAL risk acceptance remain outside repository implementation authority"
   ],
-  "updated_at": "2026-08-23T00:35:00-03:00"
+  "updated_at": "2026-08-23T01:01:35-03:00"
 }

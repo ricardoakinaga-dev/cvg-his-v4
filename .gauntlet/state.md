@@ -73,3 +73,12 @@ The callback/worker slice remains below the `VERIFIED` bar: a real SIGKILL/proce
 - Reason: Required P0 criteria fail or have not run; target-environment work is externally blocked but local safe work remains.
 - Last integrated verification: B2b parser/ingress checkpoint `VFY-CVG-002B2B-PARSER-INGRESS-001` passed focused 77/77, PostgreSQL ingress 11/11, B1 18/18 and B2a 33/33 with independent APPROVE; B2a's VERIFIED gate still records coverage 1.646/1.646 at 83% lines/80,3% branches plus typecheck/lint, OpenAPI, RLS, dependency/secret scans and independent review PASS. Earlier SPA 1.001/1.001 evidence remains bounded and current.
 - Next largest locally actionable gap: publish the implementation/docs checkpoint, add operational DLQ/runbook/alerts and a multi-replica rate-limit policy, then rerun the bounded regressions; coherent SPA remains separate `B2c` work.
+
+## Documentation continuation — 2026-08-23
+
+The short resumption pointer is
+`docs/2026-08-23-checkpoint-continuacao.md`. The complete `docs/` inventory was
+re-audited at 1,447 files and the active control plane now points to the same
+`CVG-002B2B` operational next slice. This is documentation reconciliation only:
+the Quality Bar remains frozen, `CVG-002B2B` remains `IN_PROGRESS/PARTIAL`, and
+no production, provider, SPA, parity or release criterion is promoted.

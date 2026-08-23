@@ -46,3 +46,26 @@ Os números totalizam exatamente 1.445 arquivos no topo lógico do corpus. Hashe
 ## Implicação para aceitação
 
 O programa exige oito jornadas E2E em PostgreSQL real, sem atalhos de API, `retry` ou `skip`, incluindo reinício, dois tenants, concorrência e injeção de falha. Evidência estrutural antiga permanece útil para descoberta, mas todas as decisões de PASS precisam ser vinculadas à revisão e ao ambiente observados.
+
+## Reauditoria de continuidade — 23 de agosto de 2026
+
+O inventário determinístico foi reexecutado após os checkpoints de API-key e
+documentação. O corpus agora contém 1.447 arquivos, 90 diretórios e
+53.728.402 bytes: 995 Markdown, 255 PNG, 129 JSON, 67 HTML e 1 gzip. Foram
+identificados 1.191 arquivos textuais para leitura/varredura; a classificação
+por caminho separa 46 arquivos ativos raiz/especiais, 23 notas de
+`micro-build/`, 543 arquivos de referência `vetus/` e 835 arquivos históricos
+em `docs2/`. O hash do manifesto ordenado desta execução é
+`52ab7100d5272df769f61fb6323da250987b10f404a9fb8fc0fdf4198d19c5bf`.
+
+A autoridade não mudou: runtime/testes e estado persistido vencem documentos;
+`docs/README.md`, `docs/430-fonte-de-verdade-documental.md` e a camada ativa de
+agosto vencem julho/Vetus/`docs2`; Vetus é referência de produto e não prova de
+implementação. A reauditoria também confirmou que o backlog e o ExecPlan
+tinham ponteiros de retomada atrasados em relação ao `CVG-002B2B`; o checkpoint
+de 23/08/2026 é agora o ponto de entrada curto e o próximo slice continua sendo
+DLQ operacional, política multi-réplica e projeção mínima do principal.
+
+Limitações: o manifesto registra nomes, tipos, tamanhos e hashes; imagens e o
+gzip são inventariados, não convertidos em requisito executável. A pesquisa de
+mercado permanece em `docs/2026-08-22-auditoria-integral-e-pesquisa-erp.md`.
