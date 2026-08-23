@@ -4,12 +4,12 @@
 - Phase: BUILD
 - Current round: 8
 - Active workstreams: `CVG-002` encounter-to-receipt; bounded `CVG-002A`, `CVG-002B1`, durable outbound `CVG-002B2a` and the B2b parser/receipt/delivery ingress checkpoint are verified only within their stated boundaries.
-- Largest current gap: the bounded PIX callback/worker slice now has a real pre-context API-key capability and local atomic rate-limit proof; it still needs an operator-facing DLQ/runbook/alerts, a multi-replica rate-limit policy and separately gated SPA integration. Card, inventory linkage and the complete scheduled/walk-in E2E remain later milestones.
+- Largest current gap: the bounded PIX callback/worker slice now has a real pre-context API-key capability, local atomic rate-limit proof and an operator-facing DLQ/runbook/alert slice; it still needs a multi-replica rate-limit policy, minimum principal projection and real process restart proof. Card, inventory linkage and the complete scheduled/walk-in E2E remain later milestones.
 - Latest verification: API-key service passed 13/13, mapper 3/3, auth helper 2/2, runtime ACL/RLS 1/1 and HTTP→PostgreSQL 4/4 (including 2 accepted/6 rate-limited concurrent requests) on the real repository; B2b parser/ingress passed focused 77/77 and PostgreSQL 11/11, B1 regression 18/18 and B2a regression 33/33. The preceding B2a VERIFIED gate records coverage 1.646/1.646 with 83% lines and 80,3% branches, typecheck/lint, OpenAPI, RLS, dependency audit, secret scan, diff check and two independent approvals.
 - Blockers: Target environment, provider decisions and production authority block only their dependent future work.
 - Planning checkpoint: architecture, security, official-source and TDD reviews plus the parser/receipt/delivery implementation are consolidated in `.agent/tasks/CVG-002B2B.md` and `docs/2026-08-22-handoff-cvg-002b2.md`; the implementation gate is still not a full B2b VERIFIED gate.
 - Latest bounded local increment: EVT-0055 through EVT-0059 adds the raw `node:net` callback harness, deferred-ACK and opaque-error checks, CORS decision and OpenAPI contract. An independent review found two medium contract mismatches; follow-up `705052b` aligned the key ID/timestamp/signature regexes and webhook correlation schema. Fresh evidence is HTTP 13/13, verifier/keyring 35/35, shared-config 32/32, startup 6/6 and OpenAPI 334/385. This is evidence for the HTTP seam only; it does not satisfy HTTP-to-PostgreSQL, principal or worker requirements.
-- Next action: publish the API-key boundary implementation and documentation checkpoint, add the operational DLQ surface/runbook/alerts and define the multi-replica rate-limit policy, then rerun bounded regressions; SPA remains separately gated `B2c` work.
+- Next action: define the multi-replica rate-limit policy, narrow the authenticated principal, prove real SIGKILL/restart and rerun bounded regressions; SPA remains separately gated `B2c` work.
 
 ## Checkpoint 2026-08-22 — EVT-0060…EVT-0065
 
@@ -52,10 +52,11 @@
 - O ponto de entrada para a próxima sessão é
   `docs/2026-08-23-checkpoint-continuacao.md`; o handoff detalhado aponta para
   ele e o ExecPlan deixou de repetir a auditoria documental já concluída.
-- A auditoria independente confirmou que a maior lacuna local continua sendo
-  DLQ operacional de settlement PIX: não há endpoint de operador, runbook,
-  alertas ou dashboard específicos. O worker já possui telemetria agregada e o
-  repository já possui redrive interno auditado.
+- A auditoria independente confirmou que o maior gap local era a DLQ
+  operacional de settlement PIX; endpoint, runbook, alertas e dashboard foram
+  implementados no slice publicado. O worker continua com telemetria agregada e
+  o repository mantém redrive interno auditado; falta exercitar isso em
+  ambiente target-like.
 - Estado permanece `CVG-002B2B IN_PROGRESS/PARTIAL`; não houve promoção de
   quality bar, produção, provider, SPA, paridade Vetus ou release.
 
@@ -72,7 +73,7 @@ Published implementation `35f68fd` and replicated-observability correction
 - Added OpenAPI paths/schemas, Prometheus alert, Grafana DLQ panel and the
   operator runbook `docs/runbooks/pix-settlement-dlq.md`.
 - Fresh evidence: route 4/4, PostgreSQL/ACL 3/3 (durable backlog 1→0 after
-  redrive), runtime grants 9/9, worker 54/54, alert alignment 4/4, OpenAPI
+  redrive), runtime grants 9/9, worker 54/54, alert alignment 5/5, OpenAPI
   337/390, API/DB/worker builds and Helm/YAML/JSON/shell checks PASS. The
   alert/panel use the current DB-backed gauge
   `worker_pix_provider_settlement_reconciliation_required` with `max(...)`
@@ -81,3 +82,10 @@ Published implementation `35f68fd` and replicated-observability correction
 - The quality bar remains frozen and `CVG-002B2B` remains `IN_PROGRESS/PARTIAL`.
   The next local work is multi-replica rate-limit policy, minimal principal,
   real SIGKILL/restart and then the separate B2c/SPA/ERP gates.
+
+## Handoff final — 23/08/2026, 02:08 BRT
+
+The remote base before this handoff is `d525acc`; the canonical checker returned
+11 PASS, 1 historical WARN and 0 FAIL. Preserve the only dirty user-owned cache path and resume from
+`docs/2026-08-23-checkpoint-continuacao.md`. Do not repeat the DLQ slice or
+promote the ERP, provider, SPA, parity, WCAG or release gates.

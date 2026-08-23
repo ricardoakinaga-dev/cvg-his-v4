@@ -11,12 +11,13 @@ release.
 - Tarefa ativa: `CVG-002B2B` — ingestão de recibos PIX sintéticos e aplicação
   durável pelo núcleo B1
 - Estado: `IN_PROGRESS / PARTIAL`; próximo gate: `VERIFIED`
-- Última implementação publicada antes deste checkpoint: `62db87e`
-  (`feat: harden PostgreSQL API-key boundary`)
-- Documentação publicada: `8d226d0`; reconciliação de hashes: `3c76ce0`;
-  ponteiros finais anteriores: `409efea`
-- Este checkpoint documental foi publicado em `f0c38c3` (`docs: save
-  continuation checkpoint`).
+- Última implementação de código publicada: `35f68fd` (`feat: add pix
+  settlement dlq operations`), com a correção de semântica multi-réplica em
+  `1217882` (`fix: avoid replicated pix dlq metric double count`).
+- A última reconciliação de ledger publicada está em `d525acc` (`docs: clarify
+  replicated dlq review evidence`); esta onda documental estende essa base, e
+  os checkpoints anteriores
+  `8d226d0`, `3c76ce0`, `409efea` e `f0c38c3` continuam como histórico.
 - O arquivo user-owned
   `packages/design-system/tsconfig.vue.tsbuildinfo` permanece modificado e
   deve ficar fora de qualquer commit.
@@ -48,9 +49,10 @@ teste. Eles não promovem o ERP inteiro:
 | Principal/RLS/ACL | 5/5 serviço; 8/8 ACL/RLS; 1/1 runtime 0113 |
 | API-key service/mapper/helper | 13/13; 3/3; 2/2 |
 | HTTP → PostgreSQL sem adapter | 4/4: owner `410`, foreign `404`, direct `200`, concorrência `2×201/6×429` |
-| OpenAPI, RLS, Helm, scans | 335 paths/386 schemas; RLS 153/154; validações estáticas PASS |
+| OpenAPI, RLS, Helm, scans | 337 paths/390 schemas; RLS 153/154; validações estáticas PASS |
 
-O último slice de código está em `62db87e` e inclui:
+O slice de código API-key, ainda relevante para a base do callback, está em
+`62db87e` e inclui:
 
 - migration `0113_api_key_auth_boundary.sql`, com lookup pré-contexto por
   capability `SECURITY DEFINER`, `search_path` fixo, tabelas de uso/rate-limit
@@ -71,8 +73,9 @@ telemetria. Os artefatos detalhados estão referenciados em
 ## O que ainda está aberto — ordem de retomada
 
 1. Exercitar a superfície de operador da fila
-   `reconciliation_required` em target-like/produção autorizada, incluindo
-   refresh do gauge, rotação de credenciais e resposta a incidentes.
+   `reconciliation_required` em ambiente target-like autorizado, incluindo
+   refresh do gauge, rotação de credenciais e resposta a incidentes; o
+   endpoint/runbook/alerta local já estão implementados.
 2. Definir e medir a política de rate limit em múltiplas réplicas (janela,
    relógio, failover, Redis/PostgreSQL e comportamento quando a dependência
    está indisponível).
@@ -106,8 +109,11 @@ Foi refeito o inventário determinístico completo de `docs/`:
   `docs2/` histórico.
 
 O acervo Vetus contém evidência de produto e imagens repetidas; não é prova de
-implementação CVG-HIS. O score estrutural `readiness:enterprise` segue em
-95/100, enquanto a paridade comportamental segue `0/11` geral e `0/3` clínica.
+implementação CVG-HIS. O inventário de referência registrou 1.447 arquivos no
+checkpoint anterior; após a inclusão do runbook operacional, a recontagem do
+working tree é de 1.449 arquivos, 91 diretórios e 53.742.847 bytes. O score
+estrutural `readiness:enterprise` segue em 95/100, enquanto a paridade
+comportamental segue `0/11` geral e `0/3` clínica.
 O Game Day que sugere fallback em memória continua incompatível com a política
 de fail-closed e não deve ser executado sem revisão.
 
@@ -152,7 +158,7 @@ artefato detalhado está em
   envelope `ErrorResponse` do OpenAPI.
 - Evidência fresca: route 4/4; PostgreSQL/ACL 3/3, incluindo backlog durável
   `1→0` após redrive; runtime grant 9/9; worker 54/54; API/DB/worker build,
-  OpenAPI 337/390, alert alignment 4/4, Helm, YAML/JSON e shell checks PASS.
+  OpenAPI 337/390, alert alignment 5/5, Helm, YAML/JSON e shell checks PASS.
 
 Esse incremento reduz o risco de uma entrega terminal ficar sem operador e foi
 publicado em `35f68fd` com a correção de observabilidade em `1217882`, mas
@@ -160,3 +166,34 @@ não promove o gate: SIGKILL/restart real, rate-limit multi-réplica, principal
 mínima, provider real, SPA, paridade Vetus, WCAG, target ops e release seguem
 abertos. O cache user-owned `packages/design-system/tsconfig.vue.tsbuildinfo`
 continua fora do escopo.
+
+## Registro final para a próxima sessão — 23/08/2026, 02:08 BRT
+
+Este registro é a referência mais recente caso a sessão seja interrompida.
+
+- A base remota antes deste handoff era `d525acc`; após o commit/push desta
+  onda, use o hash confirmado pelo Git como novo ponto publicado.
+- `git status --short` deve mostrar somente
+  `packages/design-system/tsconfig.vue.tsbuildinfo`; não adicionar, reverter
+  ou limpar esse arquivo user-owned.
+- O checker canônico foi executado com
+  `python3 /home/ricardo/.codex/skills/engineering-framework/scripts/check_state.py
+  "$PWD"`: 11 PASS, 1 WARN histórico de ownership paralelo e 0 FAIL.
+- A evidência mais recente do DLQ é `VFY-CVG-002B2B-DLQ-OPERATOR-001` e a
+  correção de agregação é `VFY-CVG-002B2B-DLQ-REPLICA-001`; a publicação
+  anterior é `VFY-DOCS-DLQ-PUBLICATION-001` e a correção de wording deste
+  handoff é `VFY-DOCS-CONTINUATION-003`. Todas são evidências
+  locais/descartáveis, não certificação de produção.
+- Retomada executável: definir a política de rate limit entre réplicas,
+  reduzir a projeção mínima do principal pré-contexto, obter a matriz real de
+  SIGKILL/restart e então repetir B1/B2a/ingress/HTTP antes de reavaliar o
+  gate `VERIFIED`.
+
+Comandos mínimos:
+
+```bash
+cd /home/ricardo/cvg-his-v4
+git switch agent/sync-v4-full-program
+git status --short
+python3 /home/ricardo/.codex/skills/engineering-framework/scripts/check_state.py "$PWD"
+```

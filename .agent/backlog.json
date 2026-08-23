@@ -18,7 +18,7 @@
         ".gauntlet/state.md",
         "docs/2026-08-23-checkpoint-continuacao.md"
       ],
-      "next_action": "Write and run the first RED tests for explicit-secret and durable installation-sentinel behavior."
+      "next_action": "Remain pending while CVG-002B2B closes its current operational proof; then write and run the first RED tests for explicit-secret and durable installation-sentinel behavior."
     },
     {
       "id": "CVG-002",
@@ -41,7 +41,7 @@
         ".agent/verification.jsonl",
         ".gauntlet/state.md"
       ],
-      "next_action": "Resume from the published CVG-002B2B checkpoint: add the operator-facing DLQ endpoint/runbook/alerts, define the multi-replica rate-limit policy and preserve the separate B2c/SPA gate."
+      "next_action": "Resume from the published CVG-002B2B checkpoint: define the multi-replica rate-limit policy, narrow the principal, prove SIGKILL/restart, and preserve the separate B2c/SPA gate."
     },
     {
       "id": "CVG-002B2A",
@@ -103,6 +103,9 @@
         ".agent/verification.jsonl#VFY-CVG-002B2B-UOW-002",
         ".agent/verification.jsonl#VFY-CVG-002B2B-APIKEY-BOUNDARY-001",
         ".agent/verification.jsonl#VFY-CVG-002B2B-HTTP-POSTGRES-003",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-DLQ-OPERATOR-001",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-DLQ-REPLICA-001",
+        ".agent/verification.jsonl#VFY-DOCS-DLQ-PUBLICATION-001",
         "docs/2026-08-23-checkpoint-continuacao.md",
         ".agent/artifacts/CVG-002B2B-pix-settlement-dlq-2026-08-23.md",
         "docs/runbooks/pix-settlement-dlq.md",

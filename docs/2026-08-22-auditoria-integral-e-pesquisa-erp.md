@@ -196,3 +196,20 @@ O próximo ciclo deve publicar DLQ/runbook/alertas e abrir o gate B2c/SPA separa
 Esta sessão fechou a lacuna funcional que havia forçado o adapter do teste HTTP (implementação publicada em `62db87e`): `DatabaseApiKeyRepository.findActiveByKeyHash` usa uma função pré-contexto estreita; `mapDatabaseApiKeyRow` aceita o formato JSONB do driver `pg`; o role worker não possui acesso a `api_keys`, `api_key_usage` ou `api_key_rate_limits`; e o helper das rotas extraídas aplica rate limit antes de `last_used_at`. O probe PIX retorna apenas `true`, `false` ou `NULL` (ausente), nunca o `account_id` estrangeiro.
 
 A migration `0113` e os scripts de runtime/Helm usam `cvg_api_key_auth` sem login, inherit, bypass RLS ou memberships. A função API-only é reconciliada depois da migration no cutover e no serviço `database-migrate` do Compose; a integração ACL/HTTP valida o privilégio efetivo, o worker/PUBLIC negados e a matriz 410/404/200/429. O estado canônico continua `IN_PROGRESS/PARTIAL`: restart real, DLQ operacional, providers, SPA/Vetus parity, WCAG, target environment e release ainda não foram provados.
+
+## 14. Reconciliacao pos-DLQ e ponteiro de continuidade — 23/08/2026
+
+O slice de DLQ operacional foi publicado em `35f68fd`, a semântica de
+observabilidade multi-réplica foi corrigida em `1217882` e a última
+reconciliação de ledger publicada está em `d525acc`; esta onda documental
+estende essa base. A recontagem atual de `docs/` é 1.449
+arquivos, 91 diretórios e 53.742.847 bytes; a leitura integral anterior de
+1.447 arquivos permanece preservada no artefato de auditoria e não foi
+reclassificada como nova leitura.
+
+O ponto de entrada para a próxima sessão é
+[`2026-08-23-checkpoint-continuacao.md`](2026-08-23-checkpoint-continuacao.md).
+O próximo gap executável é a política de rate limit entre réplicas, a projeção
+mínima do principal autenticado e a matriz real de SIGKILL/restart, seguida das
+regressões B1/B2a/ingress/HTTP. O ERP geral continua sem paridade Vetus,
+provider homologado, SPA, WCAG, target operations ou release evidence.

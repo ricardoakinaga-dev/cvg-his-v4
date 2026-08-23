@@ -271,3 +271,22 @@ A documentação atual da Pagar.me consultada não congela um contrato V5 comple
 - `IR-003`: REDs executáveis cobrem raw bytes via socket, dummy HMAC, JSON duplicado, replay divergente, attempt inexistente/cross-tenant, dois tenants, callback antes do PIX (não antes do attempt), dois callbacks/workers, ambos os limites de restart, rollback por escrita, principal revogado e cada caminho de login/cache/MFA, produção fail-closed, ACL/RLS least-privilege, regressões, cobertura dedicada e revisão independente.
 
 Decisão atual: `GO` apenas para a sequência reversível autorizada pelo gate `GATE-CVG-002B2B-IR-001`; `VERIFIED` continua pendente. Nenhum comportamento de callback, migration 0111, principal ou worker deve ser inferido da aprovação de prontidão ou da suíte 18/18.
+
+## Atualização de continuidade pós-DLQ — 23/08/2026
+
+O slice de operação da fila foi implementado e publicado em `35f68fd`, com a
+correção de agregação multi-réplica em `1217882`; `d525acc` é a base publicada
+dos ledgers e esta onda atualiza os documentos derivados. A capability `cvg_pix_dlq_operator` da migration `0114`, os
+endpoints tenant-scoped de consulta/redrive, auditoria transacional,
+OpenAPI, alertas, painel e runbook estão conectados e cobertos por evidência
+local limitada (`4/4` rota, `3/3` PostgreSQL/ACL, `54/54` worker e `5/5`
+contrato de alerta). O gauge atual usa `max(...)` entre workers que observam o
+conjunto completo de contas.
+
+Isso não fecha o contrato B2b. Permanecem obrigatórios: política de rate limit
+multi-réplica, projeção mínima do principal pré-contexto, SIGKILL/restart real,
+regressões B1/B2a/ingress/HTTP após essas mudanças e, em gates separados,
+SPA/B2c, provider real, paridade Vetus, WCAG, operações alvo e release. O
+próximo agente deve iniciar por
+[`docs/2026-08-23-checkpoint-continuacao.md`](../../docs/2026-08-23-checkpoint-continuacao.md)
+e não repetir o DLQ já verificado.

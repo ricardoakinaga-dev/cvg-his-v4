@@ -1,12 +1,12 @@
 # CVG-HIS V4 - Documentacao ativa
 
-**Atualizado em:** 2026-08-23
+**Atualizado em:** 2026-08-23 (checkpoint operacional pós-`d525acc`)
 
 Esta pasta separa documentacao vigente, referencia do Vetus e historico. Uma afirmacao de funcionalidade so e considerada valida quando estiver sustentada por codigo executavel e teste comportamental.
 
 ## Comece aqui
 
-1. [`2026-08-23-checkpoint-continuacao.md`](2026-08-23-checkpoint-continuacao.md) - ponto de entrada mais recente para retomada, estado honesto, evidencias e bloqueios.
+1. [`2026-08-23-checkpoint-continuacao.md`](2026-08-23-checkpoint-continuacao.md) - ponto de entrada mais recente para retomada, estado honesto, evidencias, commits publicados e bloqueios.
 2. [`2026-08-22-handoff-cvg-002b2.md`](2026-08-22-handoff-cvg-002b2.md) - historico tecnico detalhado, evidencias verificadas e retomada de `CVG-002B2B`.
 3. [`2026-08-22-auditoria-integral-e-pesquisa-erp.md`](2026-08-22-auditoria-integral-e-pesquisa-erp.md) - auditoria consolidada, lacunas de codigo e pesquisa de PIMS oficiais.
 4. [`2026-08-07-plano-executivo-resolucao-auditoria-cvg-his-v4.md`](2026-08-07-plano-executivo-resolucao-auditoria-cvg-his-v4.md) - plano executivo vigente, marcos, gates, responsáveis e metas.

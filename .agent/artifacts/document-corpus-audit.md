@@ -69,3 +69,15 @@ DLQ operacional, política multi-réplica e projeção mínima do principal.
 Limitações: o manifesto registra nomes, tipos, tamanhos e hashes; imagens e o
 gzip são inventariados, não convertidos em requisito executável. A pesquisa de
 mercado permanece em `docs/2026-08-22-auditoria-integral-e-pesquisa-erp.md`.
+
+## Recontagem pós-DLQ — 23 de agosto de 2026
+
+Após a inclusão do runbook `docs/runbooks/pix-settlement-dlq.md` e dos
+checkpoints de reconciliação, a recontagem do working tree encontrou 1.449
+arquivos, 91 diretórios e 53.742.847 bytes sob `docs/`: 997 Markdown, 255 PNG,
+129 JSON, 67 HTML e 1 gzip. A auditoria textual/hash de 1.447 arquivos
+continua sendo a última leitura integral do corpus; esta atualização é uma
+recontagem de inventário e não transforma imagens ou histórico em requisitos
+executáveis. O checkpoint vigente é
+`docs/2026-08-23-checkpoint-continuacao.md`, e os dois novos artefatos
+operacionais são cobertos por testes e pelo handoff do DLQ.
