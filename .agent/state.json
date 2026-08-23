@@ -18,13 +18,13 @@
   "latest_bounded_evidence": "2026-08-23: CVG-001 startup/process harness 6/6 PASS in 25d7aa2; CVG-002C6 public inpatient HTTP/PostgreSQL vertical 4/4 PASS after fixture-only corrections, recorded in .agent/artifacts/CVG-002C6-vertical-http-red-green-2026-08-23.md. Both are bounded and do not promote the global ERP/Quality Bar.",
   "instruction_scope_refs": [".agent/instruction-scope.md"],
   "last_gate_record": ".agent/gates/implementation-ready-CVG-002C6.json",
-  "last_event_id": "EVT-0177",
-  "state_revision": 165,
+  "last_event_id": "EVT-0178",
+  "state_revision": 166,
   "next_gate": "VERIFIED",
   "next_action": "CVG-001 startup harness is GREEN bounded in commit 25d7aa2 for disposable PostgreSQL restricted/unsafe roles, incomplete delivery schema and real API/worker entrypoints with no listen/loop on DB failure. CVG-002C6 public HTTP/PostgreSQL vertical is GREEN bounded at 4/4 after fixture-only corrections; next elevate the same path to a real clinical runtime NOBYPASSRLS role and add boundary failpoints, SIGKILL/restart and per-record ledger/audit/outbox/stock/handoff reconciliation before promotion. Keep WebAuthn durability, audit account attribution, callback ghost, asynchronous cross-instance hydration, Redis/provider/SPA/parity/WCAG/coverage/operations/deploy/release explicitly IN_PROGRESS/PARTIAL",
   "blocked_by": [],
   "human_approval_required": [
     "Production go-live, credential rotation, provider selection, fiscal homologation, and residual HIGH/CRITICAL risk acceptance remain outside repository implementation authority"
   ],
-  "updated_at": "2026-08-23T16:50:00-03:00"
+  "updated_at": "2026-08-23T16:55:00-03:00"
 }

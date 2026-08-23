@@ -463,3 +463,7 @@ ledger/reconciliation, rollback e isolamento A/B. O resultado é GREEN bounded,
 não promoção global. Próxima ação: repetir o mesmo fluxo com role runtime
 NOBYPASSRLS, failpoints/restart cross-domain e reconciliação completa. A barra
 global continua `ACTIVE/IN_PROGRESS/PARTIAL`.
+
+O checkpoint 4/4 foi publicado em `d25151d96b1f7f0a17e3e08122d263507ec0353d`;
+`git fetch` confirmou `HEAD == origin/agent/sync-v4-full-program`, e somente o
+tsbuildinfo user-owned permaneceu fora do stage.

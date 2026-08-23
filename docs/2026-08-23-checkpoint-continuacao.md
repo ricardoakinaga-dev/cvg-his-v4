@@ -1142,3 +1142,12 @@ O Quality Bar/ERP continua `ACTIVE` e `IN_PROGRESS/PARTIAL`; não há promoção
 global, de produção, release, SPA, paridade, WCAG, operações ou cobertura.
 O cache `packages/design-system/tsconfig.vue.tsbuildinfo` continua fora do
 stage.
+
+## Publicação atual — vertical HTTP/PostgreSQL
+
+O checkpoint bounded foi publicado em
+`d25151d96b1f7f0a17e3e08122d263507ec0353d` (`test: prove inpatient clinical
+financial vertical`) no branch `origin/agent/sync-v4-full-program`; o fetch
+confirmou igualdade entre `HEAD` e o remoto. A evidência 4/4 e os limites
+estão em [`.agent/artifacts/CVG-002C6-vertical-http-red-green-2026-08-23.md`](../.agent/artifacts/CVG-002C6-vertical-http-red-green-2026-08-23.md).
+O cache user-owned do design-system permanece dirty e fora do stage.

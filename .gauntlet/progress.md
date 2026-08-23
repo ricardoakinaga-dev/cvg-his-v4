@@ -405,3 +405,7 @@ GREEN bounded; não promover ERP, produção ou release. Permanecem abertos
 NOBYPASSRLS comportamental clínico,
 failpoints/restart/reconciliação cross-domain, SPA, provider, paridade, WCAG,
 operações e cobertura.
+
+Publicação: commit `d25151d96b1f7f0a17e3e08122d263507ec0353d` foi enviado ao
+branch remoto e o fetch confirmou `HEAD == origin`; o cache user-owned do
+design-system permaneceu fora do commit.

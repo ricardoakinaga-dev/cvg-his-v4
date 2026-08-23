@@ -363,3 +363,13 @@ O harness de startup que antecede este RED está GREEN bounded em **6/6**, no
 commit `25d7aa209fffeda7ce566d6a237f39b76d609be5`; isso não certifica o
 comportamento clínico-financeiro sob uma role de runtime real
 `NOBYPASSRLS`.
+
+## Publicação do GREEN bounded
+
+O teste vertical e a documentação foram publicados em
+`d25151d96b1f7f0a17e3e08122d263507ec0353d` (`test: prove inpatient clinical
+financial vertical`) e o `fetch` confirmou `HEAD ==
+origin/agent/sync-v4-full-program`. O artefato 4/4 é
+[`.agent/artifacts/CVG-002C6-vertical-http-red-green-2026-08-23.md`](../.agent/artifacts/CVG-002C6-vertical-http-red-green-2026-08-23.md).
+O cache `packages/design-system/tsconfig.vue.tsbuildinfo` foi preservado fora
+do commit; nenhum gate global foi promovido.

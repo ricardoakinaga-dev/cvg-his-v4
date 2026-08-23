@@ -202,3 +202,12 @@ cross-instance ou qualquer gate externo. A jornada/Quality Bar continua
 Próxima ação exata: obter a revisão independente final do 4/4 e então elevar
 o mesmo fluxo para role runtime `NOBYPASSRLS`, failpoints/restart e
 reconciliação completa antes de qualquer promoção.
+
+## Publicação do checkpoint vertical
+
+O teste, artefato e atualização documental foram publicados no commit
+`d25151d96b1f7f0a17e3e08122d263507ec0353d` (`test: prove inpatient clinical
+financial vertical`) em `origin/agent/sync-v4-full-program`. O `fetch` posterior
+confirmou `HEAD == origin`. O único dirty path continua sendo o cache
+user-owned `packages/design-system/tsconfig.vue.tsbuildinfo`, mantido fora do
+stage.
