@@ -130,3 +130,12 @@ não assumir que custo de estoque é preço de venda sem decisão de domínio.
 - [backlog](../.agent/backlog.json)
 - [ExecPlan](../.agent/plans/premium-enterprise-mvp.md)
 - [Quality Bar](../.gauntlet/state.md)
+
+## Publicação confirmada
+
+Este handoff e os ledgers foram publicados em
+`59eabc465e610187212f2b6f4458d61d00df8086`
+(`docs: save clinical-financial continuation handoff`). Após `git fetch`,
+`HEAD == origin/agent/sync-v4-full-program`. O checker canônico retorna 11
+PASS, 1 WARN histórico de ownership paralelo e 0 FAIL. O único caminho dirty
+é o cache user-owned `packages/design-system/tsconfig.vue.tsbuildinfo`.

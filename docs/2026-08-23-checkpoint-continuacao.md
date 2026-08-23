@@ -905,3 +905,12 @@ expor a ausência de item de billing originado pelo consumo e só então decidir
 o contrato/preço de charge capture antes do GREEN. O ERP, `CVG-002`,
 `CVG-002C2`, `CVG-002B2B` e todos os gates externos continuam
 `IN_PROGRESS/PARTIAL` ou abertos; o cache user-owned permanece fora do stage.
+
+## Publicação do handoff CVG-002C6
+
+O handoff dedicado, o artefato e os ledgers foram publicados em
+`59eabc465e610187212f2b6f4458d61d00df8086`; `git fetch` confirmou
+`HEAD == origin/agent/sync-v4-full-program`. O checker canônico segue em
+11 PASS, 1 WARN histórico e 0 FAIL. Para retomar, leia o handoff dedicado e
+execute o RED de charge capture; não stageie o cache
+`packages/design-system/tsconfig.vue.tsbuildinfo`.
