@@ -237,9 +237,8 @@ python3 /home/ricardo/.codex/skills/engineering-framework/scripts/check_state.py
 
 ## Publicação desta continuação
 
-O código, testes e controle documental desta fatia foram publicados em
-`099ac2a1ff5f1ed9f74812d2466dccb42681737d` no branch
-`origin/agent/sync-v4-full-program`. O cache
+O código, testes, Quality Bar e controle documental desta fatia foram
+publicados em `855f53f` no branch `origin/agent/sync-v4-full-program`. O cache
 `packages/design-system/tsconfig.vue.tsbuildinfo` permaneceu fora do commit.
 
 ## Registro de continuidade desta sessão — 23/08/2026, 03:13 BRT
@@ -328,3 +327,12 @@ stderr), e o fixture exige `NODE_ENV=test` +
 `PIX_SETTLEMENT_SYNTHETIC_FIXTURE=1` e fica fora do build de produção.
 Isto não fecha Redis failover/clock-skew, provider real, SPA/B2c, paridade
 Vetus, WCAG, target operations, cobertura dedicada ou release.
+
+## Reconciliação final para a próxima sessão — 23/08/2026, 04:07 BRT
+
+Verifique `git rev-parse HEAD` e `git rev-parse origin/agent/sync-v4-full-program`;
+ambos devem apontar para `855f53f`. O estado canônico foi atualizado para
+`EVT-0102`/revisão 89 e o checker continua em 11 PASS, 1 WARN histórico e 0
+FAIL. A próxima ação executável é provar o race stale-fence com A vivo após o
+takeover de B; depois exercitar Redis failover/clock-skew e iniciar a fatia
+clínico-financeira de internação até item cobrável.
