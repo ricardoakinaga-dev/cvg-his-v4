@@ -235,3 +235,54 @@ reexecutar o gate integral. Depois retomar child-process domain/SIGKILL,
 failpoints completos, PIX PostgreSQL/RLS e webhook HTTP retry/DLQ/fence. Não
 promover paridade, SPA, WCAG, providers, Redis, cobertura, operações, deploy,
 release ou produção.
+
+## Reteste controlado de continuidade — 23/08/2026, 19:26 BRT
+
+Esta seção atualiza a hipótese anterior sobre `stayday_<token>`. O diagnóstico
+foi executado sem cache e sem paralelismo entre arquivos, contra PostgreSQL
+descartável:
+
+```bash
+REQUIRE_TEST_DB=1 pnpm exec vitest run tests/integration/database \
+  tests/integration/setup tests/integration/foundational.test.ts \
+  --config vitest.integration.config.ts --reporter=dot \
+  --no-cache --no-file-parallelism --teardownTimeout=120000
+```
+
+Resultado: `exit 1`, **5 arquivos falhos / 23 aprovados (28)** e **4 testes
+falhos / 383 aprovados (387)**, em aproximadamente **528,85 s**. Nenhuma
+falha `stayday_<token>` apareceu; o teste diário passou no mesmo full run. A
+divergência anterior fica classificada como problema de reprodutibilidade do
+harness (cache/paralelismo), não como motivo para relaxar o contrato UUID.
+
+As falhas restantes devem ser corrigidas sem ampliar as asserções:
+
+1. `fk.test.ts`: o caso de `patient_id` inválido é interceptado pelo guard de
+   proprietário primário antes da FK.
+2. `fk.test.ts`: o caso de profissional inválido é interceptado pelo `NOT
+   NULL` de `appointments.reason` antes da FK.
+3. `integrity.test.ts`: a duplicidade de e-mail é interceptada pelo `NOT NULL`
+   de `users.username` antes da constraint unique.
+4. `pix-service-principals.test.ts`: o fixture de backfill cria uma conta ligada
+   a tenant ausente no banco novo.
+
+Também houve dois `afterAll` acima do limite efetivo de **30 s** em
+`worker-event-consumers-postgres.test.ts` e `installation-state.test.ts`.
+`--teardownTimeout=120000` não alterou esse limite de hook; a próxima sessão
+deve medir e configurar explicitamente `hookTimeout`/teardown, sem ocultar
+processos ou pools não encerrados.
+
+As regressões focadas anteriores continuam válidas: diária HTTP PostgreSQL
+**4/4**, instalação **8/8**, grants de runtime **11/11** e FK/integrity/PIX
+**68/68** isoladamente. O gate crítico segue `QB-REL-01 FAIL/PARTIAL`;
+`CVG-002C6`, o ERP global e os gates de produção, provider, SPA, paridade,
+WCAG, operações, cobertura e release permanecem `IN_PROGRESS/PARTIAL`.
+
+### Próxima ação concreta
+
+Corrigir somente os quatro fixtures para que cada teste alcance a constraint
+que pretende provar; inspecionar os dois teardowns e tornar o gate determinista
+com `hookTimeout` explícito. Reexecutar os três arquivos focados e o comando
+controlado completo, anexando stdout/exit status. Somente com **387/387**
+reproduzível retomar child-process/SIGKILL/takeover, failpoints, PIX
+PostgreSQL/RLS e webhook HTTP retry/DLQ/lease fencing.

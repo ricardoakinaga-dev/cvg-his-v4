@@ -612,3 +612,19 @@ validação/NOT NULL e FK de conta no PIX, e excedeu o teardown de
 production-like-runtime. Como os mesmos testes passam isoladamente, o próximo
 gate é reproduzir a divergência com cache/paralelismo controlados. Stop decision
 continua ACTIVE; CVG-002C6, ERP e Quality Bar seguem IN_PROGRESS/PARTIAL.
+
+## Reteste controlado — 23/08/2026, 19:26 BRT
+
+O diagnóstico serial sem cache e sem paralelismo entre arquivos foi executado
+com `--teardownTimeout=120000` contra PostgreSQL descartável. Resultado:
+**383/387 testes**, **23/28 arquivos**, `exit 1`, em 528,85 s. A divergência
+`stayday_<token>` não apareceu e o teste diário passou; a falha anterior fica
+classificada como reprodutibilidade do harness, não como motivo para alterar o
+contrato UUID.
+
+Restam quatro fixtures que não alcançam a constraint alvo (guard de owner,
+`appointments.reason`, `users.username` e tenant ausente no backfill PIX) e
+dois `afterAll` limitados por `hookTimeout` efetivo de 30 s. `--teardownTimeout`
+não substitui `hookTimeout`. O próximo passo é corrigir fixtures e teardown de
+forma explícita, repetir os focados e só aceitar o gate com 387/387
+reproduzível. Stop decision permanece ACTIVE; nenhum gate global foi promovido.

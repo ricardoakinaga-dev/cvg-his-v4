@@ -429,3 +429,15 @@ production-like excede 30s. A próxima ação é reproduzir a divergência com
 cache/paralelismo controlados sem relaxar contratos, mantendo
 CVG-002C6/Quality Bar/ERP IN_PROGRESS/PARTIAL; só depois retomar
 SIGKILL/takeover, failpoints e webhook HTTP retry/DLQ/fence.
+
+Plan revision note, 2026-08-23 (reteste controlado): a execução serial
+`REQUIRE_TEST_DB=1 pnpm exec vitest run tests/integration/database
+tests/integration/setup tests/integration/foundational.test.ts --config
+vitest.integration.config.ts --reporter=dot --no-cache
+--no-file-parallelism --teardownTimeout=120000` eliminou a materialização
+`stayday_<token>` e fechou o full run em 383/387 (23/28), mas ainda com quatro
+fixtures que não alcançam a constraint pretendida e dois `afterAll` limitados
+por `hookTimeout` de 30 s. O próximo RED/GREEN deve corrigir os fixtures para
+alcançar FK/unique/backfill e tornar o teardown determinístico; não relaxar
+asserções nem promover o gate. CVG-002C6, a Quality Bar e o ERP global seguem
+IN_PROGRESS/PARTIAL.

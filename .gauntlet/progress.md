@@ -540,3 +540,17 @@ com divergência `stayday_<token>` no full run, fixtures preemptados por
 validação/NOT NULL/FK e timeout de teardown production-like. O próximo operador
 deve controlar cache e paralelismo, reproduzir a causa determinística e manter
 o stop decision ACTIVE; nenhum gate global é promovido.
+
+## Reteste controlado de continuidade — 23/08/2026, 19:26 BRT
+
+O comando crítico foi repetido com `--no-cache --no-file-parallelism` e
+`--teardownTimeout=120000` contra banco descartável. Resultado: **383/387**,
+**23/28**, `exit 1`, em 528,85 s. O marcador legado `stayday_<token>` não foi
+materializado; o diário passou no full run. A causa anterior fica classificada
+como divergência de harness/cache/paralelismo.
+
+As quatro falhas atuais são fixtures preemptados (guard de owner, `reason`
+obrigatório, `username` obrigatório e tenant ausente no backfill PIX). Dois
+`afterAll` também excedem o `hookTimeout` efetivo de 30 s; aumentar apenas
+`teardownTimeout` não resolve. Próxima ação: ajustar fixtures e hook timeout,
+reexecutar focused/full e preservar `ACTIVE/IN_PROGRESS/PARTIAL` até 387/387.
