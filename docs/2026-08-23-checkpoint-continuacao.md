@@ -953,3 +953,12 @@ operations, cobertura, deploy/restore e release continuam gates separados.
 
 O cache user-owned `packages/design-system/tsconfig.vue.tsbuildinfo` não foi
 estagiado nem commitado.
+
+## Publicação final desta continuação
+
+O commit funcional `ef4ee2d` e a reconciliação documental `e480952` foram
+publicados em `origin/agent/sync-v4-full-program`. O `fetch` confirmou
+`HEAD == origin` em `e480952bb8ec55f288ab48f8982f0510b9f9d05d`. O checker
+canônico permanece em 11 PASS, 1 WARN histórico de ownership paralelo e 0 FAIL.
+O cache `packages/design-system/tsconfig.vue.tsbuildinfo` segue local,
+preservado e fora do stage.

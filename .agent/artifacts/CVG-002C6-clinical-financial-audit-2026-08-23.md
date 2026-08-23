@@ -125,3 +125,11 @@ continuam gates separados.
 Este artefato não promove `CVG-002C2`, `CVG-002B2B`, `CVG-002`, o ERP, provider,
 SPA, paridade Vetus, WCAG, target operations, cobertura ou release. O cache
 `packages/design-system/tsconfig.vue.tsbuildinfo` permanece fora do escopo.
+
+## Publicação
+
+O código bounded está em `ef4ee2d` e a reconciliação documental foi publicada
+em `e480952`. `git fetch` confirmou `HEAD == origin/agent/sync-v4-full-program`
+em `e480952bb8ec55f288ab48f8982f0510b9f9d05d`; o checker canônico ficou em
+11 PASS, 1 WARN histórico e 0 FAIL. O cache user-owned de tsbuildinfo ficou
+fora do commit.

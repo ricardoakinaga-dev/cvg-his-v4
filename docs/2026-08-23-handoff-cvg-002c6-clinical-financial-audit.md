@@ -193,3 +193,13 @@ cobertura, deploy/restore e release continuam abertos.
 
 O cache user-owned
 `packages/design-system/tsconfig.vue.tsbuildinfo` permaneceu fora do commit.
+
+## Publicação confirmada — 23/08/2026
+
+O commit de implementação `ef4ee2d` e a reconciliação documental
+`e480952` foram enviados para `origin/agent/sync-v4-full-program`. Após
+`git fetch`, `HEAD` e `origin/agent/sync-v4-full-program` apontaram para
+`e480952bb8ec55f288ab48f8982f0510b9f9d05d`. O checker canônico retornou 11
+PASS, 1 WARN histórico de ownership paralelo e 0 FAIL. O único caminho dirty
+continua sendo o cache user-owned
+`packages/design-system/tsconfig.vue.tsbuildinfo`, que não foi estagiado.
