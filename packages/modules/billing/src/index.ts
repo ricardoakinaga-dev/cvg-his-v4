@@ -308,7 +308,8 @@ export class BillingService {
         'surgery_case',
         'inpatient_stay',
         'inpatient_daily_charge',
-        'prescription'
+        'prescription',
+        'inventory_consumption'
       ]);
     }
     const sourceEntityId = payload.sourceEntityId?.trim() || undefined;

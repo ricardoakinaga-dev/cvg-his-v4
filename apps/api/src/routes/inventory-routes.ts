@@ -5,6 +5,8 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import type { AuditService } from '@cvg-his-v2/module-audit';
+import type { BillingService } from '@cvg-his-v2/module-billing';
+import type { InpatientService } from '@cvg-his-v2/module-inpatient';
 import type {
   CreateInventoryPurchaseInput,
   InventoryService,
@@ -20,7 +22,12 @@ import type {
   UpdateInventoryItemRequest
 } from '@cvg-his-v2/shared-contracts';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
-import type { JsonValue } from '@cvg-his-v2/shared-database';
+import {
+  getDatabaseTransactionScope,
+  runWithoutDatabaseTransactionScope,
+  type JsonValue
+} from '@cvg-his-v2/shared-database';
+import { AppError, NotFoundError } from '@cvg-his-v2/shared-errors';
 import type { ResourceAttributes } from '@cvg-his-v2/module-access-control';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 
@@ -30,6 +37,8 @@ import type { TenantCommandInput, TenantCommandRunner } from '../helpers/tenant-
 
 export interface InventoryRoutesHandlers {
   inventory: InventoryService;
+  billing?: BillingService;
+  inpatient?: InpatientService;
   procurement: ProcurementService;
   audit: AuditService;
   requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
@@ -53,8 +62,9 @@ export async function handleInventoryRoutes(
   correlationId: string,
   handlers: InventoryRoutesHandlers
 ): Promise<boolean> {
-  const { inventory, audit, requirePrincipal: rp, enforceAbac } = handlers;
-  const runCommand = handlers.runCommand ?? (async <T>(input: TenantCommandInput<T>) => input.command());
+  const { inventory, billing, inpatient, audit, requirePrincipal: rp, enforceAbac } = handlers;
+  const runCommand =
+    handlers.runCommand ?? (async <T>(input: TenantCommandInput<T>) => input.command());
 
   if (pathname === '/inventory/purchases' && request.method === 'GET') {
     const principal = rp(request, 'inventory.read');
@@ -99,7 +109,11 @@ export async function handleInventoryRoutes(
     return true;
   }
 
-  if (pathname.startsWith('/inventory/purchases/') && pathname.endsWith('/approve') && request.method === 'POST') {
+  if (
+    pathname.startsWith('/inventory/purchases/') &&
+    pathname.endsWith('/approve') &&
+    request.method === 'POST'
+  ) {
     const principal = rp(request, 'inventory.manage');
     const purchaseId = requireNonEmptyString(pathname.split('/')[3], 'purchaseId');
     const purchase = await runCommand({
@@ -134,7 +148,11 @@ export async function handleInventoryRoutes(
     return true;
   }
 
-  if (pathname.startsWith('/inventory/purchases/') && pathname.endsWith('/receive') && request.method === 'POST') {
+  if (
+    pathname.startsWith('/inventory/purchases/') &&
+    pathname.endsWith('/receive') &&
+    request.method === 'POST'
+  ) {
     const principal = rp(request, 'inventory.manage');
     const purchaseId = requireNonEmptyString(pathname.split('/')[3], 'purchaseId');
     const payload = (await readJsonBody(request)) as ReceiveInventoryPurchaseInput;
@@ -171,7 +189,11 @@ export async function handleInventoryRoutes(
     return true;
   }
 
-  if (pathname.startsWith('/inventory/purchases/') && pathname.endsWith('/cancel') && request.method === 'POST') {
+  if (
+    pathname.startsWith('/inventory/purchases/') &&
+    pathname.endsWith('/cancel') &&
+    request.method === 'POST'
+  ) {
     const principal = rp(request, 'inventory.manage');
     const purchaseId = requireNonEmptyString(pathname.split('/')[3], 'purchaseId');
     const purchase = await runCommand({
@@ -252,10 +274,7 @@ export async function handleInventoryRoutes(
     const principal = rp(request, 'inventory.read');
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const status = url.searchParams.get('status') ?? undefined;
-    const items = inventory.listReservations(
-      principal.user.accountId as never,
-      status as never
-    );
+    const items = inventory.listReservations(principal.user.accountId as never, status as never);
     response.statusCode = 200;
     response.end(JSON.stringify({ items }));
     return true;
@@ -296,7 +315,9 @@ export async function handleInventoryRoutes(
     return true;
   }
 
-  const reservationAction = pathname.match(/^\/inventory\/reservations\/([^/]+)\/(release|consume|return)$/);
+  const reservationAction = pathname.match(
+    /^\/inventory\/reservations\/([^/]+)\/(release|consume|return)$/
+  );
   if (reservationAction && request.method === 'POST') {
     const principal = rp(request, 'inventory.manage');
     const reservationId = requireNonEmptyString(reservationAction[1], 'reservationId');
@@ -375,33 +396,118 @@ export async function handleInventoryRoutes(
   if (pathname === '/inventory/consumptions' && request.method === 'POST') {
     const principal = rp(request, 'inventory.manage');
     const payload = (await readJsonBody(request)) as CreateInventoryConsumptionRequest;
-    const consumption = await runCommand({
-      request,
-      accountId: principal.user.accountId,
-      actorUserId: principal.user.id,
-      correlationId,
-      operation: 'inventory.consumptions.create',
-      payload: payload as unknown as JsonValue,
-      command: async () => {
-        const created = await inventory.consume(
-          principal.user.id as never,
-          payload,
-          principal.user.accountId
-        );
-        await appendAuditAndWait(audit, {
-          actorId: principal.user.id,
-          accountId: principal.user.accountId,
-          module: 'inventory',
-          action: 'consume',
-          entityType: 'inventory-consumption',
-          entityId: created.id,
-          payloadSummary: `Inventory consumption recorded for item ${created.inventoryItemId}`,
-          riskLevel: 'high',
-          correlationId
+    let consumption: Awaited<ReturnType<InventoryService['consume']>>;
+    try {
+      consumption = await runCommand({
+        request,
+        accountId: principal.user.accountId,
+        actorUserId: principal.user.id,
+        correlationId,
+        operation: 'inventory.consumptions.create',
+        payload: payload as unknown as JsonValue,
+        command: async () => {
+          const inpatientCharge = payload.sourceEntityType === 'inpatient_stay';
+          const chargeSourceId = inpatientCharge
+            ? requireNonEmptyString(payload.sourceEntityId, 'sourceEntityId')
+            : undefined;
+          const item = inventory.getItemOrThrow(
+            payload.inventoryItemId as never,
+            principal.user.accountId as never
+          );
+
+          if (inpatientCharge) {
+            if (!inpatient || !billing) {
+              throw new AppError(
+                'BILLING_UNAVAILABLE',
+                'Inpatient inventory consumption billing is not configured',
+                503
+              );
+            }
+            const stay = inpatient.getOrThrow(chargeSourceId as never);
+            if (
+              stay.accountId !== principal.user.accountId ||
+              stay.encounterId !== payload.encounterId
+            ) {
+              throw new NotFoundError('Inpatient stay not found', { stayId: chargeSourceId });
+            }
+            if (!item.chargeUnitPriceAmount || item.chargeUnitPriceAmount <= 0) {
+              throw new AppError(
+                'PRICE_SOURCE_REQUIRED',
+                'Inventory item has no configured charge price',
+                422,
+                { inventoryItemId: item.id }
+              );
+            }
+          }
+
+          const created = await inventory.consume(
+            principal.user.id as never,
+            payload,
+            principal.user.accountId
+          );
+
+          if (inpatientCharge) {
+            const billingItem = await billing!.addItem(principal.user.id as never, {
+              encounterId: created.encounterId,
+              itemType: 'supply',
+              description: `Consumo de ${item.name} na internacao`,
+              quantity: created.quantity,
+              unitPriceAmount: item.chargeUnitPriceAmount!,
+              sourceEntityType: 'inventory_consumption',
+              sourceEntityId: created.id
+            });
+            await appendAuditAndWait(audit, {
+              actorId: principal.user.id,
+              accountId: principal.user.accountId,
+              module: 'billing',
+              action: 'capture_inventory_consumption_charge',
+              entityType: 'billing-item',
+              entityId: billingItem.id,
+              payloadSummary: `Billing item ${billingItem.id} captured from inventory consumption ${created.id}`,
+              riskLevel: 'high',
+              correlationId
+            });
+          }
+
+          await appendAuditAndWait(audit, {
+            actorId: principal.user.id,
+            accountId: principal.user.accountId,
+            module: 'inventory',
+            action: 'consume',
+            entityType: 'inventory-consumption',
+            entityId: created.id,
+            payloadSummary: `Inventory consumption recorded for item ${created.inventoryItemId}`,
+            riskLevel: 'high',
+            correlationId
+          });
+          return created;
+        }
+      });
+    } catch (error) {
+      const refreshCaches = async (): Promise<void> => {
+        const refreshOperations: Promise<unknown>[] = [];
+        if (inventory.persistenceMode === 'database') {
+          refreshOperations.push(inventory.hydrateFromDatabase(principal.user.accountId as never));
+        }
+        if (billing && typeof billing.refreshFromDatabase === 'function') {
+          refreshOperations.push(billing.refreshFromDatabase(principal.user.accountId as never));
+        }
+        if (typeof audit.refreshFromDatabase === 'function') {
+          refreshOperations.push(audit.refreshFromDatabase(principal.user.accountId as never));
+        }
+        await Promise.allSettled(refreshOperations);
+      };
+      if (getDatabaseTransactionScope()) {
+        setImmediate(() => {
+          runWithoutDatabaseTransactionScope(() => {
+            void refreshCaches();
+          });
         });
-        return created;
+      } else {
+        await refreshCaches();
       }
-    });
+      throw error;
+    }
     response.statusCode = 201;
     response.end(JSON.stringify(consumption));
     return true;
@@ -616,7 +722,11 @@ export async function handleInventoryRoutes(
         operation: 'inventory.items.update',
         payload: { itemId, ...payload } as unknown as JsonValue,
         command: async () => {
-          const updated = await inventory.updateItem(principal.user.accountId, itemId as never, payload);
+          const updated = await inventory.updateItem(
+            principal.user.accountId,
+            itemId as never,
+            payload
+          );
           await appendAuditAndWait(audit, {
             actorId: principal.user.id,
             accountId: principal.user.accountId,

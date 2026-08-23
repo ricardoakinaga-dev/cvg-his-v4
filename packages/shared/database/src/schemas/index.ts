@@ -271,6 +271,7 @@ export const inventoryItems = pgTable('inventory_items', {
   onHandQuantity: numeric('on_hand_quantity', { precision: 10, scale: 2 }).notNull(),
   reorderLevel: numeric('reorder_level', { precision: 10, scale: 2 }).notNull(),
   unitCostAmount: numeric('unit_cost_amount', { precision: 12, scale: 2 }).notNull(),
+  chargeUnitPriceAmount: numeric('charge_unit_price_amount', { precision: 12, scale: 2 }),
   createdAt: timestamp('created_at').notNull(),
   updatedAt: timestamp('updated_at').notNull()
 });

@@ -1193,6 +1193,7 @@ export interface CreateBillingItemRequest {
     | 'surgery_case'
     | 'inpatient_stay'
     | 'inpatient_daily_charge'
+    | 'inventory_consumption'
     | 'prescription';
   readonly sourceEntityId?: string;
 }
@@ -1326,6 +1327,7 @@ export interface CreateInventoryItemRequest {
   readonly onHandQuantity: number;
   readonly reorderLevel: number;
   readonly unitCostAmount: number;
+  readonly chargeUnitPriceAmount?: number | null;
 }
 
 export interface UpdateInventoryItemRequest {
@@ -1334,6 +1336,7 @@ export interface UpdateInventoryItemRequest {
   readonly onHandQuantity?: number;
   readonly reorderLevel?: number;
   readonly unitCostAmount?: number;
+  readonly chargeUnitPriceAmount?: number | null;
 }
 
 export interface InventoryConsumptionListResponse {

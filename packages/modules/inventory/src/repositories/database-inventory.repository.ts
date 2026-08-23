@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { getPool, withTenantTransaction, type DatabaseClient } from '@cvg-his-v2/shared-database';
+import { ConflictError } from '@cvg-his-v2/shared-errors';
 import { withTenantQuery } from '@cvg-his-v2/tenant-context';
 import type {
   AccountId,
@@ -127,7 +128,10 @@ export class DatabaseInventoryRepository implements InventoryRepository {
           AND on_hand_quantity >= ${consumption.quantity}
         RETURNING id`);
       if (updated.rowCount !== 1) {
-        throw new Error('Inventory balance changed or is insufficient for consumption');
+        throw new ConflictError('Inventory balance changed or is insufficient for consumption', {
+          inventoryItemId: item.id,
+          reason: 'balance_changed'
+        });
       }
 
       await database.execute(sql`INSERT INTO inventory_consumptions
@@ -238,11 +242,23 @@ export class DatabaseInventoryRepository implements InventoryRepository {
   async createItem(item: InventoryItemSummary): Promise<void> {
     await withTenantQuery(getPool(), async (client) => {
       return await client.query(
-        `INSERT INTO inventory_items (id, account_id, sku, name, unit, on_hand_quantity, reorder_level, unit_cost_amount, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-        [item.id, item.accountId, item.sku, item.name, item.unit,
-         item.onHandQuantity, item.reorderLevel, item.unitCostAmount,
-         new Date(item.createdAt), new Date(item.updatedAt)]
+        `INSERT INTO inventory_items (
+           id, account_id, sku, name, unit, on_hand_quantity, reorder_level,
+           unit_cost_amount, charge_unit_price_amount, created_at, updated_at
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+        [
+          item.id,
+          item.accountId,
+          item.sku,
+          item.name,
+          item.unit,
+          item.onHandQuantity,
+          item.reorderLevel,
+          item.unitCostAmount,
+          item.chargeUnitPriceAmount ?? null,
+          new Date(item.createdAt),
+          new Date(item.updatedAt)
+        ]
       );
     });
   }
@@ -256,7 +272,8 @@ export class DatabaseInventoryRepository implements InventoryRepository {
              on_hand_quantity = $4,
              reorder_level = $5,
              unit_cost_amount = $6,
-             updated_at = $7
+             charge_unit_price_amount = $7,
+             updated_at = $8
          WHERE id = $1 AND account_id = app.current_account_id()`,
         [
           item.id,
@@ -265,10 +282,12 @@ export class DatabaseInventoryRepository implements InventoryRepository {
           item.onHandQuantity,
           item.reorderLevel,
           item.unitCostAmount,
+          item.chargeUnitPriceAmount ?? null,
           new Date(item.updatedAt)
         ]
       );
-      if (result.rowCount !== 1) throw new Error(`Inventory item not found in current account: ${item.id}`);
+      if (result.rowCount !== 1)
+        throw new Error(`Inventory item not found in current account: ${item.id}`);
       return result;
     });
   }
@@ -287,7 +306,10 @@ export class DatabaseInventoryRepository implements InventoryRepository {
 
   async findAllItems(accountId: AccountId): Promise<readonly InventoryItemSummary[]> {
     return withTenantQuery(getPool(), async (client) => {
-      const result = await client.query('SELECT * FROM inventory_items WHERE account_id = $1 ORDER BY name', [accountId]);
+      const result = await client.query(
+        'SELECT * FROM inventory_items WHERE account_id = $1 ORDER BY name',
+        [accountId]
+      );
       return result.rows.map((r: Record<string, unknown>) => this.mapItem(r));
     });
   }
@@ -393,14 +415,16 @@ export class DatabaseInventoryRepository implements InventoryRepository {
           AND reserved_quantity = ${(lot.reservedQuantity ?? 0) + reservation.quantity}
           AND reserved_quantity >= ${reservation.quantity}
         RETURNING id`);
-      if (lotResult.rowCount !== 1) throw new Error('Inventory lot balance changed while releasing reservation');
+      if (lotResult.rowCount !== 1)
+        throw new Error('Inventory lot balance changed while releasing reservation');
 
       const reservationResult = await database.execute(sql`UPDATE inventory_reservations
         SET status = 'released', released_at = ${new Date(reservation.releasedAt ?? reservation.updatedAt)},
             updated_at = ${new Date(reservation.updatedAt)}
         WHERE id = ${reservation.id} AND account_id = ${reservation.accountId} AND status = 'reserved'
         RETURNING id`);
-      if (reservationResult.rowCount !== 1) throw new Error('Inventory reservation is no longer active');
+      if (reservationResult.rowCount !== 1)
+        throw new Error('Inventory reservation is no longer active');
     });
   }
 
@@ -418,7 +442,8 @@ export class DatabaseInventoryRepository implements InventoryRepository {
           AND on_hand_quantity = ${item.onHandQuantity + reservation.quantity}
           AND on_hand_quantity >= ${reservation.quantity}
         RETURNING id`);
-      if (itemResult.rowCount !== 1) throw new Error('Inventory item balance changed while consuming reservation');
+      if (itemResult.rowCount !== 1)
+        throw new Error('Inventory item balance changed while consuming reservation');
 
       const lotResult = await database.execute(sql`UPDATE inventory_lots
         SET quantity = ${lot.quantity}, reserved_quantity = ${lot.reservedQuantity ?? 0},
@@ -429,7 +454,8 @@ export class DatabaseInventoryRepository implements InventoryRepository {
           AND quantity >= ${reservation.quantity}
           AND reserved_quantity >= ${reservation.quantity}
         RETURNING id`);
-      if (lotResult.rowCount !== 1) throw new Error('Inventory lot balance changed while consuming reservation');
+      if (lotResult.rowCount !== 1)
+        throw new Error('Inventory lot balance changed while consuming reservation');
 
       await this.insertStockMovement(database, movement);
       const reservationResult = await database.execute(sql`UPDATE inventory_reservations
@@ -437,7 +463,8 @@ export class DatabaseInventoryRepository implements InventoryRepository {
             updated_at = ${new Date(reservation.updatedAt)}
         WHERE id = ${reservation.id} AND account_id = ${reservation.accountId} AND status = 'reserved'
         RETURNING id`);
-      if (reservationResult.rowCount !== 1) throw new Error('Inventory reservation is no longer active');
+      if (reservationResult.rowCount !== 1)
+        throw new Error('Inventory reservation is no longer active');
     });
   }
 
@@ -454,7 +481,8 @@ export class DatabaseInventoryRepository implements InventoryRepository {
         WHERE id = ${item.id} AND account_id = ${reservation.accountId}
           AND on_hand_quantity = ${item.onHandQuantity - reservation.quantity}
         RETURNING id`);
-      if (itemResult.rowCount !== 1) throw new Error('Inventory item balance changed while returning reservation');
+      if (itemResult.rowCount !== 1)
+        throw new Error('Inventory item balance changed while returning reservation');
 
       const lotResult = await database.execute(sql`UPDATE inventory_lots
         SET quantity = ${lot.quantity}, reserved_quantity = ${lot.reservedQuantity ?? 0},
@@ -463,7 +491,8 @@ export class DatabaseInventoryRepository implements InventoryRepository {
           AND quantity = ${lot.quantity - reservation.quantity}
           AND reserved_quantity = ${lot.reservedQuantity ?? 0}
         RETURNING id`);
-      if (lotResult.rowCount !== 1) throw new Error('Inventory lot not found while returning reservation');
+      if (lotResult.rowCount !== 1)
+        throw new Error('Inventory lot not found while returning reservation');
 
       await this.insertStockMovement(database, movement);
       const reservationResult = await database.execute(sql`UPDATE inventory_reservations
@@ -471,7 +500,8 @@ export class DatabaseInventoryRepository implements InventoryRepository {
             updated_at = ${new Date(reservation.updatedAt)}
         WHERE id = ${reservation.id} AND account_id = ${reservation.accountId} AND status = 'consumed'
         RETURNING id`);
-      if (reservationResult.rowCount !== 1) throw new Error('Only consumed inventory reservations can be returned');
+      if (reservationResult.rowCount !== 1)
+        throw new Error('Only consumed inventory reservations can be returned');
     });
   }
 
@@ -494,18 +524,30 @@ export class DatabaseInventoryRepository implements InventoryRepository {
       return await client.query(
         `INSERT INTO inventory_consumptions (id, account_id, inventory_item_id, encounter_id, patient_id, quantity, unit, cost_amount, source_entity_type, source_entity_id, recorded_by_user_id, created_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
-        [consumption.id, consumption.accountId, consumption.inventoryItemId,
-         consumption.encounterId, consumption.patientId, consumption.quantity,
-         consumption.unit, consumption.costAmount, consumption.sourceEntityType,
-         consumption.sourceEntityId ?? null, consumption.recordedByUserId,
-         new Date(consumption.createdAt)]
+        [
+          consumption.id,
+          consumption.accountId,
+          consumption.inventoryItemId,
+          consumption.encounterId,
+          consumption.patientId,
+          consumption.quantity,
+          consumption.unit,
+          consumption.costAmount,
+          consumption.sourceEntityType,
+          consumption.sourceEntityId ?? null,
+          consumption.recordedByUserId,
+          new Date(consumption.createdAt)
+        ]
       );
     });
   }
 
   async findConsumptions(accountId: AccountId): Promise<readonly InventoryConsumptionSummary[]> {
     return withTenantQuery(getPool(), async (client) => {
-      const result = await client.query('SELECT * FROM inventory_consumptions WHERE account_id = $1 ORDER BY created_at DESC', [accountId]);
+      const result = await client.query(
+        'SELECT * FROM inventory_consumptions WHERE account_id = $1 ORDER BY created_at DESC',
+        [accountId]
+      );
       return result.rows.map((r: Record<string, unknown>) => this.mapConsumption(r));
     });
   }
@@ -537,7 +579,9 @@ export class DatabaseInventoryRepository implements InventoryRepository {
     });
   }
 
-  async findStockMovements(accountId: AccountId): Promise<readonly InventoryStockMovementSummary[]> {
+  async findStockMovements(
+    accountId: AccountId
+  ): Promise<readonly InventoryStockMovementSummary[]> {
     if (!this.#stockMovementsEnabled) return [];
     return withTenantQuery(getPool(), async (client) => {
       const result = await client.query(
@@ -558,6 +602,10 @@ export class DatabaseInventoryRepository implements InventoryRepository {
       onHandQuantity: Number(row.on_hand_quantity),
       reorderLevel: Number(row.reorder_level),
       unitCostAmount: Number(row.unit_cost_amount),
+      chargeUnitPriceAmount:
+        row.charge_unit_price_amount === null || row.charge_unit_price_amount === undefined
+          ? null
+          : Number(row.charge_unit_price_amount),
       createdAt: new Date(row.created_at as string).toISOString(),
       updatedAt: new Date(row.updated_at as string).toISOString()
     };

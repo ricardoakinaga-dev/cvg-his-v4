@@ -62,13 +62,20 @@ export const billingItems = pgTable(
       .where(
         sql`${table.sourceEntityType} = 'inpatient_daily_charge' and ${table.sourceEntityId} is not null`
       ),
+    inventoryConsumptionSourceUnique: uniqueIndex(
+      'billing_items_inventory_consumption_source_unique'
+    )
+      .on(table.accountId, table.sourceEntityType, table.sourceEntityId)
+      .where(
+        sql`${table.sourceEntityType} = 'inventory_consumption' and ${table.sourceEntityId} is not null`
+      ),
     itemTypeChk: check(
       'billing_items_item_type_chk',
       sql`${table.itemType} in ('service', 'supply', 'procedure', 'exam', 'daily_rate', 'other')`
     ),
     sourceTypeChk: check(
       'billing_items_source_type_chk',
-      sql`${table.sourceEntityType} is null or ${table.sourceEntityType} in ('encounter', 'diagnostic_order', 'surgery_case', 'inpatient_stay', 'inpatient_daily_charge', 'prescription')`
+      sql`${table.sourceEntityType} is null or ${table.sourceEntityType} in ('encounter', 'diagnostic_order', 'surgery_case', 'inpatient_stay', 'inpatient_daily_charge', 'inventory_consumption', 'prescription')`
     ),
     quantityPositiveChk: check('billing_items_quantity_positive_chk', sql`${table.quantity} > 0`),
     unitPriceNonNegativeChk: check(

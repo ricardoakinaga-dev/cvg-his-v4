@@ -7132,6 +7132,8 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           if (
             await handleInventoryRoutes(pathname, request, response, correlationId, {
               inventory,
+              billing,
+              inpatient,
               procurement,
               audit,
               requirePrincipal,

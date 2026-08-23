@@ -48,6 +48,13 @@ async function insertDailyCharge(): Promise<void> {
 }
 
 async function insertPostDischargeInventoryConsumption(): Promise<void> {
+  return insertInventoryConsumption(stayId, encounterId);
+}
+
+async function insertInventoryConsumption(
+  sourceEntityId: string,
+  sourceEncounterId: string
+): Promise<void> {
   const pool = getTestPool();
   await pool.query(
     `INSERT INTO inventory_consumptions (
@@ -58,9 +65,9 @@ async function insertPostDischargeInventoryConsumption(): Promise<void> {
       `inpatient-cutoff-consumption-${randomUUID()}`,
       accountId,
       inventoryItemId,
-      encounterId,
+      sourceEncounterId,
       patientId,
-      stayId,
+      sourceEntityId,
       userId
     ]
   );
@@ -139,5 +146,17 @@ describe('inpatient discharge cutoff', () => {
 
   it('rejects inpatient-stay inventory consumption after discharge', async () => {
     await expect(insertPostDischargeInventoryConsumption()).rejects.toThrow(/after discharge/i);
+  });
+
+  it('rejects an inpatient-stay inventory reference that does not exist', async () => {
+    await expect(insertInventoryConsumption(randomUUID(), encounterId)).rejects.toThrow(
+      /stay not found/i
+    );
+  });
+
+  it('rejects an inpatient-stay inventory reference from another encounter', async () => {
+    await expect(insertInventoryConsumption(stayId, randomUUID())).rejects.toThrow(
+      /does not match encounter/i
+    );
   });
 });

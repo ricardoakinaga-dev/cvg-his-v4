@@ -12911,6 +12911,7 @@ components:
               surgery_case,
               inpatient_stay,
               inpatient_daily_charge,
+              inventory_consumption,
               prescription
             ]
         sourceEntityId:
@@ -14753,6 +14754,11 @@ components:
           type: number
         unitCostAmount:
           type: number
+        chargeUnitPriceAmount:
+          type: number
+          minimum: 0
+          exclusiveMinimum: true
+          nullable: true
 
     CreateInventoryItemRequest:
       type: object
@@ -14770,6 +14776,11 @@ components:
           type: number
         unitCostAmount:
           type: number
+        chargeUnitPriceAmount:
+          type: number
+          minimum: 0
+          exclusiveMinimum: true
+          nullable: true
 
     UpdateInventoryItemRequest:
       type: object
@@ -14786,6 +14797,11 @@ components:
           type: number
         unitCostAmount:
           type: number
+        chargeUnitPriceAmount:
+          type: number
+          minimum: 0
+          exclusiveMinimum: true
+          nullable: true
 
     InventoryStockMovement:
       type: object

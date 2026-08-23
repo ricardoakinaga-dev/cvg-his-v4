@@ -945,6 +945,7 @@ export interface BillingItemSummary {
     | 'surgery_case'
     | 'inpatient_stay'
     | 'inpatient_daily_charge'
+    | 'inventory_consumption'
     | 'prescription';
   readonly sourceEntityId?: string;
   readonly createdByUserId: UserId;
@@ -960,6 +961,7 @@ export interface InventoryItemSummary {
   readonly onHandQuantity: number;
   readonly reorderLevel: number;
   readonly unitCostAmount: number;
+  readonly chargeUnitPriceAmount?: number | null;
   readonly createdAt: string;
   readonly updatedAt: string;
 }

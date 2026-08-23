@@ -27,6 +27,7 @@ export const inventoryItems = pgTable(
     onHandQuantity: numeric('on_hand_quantity', { precision: 12, scale: 2 }).notNull().default('0'),
     reorderLevel: numeric('reorder_level', { precision: 12, scale: 2 }).notNull().default('0'),
     unitCostAmount: numeric('unit_cost_amount', { precision: 12, scale: 2 }).notNull().default('0'),
+    chargeUnitPriceAmount: numeric('charge_unit_price_amount', { precision: 12, scale: 2 }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
   },
@@ -44,7 +45,11 @@ export const inventoryItems = pgTable(
       'inventory_items_balances_chk',
       sql`${table.onHandQuantity} >= 0 AND ${table.reorderLevel} >= 0`
     ),
-    costChk: check('inventory_items_cost_chk', sql`${table.unitCostAmount} >= 0`)
+    costChk: check('inventory_items_cost_chk', sql`${table.unitCostAmount} >= 0`),
+    chargeUnitPricePositiveChk: check(
+      'inventory_items_charge_unit_price_positive_chk',
+      sql`${table.chargeUnitPriceAmount} is null or ${table.chargeUnitPriceAmount} > 0`
+    )
   })
 );
 
@@ -52,11 +57,15 @@ export const inventoryLots = pgTable(
   'inventory_lots',
   {
     id: text('id').primaryKey(),
-    accountId: uuid('account_id').notNull().references(() => accounts.id, { onDelete: 'cascade' }),
+    accountId: uuid('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
     inventoryItemId: text('inventory_item_id').notNull(),
     lotNumber: text('lot_number').notNull(),
     quantity: numeric('quantity', { precision: 12, scale: 2 }).notNull().default('0'),
-    reservedQuantity: numeric('reserved_quantity', { precision: 12, scale: 2 }).notNull().default('0'),
+    reservedQuantity: numeric('reserved_quantity', { precision: 12, scale: 2 })
+      .notNull()
+      .default('0'),
     unit: varchar('unit', { length: 50 }).notNull(),
     location: text('location'),
     supplier: text('supplier'),
@@ -102,7 +111,9 @@ export const inventoryReservations = pgTable(
   'inventory_reservations',
   {
     id: text('id').primaryKey(),
-    accountId: uuid('account_id').notNull().references(() => accounts.id, { onDelete: 'cascade' }),
+    accountId: uuid('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
     inventoryItemId: text('inventory_item_id').notNull(),
     inventoryLotId: text('inventory_lot_id').notNull(),
     quantity: numeric('quantity', { precision: 12, scale: 2 }).notNull(),
