@@ -445,3 +445,20 @@ Publicação: `2b33aea` (`feat: enforce inpatient discharge cutoff`) está em
 `origin/agent/sync-v4-full-program`; o ponteiro documental foi reconciliado em
 `432887f` (`docs: publish discharge cutoff checkpoint`). Retomar o RED de
 rollback billing ↔ diária e a UoW/saga clínico-financeira.
+
+## Handoff documental integral — 23/08/2026, 05:58 BRT
+
+O corpus atual de `docs/` foi relido e inventariado em 1.449 arquivos,
+1.193 textuais, 256 binários, 53.766.604 bytes; o manifesto desta execução é
+`d23f84a7000e42943093090e706db12e01a6e4189f61f5bd833f67b5e92ea2db`. O
+benchmark web oficial atualizado reforça encounter spine, SOAP versionado,
+flowboard, charge capture, estoque por lote, portal e APIs sandboxed como
+requisitos futuros. O checkpoint curto em
+`docs/2026-08-23-checkpoint-continuacao.md` é a entrada da próxima sessão.
+
+O próximo teste permanece o RED de rollback entre `billing.addItem` e
+`markDailyChargeBilled`; depois implementar a UoW/saga admissão →
+handoff/permanência → estoque → alta → billing → recebimento com PostgreSQL,
+RLS, replay, concorrência e failpoint. Não repetir as fatias 0115/0116, DLQ,
+stale-fence ou rate-limit já registradas; não promover `VERIFIED`, provider,
+SPA, paridade Vetus, WCAG, operações ou release.

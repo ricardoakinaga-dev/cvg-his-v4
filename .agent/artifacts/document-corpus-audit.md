@@ -97,3 +97,31 @@ atualização de controle, a soma dos tamanhos dos arquivos sob `docs/` é
 53.750.467 bytes: 1.449 arquivos, 90 diretórios, 997 Markdown, 255 PNG, 129
 JSON, 67 HTML e 1 gzip. A contagem exclui o diretório raiz `docs/`; não é uma
 nova leitura integral do corpus.
+
+## Reauditoria integral reproduzível — 23 de agosto de 2026, 05:58 BRT
+
+Nesta sessão todos os arquivos atuais sob `docs/` foram enumerados e lidos
+como bytes; arquivos textuais também foram varridos como UTF-8. O manifesto
+ordenado inclui caminho e conteúdo, portanto muda quando qualquer documento,
+JSON, HTML, imagem ou gzip muda.
+
+| Medida | Resultado |
+| --- | ---: |
+| Arquivos | 1.449 |
+| Arquivos textuais | 1.193 |
+| Binários | 256 |
+| Bytes totais | 53.766.604 |
+| Linhas textuais (contador do script, incluindo última linha sem `\\n`) | 357.608 |
+| Markdown / JSON / HTML / PNG / gzip | 997 / 129 / 67 / 255 / 1 |
+| Manifesto SHA-256 | `d23f84a7000e42943093090e706db12e01a6e4189f61f5bd833f67b5e92ea2db` |
+
+A classificação por caminho continua sendo: 543 arquivos `vetus/`, 835
+arquivos históricos `docs2/`, 1 arquivo em `game-day/` e 8 ADRs; a camada
+ativa restante inclui raiz, `micro-build/`, `runbooks/` e material SOC2. A
+varredura não transforma imagens, screenshots ou histórico em prova de
+comportamento do CVG-HIS.
+
+O resultado desta reexecução reconcilia a contagem anterior de 1.447/1.449
+arquivos sem reescrever os hashes históricos: aqueles números eram snapshots
+anteriores a novas inclusões. O digest acima é a referência para a retomada
+quando a sessão seguinte quiser confirmar que o corpus não mudou.

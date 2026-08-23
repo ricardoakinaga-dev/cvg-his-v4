@@ -234,3 +234,19 @@ published on the branch and origin with the cutoff migration, independent
 PostgreSQL proof and control-plane handoff. The next largest local action
 remains the billing-item/daily-charge rollback RED, followed by the
 clinical-financial UoW/saga.
+
+## Auditoria documental integral — 23/08/2026, 05:58 BRT
+
+O corpus atual de `docs/` foi enumerado e lido integralmente: 1.449 arquivos,
+1.193 textuais, 256 binários, 53.766.604 bytes e manifesto
+`d23f84a7000e42943093090e706db12e01a6e4189f61f5bd833f67b5e92ea2db`. O
+benchmark web atualizado preserva fontes oficiais e converteu autosave/SOAP,
+flowboard, charge capture, estoque auditável, portal, sandbox de API e IA
+assistiva governada em requisitos, sem tratá-los como implementação existente.
+
+O Quality Bar continua congelado e o estado continua `ACTIVE`/
+`IN_PROGRESS/PARTIAL`. A próxima maior ação local é o RED de rollback entre
+`billing.addItem` e `markDailyChargeBilled`, seguido da UoW/saga de admissão até
+recebimento com PostgreSQL/RLS, replay, concorrência e failpoint. Paridade Vetus,
+SPA/B2c, providers, Redis failover/clock-skew real, WCAG, cobertura, operações,
+deploy/restore e release permanecem gates separados.

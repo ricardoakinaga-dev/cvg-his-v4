@@ -1,6 +1,6 @@
 # CVG-HIS V4 - Documentacao ativa
 
-**Atualizado em:** 2026-08-23 (checkpoint operacional pós-`d525acc`)
+**Atualizado em:** 2026-08-23 (checkpoint de continuidade e auditoria integral)
 
 Esta pasta separa documentacao vigente, referencia do Vetus e historico. Uma afirmacao de funcionalidade so e considerada valida quando estiver sustentada por codigo executavel e teste comportamental.
 

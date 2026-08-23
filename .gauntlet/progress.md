@@ -187,3 +187,14 @@ Publication checkpoint: `2b33aea` is pushed to
 cutoff proof and the next-session handoff; docs pointer reconciliation is
 published as `432887f`. Run the billing-item/daily-charge rollback RED; preserve
 `IN_PROGRESS/PARTIAL` and all external gates.
+
+## Registro de retomada — auditoria integral e pesquisa de mercado (23/08/2026)
+
+- Corpus `docs/` relido e inventariado em 1.449 arquivos; manifesto atual
+  `d23f84a7000e42943093090e706db12e01a6e4189f61f5bd833f67b5e92ea2db`.
+- Readiness estrutural permanece 95/100; Vetus geral `0/11` e clínica `0/3`.
+- Benchmark oficial atualizado com Shepherd, ezyVet/IDEXX, Digitail, Vetspire,
+  Covetrus, Provet, Oracle e SAP. Os padrões são critérios de produto, não
+  evidência de paridade.
+- Próximo RED: rollback billing ↔ diária; depois jornada clínica-financeira
+  PostgreSQL/RLS. Estado global não promovido.

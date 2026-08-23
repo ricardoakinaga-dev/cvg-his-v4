@@ -284,3 +284,14 @@ Publication note, 2026-08-23: implementation and continuity checkpoint
 reconciliation `432887f` (`docs: publish discharge cutoff checkpoint`) are on
 the branch and origin. Continue with the billing-item/daily-charge rollback
 RED and the clinical-financial UoW/saga. Global and external gates remain open.
+
+Plan revision note, 2026-08-23 (integral continuation audit): The complete
+current `docs/` corpus was enumerated and read at 1,449 files, with manifest
+`d23f84a7000e42943093090e706db12e01a6e4189f61f5bd833f67b5e92ea2db`. Official
+market research was refreshed for Shepherd, ezyVet/IDEXX, Digitail, Vetspire,
+Covetrus, Provet, Oracle and SAP; it reinforces the encounter spine, clinical
+autosave/versioning, 24h flowboard, automatic charge capture, lot-aware stock,
+portal, sandboxed APIs and governed assistive AI. The Quality Bar is unchanged:
+write the rollback RED, then implement the PostgreSQL/RLS clinical-financial
+UoW or explicit saga. No provider, production, SPA, Vetus, WCAG, operations or
+release gate is promoted.

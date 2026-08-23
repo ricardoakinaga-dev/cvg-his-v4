@@ -230,3 +230,93 @@ provaram a janela compartilhada (`2×201`, `6×429` em oito requests). Isso é
 progresso verificável de segurança e operação, mas não altera o estado
 `CVG-002B2B IN_PROGRESS/PARTIAL` nem prova SIGKILL/restart real, provedor,
 paridade, SPA, WCAG ou produção.
+
+## 16. Reauditoria integral e benchmark de continuidade — 23/08/2026
+
+### Corpus documental atual
+
+O corpus vigente foi enumerado e lido integralmente nesta sessão, incluindo
+arquivos textuais e inventário dos binários. O estado reproduzível é:
+
+| Medida | Resultado |
+| --- | ---: |
+| Arquivos sob `docs/` | 1.449 |
+| Textuais / binários | 1.193 / 256 |
+| Bytes totais | 53.766.604 |
+| Extensões | 997 Markdown, 129 JSON, 67 HTML, 255 PNG, 1 gzip |
+| Linhas textuais pelo contador do script | 357.608 |
+| Manifesto SHA-256 | `d23f84a7000e42943093090e706db12e01a6e4189f61f5bd833f67b5e92ea2db` |
+
+O acervo contém 543 referências Vetus, 835 arquivos históricos `docs2/`,
+8 ADRs e material ativo de arquitetura, operação e micro-build. A precedência
+não mudou: runtime/testes e estado persistido, código/contratos, camada ativa
+de agosto, ADRs, auditorias antigas, Vetus e `docs2/`. O inventário confirma
+cobertura documental; não certifica as capacidades descritas nas referências.
+
+### Estado executável preservado
+
+- `HEAD` e `origin/agent/sync-v4-full-program` estão alinhados em
+  `48a3ad11b2a1a122751590b31b4760406a018de6` antes desta publicação.
+- `pnpm readiness:enterprise` continua em 95/100 (42 PASS, 3 WARN, 1 FAIL),
+  com o FAIL estrutural esperado da paridade estrita. `pnpm vetus:parity:audit`
+  permanece em 0/11 e `pnpm vetus:clinical-parity` em 0/3.
+- As evidências locais mais recentes permanecem limitadas: Redis 21/21 sob
+  política fail-closed, PostgreSQL descartável do cutoff 2/2, HTTP de auth
+  fail-closed 1/1, API 324/324, worker 58 + build, processo stale-fence 5/5,
+  diária idempotente 2/2 e builds/secret scan/diff check aprovados.
+- O PostgreSQL compartilhado usado em rodadas efêmeras entrou em recovery;
+  isso é limitação de ambiente e não deve ser contado como evidência de
+  release. Novas integrações devem usar um container descartável dedicado.
+
+### Benchmark web oficial de 23/08
+
+Uma consulta adicional a fontes primárias de mercado confirmou os seguintes
+padrões competitivos: Shepherd combina SOAP, autosave, charge capture,
+whiteboard, tarefas, inventário e alta; ezyVet/IDEXX combinam prontuário,
+agenda, diagnóstico, inventário e analytics; Digitail enfatiza flowboard,
+hospitalização, AI SOAP, portal e laboratório/farmácia; Vetspire expõe API
+GraphQL tipada com ambientes de produção/staging/sandbox; Covetrus Ascend
+apresenta internação móvel e stocktake auditável; Provet Cloud combina planos
+de tratamento, faturamento, pagamentos, integrações e permissões; IDEXX
+Cornerstone, Oracle Health e SAP S/4health reforçam a ligação entre admissão,
+recursos, faturamento, supply chain e interoperabilidade.
+
+As fontes consultadas são [Shepherd](https://www.shepherd.vet/features/),
+[ezyVet](https://www.ezyvet.com/features),
+[Digitail](https://digitail.com/),
+[Vetspire Developer Portal](https://developer.vetspire.com/),
+[Covetrus Ascend](https://software.covetrus.com/apac/veterinary-solutions/ascend-cloud-veterinary-software/),
+[Provet Cloud](https://www.provet.com/),
+[IDEXX Cornerstone](https://software.idexx.com/products/cornerstone),
+[Oracle Health Revenue Cycle](https://www.oracle.com/health/revenue-cycle/) e
+[SAP S/4health](https://www.sap.com/products/erp/partners/atsp-gmbh-s4health-patient-management-billing-on-sap-s4hana.html).
+São sinais de produto e alegações dos fornecedores, não homologação
+independente nem autorização para contratar provedores.
+
+### Quality Bar congelada para a próxima implementação
+
+1. `ERP-CLIN-001`: admissão → handoff/permanência → diária → consumo de
+   estoque → alta → item/recebimento em PostgreSQL real, com dois tenants e
+   evidência persistida em clínica, billing, caixa, auditoria e outbox.
+2. `ERP-ATOMIC-002`: RED/GREEN de rollback entre `billing.addItem` e
+   `markDailyChargeBilled`, sem item órfão, dupla cobrança ou estado
+   irreconciliável.
+3. `ERP-RLS-003`: leituras e escritas cruzadas entre tenants A/B negadas para
+   todas as tabelas do slice, sob role sem `BYPASSRLS`.
+4. `ERP-IDEM-004`: replay e concorrência convergem por chave de origem; payload
+   divergente retorna conflito e nenhuma cobrança/baixa/receipt duplica.
+5. `ERP-AUDIT-005`: ledger, caixa, estoque, audit log e outbox mantêm
+   invariantes append-only e correlação de ator/episódio.
+6. `ERP-E2E-006`: depois do backend, o fluxo deve passar pela SPA real, sem
+   atalhos de API, `skip` ou retry mascarando falha.
+
+### Próxima retomada
+
+Não repetir os slices já publicados. Começar pela RED de rollback clínico-
+financeiro, usar PostgreSQL descartável, atualizar a matriz de evidências e
+reexecutar as regressões afetadas. Em paralelo, manter como gates separados
+Redis failover/clock-skew, remoção de fallbacks em memória, provedores/sandbox,
+SPA, paridade Vetus `11/11 + 3/3`, WCAG 2.2 AA, cobertura significativa,
+deploy/restore/SLO e release. O status canônico permanece
+`CVG-002B2B IN_PROGRESS/PARTIAL`; nada nesta seção declara produção ou
+perfeição do ERP.

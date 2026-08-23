@@ -434,3 +434,70 @@ reconciliado em `432887f` (`docs: publish discharge cutoff checkpoint`) e
 `HEAD == origin`. O cache user-owned
 `packages/design-system/tsconfig.vue.tsbuildinfo` permaneceu fora dos commits.
 Retome o RED de rollback billing ↔ diária a partir deste estado.
+
+## Registro de continuidade mais recente — auditoria integral e benchmark (23/08/2026, 05:58 BRT)
+
+Este é o ponto de entrada documental para a próxima sessão. Antes desta
+publicação, `HEAD` e `origin/agent/sync-v4-full-program` estavam alinhados em
+`48a3ad11b2a1a122751590b31b4760406a018de6`. O único caminho dirty continua
+sendo o cache user-owned `packages/design-system/tsconfig.vue.tsbuildinfo`; ele
+deve permanecer fora de qualquer commit.
+
+### O que foi auditado e preservado
+
+- Todos os 1.449 arquivos atuais de `docs/` foram enumerados e lidos; há 1.193
+  arquivos textuais e 256 binários, totalizando 53.766.604 bytes. O manifesto
+  ordenado desta execução é
+  `d23f84a7000e42943093090e706db12e01a6e4189f61f5bd833f67b5e92ea2db` e o
+  contador reprodutível de linhas textuais é 357.608.
+- A classificação preservada é 543 referências `vetus/`, 835 históricos
+  `docs2/`, 8 ADRs, 1 arquivo de Game Day e a camada ativa de arquitetura,
+  operação, SOC2, runbooks e micro-build. `docs/README.md` e `docs/430` seguem
+  a precedência já registrada; Vetus e `docs2` não são prova de implementação.
+- A auditoria executável continua em 95/100 (42 PASS, 3 WARN, 1 FAIL), com
+  paridade comportamental `0/11` geral e `0/3` clínica. Isso é o gate
+  estrutural atual, não uma regressão escondida nem um certificado de release.
+- O benchmark web primário foi atualizado com Shepherd, ezyVet/IDEXX,
+  Digitail, Vetspire, Covetrus Ascend, Provet Cloud, Oracle Health e SAP
+  S/4health. Os padrões convertidos em requisitos são: encounter como espinha,
+  SOAP com autosave/versionamento, flowboard 24h, charge capture, estoque por
+  lote/validade, portal do tutor, APIs com sandbox/scopes/replay e IA somente
+  assistiva com revisão humana. Os links e a distinção entre alegação de
+  fornecedor e evidência estão em
+  [`2026-08-22-auditoria-integral-e-pesquisa-erp.md`](2026-08-22-auditoria-integral-e-pesquisa-erp.md)
+  e [`.agent/artifacts/market-benchmark.md`](../.agent/artifacts/market-benchmark.md).
+
+### Estado técnico honesto
+
+As fatias já fechadas continuam sendo: ingestão/settlement PIX com fencing e
+stale-fence local `5/5`, DLQ operacional, principal mínimo/rate-limit
+multi-réplica (`2×201`/`6×429`), diária idempotente (`2/2` PostgreSQL), cutoff
+de alta (`2/2` PostgreSQL), Redis local `21/21`, auth fail-closed `1/1`, API
+`324/324`, worker `58` + build e scans/builds dirigidos. São provas focadas,
+descartáveis e não equivalem à jornada clínica completa ou à produção.
+
+### Retomada executável
+
+1. Escrever o RED `ERP-ATOMIC-002` para rollback entre `billing.addItem` e
+   `markDailyChargeBilled`.
+2. Implementar a UoW/saga explícita da jornada admissão → handoff/permanência →
+   estoque → alta → billing → recebimento/ledger/auditoria/outbox.
+3. Cobrir dois tenants, replay, concorrência e failpoint em PostgreSQL
+   descartável; atualizar os artefatos e ledgers somente com resultados
+   reproduzidos.
+4. Depois, tratar Redis failover/clock-skew real, SPA/B2c, provedores,
+   paridade Vetus, WCAG, cobertura, deploy/restore e release como gates
+   separados.
+
+Comandos de retomada:
+
+```bash
+cd /home/ricardo/cvg-his-v4
+git switch agent/sync-v4-full-program
+git status --short
+python3 /home/ricardo/.codex/skills/engineering-framework/scripts/check_state.py "$PWD"
+pnpm readiness:enterprise
+```
+
+O estado global permanece `IN_PROGRESS/PARTIAL`; não marcar `CVG-002B2B`,
+`CVG-002`, paridade ou o ERP como concluídos.
