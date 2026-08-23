@@ -430,3 +430,11 @@ failpoints, PIX PostgreSQL/RLS ou webhook HTTP retry/DLQ/fencing.
 
 O cache user-owned `packages/design-system/tsconfig.vue.tsbuildinfo` continua
 fora do stage.
+
+## Publicação do reteste — 23/08/2026
+
+O artefato, checkpoint, handoff, ExecPlan, backlog, estado e ledgers do
+reteste foram publicados em `54ce516` (`docs: record post-fix critical retest`)
+no branch `origin/agent/sync-v4-full-program`. O ponteiro de controle será
+reconciliado após a verificação final; o resultado continua **386/387** e
+`IN_PROGRESS/PARTIAL`, sem promoção global.

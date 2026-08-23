@@ -413,3 +413,11 @@ Retomada executável:
 O estado permanece `BUILD/VERIFY`, `IN_PROGRESS/PARTIAL`; o cache
 `packages/design-system/tsconfig.vue.tsbuildinfo` é user-owned e fica fora do
 stage.
+
+## Publicação mais recente
+
+O registro de continuidade e o artefato do full critical pós-fix foram
+publicados em `54ce516` (`docs: record post-fix critical retest`) no branch
+`origin/agent/sync-v4-full-program`. A reconciliação final do estado apontará
+para esse SHA; a próxima sessão deve começar pela reprodução mínima da falha
+PIX, não por uma promoção de gate.
