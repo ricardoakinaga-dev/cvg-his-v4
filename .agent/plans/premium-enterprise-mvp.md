@@ -418,3 +418,14 @@ renderizada por SELECT format. Esses dois pontos são o próximo RED/GREEN; o
 ERP e a Quality Bar continuam IN_PROGRESS/PARTIAL. O checkpoint executável é
 docs/2026-08-23-checkpoint-retomada-integral.md e o artefato é
 .agent/artifacts/erp-audit-2026-08-23.md.
+
+Plan revision note, 2026-08-23 (reteste crítico pós-fix): o template Helm agora
+explicita `REVOKE cvg_installer FROM :"worker_user";` no commit `6afd1d9`;
+installation-state passou 8/8 e runtime-role-grants 11/11. O daily-charge
+passou 4/4 e FK/integrity/PIX passaram 68/68 isoladamente. A repetição integral
+continua parcial em 382/387 (23/28): o full run ainda materializa
+`stayday_<token>`, há fixtures preemptados por validação/NOT NULL e um teardown
+production-like excede 30s. A próxima ação é reproduzir a divergência com
+cache/paralelismo controlados sem relaxar contratos, mantendo
+CVG-002C6/Quality Bar/ERP IN_PROGRESS/PARTIAL; só depois retomar
+SIGKILL/takeover, failpoints e webhook HTTP retry/DLQ/fence.

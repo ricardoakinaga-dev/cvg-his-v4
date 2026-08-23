@@ -597,3 +597,18 @@ A auditoria documental foi consolidada em docs/2026-08-23-checkpoint-retomada-in
 Baseline executado: readiness 95/100 estrutural e 0/11 paridade; clinical parity 0/3; RLS 154/155; OpenAPI 337 paths/390 schemas; migration consistency bloqueada pela ausência de docs/phase-9-migration-manifest.json. pnpm test:critical terminou exit 1 com 385/387 testes em 28 arquivos. Os bloqueios concretos são um fixture de diária que usa stayday_<token> em coluna uuid e uma asserção de installation-state que procura REVOKE literal enquanto o Helm usa SELECT format. O rate limiter in-memory observado no teste não prova Redis compartilhado.
 
 Decisão: stop decision ACTIVE; CVG-002C6 e a Quality Bar global continuam IN_PROGRESS/PARTIAL. O próximo RED/GREEN deve corrigir somente os dois bloqueios do teste crítico, reexecutar a suíte completa e então continuar eventos de domínio em processo filho/SIGKILL, failpoints e webhook HTTP retry/DLQ/fence. Nenhum gate de ERP, produção, provedor, SPA, paridade, WCAG, operações ou release foi promovido.
+
+## Reteste crítico pós-fix — 23/08/2026, 19:03 BRT
+
+O RED/GREEN delimitado do grant Helm foi publicado em `6afd1d9`: a ConfigMap
+agora contém a revogação explícita do papel instalador para o worker. A crítica
+independente não encontrou Critical/High; a limitação Medium é a ausência de
+render/apply Kubernetes nesta rodada. Focados: daily 4/4, installation 8/8,
+runtime grants 11/11 e FK/integrity/PIX 68/68.
+
+A repetição integral terminou exit 1, 382/387 em 23/28. O full run ainda
+carregou `stayday_<token>` no daily-charge, apresentou fixtures preemptados por
+validação/NOT NULL e FK de conta no PIX, e excedeu o teardown de
+production-like-runtime. Como os mesmos testes passam isoladamente, o próximo
+gate é reproduzir a divergência com cache/paralelismo controlados. Stop decision
+continua ACTIVE; CVG-002C6, ERP e Quality Bar seguem IN_PROGRESS/PARTIAL.

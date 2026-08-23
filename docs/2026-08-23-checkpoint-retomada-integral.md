@@ -199,3 +199,39 @@ commit 30fa5271b94e2d13451295504f23b843b6a94316, no branch
 agent/sync-v4-full-program. A reconciliação confirmou HEAD igual a origin; o
 único caminho dirty continua sendo o cache user-owned
 packages/design-system/tsconfig.vue.tsbuildinfo.
+
+## Reteste crítico pós-fix — 23/08/2026, 19:03 BRT
+
+O ajuste delimitado de least privilege foi publicado no template Helm:
+`REVOKE cvg_installer FROM :"worker_user";` agora aparece explicitamente após
+o grant do instalador para a API. O commit de código é `6afd1d9`. A revisão
+independente encontrou Critical/High **nenhum**; permanece apenas a limitação
+de não haver aplicação do chart em um cluster real nesta rodada.
+
+Testes focados na árvore atual: daily-charge HTTP PostgreSQL **4/4**,
+installation-state **8/8**, runtime-role-grants **11/11** e
+FK/integrity/PIX **68/68**. A execução integral repetida com PostgreSQL
+descartável —
+`REQUIRE_TEST_DB=1 pnpm exec vitest run tests/integration/database
+tests/integration/setup tests/integration/foundational.test.ts --config
+vitest.integration.config.ts --reporter=dot` — terminou `exit 1`, com **382/387**
+testes em **23/28** arquivos.
+
+O full run ainda exibiu cinco falhas: o daily-charge carregou
+`stayday_<token>` apesar de o arquivo atual e o teste isolado usarem UUID; duas
+asserções FK e a unicidade de usuário foram preemptadas por validação/NOT NULL;
+o fixture de backfill PIX referenciou conta inexistente; e o teardown de
+`production-like-runtime-bootstrap.test.ts` excedeu 30s. Como os mesmos
+arquivos passam isoladamente, isso fica registrado como problema de
+reprodutibilidade/isolation/cache a investigar, não como correção artificial de
+contrato. `QB-REL-01`, `QB-SEC-01`, CVG-002C6 e o ERP global continuam
+`IN_PROGRESS/PARTIAL`.
+
+### Ponto de entrada da próxima sessão
+
+Validar a causa do full run divergente com cache/paralelismo controlados,
+preservar o teste isolado 4/4 e os contratos 8/8 + 11/11, e somente então
+reexecutar o gate integral. Depois retomar child-process domain/SIGKILL,
+failpoints completos, PIX PostgreSQL/RLS e webhook HTTP retry/DLQ/fence. Não
+promover paridade, SPA, WCAG, providers, Redis, cobertura, operações, deploy,
+release ou produção.

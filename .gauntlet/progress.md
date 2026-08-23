@@ -529,3 +529,14 @@ O ponto de entrada da próxima sessão é docs/2026-08-23-checkpoint-retomada-in
 O baseline atual é readiness estrutural 95/100, paridade 0/11 geral e 0/3 clínica, RLS 154/155, OpenAPI 337/390 e migration-consistency bloqueada por manifesto ausente. test:critical terminou com exit 1 e 385/387 testes em 28 arquivos; não registrar como PASS. Os dois reparos delimitados são o UUID inválido no fixture de rollback de diária e a asserção de grants no template Helm.
 
 O Gauntlet permanece ACTIVE e a Quality Bar permanece IN_PROGRESS/PARTIAL. A próxima rodada deve ser RED/GREEN desses dois reparos, regressão completa e só então a continuação de worker domain child-process/SIGKILL, failpoints e webhook retry/DLQ. O cache packages/design-system/tsconfig.vue.tsbuildinfo continua fora do stage.
+
+## Reteste crítico pós-fix — 23/08/2026, 19:03 BRT
+
+O template Helm recebeu a revogação explícita do papel instalador para o worker
+no commit `6afd1d9`; a revisão independente aprovou o escopo sem Critical/High.
+As provas focadas passaram daily 4/4, installation 8/8, grants 11/11 e
+FK/integrity/PIX 68/68. A suíte integral repetida ficou em 382/387, 23/28,
+com divergência `stayday_<token>` no full run, fixtures preemptados por
+validação/NOT NULL/FK e timeout de teardown production-like. O próximo operador
+deve controlar cache e paralelismo, reproduzir a causa determinística e manter
+o stop decision ACTIVE; nenhum gate global é promovido.
