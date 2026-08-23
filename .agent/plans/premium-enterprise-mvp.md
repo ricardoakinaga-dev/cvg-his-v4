@@ -280,7 +280,7 @@ implementation must prove rollback/atomicity across billing item and daily
 charge state before expanding to receipt/ledger/outbox.
 
 Publication note, 2026-08-23: implementation and continuity checkpoint
-`2b33aea` (`feat: enforce inpatient discharge cutoff`) is on the branch and
-origin. The final pointer-only reconciliation remains the next publication
-step; then continue with the billing-item/daily-charge rollback RED and the
-clinical-financial UoW/saga. Global and external gates remain open.
+`2b33aea` (`feat: enforce inpatient discharge cutoff`) and pointer
+reconciliation `432887f` (`docs: publish discharge cutoff checkpoint`) are on
+the branch and origin. Continue with the billing-item/daily-charge rollback
+RED and the clinical-financial UoW/saga. Global and external gates remain open.

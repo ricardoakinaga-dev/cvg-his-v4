@@ -184,6 +184,6 @@ admission → handoff → inventory → discharge → receipt/ledger/audit/outbo
 
 Publication checkpoint: `2b33aea` is pushed to
 `origin/agent/sync-v4-full-program` with migration 0116, its independent
-cutoff proof and the next-session handoff. Reconcile the final docs pointer,
-then run the billing-item/daily-charge rollback RED; preserve
+cutoff proof and the next-session handoff; docs pointer reconciliation is
+published as `432887f`. Run the billing-item/daily-charge rollback RED; preserve
 `IN_PROGRESS/PARTIAL` and all external gates.

@@ -229,8 +229,8 @@ foi deixado intacto. O ERP continua `IN_PROGRESS/PARTIAL`. Próximo round:
 RED de rollback entre billing item e daily charge, seguido da jornada
 admission → handoff → inventory → discharge → receipt/ledger/audit/outbox.
 
-Implementation checkpoint `2b33aea` is published on the branch and origin with
-the cutoff migration, independent PostgreSQL proof and control-plane handoff.
-The final pointer-only docs reconciliation is pending; the next largest local
-action remains the billing-item/daily-charge rollback RED, followed by the
+Implementation checkpoint `2b33aea` and pointer reconciliation `432887f` are
+published on the branch and origin with the cutoff migration, independent
+PostgreSQL proof and control-plane handoff. The next largest local action
+remains the billing-item/daily-charge rollback RED, followed by the
 clinical-financial UoW/saga.

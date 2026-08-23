@@ -442,6 +442,6 @@ handoff/permanência → estoque → alta → billing → recibo/ledger/auditori
 outbox, mantendo o estado global `IN_PROGRESS/PARTIAL`.
 
 Publicação: `2b33aea` (`feat: enforce inpatient discharge cutoff`) está em
-`origin/agent/sync-v4-full-program`. O ponteiro final deste handoff ainda será
-reconciliado em um commit documental separado; depois disso, retomar o RED de
+`origin/agent/sync-v4-full-program`; o ponteiro documental foi reconciliado em
+`432887f` (`docs: publish discharge cutoff checkpoint`). Retomar o RED de
 rollback billing ↔ diária e a UoW/saga clínico-financeira.

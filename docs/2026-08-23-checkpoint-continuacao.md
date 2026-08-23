@@ -429,7 +429,8 @@ externos de provider, SPA/B2c, paridade, WCAG, operações, cobertura e release.
 O commit `2b33aea` (`feat: enforce inpatient discharge cutoff`) foi publicado
 em `origin/agent/sync-v4-full-program`. Ele contém a migration `0116`, a prova
 PostgreSQL independente, a prova HTTP fail-closed, o artefato CVG-002D e todos
-os registros de continuidade desta seção. O cache user-owned
-`packages/design-system/tsconfig.vue.tsbuildinfo` permaneceu fora do commit.
-Após a reconciliação do ponteiro documental, confirme `HEAD == origin` antes
-de retomar o RED de rollback billing ↔ diária.
+os registros de continuidade desta seção. O ponteiro documental foi
+reconciliado em `432887f` (`docs: publish discharge cutoff checkpoint`) e
+`HEAD == origin`. O cache user-owned
+`packages/design-system/tsconfig.vue.tsbuildinfo` permaneceu fora dos commits.
+Retome o RED de rollback billing ↔ diária a partir deste estado.
