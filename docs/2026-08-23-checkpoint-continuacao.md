@@ -331,9 +331,10 @@ Vetus, WCAG, target operations, cobertura dedicada ou release.
 ## Reconciliação final para a próxima sessão — 23/08/2026, 04:07 BRT
 
 Verifique `git rev-parse HEAD` e `git rev-parse origin/agent/sync-v4-full-program`;
-ambos devem apontar para `260096a` (a implementação está em `855f53f`). O
-estado canônico foi atualizado para `EVT-0103`/revisão 90 e o checker continua
-em 11 PASS, 1 WARN histórico e 0 FAIL. A próxima ação executável é provar o
-race stale-fence com A vivo após o takeover de B; depois exercitar Redis
-failover/clock-skew e iniciar a fatia clínico-financeira de internação até item
-cobrável.
+eles devem concordar na ponta publicada da branch. A implementação está em
+`855f53f` e a reconciliação documental anterior em `260096a`; commits de
+ponteiro posteriores são apenas continuidade documental. O estado canônico foi
+atualizado para `EVT-0103`/revisão 90 e o checker continua em 11 PASS, 1 WARN
+histórico e 0 FAIL. A próxima ação executável é provar o race stale-fence com A
+vivo após o takeover de B; depois exercitar Redis failover/clock-skew e iniciar
+a fatia clínico-financeira de internação até item cobrável.
