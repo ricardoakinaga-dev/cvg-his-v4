@@ -290,9 +290,20 @@
         ".agent/artifacts/CVG-002C6-worker-runtime-acl-sigkill-2026-08-23.md",
         "tests/integration/process/worker-runtime-entrypoint.test.ts",
         ".agent/verification.jsonl#VFY-CVG-002C6-WORKER-ACL-GREEN-001",
-        ".agent/verification.jsonl#VFY-CVG-002C6-WORKER-RETEST-001"
+        ".agent/verification.jsonl#VFY-CVG-002C6-WORKER-RETEST-001",
+        ".agent/artifacts/CVG-002C6-worker-consumer-composition-2026-08-23.md",
+        "packages/modules/event-consumers/src/payments.consumer.ts",
+        "packages/modules/event-consumers/src/billing.consumer.ts",
+        "packages/modules/event-consumers/src/webhooks.consumer.ts",
+        "packages/modules/payments/src/card-transaction-repository.ts",
+        "packages/db/migrations/0121_card_transactions.sql",
+        "apps/worker/src/consumer-composition.ts",
+        "apps/worker/src/consumer-composition.test.ts",
+        "apps/api/src/consumers/payments.consumer.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-002C6-WORKER-CONSUMERS-001",
+        ".agent/verification.jsonl#VFY-CVG-002C6-CARD-AUTHORITY-001"
       ],
-      "next_action": "Worker child-process execution is GREEN bounded for /live, loop ticks, SIGKILL and same-port restart, and worker installer/governance DML is revoked consistently in reconciler/init/Helm. Readiness remains degraded until real payments, billing and webhooks consumers are composed. Next, review/register those handlers or an explicit worker manifest, then execute the full failpoint matrix and prove applied Helm equivalence. Keep callback ghost, async cross-instance hydration, global RLS/FORCE RLS, Redis/provider/SPA/parity/WCAG/coverage/operations/deploy/release gates explicitly open and keep the user-owned tsbuildinfo cache out of scope."
+      "next_action": "Worker child-process execution and the exact payments → billing → webhooks composition are GREEN bounded; card.completed now fails closed without an authoritative intent or with account/billing/amount mismatch. Next, publish real domain-event fixtures under LOGIN NOSUPERUSER NOBYPASSRLS and prove inbox/outbox, settlement, webhook enqueue, replay/concurrency and tenant isolation. Then execute the full failpoint matrix and applied Helm equivalence. Keep the global transaction-id collision decision, PostgreSQL card cross-tenant tests, webhook retry/DLQ, callback ghost, async cross-instance hydration, global RLS/FORCE RLS, Redis/provider/SPA/parity/WCAG/coverage/operations/deploy/release gates explicitly open and keep the user-owned tsbuildinfo cache out of scope."
     },
     {
       "id": "CVG-003",

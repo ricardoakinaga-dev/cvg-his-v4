@@ -420,6 +420,28 @@ cross-domain, admission/handoff e reconciliação observável. O cache
 `packages/design-system/tsconfig.vue.tsbuildinfo` é user-owned e fica fora do
 stage.
 
+## Estado atual — composição de consumidores e cartão (23/08/2026, 16:25 BRT)
+
+O worker agora compõe e registra exatamente `payments → billing → webhooks` por
+meio do pacote compartilhado `packages/modules/event-consumers`. O bootstrap
+exige as tabelas clínicas, financeiras, PIX/cartão, webhooks e inbox/outbox; com
+schema completo, o processo real passa `1/1` sob role
+`LOGIN NOSUPERUSER NOBYPASSRLS`, incluindo `/live`, ticks, ACL, `SIGKILL`,
+restart na mesma porta e `SIGTERM`.
+
+O cartão tem migration `0121`, RLS `ENABLE/FORCE`, FK composta por tenant,
+repositório PostgreSQL e testes de SQL parametrizado. `card.completed` foi
+fechado contra intent desconhecido, conta/billing divergente e valor/moeda
+incompatível; a revisão independente não encontrou Critical/High após a
+correção. Billing agora faz leitura autoritativa; webhooks enfileiram delivery
+pendente sem HTTP dentro da UoW.
+
+Este é GREEN bounded. Ainda não há fixture de evento real no child process nem
+prova PostgreSQL cross-tenant do cartão, retry/DLQ de webhook ou failpoint
+cross-domain. O próximo maior gap é executar eventos sob a role restrita e
+reconciliar inbox/outbox, settlement, delivery pendente, replay, concorrência e
+isolamento A/B. O ERP/Quality Bar global continua `ACTIVE/IN_PROGRESS/PARTIAL`.
+
 O ponteiro final do handoff documental é `720876ec1f5ce30275b1160df7ef5f35c6fb1b0e`;
 a implementação bounded está em `adde66b7a1b33333126f4832b3c728abb2db8500`.
 

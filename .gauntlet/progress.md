@@ -266,7 +266,7 @@ global ou externo foi promovido.
 - O maior gap segue a jornada admissão → handoff/permanência → inventário →
   alta → billing → recebimento/ledger/auditoria/outbox. Cursor pagination,
   Redis failover, provider, SPA/B2c, Vetus parity, WCAG, target operations,
-cobertura e release continuam abertos.
+  cobertura e release continuam abertos.
 
 ## Handoff 23/08/2026 — auditoria da jornada clínica-financeira
 
@@ -453,3 +453,19 @@ artefato são a referência da próxima sessão.
 
 O ponteiro final do handoff é `720876ec1f5ce30275b1160df7ef5f35c6fb1b0e`; a
 implementação está em `adde66b7a1b33333126f4832b3c728abb2db8500`.
+
+## Iteração atual — consumidores do worker e persistência de cartão (16:25 BRT)
+
+O pacote compartilhado registra `payments → billing → webhooks`; o bootstrap do
+worker exige o schema completo e hidrata cada conta sob contexto tenant. A
+migration `0121_card_transactions.sql` adiciona cartão PostgreSQL com
+`ENABLE/FORCE RLS`, FK composta e checks. O fluxo `card.completed` falha fechado
+sem intent autoritativo ou com divergência de conta, billing, moeda ou valor.
+
+Provas bounded: composition `2/2`, payments `9/9`, card repository `3/3`, worker
+child-process `1/1`, RLS coverage `154/155 + 1 exceção`, builds/typechecks PASS.
+Billing faz leitura autoritativa; webhooks apenas enfileiram deliveries
+pendentes. A próxima sessão deve publicar fixtures de eventos sob
+`NOBYPASSRLS`, testar inbox/outbox, settlement, replay/concurrency, rollback e
+isolamento A/B; transaction-id global, card cross-tenant, retry/DLQ, failpoints,
+Helm e os gates globais continuam abertos.
