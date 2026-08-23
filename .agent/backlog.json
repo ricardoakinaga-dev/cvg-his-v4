@@ -80,9 +80,12 @@
         ".agent/artifacts/CVG-002B2B-gate-review-2026-08-22.md",
         ".agent/gates/verified-CVG-002B2a.json",
         ".agent/gates/verified-CVG-002B1.json",
-        ".agent/verification.jsonl#VFY-CVG-002B2B-PARSER-INGRESS-001"
+        ".agent/verification.jsonl#VFY-CVG-002B2B-PARSER-INGRESS-001",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-HTTP-BOUNDARY-001",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-HTTP-BOUNDARY-002",
+        ".agent/artifacts/CVG-002B2B-http-boundary-2026-08-22.md"
       ],
-      "next_action": "Write the real socket HTTP callback RED, then service-principal migration/login exclusions and the shared fenced worker UoW; preserve 18/18 B1, 25/25 raw-body/HMAC, 77/77 focused and 11/11 ingress evidence."
+      "next_action": "Complete the manual node:net HTTP callback RED/harness, deferred ACK and OpenAPI/opaque-error gaps, then service-principal migration/login exclusions and the shared fenced worker UoW; preserve 18/18 B1, 25/25 raw-body/HMAC, 77/77 focused, 11/11 ingress and the bounded HTTP evidence."
     },
     {
       "id": "CVG-003",

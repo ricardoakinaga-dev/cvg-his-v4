@@ -5,6 +5,13 @@ import { URL } from 'node:url';
 import { getDatabaseTransactionScope, getPool } from '@cvg-his-v2/shared-database';
 import { extractBearerToken } from '@cvg-his-v2/shared-auth-sdk';
 import { createAuthRateLimiter } from './http/auth-rate-limiter.js';
+import {
+  assertPixProviderWebhookReadiness,
+  handlePixProviderWebhookRoutes,
+  type PixProviderEventIngressRepository,
+  type PixProviderWebhookRateLimiter
+} from './routes/pix-provider-webhook-routes.js';
+import type { PixProviderWebhookKey } from './pix-provider-webhook-verifier.js';
 import type { SecretsManager } from '@cvg-his-v2/secrets';
 import type {
   AddInpatientProgressRequest,
@@ -319,6 +326,14 @@ export interface ApiServerOptions {
   readonly whatsappWebhookSecret?: string;
   /** Redis URL for distributed rate limiting. When set, auth rate limiter uses Redis backend. */
   readonly redisUrl?: string;
+  /** Key-bound synthetic PIX webhook credentials. Never log or expose secret bytes. */
+  readonly pixProviderWebhookKeyring?: ReadonlyMap<string, PixProviderWebhookKey>;
+  /** Explicit local/test capability switch; never enable in production-like environments. */
+  readonly pixProviderWebhookSyntheticEnabled?: boolean;
+  /** Durable receipt+delivery repository for the synthetic PIX callback. */
+  readonly pixProviderEventIngressRepository?: PixProviderEventIngressRepository;
+  /** Injectable rate limiter for the public synthetic PIX callback. */
+  readonly pixProviderWebhookRateLimiter?: PixProviderWebhookRateLimiter;
   /** Secrets manager for reading credentials at startup. Uses EnvSecretsProvider when omitted. */
   readonly secretsManager?: SecretsManager;
 }
@@ -3654,6 +3669,12 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
   const hasPagarmeCredentials = Boolean(options.pagarmeApiKey && options.pagarmePixKey);
   assertProductionProviderReadiness(options);
   const usePixMock = options.pixMockMode === true || !hasPagarmeCredentials;
+  assertPixProviderWebhookReadiness({
+    environment: options.environment,
+    syntheticEnabled: options.pixProviderWebhookSyntheticEnabled,
+    keyring: options.pixProviderWebhookKeyring,
+    repository: options.pixProviderEventIngressRepository
+  });
   const paymentGateway = usePixMock
     ? new LocalPixPaymentGateway()
     : new PagarMePaymentGatewayAdapter({
@@ -3741,6 +3762,16 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
 
   const pixPaymentAttemptRateLimiter =
     options.pixPaymentAttemptRateLimiter ??
+    createAuthRateLimiter(logger, {
+      authRateLimitWindowMs: 60_000,
+      authRateLimitMaxRequests: 120,
+      redisUrl: options.redisUrl,
+      runtimeDistributedStateEnabled: effectiveRuntimeDistributedStateEnabled,
+      requireDistributed: ['production', 'prod', 'staging', 'stage'].includes(options.environment)
+    });
+
+  const pixProviderWebhookRateLimiter =
+    options.pixProviderWebhookRateLimiter ??
     createAuthRateLimiter(logger, {
       authRateLimitWindowMs: 60_000,
       authRateLimitMaxRequests: 120,
@@ -4021,6 +4052,18 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
         return;
       }
 
+      if (
+        options.pixProviderWebhookSyntheticEnabled === true &&
+        await handlePixProviderWebhookRoutes(pathname, request, response, correlationId, {
+          keyring: options.pixProviderWebhookKeyring ?? new Map(),
+          repository: options.pixProviderEventIngressRepository,
+          rateLimiter: pixProviderWebhookRateLimiter,
+          trustedProxyCidrs: options.trustedProxyCidrs
+        })
+      ) {
+        return;
+      }
+
       if (request.url === '/metrics' && request.method === 'GET') {
         const appState = getAppState();
         const activeExperimentIds = chaos
@@ -4167,7 +4210,8 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
         pathname.startsWith('/auth/') ||
         pathname.startsWith('/api/auth/') ||
         pathname === '/webhooks/whatsapp/inbound' ||
-        pathname === '/api/webhooks/whatsapp/inbound';
+        pathname === '/api/webhooks/whatsapp/inbound' ||
+        pathname === '/webhooks/pix/synthetic/v1';
 
       // Health, metrics and OpenAPI already returned above, so anything reaching
       // here is tenant-scoped. Without a verified identity there is no account to

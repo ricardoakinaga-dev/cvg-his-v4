@@ -108,6 +108,8 @@ env:
   DATABASE_URL: "postgresql://cvghis:@postgres:5432/cvghis"
   # PagarMe (real PIX)
   PIX_MOCK_MODE: "false"
+  # Synthetic PIX callback is never enabled in production-like Helm values.
+  PIX_SYNTHETIC_WEBHOOK_ENABLED: "false"
 
 volumes: []
 

@@ -30,7 +30,8 @@ const API_SECRET_PATHS: Readonly<Record<string, string>> = {
   NFSE_API_KEY: 'nfse',
   NFSE_CERTIFICATE_BASE64: 'nfse',
   NFSE_ISSUER_JSON: 'nfse',
-  SETUP_BOOTSTRAP_TOKEN: 'api_setup'
+  SETUP_BOOTSTRAP_TOKEN: 'api_setup',
+  PIX_WEBHOOK_KEYRING_JSON: 'pix_webhook'
 };
 
 function isTruthy(value: string | undefined): boolean {
@@ -66,6 +67,7 @@ export function buildApiManagedSecretDescriptors(env: NodeJS.ProcessEnv): Secret
     path: `${environment}/${pathSuffix}`,
     required:
       (key === 'AUTH_SECRET' || key === 'DATABASE_URL') && productionLike
+      || (key === 'PIX_WEBHOOK_KEYRING_JSON' && isTruthy(env.PIX_SYNTHETIC_WEBHOOK_ENABLED))
       || (key === 'MFA_SECRET_ENCRYPTION_KEY' && enableMfa)
   }));
 }

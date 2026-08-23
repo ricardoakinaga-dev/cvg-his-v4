@@ -58,6 +58,41 @@ describe('config module', () => {
       expect(config.port).toBe(3001);
       expect(config.environment).toBe('development');
       expect(config.authRateLimitMaxRequests).toBe(10);
+      expect(config.pixSyntheticWebhookEnabled).toBe(false);
+      expect(config.pixProviderWebhookKeyringJson).toBeUndefined();
+    });
+
+    it('requires an explicit keyring when the synthetic PIX callback is enabled', () => {
+      const env = cleanApiEnv();
+      env.PIX_SYNTHETIC_WEBHOOK_ENABLED = 'true';
+      expect(() => loadApiConfig(env as NodeJS.ProcessEnv)).toThrow(
+        /PIX_WEBHOOK_KEYRING_JSON/
+      );
+
+      env.PIX_WEBHOOK_KEYRING_JSON = JSON.stringify({
+        local_key_01: {
+          accountId: '11111111-1111-4111-8111-111111111111',
+          secretBase64: Buffer.alloc(32, 0x42).toString('base64')
+        }
+      });
+      const config = loadApiConfig(env as NodeJS.ProcessEnv);
+      expect(config.pixSyntheticWebhookEnabled).toBe(true);
+      expect(config.pixProviderWebhookKeyringJson).toBe(env.PIX_WEBHOOK_KEYRING_JSON);
+    });
+
+    it('rejects the synthetic PIX callback capability in production-like environments', () => {
+      const env = cleanApiEnv();
+      env.NODE_ENV = 'production';
+      env.DATABASE_URL = 'postgres://localhost/db';
+      env.PIX_SYNTHETIC_WEBHOOK_ENABLED = 'true';
+      env.PIX_WEBHOOK_KEYRING_JSON = JSON.stringify({
+        local_key_01: {
+          accountId: '11111111-1111-4111-8111-111111111111',
+          secretBase64: Buffer.alloc(32, 0x42).toString('base64')
+        }
+      });
+
+      expect(() => loadApiConfig(env as NodeJS.ProcessEnv)).toThrow(/must be false/);
     });
 
     it('loads with explicit values', () => {

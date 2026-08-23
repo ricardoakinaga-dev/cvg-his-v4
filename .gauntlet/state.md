@@ -59,6 +59,10 @@ Round 0 completed discovery and froze Quality Bar v1. Rounds 1-3 delivered local
 - Connect the verified direct PIX core to the signed socket callback, non-interactive service principal, shared fenced worker/consumer and SPA flow; then add card, stock and the full scheduled/walk-in journey.
 - Add a dedicated HTTP-to-UoW-to-PostgreSQL receipt E2E and the remaining critical browser E2E gates.
 
+## Latest bounded checkpoint
+
+`EVT-0052/EVT-0053` adds the explicit non-production synthetic PIX HTTP callback capability and records fresh bounded evidence: shared-config 32/32, verifier/keyring 35/35, startup 6/6, and real `node:http` integration 6/6. The callback is still below the `VERIFIED` bar because manual `node:net` framing/abort coverage, deferred ACK evidence, OpenAPI, opaque repository-error mapping, service principals and the shared fenced worker remain open. No quality-bar dimension is promoted by this checkpoint.
+
 ## Stop Decision
 
 - State: ACTIVE

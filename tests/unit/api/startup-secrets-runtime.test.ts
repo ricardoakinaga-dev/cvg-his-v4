@@ -56,7 +56,8 @@ describe('startup-secrets runtime coverage', () => {
       { key: 'NFSE_API_KEY', path: 'staging/nfse', required: false },
       { key: 'NFSE_CERTIFICATE_BASE64', path: 'staging/nfse', required: false },
       { key: 'NFSE_ISSUER_JSON', path: 'staging/nfse', required: false },
-      { key: 'SETUP_BOOTSTRAP_TOKEN', path: 'staging/api_setup', required: false }
+      { key: 'SETUP_BOOTSTRAP_TOKEN', path: 'staging/api_setup', required: false },
+      { key: 'PIX_WEBHOOK_KEYRING_JSON', path: 'staging/pix_webhook', required: false }
     ]);
   });
 
@@ -80,7 +81,8 @@ describe('startup-secrets runtime coverage', () => {
       { key: 'NFSE_API_KEY', path: 'development/nfse', required: false },
       { key: 'NFSE_CERTIFICATE_BASE64', path: 'development/nfse', required: false },
       { key: 'NFSE_ISSUER_JSON', path: 'development/nfse', required: false },
-      { key: 'SETUP_BOOTSTRAP_TOKEN', path: 'development/api_setup', required: false }
+      { key: 'SETUP_BOOTSTRAP_TOKEN', path: 'development/api_setup', required: false },
+      { key: 'PIX_WEBHOOK_KEYRING_JSON', path: 'development/pix_webhook', required: false }
     ]);
   });
 
@@ -115,7 +117,8 @@ describe('startup-secrets runtime coverage', () => {
       { key: 'NFSE_API_KEY', path: 'production/nfse', required: false },
       { key: 'NFSE_CERTIFICATE_BASE64', path: 'production/nfse', required: false },
       { key: 'NFSE_ISSUER_JSON', path: 'production/nfse', required: false },
-      { key: 'SETUP_BOOTSTRAP_TOKEN', path: 'production/api_setup', required: false }
+      { key: 'SETUP_BOOTSTRAP_TOKEN', path: 'production/api_setup', required: false },
+      { key: 'PIX_WEBHOOK_KEYRING_JSON', path: 'production/pix_webhook', required: false }
     ]);
     expect(resolved.AUTH_SECRET).toBe('vault-auth-secret');
     expect(resolved.DATABASE_URL).toBe('postgres://already-set');
@@ -144,7 +147,8 @@ describe('startup-secrets runtime coverage', () => {
         NFSE_API_KEY: 'configured-nfse',
         NFSE_CERTIFICATE_BASE64: 'configured-cert',
         NFSE_ISSUER_JSON: '{"cnpj":"configured"}',
-        SETUP_BOOTSTRAP_TOKEN: 'configured-setup-token'
+        SETUP_BOOTSTRAP_TOKEN: 'configured-setup-token',
+        PIX_WEBHOOK_KEYRING_JSON: '{"local-key-01":{"accountId":"11111111-1111-4111-8111-111111111111","secretBase64":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="}}'
       },
       { provider: 'vault', getMany } as never
     );

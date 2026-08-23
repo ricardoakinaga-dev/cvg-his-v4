@@ -109,6 +109,8 @@ export const API_CONFIG_FIELDS: readonly ConfigFieldDescriptor[] = [
   { app: 'api', key: 'PAGARME_API_KEY', required: false, sensitive: true, description: 'Pagar.me API key for PIX payments. When set, PagarMePixAdapter is used instead of LocalPixPaymentGateway.' },
   { app: 'api', key: 'PAGARME_PIX_KEY', required: false, description: 'Pagar.me PIX key (chave Pix) for QR code generation. Required when PAGARME_API_KEY is set.' },
   { app: 'api', key: 'PIX_MOCK_MODE', required: false, defaultValue: 'false', description: 'When true, forces LocalPixPaymentGateway (mock) even if PAGARME_API_KEY and PAGARME_PIX_KEY are set. Default: false (PagarMe is the default provider).' },
+  { app: 'api', key: 'PIX_SYNTHETIC_WEBHOOK_ENABLED', required: false, defaultValue: 'false', description: 'Explicitly enables the local synthetic PIX webhook capability in development/test only; must remain false in production-like environments.' },
+  { app: 'api', key: 'PIX_WEBHOOK_KEYRING_JSON', required: false, sensitive: true, description: 'Account-bound synthetic PIX webhook keyring. Required only when the explicit synthetic capability is enabled; secrets are canonical base64 values of at least 32 bytes.' },
   { app: 'api', key: 'NFSE_PROVIDER', required: false, defaultValue: 'abrasf', description: 'Municipal NFS-e provider adapter.' },
   { app: 'api', key: 'NFSE_API_URL', required: false, description: 'Municipal NFS-e endpoint used outside simulation mode.' },
   { app: 'api', key: 'NFSE_API_KEY', required: false, sensitive: true, description: 'Municipal NFS-e API credential.' },
@@ -199,6 +201,8 @@ export interface ApiAppConfig {
   readonly pagarmeApiKey?: string;
   readonly pagarmePixKey?: string;
   readonly pixMockMode?: boolean;
+  readonly pixSyntheticWebhookEnabled: boolean;
+  readonly pixProviderWebhookKeyringJson?: string;
   readonly nfseProvider?: string;
   readonly nfseApiUrl?: string;
   readonly nfseApiKey?: string;
@@ -497,6 +501,8 @@ const apiEnvSchema = z
     PAGARME_API_KEY: optionalNonEmptyStringSchema,
     PAGARME_PIX_KEY: optionalNonEmptyStringSchema,
     PIX_MOCK_MODE: booleanStringSchema.default(false),
+    PIX_SYNTHETIC_WEBHOOK_ENABLED: booleanStringSchema.default(false),
+    PIX_WEBHOOK_KEYRING_JSON: optionalNonEmptyStringSchema,
     NFSE_PROVIDER: nonEmptyStringSchema.default('abrasf'),
     NFSE_API_URL: optionalUrlSchema,
     NFSE_API_KEY: optionalNonEmptyStringSchema,
@@ -544,6 +550,22 @@ const apiEnvSchema = z
         code: z.ZodIssueCode.custom,
         path: ['DATABASE_URL'],
         message: 'DATABASE_URL is required in production-like environments'
+      });
+    }
+
+    if (isProductionEnvironment(value.NODE_ENV) && value.PIX_SYNTHETIC_WEBHOOK_ENABLED) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['PIX_SYNTHETIC_WEBHOOK_ENABLED'],
+        message: 'PIX_SYNTHETIC_WEBHOOK_ENABLED must be false in production-like environments'
+      });
+    }
+
+    if (value.PIX_SYNTHETIC_WEBHOOK_ENABLED && !value.PIX_WEBHOOK_KEYRING_JSON) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['PIX_WEBHOOK_KEYRING_JSON'],
+        message: 'PIX_WEBHOOK_KEYRING_JSON is required when PIX_SYNTHETIC_WEBHOOK_ENABLED=true'
       });
     }
   });
@@ -649,6 +671,8 @@ export function loadApiConfig(env: NodeJS.ProcessEnv): ApiAppConfig {
     pagarmeApiKey: parsed.PAGARME_API_KEY,
     pagarmePixKey: parsed.PAGARME_PIX_KEY,
     pixMockMode: parsed.PIX_MOCK_MODE,
+    pixSyntheticWebhookEnabled: parsed.PIX_SYNTHETIC_WEBHOOK_ENABLED,
+    pixProviderWebhookKeyringJson: parsed.PIX_WEBHOOK_KEYRING_JSON,
     nfseProvider: parsed.NFSE_PROVIDER,
     nfseApiUrl: parsed.NFSE_API_URL,
     nfseApiKey: parsed.NFSE_API_KEY,

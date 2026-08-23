@@ -122,6 +122,34 @@ describe('PIX synthetic provider webhook verifier', () => {
     ).toThrow(PixProviderWebhookAuthenticationError);
   });
 
+  it('rejects duplicate critical headers preserved by node rawHeaders', () => {
+    const rawBody = Buffer.from('{}', 'utf8');
+    const requestHeaders = headers(rawBody);
+    expect(() =>
+      verifyPixProviderWebhook(
+        {
+          headers: requestHeaders,
+          rawHeaders: [
+            'content-type',
+            'application/json',
+            'content-type',
+            'application/json',
+            'x-cvg-pix-key-id',
+            KEY_ID,
+            'x-cvg-pix-timestamp',
+            String(NOW),
+            'x-cvg-pix-event-id',
+            EVENT_ID,
+            'x-cvg-pix-signature',
+            sign(rawBody)
+          ],
+          rawBody
+        },
+        options
+      )
+    ).toThrow(PixProviderWebhookAuthenticationError);
+  });
+
   it.each([
     ['missing key', { 'x-cvg-pix-key-id': undefined }],
     ['malformed key', { 'x-cvg-pix-key-id': 'bad key' }],

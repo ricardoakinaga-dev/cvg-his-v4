@@ -25,6 +25,8 @@ export interface PixProviderWebhookVerifierOptions {
 
 export interface PixProviderWebhookVerificationInput {
   readonly headers: IncomingHttpHeaders;
+  /** Raw name/value pairs preserve duplicates that Node normalizes away. */
+  readonly rawHeaders?: readonly string[];
   readonly rawBody: Buffer;
 }
 
@@ -68,6 +70,15 @@ function singleHeader(headers: IncomingHttpHeaders, name: string): { value: stri
   return value === undefined ? { value: '', valid: false } : { value, valid: true };
 }
 
+function rawHeaderCount(rawHeaders: readonly string[] | undefined, name: string): number | undefined {
+  if (!rawHeaders) return undefined;
+  let count = 0;
+  for (let index = 0; index + 1 < rawHeaders.length; index += 2) {
+    if (rawHeaders[index]?.toLowerCase() === name) count += 1;
+  }
+  return count;
+}
+
 function digestFor(secret: Buffer | string, timestamp: string, eventId: string, rawBody: Buffer): Buffer {
   return createHmac('sha256', secret)
     .update(Buffer.from(`v1.${timestamp}.${eventId}.`, 'ascii'))
@@ -99,6 +110,19 @@ export function verifyPixProviderWebhook(
   const contentEncodingValid =
     !headerValues(input.headers, 'content-encoding').length
       || (contentEncoding.valid && contentEncoding.value === 'identity');
+  const criticalHeadersHaveNoDuplicates = [
+    'content-type',
+    'content-encoding',
+    'x-cvg-pix-key-id',
+    'x-cvg-pix-timestamp',
+    'x-cvg-pix-event-id',
+    'x-cvg-pix-signature'
+  ].every((name) => {
+    const count = rawHeaderCount(input.rawHeaders, name);
+    // content-encoding is optional, so a missing raw header is valid; any
+    // critical header present more than once remains invalid.
+    return count === undefined || count <= 1;
+  });
 
   const timestampText = timestampValid ? timestampHeader.value : '0000000000';
   const eventId = eventIdValid ? eventHeader.value : 'invalid-event';
@@ -132,6 +156,7 @@ export function verifyPixProviderWebhook(
     || !fresh
     || !contentTypeValid
     || !contentEncodingValid
+    || !criticalHeadersHaveNoDuplicates
     || input.rawBody.length > 65_536
     || !key
   ) {

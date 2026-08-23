@@ -94,7 +94,8 @@ test('buildApiManagedSecretDescriptors maps API secrets to environment-scoped Va
       ['NFSE_API_KEY', 'production/nfse', false],
       ['NFSE_CERTIFICATE_BASE64', 'production/nfse', false],
       ['NFSE_ISSUER_JSON', 'production/nfse', false],
-      ['SETUP_BOOTSTRAP_TOKEN', 'production/api_setup', false]
+      ['SETUP_BOOTSTRAP_TOKEN', 'production/api_setup', false],
+      ['PIX_WEBHOOK_KEYRING_JSON', 'production/pix_webhook', false]
     ]
   );
 });

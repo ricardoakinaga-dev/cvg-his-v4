@@ -10,6 +10,8 @@ import { startApiObservability } from './observability.js';
 import { resolveApiStartup } from './startup-secrets.js';
 import { resolveSetupBootstrapToken } from './setup-token.js';
 import { DatabaseVetusImportLogRepository } from './repositories/vetus-import-log-repository.js';
+import { DatabasePixProviderEventIngressRepository } from './pix-provider-event-ingress-repository.js';
+import { parsePixProviderWebhookKeyring } from './pix-provider-webhook-keyring.js';
 import {
   ClamAvAttachmentSecurityScanner,
   LocalAttachmentSecurityScanner,
@@ -250,6 +252,13 @@ async function main() {
   // Setup mutation remains disabled until an operator deliberately supplies a
   // bootstrap secret. The secret is never generated or written to logs.
   const setupToken = resolveSetupBootstrapToken(config.setupBootstrapToken);
+  const pixProviderWebhookKeyring = config.pixSyntheticWebhookEnabled
+    ? parsePixProviderWebhookKeyring(config.pixProviderWebhookKeyringJson)
+    : new Map();
+  const pixProviderEventIngressRepository =
+    config.pixSyntheticWebhookEnabled && databaseConfigured
+      ? new DatabasePixProviderEventIngressRepository()
+      : undefined;
 
   const server = createApiServer({
     appName: config.appName,
@@ -290,6 +299,9 @@ async function main() {
     pagarmeApiKey: config.pagarmeApiKey,
     pagarmePixKey: config.pagarmePixKey,
     pixMockMode: config.pixMockMode,
+    pixProviderWebhookSyntheticEnabled: config.pixSyntheticWebhookEnabled,
+    pixProviderWebhookKeyring,
+    pixProviderEventIngressRepository,
     nfseProvider: parseNfseProvider(config.nfseProvider),
     nfseApiUrl: config.nfseApiUrl,
     nfseApiKey: config.nfseApiKey,
