@@ -719,3 +719,22 @@ outbox. O ERP continua `IN_PROGRESS/PARTIAL`; provider real, SPA/B2c, paridade
 Vetus, WCAG, operações alvo, cobertura global e release seguem gates separados.
 O cache user-owned
 `packages/design-system/tsconfig.vue.tsbuildinfo` permanece fora do commit.
+
+## Publicação confirmada — diária HTTP/UoW (23/08/2026, 07:36 BRT)
+
+O código e o teste de integração foram publicados em `9a93ebc`
+(`fix: harden inpatient daily-charge HTTP billing`) no branch
+`origin/agent/sync-v4-full-program`. A prova HTTP/PostgreSQL passou `3/3` e
+os testes/builds dirigidos ficaram em rota `13/13`, module-inpatient `17/17`,
+module-billing `16/16` e API build PASS. A correção adia a reidratação dos
+caches quando o wrapper HTTP ainda está encerrando uma transação abortada;
+isso foi necessário para que o retry concorrente não observasse um cache vazio.
+
+O controle-plane agora aponta para o artefato
+`.agent/artifacts/CVG-002C3-inpatient-daily-charge-http-uow-2026-08-23.md`, para
+`VFY-CVG-002C3-INPATIENT-BILL-HTTP-001` e para a próxima ação completa:
+admissão → handoff/permanência → estoque → alta → billing →
+recebimento/ledger/auditoria/outbox. A matriz HTTP A/B da internação e a
+inspeção de auditoria em falha tardia ainda estão abertas, assim como Redis
+failover real, provider, SPA/B2c, paridade, WCAG, operações, cobertura e
+release. O estado permanece `IN_PROGRESS/PARTIAL`.

@@ -12,6 +12,25 @@
 
 Este arquivo consolida o mapeamento do código e as revisões independentes de arquitetura, segurança e TDD executadas em 22 de agosto de 2026. Ele continua sendo o contrato técnico, não evidência de que o B2b inteiro foi entregue. O gate de prontidão passou após duas rejeições corrigidas; cada RED/GREEN posterior ainda exige evidência própria.
 
+## Continuidade publicada — CVG-002C3 (23/08/2026)
+
+A jornada clínica-financeira adjacente ganhou prova HTTP real para
+`POST /inpatient/:stayId/daily-charges/:chargeId/bill` no commit `9a93ebc`.
+O replay de diária faturada permanece dentro de `runCommand`; em rollback de
+uma UoW HTTP abortada, a reidratação dos caches é adiada até a liberação da
+transação e as leituras commitadas substituem os caches somente após sucesso.
+
+Evidência: API build PASS, rota `13/13`, module-inpatient `17/17`,
+module-billing `16/16`, integração HTTP/PostgreSQL `3/3` e `git diff --check`
+PASS. A prova cobre commit, replay, conflito, rollback entre billing item e
+diária e concorrência same-key com uma única cobrança/idempotência.
+Detalhes em `.agent/artifacts/CVG-002C3-inpatient-daily-charge-http-uow-2026-08-23.md`.
+
+Esse incremento não fecha CVG-002B2B nem o ERP: Redis failover real, jornada
+admissão → handoff/permanência → estoque → alta → recebimento, A/B HTTP da
+internação, auditoria em falha tardia, provider, SPA/B2c, paridade, WCAG,
+operações, cobertura e release permanecem abertos.
+
 ## Checkpoint implementado — EVT-0050 / VFY-CVG-002B2B-PARSER-INGRESS-001
 
 O primeiro sub-slice inbound foi implementado e revisado independentemente:

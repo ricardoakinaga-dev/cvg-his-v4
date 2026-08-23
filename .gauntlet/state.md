@@ -278,3 +278,20 @@ O Quality Bar continua `ACTIVE`/`IN_PROGRESS/PARTIAL`. O próximo maior gap é a
 jornada clínica-financeira admissão → handoff/permanência → estoque → alta →
 billing → recebimento/ledger/auditoria/outbox; Redis failover real, provider,
 SPA/B2c, paridade, WCAG, operações, cobertura e release continuam separados.
+## Continuidade publicada — diária HTTP/UoW (23/08/2026)
+
+O slice `CVG-002C3` está GREEN no limite publicado de
+`POST /inpatient/:stayId/daily-charges/:chargeId/bill`. A rota mantém o replay
+de uma diária faturada dentro do tenant command runner e, ao capturar uma
+falha, adia a reidratação dos caches até o rollback da UoW HTTP terminar. A
+integração PostgreSQL efêmera passou 3/3: commit/replay/conflito, rollback
+forçado entre billing item e diária e concorrência same-key convergente. Rota
+13/13, module-inpatient 17/17, module-billing 16/16 e API build também
+passaram.
+
+O Quality Bar continua `ACTIVE` e o ERP continua `IN_PROGRESS/PARTIAL`. A
+próxima execução deve cobrir HTTP A/B da internação e auditoria em falha tardia,
+depois admissão → handoff/permanência → estoque → alta → billing →
+recebimento/ledger/auditoria/outbox com PostgreSQL/RLS. Redis failover real,
+provider, SPA/B2c, paridade Vetus, WCAG, target operations, cobertura e release
+continuam gates separados.

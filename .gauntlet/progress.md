@@ -219,3 +219,18 @@ estrangeira. A integração passou `2/2`; rota + response-buffer `10/10`, API
 typecheck e diff check PASS. O P2 local foi removido. Próxima ação: jornada
 clínica-financeira completa com PostgreSQL/RLS, replay, concorrência e
 failpoints, preservando todos os gates externos.
+## Continuidade publicada — diária HTTP/UoW (23/08/2026)
+
+Commit `9a93ebc` endureceu a cobrança diária HTTP: replay de diária faturada
+fica dentro de `runCommand`, e a reidratação de caches é postergada quando a
+UoW HTTP ainda possui uma transação abortada. Evidência fresca: API build PASS,
+rota 13/13, module-inpatient 17/17, module-billing 16/16 e integração
+HTTP/PostgreSQL 3/3. A integração cobre commit, replay, conflito, rollback
+forçado e concorrência same-key.
+
+O programa permanece `IN_PROGRESS/PARTIAL`. O próximo slice é HTTP A/B da
+internação e revisão de cache de auditoria; em seguida, a jornada completa de
+admissão → handoff/permanência → estoque → alta → billing →
+recebimento/ledger/auditoria/outbox. Nenhum gate de produção, provider, Redis
+failover real, SPA/B2c, paridade, WCAG, operações, cobertura ou release foi
+promovido.

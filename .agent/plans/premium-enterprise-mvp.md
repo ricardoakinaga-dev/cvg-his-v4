@@ -310,3 +310,12 @@ against tenant A from tenant B return opaque 404 responses and persist no
 foreign receipt/idempotency row; the focused PostgreSQL test passed 2/2. The
 P2 is closed, while the full clinical-financial journey and external gates
 remain open.
+Plan revision note, 2026-08-23 (inpatient daily-charge HTTP/UoW): The published
+daily-charge route now keeps billed replays inside the tenant command runner and
+defers cache rehydration until an outer HTTP rollback releases its aborted
+transaction. The focused evidence is API build PASS, route 13/13,
+module-inpatient 17/17, module-billing 16/16 and HTTP/PostgreSQL 3/3 covering
+commit, replay, conflict, rollback and same-key concurrency. This closes only
+the bounded HTTP/UoW slice; inpatient HTTP A/B, late audit-cache behavior and
+the full admission-to-receipt journey remain the next local work, with Redis,
+provider, SPA/B2c, parity, WCAG, operations, coverage and release gates open.
