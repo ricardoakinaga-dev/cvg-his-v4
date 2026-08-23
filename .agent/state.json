@@ -14,18 +14,18 @@
   "active_execplan": ".agent/plans/premium-enterprise-mvp.md",
   "active_task": "CVG-002C6",
   "verification_state": "PARTIAL",
-  "repository_state": "Implementation 6afd1d9 aligns Helm installer-role grants; the current integral retest checkpoint/control-plane publication is 4e0da46 on origin/agent/sync-v4-full-program. The canonical continuation entrypoint is docs/2026-08-23-checkpoint-retomada-integral.md with artifact .agent/artifacts/erp-audit-2026-08-23.md. The preserved user-owned packages/design-system/tsconfig.vue.tsbuildinfo cache remains outside scope and must not be staged",
+  "repository_state": "Implementation 6afd1d9 aligns Helm installer-role grants; the integral retest checkpoint is 4e0da46 and the final state/ledger reconciliation is f645818 on origin/agent/sync-v4-full-program. The canonical continuation entrypoint is docs/2026-08-23-checkpoint-retomada-integral.md with artifact .agent/artifacts/erp-audit-2026-08-23.md. The preserved user-owned packages/design-system/tsconfig.vue.tsbuildinfo cache remains outside scope and must not be staged",
   "latest_bounded_evidence": "2026-08-23: CVG-002C6 worker-event-consumers-postgres.test.ts passes 3/3 against disposable PostgreSQL with two accounts, the same card transaction_id in A/B, and LOGIN NOSUPERUSER/NOBYPASSRLS worker role. The bounded matrix proves payments → billing → webhooks inbox/outbox, authoritative card capture, billing/receivable settlement with paid/settled amounts, pending webhook enqueue, concurrent replay idempotence, rollback after mutation, unknown card completion fail-closed and A/B tenant isolation. The RED exposed prefixed financial IDs in UUID columns; randomUUID() fixed persisted account/receivable/payment IDs, source aliases prevent stale dist execution, and settlement preserves the original database error. Migration 0122, Drizzle schema and repositories now use the account-composed card key (account_id, transaction_id), with two rows and RLS reads per tenant. Financial 15/15, event-bus 23/23, handler/gateway TAP 17/17, builds, audit, Prettier and diff check are green. Artifact: .agent/artifacts/CVG-002C6-worker-event-postgres-2026-08-23.md. Child-process domain fixtures/SIGKILL, PIX PostgreSQL/RLS, webhook HTTP retry/DLQ and lease fencing, complete failpoints, async hydration, non-card cross-tenant reads, global RLS/FORCE RLS, providers, SPA, parity, WCAG, coverage, operations, deploy/restore, release and global ERP/Quality Bar remain open.",
   "latest_retest_evidence": "2026-08-23: Helm installer-role revoke is explicit in 6afd1d9; focused daily 4/4, installation 8/8, runtime grants 11/11 and FK/integrity/PIX 68/68 pass. Full critical remains PARTIAL at 382/387 (23/28) with legacy stayday_<token> materialization, preempted fixtures and production-like teardown timeout; details are in VFY-CVG-002C6-CRITICAL-RETEST-001 and docs/2026-08-23-checkpoint-retomada-integral.md.",
   "instruction_scope_refs": [".agent/instruction-scope.md"],
   "last_gate_record": ".agent/gates/implementation-ready-CVG-002C6.json",
-  "last_event_id": "EVT-0205",
-  "state_revision": 193,
+  "last_event_id": "EVT-0206",
+  "state_revision": 194,
   "next_gate": "CVG-002C6-CRITICAL-RETEST",
   "next_action": "Reproduce the full critical-suite divergence with cache/file-parallelism controls without weakening contracts: focused daily 4/4, installation 8/8, grants 11/11 and FK/integrity/PIX 68/68 are green, while the full run is 382/387 with legacy stayday_<token> materialization, validation-preempted fixtures and a production-like teardown timeout. Then resume child-process domain fixture/SIGKILL/takeover, full failpoints, PIX PostgreSQL/RLS, webhook HTTP retry/DLQ/lease fencing and restricted billing/financial/webhook isolation. Keep WebAuthn durability, audit attribution, cross-instance hydration, global RLS/FORCE RLS, Redis/provider/SPA/parity/WCAG/coverage/operations/deploy/release and global ERP status explicitly IN_PROGRESS/PARTIAL",
   "blocked_by": [],
   "human_approval_required": [
     "Production go-live, credential rotation, provider selection, fiscal homologation, and residual HIGH/CRITICAL risk acceptance remain outside repository implementation authority"
   ],
-  "updated_at": "2026-08-23T19:09:38-03:00"
+  "updated_at": "2026-08-23T19:11:00-03:00"
 }
