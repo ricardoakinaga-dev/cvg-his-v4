@@ -552,14 +552,17 @@ describe('worker event consumers with PostgreSQL and RLS', () => {
         ORDER BY account_id`,
       [accountAFixture.cardIntentId]
     );
-    expect(sharedCardRows.rows).toEqual([
-      { account_id: accountA, transaction_id: accountAFixture.cardIntentId, status: 'captured' },
-      {
-        account_id: accountB,
-        transaction_id: accountBFixture.cardIntentId,
-        status: 'authorized_pending_capture'
-      }
-    ]);
+    expect(sharedCardRows.rows).toHaveLength(2);
+    expect(sharedCardRows.rows).toEqual(
+      expect.arrayContaining([
+        { account_id: accountA, transaction_id: accountAFixture.cardIntentId, status: 'captured' },
+        {
+          account_id: accountB,
+          transaction_id: accountBFixture.cardIntentId,
+          status: 'authorized_pending_capture'
+        }
+      ])
+    );
 
     const cardRepository = new DatabaseCardTransactionRepository();
     await expect(

@@ -100,7 +100,9 @@ describe('DatabaseCardTransactionRepository', () => {
         '4242'
       ])
     );
-    expect(queryMock.mock.calls[0]?.[0]).toMatch(/ON CONFLICT \(transaction_id\) DO NOTHING/);
+    expect(queryMock.mock.calls[0]?.[0]).toMatch(
+      /ON CONFLICT \(account_id, transaction_id\) DO NOTHING/
+    );
   });
 
   it('maps lookups and status/settlement transitions from PostgreSQL rows', async () => {
