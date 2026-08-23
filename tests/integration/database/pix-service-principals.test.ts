@@ -1,9 +1,16 @@
 import { randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 import type { PoolClient } from 'pg';
 
 import { getTestPool } from '../../db/db-admin.js';
 import { activateRlsRole, setAccountContext } from '../../helpers/rls-helpers.js';
+
+const servicePrincipalMigration = readFileSync(
+  resolve(process.cwd(), 'packages/db/migrations/0112_pix_service_principals.sql'),
+  'utf8'
+);
 
 async function insertAccount(client: PoolClient, label: string): Promise<string> {
   const id = randomUUID();
@@ -71,34 +78,48 @@ describe('PIX service principal persistence', () => {
   });
 
   it('backfills and defaults existing and new users to interactive human principals', async () => {
-    const pool = getTestPool();
-    const existing = await pool.query<{
-      principal_kind: string | null;
-      interactive_login_enabled: boolean | null;
-    }>(
-      `SELECT principal_kind, interactive_login_enabled
-         FROM users`
-    );
-
-    expect(existing.rows.every((row) => row.principal_kind === 'human')).toBe(true);
-    expect(existing.rows.every((row) => row.interactive_login_enabled === true)).toBe(true);
-
-    const client = await pool.connect();
+    const client = await getTestPool().connect();
     try {
       await client.query('BEGIN');
+      await client.query('DROP TABLE account_service_principals');
+      await client.query(
+        `ALTER TABLE users
+           DROP CONSTRAINT users_principal_kind_chk,
+           DROP CONSTRAINT users_service_principal_interactive_login_chk,
+           DROP COLUMN principal_kind,
+           DROP COLUMN interactive_login_enabled`
+      );
+
       const accountId = await insertAccount(client, 'human-default');
-      const userId = await insertUser(client, accountId, 'human-default');
-      const inserted = await client.query<{
+      const legacyUserId = await insertUser(client, accountId, 'legacy-human');
+
+      await client.query(servicePrincipalMigration);
+
+      const backfilled = await client.query<{
         principal_kind: string;
         interactive_login_enabled: boolean;
       }>(
         `SELECT principal_kind, interactive_login_enabled
            FROM users
           WHERE id = $1`,
-        [userId]
+        [legacyUserId]
       );
+      expect(backfilled.rows[0]).toEqual({
+        principal_kind: 'human',
+        interactive_login_enabled: true
+      });
 
-      expect(inserted.rows[0]).toEqual({
+      const defaultedUserId = await insertUser(client, accountId, 'default-human');
+      const defaulted = await client.query<{
+        principal_kind: string;
+        interactive_login_enabled: boolean;
+      }>(
+        `SELECT principal_kind, interactive_login_enabled
+           FROM users
+          WHERE id = $1`,
+        [defaultedUserId]
+      );
+      expect(defaulted.rows[0]).toEqual({
         principal_kind: 'human',
         interactive_login_enabled: true
       });
@@ -224,6 +245,28 @@ describe('PIX service principal persistence', () => {
         `SELECT account_id FROM account_service_principals ORDER BY account_id`
       );
       expect(visible.rows).toEqual([{ account_id: firstAccountId }]);
+
+      const visibleUsers = await client.query<{ id: string }>(
+        `SELECT id FROM users WHERE id IN ($1, $2) ORDER BY id`,
+        [firstUserId, secondUserId]
+      );
+      expect(visibleUsers.rows).toEqual([{ id: firstUserId }]);
+
+      await client.query('SAVEPOINT cross_tenant_user_insert');
+      await expect(
+        insertUser(client, secondAccountId, 'cross-tenant-user', 'service', false)
+      ).rejects.toMatchObject({ code: '42501' });
+      await client.query('ROLLBACK TO SAVEPOINT cross_tenant_user_insert');
+
+      await client.query('SAVEPOINT cross_tenant_mapping_insert');
+      await expect(
+        client.query(
+          `INSERT INTO account_service_principals (account_id, purpose, user_id, is_active)
+           VALUES ($1, 'pix-settlement', $2, false)`,
+          [secondAccountId, secondUserId]
+        )
+      ).rejects.toMatchObject({ code: '42501' });
+      await client.query('ROLLBACK TO SAVEPOINT cross_tenant_mapping_insert');
     } finally {
       await client.query('ROLLBACK').catch(() => undefined);
       client.release();

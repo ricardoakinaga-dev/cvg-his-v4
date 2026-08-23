@@ -74,6 +74,61 @@ export const scheduledReportExecutionsTotal = new Counter({
   registers: [registry]
 });
 
+// ============================================================================
+// PIX provider settlement delivery observability
+// ============================================================================
+
+export type PixProviderSettlementMetricOutcome =
+  | 'idle'
+  | 'applied'
+  | 'lease_lost'
+  | 'retry_scheduled'
+  | 'reconciliation_required';
+
+export type PixProviderSettlementMetricFailureClass = 'retryable' | 'terminal' | 'none';
+
+export interface PixProviderSettlementMetric {
+  readonly outcome: PixProviderSettlementMetricOutcome;
+  readonly failureClass?: 'retryable' | 'terminal';
+  readonly count?: number;
+}
+
+/**
+ * Outcome counts deliberately do not label tenant, delivery, event, worker, or
+ * error code: each has unbounded cardinality and could expose operational data.
+ */
+export const pixProviderSettlementDeliveriesTotal = new Counter({
+  name: 'worker_pix_provider_settlement_deliveries_total',
+  help: 'PIX provider settlement delivery outcomes observed by the worker',
+  labelNames: ['outcome', 'failure_class'] as const,
+  registers: [registry]
+});
+
+export const pixProviderSettlementReconciliationRequiredTotal = new Counter({
+  name: 'worker_pix_provider_settlement_reconciliation_required_total',
+  help: 'PIX provider settlement deliveries moved to reconciliation-required state',
+  labelNames: ['failure_class'] as const,
+  registers: [registry]
+});
+
+export function recordPixProviderSettlementMetric(metric: PixProviderSettlementMetric): void {
+  const failureClass: PixProviderSettlementMetricFailureClass = metric.failureClass ?? 'none';
+  const count = metric.count ?? 1;
+  if (!Number.isSafeInteger(count) || count <= 0) {
+    throw new Error('PIX settlement metric count must be a positive safe integer');
+  }
+  pixProviderSettlementDeliveriesTotal.inc(
+    {
+      outcome: metric.outcome,
+      failure_class: failureClass
+    },
+    count
+  );
+  if (metric.outcome === 'reconciliation_required') {
+    pixProviderSettlementReconciliationRequiredTotal.inc({ failure_class: failureClass }, count);
+  }
+}
+
 export type ScheduledReportExecutionOutcome = 'executed' | 'exported' | 'failed';
 export type ScheduledReportExecutionRowState = 'filled' | 'empty' | 'not_executed';
 

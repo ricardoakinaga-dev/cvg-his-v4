@@ -5,8 +5,10 @@ import {
 } from '@cvg-his-v2/module-pix';
 import type { TenantTransactionContext } from '@cvg-his-v2/shared-database';
 
+import { recordPixProviderSettlementMetric } from '../worker-metrics.js';
 import type {
   PixProviderEventDeliveryClaim,
+  PixProviderEventDeliveryClaimNextResult,
   PixProviderEventDeliveryFailure,
   PixProviderEventDeliveryRepository
 } from './pix-provider-event-delivery-repository.js';
@@ -45,6 +47,14 @@ const TRANSIENT_INFRASTRUCTURE_CODES = new Set([
   'UND_ERR_HEADERS_TIMEOUT',
   'UND_ERR_BODY_TIMEOUT'
 ]);
+const OBSERVABLE_FAILURE_CODES = new Set([
+  ...RETRYABLE_CODES,
+  ...TRANSIENT_INFRASTRUCTURE_CODES,
+  'PIX_SETTLEMENT_ATTEMPT_TERMINAL',
+  'PIX_SETTLEMENT_ATTEMPTS_EXHAUSTED',
+  'PIX_SETTLEMENT_CLAIMS_DIVERGENT',
+  'PIX_SETTLEMENT_UNEXPECTED'
+]);
 
 export interface ConfirmedPixSettlementExecutor {
   execute(input: ApplyConfirmedPixSettlementInput): Promise<unknown>;
@@ -57,14 +67,53 @@ export interface PixProviderSettlementConsumerOptions {
   readonly createSettlementExecutor?: (
     transaction: TenantTransactionContext
   ) => ConfirmedPixSettlementExecutor;
+  /**
+   * Best-effort hook for structured operational events. It receives only
+   * bounded state and safe error codes; tenant and payment data are omitted.
+   */
+  readonly telemetry?: PixProviderSettlementTelemetry;
 }
 
-export type PixProviderSettlementConsumerResult =
-  | { readonly status: 'idle' }
-  | {
-      readonly status: 'applied' | 'lease_lost' | 'reconciliation_required' | 'retry_scheduled';
-      readonly deliveryId: string;
-    };
+export type PixProviderSettlementOutcome =
+  | 'idle'
+  | 'applied'
+  | 'lease_lost'
+  | 'retry_scheduled'
+  | 'reconciliation_required';
+
+export interface PixProviderSettlementTelemetryEvent {
+  readonly name: 'pix_provider_settlement.delivery_outcome';
+  readonly outcome: PixProviderSettlementOutcome;
+  readonly failureClass?: 'retryable' | 'terminal';
+  readonly failureCode?: string;
+  readonly attempts?: number;
+  readonly maxAttempts?: number;
+  readonly reconciliationRequiredPromotions?: number;
+  readonly promotionSource?: 'attempts_exhausted';
+}
+
+export interface PixProviderSettlementTelemetry {
+  record(event: PixProviderSettlementTelemetryEvent): void;
+}
+
+interface PixProviderSettlementPromotionObservation {
+  readonly reconciliationRequiredPromotions?: number;
+}
+
+export type PixProviderSettlementConsumerResult = PixProviderSettlementPromotionObservation &
+  (
+    | { readonly status: 'idle' }
+    | {
+        readonly status: 'applied' | 'lease_lost';
+        readonly deliveryId: string;
+      }
+    | {
+        readonly status: 'reconciliation_required' | 'retry_scheduled';
+        readonly deliveryId: string;
+        readonly failureCode?: string;
+        readonly failureClass?: 'retryable' | 'terminal';
+      }
+  );
 
 export function pixProviderSettlementBackoffSeconds(attempts: number): number {
   if (!Number.isSafeInteger(attempts) || attempts <= 0) {
@@ -102,6 +151,18 @@ function errorCode(error: unknown, depth = 0): string | undefined {
 
 function safeErrorCode(error: unknown): string {
   return errorCode(error) ?? 'PIX_SETTLEMENT_UNEXPECTED';
+}
+
+function observableFailureCode(code: string): string {
+  // New or provider-specific codes remain persisted for reconciliation, but
+  // must be explicitly approved here before reaching operational event/log sinks.
+  return OBSERVABLE_FAILURE_CODES.has(code) ? code : 'PIX_SETTLEMENT_UNEXPECTED';
+}
+
+function assertPromotionCount(count: number): void {
+  if (!Number.isSafeInteger(count) || count < 0) {
+    throw new Error('PIX settlement reconciliation promotion count is invalid');
+  }
 }
 
 function isTransientInfrastructureError(error: unknown): boolean {
@@ -147,12 +208,23 @@ export class PixProviderSettlementConsumer {
     if (!UUID_PATTERN.test(accountId)) {
       throw new Error('PIX settlement account id must be a valid UUID');
     }
-    const claim = await this.#repository.claimNext({
+    const claimNextInput = {
       accountId,
       leaseOwner: this.#options.workerId,
       leaseMs: this.#options.leaseMs
-    });
-    if (!claim) return Object.freeze({ status: 'idle' });
+    };
+    const claimResult = await this.#claimNext(claimNextInput);
+    const promotionObservation =
+      claimResult.reconciliationRequiredPromotions > 0
+        ? { reconciliationRequiredPromotions: claimResult.reconciliationRequiredPromotions }
+        : {};
+    if (claimResult.reconciliationRequiredPromotions > 0) {
+      this.#recordExhaustedPromotions(claimResult.reconciliationRequiredPromotions);
+    }
+    const claim = claimResult.claim;
+    if (!claim) {
+      return this.#recordOutcome(Object.freeze({ status: 'idle', ...promotionObservation }));
+    }
 
     try {
       const execution = await this.#repository.executeSettlement(
@@ -168,13 +240,103 @@ export class PixProviderSettlementConsumer {
           await executor.execute(input);
         }
       );
-      return Object.freeze({ status: execution, deliveryId: claim.deliveryId });
+      return this.#recordOutcome(
+        Object.freeze({ status: execution, deliveryId: claim.deliveryId, ...promotionObservation }),
+        claim
+      );
     } catch (error) {
-      const status = await this.#repository.completeFailure(claim, failureFor(error, claim));
-      return Object.freeze({
-        status: status ?? 'lease_lost',
-        deliveryId: claim.deliveryId
+      const failure = failureFor(error, claim);
+      const status = await this.#repository.completeFailure(claim, failure);
+      if (!status) {
+        return this.#recordOutcome(
+          Object.freeze({
+            status: 'lease_lost',
+            deliveryId: claim.deliveryId,
+            ...promotionObservation
+          }),
+          claim
+        );
+      }
+      return this.#recordOutcome(
+        Object.freeze({
+          status,
+          deliveryId: claim.deliveryId,
+          failureCode: observableFailureCode(failure.code),
+          failureClass: failure.errorClass,
+          ...promotionObservation
+        }),
+        claim
+      );
+    }
+  }
+
+  async #claimNext(input: {
+    readonly accountId: string;
+    readonly leaseOwner: string;
+    readonly leaseMs: number;
+  }): Promise<PixProviderEventDeliveryClaimNextResult> {
+    const result = this.#repository.claimNextWithPromotion
+      ? await this.#repository.claimNextWithPromotion(input)
+      : Object.freeze({
+          claim: await this.#repository.claimNext(input),
+          reconciliationRequiredPromotions: 0
+        });
+    assertPromotionCount(result.reconciliationRequiredPromotions);
+    return result;
+  }
+
+  #recordExhaustedPromotions(reconciliationRequiredPromotions: number): void {
+    this.#recordTelemetry(
+      Object.freeze({
+        name: 'pix_provider_settlement.delivery_outcome' as const,
+        outcome: 'reconciliation_required' as const,
+        failureClass: 'terminal' as const,
+        failureCode: 'PIX_SETTLEMENT_ATTEMPTS_EXHAUSTED',
+        reconciliationRequiredPromotions,
+        promotionSource: 'attempts_exhausted' as const
+      }),
+      reconciliationRequiredPromotions
+    );
+  }
+
+  #recordOutcome(
+    result: PixProviderSettlementConsumerResult,
+    claim?: PixProviderEventDeliveryClaim
+  ): PixProviderSettlementConsumerResult {
+    const event = Object.freeze({
+      name: 'pix_provider_settlement.delivery_outcome' as const,
+      outcome: result.status,
+      ...('failureClass' in result && result.failureClass
+        ? {
+            failureClass: result.failureClass,
+            failureCode: result.failureCode
+          }
+        : {}),
+      ...(result.reconciliationRequiredPromotions
+        ? { reconciliationRequiredPromotions: result.reconciliationRequiredPromotions }
+        : {}),
+      ...(claim
+        ? {
+            attempts: claim.attempts,
+            maxAttempts: claim.maxAttempts
+          }
+        : {})
+    });
+    this.#recordTelemetry(event);
+    return result;
+  }
+
+  #recordTelemetry(event: PixProviderSettlementTelemetryEvent, count = 1): void {
+    // Observability must not alter settlement durability or the fenced result.
+    try {
+      recordPixProviderSettlementMetric({
+        outcome: event.outcome,
+        failureClass: event.failureClass,
+        count
       });
+      this.#options.telemetry?.record(event);
+    } catch {
+      // Metrics/logging exporter failures are intentionally best effort.
     }
   }
 }

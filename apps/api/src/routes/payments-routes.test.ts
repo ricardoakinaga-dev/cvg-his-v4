@@ -165,6 +165,57 @@ test('legacy PIX confirmation returns 410 for attempt-linked transactions before
   assert.equal(eventCalls.length, 0);
 });
 
+test('legacy PIX confirmation hides an attempt-linked transaction from another account', async () => {
+  const gateway = new LocalPixPaymentGateway();
+  const foreignIntent = await gateway.createPixIntent({
+    accountId: 'acc_other',
+    billingRecordId: 'billing_foreign_legacy',
+    amount: 100,
+    description: 'Consulta'
+  });
+  const pixTransactions = new InMemoryPixTransactionRepository();
+  await pixTransactions.create({
+    transactionId: foreignIntent.id,
+    provider: 'local-pix',
+    accountId: 'acc_other',
+    billingRecordId: foreignIntent.billingRecordId,
+    paymentAttemptId: '00000000-0000-0000-0000-000000000124',
+    amount: foreignIntent.amount,
+    currency: foreignIntent.currency,
+    description: foreignIntent.description,
+    qrCodePayload: foreignIntent.qrCodePayload,
+    qrCodeBase64: foreignIntent.qrCodeBase64,
+    expiresAt: foreignIntent.expiresAt,
+    status: 'pending',
+    createdAt: foreignIntent.createdAt,
+    updatedAt: foreignIntent.createdAt,
+    billingSettlementStatus: 'awaiting_payment',
+    cashReconciliationStatus: 'pending'
+  });
+  const confirmCalls: number[] = [];
+  const eventCalls: number[] = [];
+  const handlers = createHandlers({
+    paymentGateway: gateway,
+    pixTransactions,
+    confirmCalls,
+    eventCalls
+  });
+  const { response, state } = createResponse();
+
+  await handlePaymentsRoutes(
+    `/payments/pix/intents/${foreignIntent.id}/confirm`,
+    createRequest() as never,
+    response as never,
+    'corr-legacy-confirm-foreign',
+    handlers as never
+  );
+
+  assert.equal(state.statusCode, 404);
+  assert.deepEqual(JSON.parse(state.body), { code: 'NOT_FOUND', message: 'Intent not found' });
+  assert.equal(confirmCalls.length, 0);
+  assert.equal(eventCalls.length, 0);
+});
+
 test('card intent creation rejects a billing record owned by another account before calling provider', async () => {
   const gateway = new LocalPixPaymentGateway();
   let providerCalls = 0;

@@ -15,6 +15,7 @@ const actorUserId = '00000000-0000-0000-0000-000000000002';
 function createPoolHarness() {
   let queries: readonly string[] = [];
   let released = 0;
+  let connections = 0;
   const client = {
     query: async (text: string) => {
       queries = [...queries, text];
@@ -30,8 +31,13 @@ function createPoolHarness() {
       released += 1;
     }
   } as unknown as PoolClient;
-  const pool = { connect: async () => client } as unknown as Pool;
-  return { pool, queries: () => queries, released: () => released };
+  const pool = {
+    connect: async () => {
+      connections += 1;
+      return client;
+    }
+  } as unknown as Pool;
+  return { pool, queries: () => queries, released: () => released, connections: () => connections };
 }
 
 test('runInTenantTransactionContext installs the canonical context without idempotency storage', async () => {
@@ -74,6 +80,35 @@ test('runInTenantTransactionContext rolls back callback failures', async () => {
   assert.ok(harness.queries().some((query) => query === 'ROLLBACK'));
   assert.ok(harness.queries().every((query) => query !== 'COMMIT'));
   assert.equal(harness.released(), 1);
+});
+
+test('runInTenantTransactionContext reuses an already active transaction and context', async () => {
+  const harness = createPoolHarness();
+  const outer = await runInTenantTransactionContext(
+    harness.pool,
+    { accountId, actorUserId, correlationId: 'corr-pix-nested-outer' },
+    async (outerTransaction) => {
+      return runInTenantTransactionContext(
+        harness.pool,
+        { accountId, actorUserId, correlationId: 'corr-pix-nested-inner' },
+        async (innerTransaction) => {
+          assert.equal(innerTransaction.client, outerTransaction.client);
+          assert.equal(getTenantTransactionContext(), innerTransaction);
+          assert.equal(innerTransaction.accountId, accountId);
+          assert.equal(innerTransaction.actorUserId, actorUserId);
+          assert.equal(innerTransaction.correlationId, 'corr-pix-nested-inner');
+          return 'nested';
+        }
+      );
+    }
+  );
+
+  assert.equal(outer, 'nested');
+  assert.equal(harness.connections(), 1);
+  assert.equal(harness.released(), 1);
+  assert.equal(harness.queries().filter((query) => query === 'BEGIN').length, 1);
+  assert.equal(harness.queries().filter((query) => query === 'COMMIT').length, 1);
+  assert.equal(harness.queries().filter((query) => query === 'ROLLBACK').length, 0);
 });
 
 test('runInTenantTransactionContext validates actor and correlation before connecting', async () => {

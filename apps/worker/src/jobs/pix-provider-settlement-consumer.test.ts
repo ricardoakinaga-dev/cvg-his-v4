@@ -3,14 +3,20 @@ import test from 'node:test';
 
 import type {
   PixProviderEventDeliveryClaim,
+  PixProviderEventDeliveryClaimNextResult,
   PixProviderEventDeliveryFailure,
   PixProviderEventDeliveryRepository,
   PixProviderSettlementExecution
 } from './pix-provider-event-delivery-repository.js';
 import {
   PixProviderSettlementConsumer,
+  type PixProviderSettlementTelemetryEvent,
   pixProviderSettlementBackoffSeconds
 } from './pix-provider-settlement-consumer.js';
+import {
+  getWorkerMetricsText,
+  pixProviderSettlementReconciliationRequiredTotal
+} from '../worker-metrics.js';
 
 const claim: PixProviderEventDeliveryClaim = Object.freeze({
   accountId: '00000000-0000-0000-0000-000000000001',
@@ -69,6 +75,17 @@ class FakeRepository implements PixProviderEventDeliveryRepository {
 
   async redrive(): Promise<boolean> {
     return true;
+  }
+}
+
+class PromotionAwareFakeRepository extends FakeRepository {
+  public reconciliationRequiredPromotions = 0;
+
+  async claimNextWithPromotion(): Promise<PixProviderEventDeliveryClaimNextResult> {
+    return Object.freeze({
+      claim: this.nextClaim,
+      reconciliationRequiredPromotions: this.reconciliationRequiredPromotions
+    });
   }
 }
 
@@ -168,6 +185,226 @@ test('consumer sends divergent claims and unexpected B1 failures to reconciliati
     assert.equal(repository.failures[0]?.errorClass, 'terminal');
     assert.equal(repository.failures[0]?.retryDelaySeconds, 0);
   }
+});
+
+test('consumer emits a sanitized terminal DLQ event after the fenced reconciliation transition', async () => {
+  const repository = new FakeRepository();
+  repository.executionError = Object.assign(new Error('provider secret: do not log'), {
+    code: 'PIX_SETTLEMENT_CLAIMS_DIVERGENT'
+  });
+  const events: PixProviderSettlementTelemetryEvent[] = [];
+  const consumer = new PixProviderSettlementConsumer(repository, {
+    workerId: 'pix-settlement-worker',
+    leaseMs: 60_000,
+    createSettlementExecutor: () => ({ execute: async () => ({}) as never }),
+    telemetry: {
+      record(event) {
+        events.push(event);
+      }
+    }
+  });
+
+  const result = await consumer.processNext(claim.accountId);
+
+  assert.deepEqual(result, {
+    status: 'reconciliation_required',
+    deliveryId: claim.deliveryId,
+    failureCode: 'PIX_SETTLEMENT_CLAIMS_DIVERGENT',
+    failureClass: 'terminal'
+  });
+  assert.deepEqual(events, [
+    {
+      name: 'pix_provider_settlement.delivery_outcome',
+      outcome: 'reconciliation_required',
+      failureClass: 'terminal',
+      failureCode: 'PIX_SETTLEMENT_CLAIMS_DIVERGENT',
+      attempts: claim.attempts,
+      maxAttempts: claim.maxAttempts
+    }
+  ]);
+  assert.equal(JSON.stringify(events).includes('provider secret'), false);
+});
+
+test('consumer replaces unrecognized failure codes before returning or emitting operational telemetry', async () => {
+  const repository = new FakeRepository();
+  repository.executionError = Object.assign(new Error('provider secret: do not log'), {
+    code: 'PIX_SETTLEMENT_INTERNAL_DETAIL'
+  });
+  const events: PixProviderSettlementTelemetryEvent[] = [];
+  const consumer = new PixProviderSettlementConsumer(repository, {
+    workerId: 'pix-settlement-worker',
+    leaseMs: 60_000,
+    createSettlementExecutor: () => ({ execute: async () => ({}) as never }),
+    telemetry: { record: (event) => events.push(event) }
+  });
+
+  const result = await consumer.processNext(claim.accountId);
+
+  assert.deepEqual(result, {
+    status: 'reconciliation_required',
+    deliveryId: claim.deliveryId,
+    failureCode: 'PIX_SETTLEMENT_UNEXPECTED',
+    failureClass: 'terminal'
+  });
+  assert.equal(events[0]?.failureCode, 'PIX_SETTLEMENT_UNEXPECTED');
+  assert.equal(JSON.stringify(events).includes('INTERNAL_DETAIL'), false);
+});
+
+test('consumer records retry, applied, lease-lost and idle outcomes without treating telemetry failures as settlement failures', async () => {
+  const events: PixProviderSettlementTelemetryEvent[] = [];
+  const telemetry = {
+    record(event: PixProviderSettlementTelemetryEvent): void {
+      events.push(event);
+      if (event.outcome === 'applied') throw new Error('telemetry unavailable');
+    }
+  };
+
+  const applied = new FakeRepository();
+  const appliedConsumer = new PixProviderSettlementConsumer(applied, {
+    workerId: 'pix-settlement-worker',
+    leaseMs: 60_000,
+    createSettlementExecutor: () => ({ execute: async () => ({}) as never }),
+    telemetry
+  });
+  assert.deepEqual(await appliedConsumer.processNext(claim.accountId), {
+    status: 'applied',
+    deliveryId: claim.deliveryId
+  });
+
+  const retry = new FakeRepository();
+  retry.executionError = Object.assign(new Error('safe'), { code: 'ECONNRESET' });
+  const retryConsumer = new PixProviderSettlementConsumer(retry, {
+    workerId: 'pix-settlement-worker',
+    leaseMs: 60_000,
+    createSettlementExecutor: () => ({ execute: async () => ({}) as never }),
+    telemetry
+  });
+  assert.deepEqual(await retryConsumer.processNext(claim.accountId), {
+    status: 'retry_scheduled',
+    deliveryId: claim.deliveryId,
+    failureCode: 'ECONNRESET',
+    failureClass: 'retryable'
+  });
+
+  const leaseLost = new FakeRepository();
+  leaseLost.execution = 'lease_lost';
+  const leaseLostConsumer = new PixProviderSettlementConsumer(leaseLost, {
+    workerId: 'pix-settlement-worker',
+    leaseMs: 60_000,
+    createSettlementExecutor: () => ({ execute: async () => ({}) as never }),
+    telemetry
+  });
+  assert.deepEqual(await leaseLostConsumer.processNext(claim.accountId), {
+    status: 'lease_lost',
+    deliveryId: claim.deliveryId
+  });
+
+  const idle = new FakeRepository();
+  idle.nextClaim = null;
+  const idleConsumer = new PixProviderSettlementConsumer(idle, {
+    workerId: 'pix-settlement-worker',
+    leaseMs: 60_000,
+    createSettlementExecutor: () => ({ execute: async () => ({}) as never }),
+    telemetry
+  });
+  assert.deepEqual(await idleConsumer.processNext(claim.accountId), { status: 'idle' });
+  assert.deepEqual(
+    events.map(({ outcome, failureClass, failureCode }) => ({
+      outcome,
+      failureClass,
+      failureCode
+    })),
+    [
+      { outcome: 'applied', failureClass: undefined, failureCode: undefined },
+      { outcome: 'retry_scheduled', failureClass: 'retryable', failureCode: 'ECONNRESET' },
+      { outcome: 'lease_lost', failureClass: undefined, failureCode: undefined },
+      { outcome: 'idle', failureClass: undefined, failureCode: undefined }
+    ]
+  );
+});
+
+test('default PIX settlement telemetry exports bounded Prometheus DLQ counters without tenant labels', async () => {
+  const repository = new FakeRepository();
+  repository.executionError = Object.assign(new Error('safe terminal'), {
+    code: 'PIX_SETTLEMENT_CLAIMS_DIVERGENT'
+  });
+  const consumer = new PixProviderSettlementConsumer(repository, {
+    workerId: 'pix-settlement-worker',
+    leaseMs: 60_000,
+    createSettlementExecutor: () => ({ execute: async () => ({}) as never })
+  });
+
+  await consumer.processNext(claim.accountId);
+
+  const metrics = await getWorkerMetricsText();
+  assert.match(
+    metrics,
+    /worker_pix_provider_settlement_deliveries_total\{outcome="reconciliation_required",failure_class="terminal"\} [1-9][0-9]*/
+  );
+  assert.match(
+    metrics,
+    /worker_pix_provider_settlement_reconciliation_required_total\{failure_class="terminal"\} [1-9][0-9]*/
+  );
+  assert.equal(
+    metrics.includes('00000000-0000-0000-0000-000000000001'),
+    false,
+    'tenant identifiers must not appear in PIX settlement metric labels'
+  );
+});
+
+test('consumer observes exhausted-claim terminal promotions even when no delivery is claimable', async () => {
+  const repository = new PromotionAwareFakeRepository();
+  repository.nextClaim = null;
+  repository.reconciliationRequiredPromotions = 2;
+  const events: PixProviderSettlementTelemetryEvent[] = [];
+  const before = await pixProviderSettlementReconciliationRequiredTotal.get();
+  const beforeTerminal =
+    before.values.find((sample) => sample.labels.failure_class === 'terminal')?.value ?? 0;
+  const consumer = new PixProviderSettlementConsumer(repository, {
+    workerId: 'pix-settlement-worker',
+    leaseMs: 60_000,
+    createSettlementExecutor: () => ({ execute: async () => ({}) as never }),
+    telemetry: { record: (event) => events.push(event) }
+  });
+
+  const result = await consumer.processNext(claim.accountId);
+
+  assert.deepEqual(result, { status: 'idle', reconciliationRequiredPromotions: 2 });
+  assert.deepEqual(events, [
+    {
+      name: 'pix_provider_settlement.delivery_outcome',
+      outcome: 'reconciliation_required',
+      failureClass: 'terminal',
+      failureCode: 'PIX_SETTLEMENT_ATTEMPTS_EXHAUSTED',
+      reconciliationRequiredPromotions: 2,
+      promotionSource: 'attempts_exhausted'
+    },
+    {
+      name: 'pix_provider_settlement.delivery_outcome',
+      outcome: 'idle',
+      reconciliationRequiredPromotions: 2
+    }
+  ]);
+  const after = await pixProviderSettlementReconciliationRequiredTotal.get();
+  const afterTerminal =
+    after.values.find((sample) => sample.labels.failure_class === 'terminal')?.value ?? 0;
+  assert.equal(afterTerminal - beforeTerminal, 2);
+});
+
+test('consumer rejects an invalid promotion count from an optional repository extension', async () => {
+  const repository = new PromotionAwareFakeRepository();
+  repository.nextClaim = null;
+  repository.reconciliationRequiredPromotions = Number.NaN;
+  const consumer = new PixProviderSettlementConsumer(repository, {
+    workerId: 'pix-settlement-worker',
+    leaseMs: 60_000,
+    createSettlementExecutor: () => ({ execute: async () => ({}) as never })
+  });
+
+  await assert.rejects(
+    consumer.processNext(claim.accountId),
+    /reconciliation promotion count is invalid/
+  );
 });
 
 test('consumer does not persist failure after a stale fence', async () => {

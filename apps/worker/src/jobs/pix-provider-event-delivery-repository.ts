@@ -29,6 +29,15 @@ export interface PixProviderEventDeliveryClaim {
   readonly leaseExpiresAt: string;
 }
 
+/**
+ * Additive claim observability contract. Repositories that do not implement it
+ * remain compatible with consumers through the original claimNext method.
+ */
+export interface PixProviderEventDeliveryClaimNextResult {
+  readonly claim: PixProviderEventDeliveryClaim | null;
+  readonly reconciliationRequiredPromotions: number;
+}
+
 export interface PixProviderEventDeliveryFailure {
   readonly code: string;
   readonly errorClass: 'retryable' | 'terminal';
@@ -56,6 +65,9 @@ export interface PixProviderEventDeliveryRepository {
   claimNext(
     input: ClaimPixProviderEventDeliveryInput
   ): Promise<PixProviderEventDeliveryClaim | null>;
+  claimNextWithPromotion?(
+    input: ClaimPixProviderEventDeliveryInput
+  ): Promise<PixProviderEventDeliveryClaimNextResult>;
   executeSettlement(
     claim: PixProviderEventDeliveryClaim,
     execute: ExecuteConfirmedPixSettlement
@@ -257,9 +269,15 @@ export class DatabasePixProviderEventDeliveryRepository implements PixProviderEv
   public async claimNext(
     input: ClaimPixProviderEventDeliveryInput
   ): Promise<PixProviderEventDeliveryClaim | null> {
+    return (await this.claimNextWithPromotion(input)).claim;
+  }
+
+  public async claimNextWithPromotion(
+    input: ClaimPixProviderEventDeliveryInput
+  ): Promise<PixProviderEventDeliveryClaimNextResult> {
     assertClaimInput(input);
     return runInTenantTransaction(this.pool, input.accountId, async (client) => {
-      await client.query(
+      const promotions = await client.query(
         `UPDATE pix_provider_event_deliveries
             SET state = 'reconciliation_required', next_attempt_at = NULL,
                 lease_owner = NULL, lease_token = NULL, lease_expires_at = NULL,
@@ -295,7 +313,10 @@ export class DatabasePixProviderEventDeliveryRepository implements PixProviderEv
                    delivery.lease_expires_at`,
         [input.accountId, input.leaseOwner, input.leaseMs]
       );
-      return result.rows[0] ? mapClaim(result.rows[0]) : null;
+      return Object.freeze({
+        claim: result.rows[0] ? mapClaim(result.rows[0]) : null,
+        reconciliationRequiredPromotions: promotions.rowCount ?? 0
+      });
     });
   }
 

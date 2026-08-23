@@ -336,11 +336,24 @@ async function main() {
                 return;
               }
               logger.info('worker PIX provider settlement tick complete', {
+                event: 'pix_provider_settlement.delivery_outcome',
                 accountId,
                 status: outcome.result?.status ?? 'idle',
                 deliveryId:
                   outcome.result && 'deliveryId' in outcome.result
                     ? outcome.result.deliveryId
+                    : undefined,
+                failureClass:
+                  outcome.result && 'failureClass' in outcome.result
+                    ? outcome.result.failureClass
+                    : undefined,
+                failureCode:
+                  outcome.result && 'failureCode' in outcome.result
+                    ? outcome.result.failureCode
+                    : undefined,
+                reconciliationRequiredPromotions:
+                  outcome.result && outcome.result.reconciliationRequiredPromotions
+                    ? outcome.result.reconciliationRequiredPromotions
                     : undefined
               });
             }
