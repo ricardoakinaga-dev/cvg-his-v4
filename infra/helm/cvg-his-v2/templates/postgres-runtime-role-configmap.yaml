@@ -50,6 +50,7 @@ data:
     JOIN pg_roles inherited ON inherited.oid = membership.roleid
     WHERE member.rolname IN (:'api_user', :'worker_user')\gexec
     GRANT cvg_installer TO :"api_user";
+    REVOKE cvg_installer FROM :"worker_user";
     REVOKE cvg_api_key_auth FROM :"api_user", :"worker_user";
     REVOKE cvg_pix_dlq_operator FROM :"api_user", :"worker_user";
     GRANT CONNECT ON DATABASE :"db_name" TO :"api_user";
