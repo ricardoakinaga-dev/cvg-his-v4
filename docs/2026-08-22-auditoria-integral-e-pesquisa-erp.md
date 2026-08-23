@@ -87,6 +87,25 @@ Dados de saúde são sensíveis na LGPD. O backlog operacional precisa incluir c
 - [HL7 FHIR — overview](https://hl7.org/fhir/overview-dev.html)
 - [DICOMweb + FHIR](https://www.dicomstandard.org/using/dicomweb/dicomweb-and-hl7-fhir)
 
-## 7. Próximo checkpoint
+## 7. Checkpoint de implementação atualizado
 
-O próximo trabalho autorizado permanece reversível e local: validar JSON autenticado (UTF-8/BOM/chaves duplicadas/allowlist), escrever os REDs de receipt/delivery e então implementar a migration expand-only `0111`. Nenhuma conclusão de paridade, provider real, deploy ou produção deve ser inferida deste documento.
+O parser/fingerprints, a migration expand-only `0111`, o repository de receipt/delivery e a capability HTTP sintética continuam preservados em commits publicados. O slice HTTP agora inclui `POST /webhooks/pix/synthetic/v1`, leitura de bytes crus com limite de 64 KiB, HMAC/key binding/freshness, rate limit antes do corpo, framing manual via `node:net`, abort, headers duplicados, ACK diferido, erro de conflito opaco, rejeição de CORS/browser-auth para a callback e contrato OpenAPI (`334` paths, `384` schemas). A evidência focada atual é `13/13` na integração HTTP, `35/35` no verificador/keyring, `32/32` no shared-config, `6/6` no startup e lint/API/OpenAPI verdes.
+
+Isso continua sendo evidência limitada de fronteira: não prova ainda HTTP→PostgreSQL em outra conexão, principal de serviço não interativo, UoW compartilhada, worker claim/fence/backoff, consumer B1, fronteira legada `410`, provider real, produção, deploy, paridade Vetus ou release. Nenhuma conclusão de produção, homologação ou paridade deve ser inferida deste documento.
+
+## 8. Atualização do benchmark oficial de PIMS/ERP — 22/08/2026
+
+A pesquisa read-only foi repetida em fontes oficiais e classificada pela força da evidência: manual/API/release note operacional é forte; página de produto específica é média; métricas e depoimentos do próprio fornecedor são somente hipóteses. O relatório integral do scout está preservado no handoff de continuidade.
+
+| Produto | Capacidades observáveis úteis | Fonte primária |
+| --- | --- | --- |
+| ezyVet/IDEXX | prontuário, agenda, portal, assinatura, diagnóstico com retorno, permissões, lote/validade, multi-local, charge capture e API REST com OAuth/paginação/throttling | [Knowledge Center](https://docs.ezyvet.com/en/browse-documentation/ezyvet), [API](https://developers.ezyvet.com/docs/v1/), [inventário](https://developers.ezyvet.com/guides/managing-inventory.html) |
+| Shepherd | SOAP ligado a tratamento/estimativa, prontuário, fatura, estoque e alta; whiteboard, tarefas, autosave, activity log e portal | [features](https://www.shepherd.vet/features/), [automação](https://www.shepherd.vet/clinical-tools/automation/) |
+| Digitail | app do tutor, timeline, whiteboard/flowboard, anestesia, laboratório/farmácia, pagamentos, comunicação, analytics e audit log | [produto](https://digitail.com/), [integrações](https://digitail.com/integrations/), [release abril/2026](https://digitail.com/blog/digitail-product-updates-april-2026-recap/) |
+| Vetspire | GraphQL com produção/staging/sandbox, schema tipado, subscriptions e integrações bidirecionais de laboratório/farmácia/comunicação | [developer portal](https://developer.vetspire.com/), [manual de integrações](https://manual.vetspire.com/vetspire-user-manual/ok/Commercial/vetspire-integrations), [API overview](https://support.vetspire.com/support/solutions/articles/70000636887-vetspire-s-api-overview) |
+| Covetrus Ascend | fluxo de internação visível do check-in à alta, vitais/tarefas/documentos/imagens e stocktake com barcode, localização e trilha de alterações | [Ascend](https://software.covetrus.com/apac/veterinary-solutions/ascend-cloud-veterinary-software/), [stocktake](https://software.covetrus.com/emea/stocktake/) |
+| Provet Cloud | templates/reason types que geram cobrança, lembretes/notas/alta, integrações de laboratório/pagamento/suprimentos e transferências com permissão | [first-opinion clinics](https://www.provet.cloud/product/first-opinion-clinics), [release 1.111](https://www.provet.cloud/hubfs/Provet%20Cloud%20Release%20Notes/1.111%20Release%20Notes_complete.pdf) |
+
+Requisitos executáveis derivados, em ordem: (1) ato clínico transacional numa UoW única com cobrança, lote, caixa, auditoria e outbox; (2) internação/whiteboard 24h com tratamento, handoff, SLA, consumo, diária e alta; (3) laboratório/imagem bidirecional com resultado corrigido, proveniência e anexos; (4) plataforma de integração com sandbox, scopes mínimos, rotação, replay/DLQ e observabilidade; (5) prontuário colaborativo com autosave, autoria, retificação e conflito `409`; (6) estoque/procurement multi-local com FEFO, reserva, devolução, recebimento parcial e reconciliação financeira; (7) portal do tutor e analytics somente depois da identidade, consentimento e durabilidade estarem comprovados.
+
+A distinção de confiança deve permanecer explícita: ezyVet e Vetspire têm documentação pública mais verificável; Shepherd, Digitail, Ascend e Provet fornecem sinais de produto, porém não contratos públicos equivalentes. O benchmark orienta prioridades e critérios de aceitação, nunca substitui testes, observação runtime ou homologação.

@@ -85,7 +85,7 @@
         ".agent/verification.jsonl#VFY-CVG-002B2B-HTTP-BOUNDARY-002",
         ".agent/artifacts/CVG-002B2B-http-boundary-2026-08-22.md"
       ],
-      "next_action": "Complete the manual node:net HTTP callback RED/harness, deferred ACK and OpenAPI/opaque-error gaps, then service-principal migration/login exclusions and the shared fenced worker UoW; preserve 18/18 B1, 25/25 raw-body/HMAC, 77/77 focused, 11/11 ingress and the bounded HTTP evidence."
+      "next_action": "Run HTTP-to-PostgreSQL receipt/delivery evidence on another connection, then implement service-principal migration/login exclusions and the shared fenced worker UoW; preserve 18/18 B1, 35/35 verifier/keyring, 77/77 focused, 11/11 ingress and 13/13 HTTP evidence."
     },
     {
       "id": "CVG-003",

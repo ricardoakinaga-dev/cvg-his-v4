@@ -61,7 +61,7 @@ Round 0 completed discovery and froze Quality Bar v1. Rounds 1-3 delivered local
 
 ## Latest bounded checkpoint
 
-`EVT-0052/EVT-0053` adds the explicit non-production synthetic PIX HTTP callback capability and records fresh bounded evidence: shared-config 32/32, verifier/keyring 35/35, startup 6/6, and real `node:http` integration 6/6. The callback is still below the `VERIFIED` bar because manual `node:net` framing/abort coverage, deferred ACK evidence, OpenAPI, opaque repository-error mapping, service principals and the shared fenced worker remain open. No quality-bar dimension is promoted by this checkpoint.
+`EVT-0055/EVT-0056/EVT-0057` hardens the explicit non-production synthetic PIX HTTP callback and records fresh bounded evidence: shared-config 32/32, verifier/keyring 35/35, startup 6/6, raw `node:http`/`node:net` integration 13/13, and OpenAPI 334 paths/384 schemas. The callback is still below the `VERIFIED` bar because HTTP-to-PostgreSQL evidence on another connection, service principals, shared fenced UoW, worker/consumer and release gates remain open. No quality-bar dimension is promoted by this checkpoint.
 
 ## Stop Decision
 
