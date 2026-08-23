@@ -423,3 +423,13 @@ ação: implementar RED de atomicidade/rollback entre item de billing e marcaç�
 da diária, depois costurar admissão → handoff/permanência → estoque → alta →
 recebimento/ledger/auditoria/outbox sob PostgreSQL/RLS, sem fechar os gates
 externos de provider, SPA/B2c, paridade, WCAG, operações, cobertura e release.
+
+## Publicação do checkpoint
+
+O commit `2b33aea` (`feat: enforce inpatient discharge cutoff`) foi publicado
+em `origin/agent/sync-v4-full-program`. Ele contém a migration `0116`, a prova
+PostgreSQL independente, a prova HTTP fail-closed, o artefato CVG-002D e todos
+os registros de continuidade desta seção. O cache user-owned
+`packages/design-system/tsconfig.vue.tsbuildinfo` permaneceu fora do commit.
+Após a reconciliação do ponteiro documental, confirme `HEAD == origin` antes
+de retomar o RED de rollback billing ↔ diária.

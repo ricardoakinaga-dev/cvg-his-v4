@@ -181,3 +181,9 @@ descrição do chaos foi alinhada a fail-closed. O PostgreSQL compartilhado de
 testes entrou em recovery por repetidas bases efêmeras; isso é limitação de
 ambiente. Próximo round: atomicidade/rollback billing ↔ daily charge e depois
 admission → handoff → inventory → discharge → receipt/ledger/audit/outbox.
+
+Publication checkpoint: `2b33aea` is pushed to
+`origin/agent/sync-v4-full-program` with migration 0116, its independent
+cutoff proof and the next-session handoff. Reconcile the final docs pointer,
+then run the billing-item/daily-charge rollback RED; preserve
+`IN_PROGRESS/PARTIAL` and all external gates.

@@ -440,3 +440,8 @@ Próximo passo executável: escrever o RED de rollback entre `billing.addItem` e
 `markDailyChargeBilled`, depois uma UoW/saga da jornada admissão →
 handoff/permanência → estoque → alta → billing → recibo/ledger/auditoria/
 outbox, mantendo o estado global `IN_PROGRESS/PARTIAL`.
+
+Publicação: `2b33aea` (`feat: enforce inpatient discharge cutoff`) está em
+`origin/agent/sync-v4-full-program`. O ponteiro final deste handoff ainda será
+reconciliado em um commit documental separado; depois disso, retomar o RED de
+rollback billing ↔ diária e a UoW/saga clínico-financeira.

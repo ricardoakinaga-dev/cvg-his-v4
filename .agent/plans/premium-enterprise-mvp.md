@@ -278,3 +278,9 @@ builds plus secret scanning passed. The shared test container entered recovery
 after repeated ephemeral DB creation; no global gate is promoted. The next
 implementation must prove rollback/atomicity across billing item and daily
 charge state before expanding to receipt/ledger/outbox.
+
+Publication note, 2026-08-23: implementation and continuity checkpoint
+`2b33aea` (`feat: enforce inpatient discharge cutoff`) is on the branch and
+origin. The final pointer-only reconciliation remains the next publication
+step; then continue with the billing-item/daily-charge rollback RED and the
+clinical-financial UoW/saga. Global and external gates remain open.

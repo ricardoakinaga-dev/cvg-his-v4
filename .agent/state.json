@@ -14,16 +14,16 @@
   "active_execplan": ".agent/plans/premium-enterprise-mvp.md",
   "active_task": "CVG-002B2B",
   "verification_state": "PARTIAL",
-  "repository_state": "Implementation commit `a89a2f0` and documentation checkpoint `7059fd3` remain published on origin/agent/sync-v4-full-program; this continuation adds an uncommitted migration 0116 discharge cutoff, its PostgreSQL RED/GREEN, an HTTP fail-closed auth test and corrected Redis chaos wording. The independent-process PIX matrix includes a live stale-fence takeover case (5/5 total), migration 0115 makes daily-charge source items idempotent, and migration 0116 rejects new progress, occurrences, daily charges and inpatient-stay inventory consumption after discharge. Fresh local evidence is Redis 21/21, disposable PostgreSQL cutoff 2/2, HTTP auth fail-closed 1/1, API/DB/chaos builds and secrets scan PASS. The process proof remains bounded to disposable PostgreSQL, local-pix and a minimal fixture; detailed journal/outbox/inbox accounting, full worker readiness, Redis failover between processes, provider, SPA, parity, WCAG, target operations, coverage and release remain open. The shared PostgreSQL test container entered recovery after repeated ephemeral database creation and is an environment limitation, not release evidence. The API payments fixture was aligned with the mandatory rate-limit contract without changing production behavior. The preserved user-owned packages/design-system/tsconfig.vue.tsbuildinfo cache remains outside scope and must not be staged",
+  "repository_state": "Implementation commit `a89a2f0`, documentation checkpoint `7059fd3` and the published continuation `2b33aea` are on origin/agent/sync-v4-full-program. The continuation includes migration 0116 discharge cutoff, its PostgreSQL RED/GREEN, an HTTP fail-closed auth test, corrected Redis chaos wording and the next-session control-plane records. The independent-process PIX matrix includes a live stale-fence takeover case (5/5 total), migration 0115 makes daily-charge source items idempotent, and migration 0116 rejects new progress, occurrences, daily charges and inpatient-stay inventory consumption after discharge. Fresh local evidence is Redis 21/21, disposable PostgreSQL cutoff 2/2, HTTP auth fail-closed 1/1, API/DB/chaos builds and secrets scan PASS. The process proof remains bounded to disposable PostgreSQL, local-pix and a minimal fixture; detailed journal/outbox/inbox accounting, full worker readiness, Redis failover between processes, provider, SPA, parity, WCAG, target operations, coverage and release remain open. The shared PostgreSQL test container entered recovery after repeated ephemeral database creation and is an environment limitation, not release evidence. The API payments fixture was aligned with the mandatory rate-limit contract without changing production behavior. The preserved user-owned packages/design-system/tsconfig.vue.tsbuildinfo cache remains outside scope and must not be staged",
   "instruction_scope_refs": [".agent/instruction-scope.md"],
   "last_gate_record": ".agent/gates/implementation-ready-CVG-002B2B.json",
-  "last_event_id": "EVT-0115",
-  "state_revision": 102,
+  "last_event_id": "EVT-0116",
+  "state_revision": 103,
   "next_gate": "VERIFIED",
   "next_action": "After publishing the cutoff checkpoint, write the RED for rollback between billing.addItem and markDailyChargeBilled, then implement admission -> handoff/permanence -> inventory -> discharge -> item/receipt with PostgreSQL/RLS and a single UoW or explicit saga. Exercise real Redis failover between processes when the test environment is healthy; preserve B2c/SPA, provider, parity, WCAG, target-operations, coverage and release gates",
   "blocked_by": [],
   "human_approval_required": [
     "Production go-live, credential rotation, provider selection, fiscal homologation, and residual HIGH/CRITICAL risk acceptance remain outside repository implementation authority"
   ],
-  "updated_at": "2026-08-23T05:45:00-03:00"
+  "updated_at": "2026-08-23T05:47:00-03:00"
 }
