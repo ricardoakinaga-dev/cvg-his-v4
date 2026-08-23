@@ -9,8 +9,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { setAppState } from '../../../apps/api/src/app-state.js';
 import { bootstrapServices, shutdownServices } from '../../../apps/api/src/bootstrap.js';
 import { createApiServer, type ApiServer } from '../../../apps/api/src/server.js';
-import { getTestPool } from '../../db/db-admin.js';
-import { TEST_DB_URL } from '../../setup/env.js';
+import { getPool } from '../../../packages/shared/database/src/index.js';
+import { getAdminPool, getTestPool } from '../../db/db-admin.js';
+import { TEST_DB_NAME, TEST_DB_URL } from '../../setup/env.js';
 
 const TENANT_A = randomUUID();
 const ACCOUNT_A = randomUUID();
@@ -45,6 +46,10 @@ let baseUrl = '';
 let secondaryBaseUrl = '';
 let accessTokenA = '';
 let accessTokenB = '';
+let apiDatabaseRole = '';
+let workerDatabaseRole = '';
+let runtimeRolePassword = '';
+let journeyReceiptId = '';
 
 interface LoginResponse {
   readonly accessToken: string;
@@ -408,8 +413,41 @@ beforeAll(async () => {
   });
   await seedCashRegister();
 
+  const roleSuffix = randomUUID().replaceAll('-', '');
+  apiDatabaseRole = `vertical_api_${roleSuffix}`;
+  workerDatabaseRole = `vertical_worker_${roleSuffix}`;
+  runtimeRolePassword = `vertical-${roleSuffix}`;
+  const adminPool = getAdminPool();
+  const dbIdentifier = TEST_DB_NAME.replaceAll('"', '""');
+  await adminPool.query(
+    `CREATE ROLE "${apiDatabaseRole}" LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE
+       NOINHERIT NOREPLICATION NOBYPASSRLS PASSWORD '${runtimeRolePassword}'`
+  );
+  await adminPool.query(
+    `CREATE ROLE "${workerDatabaseRole}" LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE
+       NOINHERIT NOREPLICATION NOBYPASSRLS PASSWORD '${runtimeRolePassword}'`
+  );
+  await adminPool.query(
+    `GRANT CONNECT ON DATABASE "${dbIdentifier}" TO "${apiDatabaseRole}", "${workerDatabaseRole}"`
+  );
+  const reconcileClient = await getTestPool().connect();
+  try {
+    const { reconcileRuntimeRoles } =
+      await import('../../../packages/db/src/reconcile-runtime-roles.js');
+    await reconcileRuntimeRoles(reconcileClient, {
+      apiRole: apiDatabaseRole,
+      workerRole: workerDatabaseRole
+    });
+  } finally {
+    reconcileClient.release();
+  }
+
+  const runtimeDatabaseUrl = new URL(TEST_DB_URL);
+  runtimeDatabaseUrl.username = apiDatabaseRole;
+  runtimeDatabaseUrl.password = runtimeRolePassword;
+
   const bootstrap = await bootstrapServices({
-    databaseUrl: TEST_DB_URL,
+    databaseUrl: runtimeDatabaseUrl.toString(),
     fileStoragePath: mkdtempSync(join(tmpdir(), 'cvg-his-v2-inpatient-vertical-http-')),
     maxRetries: 10,
     retryDelayMs: 1000
@@ -417,6 +455,34 @@ beforeAll(async () => {
   if (!bootstrap.databaseHealthy || !bootstrap.unitOfWork) {
     throw new Error(`Database/UoW unavailable: ${bootstrap.databaseDetail}`);
   }
+  const databaseIdentity = await getPool().query<{
+    readonly current_user: string;
+    readonly rolbypassrls: boolean;
+    readonly rolsuper: boolean;
+  }>(
+    `SELECT current_user, rolbypassrls, rolsuper
+       FROM pg_roles
+      WHERE rolname = current_user`
+  );
+  expect(databaseIdentity.rows).toEqual([
+    { current_user: apiDatabaseRole, rolbypassrls: false, rolsuper: false }
+  ]);
+  const settlementFunctionPrivileges = await getTestPool().query<{
+    readonly apiExecute: boolean;
+    readonly workerExecute: boolean;
+    readonly publicExecute: boolean;
+  }>(
+    `SELECT
+       has_function_privilege($1, 'app.assert_encounter_cash_receipt_consistent(uuid, boolean)', 'EXECUTE') AS "apiExecute",
+       has_function_privilege($2, 'app.assert_encounter_cash_receipt_consistent(uuid, boolean)', 'EXECUTE') AS "workerExecute",
+       has_function_privilege('public', 'app.assert_encounter_cash_receipt_consistent(uuid, boolean)', 'EXECUTE') AS "publicExecute"`,
+    [apiDatabaseRole, workerDatabaseRole]
+  );
+  expect(settlementFunctionPrivileges.rows[0]).toEqual({
+    apiExecute: true,
+    workerExecute: true,
+    publicExecute: false
+  });
   setAppState({
     persistenceMode: 'database',
     databaseConfigured: true,
@@ -473,6 +539,21 @@ afterAll(async () => {
     );
   }
   await shutdownServices();
+  if (apiDatabaseRole && workerDatabaseRole) {
+    const testPool = getTestPool();
+    await testPool
+      .query(`REASSIGN OWNED BY "${apiDatabaseRole}" TO CURRENT_USER`)
+      .catch(() => undefined);
+    await testPool.query(`DROP OWNED BY "${apiDatabaseRole}"`).catch(() => undefined);
+    await testPool
+      .query(`REASSIGN OWNED BY "${workerDatabaseRole}" TO CURRENT_USER`)
+      .catch(() => undefined);
+    await testPool.query(`DROP OWNED BY "${workerDatabaseRole}"`).catch(() => undefined);
+    const adminPool = getAdminPool();
+    await adminPool.query(`REVOKE cvg_installer FROM "${apiDatabaseRole}"`).catch(() => undefined);
+    await adminPool.query(`DROP ROLE IF EXISTS "${apiDatabaseRole}"`);
+    await adminPool.query(`DROP ROLE IF EXISTS "${workerDatabaseRole}"`);
+  }
 });
 
 describe('inpatient clinical-financial vertical HTTP PostgreSQL boundary', () => {
@@ -539,6 +620,8 @@ describe('inpatient clinical-financial vertical HTTP PostgreSQL boundary', () =>
     });
     expect(billed.status).toBe(200);
     expect(billed.body).toMatchObject({ id: daily.body?.id, status: 'billed' });
+    const billingRecordId = billed.body?.billingRecordId;
+    expect(billingRecordId).toBeTruthy();
     expect(billedReplay.status).toBe(200);
     expect(billedReplay.body).toEqual(billed.body);
     expect(billedConflict.status).toBe(409);
@@ -578,6 +661,8 @@ describe('inpatient clinical-financial vertical HTTP PostgreSQL boundary', () =>
     const receiptConflict = await receipt(receiptKey, AMOUNT_TOTAL + 1);
     expect(received.status).toBe(201);
     expect(received.body).toMatchObject({ encounterId: ENCOUNTER_A, amount: AMOUNT_TOTAL });
+    journeyReceiptId = received.body?.id ?? '';
+    expect(journeyReceiptId).toMatch(/^[0-9a-f-]{36}$/i);
     expect(receiptReplay.status).toBe(201);
     expect(receiptReplay.body).toEqual(received.body);
     expect(receiptConflict.status).toBe(409);
@@ -649,6 +734,301 @@ describe('inpatient clinical-financial vertical HTTP PostgreSQL boundary', () =>
       closeOutbox: 1,
       receiptOutbox: 1
     });
+
+    const inventoryLinks = await getTestPool().query<{
+      readonly consumptionId: string;
+      readonly quantity: number;
+      readonly costAmount: number;
+      readonly sourceEntityId: string;
+      readonly billingItemId: string | null;
+      readonly billingRecordId: string | null;
+      readonly billingQuantity: number | null;
+      readonly billingUnitPrice: number | null;
+      readonly billingTotal: number | null;
+    }>(
+      `SELECT
+         consumption.id AS "consumptionId",
+         consumption.quantity::float8 AS quantity,
+         consumption.cost_amount::float8 AS "costAmount",
+         consumption.source_entity_id AS "sourceEntityId",
+         item.id AS "billingItemId",
+         item.billing_record_id AS "billingRecordId",
+         item.quantity::float8 AS "billingQuantity",
+         item.unit_price_amount::float8 AS "billingUnitPrice",
+         item.total_amount::float8 AS "billingTotal"
+       FROM inventory_consumptions AS consumption
+       LEFT JOIN billing_items AS item
+         ON item.account_id = consumption.account_id
+        AND item.source_entity_type = 'inventory_consumption'
+        AND item.source_entity_id = consumption.id
+      WHERE consumption.account_id = $1
+        AND consumption.encounter_id = $2::text
+        AND consumption.source_entity_type = 'inpatient_stay'
+        AND consumption.source_entity_id = $3`,
+      [ACCOUNT_A, ENCOUNTER_A, journeyStayId]
+    );
+    expect(inventoryLinks.rows).toHaveLength(1);
+    expect(inventoryLinks.rows[0]).toMatchObject({
+      quantity: 2,
+      costAmount: 50,
+      sourceEntityId: journeyStayId,
+      billingRecordId,
+      billingQuantity: 2,
+      billingUnitPrice: 40,
+      billingTotal: AMOUNT_INVENTORY
+    });
+    expect(inventoryLinks.rows[0]?.billingItemId).toMatch(/^[A-Za-z0-9_-]+$/);
+
+    const dailyLinks = await getTestPool().query<{
+      readonly dailyChargeId: string;
+      readonly dailyStatus: string;
+      readonly dailyQuantity: number;
+      readonly dailyUnitAmount: number;
+      readonly dailyBillingRecordId: string | null;
+      readonly billingItemId: string | null;
+      readonly billingQuantity: number | null;
+      readonly billingUnitPrice: number | null;
+      readonly billingTotal: number | null;
+    }>(
+      `SELECT
+         charge.id AS "dailyChargeId",
+         charge.status AS "dailyStatus",
+         charge.quantity::float8 AS "dailyQuantity",
+         charge.unit_amount::float8 AS "dailyUnitAmount",
+         charge.billing_record_id AS "dailyBillingRecordId",
+         item.id AS "billingItemId",
+         item.quantity::float8 AS "billingQuantity",
+         item.unit_price_amount::float8 AS "billingUnitPrice",
+         item.total_amount::float8 AS "billingTotal"
+       FROM inpatient_daily_charges AS charge
+       LEFT JOIN billing_items AS item
+         ON item.account_id = charge.account_id
+        AND item.source_entity_type = 'inpatient_daily_charge'
+        AND item.source_entity_id = charge.id
+      WHERE charge.account_id = $1
+        AND charge.stay_id = $2`,
+      [ACCOUNT_A, journeyStayId]
+    );
+    expect(dailyLinks.rows).toHaveLength(1);
+    expect(dailyLinks.rows[0]).toMatchObject({
+      dailyChargeId: daily.body?.id,
+      dailyStatus: 'billed',
+      dailyQuantity: 1,
+      dailyUnitAmount: AMOUNT_DAILY,
+      dailyBillingRecordId: billingRecordId,
+      billingQuantity: 1,
+      billingUnitPrice: AMOUNT_DAILY,
+      billingTotal: AMOUNT_DAILY
+    });
+    expect(dailyLinks.rows[0]?.billingItemId).toMatch(/^[A-Za-z0-9_-]+$/);
+
+    const financialGraph = await getTestPool().query<{
+      readonly billingRecordId: string;
+      readonly billingStatus: string;
+      readonly billingSubtotal: number;
+      readonly billingItemCount: number;
+      readonly itemTotal: number;
+      readonly financialAccountId: string | null;
+      readonly financialStatus: string | null;
+      readonly financialTotal: number | null;
+      readonly financialPaid: number | null;
+      readonly financialBalance: number | null;
+      readonly receivableId: string | null;
+      readonly receivableStatus: string | null;
+      readonly receivableOriginal: number | null;
+      readonly receivablePaid: number | null;
+      readonly receivableOutstanding: number | null;
+    }>(
+      `SELECT
+         billing.id AS "billingRecordId",
+         billing.status AS "billingStatus",
+         billing.subtotal_amount::float8 AS "billingSubtotal",
+         COUNT(DISTINCT item.id)::int AS "billingItemCount",
+         COALESCE(SUM(item.total_amount), 0)::float8 AS "itemTotal",
+         financial.id AS "financialAccountId",
+         financial.financial_status AS "financialStatus",
+         financial.total_snapshot::float8 AS "financialTotal",
+         financial.paid_amount::float8 AS "financialPaid",
+         financial.balance_due::float8 AS "financialBalance",
+         receivable.id AS "receivableId",
+         receivable.status AS "receivableStatus",
+         receivable.amount_original::float8 AS "receivableOriginal",
+         receivable.amount_paid::float8 AS "receivablePaid",
+         receivable.amount_outstanding::float8 AS "receivableOutstanding"
+       FROM billing_records AS billing
+       LEFT JOIN billing_items AS item
+         ON item.account_id = billing.account_id
+        AND item.billing_record_id = billing.id
+       LEFT JOIN encounter_financial_accounts AS financial
+         ON financial.account_id = billing.account_id
+        AND financial.encounter_id = billing.encounter_id
+       LEFT JOIN encounter_receivables AS receivable
+         ON receivable.account_id = financial.account_id
+        AND receivable.encounter_id = financial.encounter_id
+        AND receivable.financial_account_id = financial.id
+      WHERE billing.account_id = $1
+        AND billing.id = $2
+      GROUP BY billing.id, billing.status, billing.subtotal_amount,
+        financial.id, financial.financial_status, financial.total_snapshot,
+        financial.paid_amount, financial.balance_due, receivable.id,
+        receivable.status, receivable.amount_original, receivable.amount_paid,
+        receivable.amount_outstanding`,
+      [ACCOUNT_A, billingRecordId]
+    );
+    expect(financialGraph.rows).toHaveLength(1);
+    expect(financialGraph.rows[0]).toMatchObject({
+      billingRecordId,
+      billingStatus: 'settled',
+      billingSubtotal: AMOUNT_TOTAL,
+      billingItemCount: 2,
+      itemTotal: AMOUNT_TOTAL,
+      financialStatus: 'paid',
+      financialTotal: AMOUNT_TOTAL,
+      financialPaid: AMOUNT_TOTAL,
+      financialBalance: 0,
+      receivableStatus: 'settled',
+      receivableOriginal: AMOUNT_TOTAL,
+      receivablePaid: AMOUNT_TOTAL,
+      receivableOutstanding: 0
+    });
+
+    const receiptGraph = await getTestPool().query<{
+      readonly receiptId: string;
+      readonly receiptAmount: number;
+      readonly receiptBillingRecordId: string;
+      readonly financialAccountId: string;
+      readonly receivableId: string;
+      readonly receivablePaymentId: string;
+      readonly cashRegisterId: string;
+      readonly cashMovementId: string;
+      readonly journalEntryId: string;
+      readonly paymentAmount: number | null;
+      readonly externalReferenceType: string | null;
+      readonly externalReferenceId: string | null;
+      readonly cashAmount: number | null;
+      readonly movementType: string | null;
+      readonly journalSourceType: string | null;
+      readonly journalSourceId: string | null;
+      readonly journalDebit: number;
+      readonly journalCredit: number;
+    }>(
+      `SELECT
+         receipt.id AS "receiptId",
+         receipt.amount::float8 AS "receiptAmount",
+         receipt.billing_record_id AS "receiptBillingRecordId",
+         receipt.financial_account_id::text AS "financialAccountId",
+         receipt.receivable_id::text AS "receivableId",
+         receipt.receivable_payment_id::text AS "receivablePaymentId",
+         receipt.cash_register_id::text AS "cashRegisterId",
+         receipt.cash_movement_id::text AS "cashMovementId",
+         receipt.journal_entry_id::text AS "journalEntryId",
+         payment.amount_paid::float8 AS "paymentAmount",
+         payment.external_reference_type AS "externalReferenceType",
+         payment.external_reference_id AS "externalReferenceId",
+         movement.amount::float8 AS "cashAmount",
+         movement.movement_type AS "movementType",
+         entry.source_type AS "journalSourceType",
+         entry.source_id AS "journalSourceId",
+         COALESCE(SUM(line.debit), 0)::float8 AS "journalDebit",
+         COALESCE(SUM(line.credit), 0)::float8 AS "journalCredit"
+       FROM encounter_cash_receipts AS receipt
+       LEFT JOIN encounter_receivable_payments AS payment
+         ON payment.account_id = receipt.account_id
+        AND payment.id = receipt.receivable_payment_id
+       LEFT JOIN cash_movements AS movement
+         ON movement.account_id = receipt.account_id
+        AND movement.id = receipt.cash_movement_id
+       LEFT JOIN financial_journal_entries AS entry
+         ON entry.account_id = receipt.account_id
+        AND entry.id = receipt.journal_entry_id
+       LEFT JOIN financial_journal_lines AS line
+         ON line.account_id = entry.account_id
+        AND line.entry_id = entry.id
+      WHERE receipt.account_id = $1
+        AND receipt.encounter_id = $2
+      GROUP BY receipt.id, payment.id, movement.id, entry.id`,
+      [ACCOUNT_A, ENCOUNTER_A]
+    );
+    expect(receiptGraph.rows).toHaveLength(1);
+    const receiptRow = receiptGraph.rows[0];
+    expect(receiptRow).toMatchObject({
+      receiptAmount: AMOUNT_TOTAL,
+      receiptBillingRecordId: billingRecordId,
+      paymentAmount: AMOUNT_TOTAL,
+      externalReferenceType: 'cash_movement',
+      externalReferenceId: receiptRow?.cashMovementId,
+      cashAmount: AMOUNT_TOTAL,
+      movementType: 'payment',
+      journalSourceType: 'encounter_cash_receipt',
+      journalSourceId: receiptRow?.receiptId,
+      journalDebit: AMOUNT_TOTAL,
+      journalCredit: AMOUNT_TOTAL
+    });
+    expect(receiptRow?.financialAccountId).toBe(financialGraph.rows[0]?.financialAccountId);
+    expect(receiptRow?.receivableId).toBe(financialGraph.rows[0]?.receivableId);
+    expect(receiptRow?.cashRegisterId).toBe(CASH_REGISTER_A);
+  });
+
+  it('rejects a shadowed settlement under a runtime role with pg_temp search_path', async () => {
+    expect(journeyReceiptId).toMatch(/^[0-9a-f-]{36}$/i);
+    const client = await getPool().connect();
+    const shadowReceiptId = randomUUID();
+
+    try {
+      await client.query('BEGIN');
+      await client.query(`SELECT set_config('app.current_account_id', $1, true)`, [ACCOUNT_A]);
+      await client.query('SET LOCAL search_path = pg_temp, public, app');
+      await client.query(
+        `CREATE TEMP TABLE encounter_cash_receipts
+         AS SELECT * FROM public.encounter_cash_receipts WITH NO DATA`
+      );
+      await client.query(
+        `CREATE TEMP TABLE financial_journal_entries
+         AS SELECT * FROM public.financial_journal_entries WITH NO DATA`
+      );
+      await client.query(
+        `INSERT INTO pg_temp.encounter_cash_receipts
+           (id, account_id, encounter_id, billing_record_id,
+            financial_account_id, receivable_id, receivable_payment_id,
+            cash_register_id, cash_movement_id, journal_entry_id,
+            received_by_user_id, amount, currency, received_at, notes,
+            created_at, updated_at)
+         SELECT $1::uuid, receipt.account_id, receipt.encounter_id,
+                receipt.billing_record_id, receipt.financial_account_id,
+                receipt.receivable_id, receipt.receivable_payment_id,
+                receipt.cash_register_id, receipt.cash_movement_id,
+                receipt.journal_entry_id, receipt.received_by_user_id,
+                receipt.amount, receipt.currency, receipt.received_at,
+                receipt.notes, receipt.created_at, receipt.updated_at
+           FROM public.encounter_cash_receipts AS receipt
+          WHERE receipt.id = $2::uuid`,
+        [shadowReceiptId, journeyReceiptId]
+      );
+      await client.query(
+        `INSERT INTO pg_temp.financial_journal_entries
+           (id, account_id, source_type, source_id, description,
+            occurred_at, created_by_user_id, created_at)
+         SELECT entry.id, entry.account_id, entry.source_type, $1::text,
+                entry.description, entry.occurred_at,
+                entry.created_by_user_id, entry.created_at
+           FROM public.financial_journal_entries AS entry
+          WHERE entry.id = (
+            SELECT receipt.journal_entry_id
+              FROM public.encounter_cash_receipts AS receipt
+             WHERE receipt.id = $2::uuid
+          )`,
+        [shadowReceiptId, journeyReceiptId]
+      );
+
+      await expect(
+        client.query(`SELECT app.assert_encounter_cash_receipt_consistent($1, false)`, [
+          shadowReceiptId
+        ])
+      ).rejects.toThrow(/Encounter cash receipt .* inconsistent/);
+    } finally {
+      await client.query('ROLLBACK').catch(() => undefined);
+      client.release();
+    }
   });
 
   it('serializes a concurrent same-key daily charge billing replay', async () => {
@@ -741,6 +1121,26 @@ describe('inpatient clinical-financial vertical HTTP PostgreSQL boundary', () =>
       }
     );
     expect(response.status).toBe(404);
+
+    const falsifiedHeaders = await requestJson<AdmissionResponse & { readonly code?: string }>(
+      '/inpatient',
+      {
+        method: 'POST',
+        headers: {
+          ...headers(accessTokenA, TENANT_B, ACCOUNT_B),
+          'idempotency-key': randomUUID()
+        },
+        body: JSON.stringify({
+          encounterId: ENCOUNTER_B,
+          patientId: PATIENT_B,
+          unit: 'Internacao clinica',
+          ward: 'Ala A',
+          bed: 'A-03'
+        })
+      }
+    );
+    expect(falsifiedHeaders.status).toBe(404);
+
     const state = await getTestPool().query<{
       readonly accountAStays: number;
       readonly accountBStays: number;
