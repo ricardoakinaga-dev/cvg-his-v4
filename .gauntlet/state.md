@@ -109,8 +109,9 @@ followed by B2c/SPA, provider, Vetus parity, WCAG and release evidence.
 
 ## Handoff final — 23/08/2026, 02:08 BRT
 
-O estado remoto de base antes deste handoff é `d525acc`; o checker canônico
-retornou 11 PASS, 1 WARN histórico e 0 FAIL. O único dirty path permitido é o cache
+O estado remoto de base antes deste handoff era `d525acc` e o checkpoint
+documental foi publicado em `76f7ec5`; o checker canônico retornou 11 PASS, 1
+WARN histórico e 0 FAIL. O único dirty path permitido é o cache
 `packages/design-system/tsconfig.vue.tsbuildinfo`. A próxima sessão deve ler
 `docs/2026-08-23-checkpoint-continuacao.md` e executar a ação concreta já
 registrada no `.agent/state.json`; não repetir o slice DLQ nem promover gates

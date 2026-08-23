@@ -171,8 +171,8 @@ continua fora do escopo.
 
 Este registro é a referência mais recente caso a sessão seja interrompida.
 
-- A base remota antes deste handoff era `d525acc`; após o commit/push desta
-  onda, use o hash confirmado pelo Git como novo ponto publicado.
+- A base remota antes deste handoff era `d525acc`; o checkpoint documental foi
+  publicado em `76f7ec5` e está confirmado em `origin/agent/sync-v4-full-program`.
 - `git status --short` deve mostrar somente
   `packages/design-system/tsconfig.vue.tsbuildinfo`; não adicionar, reverter
   ou limpar esse arquivo user-owned.

@@ -85,7 +85,8 @@ Published implementation `35f68fd` and replicated-observability correction
 
 ## Handoff final — 23/08/2026, 02:08 BRT
 
-The remote base before this handoff is `d525acc`; the canonical checker returned
-11 PASS, 1 historical WARN and 0 FAIL. Preserve the only dirty user-owned cache path and resume from
+The remote base before this handoff was `d525acc`; the continuation checkpoint
+is published in `76f7ec5`; the canonical checker returned 11 PASS, 1 historical
+WARN and 0 FAIL. Preserve the only dirty user-owned cache path and resume from
 `docs/2026-08-23-checkpoint-continuacao.md`. Do not repeat the DLQ slice or
 promote the ERP, provider, SPA, parity, WCAG or release gates.

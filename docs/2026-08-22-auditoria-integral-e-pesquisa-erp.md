@@ -201,8 +201,8 @@ A migration `0113` e os scripts de runtime/Helm usam `cvg_api_key_auth` sem logi
 
 O slice de DLQ operacional foi publicado em `35f68fd`, a semântica de
 observabilidade multi-réplica foi corrigida em `1217882` e a última
-reconciliação de ledger publicada está em `d525acc`; esta onda documental
-estende essa base. A recontagem atual de `docs/` é 1.449
+reconciliação de ledger publicada está em `d525acc`; os documentos derivados
+desta onda foram publicados em `76f7ec5`. A recontagem atual de `docs/` é 1.449
 arquivos, 91 diretórios e 53.742.847 bytes; a leitura integral anterior de
 1.447 arquivos permanece preservada no artefato de auditoria e não foi
 reclassificada como nova leitura.
