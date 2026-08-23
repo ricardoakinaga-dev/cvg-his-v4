@@ -14,17 +14,17 @@
   "active_execplan": ".agent/plans/premium-enterprise-mvp.md",
   "active_task": "CVG-002C6",
   "verification_state": "PARTIAL",
-  "repository_state": "Implementation ab08865233c4091edcb83cb7319c78b9f406645e plus test stabilization 67d47e2 (`test: stabilize tenant card collision assertions`) and documentation/control-plane checkpoint 16797efada1747fc2a6046d4dd7842dc6e7eea42 (`docs: publish worker event continuity`) are published on origin/agent/sync-v4-full-program; final pointer reconciliation is 8c21e246136cd32991b6927171fe67c76d41a27a. The preserved user-owned packages/design-system/tsconfig.vue.tsbuildinfo cache remains outside scope and must not be staged",
+  "repository_state": "Implementation ab08865233c4091edcb83cb7319c78b9f406645e plus test stabilization 67d47e2 and the published documentation pointer 1c60a1244008f6d0a65a0f604ef7f33920e99c31 are on origin/agent/sync-v4-full-program. The current integral audit/checkpoint is docs/2026-08-23-checkpoint-retomada-integral.md with artifact .agent/artifacts/erp-audit-2026-08-23.md. The preserved user-owned packages/design-system/tsconfig.vue.tsbuildinfo cache remains outside scope and must not be staged",
   "latest_bounded_evidence": "2026-08-23: CVG-002C6 worker-event-consumers-postgres.test.ts passes 3/3 against disposable PostgreSQL with two accounts, the same card transaction_id in A/B, and LOGIN NOSUPERUSER/NOBYPASSRLS worker role. The bounded matrix proves payments → billing → webhooks inbox/outbox, authoritative card capture, billing/receivable settlement with paid/settled amounts, pending webhook enqueue, concurrent replay idempotence, rollback after mutation, unknown card completion fail-closed and A/B tenant isolation. The RED exposed prefixed financial IDs in UUID columns; randomUUID() fixed persisted account/receivable/payment IDs, source aliases prevent stale dist execution, and settlement preserves the original database error. Migration 0122, Drizzle schema and repositories now use the account-composed card key (account_id, transaction_id), with two rows and RLS reads per tenant. Financial 15/15, event-bus 23/23, handler/gateway TAP 17/17, builds, audit, Prettier and diff check are green. Artifact: .agent/artifacts/CVG-002C6-worker-event-postgres-2026-08-23.md. Child-process domain fixtures/SIGKILL, PIX PostgreSQL/RLS, webhook HTTP retry/DLQ and lease fencing, complete failpoints, async hydration, non-card cross-tenant reads, global RLS/FORCE RLS, providers, SPA, parity, WCAG, coverage, operations, deploy/restore, release and global ERP/Quality Bar remain open.",
   "instruction_scope_refs": [".agent/instruction-scope.md"],
   "last_gate_record": ".agent/gates/implementation-ready-CVG-002C6.json",
-  "last_event_id": "EVT-0202",
-  "state_revision": 190,
-  "next_gate": "VERIFIED",
-  "next_action": "Resume from the published bounded worker-event/card-identity evidence: prove child-process domain fixtures/SIGKILL/takeover and the full failpoint matrix; exercise PIX PostgreSQL/RLS; implement webhook HTTP retry/DLQ with lease fencing; and add restricted billing/financial/webhook isolation. Keep WebAuthn durability, audit account attribution, callback ghost, asynchronous cross-instance hydration, global RLS/FORCE RLS, Redis/provider/SPA/parity/WCAG/coverage/operations/deploy/release and global ERP status explicitly IN_PROGRESS/PARTIAL",
+  "last_event_id": "EVT-0203",
+  "state_revision": 191,
+  "next_gate": "CVG-002C6-CRITICAL-RETEST",
+  "next_action": "Resolve the two pnpm test:critical blockers without weakening contracts: replace the stayday_<token> daily-charge fixture value with a real UUID and align the installation-state assertion with rendered Helm grant semantics. Re-run focused tests and the full critical suite, then resume child-process domain fixture/SIGKILL/takeover, full failpoints, PIX PostgreSQL/RLS, webhook HTTP retry/DLQ/lease fencing and restricted billing/financial/webhook isolation. Keep WebAuthn durability, audit attribution, cross-instance hydration, global RLS/FORCE RLS, Redis/provider/SPA/parity/WCAG/coverage/operations/deploy/release and global ERP status explicitly IN_PROGRESS/PARTIAL",
   "blocked_by": [],
   "human_approval_required": [
     "Production go-live, credential rotation, provider selection, fiscal homologation, and residual HIGH/CRITICAL risk acceptance remain outside repository implementation authority"
   ],
-  "updated_at": "2026-08-23T17:54:00-03:00"
+  "updated_at": "2026-08-23T18:19:00-03:00"
 }

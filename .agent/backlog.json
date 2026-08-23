@@ -316,7 +316,7 @@
         "tests/unit/api/card-transaction-repository-database.test.ts",
         ".agent/verification.jsonl#VFY-CVG-002C6-POSTFIX-REGRESSION-002"
       ],
-      "next_action": "Worker real-domain fixture and account-composed card identity are GREEN bounded (3/3) with settlement, replay/concurrency, rollback, webhook enqueue and same-id A/B isolation. Keep CVG-002C6 active. Next: prove child-process domain fixture/SIGKILL/takeover and full failpoints; exercise PIX PostgreSQL/RLS; implement webhook HTTP retry/DLQ with lease fencing; add restricted billing/financial/webhook isolation; keep async hydration/global RLS/FORCE RLS/provider/Redis/SPA/parity/WCAG/coverage/operations/deploy/release open and the user-owned tsbuildinfo cache out of scope."
+      "next_action": "The worker/card bounded slice remains GREEN only within its documented scope. First resolve the two pnpm test:critical blockers: use a real UUID in the daily-charge rollback fixture and align the installation-state grant assertion with rendered Helm semantics without weakening least privilege. Re-run the focused tests and full critical suite. Then prove child-process domain fixture/SIGKILL/takeover and full failpoints; exercise PIX PostgreSQL/RLS; implement webhook HTTP retry/DLQ with lease fencing; add restricted billing/financial/webhook isolation; keep async hydration/global RLS/FORCE RLS/provider/Redis/SPA/parity/WCAG/coverage/operations/deploy/release open and the user-owned tsbuildinfo cache out of scope."
     },
     {
       "id": "CVG-003",

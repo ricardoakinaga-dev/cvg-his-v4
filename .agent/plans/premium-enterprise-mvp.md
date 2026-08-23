@@ -407,3 +407,14 @@ readiness and domain-event processing are intentionally not promoted. Next:
 compose/review real handlers, then execute the complete failpoint matrix and
 applied Helm equivalence; all product, global RLS and release gates remain
 IN_PROGRESS/PARTIAL.
+
+Plan revision note, 2026-08-23 (auditoria integral e retomada): o corpus atual
+de docs foi enumerado e lido integralmente como bytes antes desta inclusão;
+readiness estrutural permanece 95/100, paridade estrita 0/11 geral e 0/3
+clínica, RLS 154/155 e OpenAPI 337 paths/390 schemas. O test:critical terminou
+com exit 1 (385/387 testes em 28 arquivos), com um fixture de rollback usando
+texto em coluna UUID e uma asserção de grants Helm incompatível com a forma
+renderizada por SELECT format. Esses dois pontos são o próximo RED/GREEN; o
+ERP e a Quality Bar continuam IN_PROGRESS/PARTIAL. O checkpoint executável é
+docs/2026-08-23-checkpoint-retomada-integral.md e o artefato é
+.agent/artifacts/erp-audit-2026-08-23.md.

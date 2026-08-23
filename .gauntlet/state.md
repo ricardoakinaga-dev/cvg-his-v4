@@ -590,3 +590,10 @@ failpoints completos, hidratação cross-instance, RLS/FORCE RLS global e os
 gates de produto/operação/deploy/release. Implementação final: `67d47e2`;
 o checkpoint documental/control-plane é `16797efada1747fc2a6046d4dd7842dc6e7eea42`
 e a reconciliação final publicada é `8c21e246136cd32991b6927171fe67c76d41a27a`.
+## Checkpoint integral de retomada — 23/08/2026, 18:19 BRT
+
+A auditoria documental foi consolidada em docs/2026-08-23-checkpoint-retomada-integral.md e no artefato .agent/artifacts/erp-audit-2026-08-23.md. O snapshot pré-inclusão tinha 1.454 arquivos em docs/, 1.198 textuais, 256 binários, 53.895.398 bytes e manifesto SHA-256 1e66d6af2cff706ccf2ac6291680b9fd1795c18ca0e71d84c7cbbcd3a8f290cd. A precedência runtime/testes/estado > código/contratos > camada ativa de agosto > ADRs > julho > Vetus > docs2 permanece vigente.
+
+Baseline executado: readiness 95/100 estrutural e 0/11 paridade; clinical parity 0/3; RLS 154/155; OpenAPI 337 paths/390 schemas; migration consistency bloqueada pela ausência de docs/phase-9-migration-manifest.json. pnpm test:critical terminou exit 1 com 385/387 testes em 28 arquivos. Os bloqueios concretos são um fixture de diária que usa stayday_<token> em coluna uuid e uma asserção de installation-state que procura REVOKE literal enquanto o Helm usa SELECT format. O rate limiter in-memory observado no teste não prova Redis compartilhado.
+
+Decisão: stop decision ACTIVE; CVG-002C6 e a Quality Bar global continuam IN_PROGRESS/PARTIAL. O próximo RED/GREEN deve corrigir somente os dois bloqueios do teste crítico, reexecutar a suíte completa e então continuar eventos de domínio em processo filho/SIGKILL, failpoints e webhook HTTP retry/DLQ/fence. Nenhum gate de ERP, produção, provedor, SPA, paridade, WCAG, operações ou release foi promovido.

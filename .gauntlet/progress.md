@@ -522,3 +522,10 @@ failpoints, hidratação cross-instance, RLS/FORCE RLS global e gates de produto
 deploy e release continuam abertos. Implementação final `67d47e2`; o checkpoint
 documental/control-plane é `16797efada1747fc2a6046d4dd7842dc6e7eea42` e a
 reconciliação final publicada é `8c21e246136cd32991b6927171fe67c76d41a27a`.
+## Checkpoint integral de retomada — 23/08/2026, 18:19 BRT
+
+O ponto de entrada da próxima sessão é docs/2026-08-23-checkpoint-retomada-integral.md. A auditoria reenumerou e leu o corpus atual de docs antes desta inclusão (1.454 arquivos; 1.198 textuais; 256 binários; 53.895.398 bytes). O manifesto e a matriz de autoridade estão no artefato .agent/artifacts/erp-audit-2026-08-23.md.
+
+O baseline atual é readiness estrutural 95/100, paridade 0/11 geral e 0/3 clínica, RLS 154/155, OpenAPI 337/390 e migration-consistency bloqueada por manifesto ausente. test:critical terminou com exit 1 e 385/387 testes em 28 arquivos; não registrar como PASS. Os dois reparos delimitados são o UUID inválido no fixture de rollback de diária e a asserção de grants no template Helm.
+
+O Gauntlet permanece ACTIVE e a Quality Bar permanece IN_PROGRESS/PARTIAL. A próxima rodada deve ser RED/GREEN desses dois reparos, regressão completa e só então a continuação de worker domain child-process/SIGKILL, failpoints e webhook retry/DLQ. O cache packages/design-system/tsconfig.vue.tsbuildinfo continua fora do stage.

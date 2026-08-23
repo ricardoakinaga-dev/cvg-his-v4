@@ -32,3 +32,36 @@ provas de que cada fluxo funciona em produção.
 4. O CVG-HIS ainda não deve alegar liderança, paridade ou produção até que os
    gates documentados em `docs/430-fonte-de-verdade-documental.md` e no
    checkpoint do worker estejam verdes com evidência executável.
+
+## Revalidação oficial para a retomada — 23 de agosto de 2026
+
+Uma nova consulta a fontes primárias refinou a barra de produto. Os sinais
+abaixo são capacidades anunciadas ou contratos públicos; devem virar testes
+locais antes de qualquer alegação de paridade.
+
+| Fonte | Sinal observado | Decisão executável |
+| --- | --- | --- |
+| [Vetspire API](https://developer.vetspire.com/) | GraphQL, subscriptions, introspection e ambientes de produção/staging/sandbox; as chaves têm alcance organizacional amplo | usar escopos mínimos por tenant/unidade, rotação/revogação, auditoria e ambientes separados; não replicar chave equivalente a senha administrativa |
+| [ezyVet API release notes](https://developers.ezyvet.com/release-notes.html) | exigência de `site_uid`, paginação por cursor, saldos de inventário e DICOM Study UID write-once | contratos versionados precisam carregar unidade, cursor, replay idempotente e identidade imutável de estudo |
+| [Shepherd features](https://www.shepherd.vet/features/) | SOAP, activity log, autosave, charge capture, inventário, whiteboard e alta aparecem conectados | um episódio clínico deve versionar/autosalvar autoria, tarefas, cobrança e alta no mesmo grafo auditável |
+| [Instinct Treatment Plan](https://instinct.vet/products/instinct-treatment-plan/) | boards em tempo real, tratamentos pendentes, folhas de anestesia, alertas e captura automática de cobrança | flowboard e tratamento 24h devem ser estados persistidos, observáveis e idempotentes |
+| [Covetrus Ascend stocktake](https://software.covetrus.com/emea/stocktake/) | código de barras, contagem/correção, aprovação, localização e histórico de edição | lote/validade/FEFO, ajuste aprovado e autoria do estoque entram no contrato |
+| [FHIR R5](https://hl7.org/fhir/R5/) | recursos clínicos, diagnósticos, medicamentos, workflow e financeiro, além de `Provenance`, `AuditEvent` e subscriptions | integrações devem transportar proveniência, consentimento, autoria e reconciliação |
+| [DICOMweb](https://www.dicomstandard.org/News-dir/ftsup/docs/sups/sup248.pdf) | QIDO-RS, WADO-RS e STOW-RS | diagnóstico por imagem precisa de busca, ingestão, recuperação, UID write-once e auditoria |
+| [LGPD](https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709compilado.htm) e [CFMV Resolução 1465/2022](https://manual.cfmv.gov.br/arquivos/resolucao/1465.pdf) | saúde é dado pessoal sensível e telemedicina veterinária tem regra específica | consentimento, minimização, retenção, autoria e revisão jurídica são gates; não declarar conformidade por documentação |
+
+### Decisões que não mudam o estado atual
+
+- Uma integração só é considerada durável com ingress autenticado, escopo,
+  outbox/inbox, idempotência, retry, lease/fence, DLQ, reconciliação e prova
+  de tenant.
+- IA/scribe é assistiva: deve conservar modelo, versão, origem, consentimento,
+  revisão e aceite humano; nunca deve escrever silenciosamente no prontuário,
+  estoque ou financeiro.
+- Flowboard, charge capture, inventário, portal e analytics serão priorizados
+  depois que a jornada clínica-financeira persistente e a segurança de
+  tenancy estiverem verdes.
+- Estas fontes reforçam a prioridade do fluxo
+  `admissão → handoff/permanência → consumo/lote → alta → billing →
+  recebimento → ledger/audit/outbox`, mas não alteram o resultado atual de
+  paridade (0/11 geral e 0/3 clínica).

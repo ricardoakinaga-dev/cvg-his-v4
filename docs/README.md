@@ -1,11 +1,12 @@
 # CVG-HIS V4 - Documentacao ativa
 
-**Atualizado em:** 2026-08-23 (handoff da sessão atual, auditoria integral e checkpoint)
+**Atualizado em:** 2026-08-23 (checkpoint integral de retomada)
 
 Esta pasta separa documentacao vigente, referencia do Vetus e historico. Uma afirmacao de funcionalidade so e considerada valida quando estiver sustentada por codigo executavel e teste comportamental.
 
 ## Comece aqui
 
+- [2026-08-23-checkpoint-retomada-integral.md](2026-08-23-checkpoint-retomada-integral.md) - ponto de entrada mais recente, baseline executável, pesquisa oficial, Quality Bar e próximo passo.
 1. [`2026-08-23-checkpoint-retomada-worker.md`](2026-08-23-checkpoint-retomada-worker.md) - ponto de entrada mais recente, estado publicado e próximo gate do worker.
 2. [`2026-08-23-handoff-sessao-atual.md`](2026-08-23-handoff-sessao-atual.md) - handoff amplo da sessão, evidências, decisão independente e histórico.
 3. [`2026-08-23-checkpoint-continuacao.md`](2026-08-23-checkpoint-continuacao.md) - histórico de continuidade, slices publicados, evidências e bloqueios.
