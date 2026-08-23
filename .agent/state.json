@@ -17,13 +17,13 @@
   "repository_state": "Implementation commits `a89a2f0`, `2b33aea`, `ee04d92`, cash-receipt HTTP/UoW implementation `3e278c8`, continuity publication `d605351` and HTTP tenant-isolation proof `0e0163c` are published or ready for publication on origin/agent/sync-v4-full-program; pointer reconciliations `432887f`, `1400d83` and `02f7927` remain historical continuity. The bounded ERP-ATOMIC-002 daily-charge/billing rollback implementation runs inpatient billing through runTenantCommand, waits for persistence/audit inside the command and refreshes BillingService/InpatientService caches from committed rows after rollback. The cash-receipt slice now proves HTTP commit/replay/conflict and two-tenant GET/POST isolation against ephemeral PostgreSQL, with JSON-safe response snapshots and tenant-scoped idempotency. Fresh evidence: route+buffer 10/10, HTTP helpers 6/6, cash-receipt command 8/8, HTTP/PostgreSQL tenant isolation 2/2, API typecheck PASS and git diff --check PASS. The checkpoints and artifacts .agent/artifacts/CVG-002C-inpatient-daily-billing-rollback-2026-08-23.md and .agent/artifacts/CVG-002C2-cash-receipt-http-uow-2026-08-23.md record the handoff. The latest docs audit remains 1,449 files, 53,766,604 bytes and manifest d23f84a7000e42943093090e706db12e01a6e4189f61f5bd833f67b5e92ea2db. Migration 0115 keeps daily-charge source items idempotent and migration 0116 rejects new progress, occurrences, daily charges and inpatient-stay inventory consumption after discharge. Redis 21/21, cutoff 2/2, HTTP auth fail-closed 1/1, stale-fence 5/5, API 324/324 and worker 58 plus build remain bounded evidence. Full admission/handoff/permanence/inventory/discharge/receipt/ledger/audit/outbox, real Redis failover, provider, SPA, parity, WCAG, target operations, coverage and release remain open. The preserved user-owned packages/design-system/tsconfig.vue.tsbuildinfo cache remains outside scope and must not be staged",
   "instruction_scope_refs": [".agent/instruction-scope.md"],
   "last_gate_record": ".agent/gates/implementation-ready-CVG-002B2B.json",
-  "last_event_id": "EVT-0125",
-  "state_revision": 112,
+  "last_event_id": "EVT-0126",
+  "state_revision": 113,
   "next_gate": "VERIFIED",
   "next_action": "Expand the clinical-financial journey from admission -> handoff/permanence -> inventory -> discharge -> billing -> receipt/ledger/audit/outbox with PostgreSQL/RLS, replay, concurrency and two-tenant evidence. Exercise real Redis failover between processes when the test environment is healthy; preserve B2c/SPA, provider, parity, WCAG, target-operations, coverage and release gates",
   "blocked_by": [],
   "human_approval_required": [
     "Production go-live, credential rotation, provider selection, fiscal homologation, and residual HIGH/CRITICAL risk acceptance remain outside repository implementation authority"
   ],
-  "updated_at": "2026-08-23T07:20:00-03:00"
+  "updated_at": "2026-08-23T07:27:19-03:00"
 }

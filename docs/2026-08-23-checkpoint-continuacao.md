@@ -663,3 +663,11 @@ trabalho volta à jornada maior admissão → handoff/permanência → estoque �
 → billing → recebimento/ledger/auditoria/outbox, mantendo o ERP
 `IN_PROGRESS/PARTIAL` e os gates de Redis failover real, provider, SPA/B2c,
 paridade Vetus, WCAG, operações, cobertura e release abertos.
+## Publicação confirmada — isolamento HTTP cross-tenant (23/08/2026, 07:27 BRT)
+
+O teste `0e0163c` e a reconciliação documental `037053c` estão publicados em
+`origin/agent/sync-v4-full-program`. Após `git fetch`,
+`HEAD == origin == 037053c77c841398b50e06f5bb02ab1b56bee87b`. O checker
+canônico continua em 11 PASS, 1 WARN histórico e 0 FAIL; somente o cache
+user-owned `packages/design-system/tsconfig.vue.tsbuildinfo` permanece dirty e
+fora dos commits.
