@@ -823,3 +823,15 @@ failpoints. Redis failover real, provider, SPA/B2c, paridade Vetus, WCAG,
 operações target-like, cobertura e release continuam gates separados. O cache
 user-owned `packages/design-system/tsconfig.vue.tsbuildinfo` permanece fora de
 qualquer commit.
+
+## Publicação confirmada — internação HTTP A/B e cache de auditoria
+
+O código está em `c647db1` e a documentação/controle-plane desta fatia foi
+publicada em `4a99ff3` (`docs: record inpatient isolation continuation`) no
+branch `origin/agent/sync-v4-full-program`. Após `git fetch`, `HEAD == origin ==
+4a99ff3c6caec43616dab285a2ab56526deeb69f`. O checker canônico permanece em
+11 PASS, 1 WARN histórico de ownership paralelo e 0 FAIL. O único caminho
+dirty é `packages/design-system/tsconfig.vue.tsbuildinfo`, preservado fora do
+stage. Retomar pelo artefato `CVG-002C4-inpatient-http-isolation-audit-cache-2026-08-23.md`
+e pela jornada admissão → handoff/permanência → inventário → alta → billing →
+recebimento/ledger/auditoria/outbox.
