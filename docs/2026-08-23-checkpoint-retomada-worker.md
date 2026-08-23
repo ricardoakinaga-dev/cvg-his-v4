@@ -24,8 +24,9 @@ python3 /home/ricardo/.codex/skills/engineering-framework/scripts/check_state.py
 
 O commit de implementação desta onda já está publicado em
 `b4f93fd5a0d6e62f80739ecac1d9aa4d08a5bef6` (`feat: compose durable worker
-consumers`). O commit final deste checkpoint será registrado após a
-reconciliação documental. O único caminho deliberadamente
+consumers`). O checkpoint documental foi publicado em
+`46490fa87cc5aea724a59a4cb071008bd0990c40` (`docs: save worker consumer
+checkpoint`). O único caminho deliberadamente
 fora de escopo é o cache gerado e pertencente ao usuário
 `packages/design-system/tsconfig.vue.tsbuildinfo`; ele não deve ser stageado,
 commitado, limpo ou revertido.
@@ -126,6 +127,16 @@ Manter separados e abertos: WebAuthn durável, atribuição de `account_id` na
 auditoria, callback ghost, hidratação cross-instance, RLS/FORCE RLS global,
 failover/clock-skew real do Redis, providers, SPA, paridade Vetus, WCAG,
 cobertura mínima, operações, deploy/restore e release.
+
+## Reconciliação documental
+
+`state.json`, `backlog.json`, `execution-log.jsonl` e `verification.jsonl`
+parseiam; os ledgers têm respectivamente `192` e `127` linhas. O checker
+canônico reproduz `10` PASS, `1` warning de ownership paralelo e `13` falhas
+históricas por enums antigos (`REVIEW`, `SECURITY_REVIEW`, `RED` e
+`PASS_BOUNDED`). Os registros antigos são append-only e não foram reescritos;
+essa normalização continua uma tarefa separada antes de qualquer promoção de
+gate.
 
 ## Regra de continuidade
 

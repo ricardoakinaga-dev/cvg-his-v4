@@ -442,6 +442,11 @@ cross-domain. O próximo maior gap é executar eventos sob a role restrita e
 reconciliar inbox/outbox, settlement, delivery pendente, replay, concorrência e
 isolamento A/B. O ERP/Quality Bar global continua `ACTIVE/IN_PROGRESS/PARTIAL`.
 
+Implementação publicada: `b4f93fd5a0d6e62f80739ecac1d9aa4d08a5bef6`; checkpoint
+documental publicado: `46490fa87cc5aea724a59a4cb071008bd0990c40`. O cache
+`packages/design-system/tsconfig.vue.tsbuildinfo` permanece user-owned e fora
+do stage.
+
 O ponteiro final do handoff documental é `720876ec1f5ce30275b1160df7ef5f35c6fb1b0e`;
 a implementação bounded está em `adde66b7a1b33333126f4832b3c728abb2db8500`.
 

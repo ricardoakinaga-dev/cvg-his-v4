@@ -469,3 +469,8 @@ pendentes. A próxima sessão deve publicar fixtures de eventos sob
 `NOBYPASSRLS`, testar inbox/outbox, settlement, replay/concurrency, rollback e
 isolamento A/B; transaction-id global, card cross-tenant, retry/DLQ, failpoints,
 Helm e os gates globais continuam abertos.
+
+Implementação publicada: `b4f93fd5a0d6e62f80739ecac1d9aa4d08a5bef6`; checkpoint
+documental publicado: `46490fa87cc5aea724a59a4cb071008bd0990c40`. O cache
+`packages/design-system/tsconfig.vue.tsbuildinfo` permanece user-owned e fora
+do stage.

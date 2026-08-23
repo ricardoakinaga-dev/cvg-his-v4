@@ -14,17 +14,17 @@
   "active_execplan": ".agent/plans/premium-enterprise-mvp.md",
   "active_task": "CVG-002C6",
   "verification_state": "PARTIAL",
-  "repository_state": "Implementation checkpoint b4f93fd (`feat: compose durable worker consumers`) is published on origin/agent/sync-v4-full-program; the documentation checkpoint is being reconciled in the current working tree after the prior pointer 720876ec1f5ce30275b1160df7ef5f35c6fb1b0e. The preserved user-owned packages/design-system/tsconfig.vue.tsbuildinfo cache remains outside scope and must not be staged",
+  "repository_state": "Implementation checkpoint b4f93fd5a0d6e62f80739ecac1d9aa4d08a5bef6 (`feat: compose durable worker consumers`) and documentation checkpoint 46490fa87cc5aea724a59a4cb071008bd0990c40 (`docs: save worker consumer checkpoint`) are published on origin/agent/sync-v4-full-program; HEAD equals origin after fetch. The preserved user-owned packages/design-system/tsconfig.vue.tsbuildinfo cache remains outside scope and must not be staged",
   "latest_bounded_evidence": "2026-08-23: CVG-002C6 now composes payments → billing → webhooks in the worker and passes the real child-process test 1/1 against disposable PostgreSQL with LOGIN NOSUPERUSER/NOBYPASSRLS: /live, real ticks, /ready ready, required/registered consumers, durable guard, empty forbidden ACL, SIGKILL, same-port restart and clean SIGTERM. API package passed 331/331; worker groups passed; card authority 9/9, card repository SQL contract 3/3, webhook enqueue suite 18/18 and RLS coverage 154/155 with one documented exception passed. card.completed rejects unknown intent and account/billing/amount mismatch before settlement. Artifact: .agent/artifacts/CVG-002C6-worker-consumer-composition-2026-08-23.md. PostgreSQL card cross-tenant/replay, global transaction-id uniqueness, webhook retry/DLQ, domain-event fixtures, full failpoints, Helm equivalence and global ERP/Quality Bar remain open.",
   "instruction_scope_refs": [".agent/instruction-scope.md"],
   "last_gate_record": ".agent/gates/implementation-ready-CVG-002C6.json",
-  "last_event_id": "EVT-0191",
-  "state_revision": 179,
+  "last_event_id": "EVT-0192",
+  "state_revision": 180,
   "next_gate": "VERIFIED",
   "next_action": "The worker child-process boundary and exact payments → billing → webhooks composition are GREEN bounded, and card.completed now fails closed on missing or mismatched authority. Next: publish real payment/billing/webhook fixtures under LOGIN NOSUPERUSER NOBYPASSRLS and prove inbox/outbox, settlement, webhook enqueue, replay/concurrency, rollback and tenant isolation. Then decide/prove global transaction-id uniqueness, add PostgreSQL card cross-tenant tests, implement webhook retry/DLQ and execute full failpoints plus applied Helm equivalence. Keep WebAuthn durability, audit account attribution, callback ghost, asynchronous cross-instance hydration, global RLS/FORCE RLS, Redis/provider/SPA/parity/WCAG/coverage/operations/deploy/release explicitly IN_PROGRESS/PARTIAL",
   "blocked_by": [],
   "human_approval_required": [
     "Production go-live, credential rotation, provider selection, fiscal homologation, and residual HIGH/CRITICAL risk acceptance remain outside repository implementation authority"
   ],
-  "updated_at": "2026-08-23T19:36:00-03:00"
+  "updated_at": "2026-08-23T19:46:00-03:00"
 }
