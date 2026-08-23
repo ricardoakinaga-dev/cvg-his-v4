@@ -738,3 +738,17 @@ recebimento/ledger/auditoria/outbox. A matriz HTTP A/B da internação e a
 inspeção de auditoria em falha tardia ainda estão abertas, assim como Redis
 failover real, provider, SPA/B2c, paridade, WCAG, operações, cobertura e
 release. O estado permanece `IN_PROGRESS/PARTIAL`.
+## Reconciliação final publicada — diária HTTP/UoW (23/08/2026, 07:40 BRT)
+
+O commit documental/control-plane `46896bc4bf9990420c3ee9b651101c7c5376b6d4`
+está publicado em `origin/agent/sync-v4-full-program`; após `git fetch`,
+`HEAD == origin`. O checker canônico retorna 11 PASS, 1 WARN histórico de
+ownership paralelo e 0 FAIL. O único caminho dirty é o cache user-owned
+`packages/design-system/tsconfig.vue.tsbuildinfo`, preservado fora do stage.
+
+Para a próxima sessão, leia este checkpoint, o artefato
+`.agent/artifacts/CVG-002C3-inpatient-daily-charge-http-uow-2026-08-23.md` e a
+verificação `VFY-DOCS-CONTINUATION-018`. O próximo trabalho é a matriz HTTP A/B
+da internação e a revisão do cache de auditoria em falha tardia, seguida da
+jornada clínica-financeira completa. O programa permanece
+`IN_PROGRESS/PARTIAL`.
