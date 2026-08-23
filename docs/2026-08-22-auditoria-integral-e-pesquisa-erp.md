@@ -143,3 +143,48 @@ O checkpoint de implementação `46b84cb` fechou um conjunto local de lacunas do
 | Barreira legada | rota/API key 410 3/3, sem gateway nem `payment.pix.confirmed`; OpenAPI 335/386 | PASS limitado; falta integração HTTP→PostgreSQL específica e jornada SPA |
 
 O próximo passo permanece comportamental: provar reinício de processo e takeover multi-pool, fechar observabilidade/DLQ e repetir as regressões B1/B2a/ingress/HTTP. O benchmark de ezyVet, Shepherd, Digitail, Vetspire, Covetrus Ascend e Provet continua sendo critério de produto, não evidência de paridade. O ERP geral, Vetus `11/11 + 3/3`, WCAG, providers, deploy e produção permanecem não concluídos.
+
+## 11. Pesquisa oficial atualizada — capacidades que elevam o MVP em 2026
+
+A pesquisa foi atualizada em 22/08/2026 usando documentação e páginas oficiais. A regra continua sendo separar capacidade observável de promessa comercial: endpoints, release notes, schemas e manuais são evidência forte; páginas de produto e depoimentos orientam hipóteses, mas não substituem testes comportamentais.
+
+| Produto/fonte | Sinal atual verificável | Decisão de produto para o CVG HIS |
+| --- | --- | --- |
+| [ezyVet API release notes](https://developers.ezyvet.com/release-notes.html) | A versão 45.5 liga resultado diagnóstico a DICOM Study UID; as versões 45.3/45.2 adicionam disponibilidade/calendário, paginação por cursor para estoque e endpoints de espécie/raça, além de datas explícitas de descontinuação. | Tratar interoperabilidade como contrato versionado: DICOM Study UID write-once, cursores estáveis, timezone/site explícitos, compatibilidade e migração antes do sunset. |
+| [Shepherd features](https://www.shepherd.vet/features/) e [single-page SOAP](https://www.shepherd.vet/blog/ring-in-the-new-year-with-shepherd/) | SOAP, charge capture, instruções de alta, tarefas, whiteboard, autosave, activity log, portal, inventário e IA aparecem no fluxo clínico, incluindo visualização para tablet. | O prontuário deve ser a fonte do ato clínico: autosave/versionamento, cobrança derivada, alta e tarefas rastreáveis, sem telas administrativas desconectadas. |
+| [Digitail product](https://digitail.com/?hsLang=en), [atualização de abril/2026](https://digitail.com/blog/digitail-product-updates-april-2026-recap/) e [critérios de escolha](https://digitail.com/blog/questions-you-should-ask-when-choosing-a-pims/) | Flowboard/whiteboard, anestesia, laboratório/farmácia, app do tutor, AI SOAP, pagamentos, relatórios em tempo real, alertas de estoque/validade dentro da venda e comissões baseadas no dinheiro efetivamente recebido. | Priorizar visibilidade operacional ao vivo, FEFO/validade no ponto de venda, comissão sobre caixa liquidado, portal integrado e telemetria de no-show, SLA e margem. |
+| [Vetspire API](https://developer.vetspire.com/) | GraphQL tipado com queries/mutations por domínio, subscriptions, ambientes production/staging/sandbox, API keys revogáveis, limite de profundidade e cobertura de clínica, hospitalização, laboratório, inventário, billing e telemedicina. | Entregar uma plataforma de integração com sandbox separado, scopes mínimos, rotação/revogação, limites de consulta, subscriptions/outbox e schema público versionado; nunca expor segredo no cliente. |
+| [IDEXX Neo](https://software.idexx.com/products/neo/features) e [portfólio IDEXX](https://software.idexx.com/products) | Dashboard com pendências, prontuário e templates, diagnóstico em tempo real, boarding, pagamentos/assinatura digital, lembretes, inventário/purchase order e comparação explícita entre operação generalista e hospital/especialidade. | Oferecer onboarding/treinamento rápido sem sacrificar profundidade hospitalar: dashboard de exceções, templates clínicos, diagnóstico assíncrono, boarding, assinatura e estoque auditável no mesmo registro. |
+| [DaySmart Vet](https://www.daysmart.com/vet/) e [operations](https://www.daysmart.com/vet/solution/operations-management-software/) | Cobre small animal, hospital, móvel, equino, emergência e multi-local; traz treatment board, SOAP colaborativo com autosave, wellness plans, pagamentos reconciliados, inventário/validade, 40+ integrações e workflows de voz para SOAP. | Projetar por contexto operacional (consultório, hospital, móvel, equino, emergência), com sincronização offline/online segura, planos preventivos, autosave colaborativo, reconciliação e integrações sem acoplamento. |
+| [Covetrus Ascend stocktake](https://software.covetrus.com/emea/stocktake/) e [inpatient/mobile](https://software.covetrus.com/apac/veterinary-solutions/ascend-cloud-veterinary-software/) | Stocktake por localização com barcode, responsável, edição, aprovação e trilha; visão de internação/surgery em tela e acesso móvel para registrar tarefas e valores no local. | Estoque precisa de contagem cíclica, aprovação, barcode, localização e auditoria; internação precisa de flowboard 24h, handoff, tarefas e uso em tablet. |
+| [Provet Cloud release notes 2.3](https://www.provet.cloud/hubfs/Provet%20Cloud%20Release%20Notes/2.3%20Release%20Notes%20Complete.pdf) | Releases recentes continuam corrigindo autenticação de gateway laboratorial, ingestão de resultados e dados de pagamentos. | Integrar laboratório de forma resiliente: estados pendentes, retry/DLQ, proveniência, correção versionada, erro opaco e reconciliação financeira; não tratar “integração” como apenas uma tela de configuração. |
+
+### Critérios derivados para a construção
+
+1. **Ação clínica como unidade de trabalho:** SOAP, tratamento, consumo de lote, cobrança, autorização/consentimento, auditoria e outbox precisam compartilhar correlação, autoria e rollback; rede externa fica fora do lock e retorna para saga/reconciliação.
+2. **Operação em tempo real:** flowboard de consulta e internação deve expor estado, localização, responsável, próximo passo, atraso e risco; cada transição precisa ser idempotente, observável e recuperável após restart.
+3. **Estoque e caixa verdadeiros:** lotes, validade/FEFO, reserva, transferência, recebimento parcial, devolução, stocktake aprovado, comissão por pagamento liquidado e reconciliação devem produzir movimentos append-only e relatórios auditáveis.
+4. **Interoperabilidade evolutiva:** contratos têm versionamento, cursor, timezone, DICOM/FHIR provenance, ambientes separados, limites de uso, rotação/revogação, replay/DLQ e compatibilidade com sunsets publicados.
+5. **IA como assistência governada:** qualquer resumo/SOAP/diferencial deve registrar modelo/versão, origem, consentimento, revisão, aceite profissional, correção e retenção; sem autonomia silenciosa ou alteração clínica irreversível.
+6. **Experiência unificada:** portal/app do tutor, consentimento/e-signature, agenda, mensagens, resultados, prescrição/refil e pagamento devem compartilhar o mesmo paciente/episódio e nunca criar uma segunda fonte de verdade.
+
+Esses critérios atualizam a prioridade do backlog, mas não alteram o veredito: a implementação atual ainda é um slice de durabilidade PIX; paridade Vetus, fluxo clínico-financeiro completo, UX, integrações reais e certificação operacional exigem provas próprias.
+
+## 12. Checkpoint executável — recovery, DLQ/observabilidade e HTTP→PostgreSQL
+
+O checkpoint seguinte foi validado em PostgreSQL efêmero e no workspace local, sem provider externo ou credencial real. A implementação adiciona promoção observável de deliveries esgotadas, evento terminal seguro e métricas agregadas sem labels de tenant, delivery, evento, worker ou código de erro. O teste de takeover usa dois pools independentes: o pool A perde o lease depois do claim e antes de B1/CAS; o pool B assume com token/lease version novos, rejeita a execução stale e aplica B1 apenas uma vez.
+
+| Evidência | Resultado |
+| --- | ---: |
+| Worker completo | 54/54 |
+| Contexto transacional shared | 4/4 |
+| API payments route | 4/4 |
+| Worker PostgreSQL fencing/restart | 6/6 |
+| Service principals/RLS | 5/5 |
+| HTTP→PostgreSQL legacy 410 | 3/3 |
+| API keys module | 10/10 |
+| OpenAPI / secret scan / diff check | PASS — 335 paths/386 schemas |
+
+A integração HTTP prova que um `pix_transactions.payment_attempt_id` persistido retorna `410 LEGACY_PIX_CONFIRMATION_DISABLED` antes de gateway e outbox; uma API key de outro account recebe `404` opaco; um PIX direto sem vínculo continua `200` com um gateway e um evento. A evidência usa um adaptador de API key no harness porque o `DatabaseApiKeyRepository` de produção ainda chama `JSON.parse(row.permissions)` quando `pg` entrega JSONB como array e porque a resolução da chave ocorre antes do contexto tenant exigido por `withTenantQuery`. Este é um gap de produção documentado, não uma conclusão de autenticação end-to-end.
+
+O próximo ciclo deve corrigir essa fronteira com uma capacidade pré-contexto least-privilege compatível com RLS, além de publicar DLQ/runbook/alertas e abrir o gate B2c/SPA separadamente. A prova não promove o ERP, a paridade Vetus, providers, UX, operações ou release.

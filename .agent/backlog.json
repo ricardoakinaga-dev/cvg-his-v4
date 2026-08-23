@@ -69,9 +69,7 @@
       "priority": "P0",
       "status": "IN_PROGRESS",
       "origin": "CVG-002B2 decomposition plus independent architecture, security, official-research and TDD reviews",
-      "dependencies": [
-        "CVG-002B2A"
-      ],
+      "dependencies": ["CVG-002B2A"],
       "owner": "B2b root integrator",
       "acceptance_summary": "A raw-body HMAC-authenticated synthetic callback durably persists an immutable tenant receipt and dedicated delivery before ACK; a fenced worker resolves a non-interactive service principal and invokes only the shared B1 core, which owns billing-first staging plus settlement before the same UoW completes delivery under replay, concurrency, restart and RLS without legacy settlement or secret leakage.",
       "evidence_refs": [
@@ -95,9 +93,15 @@
         ".agent/artifacts/CVG-002B2B-worker-uow-legacy-410-2026-08-22.md",
         ".agent/verification.jsonl#VFY-CVG-002B2B-UOW-001",
         ".agent/verification.jsonl#VFY-CVG-002B2B-ROLE-002",
-        ".agent/verification.jsonl#VFY-CVG-002B2B-410-001"
+        ".agent/verification.jsonl#VFY-CVG-002B2B-410-001",
+        ".agent/artifacts/CVG-002B2B-recovery-dlq-legacy-http-2026-08-22.md",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-RESTART-001",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-DLQ-001",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-HTTP-POSTGRES-002",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-PRINCIPAL-002",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-UOW-002"
       ],
-      "next_action": "Prove process crash/restart and multi-pool takeover plus DLQ/observability; extend HTTP-to-PostgreSQL evidence for the attempt-linked legacy 410; rerun B1/B2a/ingress/HTTP regressions and reassess VERIFIED while preserving 18/18 B1, 35/35 verifier/keyring, 77/77 focused, 11/11 ingress, 13/13 HTTP, 2/2 HTTP-to-PostgreSQL, 8/8 ACL and 48/48 worker evidence."
+      "next_action": "Correct the least-privilege pre-context API-key/RLS capability exposed by the adapter-backed HTTP→PostgreSQL proof; add operational DLQ/runbook/alerts; rerun B1/B2a/ingress/HTTP regressions and reassess VERIFIED while preserving 18/18 B1, 35/35 verifier/keyring, 77/77 focused, 11/11 ingress, 13/13 HTTP, 3/3 HTTP-to-PostgreSQL, 8/8 ACL, 5/5 service-principal and 54/54 worker evidence."
     },
     {
       "id": "CVG-003",
@@ -119,10 +123,7 @@
       "priority": "P1",
       "status": "TODO",
       "origin": "docs/2026-07-10-auditoria-paridade-funcional-vetus.md and the active August backlog",
-      "dependencies": [
-        "CVG-002",
-        "CVG-003"
-      ],
+      "dependencies": ["CVG-002", "CVG-003"],
       "owner": "unassigned",
       "acceptance_summary": "All eleven general and three clinical parity areas pass self-contained PostgreSQL-backed journeys with retries disabled, no skips, two tenants, restart, concurrency and failure injection where applicable.",
       "evidence_refs": [],
@@ -135,10 +136,7 @@
       "priority": "P1",
       "status": "TODO",
       "origin": "PAY-001, fiscal, laboratory, communications, storage and scanner gaps in the active August backlog",
-      "dependencies": [
-        "CVG-002",
-        "CVG-003"
-      ],
+      "dependencies": ["CVG-002", "CVG-003"],
       "owner": "unassigned",
       "acceptance_summary": "Payment, NFS-e, laboratory and communications providers have selected sandboxes, signed callbacks, replay/idempotency, retry/DLQ, reconciliation, outage behavior and operator evidence.",
       "evidence_refs": [],
@@ -151,10 +149,7 @@
       "priority": "P1",
       "status": "TODO",
       "origin": "G4/G5 and target-environment gaps in the active August backlog",
-      "dependencies": [
-        "CVG-003",
-        "CVG-004"
-      ],
+      "dependencies": ["CVG-003", "CVG-004"],
       "owner": "unassigned",
       "acceptance_summary": "WCAG 2.2 AA, performance SLOs, deploy/rollback, backup/restore, failover, observability and Game Day pass in the authorized target environment with durable evidence.",
       "evidence_refs": [],

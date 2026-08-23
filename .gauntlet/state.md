@@ -61,13 +61,15 @@ Round 0 completed discovery and froze Quality Bar v1. Rounds 1-3 delivered local
 
 ## Latest bounded checkpoint
 
-`EVT-0068`–`EVT-0071` follow the earlier `EVT-0055`–`EVT-0067` callback, database, principal and consumer checkpoints. Implementation `46b84cb` is pushed to `origin/agent/sync-v4-full-program`; the corresponding continuation artifact and docs/state synchronization are included in this documentation checkpoint. The new bounded evidence is shared transaction context 3/3, worker package 48/48, disposable PostgreSQL worker 5/5, runtime ACL/RLS 8/8 with the exact read-only role query, legacy 410 route 3/3, PIX repository 5/5 and OpenAPI 335 paths/386 schemas. The consumer now has explicit allowlisted transient retry and an audited internal redrive; B1 and final delivery CAS reuse the shared tenant UoW without `idempotency_requests`.
+`EVT-0072`–`EVT-0076` follow the earlier `EVT-0068`–`EVT-0071` callback, database, principal and consumer checkpoints. The current implementation is still local and is ready for separate code/docs commits; the design-system tsbuildinfo cache remains excluded. Fresh bounded evidence is worker 54/54, shared transaction context 4/4, API route 4/4, disposable PostgreSQL worker fencing/restart 6/6, service principals/RLS 5/5, HTTP→PostgreSQL legacy barrier 3/3, API keys module 10/10 and OpenAPI 335 paths/386 schemas. Automatic attempts-exhausted promotions now emit safe terminal telemetry and aggregate metrics without unbounded labels.
 
-The callback/worker slice remains below the `VERIFIED` bar: lease-expiry takeover is covered, but process crash/restart and multi-pool recovery, DLQ/observability, HTTP-to-PostgreSQL evidence specific to the legacy 410, provider, SPA, Vetus parity, WCAG, operations and release gates remain open. No quality-bar dimension is promoted by this checkpoint.
+The recovery test uses two independent PostgreSQL pools: A loses its pool after claim and before B1/CAS; B takes over after lease expiry with a new fence and applies B1 once. The HTTP boundary proves owner `410`, foreign-account opaque `404` and direct legacy `200` with exactly one gateway/outbox effect. The harness necessarily uses a PostgreSQL API-key adapter because the production mapper mishandles JSONB arrays and pre-context validation cannot call `withTenantQuery`; this remains an explicit production gap.
+
+The callback/worker slice remains below the `VERIFIED` bar: a real SIGKILL/process restart matrix, DLQ endpoint/runbook/alerts, safe pre-context API-key capability, provider, SPA, Vetus parity, WCAG, operations and release gates remain open. No quality-bar dimension is promoted by this checkpoint.
 
 ## Stop Decision
 
 - State: ACTIVE
 - Reason: Required P0 criteria fail or have not run; target-environment work is externally blocked but local safe work remains.
 - Last integrated verification: B2b parser/ingress checkpoint `VFY-CVG-002B2B-PARSER-INGRESS-001` passed focused 77/77, PostgreSQL ingress 11/11, B1 18/18 and B2a 33/33 with independent APPROVE; B2a's VERIFIED gate still records coverage 1.646/1.646 at 83% lines/80,3% branches plus typecheck/lint, OpenAPI, RLS, dependency/secret scans and independent review PASS. Earlier SPA 1.001/1.001 evidence remains bounded and current.
-- Next largest locally actionable gap: prove process crash/restart and multi-pool takeover, add DLQ/observability, extend HTTP-to-PostgreSQL evidence for the legacy `410`, then rerun the bounded regressions; coherent SPA remains separate `B2c` work.
+- Next largest locally actionable gap: fix the least-privilege API-key pre-context boundary, add operational DLQ/runbook/alerts, then rerun the bounded regressions; coherent SPA remains separate `B2c` work.

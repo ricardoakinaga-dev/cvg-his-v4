@@ -4,9 +4,7 @@
   "goal": "Entregar um ERP veterinario Premium Enterprise MVP com paridade funcional Vetus comprovada por comportamento e evidencia atual",
   "project_profile": "BROWNFIELD",
   "work_mode": "FEATURE",
-  "work_mode_overlays": [
-    "MIGRATION"
-  ],
+  "work_mode_overlays": ["MIGRATION"],
   "lifecycle_stage": "BUILD",
   "active_activity": "TEST",
   "engineering_tier": "T4_CRITICAL",
@@ -16,18 +14,16 @@
   "active_execplan": ".agent/plans/premium-enterprise-mvp.md",
   "active_task": "CVG-002B2B",
   "verification_state": "PARTIAL",
-  "repository_state": "CVG-002B parser/fingerprint plus durable 0111 receipt/delivery ingress checkpoint is committed as 61cdef4 and pushed to origin/agent/sync-v4-full-program; the explicit non-production HTTP callback boundary is committed as be1cb47 and hardened/pushed as bbbf902, with OpenAPI alignment follow-up 705052b. Implementation checkpoint 26f3281 and documentation synchronization 3cba876 were followed by implementation hardening 46b84cb, all pushed to origin/agent/sync-v4-full-program. The slice now adds shared tenant UoW, explicit transient PostgreSQL/transport retry, bounded audited redrive, actual read-only worker-role principal query and attempt-linked legacy 410 evidence: shared context 3/3, worker 48/48, PostgreSQL worker 5/5, runtime ACL/RLS 8/8, route 3/3, PIX repository 5/5 and OpenAPI 335 paths/386 schemas. It remains below VERIFIED because process crash/restart and multi-pool recovery, DLQ/observability, HTTP-to-PostgreSQL evidence for the legacy 410, provider, SPA and release evidence are open. Corrected 18/18 B1 remains extracted into module-pix with API shims, and the preserved user-owned packages/design-system/tsconfig.vue.tsbuildinfo cache remains outside scope",
-  "instruction_scope_refs": [
-    ".agent/instruction-scope.md"
-  ],
+  "repository_state": "CVG-002B parser/fingerprint plus durable 0111 receipt/delivery ingress checkpoint is committed as 61cdef4 and pushed to origin/agent/sync-v4-full-program; the explicit non-production HTTP callback boundary is committed as be1cb47 and hardened/pushed as bbbf902, with OpenAPI alignment follow-up 705052b. Implementation checkpoint 26f3281 and documentation synchronization 3cba876 were followed by implementation hardening 46b84cb, all pushed to origin/agent/sync-v4-full-program. The current local continuation adds additive attempts-exhausted telemetry, bounded aggregate metrics, two-pool lease-fenced recovery, adapter-backed HTTP-to-PostgreSQL legacy 410 evidence, non-vacuous principal backfill/RLS negatives and direct nested-UoW/API regressions: worker 54/54, shared context 4/4, PostgreSQL worker 6/6, service principals 5/5, HTTP-to-PostgreSQL 3/3, API route 4/4, API keys 10/10, OpenAPI 335 paths/386 schemas. It remains below VERIFIED because the default database API-key pre-context capability is unsafe/incompatible, real SIGKILL restart matrix, operational DLQ/runbook/alerts, provider, SPA and release evidence are open. Corrected 18/18 B1 remains extracted into module-pix with API shims, and the preserved user-owned packages/design-system/tsconfig.vue.tsbuildinfo cache remains outside scope",
+  "instruction_scope_refs": [".agent/instruction-scope.md"],
   "last_gate_record": ".agent/gates/implementation-ready-CVG-002B2B.json",
-  "last_event_id": "EVT-0071",
-  "state_revision": 60,
+  "last_event_id": "EVT-0076",
+  "state_revision": 65,
   "next_gate": "VERIFIED",
-  "next_action": "Prove process crash/restart and multi-pool takeover plus DLQ/observability; extend HTTP-to-PostgreSQL evidence for the attempt-linked legacy 410; rerun B1/B2a/ingress/HTTP regressions and reassess VERIFIED while preserving 18/18 B1, 35/35 verifier/keyring, 77/77 focused, 11/11 ingress, 13/13 HTTP, 2/2 HTTP-to-PostgreSQL, 8/8 ACL and 48/48 worker evidence",
+  "next_action": "Correct the least-privilege pre-context API-key/RLS capability exposed by the adapter-backed HTTP-to-PostgreSQL proof; add operational DLQ/runbook/alerts; rerun B1/B2a/ingress/HTTP regressions and reassess VERIFIED while preserving 18/18 B1, 35/35 verifier/keyring, 77/77 focused, 11/11 ingress, 13/13 HTTP, 3/3 HTTP-to-PostgreSQL, 8/8 ACL, 5/5 service-principal and 54/54 worker evidence",
   "blocked_by": [],
   "human_approval_required": [
     "Production go-live, credential rotation, provider selection, fiscal homologation, and residual HIGH/CRITICAL risk acceptance remain outside repository implementation authority"
   ],
-  "updated_at": "2026-08-22T23:15:00-03:00"
+  "updated_at": "2026-08-22T23:42:00-03:00"
 }
