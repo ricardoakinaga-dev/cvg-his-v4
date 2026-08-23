@@ -215,7 +215,8 @@ Arquivo: `infra/observability/prometheus-alerts.yml`
 ### 9.0 PIX settlement DLQ
 
 O painel **PIX Settlement DLQ (current)** acompanha o backlog durável atual,
-refrescado pelo worker sem labels de tenant. O contador
+recalculado por cada réplica do worker sem labels de tenant; a consulta usa
+`max(...)` para evitar dupla contagem entre pods. O contador
 `worker_pix_provider_settlement_reconciliation_required_total` continua
 disponível para investigar novas promoções, mas não é a fonte do alerta. A
 lista e o redrive são tenant-scoped e documentados no

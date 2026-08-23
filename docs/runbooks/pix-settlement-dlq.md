@@ -15,10 +15,12 @@ principal autenticado com `audit.read`/`audit.write`.
 - Dashboard: painel **PIX Settlement DLQ (current)** em
   `infra/observability/grafana/cvg-his-v2-api-dashboard.json`
 
-O gauge representa o backlog durável atual agregado pelo worker, sem labels de
-tenant. O contador é monotônico por processo e serve apenas para investigar
-novas promoções; não use esse contador sozinho para decidir que a fila está
-vazia.
+Cada worker replica recalcula o mesmo backlog durável do conjunto de contas
+que descobriu, sem labels de tenant. O alerta e o painel usam `max(...)` entre
+as séries para não contar duas vezes a mesma fila quando há várias réplicas;
+o valor é um sinal de estado, não uma soma de pods. O contador é monotônico por
+processo e serve apenas para investigar novas promoções; não use esse contador
+sozinho para decidir que a fila está vazia.
 
 ## Procedimento seguro
 

@@ -34,4 +34,19 @@ describe('Prometheus alerts and SLO catalog stay aligned', () => {
     expect(configs['api-error-rate']?.alertThreshold).toBe(0.5);
     expect(configs['api-error-rate']?.criticalThreshold).toBe(1);
   });
+
+  it('uses max aggregation for the replicated full-account PIX DLQ gauge', () => {
+    expect(alerts).toContain(
+      'expr: max(worker_pix_provider_settlement_reconciliation_required) > 0'
+    );
+    const dashboard = JSON.parse(
+      readFileSync('infra/observability/grafana/cvg-his-v2-api-dashboard.json', 'utf8')
+    ) as { readonly panels?: readonly { readonly targets?: readonly { readonly expr?: string }[] }[] };
+    const pixPanel = dashboard.panels?.find((panel) =>
+      panel.targets?.some((target) => target.expr?.includes('worker_pix_provider_settlement_reconciliation_required'))
+    );
+    expect(pixPanel?.targets?.[0]?.expr).toBe(
+      'max(worker_pix_provider_settlement_reconciliation_required)'
+    );
+  });
 });

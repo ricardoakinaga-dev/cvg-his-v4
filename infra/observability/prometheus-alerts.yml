@@ -111,7 +111,7 @@ groups:
           description: 'API está em fallback in-memory há mais de 5 minutos. Dados serão perdidos em restart.'
 
       - alert: CVG_HIS_PIX_Settlement_ReconciliationRequired
-        expr: sum(worker_pix_provider_settlement_reconciliation_required) > 0
+        expr: max(worker_pix_provider_settlement_reconciliation_required) > 0
         for: 5m
         labels:
           severity: critical

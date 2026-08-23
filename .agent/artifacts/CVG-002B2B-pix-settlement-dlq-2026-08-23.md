@@ -41,6 +41,9 @@ commit antes de qualquer promoção de gate
   por contagens PostgreSQL tenant-scoped a cada 15s. O contador
   `worker_pix_provider_settlement_reconciliation_required_total` fica como
   sinal histórico de novas promoções, não como fonte do alerta.
+- Cada réplica recalcula o conjunto de contas conhecido; Prometheus/Grafana
+  usam `max(...)` entre as séries para evitar dupla contagem quando há vários
+  workers observando a mesma fila.
 - Painel Grafana **PIX Settlement DLQ (current)** foi adicionado ao dashboard
   API.
 - Procedimento operacional: [`docs/runbooks/pix-settlement-dlq.md`](../../docs/runbooks/pix-settlement-dlq.md).
@@ -65,7 +68,8 @@ commit antes de qualquer promoção de gate
 - O gauge é atualizado pelo worker em intervalo de 15s; uma falha de refresh
   é registrada e conserva o último valor conhecido até a próxima tentativa.
 - A prova de backlog é agregada entre as contas conhecidas pelo worker e não
-  expõe labels de tenant; a lista operacional continua tenant-scoped.
+  expõe labels de tenant; a lista operacional continua tenant-scoped. Em
+  múltiplas réplicas, o valor exibido é o máximo observado, não a soma de pods.
 - Não prova provedor PIX real, SIGKILL/restart de processo, política de
   rate-limit multi-réplica, SPA, paridade Vetus, WCAG, deploy/restore ou
   release.

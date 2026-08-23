@@ -72,7 +72,8 @@
   redrive), runtime grants 9/9, worker 54/54, alert alignment 4/4, OpenAPI
   337/390, API/DB/worker builds and Helm/YAML/JSON/shell checks PASS. The
   alert/panel use the current DB-backed gauge
-  `worker_pix_provider_settlement_reconciliation_required`; direct 404/503
+  `worker_pix_provider_settlement_reconciliation_required` with `max(...)`
+  across replicated full-account observers; direct 404/503
   envelopes include the request correlation ID required by OpenAPI.
 - The quality bar remains frozen and `CVG-002B2B` remains `IN_PROGRESS/PARTIAL`.
   The next local work is multi-replica rate-limit policy, minimal principal,

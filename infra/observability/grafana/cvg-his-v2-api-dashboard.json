@@ -697,7 +697,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "sum(worker_pix_provider_settlement_reconciliation_required)",
+          "expr": "max(worker_pix_provider_settlement_reconciliation_required)",
           "legendFormat": "Current terminal reconciliation-required deliveries",
           "refId": "A"
         }

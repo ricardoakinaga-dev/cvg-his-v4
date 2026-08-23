@@ -143,7 +143,9 @@ artefato detalhado está em
   alerta/painel usam o gauge atual
   `worker_pix_provider_settlement_reconciliation_required`, alimentado por
   contagem PostgreSQL tenant-scoped a cada 15s; o contador monotônico fica
-  reservado para histórico de promoções.
+  reservado para histórico de promoções. Como cada worker observa o conjunto
+  completo de contas, o alerta/painel usam `max(...)` para não duplicar o
+  backlog quando há múltiplas réplicas.
 - Os erros diretos `404/503` também carregam `correlationId`, alinhados ao
   envelope `ErrorResponse` do OpenAPI.
 - Evidência fresca: route 4/4; PostgreSQL/ACL 3/3, incluindo backlog durável

@@ -97,7 +97,8 @@ Fresh evidence: route 4/4; disposable PostgreSQL DLQ/ACL 3/3 (durable backlog
 1→0 after redrive); runtime role contract 9/9; worker 54/54; alert alignment
 4/4; API/DB/worker builds, OpenAPI 337/390, Helm static checks, YAML/JSON
 parsers and shell syntax PASS. The alert/panel use the current DB-backed gauge
-`worker_pix_provider_settlement_reconciliation_required`; direct 404/503
+`worker_pix_provider_settlement_reconciliation_required` with `max(...)` across
+replicated full-account observers; direct 404/503
 envelopes include the request correlation ID required by OpenAPI. This reduces
 the operational black hole but does not promote any Quality Bar dimension.
 `CVG-002B2B` remains `IN_PROGRESS/PARTIAL`; next gaps are multi-replica
