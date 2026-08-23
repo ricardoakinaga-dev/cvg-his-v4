@@ -191,3 +191,11 @@ Na próxima sessão, não repetir a leitura integral de `docs/` se o manifesto
 continuar igual; validar o hash, ler este checkpoint e conferir os ledgers. Se o
 manifesto mudar, registrar nova contagem e motivo. Não converter score
 estrutural, presença de rota ou teste de um slice em aprovação do ERP.
+
+## Publicação deste checkpoint
+
+O checkpoint, o artefato, os ledgers e o estado canônico foram publicados no
+commit 30fa5271b94e2d13451295504f23b843b6a94316, no branch
+agent/sync-v4-full-program. A reconciliação confirmou HEAD igual a origin; o
+único caminho dirty continua sendo o cache user-owned
+packages/design-system/tsconfig.vue.tsbuildinfo.
