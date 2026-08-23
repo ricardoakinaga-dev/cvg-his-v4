@@ -15,6 +15,8 @@ release.
   (`feat: harden PostgreSQL API-key boundary`)
 - Documentação publicada: `8d226d0`; reconciliação de hashes: `3c76ce0`;
   ponteiros finais anteriores: `409efea`
+- Este checkpoint documental foi publicado em `f0c38c3` (`docs: save
+  continuation checkpoint`).
 - O arquivo user-owned
   `packages/design-system/tsconfig.vue.tsbuildinfo` permanece modificado e
   deve ficar fora de qualquer commit.
