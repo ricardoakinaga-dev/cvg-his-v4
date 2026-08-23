@@ -501,3 +501,14 @@ pnpm readiness:enterprise
 
 O estado global permanece `IN_PROGRESS/PARTIAL`; não marcar `CVG-002B2B`,
 `CVG-002`, paridade ou o ERP como concluídos.
+
+## Publicação confirmada — 23/08/2026, 06:09 BRT
+
+O checkpoint de auditoria/documentação foi publicado em `1400d83`
+(`docs: record integral audit continuation checkpoint`). A reconciliação do
+estado canônico foi publicada em `02f7927` (`docs: reconcile audit
+control-plane state`). Após `git fetch`, `HEAD` e
+`origin/agent/sync-v4-full-program` estão ambos em
+`02f79278da71c4fe50b751fc05e4f3636b5d6f0e`. O único caminho dirty é o cache
+user-owned `packages/design-system/tsconfig.vue.tsbuildinfo`, deliberadamente
+fora dos commits.
