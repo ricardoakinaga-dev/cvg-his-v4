@@ -29,10 +29,7 @@ import {
   DatabaseOwnerPatientLinkRepository,
   DatabasePatientMergeRepository
 } from '@cvg-his-v2/module-patients';
-import type {
-  PatientRepository,
-  OwnerPatientLinkRepository
-} from '@cvg-his-v2/module-patients';
+import type { PatientRepository, OwnerPatientLinkRepository } from '@cvg-his-v2/module-patients';
 import { DatabaseLaboratoryResultImportRepository } from './laboratory-result-import-repository.js';
 import {
   DatabaseClinicalHandoffRepository,
@@ -112,10 +109,7 @@ import {
   DatabaseProcurementRepository
 } from '@cvg-his-v2/module-inventory';
 import { DatabaseSchedulingRepository } from '@cvg-his-v2/module-scheduling';
-import {
-  DatabaseStaffRepository,
-  DatabaseStaffTimeOffRepository
-} from '@cvg-his-v2/module-staff';
+import { DatabaseStaffRepository, DatabaseStaffTimeOffRepository } from '@cvg-his-v2/module-staff';
 import { DatabaseUsersRepository } from '@cvg-his-v2/module-users';
 import { DatabaseTriageRepository } from '@cvg-his-v2/module-triage';
 import { DatabaseAccessControlRepository } from '@cvg-his-v2/module-access-control';
@@ -137,9 +131,7 @@ import type {
   WebhookId,
   WebhookSummary
 } from '@cvg-his-v2/shared-types';
-import {
-  DatabaseAgendaConfigRepository
-} from './repositories/database-agenda-config.repository.js';
+import { DatabaseAgendaConfigRepository } from './repositories/database-agenda-config.repository.js';
 import { InMemoryAgendaConfigRepository } from './repositories/agenda-config-repository.js';
 import type {
   OwnerId,
@@ -169,6 +161,7 @@ import type {
 import type { RuntimeRepositories } from './runtime.js';
 import type { PersistenceMode } from './app-state.js';
 import { DatabasePixTransactionRepository } from './pix-transaction-repository.js';
+import { DatabaseCardTransactionRepository } from './card-transaction-repository.js';
 import { DatabaseEncounterCashReceiptRepository } from './encounter-cash-receipt-repository.js';
 import { DatabaseEncounterPixPaymentAttemptRepository } from './encounter-pix-payment-attempt-repository.js';
 import { DatabasePixProviderSettlementDlqRepository } from './pix-provider-settlement-dlq-repository.js';
@@ -401,6 +394,7 @@ export const productionDatabaseRepositoryKeys = [
   'financialPayables',
   'ledger',
   'pixTransaction',
+  'cardTransaction',
   'encounterCashReceipt',
   'encounterPixPaymentAttempt'
 ] as const satisfies readonly (keyof RuntimeRepositories)[];
@@ -427,9 +421,7 @@ export function assertProductionDatabaseReadiness(options: {
 }): void {
   const missingRepositories = findMissingProductionRepositories(options.repositories);
   const missingContracts = [
-    ...(missingRepositories.length > 0
-      ? [`repositories=${missingRepositories.join(',')}`]
-      : []),
+    ...(missingRepositories.length > 0 ? [`repositories=${missingRepositories.join(',')}`] : []),
     ...(!options.unitOfWork ? ['unitOfWork'] : [])
   ];
 
@@ -485,10 +477,10 @@ class InMemorySessionRepository {
   ): Promise<PersistedSessionRecord | null> {
     const existing = this.#sessions.get(params.sessionId);
     if (
-      !existing
-      || !existing.active
-      || existing.revokedAt
-      || existing.refreshNonce !== params.expectedRefreshNonce
+      !existing ||
+      !existing.active ||
+      existing.revokedAt ||
+      existing.refreshNonce !== params.expectedRefreshNonce
     ) {
       return null;
     }
@@ -1149,11 +1141,10 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
       const mfaTablesReady =
         (await databaseTableExists('mfa_credentials')) &&
         (await databaseTableHasColumns('mfa_credentials', mfaCredentialRequiredColumns));
-      const mfaLoginChallengesReady = await databaseTableExists(
-        'auth_mfa_login_challenges'
-      );
+      const mfaLoginChallengesReady = await databaseTableExists('auth_mfa_login_challenges');
       const outboxTablesReady = await databaseTableExists('outbox_events');
       const pixTablesReady = await databaseTableExists('pix_transactions');
+      const cardTablesReady = await databaseTableExists('card_transactions');
       const pixProviderSettlementDlqReady =
         (await databaseTableExists('pix_provider_events')) &&
         (await databaseTableExists('pix_provider_event_deliveries')) &&
@@ -1235,7 +1226,7 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
         inventory: inventoryTablesReady
           ? new DatabaseInventoryRepository({
               stockMovementsEnabled: inventoryStockMovementsReady
-          })
+            })
           : undefined,
         procurement: procurementTablesReady ? new DatabaseProcurementRepository() : undefined,
         scheduling: schedulingTablesReady ? new DatabaseSchedulingRepository() : undefined,
@@ -1248,10 +1239,8 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
         counterSales: counterSalesTablesReady ? new DatabaseCounterSalesRepository() : undefined,
         quotes: quotesTablesReady ? new DatabaseQuotesRepository() : undefined,
         cash: cashTablesReady ? new DatabaseCashRepository() : undefined,
-        staff: await databaseTableExists('staff') ? new DatabaseStaffRepository() : undefined,
-        staffTimeOff: staffTimeOffTableReady
-          ? new DatabaseStaffTimeOffRepository()
-          : undefined,
+        staff: (await databaseTableExists('staff')) ? new DatabaseStaffRepository() : undefined,
+        staffTimeOff: staffTimeOffTableReady ? new DatabaseStaffTimeOffRepository() : undefined,
         mfa: mfaTablesReady ? new DatabaseMfaRepository(db) : undefined,
         mfaLoginChallenge: mfaLoginChallengesReady
           ? new DatabaseMfaLoginChallengeRepository(db)
@@ -1262,6 +1251,7 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
         apiKey: apiKeyTablesReady ? new DatabaseApiKeyRepository() : undefined,
         outbox: outboxTablesReady ? new DatabaseOutboxRepository() : undefined,
         pixTransaction: pixTablesReady ? new DatabasePixTransactionRepository() : undefined,
+        cardTransaction: cardTablesReady ? new DatabaseCardTransactionRepository() : undefined,
         encounterCashReceipt: encounterCashReceiptsReady
           ? new DatabaseEncounterCashReceiptRepository()
           : undefined,
@@ -1284,7 +1274,7 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
       });
       logger.info('Database repositories initialized for critical auth/encounter runtime', {
         auditPersistence: 'database',
-    sessionPersistence: 'database',
+        sessionPersistence: 'database',
         ownerPatientLinkPersistence: ownerPatientLinksReady ? 'database' : 'derived-from-patient',
         prescriptionPersistence: clinicalEntriesReady ? 'database' : 'in-memory',
         billingPersistence: billingTablesReady ? 'database' : 'in-memory',

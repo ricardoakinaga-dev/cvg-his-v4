@@ -95,10 +95,16 @@ export function createWorkerHealthResponse(
             ? 'Worker is not ready: durable consumer guard is unavailable'
             : !consumersReady
               ? `Worker is not ready: missing event bus consumers: ${missingConsumers.join(', ') || 'manifest empty'}`
-          : loopHealthy
-            ? `Loop healthy; ticks=${deps.ticksCompleted}; lastTickAt=${deps.lastTickAt ?? 'never'}`
-            : `Worker loop degraded: ${deps.lastError ?? 'unknown error'}`
+              : loopHealthy
+                ? `Loop healthy; ticks=${deps.ticksCompleted}; lastTickAt=${deps.lastTickAt ?? 'never'}`
+                : `Worker loop degraded: ${deps.lastError ?? 'unknown error'}`
       }
+    },
+    eventBus: {
+      requiredConsumers: [...deps.requiredEventBusConsumers],
+      registeredConsumers: [...deps.registeredEventBusConsumers],
+      deliveryGuaranteesReady: deps.deliveryGuaranteesReady,
+      durableConsumerGuardReady: deps.durableConsumerGuardReady
     }
   };
 }

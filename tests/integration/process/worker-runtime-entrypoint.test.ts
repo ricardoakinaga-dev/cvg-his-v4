@@ -164,35 +164,6 @@ async function waitForHealth(
   throw new Error(`worker health ${path} did not become ready: ${lastError}`);
 }
 
-async function waitForDegradedReadiness(port: number, timeoutMs = 15_000): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  let lastError = 'no response';
-  while (Date.now() < deadline) {
-    try {
-      const response = await fetch(`http://127.0.0.1:${port}/ready`, {
-        signal: AbortSignal.timeout(500)
-      });
-      const payload = (await response.json()) as Record<string, unknown>;
-      const readiness = payload.readiness as Record<string, unknown> | undefined;
-      const dependencies = payload.dependencies as Record<string, unknown> | undefined;
-      const worker = dependencies?.worker as Record<string, unknown> | undefined;
-      if (
-        response.status === 503 &&
-        readiness?.ready === false &&
-        worker?.state === 'degraded' &&
-        String(worker.detail).includes('missing event bus consumers')
-      ) {
-        return;
-      }
-      lastError = `${response.status} ${JSON.stringify(payload)}`;
-    } catch (error) {
-      lastError = error instanceof Error ? error.message : String(error);
-    }
-    await new Promise((resolveSleep) => setTimeout(resolveSleep, 50));
-  }
-  throw new Error(`worker readiness did not remain explicitly degraded: ${lastError}`);
-}
-
 async function stopWorker(
   handle: WorkerHandle,
   signal: NodeJS.Signals
@@ -292,12 +263,15 @@ describe('real worker entrypoint under restricted runtime role', () => {
         return liveness?.live === true;
       });
       await waitForHealth(port, '/metrics', (payload) => Number(payload.ticksCompleted) > 0);
-      await waitForDegradedReadiness(port);
+      await waitForHealth(port, '/ready', (payload) => {
+        const readiness = payload.readiness as Record<string, unknown> | undefined;
+        return readiness?.ready === true;
+      });
       firstReady = await waitForHealth(port, '/health', (payload) => {
         const dependencies = payload.dependencies as Record<string, unknown> | undefined;
         const database = dependencies?.database as Record<string, unknown> | undefined;
         const worker = dependencies?.worker as Record<string, unknown> | undefined;
-        return database?.state === 'healthy' && worker?.state === 'degraded';
+        return database?.state === 'healthy' && worker?.state === 'ready';
       });
     } catch (error) {
       const forbidden = await inspectWorkerMutationPrivileges(workerUrl);
@@ -312,10 +286,16 @@ describe('real worker entrypoint under restricted runtime role', () => {
     const firstWorker = firstHealth.worker as Record<string, unknown>;
     const firstWorkerDependency = (firstHealth.dependencies as Record<string, unknown>)
       .worker as Record<string, unknown>;
-    expect(firstReady.readiness).toMatchObject({ ready: false, persistenceMode: 'database' });
+    expect(firstReady.readiness).toMatchObject({ ready: true, persistenceMode: 'database' });
     expect(Number(firstWorker.uptime)).toBeGreaterThan(0);
-    expect(firstWorkerDependency.state).toBe('degraded');
-    expect(String(firstWorkerDependency.detail)).toMatch(/missing event bus consumers/);
+    expect(firstWorkerDependency.state).toBe('ready');
+    expect(String(firstWorkerDependency.detail)).toMatch(/Loop healthy/);
+    expect(firstHealth.eventBus).toMatchObject({
+      requiredConsumers: ['payments', 'billing', 'webhooks'],
+      registeredConsumers: ['payments', 'billing', 'webhooks'],
+      deliveryGuaranteesReady: true,
+      durableConsumerGuardReady: true
+    });
     const firstForbidden = await inspectWorkerMutationPrivileges(workerUrl);
     expect(firstForbidden, JSON.stringify(firstForbidden)).toEqual([]);
 
@@ -325,7 +305,10 @@ describe('real worker entrypoint under restricted runtime role', () => {
 
     const second = startWorker(workerUrl, port);
     await waitForHealth(port, '/metrics', (payload) => Number(payload.ticksCompleted) > 0);
-    await waitForDegradedReadiness(port);
+    await waitForHealth(port, '/ready', (payload) => {
+      const readiness = payload.readiness as Record<string, unknown> | undefined;
+      return readiness?.ready === true;
+    });
     const secondReady = await waitForHealth(port, '/health', (payload) => {
       const readiness = payload.readiness as Record<string, unknown> | undefined;
       const dependencies = payload.dependencies as Record<string, unknown> | undefined;
@@ -334,10 +317,10 @@ describe('real worker entrypoint under restricted runtime role', () => {
       return (
         readiness?.persistenceMode === 'database' &&
         database?.state === 'healthy' &&
-        worker?.state === 'degraded'
+        worker?.state === 'ready'
       );
     });
-    expect(secondReady.readiness).toMatchObject({ ready: false, persistenceMode: 'database' });
+    expect(secondReady.readiness).toMatchObject({ ready: true, persistenceMode: 'database' });
     const secondHealth = (await (await fetch(`http://127.0.0.1:${port}/health`)).json()) as Record<
       string,
       unknown
@@ -346,8 +329,14 @@ describe('real worker entrypoint under restricted runtime role', () => {
     const secondWorkerDependency = (secondHealth.dependencies as Record<string, unknown>)
       .worker as Record<string, unknown>;
     expect(Number(secondWorker.uptime)).toBeGreaterThan(0);
-    expect(secondWorkerDependency.state).toBe('degraded');
-    expect(String(secondWorkerDependency.detail)).toMatch(/missing event bus consumers/);
+    expect(secondWorkerDependency.state).toBe('ready');
+    expect(String(secondWorkerDependency.detail)).toMatch(/Loop healthy/);
+    expect(secondHealth.eventBus).toMatchObject({
+      requiredConsumers: ['payments', 'billing', 'webhooks'],
+      registeredConsumers: ['payments', 'billing', 'webhooks'],
+      deliveryGuaranteesReady: true,
+      durableConsumerGuardReady: true
+    });
     const secondForbidden = await inspectWorkerMutationPrivileges(workerUrl);
     expect(secondForbidden, JSON.stringify(secondForbidden)).toEqual([]);
     expect(await stopWorker(second, 'SIGTERM')).toEqual({ code: 0, signal: null });

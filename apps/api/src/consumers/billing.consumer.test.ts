@@ -5,11 +5,22 @@ import type { OutboxEvent } from '@cvg-his-v2/module-event-bus';
 import { BillingEventHandlers } from './billing.consumer.js';
 
 function createMockBillingService(): BillingService {
-  return Object.assign({
-    async settleByRecordId(_recordId: never): Promise<never> {
-      throw new Error('should not be called');
-    }
-  }, { settleCalled: false }) as unknown as BillingService;
+  return Object.assign(
+    {
+      async hydrateFromDatabase(): Promise<void> {},
+      getOrThrow() {
+        return {
+          id: 'br_test',
+          accountId: 'acc_test',
+          currency: 'BRL'
+        };
+      },
+      async settleByRecordId(_recordId: never): Promise<never> {
+        throw new Error('should not be called');
+      }
+    },
+    { settleCalled: false }
+  ) as unknown as BillingService;
 }
 
 test('BillingEventHandlers handles billing.record.created without error', async () => {
@@ -23,6 +34,7 @@ test('BillingEventHandlers handles billing.record.created without error', async 
     moduleName: 'billing' as never,
     eventType: 'billing.record.created',
     payload: {
+      id: 'br_test',
       accountId: 'acc_test',
       encounterId: 'enc_123',
       patientId: 'pat_456',
@@ -53,6 +65,7 @@ test('BillingEventHandlers handles billing.status_changed without error', async 
     moduleName: 'billing' as never,
     eventType: 'billing.status_changed',
     payload: {
+      accountId: 'acc_test',
       recordId: 'br_test',
       encounterId: 'enc_123',
       previousStatus: 'pending',

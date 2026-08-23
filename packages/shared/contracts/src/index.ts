@@ -55,6 +55,12 @@ import type {
 } from '@cvg-his-v2/shared-types';
 
 export interface HealthResponse extends HealthStatus {
+  readonly eventBus?: {
+    readonly requiredConsumers: readonly string[];
+    readonly registeredConsumers: readonly string[];
+    readonly deliveryGuaranteesReady: boolean;
+    readonly durableConsumerGuardReady: boolean;
+  };
   readonly liveness: {
     readonly live: boolean;
     readonly initialized: boolean;

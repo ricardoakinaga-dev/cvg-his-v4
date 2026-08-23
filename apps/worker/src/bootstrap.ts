@@ -24,8 +24,29 @@ import {
 import {
   DatabaseEncounterFinancialRepository,
   DatabaseFinancialPayablesRepository,
-  FinancialIncomeStatementService
+  FinancialIncomeStatementService,
+  EncounterFinancialService
 } from '@cvg-his-v2/module-financial';
+import { BillingService, DatabaseBillingRepository } from '@cvg-his-v2/module-billing';
+import {
+  EncountersService,
+  DatabaseEncounterRepository,
+  DatabaseEncounterTimelineRepository
+} from '@cvg-his-v2/module-encounters';
+import { OwnersService, DatabaseOwnerRepository } from '@cvg-his-v2/module-owners';
+import {
+  PatientsService,
+  DatabasePatientRepository,
+  DatabaseOwnerPatientLinkRepository,
+  DatabasePatientMergeRepository
+} from '@cvg-his-v2/module-patients';
+import { DatabaseWebhookRepository, WebhooksService } from '@cvg-his-v2/module-webhooks';
+import {
+  DatabaseCardTransactionRepository,
+  DatabasePixTransactionRepository
+} from '@cvg-his-v2/module-payments';
+import type { WorkerEventConsumerRuntime } from './consumer-composition.js';
+import { createWorkerEventConsumerRuntime } from './consumer-composition.js';
 import type { NotificationRepository } from '@cvg-his-v2/module-notifications';
 import type { OutboxRepository } from '@cvg-his-v2/module-event-bus';
 import type { ReportRepository } from '@cvg-his-v2/module-reports';
@@ -102,6 +123,8 @@ export interface WorkerBootstrapResult {
   readonly reportSources?: AdministrativeExecutiveReportSources;
   readonly pixPaymentDispatch?: WorkerPixPaymentDispatchRuntime;
   readonly pixProviderSettlement?: WorkerPixProviderSettlementRuntime;
+  readonly eventConsumers?: WorkerEventConsumerRuntime;
+  readonly eventConsumerSchemaReady?: boolean;
 }
 
 function normalizedEnvironment(environment?: string): string {
@@ -180,14 +203,11 @@ export function createPixProviderSettlementRuntime(
   }
   const workerId = resolvePixSettlementWorkerId(options.workerId);
   const repository = new DatabasePixProviderEventDeliveryRepository(options.pool);
-  const consumer = new PixProviderSettlementConsumer(
-    repository,
-    {
-      workerId,
-      leaseMs: PIX_PROVIDER_SETTLEMENT_DEFAULTS.leaseMs,
-      allowSyntheticProviders: true
-    }
-  );
+  const consumer = new PixProviderSettlementConsumer(repository, {
+    workerId,
+    leaseMs: PIX_PROVIDER_SETTLEMENT_DEFAULTS.leaseMs,
+    allowSyntheticProviders: true
+  });
   return Object.freeze({
     consumer,
     workerId,
@@ -328,6 +348,75 @@ export async function bootstrapWorkerServices(
       throw new Error('Worker delivery guarantee schema is not ready');
     }
     const accountIds = await loadPersistedAccountIds(productionLike);
+    const eventConsumerSchema = await getPool().query<{ ready: boolean }>(
+      `SELECT
+         to_regclass('public.owners') IS NOT NULL
+         AND to_regclass('public.patients') IS NOT NULL
+         AND to_regclass('public.owner_patient_links') IS NOT NULL
+         AND to_regclass('public.patient_merges') IS NOT NULL
+         AND to_regclass('public.encounters') IS NOT NULL
+         AND to_regclass('public.encounter_timeline') IS NOT NULL
+         AND to_regclass('public.billing_records') IS NOT NULL
+         AND to_regclass('public.billing_items') IS NOT NULL
+         AND to_regclass('public.encounter_financial_accounts') IS NOT NULL
+         AND to_regclass('public.encounter_receivables') IS NOT NULL
+         AND to_regclass('public.encounter_receivable_payments') IS NOT NULL
+         AND to_regclass('public.pix_transactions') IS NOT NULL
+         AND to_regclass('public.card_transactions') IS NOT NULL
+         AND to_regclass('public.webhooks') IS NOT NULL
+         AND to_regclass('public.webhook_deliveries') IS NOT NULL AS ready`
+    );
+    const eventConsumerSchemaReady = eventConsumerSchema.rows[0]?.ready === true;
+    if (!eventConsumerSchemaReady && productionLike) {
+      throw new Error('Worker event consumer schema is not ready');
+    }
+
+    const eventConsumers = eventConsumerSchemaReady
+      ? (() => {
+          const owners = new OwnersService({
+            ownerRepository: new DatabaseOwnerRepository(db),
+            seedOwners: []
+          });
+          const patients = new PatientsService({
+            owners,
+            patientRepository: new DatabasePatientRepository(db),
+            ownerPatientLinkRepository: new DatabaseOwnerPatientLinkRepository(db),
+            patientMergeRepository: new DatabasePatientMergeRepository(db),
+            seedPatients: [],
+            seedLinks: []
+          });
+          const encounters = new EncountersService({
+            owners,
+            patients,
+            encounterRepository: new DatabaseEncounterRepository(db),
+            encounterTimelineRepository: new DatabaseEncounterTimelineRepository(db),
+            requireUuidIdentifiers: true
+          });
+          const billing = new BillingService(encounters, {
+            repository: new DatabaseBillingRepository()
+          });
+          const encounterFinancial = new EncounterFinancialService(
+            encounters,
+            billing,
+            patients,
+            owners,
+            { repository: new DatabaseEncounterFinancialRepository() }
+          );
+          return createWorkerEventConsumerRuntime({
+            billing,
+            encounterFinancial,
+            pixTransactions: new DatabasePixTransactionRepository(),
+            cardTransactions: new DatabaseCardTransactionRepository(),
+            webhooks: new WebhooksService({ repository: new DatabaseWebhookRepository(db) }),
+            hydrateAccount: async (accountId) => {
+              await owners.hydrateFromDatabase(accountId);
+              await patients.hydrateFromDatabase(accountId);
+              await encounters.hydrateFromDatabase(accountId);
+              await billing.hydrateFromDatabase(accountId);
+            }
+          });
+        })()
+      : undefined;
     logger.info('Worker database connection established', {
       detail: health.detail
     });
@@ -353,7 +442,9 @@ export async function bootstrapWorkerServices(
         allowSyntheticProviders: options.allowSyntheticPixProvider === true,
         pool: getPool(),
         workerId: options.pixSettlementWorkerId
-      })
+      }),
+      eventConsumers,
+      eventConsumerSchemaReady
     };
   } catch (error) {
     if (productionLike) {

@@ -113,7 +113,10 @@ function makePixConfirmedEvent(billingRecordId: string): OutboxEvent {
   } as OutboxEvent;
 }
 
-function makePixIntentCreatedEvent(intentId = 'pix_intent_1', billingRecordId?: string): OutboxEvent {
+function makePixIntentCreatedEvent(
+  intentId = 'pix_intent_1',
+  billingRecordId?: string
+): OutboxEvent {
   return {
     id: 'evt_pix_001',
     accountId: 'acc_test' as never,
@@ -144,7 +147,11 @@ function makePixIntentCreatedEvent(intentId = 'pix_intent_1', billingRecordId?: 
   } as OutboxEvent;
 }
 
-function makeCardIntentCreatedEvent(intentId = 'card_intent_1', billingRecordId?: string): OutboxEvent {
+function makeCardIntentCreatedEvent(
+  intentId = 'card_intent_1',
+  billingRecordId?: string,
+  amount = 150
+): OutboxEvent {
   return {
     id: 'evt_card_001',
     accountId: 'acc_test' as never,
@@ -155,7 +162,7 @@ function makeCardIntentCreatedEvent(intentId = 'card_intent_1', billingRecordId?
       accountId: 'acc_test',
       intentId,
       billingRecordId,
-      amount: 320,
+      amount,
       currency: 'BRL',
       description: 'Cartao Internacao',
       provider: 'local-card',
@@ -180,15 +187,15 @@ function makeCardIntentCreatedEvent(intentId = 'card_intent_1', billingRecordId?
   } as OutboxEvent;
 }
 
-function makeCardCompletedEvent(billingRecordId: string): OutboxEvent {
+function makeCardCompletedEvent(billingRecordId: string, accountId = 'acc_test'): OutboxEvent {
   return {
     id: 'evt_card_complete_001',
-    accountId: 'acc_test' as never,
+    accountId: accountId as never,
     correlationId: 'corr_card_complete_abc' as never,
     moduleName: 'billing' as never,
     eventType: 'payment.card.completed',
     payload: {
-      accountId: 'acc_test',
+      accountId,
       intentId: 'card_intent_1',
       billingRecordId,
       provider: 'local-card',
@@ -370,4 +377,96 @@ test('PaymentsEventHandlers persists card intent creation and settles billing on
   const captured = await cardTransactions.findByTransactionId('card_intent_1');
   assert.equal(captured?.status, 'captured');
   assert.equal(captured?.billingSettlementStatus, 'applied');
+});
+
+test('PaymentsEventHandlers refuses card capture without an authoritative intent', async () => {
+  const billing = createMockBillingService();
+  const encounterFinancial = createMockEncounterFinancialService();
+  const pixTransactions = new InMemoryPixTransactionRepository();
+  const cardTransactions = new InMemoryCardTransactionRepository();
+  const handlers = new PaymentsEventHandlers({
+    billing,
+    encounterFinancial,
+    pixTransactions,
+    cardTransactions
+  });
+
+  await assert.rejects(
+    handlers.handle(makeCardCompletedEvent('br_card_456')),
+    /no authoritative transaction intent/
+  );
+  assert.equal(billing.settles.length, 0);
+  assert.equal(encounterFinancial.payments.length, 0);
+  assert.equal(await cardTransactions.findByTransactionId('card_intent_1'), null);
+});
+
+test('PaymentsEventHandlers rejects card capture when authoritative data does not match billing', async () => {
+  const billing = createMockBillingService();
+  const encounterFinancial = createMockEncounterFinancialService();
+  const pixTransactions = new InMemoryPixTransactionRepository();
+  const cardTransactions = new InMemoryCardTransactionRepository();
+  const handlers = new PaymentsEventHandlers({
+    billing,
+    encounterFinancial,
+    pixTransactions,
+    cardTransactions
+  });
+
+  await handlers.handle(makeCardIntentCreatedEvent('card_intent_1', 'br_card_456', 320));
+
+  await assert.rejects(
+    handlers.handle(makeCardCompletedEvent('br_card_456')),
+    /amount does not match the billing record/
+  );
+  assert.equal(billing.settles.length, 0);
+  assert.equal(encounterFinancial.payments.length, 0);
+  const transaction = await cardTransactions.findByTransactionId('card_intent_1');
+  assert.equal(transaction?.status, 'authorized_pending_capture');
+  assert.equal(transaction?.billingSettlementStatus, 'awaiting_capture');
+});
+
+test('PaymentsEventHandlers rejects card capture when event billing record differs from intent', async () => {
+  const billing = createMockBillingService();
+  const encounterFinancial = createMockEncounterFinancialService();
+  const pixTransactions = new InMemoryPixTransactionRepository();
+  const cardTransactions = new InMemoryCardTransactionRepository();
+  const handlers = new PaymentsEventHandlers({
+    billing,
+    encounterFinancial,
+    pixTransactions,
+    cardTransactions
+  });
+
+  await handlers.handle(makeCardIntentCreatedEvent('card_intent_1', 'br_card_456'));
+
+  await assert.rejects(
+    handlers.handle(makeCardCompletedEvent('br_other_789')),
+    /billing record account/
+  );
+  assert.equal(billing.settles.length, 0);
+  assert.equal(encounterFinancial.payments.length, 0);
+});
+
+test('PaymentsEventHandlers rejects card capture from a different account', async () => {
+  const billing = createMockBillingService();
+  const encounterFinancial = createMockEncounterFinancialService();
+  const pixTransactions = new InMemoryPixTransactionRepository();
+  const cardTransactions = new InMemoryCardTransactionRepository();
+  const handlers = new PaymentsEventHandlers({
+    billing,
+    encounterFinancial,
+    pixTransactions,
+    cardTransactions
+  });
+
+  await handlers.handle(makeCardIntentCreatedEvent('card_intent_1', 'br_card_456'));
+
+  await assert.rejects(
+    handlers.handle(makeCardCompletedEvent('br_card_456', 'acc_other')),
+    /billing account/
+  );
+  assert.equal(billing.settles.length, 0);
+  assert.equal(encounterFinancial.payments.length, 0);
+  const transaction = await cardTransactions.findByTransactionId('card_intent_1');
+  assert.equal(transaction?.status, 'authorized_pending_capture');
 });

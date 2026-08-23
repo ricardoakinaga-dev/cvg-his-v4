@@ -114,6 +114,9 @@ async function main() {
     unitOfWork: bootstrap.unitOfWork,
     workerId: process.env.WORKER_INSTANCE_ID?.trim()
   });
+  if (bootstrap.eventConsumers) {
+    bootstrap.eventConsumers.register(eventBus);
+  }
 
   const reports = createWorkerReports({
     reportRepository: bootstrap.reportRepository
@@ -136,7 +139,10 @@ async function main() {
     for (const accountId of refresh.discoveredAccountIds) {
       await runWithTenantContext(
         { tenantId: accountId, accountId, correlationId: createCorrelationId('worker-hydrate') },
-        () => reports.hydrateFromDatabase(accountId as never)
+        async () => {
+          await reports.hydrateFromDatabase(accountId as never);
+          await bootstrap.eventConsumers?.hydrateAccount(accountId as never);
+        }
       );
     }
 

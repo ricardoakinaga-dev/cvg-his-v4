@@ -1,0 +1,26 @@
+{
+  "name": "@cvg-his-v2/module-payments",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@cvg-his-v2/shared-database": "workspace:*",
+    "@cvg-his-v2/shared-types": "workspace:*",
+    "@cvg-his-v2/shared-utils": "workspace:*",
+    "@cvg-his-v2/tenant-context": "workspace:*"
+  },
+  "scripts": {
+    "build": "tsc -b tsconfig.json --force",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "test": "cd ../../.. && vitest run packages/modules/payments/src/*.test.ts --passWithNoTests"
+  }
+}

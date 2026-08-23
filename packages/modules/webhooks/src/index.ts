@@ -466,6 +466,51 @@ export class WebhooksService {
     return dispatched;
   }
 
+  /**
+   * Persist pending deliveries without performing network I/O.
+   *
+   * Event-bus consumers call this method inside a tenant unit of work. The
+   * delivery worker may safely perform the external HTTP attempt later, after
+   * the inbox/outbox transaction has committed.
+   */
+  public async enqueue(
+    accountId: AccountId,
+    event: string,
+    data: Record<string, unknown>
+  ): Promise<number> {
+    if (!this.#repository) {
+      return 0;
+    }
+
+    const webhooks = await this.#repository.findActiveByEvent(accountId, event);
+    if (webhooks.length === 0) {
+      return 0;
+    }
+
+    const payload: WebhookPayload = {
+      id: createCorrelationId('whpay'),
+      event,
+      timestamp: nowIso(),
+      accountId,
+      data
+    };
+
+    for (const webhook of webhooks) {
+      await this.#repository.createDelivery({
+        id: createCorrelationId('whdel') as WebhookDeliveryId,
+        accountId,
+        webhookId: webhook.id,
+        event,
+        payload: payload as unknown as Record<string, unknown>,
+        status: 'pending',
+        attempts: 0,
+        createdAt: nowIso()
+      });
+    }
+
+    return webhooks.length;
+  }
+
   async #deliverWithRetry(
     webhook: WebhookSummary,
     delivery: WebhookDeliverySummary,

@@ -152,6 +152,9 @@ importers:
       '@cvg-his-v2/module-event-bus':
         specifier: workspace:*
         version: link:../../packages/modules/event-bus
+      '@cvg-his-v2/module-event-consumers':
+        specifier: workspace:*
+        version: link:../../packages/modules/event-consumers
       '@cvg-his-v2/module-feature-flags':
         specifier: workspace:*
         version: link:../../packages/modules/feature-flags
@@ -197,6 +200,9 @@ importers:
       '@cvg-his-v2/module-patients':
         specifier: workspace:*
         version: link:../../packages/modules/patients
+      '@cvg-his-v2/module-payments':
+        specifier: workspace:*
+        version: link:../../packages/modules/payments
       '@cvg-his-v2/module-pix':
         specifier: workspace:*
         version: link:../../packages/modules/pix
@@ -402,12 +408,24 @@ importers:
       '@cvg-his-v2/module-event-bus':
         specifier: workspace:*
         version: link:../../packages/modules/event-bus
+      '@cvg-his-v2/module-event-consumers':
+        specifier: workspace:*
+        version: link:../../packages/modules/event-consumers
       '@cvg-his-v2/module-financial':
         specifier: workspace:*
         version: link:../../packages/modules/financial
       '@cvg-his-v2/module-notifications':
         specifier: workspace:*
         version: link:../../packages/modules/notifications
+      '@cvg-his-v2/module-owners':
+        specifier: workspace:*
+        version: link:../../packages/modules/owners
+      '@cvg-his-v2/module-patients':
+        specifier: workspace:*
+        version: link:../../packages/modules/patients
+      '@cvg-his-v2/module-payments':
+        specifier: workspace:*
+        version: link:../../packages/modules/payments
       '@cvg-his-v2/module-pix':
         specifier: workspace:*
         version: link:../../packages/modules/pix
@@ -417,6 +435,9 @@ importers:
       '@cvg-his-v2/module-staff':
         specifier: workspace:*
         version: link:../../packages/modules/staff
+      '@cvg-his-v2/module-webhooks':
+        specifier: workspace:*
+        version: link:../../packages/modules/webhooks
       '@cvg-his-v2/shared-config':
         specifier: workspace:*
         version: link:../../packages/shared/config
@@ -936,6 +957,30 @@ importers:
         specifier: ^5.7.0
         version: 5.7.3
 
+  packages/modules/event-consumers:
+    dependencies:
+      '@cvg-his-v2/module-billing':
+        specifier: workspace:*
+        version: link:../billing
+      '@cvg-his-v2/module-event-bus':
+        specifier: workspace:*
+        version: link:../event-bus
+      '@cvg-his-v2/module-financial':
+        specifier: workspace:*
+        version: link:../financial
+      '@cvg-his-v2/module-payments':
+        specifier: workspace:*
+        version: link:../payments
+      '@cvg-his-v2/module-webhooks':
+        specifier: workspace:*
+        version: link:../webhooks
+      '@cvg-his-v2/shared-types':
+        specifier: workspace:*
+        version: link:../../shared/types
+      '@cvg-his-v2/shared-utils':
+        specifier: workspace:*
+        version: link:../../shared/utils
+
   packages/modules/feature-flags:
     dependencies:
       '@cvg-his-v2/shared-database':
@@ -1275,6 +1320,21 @@ importers:
       drizzle-orm:
         specifier: ^0.45.2
         version: 0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.16.0)(gel@2.2.0)(pg@8.18.0)
+
+  packages/modules/payments:
+    dependencies:
+      '@cvg-his-v2/shared-database':
+        specifier: workspace:*
+        version: link:../../shared/database
+      '@cvg-his-v2/shared-types':
+        specifier: workspace:*
+        version: link:../../shared/types
+      '@cvg-his-v2/shared-utils':
+        specifier: workspace:*
+        version: link:../../shared/utils
+      '@cvg-his-v2/tenant-context':
+        specifier: workspace:*
+        version: link:../../tenant-context
 
   packages/modules/pix:
     dependencies:

@@ -62,6 +62,32 @@ test('WebhooksService dispatch returns 0 when repository is undefined', async ()
   assert.equal(dispatched, 0);
 });
 
+test('WebhooksService enqueue persists pending delivery without network I/O', async () => {
+  const createdDeliveries: unknown[] = [];
+  const repository = createMockRepository();
+  const originalCreateDelivery = repository.createDelivery;
+  repository.createDelivery = async (delivery) => {
+    createdDeliveries.push(delivery);
+    await originalCreateDelivery(delivery);
+  };
+  const service = new WebhooksService({
+    repository,
+    deliverRequest: async () => {
+      throw new Error('network must not be called by enqueue');
+    }
+  });
+  await service.register('user_1' as never, ACCOUNT_ID, {
+    url: 'https://example.com/webhook',
+    events: ['billing.record.created']
+  });
+
+  const enqueued = await service.enqueue(ACCOUNT_ID, 'billing.record.created', { id: 'bill_1' });
+
+  assert.equal(enqueued, 1);
+  assert.equal(createdDeliveries.length, 1);
+  assert.equal((createdDeliveries[0] as { status: string }).status, 'pending');
+});
+
 test('WebhooksService register creates webhook in repository', async () => {
   const repo = createMockRepository();
   const service = new WebhooksService({ repository: repo });
