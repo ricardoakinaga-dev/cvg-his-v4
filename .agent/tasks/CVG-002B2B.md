@@ -284,8 +284,7 @@ Artefato: `.agent/artifacts/CVG-002C-inpatient-daily-billing-rollback-2026-08-23
 Este incremento não fecha o parent `CVG-002B2B` nem `CVG-002`: admissão,
 handoff/permanência, estoque, alta, recebimento/ledger/outbox, RLS A/B,
 concurrency HTTP, SPA, providers, paridade, WCAG, target ops, cobertura e
-release continuam abertos.
-10. Executar regressões, cobertura, segurança e crítica independente; somente então produzir `VERIFIED`.
+release continuam abertos. 10. Executar regressões, cobertura, segurança e crítica independente; somente então produzir `VERIFIED`.
 
 ## Ownership previsto
 
@@ -534,6 +533,7 @@ de isolamento. `CVG-002B2B` segue `IN_PROGRESS/PARTIAL`, e o próximo trabalho
 recebimento/ledger/auditoria/outbox com replay, concorrência, dois tenants e
 failpoints. Nenhum gate de produção, provider, paridade, WCAG ou release foi
 promovido.
+
 ## Handoff executado — matriz HTTP cross-tenant (23/08/2026, 07:20 BRT)
 
 O P2 de isolamento da rota de recibo foi fechado no commit `0e0163c`. O teste
@@ -548,3 +548,36 @@ O boundary HTTP de cash receipt agora cobre commit, replay, conflito e
 cross-tenant A/B. O contrato `CVG-002B2B` continua `IN_PROGRESS/PARTIAL`; a
 próxima execução deve expandir a jornada clínica-financeira completa, sem
 reabrir este P2.
+
+## Continuação — isolamento HTTP da internação e auditoria pós-rollback
+
+O slice seguinte foi implementado e publicado em `c647db1`.
+
+### HTTP A/B
+
+`tests/integration/database/inpatient-daily-charge-bill-http-postgres.test.ts`
+agora autentica um usuário por tenant e usa o token B com headers de A. A
+prova PostgreSQL `4/4` confirma que a conta B consegue faturar somente sua
+própria diária, que sua worklist não expõe a diária pendente de A, e que GET e
+POST na stay de A retornam `404` sem billing item, mudança de status ou
+idempotência para a conta estrangeira.
+
+### Cache de auditoria
+
+`AuditService.refreshFromDatabase(accountId?)` reconstrói a fatia tenant-scoped
+do cache a partir das linhas commitadas. O catch da rota de diária agenda a
+reidratação depois do rollback e usa `runWithoutDatabaseTransactionScope` para
+impedir que a consulta herde um `PoolClient` abortado. A prova com o serviço
+real remove o evento `bill_daily_charge` que havia sido escrito antes da
+exceção. O limite default de 100 eventos do repositório permanece uma dívida
+de paginação, não uma alegação de histórico ilimitado.
+
+### Evidência e retomada
+
+Rota `14/14`, AuditService `19/19`, module-inpatient `17/17`, module-billing
+`16/16`, regressões `3/3`, HTTP A/B `4/4`, typechecks/builds e checks de
+formatação passaram. O estado permanece `IN_PROGRESS/PARTIAL`. O próximo
+trabalho é a jornada admissão → handoff/permanência → inventário → alta →
+billing → recebimento/ledger/auditoria/outbox com PostgreSQL/RLS, replay,
+concorrência e failpoints. Não promover `VERIFIED`, produção, provider, SPA,
+paridade, WCAG, operações, cobertura ou release.

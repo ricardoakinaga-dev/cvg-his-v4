@@ -182,26 +182,26 @@ From `/home/ricardo/cvg-his-v4`:
 
 ## Validation and Acceptance
 
-| Criterion | Required | Procedure/environment | Expected observation | Evidence destination |
-| --- | --- | --- | --- | --- |
-| `QB-SEC-01` | yes | static/log capture plus unit/startup test | no secret is hardcoded, returned or logged; absent required setup configuration fails closed | `.agent/verification.jsonl` |
-| `QB-SEC-02` | yes | HTTP + PostgreSQL concurrency and cross-tenant tests | exactly one admin; unauthorized and cross-tenant attempts are denied and audited | `.agent/verification.jsonl` |
-| `QB-DATA-01` | yes | empty migration plus setup failure injection/retry | atomic consistent tenant/account/unit/role/user state; no partial install | `.agent/verification.jsonl` |
-| `QB-AUTH-01` | yes | login/MFA/refresh/revocation across restart/two instances | session lifecycle remains authoritative and replay resistant | `.agent/verification.jsonl` |
-| `QB-CORE-01` | yes | PostgreSQL-backed SPA/API encounter-to-receipt E2E | one coherent clinical-to-financial result and rollback/replay safety | `.agent/verification.jsonl` |
-| `QB-PARITY-01` | yes | strict Vetus behavioral audit | 11/11 general and 3/3 clinical with no skips/retries | `.agent/verification.jsonl` |
-| `QB-REL-01` | yes | project build/typecheck/lint/unit/integration/E2E/coverage gates | all required checks pass with meaningful global and changed-code coverage >=80% | `.agent/verification.jsonl` |
-| `QB-OPS-01` | yes | authorized target deploy/rollback/restore/failover/SLO checks | reproducible recovery and operational thresholds pass | `.agent/verification.jsonl` |
+| Criterion      | Required | Procedure/environment                                            | Expected observation                                                                         | Evidence destination        |
+| -------------- | -------- | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | --------------------------- |
+| `QB-SEC-01`    | yes      | static/log capture plus unit/startup test                        | no secret is hardcoded, returned or logged; absent required setup configuration fails closed | `.agent/verification.jsonl` |
+| `QB-SEC-02`    | yes      | HTTP + PostgreSQL concurrency and cross-tenant tests             | exactly one admin; unauthorized and cross-tenant attempts are denied and audited             | `.agent/verification.jsonl` |
+| `QB-DATA-01`   | yes      | empty migration plus setup failure injection/retry               | atomic consistent tenant/account/unit/role/user state; no partial install                    | `.agent/verification.jsonl` |
+| `QB-AUTH-01`   | yes      | login/MFA/refresh/revocation across restart/two instances        | session lifecycle remains authoritative and replay resistant                                 | `.agent/verification.jsonl` |
+| `QB-CORE-01`   | yes      | PostgreSQL-backed SPA/API encounter-to-receipt E2E               | one coherent clinical-to-financial result and rollback/replay safety                         | `.agent/verification.jsonl` |
+| `QB-PARITY-01` | yes      | strict Vetus behavioral audit                                    | 11/11 general and 3/3 clinical with no skips/retries                                         | `.agent/verification.jsonl` |
+| `QB-REL-01`    | yes      | project build/typecheck/lint/unit/integration/E2E/coverage gates | all required checks pass with meaningful global and changed-code coverage >=80%              | `.agent/verification.jsonl` |
+| `QB-OPS-01`    | yes      | authorized target deploy/rollback/restore/failover/SLO checks    | reproducible recovery and operational thresholds pass                                        | `.agent/verification.jsonl` |
 
 ## Risks and Human Decisions
 
-| Risk/decision | Evidence/confidence | Controls | Residual/authority | Trigger |
-| --- | --- | --- | --- | --- |
-| Bootstrap secret exposure | Historical audit reported raw-token risk; current setup path fails closed, but the complete install/session criterion is still unverified | explicit secret, redaction tests, fail-closed startup/setup | CRITICAL until the full lifecycle evidence is current; no acceptance inferred | any setup deployment |
-| Cross-tenant or privilege bypass | Broad multi-tenant surface; partial current evidence | server RBAC, PostgreSQL RLS, negative tests, audit | HIGH until integrated proof | identity/data changes |
-| Clinical/financial partial write | active backlog explicitly reports missing UoW/reconciliation | transaction/saga, idempotency, rollback/failure tests | CRITICAL for go-live | encounter-to-receipt implementation |
-| External provider behavior | sandbox/contracts/credentials absent or unverified | human selection, contract tests, signed webhooks, replay/reconciliation | BLOCKED only for dependent provider work | provider implementation/homologation |
-| Production recovery | RTO/RPO/Game Day evidence absent and current runbook unsafe | target restore/failover drill with approved authority | CRITICAL for release | production-readiness claim |
+| Risk/decision                    | Evidence/confidence                                                                                                                       | Controls                                                                | Residual/authority                                                            | Trigger                              |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------ |
+| Bootstrap secret exposure        | Historical audit reported raw-token risk; current setup path fails closed, but the complete install/session criterion is still unverified | explicit secret, redaction tests, fail-closed startup/setup             | CRITICAL until the full lifecycle evidence is current; no acceptance inferred | any setup deployment                 |
+| Cross-tenant or privilege bypass | Broad multi-tenant surface; partial current evidence                                                                                      | server RBAC, PostgreSQL RLS, negative tests, audit                      | HIGH until integrated proof                                                   | identity/data changes                |
+| Clinical/financial partial write | active backlog explicitly reports missing UoW/reconciliation                                                                              | transaction/saga, idempotency, rollback/failure tests                   | CRITICAL for go-live                                                          | encounter-to-receipt implementation  |
+| External provider behavior       | sandbox/contracts/credentials absent or unverified                                                                                        | human selection, contract tests, signed webhooks, replay/reconciliation | BLOCKED only for dependent provider work                                      | provider implementation/homologation |
+| Production recovery              | RTO/RPO/Game Day evidence absent and current runbook unsafe                                                                               | target restore/failover drill with approved authority                   | CRITICAL for release                                                          | production-readiness claim           |
 
 ## Idempotence and Recovery
 
@@ -319,3 +319,17 @@ commit, replay, conflict, rollback and same-key concurrency. This closes only
 the bounded HTTP/UoW slice; inpatient HTTP A/B, late audit-cache behavior and
 the full admission-to-receipt journey remain the next local work, with Redis,
 provider, SPA/B2c, parity, WCAG, operations, coverage and release gates open.
+
+Plan revision note, 2026-08-23 (inpatient HTTP isolation and audit cache): The
+next RED/GREEN slice is now published in `c647db1`. A two-tenant PostgreSQL HTTP
+matrix passed 4/4 using real bearer tokens and spoofed headers: token B can
+operate only on B, while A read/write attempts return opaque 404 responses and
+leave no billing/idempotency effects. The late-audit-cache RED is closed with a
+tenant-scoped `AuditService.refreshFromDatabase` and a transaction-scope escape
+for deferred post-rollback queries; route 14/14 and AuditService 19/19 pass,
+along with inpatient 17/17, billing 16/16 and the prior rollback/idempotency
+regressions 3/3. The repository's default 100-row audit limit remains a bounded
+follow-up. The next plan step is the complete admission → handoff/permanence →
+inventory → discharge → billing → receipt/ledger/audit/outbox journey; Redis
+process failover, provider, SPA/B2c, parity, WCAG, target operations, coverage
+and release remain separate gates.

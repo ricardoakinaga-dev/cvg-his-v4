@@ -211,6 +211,7 @@ A revisão independente aprovou sem P0/P1. O próximo gap local é P2: HTTP
 cross-tenant A/B com segundo token. Depois, continuar a jornada completa com
 PostgreSQL/RLS, replay, concorrência e failpoints; o ERP e os gates externos
 continuam `IN_PROGRESS/PARTIAL`.
+
 ## Progresso mais recente — matriz HTTP A/B concluída (23/08/2026, 07:20 BRT)
 
 O teste `encounter-cash-receipt-http-postgres` agora cria um segundo tenant e
@@ -219,6 +220,7 @@ estrangeira. A integração passou `2/2`; rota + response-buffer `10/10`, API
 typecheck e diff check PASS. O P2 local foi removido. Próxima ação: jornada
 clínica-financeira completa com PostgreSQL/RLS, replay, concorrência e
 failpoints, preservando todos os gates externos.
+
 ## Continuidade publicada — diária HTTP/UoW (23/08/2026)
 
 Commit `9a93ebc` endureceu a cobrança diária HTTP: replay de diária faturada
@@ -234,3 +236,19 @@ admissão → handoff/permanência → estoque → alta → billing →
 recebimento/ledger/auditoria/outbox. Nenhum gate de produção, provider, Redis
 failover real, SPA/B2c, paridade, WCAG, operações, cobertura ou release foi
 promovido.
+
+## Continuidade publicada — internação HTTP A/B e cache de auditoria
+
+O próximo slice foi implementado em `c647db1` e passou a matriz de dois
+tenants `4/4`. O token B, com headers A falsificados, faturou apenas a diária
+de B; a worklist omitiu A; leitura e escrita contra a stay A retornaram `404`,
+sem billing item, status alterado ou idempotência estrangeira. A rota passou
+`14/14`, AuditService `19/19`, inpatient `17/17`, billing `16/16` e as
+regressões rollback/idempotência `3/3`.
+
+O cache quente de auditoria também é reconstruído por conta a partir de linhas
+commitadas após falha tardia, fora do contexto assíncrono da transação abortada.
+O default de 100 eventos do repositório continua documentado como limite de
+produção a revisar. A próxima ação é a jornada admissão → handoff/permanência →
+inventário → alta → billing → recebimento/ledger/auditoria/outbox; nenhum gate
+global ou externo foi promovido.

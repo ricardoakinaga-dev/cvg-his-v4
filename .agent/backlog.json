@@ -145,9 +145,11 @@
         ".agent/verification.jsonl#VFY-CVG-002C2-CASH-RECEIPT-HTTP-002",
         ".agent/artifacts/CVG-002C3-inpatient-daily-charge-http-uow-2026-08-23.md",
         "tests/integration/database/inpatient-daily-charge-bill-http-postgres.test.ts",
-        ".agent/verification.jsonl#VFY-CVG-002C3-INPATIENT-BILL-HTTP-001"
+        ".agent/verification.jsonl#VFY-CVG-002C3-INPATIENT-BILL-HTTP-001",
+        ".agent/artifacts/CVG-002C4-inpatient-http-isolation-audit-cache-2026-08-23.md",
+        ".agent/verification.jsonl#VFY-CVG-002C4-INPATIENT-HTTP-ISOLATION-AUDIT-001"
       ],
-      "next_action": "The stale-fence, daily-charge billing idempotency, discharge cutoff, rollback and HTTP/UoW boundaries are locally verified, including cash-receipt A/B and daily-charge replay/conflict/rollback/concurrency. Keep Redis failover between processes open, add the inpatient HTTP A/B and late-audit-cache review, then implement admission -> handoff/permanence -> inventory -> discharge -> item/receipt with PostgreSQL/RLS, replay, concurrency and a single UoW or explicit saga while preserving B2c/SPA, provider, parity, WCAG, target-operations, coverage and release gates."
+      "next_action": "The stale-fence, daily-charge billing idempotency, discharge cutoff, rollback, HTTP/UoW and inpatient HTTP A/B/audit-cache boundaries are locally verified. Keep the AuditRepository 100-row rehydration limit and Redis failover between processes open, then implement admission -> handoff/permanence -> inventory -> discharge -> item/receipt with PostgreSQL/RLS, replay, concurrency and a single UoW or explicit saga while preserving B2c/SPA, provider, parity, WCAG, target-operations, coverage and release gates."
     },
     {
       "id": "CVG-002D",
@@ -189,9 +191,14 @@
         ".agent/verification.jsonl#VFY-CVG-002D-DAILY-CHARGE-ROLLBACK-001",
         ".agent/artifacts/CVG-002C3-inpatient-daily-charge-http-uow-2026-08-23.md",
         "tests/integration/database/inpatient-daily-charge-bill-http-postgres.test.ts",
-        ".agent/verification.jsonl#VFY-CVG-002C3-INPATIENT-BILL-HTTP-001"
+        ".agent/verification.jsonl#VFY-CVG-002C3-INPATIENT-BILL-HTTP-001",
+        ".agent/artifacts/CVG-002C4-inpatient-http-isolation-audit-cache-2026-08-23.md",
+        "packages/modules/audit/src/index.ts",
+        "packages/modules/audit/src/audit.test.ts",
+        "packages/shared/database/src/transaction-scope.ts",
+        ".agent/verification.jsonl#VFY-CVG-002C4-INPATIENT-HTTP-ISOLATION-AUDIT-001"
       ],
-      "next_action": "The bounded HTTP proof now covers replay, conflict, rollback and same-key concurrency. Keep CVG-002C2 active for an inpatient HTTP A/B tenant matrix and late-audit-cache review, then continue admission -> handoff/permanence -> inventory -> discharge -> receipt/ledger/audit/outbox."
+      "next_action": "The bounded HTTP proof now covers replay, conflict, rollback, same-key concurrency, two-tenant isolation and late-audit-cache recovery. Keep CVG-002C2 active for the 100-row audit rehydration limit and the full admission -> handoff/permanence -> inventory -> discharge -> receipt/ledger/audit/outbox journey."
     },
     {
       "id": "CVG-003",

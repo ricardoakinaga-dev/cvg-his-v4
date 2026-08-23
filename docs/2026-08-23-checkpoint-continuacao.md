@@ -12,10 +12,10 @@ release.
   durável pelo núcleo B1
 - Estado: `IN_PROGRESS / PARTIAL`; próximo gate: `VERIFIED`
 - Última implementação de código publicada: `35f68fd` (`feat: add pix
-  settlement dlq operations`), com a correção de semântica multi-réplica em
+settlement dlq operations`), com a correção de semântica multi-réplica em
   `1217882` (`fix: avoid replicated pix dlq metric double count`).
 - A última reconciliação de ledger publicada está em `d525acc` (`docs: clarify
-  replicated dlq review evidence`); esta onda documental estende essa base, e
+replicated dlq review evidence`); esta onda documental estende essa base, e
   os checkpoints anteriores
   `8d226d0`, `3c76ce0`, `409efea` e `f0c38c3` continuam como histórico.
 - O arquivo user-owned
@@ -69,18 +69,18 @@ SIGKILL/restart de processo, não um novo score de paridade.
 Os números abaixo são evidência local, descartável e limitada ao escopo de cada
 teste. Eles não promovem o ERP inteiro:
 
-| Fatia | Evidência fresca |
-| --- | ---: |
-| Núcleo B1 confirmado-PIX | 18/18 |
-| Request/dispatch B2a | 33/33 |
-| Parser, fingerprints e ingresso PostgreSQL | 77/77 focados; 11/11 PostgreSQL |
-| Callback HTTP real | 13/13 |
-| Worker PIX settlement | 54/54 |
-| UoW/shared transaction context | 4/4 |
-| Principal/RLS/ACL | 5/5 serviço; 8/8 ACL/RLS; 1/1 runtime 0113 |
-| API-key service/mapper/helper | 13/13; 3/3; 2/2 |
-| HTTP → PostgreSQL sem adapter | 4/4: owner `410`, foreign `404`, direct `200`, concorrência `2×201/6×429` |
-| OpenAPI, RLS, Helm, scans | 337 paths/390 schemas; RLS 153/154; validações estáticas PASS |
+| Fatia                                      |                                                          Evidência fresca |
+| ------------------------------------------ | ------------------------------------------------------------------------: |
+| Núcleo B1 confirmado-PIX                   |                                                                     18/18 |
+| Request/dispatch B2a                       |                                                                     33/33 |
+| Parser, fingerprints e ingresso PostgreSQL |                                           77/77 focados; 11/11 PostgreSQL |
+| Callback HTTP real                         |                                                                     13/13 |
+| Worker PIX settlement                      |                                                                     54/54 |
+| UoW/shared transaction context             |                                                                       4/4 |
+| Principal/RLS/ACL                          |                                5/5 serviço; 8/8 ACL/RLS; 1/1 runtime 0113 |
+| API-key service/mapper/helper              |                                                           13/13; 3/3; 2/2 |
+| HTTP → PostgreSQL sem adapter              | 4/4: owner `410`, foreign `404`, direct `200`, concorrência `2×201/6×429` |
+| OpenAPI, RLS, Helm, scans                  |             337 paths/390 schemas; RLS 153/154; validações estáticas PASS |
 
 O slice de código API-key, ainda relevante para a base do callback, está em
 `62db87e` e inclui:
@@ -213,7 +213,7 @@ Este registro é a referência mais recente caso a sessão seja interrompida.
   ou limpar esse arquivo user-owned.
 - O checker canônico foi executado com
   `python3 /home/ricardo/.codex/skills/engineering-framework/scripts/check_state.py
-  "$PWD"`: 11 PASS, 1 WARN histórico de ownership paralelo e 0 FAIL.
+"$PWD"`: 11 PASS, 1 WARN histórico de ownership paralelo e 0 FAIL.
 - A evidência mais recente desta fatia é
   `VFY-CVG-002B2B-REVIEW-001`; a evidência de regressões é
   `VFY-CVG-002B2B-REGRESSION-001`. A evidência mais recente do DLQ é
@@ -390,7 +390,7 @@ Esperado: apenas o cache user-owned
 
 1. Exercitar Redis failover/clock-skew sob `fail-closed`.
 2. Decompor `admissão → handoff/permanência → diária → alta →
-   item/recebimento` com REDs PostgreSQL/RLS e estados de UI.
+item/recebimento` com REDs PostgreSQL/RLS e estados de UI.
 3. Preservar B2c/SPA, provider real, paridade Vetus, WCAG, operações,
    cobertura e release como gates separados; não marcar `VERIFIED` ou produção.
 
@@ -637,6 +637,7 @@ estoque → alta → billing → recebimento/ledger/auditoria/outbox, incluindo
 replay, concorrência e failpoints. O programa continua
 `IN_PROGRESS/PARTIAL`; Redis failover real, provider, SPA/B2c, paridade Vetus,
 WCAG, operações alvo, cobertura e release seguem gates abertos.
+
 ## Publicação confirmada — recibo de caixa HTTP/UoW (23/08/2026, 07:13 BRT)
 
 O commit de implementação `3e278c8` e o checkpoint documental/control-plane
@@ -646,6 +647,7 @@ O checker canônico retorna 11 PASS, 1 WARN histórico de ownership paralelo e
 0 FAIL. O único caminho dirty é o cache user-owned
 `packages/design-system/tsconfig.vue.tsbuildinfo`, deliberadamente fora dos
 commits.
+
 ## Atualização mais recente — isolamento HTTP cross-tenant (23/08/2026, 07:20 BRT)
 
 O P2 restante do recibo de caixa foi fechado no commit `0e0163c`
@@ -663,6 +665,7 @@ trabalho volta à jornada maior admissão → handoff/permanência → estoque �
 → billing → recebimento/ledger/auditoria/outbox, mantendo o ERP
 `IN_PROGRESS/PARTIAL` e os gates de Redis failover real, provider, SPA/B2c,
 paridade Vetus, WCAG, operações, cobertura e release abertos.
+
 ## Publicação confirmada — isolamento HTTP cross-tenant (23/08/2026, 07:27 BRT)
 
 O teste `0e0163c` e a reconciliação documental `037053c` estão publicados em
@@ -738,6 +741,7 @@ recebimento/ledger/auditoria/outbox. A matriz HTTP A/B da internação e a
 inspeção de auditoria em falha tardia ainda estão abertas, assim como Redis
 failover real, provider, SPA/B2c, paridade, WCAG, operações, cobertura e
 release. O estado permanece `IN_PROGRESS/PARTIAL`.
+
 ## Reconciliação final publicada — diária HTTP/UoW (23/08/2026, 07:40 BRT)
 
 O commit documental/control-plane `46896bc4bf9990420c3ee9b651101c7c5376b6d4`
@@ -752,6 +756,7 @@ verificação `VFY-DOCS-CONTINUATION-018`. O próximo trabalho é a matriz HTTP 
 da internação e a revisão do cache de auditoria em falha tardia, seguida da
 jornada clínica-financeira completa. O programa permanece
 `IN_PROGRESS/PARTIAL`.
+
 ## Ponteiro final confirmado — 23/08/2026, 07:42 BRT
 
 Após a reconciliação final, `HEAD == origin/agent/sync-v4-full-program ==
@@ -774,6 +779,7 @@ Retomar pela matriz HTTP A/B da internação e pela revisão de auditoria em
 falha tardia; depois expandir admissão → handoff/permanência → estoque → alta
 → billing → recebimento/ledger/auditoria/outbox. O estado global permanece
 `IN_PROGRESS/PARTIAL`.
+
 ## Reconciliação do ponteiro mais recente — 23/08/2026, 07:45 BRT
 
 Após a publicação do ponteiro documental, a sequência remota ficou
@@ -786,3 +792,34 @@ WARN histórico e 0 FAIL; somente o cache user-owned
 O próximo agente deve começar em `agent/sync-v4-full-program`, preservar esse
 cache fora do stage e executar a matriz HTTP A/B da internação antes de ampliar
 a jornada clínica-financeira completa.
+
+## Incremento executado — isolamento HTTP A/B e cache de auditoria (23/08/2026)
+
+A lacuna seguinte foi fechada de forma limitada no commit `c647db1`
+(`fix: harden inpatient tenant isolation and audit rollback cache`). O artefato
+detalhado está em
+[`CVG-002C4-inpatient-http-isolation-audit-cache-2026-08-23.md`](../.agent/artifacts/CVG-002C4-inpatient-http-isolation-audit-cache-2026-08-23.md).
+
+- A integração HTTP real agora cria duas contas e autentica dois usuários. O
+  token B, mesmo com `x-tenant-id` e `x-account-id` falsificados para A, só
+  lê/escreve e registra idempotência na conta B; tentativas de ler ou faturar
+  a stay pendente de A retornam `404` e não deixam efeitos.
+- O `AuditService` tem reidratação tenant-scoped a partir de linhas commitadas.
+  Quando a rota captura uma falha dentro da UoW HTTP, a reidratação é agendada
+  fora do `AsyncLocalStorage` da transação abortada. O teste com o serviço real
+  confirma que o evento `bill_daily_charge` fantasma desaparece após rollback.
+
+Evidência fresca: rota `14/14`, AuditService `19/19`, module-inpatient
+`17/17`, module-billing `16/16`, HTTP PostgreSQL A/B `4/4`, regressões de
+rollback/idempotência `3/3`, typechecks/build da API e módulos compartilhados,
+Prettier e `git diff --check` PASS. O limite do repositório de auditoria ainda
+é 100 eventos por leitura; uma futura paginação deve ser avaliada antes de
+tratar essa reidratação como histórico ilimitado.
+
+O programa permanece `IN_PROGRESS/PARTIAL`. A próxima execução deve costurar
+admissão → handoff/permanência → inventário → alta → billing →
+recebimento/ledger/auditoria/outbox com PostgreSQL/RLS, replay, concorrência e
+failpoints. Redis failover real, provider, SPA/B2c, paridade Vetus, WCAG,
+operações target-like, cobertura e release continuam gates separados. O cache
+user-owned `packages/design-system/tsconfig.vue.tsbuildinfo` permanece fora de
+qualquer commit.
