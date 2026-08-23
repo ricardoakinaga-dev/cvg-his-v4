@@ -774,3 +774,15 @@ Retomar pela matriz HTTP A/B da internação e pela revisão de auditoria em
 falha tardia; depois expandir admissão → handoff/permanência → estoque → alta
 → billing → recebimento/ledger/auditoria/outbox. O estado global permanece
 `IN_PROGRESS/PARTIAL`.
+## Reconciliação do ponteiro mais recente — 23/08/2026, 07:45 BRT
+
+Após a publicação do ponteiro documental, a sequência remota ficou
+`9a93ebc` (implementação) → `46896bc` (artifact/ledgers) → `c8d78d0` →
+`2f2760d` (reconciliações). O estado canônico aponta para essa sequência e a
+verificação é `VFY-DOCS-CONTINUATION-020`. O checker permanece em 11 PASS, 1
+WARN histórico e 0 FAIL; somente o cache user-owned
+`packages/design-system/tsconfig.vue.tsbuildinfo` está dirty.
+
+O próximo agente deve começar em `agent/sync-v4-full-program`, preservar esse
+cache fora do stage e executar a matriz HTTP A/B da internação antes de ampliar
+a jornada clínica-financeira completa.
