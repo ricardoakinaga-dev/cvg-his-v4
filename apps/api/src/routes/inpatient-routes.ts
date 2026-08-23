@@ -20,7 +20,7 @@ import type {
   MarkInpatientDailyChargeBilledRequest
 } from '@cvg-his-v2/shared-contracts';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
-import type { JsonValue } from '@cvg-his-v2/shared-database';
+import { getDatabaseTransactionScope, type JsonValue } from '@cvg-his-v2/shared-database';
 import { ConflictError, NotFoundError } from '@cvg-his-v2/shared-errors';
 import type {
   InpatientDailyChargeSummary,
@@ -671,24 +671,6 @@ export async function handleInpatientRoutes(
     const pendingCharge = inpatient
       .listDailyCharges(stayId as never)
       .find((item) => item.id === chargeId);
-    if (pendingCharge?.status === 'billed') {
-      if (
-        payload.billingRecordId &&
-        pendingCharge.billingRecordId &&
-        payload.billingRecordId !== pendingCharge.billingRecordId
-      ) {
-        throw new ConflictError(
-          'Inpatient daily charge is already linked to another billing record',
-          {
-            chargeId,
-            billingRecordId: pendingCharge.billingRecordId
-          }
-        );
-      }
-      response.statusCode = 200;
-      response.end(JSON.stringify(pendingCharge));
-      return true;
-    }
     let charge: InpatientDailyChargeSummary;
     try {
       charge = await runCommand({
@@ -699,6 +681,23 @@ export async function handleInpatientRoutes(
         operation: 'inpatient.daily-charges.bill',
         payload: { stayId, chargeId, ...payload } as unknown as JsonValue,
         command: async () => {
+          if (pendingCharge?.status === 'billed') {
+            if (
+              payload.billingRecordId &&
+              pendingCharge.billingRecordId &&
+              payload.billingRecordId !== pendingCharge.billingRecordId
+            ) {
+              throw new ConflictError(
+                'Inpatient daily charge is already linked to another billing record',
+                {
+                  chargeId,
+                  billingRecordId: pendingCharge.billingRecordId
+                }
+              );
+            }
+            return pendingCharge;
+          }
+
           let billingRecordId = payload.billingRecordId;
 
           if (billing && pendingCharge && pendingCharge.status === 'pending') {
@@ -741,13 +740,25 @@ export async function handleInpatientRoutes(
       // BillingService and InpatientService keep hot caches for low-latency
       // reads. Restore them from committed rows when the tenant command rolls
       // back, otherwise a retry could observe a phantom billed charge/item.
-      const refreshOperations: Promise<unknown>[] = [
-        inpatient.refreshAccount(principal.user.accountId)
-      ];
-      if (billing && typeof billing.refreshFromDatabase === 'function') {
-        refreshOperations.push(billing.refreshFromDatabase(principal.user.accountId as never));
+      const refreshCaches = async (): Promise<void> => {
+        const refreshOperations: Promise<unknown>[] = [
+          inpatient.refreshAccount(principal.user.accountId)
+        ];
+        if (billing && typeof billing.refreshFromDatabase === 'function') {
+          refreshOperations.push(billing.refreshFromDatabase(principal.user.accountId as never));
+        }
+        await Promise.allSettled(refreshOperations);
+      };
+      if (getDatabaseTransactionScope()) {
+        // The outer HTTP UoW still owns the aborted transaction here. A cache
+        // query on that scope would fail and leave the process empty; defer
+        // rehydration until the UoW has rolled back and released the client.
+        setImmediate(() => {
+          void refreshCaches();
+        });
+      } else {
+        await refreshCaches();
       }
-      await Promise.allSettled(refreshOperations);
       throw error;
     }
     response.statusCode = 200;

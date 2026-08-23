@@ -91,13 +91,22 @@ export class BillingService {
   public async hydrateFromDatabase(accountId?: AccountId): Promise<void> {
     if (!this.#repository) return;
     if (!accountId) return;
-    this.clearAccountCache(accountId);
+    const nextRecords = new Map<BillingRecordId, BillingRecordSummary>();
+    const nextRecordByEncounterId = new Map<EncounterId, BillingRecordId>();
+    const nextItems = new Map<BillingRecordId, BillingItemSummary[]>();
     const records = await this.#repository.findRecordsByAccountId(accountId);
     for (const record of records) {
-      this.#records.set(record.id, record);
-      this.#recordByEncounterId.set(record.encounterId, record.id);
       const items = await this.#repository.findItemsByRecord(record.accountId, record.id);
-      this.#items.set(record.id, [...items]);
+      nextRecords.set(record.id, record);
+      nextRecordByEncounterId.set(record.encounterId, record.id);
+      nextItems.set(record.id, [...items]);
+    }
+
+    this.clearAccountCache(accountId);
+    for (const [recordId, record] of nextRecords) {
+      this.#records.set(recordId, record);
+      this.#recordByEncounterId.set(record.encounterId, nextRecordByEncounterId.get(record.encounterId) ?? recordId);
+      this.#items.set(recordId, nextItems.get(recordId) ?? []);
     }
   }
 

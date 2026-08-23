@@ -499,6 +499,95 @@ test('handleInpatientRoutes executes daily-charge billing through the tenant com
   assert.equal(operation, 'inpatient.daily-charges.bill');
 });
 
+test('handleInpatientRoutes keeps billed daily-charge replays inside the tenant command seam', async () => {
+  const inpatient = createInpatientService();
+  const stay = inpatient.list()[0];
+  const addBillingItem = test.mock.fn(async () => ({
+    id: 'billitem_replay_transaction_1',
+    billingRecordId: 'bill_inpatient_replay_transaction_1',
+    accountId: 'acc_cvg_demo',
+    encounterId: stay.encounterId,
+    itemType: 'daily_rate',
+    description: 'Diaria UTI',
+    quantity: 1,
+    unitPriceAmount: 180,
+    totalAmount: 180,
+    sourceEntityType: 'inpatient_daily_charge',
+    sourceEntityId: 'charge_replay_transaction',
+    createdByUserId: 'user-1',
+    createdAt: new Date().toISOString()
+  }));
+  const createResponse = new MockResponse();
+
+  await handleInpatientRoutes(
+    `/inpatient/${stay.id}/daily-charges`,
+    new MockRequest({
+      method: 'POST',
+      url: `/inpatient/${stay.id}/daily-charges`,
+      body: {
+        description: 'Diaria UTI',
+        chargeDate: '2026-05-28',
+        quantity: 1,
+        unitAmount: 180
+      }
+    }) as never,
+    createResponse as never,
+    'corr-inpatient-daily-charge-replay-create',
+    {
+      inpatient,
+      billing: { addItem: addBillingItem } as never,
+      sectorBedService: {} as never,
+      audit: { write: () => {} } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  const charge = createResponse.bodyJson<{ id: string }>();
+  let commandCalls = 0;
+  const runCommand = async <T>(input: { readonly command: () => Promise<T> }): Promise<T> => {
+    commandCalls += 1;
+    return input.command();
+  };
+  const request = () =>
+    new MockRequest({
+      method: 'POST',
+      url: `/inpatient/${stay.id}/daily-charges/${charge.id}/bill`,
+      body: {}
+    });
+
+  await handleInpatientRoutes(
+    `/inpatient/${stay.id}/daily-charges/${charge.id}/bill`,
+    request() as never,
+    new MockResponse() as never,
+    'corr-inpatient-daily-charge-replay-first',
+    {
+      inpatient,
+      billing: { addItem: addBillingItem } as never,
+      sectorBedService: {} as never,
+      audit: { write: () => {} } as never,
+      requirePrincipal: () => createPrincipal(),
+      runCommand: runCommand as never
+    }
+  );
+  await handleInpatientRoutes(
+    `/inpatient/${stay.id}/daily-charges/${charge.id}/bill`,
+    request() as never,
+    new MockResponse() as never,
+    'corr-inpatient-daily-charge-replay-second',
+    {
+      inpatient,
+      billing: { addItem: addBillingItem } as never,
+      sectorBedService: {} as never,
+      audit: { write: () => {} } as never,
+      requirePrincipal: () => createPrincipal(),
+      runCommand: runCommand as never
+    }
+  );
+
+  assert.equal(commandCalls, 2);
+  assert.equal(addBillingItem.mock.callCount(), 1);
+});
+
 test('handleInpatientRoutes refreshes hot caches after a rolled-back daily-charge command', async () => {
   const inpatient = createInpatientService();
   const stay = inpatient.list()[0];

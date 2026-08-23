@@ -140,6 +140,25 @@ export class InpatientService {
    */
   public async refreshAccount(accountId: string): Promise<void> {
     if (!this.#stayRepository) return;
+    const nextStays = new Map<InpatientStayId, InpatientStaySummary>();
+    const nextProgress = new Map<InpatientStayId, InpatientProgressSummary[]>();
+    const nextOccurrences = new Map<InpatientStayId, InpatientOccurrenceSummary[]>();
+    const nextDailyCharges = new Map<InpatientStayId, InpatientDailyChargeSummary[]>();
+    const stays = await this.#stayRepository.findByAccountId(accountId as never);
+    await Promise.all(
+      stays.map(async (stay) => {
+        const [progress, occurrences, dailyCharges] = await Promise.all([
+          this.#progressRepository?.findByStayId(stay.id) ?? Promise.resolve([]),
+          this.#occurrenceRepository?.findByStayId(stay.id) ?? Promise.resolve([]),
+          this.#dailyChargeRepository?.findByStayId(stay.id) ?? Promise.resolve([])
+        ]);
+        nextStays.set(stay.id, stay);
+        nextProgress.set(stay.id, [...progress]);
+        nextOccurrences.set(stay.id, [...occurrences]);
+        nextDailyCharges.set(stay.id, [...dailyCharges]);
+      })
+    );
+
     for (const [stayId, stay] of this.#stays) {
       if (stay.accountId !== accountId) continue;
       this.#stays.delete(stayId);
@@ -147,7 +166,12 @@ export class InpatientService {
       this.#occurrences.delete(stayId);
       this.#dailyCharges.delete(stayId);
     }
-    await this.hydrateAccount(accountId);
+    for (const [stayId, stay] of nextStays) {
+      this.#stays.set(stayId, stay);
+      this.#progress.set(stayId, nextProgress.get(stayId) ?? []);
+      this.#occurrences.set(stayId, nextOccurrences.get(stayId) ?? []);
+      this.#dailyCharges.set(stayId, nextDailyCharges.get(stayId) ?? []);
+    }
   }
 
   #enqueuePersist(operation: () => Promise<void>, rollback?: () => void | Promise<void>): void {

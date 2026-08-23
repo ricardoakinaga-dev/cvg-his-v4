@@ -671,3 +671,51 @@ O teste `0e0163c` e a reconciliação documental `037053c` estão publicados em
 canônico continua em 11 PASS, 1 WARN histórico e 0 FAIL; somente o cache
 user-owned `packages/design-system/tsconfig.vue.tsbuildinfo` permanece dirty e
 fora dos commits.
+
+## Registro de continuidade — diária HTTP/UoW e cache recovery (23/08/2026, 07:31 BRT)
+
+Este bloco salva o estado mais recente antes da próxima sessão. A mudança atual
+fecha a primeira prova HTTP real da rota
+`POST /inpatient/:stayId/daily-charges/:chargeId/bill`. O replay de uma diária
+já faturada deixou de retornar antes do `runCommand` e agora permanece dentro
+da mesma fronteira de comando tenant-aware. Além disso, o refresh dos caches de
+internação e billing passou a ser atômico: ele lê o estado commitado para mapas
+temporários e só substitui o cache quente depois de todas as leituras terem
+sucesso. Isso evita que uma tentativa de reidratação dentro de uma transação
+PostgreSQL abortada deixe o processo sem stays ou records em memória.
+
+Arquivos alterados nesta fatia:
+
+- `apps/api/src/routes/inpatient-routes.ts`
+- `apps/api/src/routes/inpatient-routes.test.ts`
+- `packages/modules/billing/src/index.ts`
+- `packages/modules/inpatient/src/index.ts`
+- `tests/integration/database/inpatient-daily-charge-bill-http-postgres.test.ts`
+- `docs/2026-08-23-checkpoint-continuacao.md`
+
+Evidência executada:
+
+```bash
+pnpm --filter @cvg-his-v2/api build
+NODE_ENV=test node --test apps/api/dist/routes/inpatient-routes.test.js
+pnpm --filter @cvg-his-v2/module-inpatient test
+pnpm --filter @cvg-his-v2/module-billing test
+pnpm vitest run tests/integration/database/inpatient-daily-charge-bill-http-postgres.test.ts --config vitest.integration.config.ts --reporter=verbose
+git diff --check
+```
+
+Resultado: API build PASS, rota de internação `13/13`, module-inpatient
+`17/17`, module-billing `16/16`, HTTP/PostgreSQL `3/3` e `git diff --check`
+PASS. A integração nova prova primeiro POST, replay com o mesmo
+`Idempotency-Key`, conflito de payload, rollback via failpoint PostgreSQL entre
+item de billing e marcação da diária, e concorrência same-key convergindo para
+um único item e uma única linha de idempotência.
+
+Limite honesto: a fronteira HTTP/UoW da diária agora tem evidência real, mas
+ainda falta matriz HTTP A/B para tenant/RLS da internação, inspeção dedicada do
+cache de auditoria em falha tardia e expansão da jornada admissão →
+handoff/permanência → estoque → alta → billing → recebimento/ledger/auditoria/
+outbox. O ERP continua `IN_PROGRESS/PARTIAL`; provider real, SPA/B2c, paridade
+Vetus, WCAG, operações alvo, cobertura global e release seguem gates separados.
+O cache user-owned
+`packages/design-system/tsconfig.vue.tsbuildinfo` permanece fora do commit.
