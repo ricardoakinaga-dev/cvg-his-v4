@@ -1,27 +1,28 @@
 # CVG-HIS V4 - Documentacao ativa
 
-**Atualizado em:** 2026-08-23 (checkpoint de continuidade e auditoria integral)
+**Atualizado em:** 2026-08-23 (handoff da sessão atual, auditoria integral e checkpoint)
 
 Esta pasta separa documentacao vigente, referencia do Vetus e historico. Uma afirmacao de funcionalidade so e considerada valida quando estiver sustentada por codigo executavel e teste comportamental.
 
 ## Comece aqui
 
-1. [`2026-08-23-checkpoint-continuacao.md`](2026-08-23-checkpoint-continuacao.md) - ponto de entrada mais recente para retomada, estado honesto, evidencias, commits publicados e bloqueios.
-2. [`2026-08-22-handoff-cvg-002b2.md`](2026-08-22-handoff-cvg-002b2.md) - historico tecnico detalhado, evidencias verificadas e retomada de `CVG-002B2B`.
-3. [`2026-08-22-auditoria-integral-e-pesquisa-erp.md`](2026-08-22-auditoria-integral-e-pesquisa-erp.md) - auditoria consolidada, lacunas de codigo e pesquisa de PIMS oficiais.
-4. [`2026-08-07-plano-executivo-resolucao-auditoria-cvg-his-v4.md`](2026-08-07-plano-executivo-resolucao-auditoria-cvg-his-v4.md) - plano executivo vigente, marcos, gates, responsáveis e metas.
-5. [`2026-08-07-backlog-roadmap-resolucao-auditoria-cvg-his-v4.md`](2026-08-07-backlog-roadmap-resolucao-auditoria-cvg-his-v4.md) - backlog rastreável aos achados, dependências e critérios de aceite.
-6. [`2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md`](2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md) - baseline da auditoria técnica e funcional atual.
-7. [`2026-08-10-primeiro-acesso-super-admin.md`](2026-08-10-primeiro-acesso-super-admin.md) - procedimento vigente de bootstrap seguro sem seed em staging/producao.
-8. [`2026-07-11-relatorio-reauditoria-funcional-erp.md`](2026-07-11-relatorio-reauditoria-funcional-erp.md) - baseline anterior, notas e bloqueios reproduzidos.
-9. [`2026-07-11-plano-produto-premium-erp-veterinario.md`](2026-07-11-plano-produto-premium-erp-veterinario.md) - visao funcional e arquitetura do ERP premium.
-10. [`2026-07-11-roadmap-premium-58-a-90.md`](2026-07-11-roadmap-premium-58-a-90.md) - roadmap anterior, preservado como referência histórica.
-11. [`2026-07-11-backlog-premium-executavel.md`](2026-07-11-backlog-premium-executavel.md) - backlog anterior, preservado como referência de IDs e execução.
-12. [`2026-07-11-execucao-onda-1-paridade-vetus.md`](2026-07-11-execucao-onda-1-paridade-vetus.md) - diario de implementacao e evidencias anteriores.
-13. [`2026-07-11-execucao-m0-sprint-1-fundacao-transacional.md`](2026-07-11-execucao-m0-sprint-1-fundacao-transacional.md) - evidencias e bloqueios anteriores de PLAT-001/002.
-14. [`2026-07-10-auditoria-paridade-funcional-vetus.md`](2026-07-10-auditoria-paridade-funcional-vetus.md) - contrato estrito de paridade e evidencias faltantes.
-15. [`430-fonte-de-verdade-documental.md`](430-fonte-de-verdade-documental.md) - regras de governanca e precedencia.
-16. [`vetus/README.md`](vetus/README.md) - acervo factual capturado do Vetus.
+1. [`2026-08-23-handoff-sessao-atual.md`](2026-08-23-handoff-sessao-atual.md) - retomada mais recente, estado canônico, evidências atuais, decisão independente e próxima ação.
+2. [`2026-08-23-checkpoint-continuacao.md`](2026-08-23-checkpoint-continuacao.md) - histórico de continuidade, slices publicados, evidências e bloqueios.
+3. [`2026-08-22-handoff-cvg-002b2.md`](2026-08-22-handoff-cvg-002b2.md) - histórico técnico detalhado, evidências verificadas e retomada de `CVG-002B2B`.
+4. [`2026-08-22-auditoria-integral-e-pesquisa-erp.md`](2026-08-22-auditoria-integral-e-pesquisa-erp.md) - auditoria consolidada, lacunas de código e pesquisa de PIMS oficiais.
+5. [`2026-08-07-plano-executivo-resolucao-auditoria-cvg-his-v4.md`](2026-08-07-plano-executivo-resolucao-auditoria-cvg-his-v4.md) - plano executivo vigente, marcos, gates, responsáveis e metas.
+6. [`2026-08-07-backlog-roadmap-resolucao-auditoria-cvg-his-v4.md`](2026-08-07-backlog-roadmap-resolucao-auditoria-cvg-his-v4.md) - backlog rastreável aos achados, dependências e critérios de aceite.
+7. [`2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md`](2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md) - baseline da auditoria técnica e funcional atual.
+8. [`2026-08-10-primeiro-acesso-super-admin.md`](2026-08-10-primeiro-acesso-super-admin.md) - procedimento vigente de bootstrap seguro sem seed em staging/producao.
+9. [`2026-07-11-relatorio-reauditoria-funcional-erp.md`](2026-07-11-relatorio-reauditoria-funcional-erp.md) - baseline anterior, notas e bloqueios reproduzidos.
+10. [`2026-07-11-plano-produto-premium-erp-veterinario.md`](2026-07-11-plano-produto-premium-erp-veterinario.md) - visão funcional e arquitetura do ERP premium.
+11. [`2026-07-11-roadmap-premium-58-a-90.md`](2026-07-11-roadmap-premium-58-a-90.md) - roadmap anterior, preservado como referência histórica.
+12. [`2026-07-11-backlog-premium-executavel.md`](2026-07-11-backlog-premium-executavel.md) - backlog anterior, preservado como referência de IDs e execução.
+13. [`2026-07-11-execucao-onda-1-paridade-vetus.md`](2026-07-11-execucao-onda-1-paridade-vetus.md) - diário de implementação e evidências anteriores.
+14. [`2026-07-11-execucao-m0-sprint-1-fundacao-transacional.md`](2026-07-11-execucao-m0-sprint-1-fundacao-transacional.md) - evidências e bloqueios anteriores de PLAT-001/002.
+15. [`2026-07-10-auditoria-paridade-funcional-vetus.md`](2026-07-10-auditoria-paridade-funcional-vetus.md) - contrato estrito de paridade e evidências faltantes.
+16. [`430-fonte-de-verdade-documental.md`](430-fonte-de-verdade-documental.md) - regras de governança e precedência.
+17. [`vetus/README.md`](vetus/README.md) - acervo factual capturado do Vetus.
 
 ## Documentacao vigente
 

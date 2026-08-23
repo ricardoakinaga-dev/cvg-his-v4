@@ -282,3 +282,19 @@ cross-instance, admission/handoff, Redis/provider, SPA/B2c, paridade Vetus,
 WCAG, cobertura, operações, deploy/restore e release. O cache user-owned
 `packages/design-system/tsconfig.vue.tsbuildinfo` foi preservado fora do
 commit.
+
+## Registro posterior de continuidade — 23/08/2026, 12:21 BRT
+
+O handoff curto e canônico desta sessão está em
+[`2026-08-23-handoff-sessao-atual.md`](2026-08-23-handoff-sessao-atual.md).
+Ele consolida a crítica independente `REJECT` para a jornada ERP inteira,
+os resultados frescos de readiness/paridade/RLS/OpenAPI e a próxima ação
+vertical. Não interpretar os slices C6/C6-NEXT como prova de que o fluxo
+admissão → recebimento já existe como uma transação/jornada única.
+
+O próximo RED deve usar PostgreSQL descartável, dois tenants e role
+`NOBYPASSRLS`, sem semear o billing/receipt final. Deve ligar admission,
+handoff/stay, consumo com charge capture, diária, alta, close e receipt, com
+replay, conflito de payload, corrida, failpoints, restart e consultas de
+clínica/estoque/billing/caixa/journal/audit/outbox/idempotência. O cache
+`packages/design-system/tsconfig.vue.tsbuildinfo` permanece fora do stage.

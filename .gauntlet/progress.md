@@ -347,3 +347,19 @@ O commit bounded `90873f1dfa0ad0e649a8813927d78c66249373b8` foi enviado para
 Próxima ação: provar inventory → close → receipt como uma jornada vertical com
 failpoints/restart. O cache `packages/design-system/tsconfig.vue.tsbuildinfo`
 continua fora do stage; os gates globais seguem `IN_PROGRESS/PARTIAL`.
+
+## Handoff documental da sessão — 23/08/2026, 12:21 BRT
+
+Foi criado [`docs/2026-08-23-handoff-sessao-atual.md`](../docs/2026-08-23-handoff-sessao-atual.md)
+como ponto de entrada curto para a próxima sessão. A reconciliação repetiu
+readiness `95/100` (score estrutural), Vetus `0/11`, clínico `0/3`, RLS
+`153/154`, OpenAPI `337/390`, checker `11 PASS / 1 WARN histórico / 0 FAIL` e
+`git diff --check` PASS.
+
+A crítica independente mantém `REJECT` para `ERP-CLIN-001` e `ERP-E2E-006`:
+as provas C6 de inventory e close→receipt ainda são separadas. O próximo RED
+deve unir admission/handoff/stay, consumo com charge capture, diária, alta,
+close e receipt com PostgreSQL, dois tenants, role sem `BYPASSRLS`, replay,
+conflito, corrida, failpoints, restart e reconciliação de journal/audit/outbox.
+Nenhum gate de provider, Redis, SPA, paridade, WCAG, operações, cobertura,
+deploy/restore ou release foi promovido.

@@ -246,6 +246,7 @@
       "acceptance_summary": "A public HTTP/PostgreSQL journey links an inpatient stay to tenant-scoped inventory consumption, deterministic billing charge capture, discharge and cash receipt with replay, concurrency, rollback, audit and outbox evidence across two tenants.",
       "evidence_refs": [
         "docs/2026-08-23-handoff-cvg-002c6-clinical-financial-audit.md",
+        "docs/2026-08-23-handoff-sessao-atual.md",
         ".agent/artifacts/CVG-002C6-clinical-financial-audit-2026-08-23.md",
         "docs/2026-08-23-checkpoint-continuacao.md",
         "packages/db/migrations/0117_inventory_charge_capture_contract.sql",
@@ -270,7 +271,7 @@
         ".agent/verification.jsonl#VFY-CVG-002C6-FOCUS-002",
         ".agent/verification.jsonl#VFY-CVG-002C6-REVIEW-002"
       ],
-      "next_action": "Continue with the vertical inventory -> close -> receipt failpoint/restart journey; keep callback ghost, async cross-instance hydration, admission/handoff, Redis/provider/SPA/parity/WCAG/coverage/operations/deploy/release gates explicitly open and keep the user-owned tsbuildinfo cache out of scope."
+      "next_action": "Start with one public admission -> handoff/stay -> inventory charge capture -> daily charge -> discharge -> close -> receipt/ledger/audit/outbox RED using disposable PostgreSQL, two tenants and a NOBYPASSRLS role; cover replay, divergent-payload conflict, concurrency, failpoints, restart and reconciliation before promotion. Keep callback ghost, async cross-instance hydration, Redis/provider/SPA/parity/WCAG/coverage/operations/deploy/release gates explicitly open and keep the user-owned tsbuildinfo cache out of scope."
     },
     {
       "id": "CVG-003",

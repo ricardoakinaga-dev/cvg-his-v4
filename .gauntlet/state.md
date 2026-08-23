@@ -409,3 +409,18 @@ O bounded slice foi publicado em `90873f1dfa0ad0e649a8813927d78c66249373b8`;
 inventory → close → receipt com failpoints/restart. Nenhuma alegação de ERP
 completo, produção ou release foi promovida; o tsbuildinfo user-owned segue
 fora do stage.
+
+## Registro de handoff — 23/08/2026, 12:21 BRT
+
+O handoff curto em `docs/2026-08-23-handoff-sessao-atual.md` é a referência
+mais recente para retomar o trabalho. A auditoria independente classificou a
+jornada ERP como `REJECT`: não há ainda uma prova única de
+admissão→handoff/permanência→inventário→alta→billing→recebimento→ledger/audit/
+outbox. A prova de RLS comportamental do slice também precisa de role sem
+`BYPASSRLS`; readiness/paridade/OpenAPI continuam indicadores estruturais.
+
+O stop decision permanece `ACTIVE` e `IN_PROGRESS/PARTIAL`. A próxima ação
+local é escrever o RED vertical com PostgreSQL descartável, dois tenants,
+failpoints/restart, replay/conflito e reconciliação. SPA, providers, Redis
+failover, Vetus, WCAG, target operations, cobertura, deploy/restore e release
+continuam gates separados.

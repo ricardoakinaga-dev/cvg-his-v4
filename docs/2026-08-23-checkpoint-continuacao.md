@@ -1045,3 +1045,24 @@ O escopo global continua `IN_PROGRESS/PARTIAL`; não promover produção,
 release, provider, Redis, SPA/B2c, paridade, WCAG ou cobertura. O arquivo
 `packages/design-system/tsconfig.vue.tsbuildinfo` permanece local e fora do
 stage.
+
+## Handoff da sessão atual — 23/08/2026, 12:21 BRT
+
+O ponto de entrada resumido desta sessão está em
+[`2026-08-23-handoff-sessao-atual.md`](2026-08-23-handoff-sessao-atual.md).
+Durante a reconciliação, `HEAD` e `origin/agent/sync-v4-full-program` estavam
+alinhados em `6ae674d8ab0a11ffa6a2674cb0e175175833d4bd`; o único dirty path
+continuou sendo o cache user-owned do design-system.
+
+As verificações estruturais atuais foram registradas novamente: readiness
+`95/100` (`42 PASS`, `3 WARN`, `1 FAIL` estrutural de paridade), Vetus geral
+`0/11`, Vetus clínico `0/3`, RLS `153/154`, OpenAPI `337 paths / 390 schemas`,
+checker canônico `11 PASS / 1 WARN histórico / 0 FAIL` e `git diff --check`
+PASS. Esses scores não são prova de comportamento global.
+
+A crítica independente manteve a jornada completa em `REJECT`: ainda falta
+um teste único `admissão → handoff/permanência → inventário → alta → billing →
+recebimento → caixa/ledger/audit/outbox`, com role sem `BYPASSRLS`, failpoints,
+restart, replay/conflito, dois tenants e reconciliação. A próxima sessão deve
+começar por esse RED vertical; SPA, providers, Redis, paridade, WCAG,
+operações, cobertura, deploy/restore e release continuam gates separados.
