@@ -116,7 +116,7 @@
         "docs/runbooks/pix-settlement-dlq.md",
         "tests/integration/database/pix-provider-settlement-dlq-operator.test.ts"
       ],
-      "next_action": "The bounded principal projection and fail-closed policy are implemented and tested. Prove the real SIGKILL/restart matrix and, if the runtime policy changes, rerun B1/B2a/ingress/HTTP regressions; then reassess VERIFIED while preserving 17/17 fresh B1 command, 33/33 B2a request+dispatch, 11/11 ingress, 13/13 callback HTTP, 4/4 HTTP-to-PostgreSQL, 8/8 ACL, 5/5 service-principal, 54/54 worker and 3/3 DLQ operator evidence. Keep B2c/SPA and ERP gates separate."
+      "next_action": "The bounded principal projection and fail-closed policy are implemented and tested. First add executable checkpoints to apps/worker/src/jobs/pix-provider-settlement-consumer.ts and a two-process SIGKILL harness covering after_claim_commit, before_b1, after_b1_before_cas and after_applied_cas; then prove takeover/fence/exactly-one B1 and readiness/metrics. If runtime behavior changes, rerun B1/B2a/ingress/HTTP regressions before reassessing VERIFIED while preserving 17/17 fresh B1 command, 33/33 B2a request+dispatch, 11/11 ingress, 13/13 callback HTTP, 4/4 HTTP-to-PostgreSQL, 8/8 ACL, 5/5 service-principal, 54/54 worker and 3/3 DLQ operator evidence. Keep B2c/SPA and the broader ERP gates separate."
     },
     {
       "id": "CVG-003",

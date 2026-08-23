@@ -111,3 +111,19 @@ Publicação confirmada em `099ac2a1ff5f1ed9f74812d2466dccb42681737d` no branch
 `origin/agent/sync-v4-full-program`. A revisão independente registrou
 `VFY-CVG-002B2B-REVIEW-001` como PASS; os dois listeners HTTP são uma prova de
 storage compartilhado no mesmo processo, não de failover entre processos.
+
+## Handoff de continuidade — 23/08/2026, 03:13 BRT
+
+Read-only audit: o teste de dois pools (`6/6`) prova takeover/fence, mas não
+uma morte abrupta de processo. O próximo slice é adicionar checkpoints ao
+settlement consumer e um harness com dois processos independentes para
+`SIGKILL` em `after_claim_commit`, `before_b1`, `after_b1_before_cas` e
+`after_applied_cas`, verificando exatamente uma aplicação B1 e probes
+`/ready`/`/metrics`. O detalhe está em
+`.agent/artifacts/CVG-002B2B-process-restart-and-erp-slices-2026-08-23.md`.
+
+Após esse gate operacional, a primeira jornada de produto a decompor é
+`internação -> handoff/permanência -> diária -> item cobrável`, com
+idempotência, proveniência, auditoria, cutoff de alta, RLS/tenant e estados de
+UI. Esta é uma recomendação de planejamento; não altera o status `BUILD` nem
+promove qualquer gate do ERP.

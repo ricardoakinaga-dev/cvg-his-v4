@@ -14,16 +14,16 @@
   "active_execplan": ".agent/plans/premium-enterprise-mvp.md",
   "active_task": "CVG-002B2B",
   "verification_state": "PARTIAL",
-  "repository_state": "Published base checkpoints through `d525acc` remain intact; the post-DLQ checkpoint is `76f7ec5` and the current API-key principal/rate-limit slice is published in `099ac2a1ff5f1ed9f74812d2466dccb42681737d` on origin. Migration 0114 capability/function ACL, tenant-scoped sanitized list and audited redrive, OpenAPI error envelopes with correlation IDs, DB-backed current backlog gauge with max-across-replicas alert semantics, Prometheus/Grafana/runbook, minimum eight-field API-key principal, fail-closed distributed rate-limit policy and fresh bounded regressions are recorded. An independent read-only review approved this bounded slice without CRITICAL/HIGH/MEDIUM blockers. It remains below VERIFIED because real Redis failover/clock-skew, SIGKILL restart matrix, provider, SPA and release evidence are open. Fresh local command evidence is B1 17/17, B2a 33/33, ingress 11/11 and callback HTTP 13/13; prior B1 18/18 remains historical. The preserved user-owned packages/design-system/tsconfig.vue.tsbuildinfo cache remains outside scope",
+  "repository_state": "Published base checkpoints through `d525acc` remain intact; the post-DLQ checkpoint is `76f7ec5` and the current API-key principal/rate-limit slice is published in `099ac2a1ff5f1ed9f74812d2466dccb42681737d` on origin. Migration 0114 capability/function ACL, tenant-scoped sanitized list and audited redrive, OpenAPI error envelopes with correlation IDs, DB-backed current backlog gauge with max-across-replicas alert semantics, Prometheus/Grafana/runbook, minimum eight-field API-key principal, fail-closed distributed rate-limit policy and fresh bounded regressions are recorded. An independent read-only review approved this bounded slice without CRITICAL/HIGH/MEDIUM blockers. A new read-only handoff confirms that pool takeover is not real SIGKILL evidence and records the required checkpoint/process harness plus the next non-PIX clinical-financial slice. It remains below VERIFIED because real Redis failover/clock-skew, SIGKILL restart matrix, provider, SPA and release evidence are open. Fresh local command evidence is B1 17/17, B2a 33/33, ingress 11/11 and callback HTTP 13/13; prior B1 18/18 remains historical. The preserved user-owned packages/design-system/tsconfig.vue.tsbuildinfo cache remains outside scope",
   "instruction_scope_refs": [".agent/instruction-scope.md"],
   "last_gate_record": ".agent/gates/implementation-ready-CVG-002B2B.json",
-  "last_event_id": "EVT-0096",
-  "state_revision": 84,
+  "last_event_id": "EVT-0097",
+  "state_revision": 85,
   "next_gate": "VERIFIED",
-  "next_action": "Prove the real SIGKILL/restart matrix and Redis failover/clock-skew behavior under the now fail-closed policy; rerun B1/B2a/ingress/HTTP regressions if that work changes runtime behavior, then reassess VERIFIED while preserving the bounded evidence and separate B2c/SPA gate",
+  "next_action": "Add settlement checkpoints and a two-process SIGKILL harness for after_claim_commit, before_b1, after_b1_before_cas and after_applied_cas; prove takeover/fence/exactly-one B1 and readiness/metrics under the fail-closed policy. If runtime behavior changes, rerun B1/B2a/ingress/HTTP regressions, then reassess VERIFIED while preserving the bounded evidence and separate B2c/SPA gate",
   "blocked_by": [],
   "human_approval_required": [
     "Production go-live, credential rotation, provider selection, fiscal homologation, and residual HIGH/CRITICAL risk acceptance remain outside repository implementation authority"
   ],
-  "updated_at": "2026-08-23T03:06:55-03:00"
+  "updated_at": "2026-08-23T03:14:30-03:00"
 }

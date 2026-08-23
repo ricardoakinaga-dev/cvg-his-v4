@@ -323,3 +323,25 @@ kill real de processo.
 A implementação e esta evidência foram publicadas em
 `099ac2a1ff5f1ed9f74812d2466dccb42681737d`; o próximo agente deve verificar o
 hash remoto antes de continuar.
+
+## Handoff adicional — auditoria de restart e decomposição ERP (23/08/2026)
+
+Auditoria read-only confirmou que o teste de takeover por dois pools (`6/6`)
+prova lease/fence, mas não uma morte abrupta do processo. O worker já possui
+handlers de `SIGTERM`/`SIGINT`, probes `/ready`, `/health/ready` e `/metrics`,
+lease de settlement de 60 segundos e um padrão de checkpoints no dispatcher;
+o settlement consumer ainda precisa expor checkpoints próprios.
+
+Próximo slice P1: adicionar checkpoints `after_claim_commit`, `before_b1`,
+`after_b1_before_cas` e `after_applied_cas`, além de um harness de dois
+processos independentes que aplique `SIGKILL`, aguarde takeover e confirme
+fence, exatamente uma aplicação B1, convergência canônica e readiness/metrics.
+Usar PostgreSQL descartável e provider sintético local. O contrato detalhado e
+os riscos estão em
+`.agent/artifacts/CVG-002B2B-process-restart-and-erp-slices-2026-08-23.md`.
+
+O próximo slice clínico-financeiro não concorrente com PIX é
+`internação -> handoff/permanência -> diária -> item cobrável`, com
+idempotência por stay/período, proveniência, auditoria, cutoff de alta,
+tenant/RLS e estados de UI. Esta recomendação é planejamento; não promove
+`CVG-002B2B`, `CVG-002`, paridade, WCAG, provider, operações ou release.

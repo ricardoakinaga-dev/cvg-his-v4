@@ -169,8 +169,11 @@ From `/home/ricardo/cvg-his-v4`:
    current-backlog gauge, alerts and dashboard, without mutating financial
    artifacts outside the existing repository contract.
 4. Define and test the multi-replica rate-limit policy and narrow the
-   authenticated pre-context principal projection; then execute the real
-   SIGKILL/restart matrix and rerun B1/B2a/ingress/HTTP regressions.
+   authenticated pre-context principal projection; then add settlement
+   checkpoints and execute the real two-process SIGKILL/restart matrix at
+   `after_claim_commit`, `before_b1`, `after_b1_before_cas` and
+   `after_applied_cas`, rerunning B1/B2a/ingress/HTTP regressions when runtime
+   behavior changes.
 5. Obtain a fresh independent adversarial review before any `VERIFIED` change;
    gate B2c/SPA, Vetus parity, WCAG, providers, target operations and release
    separately.
@@ -225,3 +228,12 @@ surface is now implemented and independently re-reviewed. The current backlog
 signal is DB-backed and aggregate-only; the remaining local work is the
 multi-replica rate-limit policy, minimum principal projection and real
 SIGKILL/restart evidence. No quality-bar or ERP gate was promoted.
+
+Plan revision note, 2026-08-23 (restart/product handoff): A read-only worker
+audit confirmed that the existing two-pool takeover test is not a real process
+`SIGKILL` proof. The next bounded slice is an injectable settlement checkpoint
+contract plus an independent-process harness. The benchmark-to-product audit
+also preserved `internação -> handoff/permanência -> diária -> item cobrável`
+as the first clinical-financial slice after the operational gate; it remains
+planning only and does not authorize provider, production, SPA, parity, WCAG or
+release claims.

@@ -241,3 +241,57 @@ O código, testes e controle documental desta fatia foram publicados em
 `099ac2a1ff5f1ed9f74812d2466dccb42681737d` no branch
 `origin/agent/sync-v4-full-program`. O cache
 `packages/design-system/tsconfig.vue.tsbuildinfo` permaneceu fora do commit.
+
+## Registro de continuidade desta sessão — 23/08/2026, 03:13 BRT
+
+Este registro é a referência mais recente para a próxima sessão. A base
+remota verificada antes desta onda documental é
+`4a5ead11e7809dfecd50b607df2e7dee99c2b3d3`, alinhada entre `HEAD` e
+`origin/agent/sync-v4-full-program`. O checker canônico retornou 11 PASS, 1
+WARN histórico de ownership e 0 FAIL. O único caminho dirty continua sendo o
+cache user-owned `packages/design-system/tsconfig.vue.tsbuildinfo`, que não
+deve entrar no commit.
+
+### Maior gap local confirmado
+
+Uma auditoria read-only do worker confirmou que o takeover por dois pools já
+existente (`6/6`) prova lease/fence, mas não prova morte abrupta de processo.
+O entrypoint já trata `SIGTERM`/`SIGINT`, expõe `/ready`, `/health/ready` e
+`/metrics`, e o settlement usa lease padrão de 60 segundos. Porém,
+`pix-provider-settlement-consumer.ts` ainda não tem checkpoints injetáveis como
+o dispatcher. O próximo slice P1 é, portanto, um contrato de checkpoints e um
+harness de dois processos independentes que execute `SIGKILL` nos pontos
+`after_claim_commit`, `before_b1`, `after_b1_before_cas` e `after_applied_cas`,
+com takeover, fence, exatamente uma aplicação B1 e observação de readiness/
+metrics. O detalhe executável está em
+[`CVG-002B2B-process-restart-and-erp-slices-2026-08-23.md`](../.agent/artifacts/CVG-002B2B-process-restart-and-erp-slices-2026-08-23.md).
+
+Não contar o teste de encerramento de pool como SIGKILL. O harness futuro deve
+usar PostgreSQL descartável e provider sintético local; provider real,
+credenciais e produção continuam fora da autoridade desta sessão.
+
+### Próxima jornada de produto preservada
+
+Depois de fechar a evidência operacional, a primeira fatia clínica-financeira
+recomendada pelo benchmark é `internação -> handoff/permanência -> diária ->
+item cobrável`. A base existente em `medical-records`, `encounters`,
+`inpatient` e `diagnostics` deve ser inspecionada antes de criar código. A
+fatia precisa garantir idempotência por `stayId`/período, proveniência
+`stayId`/`encounterId`/ator, auditoria de cancelamento/estorno, cutoff de alta,
+RLS/tenant e estados de UI `pendente`, `faturada` e `cancelada`. Isso é
+planejamento executável, não evidência de implementação ou paridade.
+
+### Retomada mínima
+
+```bash
+cd /home/ricardo/cvg-his-v4
+git switch agent/sync-v4-full-program
+git status --short
+python3 /home/ricardo/.codex/skills/engineering-framework/scripts/check_state.py "$PWD"
+```
+
+Ler primeiro este checkpoint, o artefato de continuidade, `.agent/state.json`,
+`.agent/tasks/CVG-002B2B.md` e os tails de `.agent/execution-log.jsonl` e
+`.agent/verification.jsonl`. Manter `CVG-002B2B` e o ERP geral em
+`IN_PROGRESS/PARTIAL`; não promover provider, SPA, Vetus, WCAG, operações ou
+release.

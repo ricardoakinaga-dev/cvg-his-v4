@@ -139,3 +139,23 @@ Publicação confirmada em `099ac2a1ff5f1ed9f74812d2466dccb42681737d` no branch
 `VFY-CVG-002B2B-REVIEW-001` aprovou o slice sem bloqueadores médios ou maiores;
 os dois listeners HTTP no mesmo processo continuam explicitamente limitados e
 não substituem SIGKILL/restart ou failover Redis.
+
+## Auditoria de continuidade — 23/08/2026, 03:13 BRT
+
+O estado canônico foi rechecado antes desta onda documental: `HEAD` e `origin`
+estavam alinhados em `4a5ead11e7809dfecd50b607df2e7dee99c2b3d3`, o checker
+retornou 11 PASS, 1 WARN histórico e 0 FAIL, e apenas o cache user-owned do
+design-system estava dirty.
+
+O maior gap local foi refinado para um contrato de processo, não apenas de
+conexão: o takeover por pool (`6/6`) prova lease/fence, mas não `SIGKILL`. O
+settlement consumer deve receber checkpoints nos quatro boundaries críticos e
+um harness com dois processos independentes deve matar/reiniciar o worker,
+provar exatamente uma aplicação B1 e observar readiness/metrics. O artefato
+executável é `.agent/artifacts/CVG-002B2B-process-restart-and-erp-slices-2026-08-23.md`.
+
+O benchmark também deixou documentada a primeira jornada clínica-financeira
+posterior: internação, handoff/permanência, diária idempotente e item cobrável,
+sem invadir o slice PIX. Isso é decomposição de backlog, não evidência de
+prontidão. `CVG-002B2B`, `CVG-002` e todos os gates de provider, SPA, paridade,
+WCAG, operações e release permanecem `IN_PROGRESS/PARTIAL` ou abertos.
