@@ -349,3 +349,13 @@ inventory → discharge → billing → receipt/ledger/audit/outbox journey rema
 the next product gate; cursor pagination for very large audit histories, Redis
 failover, provider, SPA/B2c, Vetus parity, WCAG, target operations, coverage
 and release remain open.
+
+Plan revision note, 2026-08-23 (clinical-financial continuation audit): The
+full current documentation corpus was re-enumerated before this handoff and
+the independent review rejected the claim that the complete journey is proven.
+The bounded discharge slice remains DONE, but inventory consumption still does
+not create a billing item with deterministic source, and no single public
+HTTP/PostgreSQL test covers admission -> inventory -> discharge -> receipt /
+ledger / audit / outbox with replay, concurrency and failpoints. The next
+bounded action is the RED named in `CVG-002C6`; no global or external gate is
+promoted.

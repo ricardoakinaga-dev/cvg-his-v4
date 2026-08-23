@@ -334,3 +334,21 @@ O Quality Bar permanece `ACTIVE`, e o ERP permanece `IN_PROGRESS/PARTIAL`.
 Cursor pagination para grandes históricos, jornada clínica-financeira completa,
 Redis failover real, provider, SPA/B2c, paridade Vetus, WCAG, operações,
 cobertura e release continuam gates separados.
+
+## Handoff de auditoria clínica-financeira — 23/08/2026
+
+O handoff dedicado está em
+`docs/2026-08-23-handoff-cvg-002c6-clinical-financial-audit.md`, com o artefato
+`.agent/artifacts/CVG-002C6-clinical-financial-audit-2026-08-23.md`. A leitura
+mais recente do corpus, antes desses dois arquivos, contou 1.450 arquivos,
+1.194 textuais, 256 binários e 53.810.236 bytes. Isso é inventário de
+continuidade, não evidência de comportamento.
+
+A crítica independente rejeitou a jornada clínica-financeira completa: a rota
+de consumo de estoque ainda não produz charge capture/billing item e não há
+um teste público HTTP/PostgreSQL único que ligue admission, handoff,
+inventário, diária, alta, recebimento, ledger, auditoria e outbox com
+idempotência, concorrência, dois tenants e failpoints. O próximo RED é
+`tests/integration/database/inpatient-inventory-charge-capture-http-postgres.test.ts`.
+O Quality Bar permanece congelado; nenhum gate global, provider, SPA, parity,
+WCAG, target operations ou release foi promovido.

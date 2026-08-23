@@ -41,7 +41,7 @@
         ".agent/verification.jsonl",
         ".gauntlet/state.md"
       ],
-      "next_action": "Resume from the latest CVG-002B2B/CVG-002C checkpoint: preserve the bounded 5/5 stale-fence process evidence, daily-charge source idempotency/rollback and published HTTP/UoW proofs (cash receipt A/B plus daily-charge commit/replay/conflict/rollback/concurrency), exercise Redis failover/clock-skew under fail-closed policy, then expand admission -> handoff/permanence -> inventory -> discharge -> receipt with PostgreSQL/RLS REDs while keeping B2c/SPA separate."
+      "next_action": "Read the CVG-002C6 clinical-financial handoff and write the PostgreSQL/RLS RED for inpatient inventory charge capture before expanding admission -> handoff/permanence -> inventory -> discharge -> billing -> receipt/ledger/audit/outbox with replay, concurrency, failpoints and two-tenant evidence. Preserve the bounded stale-fence, daily-charge source idempotency/rollback, HTTP/UoW, isolation and discharge proofs; follow up with cursor pagination, real Redis failover, and keep B2c/SPA, provider, parity, WCAG, target-operations, coverage and release gates separate."
     },
     {
       "id": "CVG-002B2A",
@@ -149,7 +149,7 @@
         ".agent/artifacts/CVG-002C4-inpatient-http-isolation-audit-cache-2026-08-23.md",
         ".agent/verification.jsonl#VFY-CVG-002C4-INPATIENT-HTTP-ISOLATION-AUDIT-001"
       ],
-      "next_action": "The stale-fence, daily-charge billing idempotency, discharge cutoff, rollback, HTTP/UoW and inpatient HTTP A/B/audit-cache boundaries are locally verified. Keep the AuditRepository 100-row rehydration limit and Redis failover between processes open, then implement admission -> handoff/permanence -> inventory -> discharge -> item/receipt with PostgreSQL/RLS, replay, concurrency and a single UoW or explicit saga while preserving B2c/SPA, provider, parity, WCAG, target-operations, coverage and release gates."
+      "next_action": "The stale-fence, daily-charge billing idempotency, discharge cutoff, rollback, HTTP/UoW, inpatient HTTP A/B/audit-cache and discharge-closure boundaries are locally verified. Read the CVG-002C6 handoff, write the inpatient inventory charge-capture RED, then implement admission -> handoff/permanence -> inventory -> discharge -> item/receipt with PostgreSQL/RLS, replay, concurrency, failpoints and a single UoW or explicit saga while preserving B2c/SPA, provider, parity, WCAG, target-operations, coverage and release gates."
     },
     {
       "id": "CVG-002D",
@@ -233,6 +233,23 @@
         ".agent/verification.jsonl#VFY-CVG-002C5-PUBLICATION-001"
       ],
       "next_action": "Do not reopen this bounded slice. Resume the complete admission -> handoff/permanence -> inventory -> discharge -> billing -> receipt/ledger/audit/outbox journey; keep audit cursor pagination, Redis failover, provider, SPA/B2c, parity, WCAG, target-operations, coverage and release open."
+    },
+    {
+      "id": "CVG-002C6",
+      "title": "Prove inpatient inventory charge capture in the clinical-financial journey",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "TODO",
+      "origin": "CVG-002 clinical-financial continuation audit and independent rejection of the fragmented journey",
+      "dependencies": [],
+      "owner": "root integrator",
+      "acceptance_summary": "A public HTTP/PostgreSQL journey links an inpatient stay to tenant-scoped inventory consumption, deterministic billing charge capture, discharge and cash receipt with replay, concurrency, rollback, audit and outbox evidence across two tenants.",
+      "evidence_refs": [
+        "docs/2026-08-23-handoff-cvg-002c6-clinical-financial-audit.md",
+        ".agent/artifacts/CVG-002C6-clinical-financial-audit-2026-08-23.md",
+        "docs/2026-08-23-checkpoint-continuacao.md"
+      ],
+      "next_action": "Write tests/integration/database/inpatient-inventory-charge-capture-http-postgres.test.ts as a rejecting RED using public endpoints, disposable PostgreSQL, real bearer tokens, two tenants and no provider dependency; expose the missing inventory_consumption billing source before choosing the GREEN contract."
     },
     {
       "id": "CVG-003",

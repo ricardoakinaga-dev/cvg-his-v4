@@ -266,4 +266,21 @@ global ou externo foi promovido.
 - O maior gap segue a jornada admissão → handoff/permanência → inventário →
   alta → billing → recebimento/ledger/auditoria/outbox. Cursor pagination,
   Redis failover, provider, SPA/B2c, Vetus parity, WCAG, target operations,
-  cobertura e release continuam abertos.
+cobertura e release continuam abertos.
+
+## Handoff 23/08/2026 — auditoria da jornada clínica-financeira
+
+O registro dedicado em
+`docs/2026-08-23-handoff-cvg-002c6-clinical-financial-audit.md` preserva a
+leitura integral do corpus, a precedência documental e a crítica independente.
+As fatias admission/handoff/daily-charge/inventory/discharge/receipt continuam
+provas separadas; a jornada completa foi classificada `REJECT` porque o
+consumo de estoque não gera ainda item de billing e não existe E2E público
+HTTP/PostgreSQL único com rollback, replay, concorrência, dois tenants e
+auditoria/outbox correlacionados.
+
+Próximo RED: criar
+`tests/integration/database/inpatient-inventory-charge-capture-http-postgres.test.ts`,
+expor a lacuna de charge capture e decidir o contrato de preço antes do GREEN.
+O Quality Bar e o ERP continuam `IN_PROGRESS/PARTIAL`, com provider, SPA,
+Vetus parity, WCAG, operações, cobertura e release separados.

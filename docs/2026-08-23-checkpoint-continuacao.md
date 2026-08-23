@@ -883,3 +883,25 @@ Após confirmar `git fetch` e a igualdade entre `HEAD` e `origin/agent/sync-v4-f
 retomar pela jornada admissão → handoff/permanência → inventário → alta →
 billing → recebimento/ledger/auditoria/outbox. O ERP e os gates externos
 continuam `IN_PROGRESS/PARTIAL`.
+
+## Handoff desta sessão — auditoria integral e próximo RED clínico-financeiro
+
+O registro executável mais recente está em
+[`2026-08-23-handoff-cvg-002c6-clinical-financial-audit.md`](2026-08-23-handoff-cvg-002c6-clinical-financial-audit.md)
+e no artefato
+`.agent/artifacts/CVG-002C6-clinical-financial-audit-2026-08-23.md`.
+
+Nesta sessão foram preservados: a leitura byte-a-byte do corpus atual antes
+deste handoff (1.450 arquivos, 1.194 textuais, 256 binários, 53.810.236
+bytes), a precedência documental, a pesquisa de mercado e a crítica
+independente da jornada. O veredito da jornada completa é `REJECT`: ainda não
+há prova HTTP/PostgreSQL única ligando consumo de estoque, charge capture,
+diária, alta, recebimento, ledger, auditoria e outbox com replay,
+concorrência, dois tenants e rollback.
+
+O próximo passo não é reabrir C5. Escrever o RED
+`tests/integration/database/inpatient-inventory-charge-capture-http-postgres.test.ts`,
+expor a ausência de item de billing originado pelo consumo e só então decidir
+o contrato/preço de charge capture antes do GREEN. O ERP, `CVG-002`,
+`CVG-002C2`, `CVG-002B2B` e todos os gates externos continuam
+`IN_PROGRESS/PARTIAL` ou abertos; o cache user-owned permanece fora do stage.
