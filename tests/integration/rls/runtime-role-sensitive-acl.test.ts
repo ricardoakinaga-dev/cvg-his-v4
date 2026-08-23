@@ -5,6 +5,8 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { getAdminPool, getTestPool } from '../../db/db-admin.js';
 import { TEST_DB_NAME, TEST_DB_URL } from '../../setup/env.js';
 
+const TENANT_ID = '00000000-0000-0000-0000-000000000001';
+
 describe('runtime role sensitive-table ACL', () => {
   afterAll(async () => {
     await getTestPool().end();
@@ -139,6 +141,72 @@ describe('runtime role sensitive-table ACL', () => {
         worker_donor_membership: false,
         worker_sensitive_dml: false
       });
+
+      const accountId = randomUUID();
+      const serviceUserId = randomUUID();
+      const serviceSuffix = serviceUserId.replaceAll('-', '');
+      await testPool.query(
+        `INSERT INTO accounts (id, tenant_id, slug, name)
+         VALUES ($1, $2, $3, 'Worker principal ACL')`,
+        [accountId, TENANT_ID, `worker-principal-${serviceSuffix}`]
+      );
+      await testPool.query(
+        `INSERT INTO users (
+           id, account_id, username, email, password_hash, full_name,
+           is_active, principal_kind, interactive_login_enabled
+         ) VALUES ($1, $2, $3, $4, 'not-readable', 'Worker service', true, 'service', false)`,
+        [
+          serviceUserId,
+          accountId,
+          `worker_service_${serviceSuffix}`,
+          `worker-service-${serviceSuffix}@example.test`
+        ]
+      );
+      await testPool.query(
+        `INSERT INTO account_service_principals (account_id, purpose, user_id)
+         VALUES ($1, 'pix-settlement', $2)`,
+        [accountId, serviceUserId]
+      );
+
+      const workerClient = await testPool.connect();
+      try {
+        await workerClient.query('BEGIN');
+        await workerClient.query(`SET ROLE "${workerRole}"`);
+        await workerClient.query("SELECT set_config('app.current_account_id', $1, true)", [
+          accountId
+        ]);
+        const principal = await workerClient.query<{
+          readonly user_id: string;
+          readonly is_active: boolean;
+          readonly principal_kind: string;
+          readonly interactive_login_enabled: boolean;
+          readonly user_active: boolean;
+        }>(
+          `SELECT principal.user_id, principal.is_active, users.principal_kind,
+                  users.interactive_login_enabled, users.is_active AS user_active
+             FROM account_service_principals AS principal
+             JOIN users
+               ON users.account_id = principal.account_id AND users.id = principal.user_id
+            WHERE principal.account_id = $1 AND principal.purpose = 'pix-settlement'
+            ORDER BY principal.is_active DESC, principal.created_at DESC`,
+          [accountId]
+        );
+        expect(principal.rows).toEqual([
+          {
+            user_id: serviceUserId,
+            is_active: true,
+            principal_kind: 'service',
+            interactive_login_enabled: false,
+            user_active: true
+          }
+        ]);
+        await expect(
+          workerClient.query('SELECT password_hash FROM users WHERE account_id = $1', [accountId])
+        ).rejects.toThrow(/permission denied|column/);
+        await workerClient.query('ROLLBACK');
+      } finally {
+        workerClient.release();
+      }
 
       const rls = await testPool.query<{ relname: string; forced: boolean }>(
         `SELECT relname, relforcerowsecurity AS forced

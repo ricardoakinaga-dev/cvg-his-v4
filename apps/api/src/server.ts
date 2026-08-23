@@ -7229,6 +7229,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
             apiKeys,
             audit,
             cardTransactions,
+            pixTransactions,
             billing
           });
           if (await paymentsHandled) return;

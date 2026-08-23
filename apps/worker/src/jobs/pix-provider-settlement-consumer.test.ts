@@ -66,6 +66,10 @@ class FakeRepository implements PixProviderEventDeliveryRepository {
     this.failures = [...this.failures, failure];
     return failure.errorClass === 'retryable' ? 'retry_scheduled' : 'reconciliation_required';
   }
+
+  async redrive(): Promise<boolean> {
+    return true;
+  }
 }
 
 test('PIX settlement backoff starts at 5 seconds and caps at 900 seconds', () => {
@@ -116,6 +120,31 @@ test('consumer retries only allowlisted correlation and principal failures', asy
     assert.deepEqual(repository.failures, [
       { code, errorClass: 'retryable', retryDelaySeconds: 5 }
     ]);
+  }
+});
+
+test('consumer retries explicit transient PostgreSQL and transport failures', async () => {
+  for (const error of [
+    Object.assign(new Error('serialization failure'), { code: '40001' }),
+    Object.assign(new Error('deadlock'), { code: '40P01' }),
+    Object.assign(new Error('connection reset'), { code: 'ECONNRESET' }),
+    Object.assign(new Error('provider unavailable'), {
+      cause: Object.assign(new Error('temporary DNS failure'), { code: 'EAI_AGAIN' })
+    })
+  ]) {
+    const repository = new FakeRepository();
+    repository.executionError = error;
+    const consumer = new PixProviderSettlementConsumer(repository, {
+      workerId: 'pix-settlement-worker',
+      leaseMs: 60_000,
+      createSettlementExecutor: () => ({ execute: async () => ({}) as never })
+    });
+
+    const result = await consumer.processNext(claim.accountId);
+
+    assert.equal(result.status, 'retry_scheduled');
+    assert.equal(repository.failures[0]?.errorClass, 'retryable');
+    assert.equal(repository.failures[0]?.retryDelaySeconds, 5);
   }
 });
 

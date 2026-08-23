@@ -18,6 +18,33 @@ const RETRYABLE_CODES = new Set([
   'PIX_SETTLEMENT_PRINCIPAL_INVALID',
   'PIX_NOT_CORRELATED'
 ]);
+const TRANSIENT_INFRASTRUCTURE_CODES = new Set([
+  // PostgreSQL serialization, deadlock, lock contention and connection failures.
+  '40001',
+  '40P01',
+  '55P03',
+  '08000',
+  '08001',
+  '08003',
+  '08004',
+  '08006',
+  '08007',
+  '08P01',
+  '53300',
+  '57P01',
+  '57P02',
+  '57P03',
+  // Node transport and undici provider failures.
+  'ECONNRESET',
+  'ECONNREFUSED',
+  'ETIMEDOUT',
+  'EAI_AGAIN',
+  'EPIPE',
+  'UND_ERR_CONNECT_TIMEOUT',
+  'UND_ERR_SOCKET',
+  'UND_ERR_HEADERS_TIMEOUT',
+  'UND_ERR_BODY_TIMEOUT'
+]);
 
 export interface ConfirmedPixSettlementExecutor {
   execute(input: ApplyConfirmedPixSettlementInput): Promise<unknown>;
@@ -64,14 +91,28 @@ function assertOptions(options: PixProviderSettlementConsumerOptions): void {
   }
 }
 
+function errorCode(error: unknown, depth = 0): string | undefined {
+  if (depth > 3) return undefined;
+  if (!error || typeof error !== 'object') return undefined;
+  const code = 'code' in error ? (error as { readonly code?: unknown }).code : undefined;
+  if (typeof code === 'string' && /^[A-Z0-9_]{1,64}$/.test(code)) return code;
+  const cause = 'cause' in error ? (error as { readonly cause?: unknown }).cause : undefined;
+  return cause && cause !== error ? errorCode(cause, depth + 1) : undefined;
+}
+
 function safeErrorCode(error: unknown): string {
-  const code =
-    error && typeof error === 'object' && 'code' in error
-      ? (error as { readonly code?: unknown }).code
-      : undefined;
-  return typeof code === 'string' && /^[A-Z0-9_]{1,64}$/.test(code)
-    ? code
-    : 'PIX_SETTLEMENT_UNEXPECTED';
+  return errorCode(error) ?? 'PIX_SETTLEMENT_UNEXPECTED';
+}
+
+function isTransientInfrastructureError(error: unknown): boolean {
+  let current = error;
+  for (let depth = 0; depth < 4 && current; depth += 1) {
+    const code = errorCode(current);
+    if (code && TRANSIENT_INFRASTRUCTURE_CODES.has(code)) return true;
+    if (!current || typeof current !== 'object' || !('cause' in current)) return false;
+    current = (current as { readonly cause?: unknown }).cause;
+  }
+  return false;
 }
 
 function failureFor(
@@ -79,7 +120,7 @@ function failureFor(
   claim: PixProviderEventDeliveryClaim
 ): PixProviderEventDeliveryFailure {
   const code = safeErrorCode(error);
-  if (RETRYABLE_CODES.has(code)) {
+  if (RETRYABLE_CODES.has(code) || isTransientInfrastructureError(error)) {
     return Object.freeze({
       code,
       errorClass: 'retryable',

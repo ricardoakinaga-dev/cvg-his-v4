@@ -1,12 +1,9 @@
-import { randomUUID } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
 
 import {
-  createScopedDatabaseClient,
   runInTenantTransaction,
-  type TenantTransactionContext,
-  type TransactionalAuditInput,
-  type TransactionalOutboxInput
+  runInTenantTransactionContext,
+  type TenantTransactionContext
 } from '@cvg-his-v2/shared-database';
 import type { ApplyConfirmedPixSettlementInput } from '@cvg-his-v2/module-pix';
 
@@ -38,6 +35,15 @@ export interface PixProviderEventDeliveryFailure {
   readonly retryDelaySeconds: number;
 }
 
+export interface RedrivePixProviderEventDeliveryInput {
+  readonly accountId: string;
+  readonly deliveryId: string;
+  readonly eventId: string;
+  readonly actorUserId: string;
+  readonly correlationId: string;
+  readonly reason: string;
+}
+
 export type PixProviderSettlementExecution = 'applied' | 'lease_lost';
 export type PixProviderEventDeliveryFailureStatus = 'reconciliation_required' | 'retry_scheduled';
 
@@ -58,6 +64,7 @@ export interface PixProviderEventDeliveryRepository {
     claim: PixProviderEventDeliveryClaim,
     failure: PixProviderEventDeliveryFailure
   ): Promise<PixProviderEventDeliveryFailureStatus | null>;
+  redrive(input: RedrivePixProviderEventDeliveryInput): Promise<boolean>;
 }
 
 interface ClaimRow {
@@ -176,88 +183,6 @@ function mapClaim(row: ClaimRow): PixProviderEventDeliveryClaim {
   });
   assertClaim(claim);
   return claim;
-}
-
-function createTransactionContext(
-  client: PoolClient,
-  claim: PixProviderEventDeliveryClaim,
-  actorUserId: string,
-  correlationId: string
-): TenantTransactionContext {
-  return Object.freeze({
-    accountId: claim.accountId,
-    actorUserId,
-    correlationId,
-    client,
-    database: createScopedDatabaseClient(client),
-    inbox: {
-      claim: async (consumerName: string, eventId: string) => {
-        const inserted = await client.query(
-          `INSERT INTO inbox_events (account_id, consumer_name, event_id)
-           VALUES ($1, $2, $3)
-           ON CONFLICT (account_id, consumer_name, event_id) DO NOTHING
-           RETURNING id`,
-          [claim.accountId, consumerName, eventId]
-        );
-        return inserted.rowCount === 1;
-      }
-    },
-    outbox: {
-      append: async (input: TransactionalOutboxInput) => {
-        const id = input.id ?? randomUUID();
-        const rawMeta = input.payload['_meta'];
-        const meta =
-          rawMeta && typeof rawMeta === 'object' && !Array.isArray(rawMeta) ? rawMeta : {};
-        await client.query(
-          `INSERT INTO outbox_events (
-             id, account_id, correlation_id, module_name, event_type, payload,
-             status, attempts, max_attempts, scheduled_at, created_at
-           ) VALUES ($1, $2, $3, $4, $5, $6::jsonb, 'pending', 0, $7, $8, now())`,
-          [
-            id,
-            claim.accountId,
-            correlationId,
-            input.moduleName,
-            input.eventType,
-            JSON.stringify({
-              ...input.payload,
-              accountId: claim.accountId,
-              _meta: { ...meta, accountId: claim.accountId }
-            }),
-            input.maxAttempts ?? 3,
-            input.scheduledAt ?? new Date()
-          ]
-        );
-        return id;
-      }
-    },
-    audit: {
-      append: async (input: TransactionalAuditInput) => {
-        const id = randomUUID();
-        await client.query(
-          `INSERT INTO audit_events (
-             id, account_id, actor_user_id, action, entity_type, entity_id,
-             metadata, correlation_id, occurred_at, before_json, after_json, reason, created_at
-           ) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, now(), $9::jsonb,
-                     $10::jsonb, $11, now())`,
-          [
-            id,
-            claim.accountId,
-            actorUserId,
-            input.action,
-            input.entityType,
-            input.entityId,
-            JSON.stringify(input.metadata ?? null),
-            correlationId,
-            JSON.stringify(input.before ?? null),
-            JSON.stringify(input.after ?? null),
-            input.reason ?? null
-          ]
-        );
-        return id;
-      }
-    }
-  });
 }
 
 function assertAttemptMatches(event: EventRow, attempt: AttemptRow): void {
@@ -390,15 +315,17 @@ export class DatabasePixProviderEventDeliveryRepository implements PixProviderEv
         const pix = await this.findPix(client, claim.accountId, event.payment_attempt_id);
         if (!pix) fail('PIX_NOT_CORRELATED', 'PIX provider receipt is not correlated');
         const input = settlementInput(claim, event, attempt, pix, actorUserId);
-        const transaction = createTransactionContext(
-          client,
-          claim,
-          actorUserId,
-          event.correlation_id
-        );
-        await execute(input, transaction);
-        const applied = await client.query(
-          `UPDATE pix_provider_event_deliveries
+        return runInTenantTransactionContext(
+          this.pool,
+          {
+            accountId: claim.accountId,
+            actorUserId,
+            correlationId: event.correlation_id
+          },
+          async (transaction) => {
+            await execute(input, transaction);
+            const applied = await transaction.client.query(
+              `UPDATE pix_provider_event_deliveries
               SET state = 'applied', applied_at = clock_timestamp(), next_attempt_at = NULL,
                   lease_owner = NULL, lease_token = NULL, lease_expires_at = NULL,
                   last_error_code = NULL, last_error_class = NULL,
@@ -407,17 +334,19 @@ export class DatabasePixProviderEventDeliveryRepository implements PixProviderEv
               AND state = 'processing' AND lease_owner = $4
               AND lease_token = $5::uuid AND lease_version = $6::bigint
               AND lease_expires_at > clock_timestamp()`,
-          [
-            claim.accountId,
-            claim.deliveryId,
-            claim.eventId,
-            claim.leaseOwner,
-            claim.leaseToken,
-            claim.leaseVersion
-          ]
+              [
+                claim.accountId,
+                claim.deliveryId,
+                claim.eventId,
+                claim.leaseOwner,
+                claim.leaseToken,
+                claim.leaseVersion
+              ]
+            );
+            if (applied.rowCount !== 1) throw new PixProviderSettlementFenceError();
+            return 'applied' as const;
+          }
         );
-        if (applied.rowCount !== 1) throw new PixProviderSettlementFenceError();
-        return 'applied';
       });
     } catch (error) {
       if (error instanceof PixProviderSettlementFenceError) return 'lease_lost';
@@ -484,6 +413,54 @@ export class DatabasePixProviderEventDeliveryRepository implements PixProviderEv
       if (state === 'reconciliation_required') return state;
       return null;
     });
+  }
+
+  public async redrive(input: RedrivePixProviderEventDeliveryInput): Promise<boolean> {
+    assertUuid(input.accountId, 'PIX settlement account id');
+    assertUuid(input.deliveryId, 'PIX settlement delivery id');
+    assertUuid(input.eventId, 'PIX settlement event id');
+    assertUuid(input.actorUserId, 'PIX settlement redrive actor id');
+    if (!input.correlationId || input.correlationId.length > 255) {
+      throw new Error('PIX settlement redrive correlation id is invalid');
+    }
+    if (!input.reason || input.reason.trim().length === 0 || input.reason.length > 500) {
+      throw new Error('PIX settlement redrive reason is invalid');
+    }
+
+    return runInTenantTransactionContext(
+      this.pool,
+      {
+        accountId: input.accountId,
+        actorUserId: input.actorUserId,
+        correlationId: input.correlationId
+      },
+      async (transaction) => {
+        const redriven = await transaction.client.query(
+          `UPDATE pix_provider_event_deliveries
+              SET state = 'pending', attempts = 0, next_attempt_at = clock_timestamp(),
+                  lease_owner = NULL, lease_token = NULL, lease_version = lease_version + 1,
+                  lease_expires_at = NULL, last_error_code = NULL, last_error_class = NULL,
+                  applied_at = NULL, updated_at = clock_timestamp()
+            WHERE account_id = $1 AND id = $2 AND event_id = $3
+              AND state = 'reconciliation_required'
+           RETURNING id`,
+          [input.accountId, input.deliveryId, input.eventId]
+        );
+        if (redriven.rowCount !== 1) return false;
+        await transaction.audit.append({
+          entityType: 'pix_provider_event_delivery',
+          entityId: input.deliveryId,
+          action: 'pix_settlement_redrive',
+          metadata: {
+            eventId: input.eventId,
+            resetAttempts: true,
+            redriveReason: input.reason
+          },
+          reason: input.reason
+        });
+        return true;
+      }
+    );
   }
 
   private async lockClaimedEvent(

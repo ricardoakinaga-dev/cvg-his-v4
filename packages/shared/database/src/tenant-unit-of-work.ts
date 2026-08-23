@@ -9,12 +9,18 @@ import {
 } from './transaction-scope.js';
 
 export type JsonPrimitive = string | number | boolean | null;
-export type JsonValue = JsonPrimitive | readonly JsonValue[] | { readonly [key: string]: JsonValue };
+export type JsonValue =
+  | JsonPrimitive
+  | readonly JsonValue[]
+  | { readonly [key: string]: JsonValue };
 
-export interface TenantUnitOfWorkExecutionContext {
+export interface TenantTransactionExecutionContext {
   readonly accountId: string;
   readonly actorUserId: string;
   readonly correlationId: string;
+}
+
+export interface TenantUnitOfWorkExecutionContext extends TenantTransactionExecutionContext {
   readonly operation: string;
   readonly idempotencyKey: string;
 }
@@ -126,7 +132,8 @@ function canonicalize(
     }
     return JSON.stringify(value);
   }
-  if (state.ancestors.has(value)) throw new Error('JSON payload cannot contain circular references');
+  if (state.ancestors.has(value))
+    throw new Error('JSON payload cannot contain circular references');
   state.ancestors.add(value);
   if (Array.isArray(value)) {
     for (let index = 0; index < value.length; index += 1) {
@@ -157,16 +164,26 @@ export function hashIdempotencyPayload(payload: JsonValue): string {
   return createHash('sha256').update(canonicalPayload).digest('hex');
 }
 
+function assertTransactionExecutionContext(context: TenantTransactionExecutionContext): void {
+  if (!UUID_PATTERN.test(context.accountId))
+    throw new Error('Tenant unit of work requires a valid account id');
+  if (!context.actorUserId || context.actorUserId.length > 255)
+    throw new Error('Tenant unit of work requires an actor user id');
+  if (!context.correlationId || context.correlationId.length > 255)
+    throw new Error('Tenant unit of work requires a correlation id');
+}
+
 function assertExecutionContext(context: TenantUnitOfWorkExecutionContext): void {
-  if (!UUID_PATTERN.test(context.accountId)) throw new Error('Tenant unit of work requires a valid account id');
-  if (!context.actorUserId || context.actorUserId.length > 255) throw new Error('Tenant unit of work requires an actor user id');
-  if (!context.correlationId || context.correlationId.length > 255) throw new Error('Tenant unit of work requires a correlation id');
-  if (!context.operation || context.operation.length > 128) throw new Error('Idempotency operation must contain 1 to 128 characters');
-  if (!context.idempotencyKey || context.idempotencyKey.length > 255) throw new Error('Idempotency key must contain 1 to 255 characters');
+  assertTransactionExecutionContext(context);
+  if (!context.operation || context.operation.length > 128)
+    throw new Error('Idempotency operation must contain 1 to 128 characters');
+  if (!context.idempotencyKey || context.idempotencyKey.length > 255)
+    throw new Error('Idempotency key must contain 1 to 255 characters');
 }
 
 function assertName(value: string, label: string, maximum: number): void {
-  if (!value || value.length > maximum) throw new Error(`${label} must contain 1 to ${maximum} characters`);
+  if (!value || value.length > maximum)
+    throw new Error(`${label} must contain 1 to ${maximum} characters`);
 }
 
 function createGuardedPoolClient(client: PoolClient, isActive: () => boolean): PoolClient {
@@ -238,9 +255,8 @@ async function beginTenantTransaction<T>(
     }
     if (transactionStarted) {
       await client.query('ROLLBACK').catch((rollbackError: unknown) => {
-        releaseError = rollbackError instanceof Error
-          ? rollbackError
-          : new Error(String(rollbackError));
+        releaseError =
+          rollbackError instanceof Error ? rollbackError : new Error(String(rollbackError));
       });
     }
     throw error;
@@ -255,13 +271,31 @@ export async function runInTenantTransaction<T>(
   accountId: string,
   operation: (client: PoolClient) => Promise<T>
 ): Promise<T> {
-  if (!UUID_PATTERN.test(accountId)) throw new Error('Tenant transaction requires a valid account id');
+  if (!UUID_PATTERN.test(accountId))
+    throw new Error('Tenant transaction requires a valid account id');
   return beginTenantTransaction(pool, accountId, operation);
+}
+
+export async function runInTenantTransactionContext<T>(
+  pool: Pool,
+  context: TenantTransactionExecutionContext,
+  command: (transaction: TenantTransactionContext) => Promise<T>
+): Promise<T> {
+  assertTransactionExecutionContext(context);
+  return beginTenantTransaction(pool, context.accountId, async (client) => {
+    const activeScope = getDatabaseTransactionScope();
+    const transaction = createTransactionContext(
+      client,
+      context,
+      () => activeScope?.isActive() === true
+    );
+    return tenantTransactionStorage.run(transaction, () => command(transaction));
+  });
 }
 
 function createTransactionContext(
   client: PoolClient,
-  context: TenantUnitOfWorkExecutionContext,
+  context: TenantTransactionExecutionContext,
   isActive: () => boolean
 ): TenantTransactionContext {
   if (!isActive()) throw new Error('Tenant transaction scope is no longer active');
@@ -277,7 +311,10 @@ function createTransactionContext(
         assertName(input.eventType, 'Outbox event type', 100);
         const payloadAccountId = input.payload['accountId'];
         const rawMeta = input.payload['_meta'];
-        if (rawMeta !== undefined && (!rawMeta || typeof rawMeta !== 'object' || Array.isArray(rawMeta))) {
+        if (
+          rawMeta !== undefined &&
+          (!rawMeta || typeof rawMeta !== 'object' || Array.isArray(rawMeta))
+        ) {
           throw new Error('Outbox payload _meta must be an object');
         }
         const payloadMeta = (rawMeta ?? {}) as Readonly<Record<string, unknown>>;
@@ -293,7 +330,8 @@ function createTransactionContext(
           accountId: context.accountId,
           _meta: { ...payloadMeta, accountId: context.accountId }
         });
-        if (Buffer.byteLength(payload, 'utf8') > MAX_REQUEST_BYTES) throw new Error('Outbox payload exceeds 1 MiB');
+        if (Buffer.byteLength(payload, 'utf8') > MAX_REQUEST_BYTES)
+          throw new Error('Outbox payload exceeds 1 MiB');
         const id = input.id ?? randomUUID();
         await client.query(
           `INSERT INTO outbox_events
@@ -371,56 +409,57 @@ export function createTenantUnitOfWork(pool: Pool): TenantUnitOfWork {
       }
       assertExecutionContext(context);
       const requestHash = hashIdempotencyPayload(requestPayload);
-      return beginTenantTransaction<TenantUnitOfWorkResult<T>>(pool, context.accountId, async (client) => {
-        const inserted = await client.query<IdempotencyRow>(
-          `INSERT INTO idempotency_requests
+      return beginTenantTransaction<TenantUnitOfWorkResult<T>>(
+        pool,
+        context.accountId,
+        async (client) => {
+          const inserted = await client.query<IdempotencyRow>(
+            `INSERT INTO idempotency_requests
              (account_id, operation, idempotency_key, request_hash, status)
            VALUES ($1, $2, $3, $4, 'processing')
            ON CONFLICT (account_id, operation, idempotency_key) DO NOTHING
            RETURNING request_hash, status, response_body`,
-          [context.accountId, context.operation, context.idempotencyKey, requestHash]
-        );
+            [context.accountId, context.operation, context.idempotencyKey, requestHash]
+          );
 
-        let record = inserted.rows[0];
-        if (!record) {
-          const existing = await client.query<IdempotencyRow>(
-            `SELECT request_hash, status, response_body
+          let record = inserted.rows[0];
+          if (!record) {
+            const existing = await client.query<IdempotencyRow>(
+              `SELECT request_hash, status, response_body
              FROM idempotency_requests
              WHERE account_id = $1 AND operation = $2 AND idempotency_key = $3
              FOR UPDATE`,
-            [context.accountId, context.operation, context.idempotencyKey]
-          );
-          record = existing.rows[0];
-        }
-        if (!record) throw new Error('Idempotency record could not be acquired');
-        if (record.request_hash !== requestHash) throw new IdempotencyConflictError();
-        if (record.status === 'completed') {
-          return { value: record.response_body as T, replayed: true };
-        }
-        if (inserted.rowCount !== 1) throw new IdempotencyInProgressError();
+              [context.accountId, context.operation, context.idempotencyKey]
+            );
+            record = existing.rows[0];
+          }
+          if (!record) throw new Error('Idempotency record could not be acquired');
+          if (record.request_hash !== requestHash) throw new IdempotencyConflictError();
+          if (record.status === 'completed') {
+            return { value: record.response_body as T, replayed: true };
+          }
+          if (inserted.rowCount !== 1) throw new IdempotencyInProgressError();
 
-        const activeScope = getDatabaseTransactionScope();
-        const transaction = createTransactionContext(
-          client,
-          context,
-          () => activeScope?.isActive() === true
-        );
-        const value = await tenantTransactionStorage.run(
-          transaction,
-          () => command(transaction)
-        );
-        const serialized = canonicalize(value);
-        if (Buffer.byteLength(serialized, 'utf8') > MAX_RESPONSE_BYTES) {
-          throw new Error('Idempotency response exceeds 256 KiB');
-        }
-        await client.query(
-          `UPDATE idempotency_requests
+          const activeScope = getDatabaseTransactionScope();
+          const transaction = createTransactionContext(
+            client,
+            context,
+            () => activeScope?.isActive() === true
+          );
+          const value = await tenantTransactionStorage.run(transaction, () => command(transaction));
+          const serialized = canonicalize(value);
+          if (Buffer.byteLength(serialized, 'utf8') > MAX_RESPONSE_BYTES) {
+            throw new Error('Idempotency response exceeds 256 KiB');
+          }
+          await client.query(
+            `UPDATE idempotency_requests
            SET status = 'completed', response_body = $4::jsonb, completed_at = now()
            WHERE account_id = $1 AND operation = $2 AND idempotency_key = $3 AND status = 'processing'`,
-          [context.accountId, context.operation, context.idempotencyKey, serialized]
-        );
-        return { value, replayed: false };
-      });
+            [context.accountId, context.operation, context.idempotencyKey, serialized]
+          );
+          return { value, replayed: false };
+        }
+      );
     }
   };
 }

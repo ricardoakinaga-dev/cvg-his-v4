@@ -6141,6 +6141,39 @@ paths:
         '403':
           description: Forbidden
 
+  /payments/pix/intents/{intentId}/confirm:
+    post:
+      operationId: confirmPixPaymentIntent
+      summary: Confirm a legacy PIX payment intent when it is not encounter-attempt linked
+      tags: [Payments]
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: intentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: PIX intent confirmed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PixPaymentConfirmationResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Intent not found
+        '409':
+          description: Payment is not completed
+        '410':
+          description: Legacy confirmation disabled for encounter payment attempts
+        '501':
+          description: Payment confirmation not available
+
   /payments/cards/intents:
     post:
       operationId: createCardPaymentIntent
@@ -17090,6 +17123,23 @@ components:
         createdAt:
           type: string
           format: date-time
+
+    PixPaymentConfirmationResponse:
+      type: object
+      required: [transactionId, status, completedAt]
+      properties:
+        transactionId:
+          type: string
+        status:
+          type: string
+          enum: [completed]
+        completedAt:
+          type: string
+          format: date-time
+        eventId:
+          type: string
+        eventCorrelationId:
+          type: string
 
     CardPaymentIntentRequest:
       type: object

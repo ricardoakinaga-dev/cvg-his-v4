@@ -16,6 +16,7 @@ import { appendAudit } from '../helpers/audit-helper.js';
 import type { EventBusService } from '@cvg-his-v2/module-event-bus';
 import type { PaymentGateway } from '../payment-gateway.js';
 import type { CardTransactionRepository } from '../card-transaction-repository.js';
+import type { PixTransactionRepository } from '../pix-transaction-repository.js';
 
 export interface PaymentsHandlers {
   eventBus: EventBusService;
@@ -23,6 +24,7 @@ export interface PaymentsHandlers {
   apiKeys: ApiKeysService;
   audit: AuditService;
   cardTransactions: CardTransactionRepository;
+  pixTransactions: PixTransactionRepository;
   billing: BillingService;
 }
 
@@ -38,7 +40,8 @@ export function handlePaymentsRoutes(
   correlationId: string,
   handlers: PaymentsHandlers
 ): Promise<boolean> | boolean {
-  const { eventBus, paymentGateway, apiKeys, audit, cardTransactions, billing } = handlers;
+  const { eventBus, paymentGateway, apiKeys, audit, cardTransactions, pixTransactions, billing } =
+    handlers;
 
   // POST /payments/pix/intents — create PIX intent
   if (pathname === '/payments/pix/intents' && request.method === 'POST') {
@@ -89,7 +92,8 @@ export function handlePaymentsRoutes(
       eventBus,
       paymentGateway,
       apiKeys,
-      audit
+      audit,
+      pixTransactions
     });
   }
 
@@ -619,11 +623,31 @@ async function handlePixIntentConfirm(
     eventBus,
     paymentGateway,
     apiKeys,
-    audit
-  }: Pick<PaymentsHandlers, 'eventBus' | 'paymentGateway' | 'apiKeys' | 'audit'>
+    audit,
+    pixTransactions
+  }: Pick<PaymentsHandlers, 'eventBus' | 'paymentGateway' | 'apiKeys' | 'audit' | 'pixTransactions'>
 ): Promise<boolean> {
   const intentId = pathname.split('/')[4];
   const apiKeyPrincipal = await requireApiKey(request, 'payments.manage', apiKeys);
+
+  const persistedIntent = await pixTransactions.findByTransactionId(intentId);
+  if (persistedIntent?.paymentAttemptId) {
+    if (persistedIntent.accountId !== apiKeyPrincipal.apiKey.accountId) {
+      response.statusCode = 404;
+      response.setHeader('content-type', 'application/json');
+      response.end(JSON.stringify({ code: 'NOT_FOUND', message: 'Intent not found' }));
+      return true;
+    }
+    response.statusCode = 410;
+    response.setHeader('content-type', 'application/json');
+    response.end(
+      JSON.stringify({
+        code: 'LEGACY_PIX_CONFIRMATION_DISABLED',
+        message: 'PIX confirmation for encounter payment attempts is disabled'
+      })
+    );
+    return true;
+  }
 
   if (!paymentGateway.confirmPayment) {
     response.statusCode = 501;

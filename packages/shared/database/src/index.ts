@@ -37,15 +37,14 @@ export {
   IdempotencyConflictError,
   IdempotencyInProgressError,
   runInTenantTransaction,
+  runInTenantTransactionContext,
   type JsonValue,
   type TenantTransactionContext,
+  type TenantTransactionExecutionContext,
   type TenantUnitOfWork,
   type TenantUnitOfWorkExecutionContext,
   type TenantUnitOfWorkResult,
   type TransactionalAuditInput,
   type TransactionalOutboxInput
 } from './tenant-unit-of-work.js';
-export {
-  getDatabaseTransactionScope,
-  type DatabaseTransactionScope
-} from './transaction-scope.js';
+export { getDatabaseTransactionScope, type DatabaseTransactionScope } from './transaction-scope.js';

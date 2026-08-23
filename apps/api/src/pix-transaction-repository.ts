@@ -22,6 +22,7 @@ export interface PixTransactionRecord {
   readonly provider: PixGatewayProviderName;
   readonly accountId: string;
   readonly billingRecordId?: string;
+  readonly paymentAttemptId?: string;
   readonly amount: number;
   readonly currency: 'BRL';
   readonly description: string;
@@ -110,6 +111,7 @@ function mapRow(row: Record<string, unknown>): PixTransactionRecord {
     provider: row.provider as PixGatewayProviderName,
     accountId: row.account_id as string,
     billingRecordId: (row.billing_record_id as string | null) ?? undefined,
+    paymentAttemptId: (row.payment_attempt_id as string | null) ?? undefined,
     amount: Number(row.amount),
     currency: row.currency as 'BRL',
     description: row.description as string,
@@ -158,10 +160,7 @@ export class InMemoryPixTransactionRepository implements PixTransactionRepositor
     providerTransactionId: string
   ): Promise<PixTransactionRecord | null> {
     for (const record of this.#records.values()) {
-      if (
-        record.provider === provider &&
-        record.providerTransactionId === providerTransactionId
-      ) {
+      if (record.provider === provider && record.providerTransactionId === providerTransactionId) {
         return cloneRecord(record);
       }
     }
@@ -184,8 +183,7 @@ export class InMemoryPixTransactionRepository implements PixTransactionRepositor
       providerWebhookEventId: input.providerWebhookEventId ?? existing.providerWebhookEventId,
       completedAt: input.completedAt ?? existing.completedAt,
       lastProviderSyncAt: input.lastProviderSyncAt ?? existing.lastProviderSyncAt,
-      billingSettlementStatus:
-        input.billingSettlementStatus ?? existing.billingSettlementStatus
+      billingSettlementStatus: input.billingSettlementStatus ?? existing.billingSettlementStatus
     };
     this.#records.set(updated.transactionId, updated);
     return cloneRecord(updated);
@@ -223,8 +221,7 @@ export class InMemoryPixTransactionRepository implements PixTransactionRepositor
       updatedAt: input.updatedAt ?? nowIso(),
       cashReconciliationStatus: input.cashReconciliationStatus,
       cashReconciledAt: input.cashReconciledAt ?? existing.cashReconciledAt,
-      cashReconciliationError:
-        input.cashReconciliationError ?? existing.cashReconciliationError,
+      cashReconciliationError: input.cashReconciliationError ?? existing.cashReconciliationError,
       cashRegisterId: input.cashRegisterId ?? existing.cashRegisterId,
       cashMovementId: input.cashMovementId ?? existing.cashMovementId
     };
@@ -264,6 +261,7 @@ export class DatabasePixTransactionRepository implements PixTransactionRepositor
            provider,
            account_id,
            billing_record_id,
+           payment_attempt_id,
            amount,
            currency,
            description,
@@ -289,13 +287,14 @@ export class DatabasePixTransactionRepository implements PixTransactionRepositor
          ) VALUES (
            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
            $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21,
-           $22, $23, $24, $25, $26
+           $22, $23, $24, $25, $26, $27
          )`,
         [
           transaction.transactionId,
           transaction.provider,
           transaction.accountId,
           transaction.billingRecordId ?? null,
+          transaction.paymentAttemptId ?? null,
           transaction.amount,
           transaction.currency,
           transaction.description,

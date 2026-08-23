@@ -3,10 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const { queryMock, withTenantQueryMock } = vi.hoisted(() => {
   const queryMock = vi.fn();
   const withTenantQueryMock = vi.fn(
-    async (
-      _pool: unknown,
-      fn: (client: { query: typeof queryMock }) => Promise<unknown>
-    ) => fn({ query: queryMock })
+    async (_pool: unknown, fn: (client: { query: typeof queryMock }) => Promise<unknown>) =>
+      fn({ query: queryMock })
   );
   return { queryMock, withTenantQueryMock };
 });
@@ -62,6 +60,7 @@ function createDbRow(overrides: Record<string, unknown> = {}): Record<string, un
     provider: 'pagarme',
     account_id: 'acc_pix',
     billing_record_id: 'bill_1',
+    payment_attempt_id: null,
     amount: '180.5',
     currency: 'BRL',
     description: 'Recebimento PIX',
@@ -114,34 +113,38 @@ describe('DatabasePixTransactionRepository coverage guard', () => {
       })
     );
 
-    expect(queryMock).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO pix_transactions'), [
-      'pix_tx_1',
-      'pagarme',
-      'acc_pix',
-      'bill_1',
-      180.5,
-      'BRL',
-      'Recebimento PIX',
-      'payload',
-      'base64',
-      new Date('2026-04-19T10:00:00.000Z'),
-      'pending',
-      new Date('2026-04-18T10:00:00.000Z'),
-      new Date('2026-04-18T10:00:00.000Z'),
-      null,
-      null,
-      null,
-      null,
-      null,
-      'pending_billing',
-      null,
-      null,
-      'failed',
-      null,
-      null,
-      null,
-      null
-    ]);
+    expect(queryMock).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO pix_transactions'),
+      [
+        'pix_tx_1',
+        'pagarme',
+        'acc_pix',
+        'bill_1',
+        null,
+        180.5,
+        'BRL',
+        'Recebimento PIX',
+        'payload',
+        'base64',
+        new Date('2026-04-19T10:00:00.000Z'),
+        'pending',
+        new Date('2026-04-18T10:00:00.000Z'),
+        new Date('2026-04-18T10:00:00.000Z'),
+        null,
+        null,
+        null,
+        null,
+        null,
+        'pending_billing',
+        null,
+        null,
+        'failed',
+        null,
+        null,
+        null,
+        null
+      ]
+    );
   });
 
   it('maps single-record lookups from database rows', async () => {
@@ -166,7 +169,9 @@ describe('DatabasePixTransactionRepository coverage guard', () => {
       expect.stringContaining('WHERE provider = $1 AND provider_transaction_id = $2'),
       ['pagarme', 'provider_tx_1']
     );
-    expect(byTransactionId).toEqual(expect.objectContaining({ transactionId: 'pix_tx_1', amount: 180.5 }));
+    expect(byTransactionId).toEqual(
+      expect.objectContaining({ transactionId: 'pix_tx_1', amount: 180.5 })
+    );
     expect(byProvider).toEqual(expect.objectContaining({ transactionId: 'pix_tx_2' }));
     expect(missing).toBeNull();
   });
@@ -251,7 +256,9 @@ describe('DatabasePixTransactionRepository coverage guard', () => {
   it('lists PIX transactions with dynamic filters and descending ordering', async () => {
     queryMock
       .mockResolvedValueOnce({ rows: [createDbRow(), createDbRow({ transaction_id: 'pix_tx_2' })] })
-      .mockResolvedValueOnce({ rows: [createDbRow({ transaction_id: 'pix_tx_3', provider: 'local-pix' })] });
+      .mockResolvedValueOnce({
+        rows: [createDbRow({ transaction_id: 'pix_tx_3', provider: 'local-pix' })]
+      });
 
     const repository = new DatabasePixTransactionRepository();
 
@@ -273,7 +280,9 @@ describe('DatabasePixTransactionRepository coverage guard', () => {
       ['acc_pix', 'pending', 'local-pix']
     );
     expect(unfiltered).toHaveLength(2);
-    expect(filtered).toEqual([expect.objectContaining({ transactionId: 'pix_tx_3', provider: 'local-pix' })]);
+    expect(filtered).toEqual([
+      expect.objectContaining({ transactionId: 'pix_tx_3', provider: 'local-pix' })
+    ]);
   });
 
   it('lists canonical settlement transaction ids directly from the tenant proof table', async () => {
