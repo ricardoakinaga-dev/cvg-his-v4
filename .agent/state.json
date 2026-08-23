@@ -14,17 +14,17 @@
   "active_execplan": ".agent/plans/premium-enterprise-mvp.md",
   "active_task": "CVG-002C6",
   "verification_state": "PARTIAL",
-  "repository_state": "Published baseline is aligned to origin/agent/sync-v4-full-program at adde66b7a1b33333126f4832b3c728abb2db8500 (`fix: harden worker runtime role boundary`). It includes installer/governance DML revocation for the worker in reconciler, init script and Helm, the real child-process SIGKILL/restart test, the worker artifact and the continuation ledgers. The preserved user-owned packages/design-system/tsconfig.vue.tsbuildinfo cache remains outside scope and must not be staged",
+  "repository_state": "Implementation checkpoint adde66b7a1b33333126f4832b3c728abb2db8500 (`fix: harden worker runtime role boundary`) and final documentation pointer 720876ec1f5ce30275b1160df7ef5f35c6fb1b0e (`docs: publish worker runtime checkpoint`) are published on origin/agent/sync-v4-full-program; HEAD equals origin after fetch. The preserved user-owned packages/design-system/tsconfig.vue.tsbuildinfo cache remains outside scope and must not be staged",
   "latest_bounded_evidence": "2026-08-23: CVG-002C6 worker-runtime entrypoint test passed 1/1 against disposable PostgreSQL with a real LOGIN NOSUPERUSER/NOBYPASSRLS role: /live, ticksCompleted>0, SIGKILL, same-port restart and clean SIGTERM. Runtime-role grant contract passed 11/11; db typecheck, Prettier, shell syntax and git diff check passed. Worker health remains degraded because payments, billing and webhooks consumers are not registered; this is an explicit production gate, not a false GREEN. Artifact: .agent/artifacts/CVG-002C6-worker-runtime-acl-sigkill-2026-08-23.md. The bounded 5/5 vertical, 1/1 controlled restart and migration 0120 shadowing defense remain valid but do not promote the global ERP/Quality Bar.",
   "instruction_scope_refs": [".agent/instruction-scope.md"],
   "last_gate_record": ".agent/gates/implementation-ready-CVG-002C6.json",
-  "last_event_id": "EVT-0189",
-  "state_revision": 177,
+  "last_event_id": "EVT-0190",
+  "state_revision": 178,
   "next_gate": "VERIFIED",
   "next_action": "The real worker child-process boundary is GREEN bounded for liveness, loop ticks, SIGKILL and same-port restart, while health remains degraded because payments, billing and webhooks consumers are not registered. Next: design/register the real worker handlers or an explicitly reviewed worker manifest, then rerun readiness/event-processing evidence; after that complete failpoints across admission/inventory/daily/discharge/close/receipt and applied Helm equivalence. Keep WebAuthn durability, audit account attribution, callback ghost, asynchronous cross-instance hydration, global RLS/FORCE RLS, Redis/provider/SPA/parity/WCAG/coverage/operations/deploy/release explicitly IN_PROGRESS/PARTIAL",
   "blocked_by": [],
   "human_approval_required": [
     "Production go-live, credential rotation, provider selection, fiscal homologation, and residual HIGH/CRITICAL risk acceptance remain outside repository implementation authority"
   ],
-  "updated_at": "2026-08-23T17:53:00-03:00"
+  "updated_at": "2026-08-23T17:56:00-03:00"
 }

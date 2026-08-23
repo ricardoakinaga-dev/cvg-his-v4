@@ -1246,3 +1246,7 @@ O código, o teste de processo, o artefato e os ledgers foram publicados em
 com `git fetch`: `HEAD == origin/agent/sync-v4-full-program`. O único dirty path
 é o cache user-owned `packages/design-system/tsconfig.vue.tsbuildinfo`, que
 permaneceu fora do stage.
+
+O ponteiro final do handoff documental é `720876ec1f5ce30275b1160df7ef5f35c6fb1b0e`
+(`docs: publish worker runtime checkpoint`); a implementação bounded está em
+`adde66b7a1b33333126f4832b3c728abb2db8500`.

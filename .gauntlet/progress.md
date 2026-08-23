@@ -450,3 +450,6 @@ Publicação: `adde66b7a1b33333126f4832b3c728abb2db8500` (`fix: harden worker
 runtime role boundary`) foi enviado para `origin/agent/sync-v4-full-program`; o
 fetch confirmou igualdade entre `HEAD` e o remoto. O checkpoint do worker e o
 artefato são a referência da próxima sessão.
+
+O ponteiro final do handoff é `720876ec1f5ce30275b1160df7ef5f35c6fb1b0e`; a
+implementação está em `adde66b7a1b33333126f4832b3c728abb2db8500`.

@@ -212,6 +212,10 @@ confirmou `HEAD == origin`. O único dirty path continua sendo o cache
 user-owned `packages/design-system/tsconfig.vue.tsbuildinfo`, mantido fora do
 stage.
 
+O ponteiro final desta documentação é `720876ec1f5ce30275b1160df7ef5f35c6fb1b0e`
+(`docs: publish worker runtime checkpoint`); o commit de implementação
+continua sendo `adde66b7a1b33333126f4832b3c728abb2db8500`.
+
 O ponteiro documental mais recente desta sessão é o commit
 `7d57225ce1936f174eae5c4012ea69accac94519` (`docs: publish vertical
 checkpoint`); após o push, `HEAD == origin/agent/sync-v4-full-program`.

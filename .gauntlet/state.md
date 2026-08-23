@@ -420,6 +420,9 @@ cross-domain, admission/handoff e reconciliação observável. O cache
 `packages/design-system/tsconfig.vue.tsbuildinfo` é user-owned e fica fora do
 stage.
 
+O ponteiro final do handoff documental é `720876ec1f5ce30275b1160df7ef5f35c6fb1b0e`;
+a implementação bounded está em `adde66b7a1b33333126f4832b3c728abb2db8500`.
+
 Publicação atual: commit `adde66b7a1b33333126f4832b3c728abb2db8500` está em
 `origin/agent/sync-v4-full-program` e foi reconciliado com `HEAD`. A próxima
 sessão deve começar pelo artefato do worker e pelo residual de consumidores,
