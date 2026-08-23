@@ -122,7 +122,7 @@ O incremento mais recente fechou um slice de segurança/durabilidade do callback
 | ACL/RLS | unit 7/7 + integração 1/1; API mínima, worker identity-only read, `NOINHERIT`, rerun e role herdada adversarial | PASS limitado; falta executar a query real sob role worker |
 | Worker B1 | consumer unit 6/6, integração PostgreSQL 3/3, worker 47/47, build/lint/typecheck | PASS limitado; falta UoW compartilhada, retry transitório, restart/takeover/redrive e `410` |
 
-Arquivos de continuidade: [handoff CVG-002B2B](2026-08-22-handoff-cvg-002b2.md) e [artefato principal/worker](../.agent/artifacts/CVG-002B2B-service-principal-worker-2026-08-22.md). O código usa apenas identificadores sintéticos `local-pix`; nenhuma credencial, provider externo ou mutação de produção foi usada.
+Arquivos de continuidade: [handoff CVG-002B2B](2026-08-22-handoff-cvg-002b2.md) e [artefato principal/worker](../.agent/artifacts/CVG-002B2B-service-principal-worker-2026-08-22.md). O checkpoint foi publicado em `26f3281` na branch `agent/sync-v4-full-program`. O código usa apenas identificadores sintéticos `local-pix`; nenhuma credencial, provider externo ou mutação de produção foi usada.
 
 ### Decisões que a próxima sessão deve preservar
 

@@ -18,3 +18,4 @@
 - Runtime ACL/RLS passed 7/7 unit + 1/1 integration. The worker remains read-only for identity; the attempted `FOR UPDATE` principal lock was removed instead of widening privileges.
 - B1 consumer passed 6/6 unit, 3/3 PostgreSQL integration and worker suite 47/47. It is default-off and synthetic-provider capability is explicit; no `idempotency_requests` path is used.
 - Remaining gate gaps: shared transaction helper, real worker-role query, transient database/transport retry, restart/takeover/redrive/DLQ, legacy `410`, provider/SPA/E2E, Vetus parity, WCAG, operations and production.
+- Publication: code/docs checkpoint `26f3281` (`feat: add PIX principal and settlement worker checkpoint`) is pushed to `origin/agent/sync-v4-full-program`; the next session can resume from that commit. The design-system tsbuildinfo cache remains unstaged.
