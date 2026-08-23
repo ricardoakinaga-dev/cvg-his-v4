@@ -113,3 +113,7 @@ Este handoff e a reconciliação documental foram publicados em
 `origin/agent/sync-v4-full-program`. O `fetch` posterior confirmou
 `HEAD == origin`; somente o cache user-owned do design-system permanece fora
 do commit.
+
+O adendo de segurança e a reconciliação final desta sessão foram publicados em
+`6caecfde57a8c50941de3eac5d76d66da04f827b` (`docs: record staging fail-closed
+security gap`), também alinhado ao remoto após `git fetch`.

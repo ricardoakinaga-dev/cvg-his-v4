@@ -309,3 +309,6 @@ assimetria no worker. Antes do RED vertical de inventory→receipt, a próxima
 sessão deve provar startup fail-closed, bloqueio de rotas mutáveis e health /
 readiness; WebAuthn process-local e auditoria com `account_id` nulo também
 ficam registrados como riscos abertos.
+
+Esse adendo foi publicado em `6caecfde57a8c50941de3eac5d76d66da04f827b` e
+confirmado no branch remoto.

@@ -1082,3 +1082,7 @@ antes da jornada clínica; WebAuthn process-local e `audit_events` com possível
 A segunda revisão independente confirmou o caminho concreto de `listen` da API
 e do loop do worker mesmo com readiness degradado; o problema é de bootstrap e
 não pode ser considerado resolvido por probe de health.
+
+O adendo de segurança foi publicado em
+`6caecfde57a8c50941de3eac5d76d66da04f827b`, com o ponteiro remoto novamente
+confirmado após o push.
