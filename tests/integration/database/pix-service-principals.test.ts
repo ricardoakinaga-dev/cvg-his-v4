@@ -13,11 +13,17 @@ const servicePrincipalMigration = readFileSync(
 );
 
 async function insertAccount(client: PoolClient, label: string): Promise<string> {
+  const tenantId = randomUUID();
   const id = randomUUID();
   await client.query(
+    `INSERT INTO tenants (id, slug, name, status, activated_at)
+     VALUES ($1, $2, $3, 'active', now())`,
+    [tenantId, `pix-tenant-${label}-${tenantId.slice(0, 8)}`, `PIX tenant ${label}`]
+  );
+  await client.query(
     `INSERT INTO accounts (id, tenant_id, slug, name)
-     VALUES ($1, '00000000-0000-0000-0000-000000000001', $2, $3)`,
-    [id, `pix-${label}-${id.slice(0, 8)}`, `PIX principal ${label}`]
+     VALUES ($1, $2, $3, $4)`,
+    [id, tenantId, `pix-${label}-${id.slice(0, 8)}`, `PIX principal ${label}`]
   );
   return id;
 }

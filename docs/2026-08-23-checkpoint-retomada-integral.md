@@ -295,3 +295,75 @@ Esta atualização documental foi publicada no commit `cef5d6392c82b60e9a13881fa
 igual ao remoto no ponteiro de reconciliação `b7768ce822804fecfed7a9ff2fc0f744b438f26f`
 (`docs: reconcile retest publication pointer`). O único caminho fora do commit
 continua sendo o cache user-owned `packages/design-system/tsconfig.vue.tsbuildinfo`.
+
+## Rodada de fixtures determinísticos e teardown — 23/08/2026, 20:08 BRT
+
+Esta rodada corrigiu somente as preempções de fixture e a limpeza do harness;
+ela ainda não fecha o gate crítico nem promove qualquer gate global.
+
+- `packages/db/migrations/0123_encounter_owner_guard_fk_order.sql` altera o
+  guard de owner para consultar o paciente por `(account_id, id)`. Paciente
+  inexistente passa ao FK composto de `encounters`; paciente existente com
+  owner divergente continua rejeitado pela mensagem de histórico.
+- `tests/integration/database/fk.test.ts` cria tenant/account/owner/patient/user
+  reais dentro de uma transação descartável. Os cinco casos de enforcement não
+  têm mais `return` silencioso e o encounter/appointment alcançam as FKs
+  pretendidas com os campos obrigatórios válidos.
+- `tests/integration/database/integrity.test.ts` cria account/user autossuficientes
+  e testa a duplicidade de e-mail com `username` válido; o caso de encounter sem
+  paciente agora prova `NOT NULL` sob a semântica da migration 0123.
+- `tests/integration/database/pix-service-principals.test.ts` cria o tenant na
+  mesma transação do account do fixture, removendo a dependência de UUID
+  sentinela.
+- `vitest.integration.config.ts` passa a serializar arquivos e fixa
+  `hookTimeout`/`teardownTimeout` em 120 s; os dois `afterAll` explícitos de
+  `worker-event-consumers-postgres.test.ts` e `installation-state.test.ts`
+  receberam o mesmo limite. A limpeza continua encerrando pools/sessões e
+  removendo os recursos, sem `force` ou skip.
+
+Verificação Lead independente da suíte FK/integrity, em PostgreSQL descartável:
+
+```bash
+REQUIRE_TEST_DB=1 pnpm exec vitest run \
+  tests/integration/database/fk.test.ts \
+  tests/integration/database/integrity.test.ts \
+  --config vitest.integration.config.ts --reporter=verbose \
+  --no-cache --no-file-parallelism \
+  --hookTimeout=120000 --teardownTimeout=120000
+```
+
+Resultado: migration 0123 aplicada em banco novo; **2 arquivos / 63 testes
+passaram**, `exit 0`, duração Vitest de aproximadamente 34,44 s. ESLint dos
+arquivos alterados terminou `exit 0`; Prettier dos arquivos TypeScript e
+configuração terminou `exit 0`; `git diff --check` terminou `exit 0`. O fixture
+PIX focal permanece verde em **5/5**, e a sequência provider → PIX passou **11/11**
+em banco descartável. Os reports dos builders registram também worker-event
+**3/3** e installation-state **8/8** com o novo timeout.
+
+Limitações atuais: o último full critical ainda é o reteste controlado de
+**383/387**, antes desta rodada; o comando integral pós-correção ainda precisa
+ser executado. A crítica independente disponível foi feita antes dos fixtures
+determinísticos e rejeitou o harness por vacuidade; uma nova crítica, após o
+full run, continua obrigatória. O estado canônico permanece
+`CVG-002C6=IN_PROGRESS`, `verification_state=PARTIAL`, stop decision `ACTIVE`.
+
+### Próxima ação concreta
+
+Executar, como Lead, o comando integral abaixo contra PostgreSQL descartável e
+guardar stdout/exit status:
+
+```bash
+REQUIRE_TEST_DB=1 pnpm exec vitest run \
+  tests/integration/database tests/integration/setup \
+  tests/integration/foundational.test.ts \
+  --config vitest.integration.config.ts --reporter=dot \
+  --no-cache --no-file-parallelism \
+  --hookTimeout=120000 --teardownTimeout=120000
+```
+
+Só aceitar `QB-REL-CRITICAL-HARNESS` com **387/387** reproduzível, teardown
+completo e crítica independente atualizada. Depois disso, retomar child-process
+domain/SIGKILL/takeover, failpoints completos, PIX PostgreSQL/RLS e webhook HTTP
+retry/DLQ/lease fencing; manter WebAuthn, hidratação cross-instance, RLS/FORCE
+RLS global, providers, Redis, SPA/paridade, WCAG, cobertura, operações,
+deploy/restore e release explicitamente abertos.

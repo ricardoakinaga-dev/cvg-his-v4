@@ -446,3 +446,15 @@ por `hookTimeout` de 30 s. O próximo RED/GREEN deve corrigir os fixtures para
 alcançar FK/unique/backfill e tornar o teardown determinístico; não relaxar
 asserções nem promover o gate. CVG-002C6, a Quality Bar e o ERP global seguem
 IN_PROGRESS/PARTIAL.
+
+Plan revision note, 2026-08-23 (fixtures determinísticos e teardown): a
+correção delimitada adicionou a migration 0123 para que o FK de paciente não
+seja preemptado pelo guard de owner, fixtures transacionais próprios em
+`fk.test.ts`/`integrity.test.ts`, tenant real no fixture PIX e
+`fileParallelism=false` com `hookTimeout`/`teardownTimeout` de 120 s. O Lead
+reexecutou FK/integrity em banco descartável com migration 0123: **63/63,
+exit 0**; lint, Prettier e diff check passaram. O full critical ainda não foi
+reexecutado após a correção e a crítica independente pós-fix ainda está
+pendente; o plano mantém `CVG-002C6=IN_PROGRESS/PARTIAL` e exige 387/387 antes
+de retomar child-process domain, failpoints, PIX PostgreSQL/RLS e webhook
+retry/DLQ/fencing.

@@ -171,7 +171,7 @@ describe('durable one-time installation state', () => {
     await clusterAdmin.query(`REVOKE ${INSTALLER_ROLE} FROM ${runtimeRole}`);
     await clusterAdmin.query(`DROP ROLE IF EXISTS ${runtimeRole}`);
     await clusterAdmin.end();
-  }, 30_000);
+  }, 120_000);
 
   it('allows a NOBYPASSRLS API capability to read status without exposing the sentinel table', async () => {
     const client = await pool.connect();

@@ -318,9 +318,17 @@
         "infra/helm/cvg-his-v2/templates/postgres-runtime-role-configmap.yaml",
         ".agent/verification.jsonl#VFY-CVG-002C6-CRITICAL-RETEST-001",
         ".agent/artifacts/erp-audit-2026-08-23.md",
-        "docs/2026-08-23-checkpoint-retomada-integral.md"
+        "docs/2026-08-23-checkpoint-retomada-integral.md",
+        "packages/db/migrations/0123_encounter_owner_guard_fk_order.sql",
+        "tests/integration/database/fk.test.ts",
+        "tests/integration/database/integrity.test.ts",
+        "tests/integration/database/pix-service-principals.test.ts",
+        "tests/integration/database/worker-event-consumers-postgres.test.ts",
+        "tests/integration/setup/installation-state.test.ts",
+        "vitest.integration.config.ts",
+        ".agent/verification.jsonl#VFY-CVG-002C6-FIXTURE-TEARDOWN-001"
       ],
-      "next_action": "The Helm installer-role contract is fixed in 6afd1d9 and focused tests are green (daily 4/4, installation 8/8, grants 11/11, FK/integrity/PIX 68/68). A controlled serial full run with --no-cache --no-file-parallelism reached 383/387 (23/28) and no longer materialized legacy stayday_<token>; four fixtures are preempted by owner/NOT NULL/tenant setup and two afterAll hooks exceed the effective 30s hookTimeout. Correct only those fixtures and teardown, make hookTimeout explicit, and reproduce 387/387 before proving child-process domain fixture/SIGKILL/takeover and full failpoints; exercise PIX PostgreSQL/RLS; implement webhook HTTP retry/DLQ with lease fencing; add restricted billing/financial/webhook isolation; keep async hydration/global RLS/FORCE RLS/provider/Redis/SPA/parity/WCAG/coverage/operations/deploy/release open and the user-owned tsbuildinfo cache out of scope."
+      "next_action": "The deterministic fixture and teardown corrections are implemented: migration 0123, self-contained FK/integrity fixtures, tenant-backed PIX fixture, serial integration files, and 120s hook/teardown limits. Lead evidence is FK/integrity 63/63 with migration 0123, PIX 5/5 and provider→PIX 11/11; builder evidence records worker-event 3/3 and installation-state 8/8. Run the controlled full suite with --no-cache --no-file-parallelism --hookTimeout=120000 --teardownTimeout=120000 and require reproducible 387/387 plus an independent post-fix critique before proving child-process domain SIGKILL/takeover and full failpoints; exercise PIX PostgreSQL/RLS; implement webhook HTTP retry/DLQ with lease fencing; add restricted billing/financial/webhook isolation; keep async hydration/global RLS/FORCE RLS/provider/Redis/SPA/parity/WCAG/coverage/operations/deploy/release open and the user-owned tsbuildinfo cache out of scope."
     },
     {
       "id": "CVG-003",

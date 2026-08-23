@@ -559,3 +559,20 @@ Publicação do conteúdo confirmada em `cef5d6392c82b60e9a13881fa1e8826c39accb7
 o ponteiro final é `b7768ce822804fecfed7a9ff2fc0f744b438f26f`, com `HEAD`
 alinhado ao remoto. O cache user-owned do design-system continua
 intencionalmente fora do commit.
+
+## Iteração atual — fixtures determinísticos e teardown (23/08/2026, 20:08 BRT)
+
+Foram implementadas quatro correções bounded: migration 0123 para a ordem
+FK/guard de encounter; fixtures transacionais próprios em FK/integrity sem
+skips silenciosos; tenant criado junto ao account no teste PIX; e
+`fileParallelism=false` com `hookTimeout`/`teardownTimeout` explícitos de 120 s,
+incluindo os dois `afterAll` que tinham limite de 30 s. O focused Lead passou
+**2 arquivos / 63 testes**, migration 0123 aplicada, `exit 0`; ESLint, Prettier
+e diff check também passaram.
+
+O gate integral ainda não foi reexecutado após a implementação, logo não há
+387/387 nem nova aprovação independente. Próxima ação única: executar o full
+critical serial sem cache com ambos os timeouts explícitos, guardar a saída
+bruta e submeter o resultado a uma crítica independente antes de qualquer
+promoção. O cache `packages/design-system/tsconfig.vue.tsbuildinfo` continua
+fora do stage.

@@ -637,3 +637,19 @@ publicado em `cef5d6392c82b60e9a13881fa1e8826c39accb7a` e enviado para
 `b7768ce822804fecfed7a9ff2fc0f744b438f26f`; a reconciliação confirmou `HEAD == origin`;
 somente `packages/design-system/tsconfig.vue.tsbuildinfo` continua dirty e
 fora do stage. O stop decision e todos os gates permanecem inalterados.
+
+## Rodada de fixtures determinísticos e teardown — 23/08/2026, 20:08 BRT
+
+O RED/GREEN delimitado corrigiu a ordem do guard de encounter via migration
+0123, removeu `return` silencioso dos casos críticos de FK/unique, tornou os
+fixtures tenant/account autossuficientes e serializou o harness com hooks de
+120 s. O focused Lead FK/integrity passou **63/63** em banco descartável com a
+migration 0123 aplicada; lint, Prettier e diff check passaram. PIX focal passou
+5/5 e provider → PIX 11/11; os workers registraram worker-event 3/3 e
+installation-state 8/8.
+
+Isto não é aprovação do gate: o último full critical pós-correção ainda está
+pendente, a evidência integral vigente é 383/387, e a nova crítica independente
+ainda deve verificar ausência de vacuidade e teardown real. Stop decision segue
+`ACTIVE`; CVG-002C6, Quality Bar, ERP, produção, providers, SPA, paridade,
+WCAG, operações e release seguem `IN_PROGRESS/PARTIAL`.

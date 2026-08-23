@@ -365,7 +365,7 @@ describe('worker event consumers with PostgreSQL and RLS', () => {
     await clusterAdmin.query(`DROP ROLE IF EXISTS ${quoteIdentifier(apiRole)}`);
     await clusterAdmin.query(`DROP ROLE IF EXISTS ${quoteIdentifier(workerRole)}`);
     await clusterAdmin.end();
-  }, 30_000);
+  }, 120_000);
 
   it('processes payment, billing and webhook effects durably and keeps replay tenant-scoped', async () => {
     await processForAccount(accountAFixture);

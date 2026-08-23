@@ -1,3 +1,7 @@
+import { randomUUID } from 'node:crypto';
+
+import type { PoolClient } from 'pg';
+
 import { getTestPool } from '../../db/db-admin.js';
 import { queryOne, queryMany } from '../../helpers/db-helpers.js';
 
@@ -5,6 +9,52 @@ import { queryOne, queryMany } from '../../helpers/db-helpers.js';
 // DB Integrity Tests — NOT NULL, UNIQUE, CHECK constraints.
 // Based on docs/740 sections 5-7.
 // ============================================================================
+
+interface AccountUserFixture {
+  accountId: string;
+  email: string;
+  userId: string;
+}
+
+async function createAccountUserFixture(client: PoolClient): Promise<AccountUserFixture> {
+  const tenantId = randomUUID();
+  const accountId = randomUUID();
+  const userId = randomUUID();
+  const suffix = userId.slice(0, 8);
+  const email = `integrity-duplicate-${suffix}@example.test`;
+
+  await client.query(
+    `INSERT INTO tenants (id, slug, name, status, activated_at)
+     VALUES ($1, $2, $3, 'active', now())`,
+    [tenantId, `integrity-fixture-${suffix}`, 'Integrity fixture tenant']
+  );
+  await client.query(
+    `INSERT INTO accounts (id, tenant_id, slug, name)
+     VALUES ($1, $2, $3, $4)`,
+    [accountId, tenantId, `integrity-fixture-${suffix}`, 'Integrity fixture account']
+  );
+  await client.query(
+    `INSERT INTO users (id, account_id, username, email, password_hash, full_name, is_active)
+     VALUES ($1, $2, $3, $4, 'fixture-hash', 'Integrity fixture user', true)`,
+    [userId, accountId, `integrity-fixture-${suffix}`, email]
+  );
+
+  return { accountId, email, userId };
+}
+
+async function withAccountUserFixture<T>(
+  callback: (client: PoolClient, fixture: AccountUserFixture) => Promise<T>
+): Promise<T> {
+  const client = await getTestPool().connect();
+  try {
+    await client.query('BEGIN');
+    const fixture = await createAccountUserFixture(client);
+    return await callback(client, fixture);
+  } finally {
+    await client.query('ROLLBACK').catch(() => undefined);
+    client.release();
+  }
+}
 
 describe('NOT NULL Constraints', () => {
   it('should reject user without email', async () => {
@@ -112,18 +162,27 @@ describe('NOT NULL Constraints', () => {
   });
 
   it('should reject encounter without patient_id', async () => {
-    try {
-      const pool = getTestPool();
-      await pool.query(
-        `INSERT INTO encounters (id, account_id, owner_id, status, opened_by_user_id)
-         VALUES (gen_random_uuid(), (SELECT id FROM accounts LIMIT 1), (SELECT id FROM owners LIMIT 1), 'open', (SELECT id FROM users LIMIT 1))`
+    await withAccountUserFixture(async (client, fixture) => {
+      const ownerId = randomUUID();
+      await client.query(
+        `INSERT INTO owners (id, account_id, full_name)
+         VALUES ($1, $2, 'Integrity fixture encounter owner')`,
+        [ownerId, fixture.accountId]
       );
-      expect.unreachable('Should have thrown NOT NULL violation');
-    } catch (error) {
-      // The ownership guard runs before PostgreSQL evaluates the NOT NULL
-      // constraint, so the current invariant is the canonical failure.
-      expect(String(error)).toContain('Encounter owner must be the current primary owner');
-    }
+
+      let error: unknown = null;
+      try {
+        await client.query(
+          `INSERT INTO encounters (id, account_id, owner_id, status, opened_by_user_id)
+           VALUES (gen_random_uuid(), $1, $2, 'open', $3)`,
+          [fixture.accountId, ownerId, fixture.userId]
+        );
+      } catch (caught) {
+        error = caught;
+      }
+      expect(error).not.toBeNull();
+      expect(String(error)).toContain('not-null');
+    });
   });
 
   it('should reject appointment without start_at', async () => {
@@ -196,21 +255,20 @@ describe('Unique Constraints', () => {
   });
 
   it('should reject duplicate user email within account', async () => {
-    try {
-      const pool = getTestPool();
-      const firstUser = await queryOne<{ account_id: string; email: string }>(
-        `SELECT account_id, email FROM users LIMIT 1`
-      );
-      if (!firstUser) return; // No users in DB (seed skipped without ADMIN_EMAIL/PASSWORD)
-      await pool.query(
-        `INSERT INTO users (id, account_id, email, password_hash, full_name, is_active)
-         VALUES (gen_random_uuid(), $1, $2, 'hash', 'Duplicate', true)`,
-        [firstUser.account_id, firstUser.email]
-      );
-      expect.unreachable('Should have thrown unique violation');
-    } catch (error) {
+    await withAccountUserFixture(async (client, fixture) => {
+      let error: unknown = null;
+      try {
+        await client.query(
+          `INSERT INTO users (id, account_id, username, email, password_hash, full_name, is_active)
+           VALUES (gen_random_uuid(), $1, 'duplicate-email-' || left(gen_random_uuid()::text, 8), $2, 'hash', 'Duplicate', true)`,
+          [fixture.accountId, fixture.email]
+        );
+      } catch (caught) {
+        error = caught;
+      }
+      expect(error).not.toBeNull();
       expect(String(error)).toContain('unique');
-    }
+    });
   });
 });
 
@@ -271,11 +329,13 @@ describe('Scheduling Exclusion Constraints', () => {
        WHERE conrelid = 'appointments'::regclass
          AND contype = 'x'
          AND conname = ANY($1::text[])`,
-      [[
-        'appointments_practitioner_overlap_excl',
-        'appointments_patient_overlap_excl',
-        'appointments_resource_overlap_excl'
-      ]]
+      [
+        [
+          'appointments_practitioner_overlap_excl',
+          'appointments_patient_overlap_excl',
+          'appointments_resource_overlap_excl'
+        ]
+      ]
     );
 
     expect(constraints.map((constraint) => constraint.conname).sort()).toEqual([
