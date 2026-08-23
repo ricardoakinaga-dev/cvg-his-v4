@@ -428,7 +428,7 @@ Quality Bar global continua `IN_PROGRESS/PARTIAL`: ainda faltam SIGKILL de
 processo filho, failpoints por boundary, worker independente, equivalência Helm
 executada, RLS/FORCE RLS global e gates de produto/operação/release.
 
-## Iteração atual — worker ACL e recuperação de processo (23/08/2026, 15:20 BRT)
+## Iteração atual — worker ACL e recuperação de processo (23/08/2026, 17:53 BRT)
 
 O RED do worker real foi fechado bounded: a role `NOBYPASSRLS` falhava com seis
 privilégios proibidos e, após uma correção parcial, ainda havia dois. A política
@@ -445,3 +445,8 @@ registrados, então não há processamento real de eventos de domínio. Próximo
 gate: compor/revisar esses handlers, repetir readiness e executar a matriz de
 failpoints e equivalência Helm aplicada. `tsconfig.vue.tsbuildinfo` continua
 user-owned e fora do stage.
+
+Publicação: `adde66b7a1b33333126f4832b3c728abb2db8500` (`fix: harden worker
+runtime role boundary`) foi enviado para `origin/agent/sync-v4-full-program`; o
+fetch confirmou igualdade entre `HEAD` e o remoto. O checkpoint do worker e o
+artefato são a referência da próxima sessão.

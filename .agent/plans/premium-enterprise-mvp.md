@@ -386,6 +386,12 @@ child-process SIGKILL, complete per-boundary failpoints, independent worker
 execution, Helm equivalence, global RLS/FORCE RLS and all external
 product/operations/release gates remain open.
 
+Publication addendum, 2026-08-23: the worker ACL/SIGKILL bounded slice and all
+continuation ledgers were published in `adde66b7a1b33333126f4832b3c728abb2db8500`
+and reconciled to `origin/agent/sync-v4-full-program`. The next session starts
+at the explicit worker consumer/readiness residual; the user-owned tsbuildinfo
+cache remains outside the commit.
+
 Plan revision note, 2026-08-23 (worker child-process ACL/SIGKILL): The real
 `apps/worker/src/index.ts` now has a bounded process proof under a disposable
 PostgreSQL LOGIN `NOSUPERUSER/NOBYPASSRLS` role. The RED exposed six forbidden

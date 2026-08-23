@@ -285,3 +285,13 @@ Critical/High: a consulta positiva de privilégios é executada antes e depois
 do restart, e `/ready` observa o `503` degradado real. O residual Medium é
 deliberado e está registrado no artefato: ainda não há consumidores/eventos de
 domínio reais processados pelo worker.
+
+## Ponteiro remoto desta retomada
+
+O checkpoint, o teste, o artefato e os ledgers foram publicados no commit
+`adde66b7a1b33333126f4832b3c728abb2db8500`
+([`fix: harden worker runtime role boundary`](https://github.com/ricardoakinaga-dev/cvg-his-v4/commit/adde66b7a1b33333126f4832b3c728abb2db8500))
+no branch `origin/agent/sync-v4-full-program`. `git fetch` confirmou
+`HEAD == origin/agent/sync-v4-full-program`. O único caminho dirty continua
+sendo o `packages/design-system/tsconfig.vue.tsbuildinfo` user-owned, fora do
+stage.

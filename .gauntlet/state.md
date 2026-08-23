@@ -420,6 +420,11 @@ cross-domain, admission/handoff e reconciliação observável. O cache
 `packages/design-system/tsconfig.vue.tsbuildinfo` é user-owned e fica fora do
 stage.
 
+Publicação atual: commit `adde66b7a1b33333126f4832b3c728abb2db8500` está em
+`origin/agent/sync-v4-full-program` e foi reconciliado com `HEAD`. A próxima
+sessão deve começar pelo artefato do worker e pelo residual de consumidores,
+sem confundir execução/ACL bounded com readiness de produção.
+
 Follow-up review: sem Critical/High no bounded slice após snapshot de
 encounter/timeline/scheduling e guard de contexto transacional; a jornada
 vertical completa e a hidratação cross-instance continuam gates abertos.
@@ -483,7 +488,7 @@ barra global permanece `ACTIVE/IN_PROGRESS/PARTIAL`; SPA, providers, Redis,
 paridade, WCAG, cobertura, operações, deploy/restore e release continuam
 separados. O tsbuildinfo user-owned segue fora do stage.
 
-## Estado atual — worker process boundary (23/08/2026, 15:20 BRT)
+## Estado atual — worker process boundary (23/08/2026, 17:53 BRT)
 
 O worker agora tem evidência child-process **GREEN bounded** sob PostgreSQL
 descartável e role `NOSUPERUSER/NOBYPASSRLS`: `/live`, ticks reais, ACL proibida

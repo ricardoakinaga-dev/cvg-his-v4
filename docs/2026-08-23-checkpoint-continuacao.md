@@ -1237,3 +1237,12 @@ Inventário documental desta retomada: `1452` arquivos sob `docs/`, `1129`
 textuais identificáveis por extensão e `53.869.477` bytes. Esse número é um
 inventário de continuidade; a fonte normativa desta sessão são as seções
 atuais deste arquivo, o handoff curto e o artefato do worker.
+
+## Publicação do worker checkpoint
+
+O código, o teste de processo, o artefato e os ledgers foram publicados em
+`adde66b7a1b33333126f4832b3c728abb2db8500`
+([commit no GitHub](https://github.com/ricardoakinaga-dev/cvg-his-v4/commit/adde66b7a1b33333126f4832b3c728abb2db8500)). O branch remoto foi verificado
+com `git fetch`: `HEAD == origin/agent/sync-v4-full-program`. O único dirty path
+é o cache user-owned `packages/design-system/tsconfig.vue.tsbuildinfo`, que
+permaneceu fora do stage.
