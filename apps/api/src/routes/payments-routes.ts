@@ -630,6 +630,16 @@ async function handlePixIntentConfirm(
   const intentId = pathname.split('/')[4];
   const apiKeyPrincipal = await requireApiKey(request, 'payments.manage', apiKeys);
 
+  const transactionOwnedByKeyAccount = pixTransactions.isTransactionOwnedByAccount
+    ? await pixTransactions.isTransactionOwnedByAccount(intentId, apiKeyPrincipal.apiKey.accountId)
+    : true;
+  if (transactionOwnedByKeyAccount === false) {
+    response.statusCode = 404;
+    response.setHeader('content-type', 'application/json');
+    response.end(JSON.stringify({ code: 'NOT_FOUND', message: 'Intent not found' }));
+    return true;
+  }
+
   const persistedIntent = await pixTransactions.findByTransactionId(intentId);
   if (persistedIntent?.paymentAttemptId) {
     if (persistedIntent.accountId !== apiKeyPrincipal.apiKey.accountId) {

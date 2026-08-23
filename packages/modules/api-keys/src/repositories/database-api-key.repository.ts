@@ -1,7 +1,78 @@
 import { getPool } from '@cvg-his-v2/shared-database';
 import { withTenantQuery } from '@cvg-his-v2/tenant-context';
 import type { AccountId, ApiKeyId, ApiKeySummary, ApiKeyUsageSummary } from '@cvg-his-v2/shared-types';
-import type { ApiKeyRepository } from './api-key-repository.interface.js';
+import type {
+  ApiKeyRateLimitDecision,
+  ApiKeyRepository
+} from './api-key-repository.interface.js';
+
+function requiredString(row: Record<string, unknown>, field: string): string {
+  const value = row[field];
+  if (typeof value !== 'string') throw new Error(`Invalid API key row: ${field} must be a string`);
+  return value;
+}
+
+function requiredNumber(row: Record<string, unknown>, field: string): number {
+  const value = row[field];
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new Error(`Invalid API key row: ${field} must be a finite number`);
+  }
+  return value;
+}
+
+function requiredBoolean(row: Record<string, unknown>, field: string): boolean {
+  const value = row[field];
+  if (typeof value !== 'boolean') throw new Error(`Invalid API key row: ${field} must be a boolean`);
+  return value;
+}
+
+function optionalIsoDate(row: Record<string, unknown>, field: string): string | null {
+  const value = row[field];
+  if (value === null || value === undefined) return null;
+  const date = value instanceof Date ? value : new Date(typeof value === 'string' ? value : Number.NaN);
+  if (Number.isNaN(date.getTime())) throw new Error(`Invalid API key row: ${field} must be a date`);
+  return date.toISOString();
+}
+
+function requiredIsoDate(row: Record<string, unknown>, field: string): string {
+  const value = optionalIsoDate(row, field);
+  if (!value) throw new Error(`Invalid API key row: ${field} must be a date`);
+  return value;
+}
+
+function parsePermissions(value: unknown): readonly string[] {
+  let parsed: unknown = value;
+  if (typeof value === 'string') {
+    try {
+      parsed = JSON.parse(value) as unknown;
+    } catch {
+      throw new Error('Invalid API key row: permissions must be JSON');
+    }
+  }
+  if (!Array.isArray(parsed) || parsed.some((permission) => typeof permission !== 'string')) {
+    throw new Error('Invalid API key row: permissions must be an array of strings');
+  }
+  return Object.freeze([...parsed]);
+}
+
+export function mapDatabaseApiKeyRow(row: Record<string, unknown>): ApiKeySummary {
+  return {
+    id: requiredString(row, 'id') as ApiKeyId,
+    accountId: requiredString(row, 'account_id') as AccountId,
+    name: requiredString(row, 'name'),
+    keyPrefix: requiredString(row, 'key_prefix'),
+    keyHash: requiredString(row, 'key_hash'),
+    permissions: parsePermissions(row.permissions),
+    rateLimit: requiredNumber(row, 'rate_limit'),
+    rateLimitWindow: requiredNumber(row, 'rate_limit_window'),
+    expiresAt: optionalIsoDate(row, 'expires_at'),
+    lastUsedAt: optionalIsoDate(row, 'last_used_at'),
+    isActive: requiredBoolean(row, 'is_active'),
+    createdBy: requiredString(row, 'created_by'),
+    createdAt: requiredIsoDate(row, 'created_at'),
+    updatedAt: requiredIsoDate(row, 'updated_at')
+  };
+}
 
 export class DatabaseApiKeyRepository implements ApiKeyRepository {
   async create(apiKey: ApiKeySummary): Promise<void> {
@@ -33,7 +104,7 @@ export class DatabaseApiKeyRepository implements ApiKeyRepository {
     return withTenantQuery(getPool(), async (client) => {
       const result = await client.query('SELECT * FROM api_keys WHERE id = $1', [id]);
       if (result.rows.length === 0) return null;
-      return this.mapRow(result.rows[0]);
+      return mapDatabaseApiKeyRow(result.rows[0]);
     });
   }
 
@@ -43,7 +114,7 @@ export class DatabaseApiKeyRepository implements ApiKeyRepository {
         'SELECT * FROM api_keys WHERE account_id = $1 ORDER BY created_at DESC',
         [accountId]
       );
-      return result.rows.map((r: Record<string, unknown>) => this.mapRow(r));
+      return result.rows.map(mapDatabaseApiKeyRow);
     });
   }
 
@@ -53,8 +124,16 @@ export class DatabaseApiKeyRepository implements ApiKeyRepository {
         'SELECT * FROM api_keys WHERE key_prefix = $1 AND is_active = true ORDER BY created_at DESC',
         [keyPrefix]
       );
-      return result.rows.map((r: Record<string, unknown>) => this.mapRow(r));
+      return result.rows.map(mapDatabaseApiKeyRow);
     });
+  }
+
+  async findActiveByKeyHash(keyPrefix: string, keyHash: string): Promise<readonly ApiKeySummary[]> {
+    const result = await getPool().query(
+      'SELECT * FROM app.resolve_active_api_key($1, $2)',
+      [keyPrefix, keyHash]
+    );
+    return result.rows.map(mapDatabaseApiKeyRow);
   }
 
   async findActiveById(id: ApiKeyId): Promise<ApiKeySummary | null> {
@@ -65,7 +144,7 @@ export class DatabaseApiKeyRepository implements ApiKeyRepository {
         [id, now]
       );
       if (result.rows.length === 0) return null;
-      return this.mapRow(result.rows[0]);
+      return mapDatabaseApiKeyRow(result.rows[0]);
     });
   }
 
@@ -95,11 +174,67 @@ export class DatabaseApiKeyRepository implements ApiKeyRepository {
   }
 
   // Rate limiting
+  async consumeRateLimit(
+    apiKeyId: string,
+    windowStart: Date,
+    rateLimit: number
+  ): Promise<ApiKeyRateLimitDecision> {
+    return withTenantQuery(getPool(), async (client) => {
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const updated = await client.query<{ readonly request_count: number }>(
+          `UPDATE api_key_rate_limits
+              SET request_count = request_count + 1
+            WHERE api_key_id = $1
+              AND window_start = $2
+              AND request_count < $3
+            RETURNING request_count`,
+          [apiKeyId, windowStart, rateLimit]
+        );
+        if (updated.rows.length > 0) {
+          const current = Math.max(0, updated.rows[0].request_count - 1);
+          return {
+            allowed: true,
+            current,
+            remaining: Math.max(0, rateLimit - updated.rows[0].request_count)
+          };
+        }
+
+        const inserted = await client.query<{ readonly request_count: number }>(
+          `INSERT INTO api_key_rate_limits (account_id, api_key_id, window_start, request_count)
+           SELECT account_id, id, $2, 1
+             FROM api_keys
+            WHERE id = $1 AND $3 > 0
+           ON CONFLICT (api_key_id, window_start) DO NOTHING
+           RETURNING request_count`,
+          [apiKeyId, windowStart, rateLimit]
+        );
+        if (inserted.rows.length > 0) {
+          return {
+            allowed: true,
+            current: 0,
+            remaining: Math.max(0, rateLimit - inserted.rows[0].request_count)
+          };
+        }
+      }
+
+      const result = await client.query<{ readonly request_count: number }>(
+        'SELECT request_count FROM api_key_rate_limits WHERE api_key_id = $1 AND window_start = $2',
+        [apiKeyId, windowStart]
+      );
+      const current = result.rows[0]?.request_count ?? 0;
+      return {
+        allowed: false,
+        current,
+        remaining: Math.max(0, rateLimit - current)
+      };
+    });
+  }
+
   async incrementUsage(apiKeyId: string, windowStart: Date): Promise<void> {
     return withTenantQuery(getPool(), async (client) => {
       await client.query(
-        `INSERT INTO api_key_rate_limits (api_key_id, window_start, request_count)
-         VALUES ($1, $2, 1)
+        `INSERT INTO api_key_rate_limits (account_id, api_key_id, window_start, request_count)
+         SELECT account_id, id, $2, 1 FROM api_keys WHERE id = $1
          ON CONFLICT (api_key_id, window_start)
          DO UPDATE SET request_count = api_key_rate_limits.request_count + 1`,
         [apiKeyId, windowStart]
@@ -122,8 +257,8 @@ export class DatabaseApiKeyRepository implements ApiKeyRepository {
   async recordUsage(usage: ApiKeyUsageSummary): Promise<void> {
     return withTenantQuery(getPool(), async (client) => {
       await client.query(
-        `INSERT INTO api_key_usage (id, api_key_id, endpoint, method, status_code, response_time_ms, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        `INSERT INTO api_key_usage (id, account_id, api_key_id, endpoint, method, status_code, response_time_ms, created_at)
+         SELECT $1, account_id, id, $3, $4, $5, $6, $7 FROM api_keys WHERE id = $2`,
         [
           usage.id,
           usage.apiKeyId,
@@ -145,25 +280,6 @@ export class DatabaseApiKeyRepository implements ApiKeyRepository {
       );
       return result.rows.map((r: Record<string, unknown>) => this.mapUsageRow(r));
     });
-  }
-
-  private mapRow(row: Record<string, unknown>): ApiKeySummary {
-    return {
-      id: row.id as ApiKeyId,
-      accountId: row.account_id as AccountId,
-      name: row.name as string,
-      keyPrefix: row.key_prefix as string,
-      keyHash: row.key_hash as string,
-      permissions: JSON.parse(row.permissions as string) as readonly string[],
-      rateLimit: row.rate_limit as number,
-      rateLimitWindow: row.rate_limit_window as number,
-      expiresAt: row.expires_at ? (row.expires_at as Date).toISOString() : null,
-      lastUsedAt: row.last_used_at ? (row.last_used_at as Date).toISOString() : null,
-      isActive: row.is_active as boolean,
-      createdBy: row.created_by as string,
-      createdAt: new Date(row.created_at as Date).toISOString(),
-      updatedAt: new Date(row.updated_at as Date).toISOString()
-    };
   }
 
   private mapUsageRow(row: Record<string, unknown>): ApiKeyUsageSummary {

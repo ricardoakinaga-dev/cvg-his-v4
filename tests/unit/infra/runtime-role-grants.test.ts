@@ -19,6 +19,8 @@ const runtimeReconciler = readFileSync(
   resolve(root, 'packages/db/src/reconcile-runtime-roles.ts'),
   'utf8'
 );
+const cutoverScript = readFileSync(resolve(root, 'infra/scripts/cutover-v2.sh'), 'utf8');
+const composeStack = readFileSync(resolve(root, 'docker-compose.v2.yml'), 'utf8');
 const ingressMigration = readFileSync(
   resolve(root, 'packages/db/migrations/0111_pix_provider_event_ingress.sql'),
   'utf8'
@@ -104,7 +106,10 @@ describe('runtime PostgreSQL role grants', () => {
       { tableName: 'users', privileges: 'SELECT, INSERT, UPDATE' },
       { tableName: 'sessions', privileges: 'SELECT, INSERT, UPDATE, DELETE' },
       { tableName: 'mfa_credentials', privileges: 'SELECT, INSERT, UPDATE, DELETE' },
-      { tableName: 'auth_mfa_login_challenges', privileges: 'SELECT, INSERT, UPDATE' }
+      { tableName: 'auth_mfa_login_challenges', privileges: 'SELECT, INSERT, UPDATE' },
+      { tableName: 'api_keys', privileges: 'SELECT, INSERT, UPDATE, DELETE' },
+      { tableName: 'api_key_usage', privileges: 'SELECT, INSERT' },
+      { tableName: 'api_key_rate_limits', privileges: 'SELECT, INSERT, UPDATE' }
     ]);
     expect(API_SENSITIVE_TABLE_PRIVILEGES).not.toContainEqual(
       expect.objectContaining({ tableName: 'account_service_principals' })
@@ -117,7 +122,10 @@ describe('runtime PostgreSQL role grants', () => {
       'account_service_principals',
       'sessions',
       'mfa_credentials',
-      'auth_mfa_login_challenges'
+      'auth_mfa_login_challenges',
+      'api_keys',
+      'api_key_usage',
+      'api_key_rate_limits'
     ];
     expect(RUNTIME_SENSITIVE_TABLES).toEqual(protectedTables);
 
@@ -195,5 +203,18 @@ describe('runtime PostgreSQL role grants', () => {
         'FROM pg_auth_members'
       );
     }
+  });
+
+  it('reconciles API function grants after migration in cutover and Compose', () => {
+    expect(cutoverScript).toContain('npx tsx packages/db/src/migrate.ts');
+    expect(cutoverScript).toContain('npx tsx packages/db/src/reconcile-runtime-roles.ts');
+    expect(cutoverScript.indexOf('reconcile-runtime-roles.ts')).toBeGreaterThan(
+      cutoverScript.indexOf('migrate.ts')
+    );
+    expect(composeStack).toContain('database-migrate:');
+    expect(composeStack).toContain(
+      'node packages/db/dist/migrate.js && node packages/db/dist/reconcile-runtime-roles.js'
+    );
+    expect(composeStack).toContain('condition: service_completed_successfully');
   });
 });

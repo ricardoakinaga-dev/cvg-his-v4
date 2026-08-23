@@ -63,24 +63,22 @@ export class ApiKeysService {
     if (!key || key.length < 8) return null;
 
     const keyPrefix = key.substring(0, 8);
-    const candidates = await this.repository.findByPrefix(keyPrefix);
+    const keyHash = this.hashKey(key);
+    const candidates = this.repository.findActiveByKeyHash
+      ? await this.repository.findActiveByKeyHash(keyPrefix, keyHash)
+      : await this.repository.findByPrefix(keyPrefix);
 
-    for (const candidate of candidates) {
-      // We reconstruct the hash from the candidate's stored hash context
-      // The raw key is stored nowhere — only its hash is in the DB
-      // To validate, we use a constant-time comparison of the provided key
-      // against what we can verify using the stored prefix + a lookup
-      const isValid = candidate.keyHash && this.verifyKey(key, candidate.keyHash);
-      if (isValid && candidate.isActive) {
-        // Check expiration
-        if (candidate.expiresAt && new Date(candidate.expiresAt) < new Date()) {
-          return null;
-        }
-        return candidate;
+    const matchingCandidates = candidates.filter((candidate) => {
+      if (!candidate.keyHash || !candidate.isActive || !this.verifyKey(key, candidate.keyHash)) {
+        return false;
       }
-    }
 
-    return null;
+      return !candidate.expiresAt || new Date(candidate.expiresAt).getTime() > Date.now();
+    });
+
+    // A prefix is deliberately non-unique. Never choose an arbitrary key if
+    // storage corruption or a custom repository produces more than one match.
+    return matchingCandidates.length === 1 ? matchingCandidates[0] : null;
   }
 
   async getById(id: ApiKeyId): Promise<ApiKeySummary | null> {
@@ -124,6 +122,14 @@ export class ApiKeysService {
     resetAt: Date;
   }> {
     const windowStart = this.getWindowStart(windowSeconds);
+    if (this.repository.consumeRateLimit) {
+      const decision = await this.repository.consumeRateLimit(apiKeyId, windowStart, rateLimit);
+      return {
+        ...decision,
+        resetAt: new Date(windowStart.getTime() + windowSeconds * 1000)
+      };
+    }
+
     const current = await this.repository.getUsageCount(apiKeyId, windowStart);
     const allowed = current < rateLimit;
     const remaining = Math.max(0, rateLimit - current);

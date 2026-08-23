@@ -86,6 +86,8 @@ export interface ListPixTransactionsFilters {
 export interface PixTransactionRepository {
   create(transaction: PixTransactionRecord): Promise<void>;
   findByTransactionId(transactionId: string): Promise<PixTransactionRecord | null>;
+  /** Returns true for the current account, false for another account, null when absent. */
+  isTransactionOwnedByAccount?(transactionId: string, accountId: string): Promise<boolean | null>;
   findByProviderTransactionId(
     provider: PixGatewayProviderName,
     providerTransactionId: string
@@ -153,6 +155,14 @@ export class InMemoryPixTransactionRepository implements PixTransactionRepositor
   async findByTransactionId(transactionId: string): Promise<PixTransactionRecord | null> {
     const record = this.#records.get(transactionId);
     return record ? cloneRecord(record) : null;
+  }
+
+  async isTransactionOwnedByAccount(
+    transactionId: string,
+    accountId: string
+  ): Promise<boolean | null> {
+    const record = this.#records.get(transactionId);
+    return record ? record.accountId === accountId : null;
   }
 
   async findByProviderTransactionId(
@@ -330,6 +340,17 @@ export class DatabasePixTransactionRepository implements PixTransactionRepositor
       );
       return result.rows[0] ? mapRow(result.rows[0] as Record<string, unknown>) : null;
     });
+  }
+
+  async isTransactionOwnedByAccount(
+    transactionId: string,
+    accountId: string
+  ): Promise<boolean | null> {
+    const result = await getPool().query<{ readonly owned: boolean | null }>(
+      'SELECT app.is_pix_transaction_owned_by($1, $2) AS owned',
+      [transactionId, accountId]
+    );
+    return result.rows[0]?.owned ?? null;
   }
 
   async findByProviderTransactionId(

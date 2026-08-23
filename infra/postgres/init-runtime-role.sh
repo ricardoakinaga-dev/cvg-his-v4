@@ -152,13 +152,31 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" \
 SELECT 'CREATE ROLE cvg_installer NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS'
 WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'cvg_installer')
 \gexec
+SELECT 'CREATE ROLE cvg_api_key_auth NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS'
+WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'cvg_api_key_auth')
+\gexec
 
 ALTER ROLE cvg_installer
   NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+ALTER ROLE cvg_api_key_auth
+  NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;
 
 REVOKE cvg_installer FROM :"runtime_user";
 REVOKE cvg_installer FROM :"worker_user";
 GRANT cvg_installer TO :"api_user";
+REVOKE cvg_api_key_auth FROM :"runtime_user";
+REVOKE cvg_api_key_auth FROM :"api_user";
+REVOKE cvg_api_key_auth FROM :"worker_user";
+GRANT USAGE ON SCHEMA public TO cvg_api_key_auth;
+SELECT 'GRANT USAGE ON SCHEMA app TO cvg_api_key_auth'
+WHERE EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'app')
+\gexec
+SELECT 'GRANT SELECT (id, account_id, name, key_prefix, key_hash, permissions, rate_limit, rate_limit_window, expires_at, last_used_at, is_active, created_by, created_at, updated_at) ON TABLE public.api_keys TO cvg_api_key_auth'
+WHERE to_regclass('public.api_keys') IS NOT NULL
+\gexec
+SELECT 'GRANT SELECT (transaction_id, account_id) ON TABLE public.pix_transactions TO cvg_api_key_auth'
+WHERE to_regclass('public.pix_transactions') IS NOT NULL
+\gexec
 
 -- Authentication state is API-owned. The settlement worker may only resolve
 -- its tenant-local service-principal mapping and the non-secret user flags
@@ -170,7 +188,10 @@ FROM (
     ('account_service_principals'),
     ('sessions'),
     ('mfa_credentials'),
-    ('auth_mfa_login_challenges')
+    ('auth_mfa_login_challenges'),
+    ('api_keys'),
+    ('api_key_usage'),
+    ('api_key_rate_limits')
 ) AS candidate(table_name)
 CROSS JOIN (
   VALUES (:'runtime_user'), (:'api_user'), (:'worker_user')
@@ -184,7 +205,10 @@ FROM (
     ('users', 'SELECT, INSERT, UPDATE'),
     ('sessions', 'SELECT, INSERT, UPDATE, DELETE'),
     ('mfa_credentials', 'SELECT, INSERT, UPDATE, DELETE'),
-    ('auth_mfa_login_challenges', 'SELECT, INSERT, UPDATE')
+    ('auth_mfa_login_challenges', 'SELECT, INSERT, UPDATE'),
+    ('api_keys', 'SELECT, INSERT, UPDATE, DELETE'),
+    ('api_key_usage', 'SELECT, INSERT'),
+    ('api_key_rate_limits', 'SELECT, INSERT, UPDATE')
 ) AS candidate(table_name, privileges)
 WHERE to_regclass(format('public.%I', candidate.table_name)) IS NOT NULL
 \gexec
@@ -273,5 +297,20 @@ FROM pg_proc AS procedure
 JOIN pg_namespace AS namespace ON namespace.oid = procedure.pronamespace
 WHERE namespace.nspname = 'app'
   AND procedure.proname IN ('is_initial_setup_required', 'provision_initial_installation')
+\gexec
+
+SELECT format('REVOKE ALL ON FUNCTION %s FROM PUBLIC, %I, %I', procedure.oid::regprocedure, :'runtime_user', :'worker_user')
+FROM pg_proc AS procedure
+JOIN pg_namespace AS namespace ON namespace.oid = procedure.pronamespace
+WHERE namespace.nspname = 'app'
+  AND ((procedure.proname = 'resolve_active_api_key' AND pg_catalog.oidvectortypes(procedure.proargtypes) = 'text, text')
+    OR (procedure.proname = 'is_pix_transaction_owned_by' AND pg_catalog.oidvectortypes(procedure.proargtypes) = 'text, uuid'))
+\gexec
+SELECT format('GRANT EXECUTE ON FUNCTION %s TO %I', procedure.oid::regprocedure, :'api_user')
+FROM pg_proc AS procedure
+JOIN pg_namespace AS namespace ON namespace.oid = procedure.pronamespace
+WHERE namespace.nspname = 'app'
+  AND ((procedure.proname = 'resolve_active_api_key' AND pg_catalog.oidvectortypes(procedure.proargtypes) = 'text, text')
+    OR (procedure.proname = 'is_pix_transaction_owned_by' AND pg_catalog.oidvectortypes(procedure.proargtypes) = 'text, uuid'))
 \gexec
 SQL

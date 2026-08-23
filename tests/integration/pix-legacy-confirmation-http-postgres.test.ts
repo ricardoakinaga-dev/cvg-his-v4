@@ -11,17 +11,13 @@ import { bootstrapServices, shutdownServices } from '../../apps/api/src/bootstra
 import { LocalPixPaymentGateway } from '../../apps/api/src/payment-gateway.js';
 import { createApiServer, type ApiServer } from '../../apps/api/src/server.js';
 import {
-  ApiKeysService,
-  type ApiKeyRepository
+  ApiKeysService
 } from '../../packages/modules/api-keys/src/index.ts';
-import type {
-  ApiKeyId,
-  ApiKeySummary,
-  ApiKeyUsageSummary
-} from '../../packages/shared/types/src/index.ts';
+import type { ApiKeySummary } from '../../packages/shared/types/src/index.ts';
 import { runWithTenantContext } from '../../packages/tenant-context/src/index.ts';
-import { getTestPool } from '../db/db-admin.js';
-import { TEST_DB_URL } from '../setup/env.js';
+import { closeDatabaseClient, getPool } from '../../packages/shared/database/src/index.ts';
+import { getAdminPool, getTestPool } from '../db/db-admin.js';
+import { TEST_DB_NAME, TEST_DB_URL } from '../setup/env.js';
 
 interface AccountFixture {
   readonly tenantId: string;
@@ -50,8 +46,11 @@ let owner: AccountFixture;
 let foreign: AccountFixture;
 let ownerKey: ApiKeyFixture;
 let foreignKey: ApiKeyFixture;
+let limitedKey: ApiKeyFixture;
 let confirmGatewayCalls = 0;
 let originalConfirmPayment: typeof LocalPixPaymentGateway.prototype.confirmPayment;
+let apiDatabaseRole: string;
+let workerDatabaseRole: string;
 
 function correlationId(prefix: string): string {
   return `${prefix}-${randomUUID()}`;
@@ -137,161 +136,6 @@ async function createAccountFixture(label: string): Promise<AccountFixture> {
   );
 
   return { tenantId, accountId, userId, billingRecordId, attemptId, transactionId };
-}
-
-function mapApiKey(row: Record<string, unknown>): ApiKeySummary {
-  const permissions = Array.isArray(row.permissions)
-    ? row.permissions
-    : (JSON.parse(String(row.permissions)) as unknown);
-  return {
-    id: row.id as ApiKeyId,
-    accountId: row.account_id as ApiKeySummary['accountId'],
-    name: row.name as string,
-    keyPrefix: row.key_prefix as string,
-    keyHash: row.key_hash as string,
-    permissions: permissions as readonly string[],
-    rateLimit: row.rate_limit as number,
-    rateLimitWindow: row.rate_limit_window as number,
-    expiresAt: row.expires_at ? new Date(row.expires_at as string).toISOString() : null,
-    lastUsedAt: row.last_used_at ? new Date(row.last_used_at as string).toISOString() : null,
-    isActive: row.is_active as boolean,
-    createdBy: row.created_by as string,
-    createdAt: new Date(row.created_at as string).toISOString(),
-    updatedAt: new Date(row.updated_at as string).toISOString()
-  };
-}
-
-/**
- * API-key bootstrap happens before the HTTP request has an account context.
- * The application repository uses tenant-scoped queries once that account is
- * known. PostgreSQL returns JSONB permissions as an array, while the existing
- * repository expects a JSON string. This adapter keeps the whole API-key flow
- * database-backed while accepting the driver's canonical JSONB representation.
- */
-function createPostgresApiKeyRepository(): ApiKeyRepository {
-  return {
-    async create(apiKey: ApiKeySummary): Promise<void> {
-      await getTestPool().query(
-        `INSERT INTO api_keys (
-           id, account_id, name, key_prefix, key_hash, permissions, rate_limit,
-           rate_limit_window, expires_at, last_used_at, is_active, created_by, created_at, updated_at
-         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
-        [
-          apiKey.id,
-          apiKey.accountId,
-          apiKey.name,
-          apiKey.keyPrefix,
-          apiKey.keyHash,
-          JSON.stringify(apiKey.permissions),
-          apiKey.rateLimit,
-          apiKey.rateLimitWindow,
-          apiKey.expiresAt ? new Date(apiKey.expiresAt) : null,
-          apiKey.lastUsedAt ? new Date(apiKey.lastUsedAt) : null,
-          apiKey.isActive,
-          apiKey.createdBy,
-          new Date(apiKey.createdAt),
-          new Date(apiKey.updatedAt)
-        ]
-      );
-    },
-    async findById(id: ApiKeyId): Promise<ApiKeySummary | null> {
-      const result = await getTestPool().query<Record<string, unknown>>(
-        'SELECT * FROM api_keys WHERE id = $1',
-        [id]
-      );
-      return result.rows[0] ? mapApiKey(result.rows[0]) : null;
-    },
-    async findByAccount(accountId: string): Promise<readonly ApiKeySummary[]> {
-      const result = await getTestPool().query<Record<string, unknown>>(
-        'SELECT * FROM api_keys WHERE account_id = $1 ORDER BY created_at DESC',
-        [accountId]
-      );
-      return result.rows.map(mapApiKey);
-    },
-    async findByPrefix(keyPrefix: string): Promise<readonly ApiKeySummary[]> {
-      const result = await getTestPool().query<Record<string, unknown>>(
-        `SELECT * FROM api_keys
-         WHERE key_prefix = $1 AND is_active = true
-         ORDER BY created_at DESC`,
-        [keyPrefix]
-      );
-      return result.rows.map(mapApiKey);
-    },
-    async findActiveById(id: ApiKeyId): Promise<ApiKeySummary | null> {
-      const result = await getTestPool().query<Record<string, unknown>>(
-        `SELECT * FROM api_keys
-         WHERE id = $1 AND is_active = true AND (expires_at IS NULL OR expires_at > now())`,
-        [id]
-      );
-      return result.rows[0] ? mapApiKey(result.rows[0]) : null;
-    },
-    async update(apiKey: ApiKeySummary): Promise<void> {
-      await getTestPool().query(
-        `UPDATE api_keys
-         SET name = $2, permissions = $3, rate_limit = $4, rate_limit_window = $5,
-             expires_at = $6, last_used_at = $7, is_active = $8, updated_at = $9
-         WHERE id = $1`,
-        [
-          apiKey.id,
-          apiKey.name,
-          JSON.stringify(apiKey.permissions),
-          apiKey.rateLimit,
-          apiKey.rateLimitWindow,
-          apiKey.expiresAt ? new Date(apiKey.expiresAt) : null,
-          apiKey.lastUsedAt ? new Date(apiKey.lastUsedAt) : null,
-          apiKey.isActive,
-          new Date(apiKey.updatedAt)
-        ]
-      );
-    },
-    async delete(id: ApiKeyId): Promise<void> {
-      await getTestPool().query('DELETE FROM api_keys WHERE id = $1', [id]);
-    },
-    async incrementUsage(apiKeyId: string, windowStart: Date): Promise<void> {
-      await getTestPool().query(
-        `INSERT INTO api_key_rate_limits (api_key_id, window_start, request_count)
-         VALUES ($1, $2, 1)
-         ON CONFLICT (api_key_id, window_start)
-         DO UPDATE SET request_count = api_key_rate_limits.request_count + 1`,
-        [apiKeyId, windowStart]
-      );
-    },
-    async getUsageCount(apiKeyId: string, windowStart: Date): Promise<number> {
-      const result = await getTestPool().query<{ readonly request_count: number }>(
-        'SELECT request_count FROM api_key_rate_limits WHERE api_key_id = $1 AND window_start = $2',
-        [apiKeyId, windowStart]
-      );
-      return result.rows[0]?.request_count ?? 0;
-    },
-    async recordUsage(usage): Promise<void> {
-      await getTestPool().query(
-        `INSERT INTO api_key_usage (id, api_key_id, endpoint, method, status_code, response_time_ms, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [
-          usage.id,
-          usage.apiKeyId,
-          usage.endpoint,
-          usage.method,
-          usage.statusCode,
-          usage.responseTimeMs,
-          new Date(usage.createdAt)
-        ]
-      );
-    },
-    async getUsageHistory(apiKeyId: string, limit = 100) {
-      const result = await getTestPool().query<ApiKeyUsageSummary>(
-        `SELECT id, api_key_id AS "apiKeyId", endpoint, method,
-                status_code AS "statusCode", response_time_ms AS "responseTimeMs",
-                created_at AS "createdAt"
-         FROM api_key_usage
-         WHERE api_key_id = $1
-         ORDER BY created_at DESC
-         LIMIT $2`,
-        [apiKeyId, limit]
-      );
-      return result.rows;
-    }
-  };
 }
 
 async function createApiKey(fixture: AccountFixture, label: string): Promise<ApiKeyFixture> {
@@ -416,8 +260,40 @@ async function cleanup(): Promise<void> {
 }
 
 beforeAll(async () => {
+  // Test setup can initialize the shared singleton under the admin test user.
+  // Reopen it here under the actual API runtime login before building services.
+  await closeDatabaseClient();
+  const suffix = randomUUID().replaceAll('-', '');
+  apiDatabaseRole = `legacy_http_api_${suffix}`;
+  workerDatabaseRole = `legacy_http_worker_${suffix}`;
+  const rolePassword = `legacy-http-${suffix}`;
+  const adminPool = getAdminPool();
+  const dbIdentifier = TEST_DB_NAME.replaceAll('"', '""');
+  await adminPool.query(
+    `CREATE ROLE "${apiDatabaseRole}" LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS PASSWORD '${rolePassword}'`
+  );
+  await adminPool.query(
+    `CREATE ROLE "${workerDatabaseRole}" LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS PASSWORD '${rolePassword}'`
+  );
+  await adminPool.query(
+    `GRANT CONNECT ON DATABASE "${dbIdentifier}" TO "${apiDatabaseRole}", "${workerDatabaseRole}"`
+  );
+  const reconcileClient = await getTestPool().connect();
+  try {
+    const { reconcileRuntimeRoles } =
+      await import('../../packages/db/src/reconcile-runtime-roles.js');
+    await reconcileRuntimeRoles(reconcileClient, {
+      apiRole: apiDatabaseRole,
+      workerRole: workerDatabaseRole
+    });
+  } finally {
+    reconcileClient.release();
+  }
+  const runtimeDatabaseUrl = new URL(TEST_DB_URL);
+  runtimeDatabaseUrl.username = apiDatabaseRole;
+  runtimeDatabaseUrl.password = rolePassword;
   const bootstrap = await bootstrapServices({
-    databaseUrl: TEST_DB_URL,
+    databaseUrl: runtimeDatabaseUrl.toString(),
     fileStoragePath: mkdtempSync(join(tmpdir(), 'cvg-his-v2-legacy-pix-http-')),
     maxRetries: 10,
     retryDelayMs: 1_000
@@ -446,6 +322,35 @@ beforeAll(async () => {
   foreign = await createAccountFixture('foreign');
   ownerKey = await createApiKey(owner, 'owner key');
   foreignKey = await createApiKey(foreign, 'foreign key');
+  const limited = await runWithTenantContext(
+    {
+      tenantId: owner.tenantId,
+      accountId: owner.accountId,
+      userId: owner.userId,
+      correlationId: correlationId('legacy-pix-http-limited-key')
+    },
+    () =>
+      new ApiKeysService(runtime.repositories.apiKey).create({
+        accountId: owner.accountId as ApiKeySummary['accountId'],
+        name: 'Legacy PIX HTTP limited key',
+        permissions: ['payments.manage'],
+        rateLimit: 2,
+        rateLimitWindow: 3600,
+        createdBy: owner.userId
+      })
+  );
+  limitedKey = { id: limited.apiKey.id, rawKey: limited.rawKey };
+  const databaseIdentity = await getPool().query<{
+    readonly current_user: string;
+    readonly can_resolve_key: boolean;
+  }>(
+    `SELECT current_user,
+            has_function_privilege(current_user, 'app.resolve_active_api_key(text, text)'::regprocedure, 'EXECUTE') AS can_resolve_key`
+  );
+  expect(databaseIdentity.rows).toEqual([
+    { current_user: apiDatabaseRole, can_resolve_key: true }
+  ]);
+  expect(await new ApiKeysService(runtime.repositories.apiKey).validate(ownerKey.rawKey)).not.toBeNull();
   await persistAttemptLinkedTransaction(owner);
 
   originalConfirmPayment = LocalPixPaymentGateway.prototype.confirmPayment;
@@ -467,10 +372,7 @@ beforeAll(async () => {
     // A DB runtime must not hydrate the string-only in-memory seed principal.
     // This fixture supplies UUID-backed principals instead.
     preserveSeedUsersWithRepository: false,
-    repositories: {
-      ...runtime.repositories,
-      apiKey: createPostgresApiKeyRepository()
-    },
+    repositories: runtime.repositories,
     fileStorage: runtime.fileStorage
   });
   servers.push(server);
@@ -495,6 +397,12 @@ afterAll(async () => {
   );
   await cleanup();
   await shutdownServices();
+  if (apiDatabaseRole && workerDatabaseRole) {
+    await getTestPool().query(`DROP OWNED BY "${apiDatabaseRole}"`);
+    await getTestPool().query(`DROP OWNED BY "${workerDatabaseRole}"`);
+    await getAdminPool().query(`DROP ROLE IF EXISTS "${apiDatabaseRole}"`);
+    await getAdminPool().query(`DROP ROLE IF EXISTS "${workerDatabaseRole}"`);
+  }
 });
 
 describe('legacy PIX confirmation HTTP to PostgreSQL boundary', () => {
@@ -576,5 +484,27 @@ describe('legacy PIX confirmation HTTP to PostgreSQL boundary', () => {
     expect(response.body).toMatchObject({ transactionId: created.body.id, status: 'completed' });
     expect(confirmGatewayCalls).toBe(beforeGatewayCalls + 1);
     expect(await confirmedOutboxCount(owner.accountId, created.body.id)).toBe(1);
+  });
+
+  it('enforces the API-key rate limit atomically under concurrent HTTP requests', async () => {
+    const responses = await Promise.all(
+      Array.from({ length: 8 }, (_, index) =>
+        requestJson<{ readonly id?: string; readonly code?: string }>(
+          '/payments/pix/intents',
+          limitedKey.rawKey,
+          {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ amount: 10 + index, description: `rate-limit-${index}` })
+          }
+        )
+      )
+    );
+
+    expect(responses.filter((response) => response.status === 201)).toHaveLength(2);
+    expect(responses.filter((response) => response.status === 429)).toHaveLength(6);
+    expect(responses.filter((response) => response.status !== 201 && response.status !== 429)).toEqual(
+      []
+    );
   });
 });

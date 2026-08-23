@@ -177,6 +177,15 @@ apply_v2_schema() {
   DATABASE_URL="$db_url" npx tsx packages/db/src/migrate.ts
   log "Drizzle migration applied successfully"
 
+  # Migration 0113 creates API-key capability functions after the runtime-role
+  # init hook. Reconcile immediately so the API login role has the explicit
+  # EXECUTE grants before any application container starts.
+  DATABASE_URL="$db_url" \
+    POSTGRES_API_USER="${POSTGRES_API_USER:-cvg_api}" \
+    POSTGRES_WORKER_USER="${POSTGRES_WORKER_USER:-cvg_worker}" \
+    npx tsx packages/db/src/reconcile-runtime-roles.ts
+  log "Runtime PostgreSQL roles reconciled successfully"
+
   if [[ -n "${ADMIN_EMAIL:-}" && -n "${ADMIN_PASSWORD:-}" ]]; then
     log "running Drizzle seed with admin user"
     DATABASE_URL="$db_url" ADMIN_EMAIL="$ADMIN_EMAIL" ADMIN_PASSWORD="$ADMIN_PASSWORD" npx tsx packages/db/src/seed.ts

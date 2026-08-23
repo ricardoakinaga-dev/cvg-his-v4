@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  DATABASE_RUNTIME_API_FUNCTIONS,
   DATABASE_RUNTIME_INSTALLER_FUNCTIONS,
   DATABASE_RUNTIME_INSTALLER_MUTATIONS,
   DATABASE_RUNTIME_ROLE_CHECK_SQL,
@@ -42,6 +43,17 @@ describe('database runtime role guard', () => {
         'text, text, text, text, text, text, text, text, text, jsonb, jsonb, jsonb, text'
       ]
     ]);
+  });
+
+  it('allows only the narrow API-key resolver for the configured API role', () => {
+    expect(DATABASE_RUNTIME_API_FUNCTIONS).toEqual([
+      ['resolve_active_api_key', 'text, text'],
+      ['is_pix_transaction_owned_by', 'text, uuid']
+    ]);
+    expect(DATABASE_RUNTIME_ROLE_CHECK_SQL).toContain('allowed_api_functions');
+    expect(DATABASE_RUNTIME_ROLE_CHECK_SQL).toContain("current_user = 'cvg_api'");
+    expect(DATABASE_RUNTIME_ROLE_CHECK_SQL).toContain("procedure.proname = 'resolve_active_api_key'");
+    expect(DATABASE_RUNTIME_ROLE_CHECK_SQL).toContain("'is_pix_transaction_owned_by'");
   });
 
   it('accepts installer functions only through the hardened NOLOGIN membership', () => {

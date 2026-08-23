@@ -71,6 +71,24 @@ services:
       - ./infra/postgres/init-runtime-role.sh:/usr/local/bin/init-runtime-role.sh:ro
     entrypoint: ['/bin/sh', '/usr/local/bin/init-runtime-role.sh']
 
+  database-migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: cvg-his-v2-cvg-his-v2-api:035e555
+    restart: "no"
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-cvg_his_v2}
+      POSTGRES_API_USER: ${POSTGRES_API_USER:-cvg_api}
+      POSTGRES_WORKER_USER: ${POSTGRES_WORKER_USER:-cvg_worker}
+    command:
+      - /bin/sh
+      - -ec
+      - node packages/db/dist/migrate.js && node packages/db/dist/reconcile-runtime-roles.js
+    depends_on:
+      runtime-role-init:
+        condition: service_completed_successfully
+
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.124.1
     profiles: ['observability']
@@ -141,6 +159,8 @@ services:
       OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS:-}
     depends_on:
       runtime-role-init:
+        condition: service_completed_successfully
+      database-migrate:
         condition: service_completed_successfully
       redis:
         condition: service_healthy

@@ -279,6 +279,14 @@ export const DATABASE_RUNTIME_INSTALLER_FUNCTIONS: readonly DatabaseRuntimeCapab
     )
   ]);
 
+/** API-only SECURITY DEFINER entrypoints allowed during API role inspection. */
+export const DATABASE_RUNTIME_API_FUNCTIONS: readonly DatabaseRuntimeCapability[] = Object.freeze([
+  immutableCapability('resolve_active_api_key', 'text, text'),
+  immutableCapability('is_pix_transaction_owned_by', 'text, uuid')
+]);
+
+const DATABASE_RUNTIME_API_ROLE = process.env.POSTGRES_API_USER ?? 'cvg_api';
+
 export interface DatabaseRuntimeRoleInspection {
   readonly current_user: string;
   readonly rolsuper: boolean;
@@ -332,6 +340,8 @@ export const DATABASE_RUNTIME_ROLE_CHECK_SQL = `WITH RECURSIVE inherited_roles(r
         AND NOT installer.rolreplication
    ), allowed_installer_functions(function_name, identity_arguments) AS (
      VALUES ${renderSqlValues(DATABASE_RUNTIME_INSTALLER_FUNCTIONS)}
+   ), allowed_api_functions(function_name, identity_arguments) AS (
+     VALUES ${renderSqlValues(DATABASE_RUNTIME_API_FUNCTIONS)}
    ), allowed_installer_mutations(table_name, privilege_type) AS (
      VALUES ${renderSqlValues(DATABASE_RUNTIME_INSTALLER_MUTATIONS)}
    ), effective_mutation_privileges(
@@ -442,6 +452,25 @@ export const DATABASE_RUNTIME_ROLE_CHECK_SQL = `WITH RECURSIVE inherited_roles(r
                 AND pg_catalog.oidvectortypes(procedure.proargtypes) = ''
               )
               AND has_function_privilege(current_user, procedure.oid, 'EXECUTE')
+              AND NOT EXISTS (
+                SELECT 1
+                  FROM allowed_api_functions allowed_function
+                 WHERE current_user = ${sqlLiteral(DATABASE_RUNTIME_API_ROLE)}
+                   AND allowed_function.function_name = procedure.proname
+                   AND allowed_function.identity_arguments =
+                       pg_catalog.oidvectortypes(procedure.proargtypes)
+                   AND procedure.proowner NOT IN (SELECT role_id FROM effective_roles)
+                   AND procedure.proconfig = ARRAY['search_path=pg_catalog, public']::text[]
+                   AND NOT has_schema_privilege(current_user, namespace.oid, 'CREATE')
+                   AND NOT EXISTS (
+                     SELECT 1
+                       FROM aclexplode(
+                         COALESCE(procedure.proacl, acldefault('f', procedure.proowner))
+                       ) acl
+                      WHERE acl.privilege_type = 'EXECUTE'
+                        AND (acl.grantee = 0 OR acl.is_grantable)
+                   )
+              )
               AND NOT EXISTS (
                 SELECT 1
                   FROM installer_role installer

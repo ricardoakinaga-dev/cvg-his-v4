@@ -67,6 +67,21 @@ describe('runtime role sensitive-table ACL', () => {
         worker_mfa_update: boolean;
         worker_challenge_select: boolean;
         worker_challenge_update: boolean;
+        api_keys_select: boolean;
+        api_key_usage_insert: boolean;
+        api_key_rate_limits_update: boolean;
+        worker_api_keys_select: boolean;
+        worker_api_key_usage_insert: boolean;
+        worker_api_key_rate_limits_update: boolean;
+        api_key_auth_execute: boolean;
+        api_pix_account_execute: boolean;
+        worker_key_auth_execute: boolean;
+        worker_pix_account_execute: boolean;
+        public_key_auth_execute: boolean;
+        api_key_auth_nologin: boolean;
+        api_key_auth_noinherit: boolean;
+        api_key_auth_nobypassrls: boolean;
+        api_key_auth_no_memberships: boolean;
         api_inherit: boolean;
         worker_inherit: boolean;
         api_donor_membership: boolean;
@@ -94,6 +109,35 @@ describe('runtime role sensitive-table ACL', () => {
            has_table_privilege($2, 'public.mfa_credentials', 'UPDATE') AS worker_mfa_update,
            has_table_privilege($2, 'public.auth_mfa_login_challenges', 'SELECT') AS worker_challenge_select,
            has_table_privilege($2, 'public.auth_mfa_login_challenges', 'UPDATE') AS worker_challenge_update,
+           has_table_privilege($1, 'public.api_keys', 'SELECT') AS api_keys_select,
+           has_table_privilege($1, 'public.api_key_usage', 'INSERT') AS api_key_usage_insert,
+           has_table_privilege($1, 'public.api_key_rate_limits', 'UPDATE') AS api_key_rate_limits_update,
+           has_table_privilege($2, 'public.api_keys', 'SELECT') AS worker_api_keys_select,
+           has_table_privilege($2, 'public.api_key_usage', 'INSERT') AS worker_api_key_usage_insert,
+           has_table_privilege($2, 'public.api_key_rate_limits', 'UPDATE') AS worker_api_key_rate_limits_update,
+           has_function_privilege($1, 'app.resolve_active_api_key(text, text)'::regprocedure, 'EXECUTE') AS api_key_auth_execute,
+           has_function_privilege($1, 'app.is_pix_transaction_owned_by(text, uuid)'::regprocedure, 'EXECUTE') AS api_pix_account_execute,
+           has_function_privilege($2, 'app.resolve_active_api_key(text, text)'::regprocedure, 'EXECUTE') AS worker_key_auth_execute,
+           has_function_privilege($2, 'app.is_pix_transaction_owned_by(text, uuid)'::regprocedure, 'EXECUTE') AS worker_pix_account_execute,
+           EXISTS (
+             SELECT 1
+               FROM pg_proc procedure
+               CROSS JOIN LATERAL aclexplode(COALESCE(procedure.proacl, acldefault('f', procedure.proowner))) AS acl
+              WHERE procedure.oid = 'app.resolve_active_api_key(text, text)'::regprocedure
+                AND acl.grantee = 0
+                AND acl.privilege_type = 'EXECUTE'
+           ) AS public_key_auth_execute,
+           NOT (SELECT rolcanlogin FROM pg_roles WHERE rolname = 'cvg_api_key_auth') AS api_key_auth_nologin,
+           NOT (SELECT rolinherit FROM pg_roles WHERE rolname = 'cvg_api_key_auth') AS api_key_auth_noinherit,
+           NOT (SELECT rolbypassrls FROM pg_roles WHERE rolname = 'cvg_api_key_auth') AS api_key_auth_nobypassrls,
+           NOT EXISTS (
+             SELECT 1
+               FROM pg_auth_members membership
+               JOIN pg_roles member ON member.oid = membership.member
+               JOIN pg_roles inherited ON inherited.oid = membership.roleid
+              WHERE member.rolname = 'cvg_api_key_auth'
+                 OR inherited.rolname = 'cvg_api_key_auth'
+           ) AS api_key_auth_no_memberships,
            (SELECT rolinherit FROM pg_roles WHERE rolname = $1) AS api_inherit,
            (SELECT rolinherit FROM pg_roles WHERE rolname = $2) AS worker_inherit,
            pg_has_role($1, $3, 'MEMBER') AS api_donor_membership,
@@ -135,6 +179,21 @@ describe('runtime role sensitive-table ACL', () => {
         worker_mfa_update: false,
         worker_challenge_select: false,
         worker_challenge_update: false,
+        api_keys_select: true,
+        api_key_usage_insert: true,
+        api_key_rate_limits_update: true,
+        worker_api_keys_select: false,
+        worker_api_key_usage_insert: false,
+        worker_api_key_rate_limits_update: false,
+        api_key_auth_execute: true,
+        api_pix_account_execute: true,
+        worker_key_auth_execute: false,
+        worker_pix_account_execute: false,
+        public_key_auth_execute: false,
+        api_key_auth_nologin: true,
+        api_key_auth_noinherit: true,
+        api_key_auth_nobypassrls: true,
+        api_key_auth_no_memberships: true,
         api_inherit: false,
         worker_inherit: false,
         api_donor_membership: false,
@@ -167,6 +226,42 @@ describe('runtime role sensitive-table ACL', () => {
          VALUES ($1, 'pix-settlement', $2)`,
         [accountId, serviceUserId]
       );
+
+      const apiKeyId = `acl-api-key-${serviceSuffix}`;
+      const apiKeyPrefix = 'cvg_acl_';
+      const apiKeyHash = 'a'.repeat(64);
+      await testPool.query(
+        `INSERT INTO api_keys (
+           id, account_id, name, key_prefix, key_hash, permissions, rate_limit,
+           rate_limit_window, is_active, created_by, created_at, updated_at
+         ) VALUES ($1, $2, 'ACL authentication key', $3, $4, '["payments.manage"]', 1000, 3600, true, $5, now(), now())`,
+        [apiKeyId, accountId, apiKeyPrefix, apiKeyHash, serviceUserId]
+      );
+      const apiClient = await testPool.connect();
+      try {
+        await apiClient.query('BEGIN');
+        await apiClient.query(`SET ROLE "${apiRole}"`);
+        const resolved = await apiClient.query<{ readonly id: string; readonly account_id: string }>(
+          'SELECT id, account_id FROM app.resolve_active_api_key($1, $2)',
+          [apiKeyPrefix, apiKeyHash]
+        );
+        expect(resolved.rows).toEqual([{ id: apiKeyId, account_id: accountId }]);
+        await apiClient.query('ROLLBACK');
+      } finally {
+        apiClient.release();
+      }
+      const deniedClient = await testPool.connect();
+      try {
+        await deniedClient.query('BEGIN');
+        await deniedClient.query(`SET ROLE "${workerRole}"`);
+        await expect(
+          deniedClient.query('SELECT * FROM app.resolve_active_api_key($1, $2)', [apiKeyPrefix, apiKeyHash])
+        ).rejects.toThrow(/permission denied/);
+        await deniedClient.query('ROLLBACK');
+      } finally {
+        deniedClient.release();
+      }
+      await testPool.query('DELETE FROM api_keys WHERE id = $1', [apiKeyId]);
 
       const workerClient = await testPool.connect();
       try {
@@ -211,11 +306,18 @@ describe('runtime role sensitive-table ACL', () => {
       const rls = await testPool.query<{ relname: string; forced: boolean }>(
         `SELECT relname, relforcerowsecurity AS forced
            FROM pg_class
-          WHERE oid IN ('public.users'::regclass, 'public.account_service_principals'::regclass)
+          WHERE oid IN (
+            'public.users'::regclass,
+            'public.account_service_principals'::regclass,
+            'public.api_key_usage'::regclass,
+            'public.api_key_rate_limits'::regclass
+          )
           ORDER BY relname`
       );
       expect(rls.rows).toEqual([
         { relname: 'account_service_principals', forced: true },
+        { relname: 'api_key_rate_limits', forced: true },
+        { relname: 'api_key_usage', forced: true },
         { relname: 'users', forced: true }
       ]);
     } finally {

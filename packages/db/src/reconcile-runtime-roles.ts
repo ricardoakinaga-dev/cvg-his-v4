@@ -114,6 +114,38 @@ export async function reconcileRuntimeRoles(
       $installer$;
       ALTER ROLE cvg_installer NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
     `);
+    await client.query(`
+      DO $api_key_auth_role$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'cvg_api_key_auth') THEN
+          CREATE ROLE cvg_api_key_auth NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;
+        END IF;
+      END
+      $api_key_auth_role$;
+      ALTER ROLE cvg_api_key_auth NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;
+      GRANT USAGE ON SCHEMA public TO cvg_api_key_auth;
+      GRANT USAGE ON SCHEMA app TO cvg_api_key_auth;
+    `);
+    await executeGeneratedStatements(
+      client,
+      `SELECT format('REVOKE cvg_api_key_auth FROM %I', role_name) AS statement
+       FROM unnest($1::text[]) AS role_name`,
+      [[apiRole, workerRole]]
+    );
+    await executeGeneratedStatements(
+      client,
+      `SELECT format('REVOKE cvg_api_key_auth FROM %I', member.rolname) AS statement
+       FROM pg_auth_members membership
+       JOIN pg_roles member ON member.oid = membership.member
+       JOIN pg_roles capability ON capability.oid = membership.roleid
+       WHERE capability.rolname = 'cvg_api_key_auth'
+       UNION ALL
+       SELECT format('REVOKE %I FROM cvg_api_key_auth', inherited.rolname) AS statement
+       FROM pg_auth_members membership
+       JOIN pg_roles member ON member.oid = membership.member
+       JOIN pg_roles inherited ON inherited.oid = membership.roleid
+       WHERE member.rolname = 'cvg_api_key_auth'`
+    );
 
     await executeGeneratedStatements(
       client,
@@ -211,6 +243,18 @@ export async function reconcileRuntimeRoles(
     for (const grant of API_SENSITIVE_TABLE_PRIVILEGES) {
       await grantExistingTable(client, grant.tableName, grant.privileges, apiRole);
     }
+    await grantExistingTable(
+      client,
+      'api_keys',
+      'SELECT (id, account_id, name, key_prefix, key_hash, permissions, rate_limit, rate_limit_window, expires_at, last_used_at, is_active, created_by, created_at, updated_at)',
+      'cvg_api_key_auth'
+    );
+    await grantExistingTable(
+      client,
+      'pix_transactions',
+      'SELECT (transaction_id, account_id)',
+      'cvg_api_key_auth'
+    );
     await grantExistingTable(client, 'account_service_principals', 'SELECT', workerRole);
     await grantExistingTable(
       client,
@@ -237,6 +281,20 @@ export async function reconcileRuntimeRoles(
        WHERE namespace.nspname = 'app'
          AND procedure.proname IN ('current_account_id', 'has_account_context')`,
       [[apiRole, workerRole]]
+    );
+    await executeGeneratedStatements(
+      client,
+      `SELECT format('GRANT EXECUTE ON FUNCTION %s TO %I', procedure.oid::regprocedure, $1::text) AS statement
+       FROM pg_proc procedure
+       JOIN pg_namespace namespace ON namespace.oid = procedure.pronamespace
+       WHERE namespace.nspname = 'app'
+         AND (
+           (procedure.proname = 'resolve_active_api_key'
+             AND pg_catalog.oidvectortypes(procedure.proargtypes) = 'text, text')
+           OR (procedure.proname = 'is_pix_transaction_owned_by'
+             AND pg_catalog.oidvectortypes(procedure.proargtypes) = 'text, uuid')
+         )`,
+      [apiRole]
     );
     await executeGeneratedStatements(
       client,

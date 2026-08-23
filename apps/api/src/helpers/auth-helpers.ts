@@ -3,7 +3,7 @@
  * Extracted from server.ts to support route extraction.
  */
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { AuthenticationError, ForbiddenError } from '@cvg-his-v2/shared-errors';
+import { AppError, AuthenticationError, ForbiddenError } from '@cvg-his-v2/shared-errors';
 import type { ApiKeySummary } from '@cvg-his-v2/shared-types';
 import type { ApiKeysService } from '@cvg-his-v2/module-api-keys';
 
@@ -38,6 +38,17 @@ export async function requireApiKey(
 
   if (!apiKey.permissions.includes(permissionCode)) {
     throw new ForbiddenError(`API key lacks required permission: ${permissionCode}`);
+  }
+
+  const rateLimit = await apiKeys.checkRateLimit(
+    apiKey.id,
+    apiKey.rateLimit,
+    apiKey.rateLimitWindow
+  );
+  if (!rateLimit.allowed) {
+    throw new AppError('RATE_LIMIT_EXCEEDED', 'API key rate limit exceeded', 429, {
+      resetAt: rateLimit.resetAt.toISOString()
+    });
   }
 
   await apiKeys.updateLastUsed(apiKey.id);

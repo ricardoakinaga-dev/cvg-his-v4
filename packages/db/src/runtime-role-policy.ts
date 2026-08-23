@@ -18,7 +18,10 @@ export const API_SENSITIVE_TABLE_PRIVILEGES = [
   { tableName: 'users', privileges: 'SELECT, INSERT, UPDATE' },
   { tableName: 'sessions', privileges: 'SELECT, INSERT, UPDATE, DELETE' },
   { tableName: 'mfa_credentials', privileges: 'SELECT, INSERT, UPDATE, DELETE' },
-  { tableName: 'auth_mfa_login_challenges', privileges: 'SELECT, INSERT, UPDATE' }
+  { tableName: 'auth_mfa_login_challenges', privileges: 'SELECT, INSERT, UPDATE' },
+  { tableName: 'api_keys', privileges: 'SELECT, INSERT, UPDATE, DELETE' },
+  { tableName: 'api_key_usage', privileges: 'SELECT, INSERT' },
+  { tableName: 'api_key_rate_limits', privileges: 'SELECT, INSERT, UPDATE' }
 ] as const;
 
 /** Non-secret identity attributes required to validate a mapped worker principal. */
@@ -35,5 +38,8 @@ export const RUNTIME_SENSITIVE_TABLES = [
   'account_service_principals',
   'sessions',
   'mfa_credentials',
-  'auth_mfa_login_challenges'
+  'auth_mfa_login_challenges',
+  'api_keys',
+  'api_key_usage',
+  'api_key_rate_limits'
 ] as const;

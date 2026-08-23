@@ -209,6 +209,36 @@ test('ApiKeysService checkRateLimit denies when at limit', async () => {
   assert.equal(incremented, false);
 });
 
+test('ApiKeysService delegates rate-limit decisions to the atomic repository operation', async () => {
+  let consumed = false;
+  const repo = {
+    create: async () => {},
+    findById: async () => null,
+    findByAccount: async () => [],
+    findActiveById: async () => null,
+    findByPrefix: async () => [],
+    update: async () => {},
+    delete: async () => {},
+    consumeRateLimit: async () => {
+      consumed = true;
+      return { allowed: true, current: 4, remaining: 5 };
+    },
+    incrementUsage: async () => { throw new Error('legacy increment must not run'); },
+    getUsageCount: async () => { throw new Error('legacy read must not run'); },
+    recordUsage: async () => {},
+    getUsageHistory: async () => []
+  };
+  const service = new ApiKeysService(repo as ApiKeyRepository);
+
+  const result = await service.checkRateLimit('key_test_789', 10, 60);
+
+  assert.equal(consumed, true);
+  assert.deepEqual(
+    { allowed: result.allowed, current: result.current, remaining: result.remaining },
+    { allowed: true, current: 4, remaining: 5 }
+  );
+});
+
 test('ApiKeysService recordUsage records API key usage', async () => {
   let recordedUsage: any = null;
   const repo = {
@@ -263,4 +293,65 @@ test('ApiKeysService getUsageHistory returns usage history', async () => {
   const result = await service.getUsageHistory('key_test_789');
 
   assert.equal(result.length, 1);
+});
+
+test('ApiKeysService validates through the optional exact-hash lookup before tenant context', async () => {
+  let lookupCalls = 0;
+  let prefixFallbackCalls = 0;
+  let persisted: ApiKeySummary | undefined;
+  const repo = {
+    create: async (apiKey: ApiKeySummary) => { persisted = apiKey; },
+    findById: async () => null,
+    findByAccount: async () => [],
+    findActiveById: async () => null,
+    findByPrefix: async () => { prefixFallbackCalls += 1; return []; },
+    findActiveByKeyHash: async (prefix: string, hash: string) => {
+      lookupCalls += 1;
+      return persisted?.keyPrefix === prefix && persisted.keyHash === hash ? [persisted] : [];
+    },
+    update: async () => {},
+    delete: async () => {},
+    incrementUsage: async () => {},
+    getUsageCount: async () => 0,
+    recordUsage: async () => {},
+    getUsageHistory: async () => []
+  };
+  const service = new ApiKeysService(repo as ApiKeyRepository);
+  const created = await service.create({
+    accountId: mockAccountId,
+    name: 'Pre-context',
+    permissions: ['payments.manage'],
+    createdBy: mockUserId
+  });
+
+  assert.strictEqual(await service.validate(created.rawKey), persisted);
+  assert.equal(lookupCalls, 1);
+  assert.equal(prefixFallbackCalls, 0);
+});
+
+test('ApiKeysService fails closed for ambiguous or expired exact-hash records', async () => {
+  const rawKey = 'cvg_123456789012345678901234567890123456789012345678';
+  const keyHash = (await import('node:crypto')).createHash('sha256').update(rawKey).digest('hex');
+  const candidate = createMockApiKey({ keyPrefix: rawKey.substring(0, 8), keyHash });
+  const repo = {
+    create: async () => {},
+    findById: async () => null,
+    findByAccount: async () => [],
+    findActiveById: async () => null,
+    findByPrefix: async () => { throw new Error('prefix fallback must not run'); },
+    findActiveByKeyHash: async () => [candidate, { ...candidate, id: 'key_2' as any }],
+    update: async () => {},
+    delete: async () => {},
+    incrementUsage: async () => {},
+    getUsageCount: async () => 0,
+    recordUsage: async () => {},
+    getUsageHistory: async () => []
+  };
+  const service = new ApiKeysService(repo as ApiKeyRepository);
+
+  assert.equal(await service.validate(rawKey), null);
+  repo.findActiveByKeyHash = async () => [
+    { ...candidate, expiresAt: new Date(Date.now() - 1_000).toISOString() }
+  ];
+  assert.equal(await service.validate(rawKey), null);
 });
