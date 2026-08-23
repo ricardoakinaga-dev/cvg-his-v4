@@ -200,6 +200,7 @@
         ".agent/artifacts/CVG-002C5-discharge-http-closes-stay-audit-refresh-2026-08-23.md",
         "tests/integration/database/inpatient-discharge-http-postgres.test.ts",
         ".agent/verification.jsonl#VFY-CVG-002C5-DISCHARGE-HTTP-001",
+        ".agent/verification.jsonl#VFY-CVG-002C5-PUBLICATION-001",
         ".agent/verification.jsonl#VFY-CVG-002C5-RECONCILIATION-001"
       ],
       "next_action": "The bounded HTTP proof now covers replay, conflict, rollback, same-key concurrency, two-tenant isolation, cross-instance unique conflict, inpatient stay closure and late-audit-cache recovery. Keep CVG-002C2 active for cursor pagination follow-up and the full admission -> handoff/permanence -> inventory -> discharge -> receipt/ledger/audit/outbox journey."
@@ -228,7 +229,8 @@
         "packages/modules/audit/src/repositories/database-audit.repository.ts",
         "tests/integration/database/inpatient-discharge-http-postgres.test.ts",
         ".agent/verification.jsonl#VFY-CVG-002C5-DISCHARGE-HTTP-001",
-        ".agent/verification.jsonl#VFY-CVG-002C5-RECONCILIATION-001"
+        ".agent/verification.jsonl#VFY-CVG-002C5-RECONCILIATION-001",
+        ".agent/verification.jsonl#VFY-CVG-002C5-PUBLICATION-001"
       ],
       "next_action": "Do not reopen this bounded slice. Resume the complete admission -> handoff/permanence -> inventory -> discharge -> billing -> receipt/ledger/audit/outbox journey; keep audit cursor pagination, Redis failover, provider, SPA/B2c, parity, WCAG, target-operations, coverage and release open."
     },

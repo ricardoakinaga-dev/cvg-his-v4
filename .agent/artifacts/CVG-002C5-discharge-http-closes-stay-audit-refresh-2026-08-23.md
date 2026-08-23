@@ -3,7 +3,7 @@
 **Data:** 23 de agosto de 2026
 **Programa:** `CVG-002` / `CVG-002C2`
 **Branch:** `agent/sync-v4-full-program`
-**Implementação:** publicação pendente deste checkpoint
+**Implementação:** `db73cb72ac5d36e24030651959cdcc18ec1d82d9` — `fix: close inpatient stay on discharge and preserve audit cache`
 
 ## Escopo congelado
 

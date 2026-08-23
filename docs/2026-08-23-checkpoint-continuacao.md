@@ -846,6 +846,10 @@ headers de tenant falsificados não atravessam o bearer, alta não-inpatient
 cross-tenant retorna `404` e duas instâncias com chaves distintas convergem
 para `201` + `409`.
 
+A implementação correspondente foi publicada em
+`db73cb72ac5d36e24030651959cdcc18ec1d82d9`
+(`fix: close inpatient stay on discharge and preserve audit cache`).
+
 O runner agora recebe `tenantTransaction` explícito no runtime SQL mesmo quando
 não há `unitOfWork`; o caminho em memória permanece direto. O `AuditRepository`
 possui leitura de reidratação tenant-scoped sem o limite default de 100 eventos,

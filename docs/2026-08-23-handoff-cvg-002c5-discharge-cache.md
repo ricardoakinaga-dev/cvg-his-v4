@@ -13,6 +13,9 @@ python3 /home/ricardo/.codex/skills/engineering-framework/scripts/check_state.py
 Preserve `packages/design-system/tsconfig.vue.tsbuildinfo`: ele já estava
 dirty e é cache user-owned, não parte desta entrega.
 
+Implementação publicada: `db73cb72ac5d36e24030651959cdcc18ec1d82d9`
+(`fix: close inpatient stay on discharge and preserve audit cache`).
+
 ## O que foi fechado
 
 O `POST /discharges` agora é tenant-scoped pelo bearer, valida o encounter em
