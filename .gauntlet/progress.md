@@ -554,3 +554,7 @@ obrigatório, `username` obrigatório e tenant ausente no backfill PIX). Dois
 `afterAll` também excedem o `hookTimeout` efetivo de 30 s; aumentar apenas
 `teardownTimeout` não resolve. Próxima ação: ajustar fixtures e hook timeout,
 reexecutar focused/full e preservar `ACTIVE/IN_PROGRESS/PARTIAL` até 387/387.
+
+Publicação confirmada em `cef5d6392c82b60e9a13881fa1e8826c39accb7a`, com
+`HEAD` alinhado ao remoto. O cache user-owned do design-system continua
+intencionalmente fora do commit.

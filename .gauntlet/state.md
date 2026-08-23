@@ -628,3 +628,11 @@ dois `afterAll` limitados por `hookTimeout` efetivo de 30 s. `--teardownTimeout`
 não substitui `hookTimeout`. O próximo passo é corrigir fixtures e teardown de
 forma explícita, repetir os focados e só aceitar o gate com 387/387
 reproduzível. Stop decision permanece ACTIVE; nenhum gate global foi promovido.
+
+## Publicação do reteste controlado — 23/08/2026, 19:32 BRT
+
+O checkpoint de continuidade, artefato, backlog, ExecPlan, estado e ledgers foi
+publicado em `cef5d6392c82b60e9a13881fa1e8826c39accb7a` e enviado para
+`origin/agent/sync-v4-full-program`. A reconciliação confirmou `HEAD == origin`;
+somente `packages/design-system/tsconfig.vue.tsbuildinfo` continua dirty e
+fora do stage. O stop decision e todos os gates permanecem inalterados.

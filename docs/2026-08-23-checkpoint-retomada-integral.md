@@ -286,3 +286,11 @@ com `hookTimeout` explícito. Reexecutar os três arquivos focados e o comando
 controlado completo, anexando stdout/exit status. Somente com **387/387**
 reproduzível retomar child-process/SIGKILL/takeover, failpoints, PIX
 PostgreSQL/RLS e webhook HTTP retry/DLQ/lease fencing.
+
+## Publicação do checkpoint — 23/08/2026, 19:32 BRT
+
+Esta atualização documental foi publicada no commit `cef5d6392c82b60e9a13881fa1e8826c39accb7a`
+(`docs: record controlled critical retest`) e enviada para
+`origin/agent/sync-v4-full-program`. A reconciliação final confirmou `HEAD`
+igual ao remoto. O único caminho fora do commit continua sendo o cache
+user-owned `packages/design-system/tsconfig.vue.tsbuildinfo`.

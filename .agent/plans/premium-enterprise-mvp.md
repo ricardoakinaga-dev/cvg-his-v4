@@ -408,6 +408,11 @@ compose/review real handlers, then execute the complete failpoint matrix and
 applied Helm equivalence; all product, global RLS and release gates remain
 IN_PROGRESS/PARTIAL.
 
+Publication note, 2026-08-23: the controlled retest checkpoint and control
+plane were published in `cef5d6392c82b60e9a13881fa1e8826c39accb7a` and pushed
+to `origin/agent/sync-v4-full-program`; the design-system tsbuildinfo cache
+remains outside the stage.
+
 Plan revision note, 2026-08-23 (auditoria integral e retomada): o corpus atual
 de docs foi enumerado e lido integralmente como bytes antes desta inclusão;
 readiness estrutural permanece 95/100, paridade estrita 0/11 geral e 0/3
