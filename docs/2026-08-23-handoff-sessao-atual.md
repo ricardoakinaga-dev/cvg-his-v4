@@ -421,3 +421,10 @@ publicados em `54ce516` (`docs: record post-fix critical retest`) no branch
 `origin/agent/sync-v4-full-program`. A reconciliação final do estado apontará
 para esse SHA; a próxima sessão deve começar pela reprodução mínima da falha
 PIX, não por uma promoção de gate.
+
+O checker canônico foi reexecutado após a correção de `next_gate` para
+`VERIFIED`: JSON/JSONL parseiam e a reconciliação ativa passa, mas o resultado
+global é `FAIL (pass=9, warn=1, fail=43)` por inconsistências históricas de
+tipos/evidence kinds/ordenação nos ledgers. Esses registros antigos continuam
+intactos e devem ser tratados em uma onda documental própria; não foram
+confundidos com aprovação do full critical ou do ERP.

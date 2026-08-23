@@ -438,3 +438,14 @@ reteste foram publicados em `54ce516` (`docs: record post-fix critical retest`)
 no branch `origin/agent/sync-v4-full-program`. O ponteiro de controle será
 reconciliado após a verificação final; o resultado continua **386/387** e
 `IN_PROGRESS/PARTIAL`, sem promoção global.
+
+## Checker canônico após a reconciliação de vocabulário
+
+O `check_state.py` foi executado novamente após trocar `next_gate` para o
+semântico canônico `VERIFIED` e normalizar os novos registros. O estado e os
+artefatos parseiam, e a reconciliação ativa passa, mas o checker ainda termina
+`RESULT FAIL (pass=9 warn=1 fail=43)` por registros históricos anteriores com
+tipos/eventos/evidence kinds fora do contrato atual e por uma ordem histórica
+de ledger. Esses achados não foram reescritos nesta sessão; ficam explicitamente
+abertos para uma reconciliação documental dedicada. Isso não é evidência de
+`VERIFIED` nem altera o resultado integral **386/387**.
