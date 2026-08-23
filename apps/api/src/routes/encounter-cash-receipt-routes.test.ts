@@ -150,6 +150,49 @@ test('cash receipt POST requires idempotency and creates the receipt through the
   });
 });
 
+test('cash receipt POST executes the command through the tenant transaction runner', async () => {
+  const commandCalls: unknown[] = [];
+  const runnerCalls: unknown[] = [];
+  const response = new MockResponse();
+  const handled = await handleEncounterCashReceiptRoutes(
+    `/encounters/${encounterId}/cash-receipts`,
+    postRequest(),
+    response as never,
+    {
+      ...auditHandlers(),
+      command: {
+        async execute(input: CreateEncounterCashReceiptInput) {
+          commandCalls.push(input);
+          return receipt;
+        }
+      } as never,
+      repository: {} as never,
+      requirePrincipal: () => principal(),
+      runCommand: async (input) => {
+        runnerCalls.push(input);
+        return input.command();
+      }
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 201);
+  assert.equal(runnerCalls.length, 1);
+  const runnerInput = runnerCalls[0] as {
+    readonly operation: string;
+    readonly idempotencyKey?: string;
+    readonly payload: unknown;
+  };
+  assert.equal(runnerInput.operation, 'encounter.cash-receipt.create');
+  assert.equal(runnerInput.idempotencyKey, 'receipt-request-1');
+  assert.deepEqual(runnerInput.payload, {
+    encounterId,
+    cashRegisterId: registerId,
+    expectedAmount: 125.5
+  });
+  assert.equal(commandCalls.length, 1);
+});
+
 test('cash receipt POST rejects requests without an idempotency key before execution', async () => {
   let executed = false;
   await assert.rejects(

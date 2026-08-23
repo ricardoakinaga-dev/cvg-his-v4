@@ -129,12 +129,14 @@ export function createBufferedResponse(target: ServerResponse): BufferedResponse
 
   return {
     response: proxy,
-    snapshot: () => ({
-      statusCode,
-      statusMessage,
-      headers: { ...headers },
-      bodyBase64: body.toString('base64')
-    })
+    snapshot: () => {
+      const snapshot: BufferedResponseSnapshot = {
+        statusCode,
+        headers: { ...headers },
+        bodyBase64: body.toString('base64')
+      };
+      return statusMessage === undefined ? snapshot : { ...snapshot, statusMessage };
+    }
   };
 }
 

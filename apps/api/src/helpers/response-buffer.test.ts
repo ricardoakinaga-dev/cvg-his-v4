@@ -44,3 +44,10 @@ test('response buffer captures and replays status, headers and body', () => {
   assert.ok(endedBody);
   assert.deepEqual(endedBody, Buffer.from('{"ok":true}'));
 });
+
+test('response buffer snapshots omit undefined optional fields for JSON-safe idempotency', () => {
+  const snapshot = createBufferedResponse(createTarget()).snapshot();
+
+  assert.equal(Object.hasOwn(snapshot, 'statusMessage'), false);
+  assert.doesNotThrow(() => JSON.stringify(snapshot));
+});

@@ -2,13 +2,14 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import type { AuditService } from '@cvg-his-v2/module-audit';
 import { AppError, ValidationError } from '@cvg-his-v2/shared-errors';
-import { getTenantTransactionContext } from '@cvg-his-v2/shared-database';
+import { getTenantTransactionContext, type JsonValue } from '@cvg-his-v2/shared-database';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 
 import type { EncounterCashReceiptCommand } from '../commands/encounter-cash-receipt.js';
 import type { EncounterCashReceiptRepository } from '../encounter-cash-receipt-repository.js';
 import { appendAudit } from '../helpers/audit-helper.js';
 import { readJsonBody } from '../helpers/common.js';
+import type { TenantCommandRunner } from '../helpers/tenant-command.js';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const CREATE_PATH = /^\/encounters\/([^/]+)\/cash-receipts$/;
@@ -23,6 +24,7 @@ export interface EncounterCashReceiptRouteHandlers {
     request: IncomingMessage,
     permissionCode: string
   ) => AuthenticatedPrincipal;
+  readonly runCommand?: TenantCommandRunner;
 }
 
 function auditReceiptRead(
@@ -133,16 +135,37 @@ export async function handleEncounterCashReceiptRoutes(
     ) {
       throw new ValidationError('Idempotency-Key header is required and must contain at most 255 characters');
     }
+    const normalizedIdempotencyKey = idempotencyKey.trim();
     const encounterId = requireUuid(createMatch[1] ?? '', 'encounterId');
     const payload = requireCreatePayload(await readJsonBody(request));
-    const receipt = await handlers.command.execute({
+    const commandInput = {
       accountId: principal.user.accountId,
       encounterId,
       actorUserId: principal.user.id,
       cashRegisterId: typeof payload.cashRegisterId === 'string' ? payload.cashRegisterId : '',
       expectedAmount: typeof payload.expectedAmount === 'number' ? payload.expectedAmount : Number.NaN,
       notes: typeof payload.notes === 'string' ? payload.notes : undefined
-    });
+    };
+    const commandPayload: JsonValue = {
+      encounterId,
+      cashRegisterId: commandInput.cashRegisterId,
+      expectedAmount: Number.isFinite(commandInput.expectedAmount)
+        ? commandInput.expectedAmount
+        : null,
+      ...(commandInput.notes === undefined ? {} : { notes: commandInput.notes })
+    };
+    const receipt = handlers.runCommand
+      ? await handlers.runCommand({
+          request,
+          idempotencyKey: normalizedIdempotencyKey,
+          accountId: principal.user.accountId,
+          actorUserId: principal.user.id,
+          correlationId: handlers.correlationId,
+          operation: 'encounter.cash-receipt.create',
+          payload: commandPayload,
+          command: () => handlers.command.execute(commandInput)
+        })
+      : await handlers.command.execute(commandInput);
     response.setHeader('location', `/encounters/${encounterId}/cash-receipts/${receipt.id}`);
     return json(response, 201, receipt);
   }

@@ -5492,7 +5492,8 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               repository: encounterCashReceiptRepository,
               audit,
               correlationId,
-              requirePrincipal
+              requirePrincipal,
+              runCommand: runTenantCommand
             }))
           ) {
             return;
