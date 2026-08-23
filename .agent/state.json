@@ -16,18 +16,18 @@
   "active_execplan": ".agent/plans/premium-enterprise-mvp.md",
   "active_task": "CVG-002B2B",
   "verification_state": "PARTIAL",
-  "repository_state": "CVG-002B parser/fingerprint plus durable 0111 receipt/delivery ingress checkpoint is committed as 61cdef4 and pushed to origin/agent/sync-v4-full-program; the explicit non-production HTTP callback boundary is committed as be1cb47 and hardened/pushed as bbbf902, with OpenAPI alignment follow-up 705052b. Code implementation checkpoint 26f3281 and documentation synchronization checkpoint 3cba876 are pushed to origin/agent/sync-v4-full-program. The slice adds HTTP-to-PostgreSQL evidence 2/2, service-principal migration/schema 5/5 + 3/3, auth guards 7/7 with users/auth regressions 13/13 + 30/30, runtime ACL 8/8 and a default-off fenced B1 consumer 6/6 + PostgreSQL 3/3 + worker 47/47; it remains below VERIFIED because shared UoW, real worker-role query, transient retry, restart/takeover/redrive, legacy 410, provider, SPA and release evidence are open. Corrected 18/18 B1 remains extracted into module-pix with API shims, OpenAPI is 334 paths/385 schemas, ERP audit/research and continuation artifacts are documented, and the preserved user-owned packages/design-system/tsconfig.vue.tsbuildinfo cache remains outside scope",
+  "repository_state": "CVG-002B parser/fingerprint plus durable 0111 receipt/delivery ingress checkpoint is committed as 61cdef4 and pushed to origin/agent/sync-v4-full-program; the explicit non-production HTTP callback boundary is committed as be1cb47 and hardened/pushed as bbbf902, with OpenAPI alignment follow-up 705052b. Implementation checkpoint 26f3281 and documentation synchronization 3cba876 were followed by implementation hardening 46b84cb, all pushed to origin/agent/sync-v4-full-program. The slice now adds shared tenant UoW, explicit transient PostgreSQL/transport retry, bounded audited redrive, actual read-only worker-role principal query and attempt-linked legacy 410 evidence: shared context 3/3, worker 48/48, PostgreSQL worker 5/5, runtime ACL/RLS 8/8, route 3/3, PIX repository 5/5 and OpenAPI 335 paths/386 schemas. It remains below VERIFIED because process crash/restart and multi-pool recovery, DLQ/observability, HTTP-to-PostgreSQL evidence for the legacy 410, provider, SPA and release evidence are open. Corrected 18/18 B1 remains extracted into module-pix with API shims, and the preserved user-owned packages/design-system/tsconfig.vue.tsbuildinfo cache remains outside scope",
   "instruction_scope_refs": [
     ".agent/instruction-scope.md"
   ],
   "last_gate_record": ".agent/gates/implementation-ready-CVG-002B2B.json",
-  "last_event_id": "EVT-0067",
-  "state_revision": 56,
+  "last_event_id": "EVT-0071",
+  "state_revision": 60,
   "next_gate": "VERIFIED",
-  "next_action": "Extract and verify a shared fenced worker UoW under the read-only worker role; add explicit transient PostgreSQL/transport retry, restart/takeover/redrive, legacy 410 and dedicated worker-role query evidence; preserve 18/18 B1, 35/35 verifier/keyring, 77/77 focused, 11/11 ingress, 13/13 HTTP, 2/2 HTTP-to-PostgreSQL, 8/8 ACL and 47/47 worker evidence",
+  "next_action": "Prove process crash/restart and multi-pool takeover plus DLQ/observability; extend HTTP-to-PostgreSQL evidence for the attempt-linked legacy 410; rerun B1/B2a/ingress/HTTP regressions and reassess VERIFIED while preserving 18/18 B1, 35/35 verifier/keyring, 77/77 focused, 11/11 ingress, 13/13 HTTP, 2/2 HTTP-to-PostgreSQL, 8/8 ACL and 48/48 worker evidence",
   "blocked_by": [],
   "human_approval_required": [
     "Production go-live, credential rotation, provider selection, fiscal homologation, and residual HIGH/CRITICAL risk acceptance remain outside repository implementation authority"
   ],
-  "updated_at": "2026-08-22T22:48:00-03:00"
+  "updated_at": "2026-08-22T23:15:00-03:00"
 }

@@ -56,16 +56,18 @@ Round 0 completed discovery and froze Quality Bar v1. Rounds 1-3 delivered local
 - Prove a durable, one-time, atomic installation sentinel and least-privilege bootstrap against real PostgreSQL.
 - Certify session refresh/revocation and MFA rollout across two physical replicas and Redis races in a target-like environment.
 - Add HTTP/PostgreSQL/Redis/SPA evidence before moving `CVG-001` to VERIFY.
-- Connect the verified direct PIX core to the signed socket callback, the now-implemented non-interactive service principal and bounded consumer; then close the shared worker UoW, restart/takeover/redrive, legacy `410`, SPA flow, card, stock and the full scheduled/walk-in journey.
+- Connect the verified direct PIX core to the signed socket callback, the now-implemented non-interactive service principal and bounded consumer; then close process crash/restart and multi-pool takeover, DLQ/observability, HTTP-to-PostgreSQL evidence for legacy `410`, SPA flow, card, stock and the full scheduled/walk-in journey.
 - Add a dedicated HTTP-to-UoW-to-PostgreSQL receipt E2E and the remaining critical browser E2E gates.
 
 ## Latest bounded checkpoint
 
-`EVT-0055/EVT-0056/EVT-0057/EVT-0058/EVT-0059` hardened the explicit non-production synthetic PIX HTTP callback and recorded fresh bounded evidence: shared-config 32/32, verifier/keyring 35/35, startup 6/6, raw `node:http`/`node:net` integration 13/13, and OpenAPI 334 paths/385 schemas. `EVT-0060`–`EVT-0065` then added HTTP→PostgreSQL 2/2, service-principal migration/schema 5/5 + 3/3, auth guards 7/7 plus users/auth regressions, runtime ACL 8/8, and worker consumer 6/6 + PostgreSQL 3/3 + worker 47/47. Implementation `26f3281` and documentation synchronization `3cba876` are pushed to `origin/agent/sync-v4-full-program`; `EVT-0066`/`EVT-0067` record the publications. The callback/worker slice is still below the `VERIFIED` bar because shared UoW, real worker-role query, transient retry, restart/takeover/redrive, legacy `410`, provider, SPA and release gates remain open. No quality-bar dimension is promoted by this checkpoint.
+`EVT-0068`–`EVT-0071` follow the earlier `EVT-0055`–`EVT-0067` callback, database, principal and consumer checkpoints. Implementation `46b84cb` is pushed to `origin/agent/sync-v4-full-program`; the corresponding continuation artifact and docs/state synchronization are included in this documentation checkpoint. The new bounded evidence is shared transaction context 3/3, worker package 48/48, disposable PostgreSQL worker 5/5, runtime ACL/RLS 8/8 with the exact read-only role query, legacy 410 route 3/3, PIX repository 5/5 and OpenAPI 335 paths/386 schemas. The consumer now has explicit allowlisted transient retry and an audited internal redrive; B1 and final delivery CAS reuse the shared tenant UoW without `idempotency_requests`.
+
+The callback/worker slice remains below the `VERIFIED` bar: lease-expiry takeover is covered, but process crash/restart and multi-pool recovery, DLQ/observability, HTTP-to-PostgreSQL evidence specific to the legacy 410, provider, SPA, Vetus parity, WCAG, operations and release gates remain open. No quality-bar dimension is promoted by this checkpoint.
 
 ## Stop Decision
 
 - State: ACTIVE
 - Reason: Required P0 criteria fail or have not run; target-environment work is externally blocked but local safe work remains.
 - Last integrated verification: B2b parser/ingress checkpoint `VFY-CVG-002B2B-PARSER-INGRESS-001` passed focused 77/77, PostgreSQL ingress 11/11, B1 18/18 and B2a 33/33 with independent APPROVE; B2a's VERIFIED gate still records coverage 1.646/1.646 at 83% lines/80,3% branches plus typecheck/lint, OpenAPI, RLS, dependency/secret scans and independent review PASS. Earlier SPA 1.001/1.001 evidence remains bounded and current.
-- Next largest locally actionable gap: extract/verify the shared fenced settlement UoW under the read-only worker role, then add transient retry, restart/takeover/redrive and legacy `410`; coherent SPA remains separate `B2c` work.
+- Next largest locally actionable gap: prove process crash/restart and multi-pool takeover, add DLQ/observability, extend HTTP-to-PostgreSQL evidence for the legacy `410`, then rerun the bounded regressions; coherent SPA remains separate `B2c` work.

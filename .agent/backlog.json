@@ -91,9 +91,13 @@
         ".agent/verification.jsonl#VFY-CVG-002B2B-SERVICE-PRINCIPAL-001",
         ".agent/verification.jsonl#VFY-CVG-002B2B-AUTH-PRINCIPAL-001",
         ".agent/verification.jsonl#VFY-CVG-002B2B-RUNTIME-ACL-001",
-        ".agent/verification.jsonl#VFY-CVG-002B2B-WORKER-001"
+        ".agent/verification.jsonl#VFY-CVG-002B2B-WORKER-001",
+        ".agent/artifacts/CVG-002B2B-worker-uow-legacy-410-2026-08-22.md",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-UOW-001",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-ROLE-002",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-410-001"
       ],
-      "next_action": "Extract and verify a shared fenced worker UoW under the read-only worker role; add dedicated worker-role query evidence, transient PostgreSQL/transport retry, restart/takeover/redrive and legacy 410; preserve 18/18 B1, 35/35 verifier/keyring, 77/77 focused, 11/11 ingress, 13/13 HTTP, 2/2 HTTP-to-PostgreSQL, 8/8 ACL and 47/47 worker evidence."
+      "next_action": "Prove process crash/restart and multi-pool takeover plus DLQ/observability; extend HTTP-to-PostgreSQL evidence for the attempt-linked legacy 410; rerun B1/B2a/ingress/HTTP regressions and reassess VERIFIED while preserving 18/18 B1, 35/35 verifier/keyring, 77/77 focused, 11/11 ingress, 13/13 HTTP, 2/2 HTTP-to-PostgreSQL, 8/8 ACL and 48/48 worker evidence."
     },
     {
       "id": "CVG-003",

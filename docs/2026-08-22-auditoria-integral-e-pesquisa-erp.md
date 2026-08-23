@@ -130,3 +130,16 @@ Arquivos de continuidade: [handoff CVG-002B2B](2026-08-22-handoff-cvg-002b2.md) 
 - Não reaproveitar `idempotency_requests` no consumer B2b; o B1 compartilhado continua responsável pela idempotência financeira e pelo CAS final da delivery.
 - Não classificar o consumer como “completo”: erros desconhecidos são fail-closed/terminal hoje, e ainda faltam restart, takeover, redrive/DLQ e observabilidade de operação.
 - Não declarar paridade Vetus, UX, jornada clínica-financeira, provider real, deploy, restore, WCAG ou produção a partir dos números acima.
+
+## 10. Atualização executável — EVT-0068 a EVT-0071
+
+O checkpoint de implementação `46b84cb` fechou um conjunto local de lacunas do B2b, sempre com escopo sintético e não produtivo:
+
+| Slice | Evidência fresca | Estado honesto |
+| --- | --- | --- |
+| UoW shared/B1 + CAS | helper canonical, 3/3 unit e integração contextual | PASS limitado; sem `idempotency_requests` |
+| Worker/retry/redrive | worker 48/48 e PostgreSQL 5/5; retry transitório, takeover por lease expirado, stale fence e redrive auditado | PASS limitado; crash/restart real e DLQ/observabilidade ainda abertos |
+| Role worker real | ACL 8/8, com query de principal sob `SET ROLE` e negação de `password_hash` | PASS limitado; a fronteira read-only foi preservada |
+| Barreira legada | rota/API key 410 3/3, sem gateway nem `payment.pix.confirmed`; OpenAPI 335/386 | PASS limitado; falta integração HTTP→PostgreSQL específica e jornada SPA |
+
+O próximo passo permanece comportamental: provar reinício de processo e takeover multi-pool, fechar observabilidade/DLQ e repetir as regressões B1/B2a/ingress/HTTP. O benchmark de ezyVet, Shepherd, Digitail, Vetspire, Covetrus Ascend e Provet continua sendo critério de produto, não evidência de paridade. O ERP geral, Vetus `11/11 + 3/3`, WCAG, providers, deploy e produção permanecem não concluídos.
