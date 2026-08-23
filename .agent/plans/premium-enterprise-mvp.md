@@ -466,3 +466,8 @@ critical integration fixtures deterministic`) and pushed with upstream to
 critical harness: the post-fix full run and fresh independent critique remain
 the next gate, and the user-owned design-system tsbuildinfo cache remains
 outside scope.
+
+Publication note, 2026-08-23: final pointer reconciliation for this checkpoint
+is `dce9c36`, following implementation commit `75a5ccd`; the remote branch is
+the canonical continuation source. The next gate remains the post-fix full
+critical run and fresh independent critique, not a global readiness promotion.

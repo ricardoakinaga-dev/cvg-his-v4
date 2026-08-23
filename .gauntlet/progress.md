@@ -581,3 +581,7 @@ Publicação da rodada confirmada em `75a5ccd`, com a migração 0123, fixtures,
 teardown e documentação de retomada no remoto. Esta é apenas uma publicação de
 continuidade: o próximo passo continua sendo o full critical pós-fix com
 387/387 reproduzível e crítica independente atualizada.
+
+Ponteiro final de reconciliação: `dce9c36`, após o commit de implementação
+`75a5ccd`. O remoto é a fonte de continuidade; nenhum full critical novo foi
+declarado nesta etapa.

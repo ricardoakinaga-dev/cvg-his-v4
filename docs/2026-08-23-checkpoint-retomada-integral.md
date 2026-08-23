@@ -378,3 +378,13 @@ documentos/ledgers de continuidade. O próximo operador deve partir deste SHA,
 validar o full critical pós-fix e não interpretar o commit como aprovação
 global; o cache user-owned `packages/design-system/tsconfig.vue.tsbuildinfo`
 continua fora do stage.
+
+## Reconciliação final do checkpoint — 23/08/2026, 20:18 BRT
+
+O conteúdo de implementação é `75a5ccd` e a reconciliação documental/controle
+de estado é `dce9c36` (`docs: reconcile deterministic fixture checkpoint`). O
+push confirmou o branch `agent/sync-v4-full-program` no GitHub; após a próxima
+verificação, `HEAD` deve coincidir com `origin`. O ponto de entrada continua
+este arquivo, com o próximo passo integral explicitado acima; somente o cache
+user-owned `packages/design-system/tsconfig.vue.tsbuildinfo` pode permanecer
+dirty.

@@ -661,3 +661,10 @@ continuidade no branch remoto com upstream. O stop decision permanece `ACTIVE`;
 o full critical pós-fix e a crítica independente continuam obrigatórios antes
 de qualquer promoção. O cache `packages/design-system/tsconfig.vue.tsbuildinfo`
 permanece fora do stage.
+
+## Reconciliação final — 23/08/2026, 20:18 BRT
+
+O conteúdo `75a5ccd` e o ponteiro documental `dce9c36` estão publicados no
+branch remoto. A sessão seguinte deve confirmar `HEAD == origin` e retomar o
+full critical pós-fix; stop decision segue `ACTIVE` e todos os gates amplos
+seguem `IN_PROGRESS/PARTIAL`.
