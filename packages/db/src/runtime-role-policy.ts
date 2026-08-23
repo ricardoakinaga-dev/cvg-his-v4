@@ -12,3 +12,28 @@ export const API_GLOBAL_TABLE_MUTATIONS = [
   { tableName: 'icms_rules', privileges: 'INSERT' },
   { tableName: 'nfse_layouts', privileges: 'INSERT, UPDATE' }
 ] as const;
+
+/** Direct DML required by API-owned authentication and user repositories. */
+export const API_SENSITIVE_TABLE_PRIVILEGES = [
+  { tableName: 'users', privileges: 'SELECT, INSERT, UPDATE' },
+  { tableName: 'sessions', privileges: 'SELECT, INSERT, UPDATE, DELETE' },
+  { tableName: 'mfa_credentials', privileges: 'SELECT, INSERT, UPDATE, DELETE' },
+  { tableName: 'auth_mfa_login_challenges', privileges: 'SELECT, INSERT, UPDATE' }
+] as const;
+
+/** Non-secret identity attributes required to validate a mapped worker principal. */
+export const WORKER_USER_READ_COLUMNS = [
+  'id',
+  'account_id',
+  'is_active',
+  'principal_kind',
+  'interactive_login_enabled'
+] as const;
+
+export const RUNTIME_SENSITIVE_TABLES = [
+  'users',
+  'account_service_principals',
+  'sessions',
+  'mfa_credentials',
+  'auth_mfa_login_challenges'
+] as const;

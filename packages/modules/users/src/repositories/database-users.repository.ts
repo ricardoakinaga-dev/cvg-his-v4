@@ -1,9 +1,6 @@
 import { getPool } from '@cvg-his-v2/shared-database';
 import { withTenantQuery, withTenantQueryExplicit } from '@cvg-his-v2/tenant-context';
-import type {
-  AccountId,
-  UserId
-} from '@cvg-his-v2/shared-types';
+import type { AccountId, UserId } from '@cvg-his-v2/shared-types';
 
 export interface UserRecord {
   readonly id: UserId;
@@ -14,6 +11,8 @@ export interface UserRecord {
   readonly passwordHash: string;
   readonly fullName: string;
   readonly isActive: boolean;
+  readonly principalKind?: 'human' | 'service';
+  readonly interactiveLoginEnabled?: boolean;
   readonly createdAt: string;
   readonly updatedAt: string;
 }
@@ -51,10 +50,21 @@ export class DatabaseUsersRepository implements UsersRepository {
         }
       }
       await client.query(
-        `INSERT INTO users (id, account_id, username, email, password_hash, full_name, is_active, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-        [user.id, user.accountId, user.username, user.email, user.passwordHash, user.fullName,
-         user.isActive, new Date(user.createdAt), new Date(user.updatedAt)]
+        `INSERT INTO users (id, account_id, username, email, password_hash, full_name, is_active, principal_kind, interactive_login_enabled, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+        [
+          user.id,
+          user.accountId,
+          user.username,
+          user.email,
+          user.passwordHash,
+          user.fullName,
+          user.isActive,
+          user.principalKind ?? 'human',
+          user.interactiveLoginEnabled ?? true,
+          new Date(user.createdAt),
+          new Date(user.updatedAt)
+        ]
       );
       if (roleId) {
         await client.query('INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)', [
@@ -68,7 +78,8 @@ export class DatabaseUsersRepository implements UsersRepository {
   async update(user: UserRecord): Promise<void> {
     await withTenantQuery(getPool(), async (client) => {
       return await client.query(
-        `UPDATE users SET username = $3, email = $4, password_hash = $5, full_name = $6, is_active = $7, updated_at = $8
+        `UPDATE users SET username = $3, email = $4, password_hash = $5, full_name = $6, is_active = $7,
+           principal_kind = $8, interactive_login_enabled = $9, updated_at = $10
          WHERE id = $1 AND account_id = $2`,
         [
           user.id,
@@ -78,6 +89,8 @@ export class DatabaseUsersRepository implements UsersRepository {
           user.passwordHash,
           user.fullName,
           user.isActive,
+          user.principalKind ?? 'human',
+          user.interactiveLoginEnabled ?? true,
           new Date(user.updatedAt)
         ]
       );
@@ -91,12 +104,7 @@ export class DatabaseUsersRepository implements UsersRepository {
          SET password_hash = $4, updated_at = NOW()
          WHERE id = $1 AND account_id = $2 AND password_hash = $3
          RETURNING id`,
-        [
-          input.userId,
-          input.accountId,
-          input.expectedPasswordHash,
-          input.passwordHash
-        ]
+        [input.userId, input.accountId, input.expectedPasswordHash, input.passwordHash]
       );
       return result.rowCount === 1;
     });
@@ -116,7 +124,12 @@ export class DatabaseUsersRepository implements UsersRepository {
   async findByUsername(accountId: AccountId, username: string): Promise<UserRecord | null> {
     return withTenantQueryExplicit(getPool(), accountId, async (client) => {
       const result = await client.query(
-        'SELECT * FROM users WHERE account_id = $1 AND username = $2 LIMIT 1',
+        `SELECT * FROM users
+         WHERE account_id = $1 AND username = $2
+           AND principal_kind = 'human'
+           AND interactive_login_enabled = true
+           AND is_active = true
+         LIMIT 1`,
         [accountId, username]
       );
       if (result.rows.length === 0) return null;
@@ -126,7 +139,14 @@ export class DatabaseUsersRepository implements UsersRepository {
 
   async findByEmail(accountId: AccountId, email: string): Promise<UserRecord | null> {
     return withTenantQuery(getPool(), async (client) => {
-      const result = await client.query('SELECT * FROM users WHERE account_id = $1 AND email = $2', [accountId, email]);
+      const result = await client.query(
+        `SELECT * FROM users
+         WHERE account_id = $1 AND email = $2
+           AND principal_kind = 'human'
+           AND interactive_login_enabled = true
+           AND is_active = true`,
+        [accountId, email]
+      );
       if (result.rows.length === 0) return null;
       return this.mapRow(result.rows[0]);
     });
@@ -137,7 +157,13 @@ export class DatabaseUsersRepository implements UsersRepository {
     const users = await Promise.all(
       accounts.rows.map(({ id }) =>
         withTenantQueryExplicit(getPool(), id, async (client) => {
-          const result = await client.query('SELECT * FROM users ORDER BY full_name');
+          const result = await client.query(
+            `SELECT * FROM users
+             WHERE principal_kind = 'human'
+               AND interactive_login_enabled = true
+               AND is_active = true
+             ORDER BY full_name`
+          );
           return result.rows.map((row: Record<string, unknown>) => this.mapRow(row));
         })
       )
@@ -145,10 +171,7 @@ export class DatabaseUsersRepository implements UsersRepository {
     return users.flat();
   }
 
-  async findRoleCodesByUserId(
-    id: UserId,
-    accountId?: AccountId
-  ): Promise<readonly string[]> {
+  async findRoleCodesByUserId(id: UserId, accountId?: AccountId): Promise<readonly string[]> {
     const query = async (client: { query: typeof getPool.prototype.query }) =>
       client.query(
         `SELECT r.name
@@ -167,7 +190,10 @@ export class DatabaseUsersRepository implements UsersRepository {
 
   async findByAccountId(accountId: AccountId): Promise<readonly UserRecord[]> {
     return withTenantQuery(getPool(), async (client) => {
-      const result = await client.query('SELECT * FROM users WHERE account_id = $1 ORDER BY full_name', [accountId]);
+      const result = await client.query(
+        'SELECT * FROM users WHERE account_id = $1 ORDER BY full_name',
+        [accountId]
+      );
       return result.rows.map((r: Record<string, unknown>) => this.mapRow(r));
     });
   }
@@ -181,6 +207,8 @@ export class DatabaseUsersRepository implements UsersRepository {
       passwordHash: row.password_hash as string,
       fullName: row.full_name as string,
       isActive: row.is_active as boolean,
+      principalKind: row.principal_kind as 'human' | 'service',
+      interactiveLoginEnabled: row.interactive_login_enabled as boolean,
       createdAt: new Date(row.created_at as string).toISOString(),
       updatedAt: new Date(row.updated_at as string).toISOString()
     };

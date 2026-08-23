@@ -12,6 +12,18 @@ import type {
 export interface UserRecord extends UserSummary {
   readonly passwordHash: string;
   readonly roleCodes: readonly string[];
+  /** Omitted only by legacy in-memory fixtures; database materialization always sets it. */
+  readonly principalKind?: 'human' | 'service';
+  /** Omitted only by legacy in-memory fixtures; database materialization always sets it. */
+  readonly interactiveLoginEnabled?: boolean;
+}
+
+export function isInteractiveHumanUser(user: UserRecord): boolean {
+  return (
+    (user.principalKind ?? 'human') === 'human' &&
+    (user.interactiveLoginEnabled ?? true) === true &&
+    user.status === 'active'
+  );
 }
 
 export interface UsersServiceOptions {
@@ -56,10 +68,7 @@ export async function comparePassword(password: string, passwordHash: string): P
     // Backward compatibility for legacy Drizzle seed values stored as plain SHA-256 hex.
     // Unsalted SHA-256 is not an acceptable password hash: these records should be
     // migrated to scrypt (see hashPassword) on the owner's next successful login.
-    return timingSafeEqualString(
-      createHash('sha256').update(password).digest('hex'),
-      passwordHash
-    );
+    return timingSafeEqualString(createHash('sha256').update(password).digest('hex'), passwordHash);
   }
   const saltHex = parts[0];
   const hashHex = parts[1];
@@ -95,7 +104,9 @@ function createSeedUsers(): UserRecord[] {
       createdAt,
       updatedAt: createdAt,
       passwordHash: 'cvg-his-v2-seed-salt-v1:seed_admin',
-      roleCodes: ['admin']
+      roleCodes: ['admin'],
+      principalKind: 'human',
+      interactiveLoginEnabled: true
     },
     {
       id: 'user_reception' as UserId,
@@ -108,7 +119,9 @@ function createSeedUsers(): UserRecord[] {
       createdAt,
       updatedAt: createdAt,
       passwordHash: 'cvg-his-v2-seed-salt-v1:seed_reception',
-      roleCodes: ['reception']
+      roleCodes: ['reception'],
+      principalKind: 'human',
+      interactiveLoginEnabled: true
     },
     {
       id: 'user_auditor' as UserId,
@@ -121,7 +134,9 @@ function createSeedUsers(): UserRecord[] {
       createdAt,
       updatedAt: createdAt,
       passwordHash: 'cvg-his-v2-seed-salt-v1:seed_auditor',
-      roleCodes: ['auditor']
+      roleCodes: ['auditor'],
+      principalKind: 'human',
+      interactiveLoginEnabled: true
     },
     {
       id: 'user_nurse' as UserId,
@@ -134,7 +149,9 @@ function createSeedUsers(): UserRecord[] {
       createdAt,
       updatedAt: createdAt,
       passwordHash: 'cvg-his-v2-seed-salt-v1:seed_nurse',
-      roleCodes: ['nurse']
+      roleCodes: ['nurse'],
+      principalKind: 'human',
+      interactiveLoginEnabled: true
     },
     {
       id: 'user_vet' as UserId,
@@ -147,7 +164,9 @@ function createSeedUsers(): UserRecord[] {
       createdAt,
       updatedAt: createdAt,
       passwordHash: 'cvg-his-v2-seed-salt-v1:seed_vet',
-      roleCodes: ['veterinarian']
+      roleCodes: ['veterinarian'],
+      principalKind: 'human',
+      interactiveLoginEnabled: true
     },
     {
       id: 'user_finance' as UserId,
@@ -160,7 +179,9 @@ function createSeedUsers(): UserRecord[] {
       createdAt,
       updatedAt: createdAt,
       passwordHash: 'cvg-his-v2-seed-salt-v1:seed_finance',
-      roleCodes: ['finance']
+      roleCodes: ['finance'],
+      principalKind: 'human',
+      interactiveLoginEnabled: true
     },
     {
       id: 'user_inventory' as UserId,
@@ -173,7 +194,9 @@ function createSeedUsers(): UserRecord[] {
       createdAt,
       updatedAt: createdAt,
       passwordHash: 'cvg-his-v2-seed-salt-v1:seed_inventory',
-      roleCodes: ['inventory']
+      roleCodes: ['inventory'],
+      principalKind: 'human',
+      interactiveLoginEnabled: true
     }
   ];
 }
@@ -184,6 +207,7 @@ export class UsersService {
   readonly #usersByUsername = new Map<string, UserRecord>();
   readonly #usersByAccountUsername = new Map<string, UserRecord>();
   readonly #ambiguousUsernames = new Set<string>();
+  readonly #repositoryUserIds = new Set<UserId>();
 
   public constructor(
     options?: UsersServiceOptions,
@@ -205,8 +229,15 @@ export class UsersService {
   public async hydrateFromDatabase(): Promise<void> {
     if (!this.#repository) return;
     const dbUsers = await this.#repository.findAll();
+    for (const userId of this.#repositoryUserIds) {
+      this.#removeUser(userId);
+    }
+    this.#repositoryUserIds.clear();
     for (const dbUser of dbUsers) {
-      this.#indexUser(await this.#materializeUser(dbUser));
+      const user = await this.#materializeInteractiveUser(dbUser);
+      if (user) {
+        this.#indexRepositoryUser(user);
+      }
     }
   }
 
@@ -238,9 +269,13 @@ export class UsersService {
 
   public findByUsername(username: string, accountId?: AccountId): UserRecord | undefined {
     if (accountId) {
-      return this.#usersByAccountUsername.get(`${accountId}:${username}`);
+      const user = this.#usersByAccountUsername.get(`${accountId}:${username}`);
+      return user && isInteractiveHumanUser(user) ? user : undefined;
     }
-    return this.#ambiguousUsernames.has(username) ? undefined : this.#usersByUsername.get(username);
+    const user = this.#ambiguousUsernames.has(username)
+      ? undefined
+      : this.#usersByUsername.get(username);
+    return user && isInteractiveHumanUser(user) ? user : undefined;
   }
 
   /**
@@ -262,19 +297,22 @@ export class UsersService {
 
     const repositoryUser = await this.#repository.findByUsername(accountId, username);
     if (!repositoryUser) {
+      const cached = this.#usersByAccountUsername.get(`${accountId}:${username}`);
+      if (cached) this.#removeUser(cached.id);
       return undefined;
     }
 
-    const user = await this.#materializeUser(repositoryUser);
-    this.#indexUser(user);
+    const user = await this.#materializeInteractiveUser(repositoryUser);
+    if (!user) {
+      this.#removeUser(repositoryUser.id);
+      return undefined;
+    }
+    this.#indexRepositoryUser(user);
     return user;
   }
 
   /** Refreshes a user by id so authorization never depends on a stale local object. */
-  public async resolveById(
-    userId: UserId,
-    accountId?: AccountId
-  ): Promise<UserRecord | undefined> {
+  public async resolveById(userId: UserId, accountId?: AccountId): Promise<UserRecord | undefined> {
     if (!this.#repository) {
       const cached = this.#users.get(userId);
       return cached && (!accountId || cached.accountId === accountId) ? cached : undefined;
@@ -282,11 +320,12 @@ export class UsersService {
 
     const repositoryUser = await this.#repository.findById(userId, accountId);
     if (!repositoryUser || (accountId && repositoryUser.accountId !== accountId)) {
+      this.#removeUser(userId);
       return undefined;
     }
 
     const user = await this.#materializeUser(repositoryUser);
-    this.#indexUser(user);
+    this.#indexRepositoryUser(user);
     return user;
   }
 
@@ -353,6 +392,8 @@ export class UsersService {
       passwordHash,
       displayName: input.displayName || input.username,
       roleCodes: input.roleCode ? [input.roleCode] : [],
+      principalKind: 'human',
+      interactiveLoginEnabled: true,
       status: input.status || 'active',
       createdAt: now,
       updatedAt: now
@@ -367,6 +408,8 @@ export class UsersService {
         passwordHash: user.passwordHash,
         fullName: user.displayName,
         isActive: user.status === 'active',
+        principalKind: user.principalKind,
+        interactiveLoginEnabled: user.interactiveLoginEnabled,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt
       });
@@ -403,16 +446,14 @@ export class UsersService {
         passwordHash: updated.passwordHash,
         fullName: updated.displayName,
         isActive: updated.status === 'active',
+        principalKind: updated.principalKind,
+        interactiveLoginEnabled: updated.interactiveLoginEnabled,
         createdAt: updated.createdAt,
         updatedAt: updated.updatedAt
       });
     }
 
-    this.#users.set(userId, updated);
-    this.#usersByAccountUsername.set(`${updated.accountId}:${updated.username}`, updated);
-    if (!this.#ambiguousUsernames.has(updated.username)) {
-      this.#usersByUsername.set(updated.username, updated);
-    }
+    this.#indexUser(updated);
 
     return stripSecrets(updated);
   }
@@ -430,7 +471,24 @@ export class UsersService {
     return this.update(userId, changes);
   }
 
+  async #materializeInteractiveUser(
+    repositoryUser: RepositoryUserRecord
+  ): Promise<UserRecord | undefined> {
+    const principalKind = repositoryUser.principalKind ?? 'human';
+    const interactiveLoginEnabled = repositoryUser.interactiveLoginEnabled ?? true;
+    if (
+      principalKind !== 'human' ||
+      interactiveLoginEnabled !== true ||
+      repositoryUser.isActive !== true
+    ) {
+      return undefined;
+    }
+    return this.#materializeUser(repositoryUser);
+  }
+
   async #materializeUser(repositoryUser: RepositoryUserRecord): Promise<UserRecord> {
+    const principalKind = repositoryUser.principalKind ?? 'human';
+    const interactiveLoginEnabled = repositoryUser.interactiveLoginEnabled ?? true;
     const roleCodes = await this.#repository!.findRoleCodesByUserId(
       repositoryUser.id,
       repositoryUser.accountId
@@ -446,25 +504,63 @@ export class UsersService {
       createdAt: repositoryUser.createdAt,
       updatedAt: repositoryUser.updatedAt,
       passwordHash: repositoryUser.passwordHash,
-      roleCodes
+      roleCodes,
+      principalKind,
+      interactiveLoginEnabled
     };
   }
 
+  #indexRepositoryUser(user: UserRecord): void {
+    this.#repositoryUserIds.add(user.id);
+    this.#indexUser(user);
+  }
+
+  #removeUser(userId: UserId): void {
+    const user = this.#users.get(userId);
+    if (!user) return;
+    this.#users.delete(userId);
+    this.#usersByAccountUsername.delete(`${user.accountId}:${user.username}`);
+    this.#repositoryUserIds.delete(userId);
+    this.#rebuildUsernameIndex(user.username);
+  }
+
   #indexUser(user: UserRecord): void {
-    const existing = this.#usersByUsername.get(user.username);
-    if (existing && existing.accountId !== user.accountId) {
-      this.#ambiguousUsernames.add(user.username);
-      this.#usersByUsername.delete(user.username);
-    } else if (!this.#ambiguousUsernames.has(user.username)) {
-      this.#usersByUsername.set(user.username, user);
+    const previous = this.#users.get(user.id);
+    if (previous) {
+      this.#usersByAccountUsername.delete(`${previous.accountId}:${previous.username}`);
     }
     this.#users.set(user.id, user);
-    this.#usersByAccountUsername.set(`${user.accountId}:${user.username}`, user);
+    if (isInteractiveHumanUser(user)) {
+      this.#usersByAccountUsername.set(`${user.accountId}:${user.username}`, user);
+    }
+    if (previous && previous.username !== user.username) {
+      this.#rebuildUsernameIndex(previous.username);
+    }
+    this.#rebuildUsernameIndex(user.username);
+  }
+
+  #rebuildUsernameIndex(username: string): void {
+    const candidates = Array.from(this.#users.values()).filter(
+      (candidate) => candidate.username === username && isInteractiveHumanUser(candidate)
+    );
+    this.#usersByUsername.delete(username);
+    this.#ambiguousUsernames.delete(username);
+    if (candidates.length === 1) {
+      this.#usersByUsername.set(username, candidates[0]);
+    } else if (candidates.length > 1) {
+      this.#ambiguousUsernames.add(username);
+    }
   }
 }
 
 function stripSecrets(user: UserRecord): UserSummary {
-  const { passwordHash: _passwordHash, roleCodes: _roleCodes, ...summary } = user;
+  const {
+    passwordHash: _passwordHash,
+    roleCodes: _roleCodes,
+    principalKind: _principalKind,
+    interactiveLoginEnabled: _interactiveLoginEnabled,
+    ...summary
+  } = user;
   return summary;
 }
 

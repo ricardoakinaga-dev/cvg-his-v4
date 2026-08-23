@@ -19,7 +19,7 @@ O estado executável auditado nesta sessão registra:
 | `pnpm validate:openapi` | 333 paths, 40 tags, 382 schemas | contrato estrutural; não prova comportamento dos handlers |
 | `node tools/migration-consistency-report.mjs` | falhou por manifesto ausente | falta `docs/phase-9-migration-manifest.json` no caminho esperado |
 
-O programa `CVG-002B2B` segue `IN_PROGRESS/PARTIAL`. B1/B2a estão verificados; a extensão B1 foi extraída para `packages/modules/pix` e a regressão focada está em 18/18. O novo verificador raw-body/HMAC e leitor de bytes crus passou 25/25 testes unitários e o lint da API; ingresso HTTP, receipt/delivery, migration 0111, principal de serviço, worker, providers reais e produção continuam não implementados.
+O programa `CVG-002B2B` segue `IN_PROGRESS/PARTIAL`. B1/B2a estão verificados; a extensão B1 foi extraída para `packages/modules/pix` e a regressão focada está em 18/18. O verificador raw-body/HMAC, ingresso HTTP→PostgreSQL, migration 0111/0112, filtros de principal, ACL/RLS e um consumer B1 cercado possuem evidência focada verde, mas continuam slices limitados: UoW compartilhada, restart/takeover/redrive, fronteira legada `410`, providers reais, paridade Vetus e produção ainda não estão certificados.
 
 ## 2. Lacunas de maior impacto no código
 
@@ -109,3 +109,24 @@ A pesquisa read-only foi repetida em fontes oficiais e classificada pela força 
 Requisitos executáveis derivados, em ordem: (1) ato clínico transacional numa UoW única com cobrança, lote, caixa, auditoria e outbox; (2) internação/whiteboard 24h com tratamento, handoff, SLA, consumo, diária e alta; (3) laboratório/imagem bidirecional com resultado corrigido, proveniência e anexos; (4) plataforma de integração com sandbox, scopes mínimos, rotação, replay/DLQ e observabilidade; (5) prontuário colaborativo com autosave, autoria, retificação e conflito `409`; (6) estoque/procurement multi-local com FEFO, reserva, devolução, recebimento parcial e reconciliação financeira; (7) portal do tutor e analytics somente depois da identidade, consentimento e durabilidade estarem comprovados.
 
 A distinção de confiança deve permanecer explícita: ezyVet e Vetspire têm documentação pública mais verificável; Shepherd, Digitail, Ascend e Provet fornecem sinais de produto, porém não contratos públicos equivalentes. O benchmark orienta prioridades e critérios de aceitação, nunca substitui testes, observação runtime ou homologação.
+
+## 9. Atualização executável — checkpoint EVT-0060 a EVT-0065
+
+O incremento mais recente fechou um slice de segurança/durabilidade do callback PIX, sem promover o ERP para produção:
+
+| Slice | Evidência fresca | Estado honesto |
+| --- | --- | --- |
+| HTTP → PostgreSQL | 2/2; `202` somente após receipt+delivery visíveis em segunda conexão; failpoint sem linha parcial | PASS limitado |
+| Principal de serviço | migration 0112 + schema 3/3 + PostgreSQL 5/5; FK tenant-local, purpose único, `FORCE RLS` | PASS limitado; backfill legado ainda não é provado com linha pré-existente |
+| Auth/cache/MFA | guard 7/7, users 13/13, auth 30/30, typecheck | PASS limitado; adaptador `SessionRepository.create` direto ainda pode gravar órfão não legível |
+| ACL/RLS | unit 7/7 + integração 1/1; API mínima, worker identity-only read, `NOINHERIT`, rerun e role herdada adversarial | PASS limitado; falta executar a query real sob role worker |
+| Worker B1 | consumer unit 6/6, integração PostgreSQL 3/3, worker 47/47, build/lint/typecheck | PASS limitado; falta UoW compartilhada, retry transitório, restart/takeover/redrive e `410` |
+
+Arquivos de continuidade: [handoff CVG-002B2B](2026-08-22-handoff-cvg-002b2.md) e [artefato principal/worker](../.agent/artifacts/CVG-002B2B-service-principal-worker-2026-08-22.md). O código usa apenas identificadores sintéticos `local-pix`; nenhuma credencial, provider externo ou mutação de produção foi usada.
+
+### Decisões que a próxima sessão deve preservar
+
+- Não conceder `UPDATE` ao worker para contornar `FOR UPDATE`: a fronteira read-only é intencional e foi validada contra o PostgreSQL.
+- Não reaproveitar `idempotency_requests` no consumer B2b; o B1 compartilhado continua responsável pela idempotência financeira e pelo CAS final da delivery.
+- Não classificar o consumer como “completo”: erros desconhecidos são fail-closed/terminal hoje, e ainda faltam restart, takeover, redrive/DLQ e observabilidade de operação.
+- Não declarar paridade Vetus, UX, jornada clínica-financeira, provider real, deploy, restore, WCAG ou produção a partir dos números acima.

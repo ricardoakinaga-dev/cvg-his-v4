@@ -47,7 +47,7 @@ provision_role() {
     --set=runtime_password="$role_password" \
     --set=db_name="$POSTGRES_DB" <<'SQL'
 SELECT format(
-  'CREATE ROLE %I LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD %L',
+  'CREATE ROLE %I LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS PASSWORD %L',
   :'runtime_user',
   :'runtime_password'
 )
@@ -55,7 +55,7 @@ WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'runtime_user')
 \gexec
 
 ALTER ROLE :"runtime_user"
-  LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS
+  LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS
   PASSWORD :'runtime_password';
 
 SELECT format('REVOKE %I FROM %I', inherited.rolname, :'runtime_user')
@@ -159,6 +159,53 @@ ALTER ROLE cvg_installer
 REVOKE cvg_installer FROM :"runtime_user";
 REVOKE cvg_installer FROM :"worker_user";
 GRANT cvg_installer TO :"api_user";
+
+-- Authentication state is API-owned. The settlement worker may only resolve
+-- its tenant-local service-principal mapping and the non-secret user flags
+-- needed to validate that principal. Repeat after every broad RLS grant.
+SELECT format('REVOKE ALL PRIVILEGES ON TABLE public.%I FROM %I', candidate.table_name, runtime_role.role_name)
+FROM (
+  VALUES
+    ('users'),
+    ('account_service_principals'),
+    ('sessions'),
+    ('mfa_credentials'),
+    ('auth_mfa_login_challenges')
+) AS candidate(table_name)
+CROSS JOIN (
+  VALUES (:'runtime_user'), (:'api_user'), (:'worker_user')
+) AS runtime_role(role_name)
+WHERE to_regclass(format('public.%I', candidate.table_name)) IS NOT NULL
+\gexec
+
+SELECT format('GRANT %s ON TABLE public.%I TO %I', candidate.privileges, candidate.table_name, :'api_user')
+FROM (
+  VALUES
+    ('users', 'SELECT, INSERT, UPDATE'),
+    ('sessions', 'SELECT, INSERT, UPDATE, DELETE'),
+    ('mfa_credentials', 'SELECT, INSERT, UPDATE, DELETE'),
+    ('auth_mfa_login_challenges', 'SELECT, INSERT, UPDATE')
+) AS candidate(table_name, privileges)
+WHERE to_regclass(format('public.%I', candidate.table_name)) IS NOT NULL
+\gexec
+
+SELECT format('GRANT SELECT ON TABLE public.account_service_principals TO %I', :'worker_user')
+WHERE to_regclass('public.account_service_principals') IS NOT NULL
+\gexec
+SELECT format(
+  'GRANT SELECT (id, account_id, is_active, principal_kind, interactive_login_enabled) ON TABLE public.users TO %I',
+  :'worker_user'
+)
+WHERE to_regclass('public.users') IS NOT NULL
+  AND EXISTS (
+    SELECT 1
+    FROM pg_attribute
+    WHERE attrelid = 'public.users'::regclass
+      AND attname IN ('principal_kind', 'interactive_login_enabled')
+    GROUP BY attrelid
+    HAVING count(*) = 2
+  )
+\gexec
 
 -- The inbound PIX receipt is forensic; only the API may append it and only
 -- the worker may mutate the separate delivery queue. Reapply this after the

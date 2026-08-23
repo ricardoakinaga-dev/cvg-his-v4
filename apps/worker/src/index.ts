@@ -18,6 +18,7 @@ import {
 } from './health.js';
 import { refreshWorkerAccounts } from './account-discovery.js';
 import { runPixPaymentDispatchTick } from './jobs/local-pix-payment-dispatch-provider.js';
+import { runPixProviderSettlementTick } from './jobs/pix-provider-settlement-consumer.js';
 
 const config = loadWorkerConfig(process.env);
 const logger = createLogger(config.appName);
@@ -66,7 +67,9 @@ async function main() {
     databaseUrl: config.databaseUrl,
     environment: config.environment,
     allowSyntheticPixProvider: process.env.WORKER_PIX_SYNTHETIC_ENABLED === '1',
-    pixDispatcherWorkerId: process.env.WORKER_INSTANCE_ID
+    pixDispatcherWorkerId: process.env.WORKER_INSTANCE_ID,
+    pixProviderSettlementEnabled: process.env.WORKER_PIX_SETTLEMENT_ENABLED === '1',
+    pixSettlementWorkerId: process.env.WORKER_INSTANCE_ID
   });
   workerState.databaseHealthy = bootstrap.databaseHealthy;
   workerState.persistenceMode = bootstrap.notificationRepository ? 'database' : 'in-memory';
@@ -111,8 +114,7 @@ async function main() {
     reportRepository: bootstrap.reportRepository
   });
 
-  const loadAccountIds =
-    bootstrap.loadAccountIds ?? (async () => bootstrap.accountIds ?? []);
+  const loadAccountIds = bootstrap.loadAccountIds ?? (async () => bootstrap.accountIds ?? []);
   let workerAccountIds: readonly string[] = [];
   let lastAccountRefreshAt = 0;
 
@@ -151,7 +153,9 @@ async function main() {
         ...createWorkerHealthResponse('worker', config.environment, '0.1.0', req, {
           databaseConfigured: Boolean(config.databaseUrl),
           databaseHealthy: workerState.databaseHealthy,
-          databaseDetail: workerState.databaseHealthy ? 'database connected' : 'database unavailable',
+          databaseDetail: workerState.databaseHealthy
+            ? 'database connected'
+            : 'database unavailable',
           persistenceMode: workerState.persistenceMode,
           ticksCompleted: workerState.ticksCompleted,
           lastTickAt: workerState.lastTickAt,
@@ -167,7 +171,8 @@ async function main() {
           lastTickDurationMs: workerState.lastTickDurationMs,
           errors: workerState.errors,
           memory: process.memoryUsage(),
-          uptime: process.uptime()
+          uptime: process.uptime(),
+          pixProviderSettlementEnabled: Boolean(bootstrap.pixProviderSettlement)
         }
       };
       res.writeHead(200);
@@ -307,6 +312,40 @@ async function main() {
             }
           );
         }
+        const pixProviderSettlement = bootstrap.pixProviderSettlement;
+        if (pixProviderSettlement) {
+          await withWorkerSpan(
+            'worker.pix_provider.settlement.tick',
+            {
+              'worker.correlation_id': correlationId,
+              'worker.account_id': accountId,
+              'worker.persistence_mode': workerState.persistenceMode,
+              'worker.database_healthy': workerState.databaseHealthy
+            },
+            async () => {
+              const [outcome] = await runPixProviderSettlementTick(pixProviderSettlement.consumer, [
+                accountId
+              ]);
+              if (!outcome || outcome.error) {
+                isolatedTickError = outcome?.error?.message ?? 'PIX settlement tick failed';
+                workerState.errors++;
+                logger.error('worker PIX provider settlement tick failed', {
+                  accountId,
+                  error: isolatedTickError
+                });
+                return;
+              }
+              logger.info('worker PIX provider settlement tick complete', {
+                accountId,
+                status: outcome.result?.status ?? 'idle',
+                deliveryId:
+                  outcome.result && 'deliveryId' in outcome.result
+                    ? outcome.result.deliveryId
+                    : undefined
+              });
+            }
+          );
+        }
         await withWorkerSpan(
           'worker.notifications.tick',
           {
@@ -317,7 +356,11 @@ async function main() {
           },
           () =>
             runWithTenantContext(tenantContext, () =>
-              runWorkerTick(logger, { ...tickContext, accountId: accountId as never }, notifications)
+              runWorkerTick(
+                logger,
+                { ...tickContext, accountId: accountId as never },
+                notifications
+              )
             )
         );
 

@@ -37,6 +37,8 @@ import {
 } from './jobs/pix-payment-dispatcher.js';
 import { DatabasePixPaymentDispatchRepository } from './pix-payment-dispatch-repository.js';
 import { LocalPixPaymentDispatchProvider } from './jobs/local-pix-payment-dispatch-provider.js';
+import { PixProviderSettlementConsumer } from './jobs/pix-provider-settlement-consumer.js';
+import { DatabasePixProviderEventDeliveryRepository } from './jobs/pix-provider-event-delivery-repository.js';
 
 const logger = createLogger('worker-bootstrap');
 
@@ -45,6 +47,8 @@ export interface WorkerBootstrapOptions {
   readonly environment?: string;
   readonly allowSyntheticPixProvider?: boolean;
   readonly pixDispatcherWorkerId?: string;
+  readonly pixProviderSettlementEnabled?: boolean;
+  readonly pixSettlementWorkerId?: string;
 }
 
 export const PIX_PAYMENT_DISPATCH_DEFAULTS = Object.freeze({
@@ -52,6 +56,8 @@ export const PIX_PAYMENT_DISPATCH_DEFAULTS = Object.freeze({
   retryBaseMs: 1_000,
   providerTimeoutMs: 15_000
 });
+
+export const PIX_PROVIDER_SETTLEMENT_DEFAULTS = Object.freeze({ leaseMs: 60_000 });
 
 export interface SyntheticPixPaymentDispatchRuntimeOptions {
   readonly allowSyntheticProviders: boolean;
@@ -69,6 +75,19 @@ export interface WorkerPixPaymentDispatchRuntime {
   readonly providerTimeoutMs: number;
 }
 
+export interface PixProviderSettlementRuntimeOptions {
+  readonly enabled: boolean;
+  readonly allowSyntheticProviders: boolean;
+  readonly pool: Pool;
+  readonly workerId?: string;
+}
+
+export interface WorkerPixProviderSettlementRuntime {
+  readonly consumer: PixProviderSettlementConsumer;
+  readonly workerId: string;
+  readonly leaseMs: number;
+}
+
 export interface WorkerBootstrapResult {
   readonly databaseHealthy: boolean;
   readonly databaseDetail: string;
@@ -80,6 +99,7 @@ export interface WorkerBootstrapResult {
   readonly reportRepository?: ReportRepository;
   readonly reportSources?: AdministrativeExecutiveReportSources;
   readonly pixPaymentDispatch?: WorkerPixPaymentDispatchRuntime;
+  readonly pixProviderSettlement?: WorkerPixProviderSettlementRuntime;
 }
 
 function normalizedEnvironment(environment?: string): string {
@@ -126,6 +146,46 @@ function resolvePixDispatcherWorkerId(workerId?: string): string {
     .digest('hex')
     .slice(0, 16);
   return `pix-dispatch-${hostFingerprint}-${process.pid}`;
+}
+
+function resolvePixSettlementWorkerId(workerId?: string): string {
+  if (workerId !== undefined) {
+    if (
+      workerId !== workerId.trim() ||
+      !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/.test(workerId) ||
+      Buffer.byteLength(workerId, 'utf8') > 160
+    ) {
+      throw new Error('PIX settlement worker id is invalid');
+    }
+    return workerId;
+  }
+  const hostFingerprint = createHash('sha256')
+    .update(hostname(), 'utf8')
+    .digest('hex')
+    .slice(0, 16);
+  return `pix-settlement-${hostFingerprint}-${process.pid}`;
+}
+
+export function createPixProviderSettlementRuntime(
+  options: PixProviderSettlementRuntimeOptions
+): WorkerPixProviderSettlementRuntime | undefined {
+  if (!options.enabled) return undefined;
+  if (!options.allowSyntheticProviders) {
+    throw new PixPaymentDispatchConfigurationError(
+      'SYNTHETIC_PIX_PROVIDER_DISABLED',
+      'Local PIX settlement requires the explicit synthetic provider capability'
+    );
+  }
+  const workerId = resolvePixSettlementWorkerId(options.workerId);
+  const consumer = new PixProviderSettlementConsumer(
+    new DatabasePixProviderEventDeliveryRepository(options.pool),
+    {
+      workerId,
+      leaseMs: PIX_PROVIDER_SETTLEMENT_DEFAULTS.leaseMs,
+      allowSyntheticProviders: true
+    }
+  );
+  return Object.freeze({ consumer, workerId, ...PIX_PROVIDER_SETTLEMENT_DEFAULTS });
 }
 
 export function createSyntheticPixPaymentDispatchRuntime(
@@ -263,6 +323,12 @@ export async function bootstrapWorkerServices(
         environment: options.environment,
         pool: getPool(),
         workerId: options.pixDispatcherWorkerId
+      }),
+      pixProviderSettlement: createPixProviderSettlementRuntime({
+        enabled: options.pixProviderSettlementEnabled === true,
+        allowSyntheticProviders: options.allowSyntheticPixProvider === true,
+        pool: getPool(),
+        workerId: options.pixSettlementWorkerId
       })
     };
   } catch (error) {

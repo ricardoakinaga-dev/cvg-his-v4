@@ -16,18 +16,18 @@
   "active_execplan": ".agent/plans/premium-enterprise-mvp.md",
   "active_task": "CVG-002B2B",
   "verification_state": "PARTIAL",
-  "repository_state": "CVG-002B2 parser/fingerprint plus durable 0111 receipt/delivery ingress checkpoint is committed as 61cdef4 and pushed to origin/agent/sync-v4-full-program; the explicit non-production HTTP callback boundary is committed as be1cb47 and hardened/pushed as bbbf902, with OpenAPI alignment follow-up 705052b, bounded evidence (shared-config 32/32, verifier/keyring 35/35, startup 6/6, raw node:http/node:net 13/13, OpenAPI 334 paths/385 schemas) but remains below VERIFIED; corrected 18/18 B1 extension remains extracted into module-pix with API shims, raw reader/verifier/parser/fingerprints are green at 77/77, ingress is green at 11/11 with disposable ACL/RLS evidence, ERP audit/research handoff is documented, and the preserved user-owned packages/design-system/tsconfig.vue.tsbuildinfo cache remains outside scope",
+  "repository_state": "CVG-002B parser/fingerprint plus durable 0111 receipt/delivery ingress checkpoint is committed as 61cdef4 and pushed to origin/agent/sync-v4-full-program; the explicit non-production HTTP callback boundary is committed as be1cb47 and hardened/pushed as bbbf902, with OpenAPI alignment follow-up 705052b. The current local continuation adds HTTP-to-PostgreSQL evidence 2/2, service-principal migration/schema 5/5 + 3/3, auth guards 7/7 with users/auth regressions 13/13 + 30/30, runtime ACL 8/8 and a default-off fenced B1 consumer 6/6 + PostgreSQL 3/3 + worker 47/47; it remains below VERIFIED because shared UoW, real worker-role query, transient retry, restart/takeover/redrive, legacy 410, provider, SPA and release evidence are open. Corrected 18/18 B1 remains extracted into module-pix with API shims, OpenAPI is 334 paths/385 schemas, ERP audit/research and continuation artifacts are documented, and the preserved user-owned packages/design-system/tsconfig.vue.tsbuildinfo cache remains outside scope",
   "instruction_scope_refs": [
     ".agent/instruction-scope.md"
   ],
   "last_gate_record": ".agent/gates/implementation-ready-CVG-002B2B.json",
-  "last_event_id": "EVT-0059",
-  "state_revision": 48,
+  "last_event_id": "EVT-0065",
+  "state_revision": 54,
   "next_gate": "VERIFIED",
-  "next_action": "Run HTTP-to-PostgreSQL receipt/delivery evidence on another connection, then implement service-principal migration/login exclusions and the shared fenced worker UoW; preserve 18/18 B1, 35/35 verifier/keyring, 77/77 focused, 11/11 ingress and 13/13 HTTP evidence",
+  "next_action": "Extract and verify a shared fenced worker UoW under the read-only worker role; add explicit transient PostgreSQL/transport retry, restart/takeover/redrive, legacy 410 and dedicated worker-role query evidence; preserve 18/18 B1, 35/35 verifier/keyring, 77/77 focused, 11/11 ingress, 13/13 HTTP, 2/2 HTTP-to-PostgreSQL, 8/8 ACL and 47/47 worker evidence",
   "blocked_by": [],
   "human_approval_required": [
     "Production go-live, credential rotation, provider selection, fiscal homologation, and residual HIGH/CRITICAL risk acceptance remain outside repository implementation authority"
   ],
-  "updated_at": "2026-08-22T22:10:00-03:00"
+  "updated_at": "2026-08-22T22:38:35-03:00"
 }

@@ -46,6 +46,18 @@ const MFA_CHALLENGE_TRACKING_WINDOW_MS = 15 * 60 * 1000;
 
 const defaultMfaLoginChallengeRepository = new InMemoryMfaLoginChallengeRepository();
 
+function isInteractiveHumanUser(user: UserRecord): boolean {
+  const principal = user as UserRecord & {
+    readonly principalKind?: 'human' | 'service';
+    readonly interactiveLoginEnabled?: boolean;
+  };
+  return (
+    (principal.principalKind ?? 'human') === 'human' &&
+    (principal.interactiveLoginEnabled ?? true) === true &&
+    user.status === 'active'
+  );
+}
+
 interface MfaChallengeTokenPayload {
   readonly typ: 'mfa_challenge';
   readonly v: 1;
@@ -234,7 +246,7 @@ export class AuthService {
     if (challenge.sub !== userKey) {
       throw new AuthenticationError('MFA login challenge is missing or expired');
     }
-    const pendingUser = this.#users.getOrThrow(userKey);
+    const pendingUser = await this.#resolveInteractiveChallengeUser(challenge, correlationId);
     if (pendingUser.accountId !== challenge.account_id) {
       throw new AuthenticationError('MFA login challenge is missing or expired');
     }
@@ -266,10 +278,7 @@ export class AuthService {
       const currentChallenge = await this.#runAsUser(pendingUser, correlationId, () =>
         this.#mfaChallengeRepository.inspect(challengeKey, Date.now())
       );
-      if (
-        currentChallenge &&
-        currentChallenge.attemptCount >= currentChallenge.maxAttempts
-      ) {
+      if (currentChallenge && currentChallenge.attemptCount >= currentChallenge.maxAttempts) {
         throw new AuthenticationError(
           'Account temporarily locked due to too many failed MFA attempts'
         );
@@ -328,7 +337,7 @@ export class AuthService {
   public getPendingMfaEnrollmentUser(challengeId: string): UserRecord {
     const challenge = this.#verifyMfaChallenge(challengeId);
     const user = this.#users.getOrThrow(challenge.sub as UserId);
-    if (user.accountId !== challenge.account_id) {
+    if (user.accountId !== challenge.account_id || !isInteractiveHumanUser(user)) {
       throw new AuthenticationError('MFA login challenge is missing or expired');
     }
     return user;
@@ -345,7 +354,7 @@ export class AuthService {
 
     const normalizedChallengeId = requireNonEmptyString(challengeId, 'challengeId');
     const challenge = this.#verifyMfaChallenge(normalizedChallengeId);
-    const user = this.getPendingMfaEnrollmentUser(normalizedChallengeId);
+    const user = await this.#resolveInteractiveChallengeUser(challenge, correlationId);
     return this.#runAsUser(user, correlationId, async () => {
       const persistedChallenge = await this.#mfaChallengeRepository.inspect(
         this.#toMfaChallengeKey(challenge),
@@ -373,13 +382,10 @@ export class AuthService {
     const normalizedChallengeId = requireNonEmptyString(challengeId, 'challengeId');
     const normalizedToken = requireNonEmptyString(token, 'token');
     const challenge = this.#verifyMfaChallenge(normalizedChallengeId);
-    const user = this.getPendingMfaEnrollmentUser(normalizedChallengeId);
+    const user = await this.#resolveInteractiveChallengeUser(challenge, correlationId);
     return this.#runAsUser(user, correlationId, async () => {
       const challengeKey = this.#toMfaChallengeKey(challenge);
-      const reserved = await this.#mfaChallengeRepository.reserveAttempt(
-        challengeKey,
-        Date.now()
-      );
+      const reserved = await this.#mfaChallengeRepository.reserveAttempt(challengeKey, Date.now());
       if (!reserved) {
         throw new AuthenticationError('MFA login challenge is missing or expired');
       }
@@ -393,6 +399,7 @@ export class AuthService {
   }
 
   async #completeLogin(user: UserRecord, correlationId: string): Promise<AuthSessionResponse> {
+    this.#requireInteractiveHuman(user);
     const session = await this.#createSession(user);
     const principal = this.#buildPrincipal(user, session);
     const tokens = this.#createTokens(session);
@@ -492,11 +499,7 @@ export class AuthService {
 
     const type = input.refreshToken ? 'refresh' : 'access';
     const payload = this.#verifyToken(token, type);
-    const { session, user } = await this.#loadAuthoritativeSession(
-      payload,
-      type,
-      correlationId
-    );
+    const { session, user } = await this.#loadAuthoritativeSession(payload, type, correlationId);
     const revokedAt = nowIso();
 
     const revokedSession = {
@@ -533,6 +536,7 @@ export class AuthService {
     const payload = this.#verifyToken(accessToken, 'access');
     const session = this.#requireActiveSession(payload.session_id as SessionId, 'access');
     const user = this.#users.getOrThrow(payload.sub as UserId);
+    this.#requireInteractiveHuman(user);
     return this.#buildPrincipal(user, session);
   }
 
@@ -541,10 +545,7 @@ export class AuthService {
    * synchronous authentication surface. API request handling must await this
    * before calling authenticateAccessToken when persistence is configured.
    */
-  public async synchronizeAccessToken(
-    accessToken: string,
-    correlationId: string
-  ): Promise<void> {
+  public async synchronizeAccessToken(accessToken: string, correlationId: string): Promise<void> {
     const payload = this.#verifyToken(accessToken, 'access');
     await this.#loadAuthoritativeSession(payload, 'access', correlationId);
   }
@@ -683,6 +684,9 @@ export class AuthService {
 
     for (const userId of targetUserIds) {
       const user = this.#users.getOrThrow(userId);
+      if (!isInteractiveHumanUser(user)) {
+        continue;
+      }
       const persistedSessions = await this.#runAsUser(user, createCorrelationId('hydrate'), () =>
         this.#sessionRepository!.findByUserId(userId)
       );
@@ -693,8 +697,7 @@ export class AuthService {
           ...(existing ?? session),
           ...session,
           roleCodes: user.roleCodes,
-          refreshNonce:
-            session.refreshNonce || existing?.refreshNonce || createSecureId('rnonce')
+          refreshNonce: session.refreshNonce || existing?.refreshNonce || createSecureId('rnonce')
         });
       }
     }
@@ -708,7 +711,14 @@ export class AuthService {
     if (!this.#sessionRepository) {
       const session = this.#requireActiveSession(payload.session_id as SessionId, tokenType);
       this.#assertTokenSessionMatch(payload, session);
-      return { session, user: this.#users.getOrThrow(session.userId) };
+      const cachedUser = this.#users.getOrThrow(session.userId);
+      const user = await this.#runAsUser(cachedUser, correlationId, () =>
+        this.#resolveCurrentUser(session.userId, session.accountId)
+      );
+      if (!user || !isInteractiveHumanUser(user)) {
+        throw new AuthenticationError('Session is not active');
+      }
+      return { session, user };
     }
 
     const session = await this.#runAsTokenPayload(payload, correlationId, () =>
@@ -741,7 +751,7 @@ export class AuthService {
     const user = await this.#runAsTokenPayload(payload, correlationId, () =>
       this.#users.resolveById(session.userId, session.accountId)
     );
-    if (!user || user.status !== 'active') {
+    if (!user || !isInteractiveHumanUser(user)) {
       throw new AuthenticationError('Session is not active');
     }
 
@@ -759,7 +769,7 @@ export class AuthService {
       correlationId,
       () => this.#users.resolveById(cachedSession.userId, cachedSession.accountId)
     );
-    if (!user || user.status !== 'active') {
+    if (!user || !isInteractiveHumanUser(user)) {
       throw new AuthenticationError('Session is not active');
     }
 
@@ -771,11 +781,11 @@ export class AuthService {
       this.#sessionRepository!.findById(sessionId)
     );
     if (
-      !persistedSession
-      || persistedSession.userId !== cachedSession.userId
-      || persistedSession.accountId !== cachedSession.accountId
-      || !persistedSession.active
-      || persistedSession.revokedAt
+      !persistedSession ||
+      persistedSession.userId !== cachedSession.userId ||
+      persistedSession.accountId !== cachedSession.accountId ||
+      !persistedSession.active ||
+      persistedSession.revokedAt
     ) {
       throw new AuthenticationError('Session is not active');
     }
@@ -803,6 +813,7 @@ export class AuthService {
   }
 
   async #createSession(user: UserRecord): Promise<SessionRecord> {
+    this.#requireInteractiveHuman(user);
     const authTime = nowIso();
     const session: SessionRecord = {
       sessionId: createSecureId('sess') as SessionId,
@@ -824,6 +835,45 @@ export class AuthService {
     this.#sessions.set(session.sessionId, session);
 
     return session;
+  }
+
+  async #resolveInteractiveChallengeUser(
+    challenge: MfaChallengeTokenPayload,
+    correlationId: string
+  ): Promise<UserRecord> {
+    const cachedUser = this.#users.getOrThrow(challenge.sub as UserId);
+    if (cachedUser.accountId !== challenge.account_id) {
+      throw new AuthenticationError('MFA login challenge is missing or expired');
+    }
+    const user = await this.#runAsUser(cachedUser, correlationId, () =>
+      this.#resolveCurrentUser(cachedUser.id, cachedUser.accountId)
+    );
+    if (!user || !isInteractiveHumanUser(user)) {
+      throw new AuthenticationError('MFA login challenge is missing or expired');
+    }
+    return user;
+  }
+
+  #requireInteractiveHuman(user: UserRecord): void {
+    if (!isInteractiveHumanUser(user)) {
+      throw new AuthenticationError('Session is not active');
+    }
+  }
+
+  async #resolveCurrentUser(userId: UserId, accountId: string): Promise<UserRecord | undefined> {
+    const resolver = (
+      this.#users as UsersService & {
+        resolveById?: UsersService['resolveById'];
+      }
+    ).resolveById;
+    if (typeof resolver === 'function') {
+      return resolver.call(this.#users, userId, accountId as never);
+    }
+
+    // Compatibility for legacy in-memory UsersService test doubles. Production
+    // UsersService always exposes resolveById and refreshes repository state.
+    const user = this.#users.getOrThrow(userId);
+    return user.accountId === accountId ? user : undefined;
   }
 
   #buildPrincipal(user: UserRecord, session: SessionRecord): AuthenticatedPrincipal {
@@ -956,8 +1006,8 @@ export class AuthService {
         .digest('base64url');
       const expectedSignatureBuffer = Buffer.from(expectedSignature, 'utf8');
       return (
-        providedSignatureBuffer.length === expectedSignatureBuffer.length
-        && timingSafeEqual(providedSignatureBuffer, expectedSignatureBuffer)
+        providedSignatureBuffer.length === expectedSignatureBuffer.length &&
+        timingSafeEqual(providedSignatureBuffer, expectedSignatureBuffer)
       );
     });
 
@@ -1031,6 +1081,7 @@ export type {
   UpdateSessionParams
 } from './repositories/session.repository.js';
 export { DatabaseSessionRepository } from './repositories/database-session.repository.js';
+export { InMemorySessionRepository } from './repositories/in-memory-session.repository.js';
 export type {
   IssueMfaLoginChallengeInput,
   MfaLoginChallengeKey,

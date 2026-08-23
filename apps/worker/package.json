@@ -14,6 +14,7 @@
     "@cvg-his-v2/module-event-bus": "workspace:*",
     "@cvg-his-v2/module-financial": "workspace:*",
     "@cvg-his-v2/module-notifications": "workspace:*",
+    "@cvg-his-v2/module-pix": "workspace:*",
     "@cvg-his-v2/module-reports": "workspace:*",
     "@cvg-his-v2/module-staff": "workspace:*",
     "@cvg-his-v2/shared-config": "workspace:*",
@@ -36,6 +37,6 @@
     "build": "tsc -b tsconfig.json --force",
     "typecheck": "pnpm --filter @cvg-his-v2/worker^... build && tsc -p tsconfig.json --noEmit",
     "lint": "tsc -p tsconfig.json --noEmit",
-    "test": "tsc -p tsconfig.json && node --test dist/runner.test.js && node --test dist/bootstrap.test.js && node --test dist/account-discovery.test.js && node --test dist/jobs/scheduled-report-job.test.js"
+    "test": "tsc -p tsconfig.json && node --test dist/runner.test.js && node --test dist/bootstrap.test.js && node --test dist/account-discovery.test.js && node --test dist/jobs/scheduled-report-job.test.js && node --test dist/jobs/pix-provider-settlement-consumer.test.js"
   }
 }

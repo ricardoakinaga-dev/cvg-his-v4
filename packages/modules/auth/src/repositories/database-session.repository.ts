@@ -1,4 +1,5 @@
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
+import { boolean, pgTable, uuid, varchar } from 'drizzle-orm/pg-core';
 import type { DatabaseClient } from '@cvg-his-v2/shared-database';
 import { sessions } from '@cvg-his-v2/shared-database';
 import type { SessionId, UserId, AccountId } from '@cvg-his-v2/shared-types';
@@ -8,6 +9,14 @@ import type {
   SessionRepository,
   UpdateSessionParams
 } from './session.repository.js';
+
+const sessionUsers = pgTable('users', {
+  id: uuid('id').notNull(),
+  accountId: uuid('account_id').notNull(),
+  isActive: boolean('is_active').notNull(),
+  principalKind: varchar('principal_kind', { length: 16 }).$type<'human' | 'service'>().notNull(),
+  interactiveLoginEnabled: boolean('interactive_login_enabled').notNull()
+});
 
 export class DatabaseSessionRepository implements SessionRepository {
   readonly #db: DatabaseClient;
@@ -75,7 +84,8 @@ export class DatabaseSessionRepository implements SessionRepository {
           eq(sessions.id, params.sessionId),
           eq(sessions.refreshNonce, params.expectedRefreshNonce),
           eq(sessions.active, true),
-          isNull(sessions.revokedAt)
+          isNull(sessions.revokedAt),
+          this.interactiveHumanSessionPredicate()
         )
       )
       .returning();
@@ -84,7 +94,11 @@ export class DatabaseSessionRepository implements SessionRepository {
   }
 
   public async findById(id: SessionId): Promise<PersistedSessionRecord | null> {
-    const result = await this.#db.select().from(sessions).where(eq(sessions.id, id)).limit(1);
+    const result = await this.#db
+      .select()
+      .from(sessions)
+      .where(and(eq(sessions.id, id), this.interactiveHumanSessionPredicate()))
+      .limit(1);
 
     if (result.length === 0) {
       return null;
@@ -94,7 +108,10 @@ export class DatabaseSessionRepository implements SessionRepository {
   }
 
   public async findByUserId(userId: string): Promise<readonly PersistedSessionRecord[]> {
-    const result = await this.#db.select().from(sessions).where(eq(sessions.userId, userId));
+    const result = await this.#db
+      .select()
+      .from(sessions)
+      .where(and(eq(sessions.userId, userId), this.interactiveHumanSessionPredicate()));
 
     return result.map((row) => this.mapRow(row));
   }
@@ -113,6 +130,18 @@ export class DatabaseSessionRepository implements SessionRepository {
       refreshNonce: row.refreshNonce,
       revokedAt: row.revokedAt?.toISOString()
     };
+  }
+
+  private interactiveHumanSessionPredicate() {
+    return sql`EXISTS (
+      SELECT 1
+      FROM ${sessionUsers}
+      WHERE ${sessionUsers.id} = ${sessions.userId}
+        AND ${sessionUsers.accountId} = ${sessions.accountId}
+        AND ${sessionUsers.principalKind} = 'human'
+        AND ${sessionUsers.interactiveLoginEnabled} = true
+        AND ${sessionUsers.isActive} = true
+    )`;
   }
 
   public async delete(id: SessionId): Promise<void> {

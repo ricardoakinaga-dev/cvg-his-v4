@@ -31,14 +31,18 @@ data:
       --set=db_name="$POSTGRES_DB" <<'SQL'
     SELECT 'CREATE ROLE cvg_installer NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS'
     WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'cvg_installer')\gexec
-    SELECT format('CREATE ROLE %I LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD %L', :'api_user', :'api_password')
+      SELECT format('CREATE ROLE %I LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS PASSWORD %L', :'api_user', :'api_password')
     WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'api_user')\gexec
-    SELECT format('CREATE ROLE %I LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD %L', :'worker_user', :'worker_password')
+      SELECT format('CREATE ROLE %I LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS PASSWORD %L', :'worker_user', :'worker_password')
     WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'worker_user')\gexec
     ALTER ROLE cvg_installer NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
-    ALTER ROLE :"api_user" LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD :'api_password';
-    ALTER ROLE :"worker_user" LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD :'worker_password';
-    REVOKE cvg_installer FROM :"worker_user";
+    ALTER ROLE :"api_user" LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS PASSWORD :'api_password';
+    ALTER ROLE :"worker_user" LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS PASSWORD :'worker_password';
+    SELECT format('REVOKE %I FROM %I', inherited.rolname, member.rolname)
+    FROM pg_auth_members membership
+    JOIN pg_roles member ON member.oid = membership.member
+    JOIN pg_roles inherited ON inherited.oid = membership.roleid
+    WHERE member.rolname IN (:'api_user', :'worker_user')\gexec
     GRANT cvg_installer TO :"api_user";
     GRANT CONNECT ON DATABASE :"db_name" TO :"api_user";
     GRANT CONNECT ON DATABASE :"db_name" TO :"worker_user";
@@ -128,6 +132,39 @@ data:
     SELECT format('REVOKE UPDATE, DELETE, TRUNCATE ON TABLE public.%I FROM %I', c.relname, :'worker_user')
     FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
     WHERE n.nspname = 'public' AND c.relname = 'audit_events'\gexec
+
+    # Authentication state is API-owned. Reapply the narrower boundary after
+    # broad RLS grants so a repeated Helm bootstrap cannot widen worker access.
+    SELECT format('REVOKE ALL PRIVILEGES ON TABLE public.%I FROM %I', candidate.table_name, runtime_role.role_name)
+    FROM (
+      VALUES ('users'), ('account_service_principals'), ('sessions'),
+             ('mfa_credentials'), ('auth_mfa_login_challenges')
+    ) AS candidate(table_name)
+    CROSS JOIN (VALUES (:'api_user'), (:'worker_user')) AS runtime_role(role_name)
+    WHERE to_regclass(format('public.%I', candidate.table_name)) IS NOT NULL\gexec
+
+    SELECT format('GRANT %s ON TABLE public.%I TO %I', candidate.privileges, candidate.table_name, :'api_user')
+    FROM (
+      VALUES ('users', 'SELECT, INSERT, UPDATE'),
+             ('sessions', 'SELECT, INSERT, UPDATE, DELETE'),
+             ('mfa_credentials', 'SELECT, INSERT, UPDATE, DELETE'),
+             ('auth_mfa_login_challenges', 'SELECT, INSERT, UPDATE')
+    ) AS candidate(table_name, privileges)
+    WHERE to_regclass(format('public.%I', candidate.table_name)) IS NOT NULL\gexec
+
+    SELECT format('GRANT SELECT ON TABLE public.account_service_principals TO %I', :'worker_user')
+    WHERE to_regclass('public.account_service_principals') IS NOT NULL\gexec
+    SELECT format(
+      'GRANT SELECT (id, account_id, is_active, principal_kind, interactive_login_enabled) ON TABLE public.users TO %I',
+      :'worker_user'
+    )
+    WHERE to_regclass('public.users') IS NOT NULL
+      AND EXISTS (
+        SELECT 1 FROM pg_attribute
+        WHERE attrelid = 'public.users'::regclass
+          AND attname IN ('principal_kind', 'interactive_login_enabled')
+        GROUP BY attrelid HAVING count(*) = 2
+      )\gexec
 
     SELECT format('REVOKE UPDATE, DELETE, TRUNCATE ON TABLE public.pix_provider_events FROM %I', :'api_user')
     WHERE to_regclass('public.pix_provider_events') IS NOT NULL\gexec

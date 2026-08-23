@@ -408,6 +408,9 @@ importers:
       '@cvg-his-v2/module-notifications':
         specifier: workspace:*
         version: link:../../packages/modules/notifications
+      '@cvg-his-v2/module-pix':
+        specifier: workspace:*
+        version: link:../../packages/modules/pix
       '@cvg-his-v2/module-reports':
         specifier: workspace:*
         version: link:../../packages/modules/reports

@@ -3,7 +3,9 @@ import test from 'node:test';
 
 import {
   PIX_PAYMENT_DISPATCH_DEFAULTS,
+  PIX_PROVIDER_SETTLEMENT_DEFAULTS,
   bootstrapWorkerServices,
+  createPixProviderSettlementRuntime,
   createSyntheticPixPaymentDispatchRuntime,
   shutdownWorkerServices
 } from './bootstrap.js';
@@ -139,6 +141,27 @@ test('PIX dispatcher bootstrap validates explicit worker ids and derives a bound
   assert.ok(runtime);
   assert.match(runtime.workerId, /^pix-dispatch-[a-f0-9]{16}-\d+$/);
   assert.ok(Buffer.byteLength(runtime.workerId, 'utf8') <= 160);
+});
+
+test('PIX provider settlement runtime is default-off and requires explicit capability', () => {
+  assert.equal(
+    createPixProviderSettlementRuntime({
+      enabled: false,
+      allowSyntheticProviders: true,
+      pool: {} as never
+    }),
+    undefined
+  );
+  const runtime = createPixProviderSettlementRuntime({
+    enabled: true,
+    allowSyntheticProviders: true,
+    pool: {} as never,
+    workerId: 'pix-settlement-test'
+  });
+  assert.ok(runtime);
+  assert.equal(runtime.workerId, 'pix-settlement-test');
+  assert.equal(runtime.leaseMs, 60_000);
+  assert.deepEqual(PIX_PROVIDER_SETTLEMENT_DEFAULTS, { leaseMs: 60_000 });
 });
 
 test('local PIX provider keeps provider identity stable per attempt without secrets', async () => {

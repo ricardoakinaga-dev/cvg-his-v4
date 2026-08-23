@@ -13,3 +13,5 @@ export * from './pix-payment-job.js';
 export * from './commission-job.js';
 export * from './scheduled-report-job.js';
 export * from './local-pix-payment-dispatch-provider.js';
+export * from './pix-provider-event-delivery-repository.js';
+export * from './pix-provider-settlement-consumer.js';

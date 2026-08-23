@@ -1,7 +1,12 @@
 import type { PoolClient } from 'pg';
 
 import { closeDbConnection, pool } from './connection.js';
-import { API_GLOBAL_TABLE_MUTATIONS } from './runtime-role-policy.js';
+import {
+  API_GLOBAL_TABLE_MUTATIONS,
+  API_SENSITIVE_TABLE_PRIVILEGES,
+  RUNTIME_SENSITIVE_TABLES,
+  WORKER_USER_READ_COLUMNS
+} from './runtime-role-policy.js';
 
 export { API_GLOBAL_TABLE_MUTATIONS } from './runtime-role-policy.js';
 
@@ -69,6 +74,19 @@ async function grantExistingTable(
   );
 }
 
+async function revokeExistingTable(
+  client: PoolClient,
+  tableName: string,
+  roleName: string
+): Promise<void> {
+  await executeGeneratedStatements(
+    client,
+    `SELECT format('REVOKE ALL PRIVILEGES ON TABLE public.%I FROM %I', $1::text, $2::text) AS statement
+     WHERE to_regclass(format('public.%I', $1::text)) IS NOT NULL`,
+    [tableName, roleName]
+  );
+}
+
 export async function reconcileRuntimeRoles(
   client: PoolClient,
   input: { readonly apiRole: string; readonly workerRole: string }
@@ -81,7 +99,9 @@ export async function reconcileRuntimeRoles(
 
   await client.query('BEGIN');
   try {
-    await client.query("SELECT pg_advisory_xact_lock(hashtext('cvg-his-v2:runtime-role-reconcile'))");
+    await client.query(
+      "SELECT pg_advisory_xact_lock(hashtext('cvg-his-v2:runtime-role-reconcile'))"
+    );
     await assertRuntimeRoleExists(client, apiRole);
     await assertRuntimeRoleExists(client, workerRole);
     await client.query(`
@@ -98,7 +118,7 @@ export async function reconcileRuntimeRoles(
     await executeGeneratedStatements(
       client,
       `SELECT format(
-         'ALTER ROLE %I LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS',
+         'ALTER ROLE %I LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS',
          role_name
        ) AS statement
        FROM unnest($1::text[]) AS role_name`,
@@ -106,9 +126,17 @@ export async function reconcileRuntimeRoles(
     );
     await executeGeneratedStatements(
       client,
-      `SELECT format('REVOKE cvg_installer FROM %I', $1::text) AS statement
-       UNION ALL SELECT format('GRANT cvg_installer TO %I', $2::text)`,
-      [workerRole, apiRole]
+      `SELECT format('REVOKE %I FROM %I', inherited.rolname, member.rolname) AS statement
+       FROM pg_auth_members membership
+       JOIN pg_roles member ON member.oid = membership.member
+       JOIN pg_roles inherited ON inherited.oid = membership.roleid
+       WHERE member.rolname = ANY($1::text[])`,
+      [[apiRole, workerRole]]
+    );
+    await executeGeneratedStatements(
+      client,
+      `SELECT format('GRANT cvg_installer TO %I', $1::text) AS statement`,
+      [apiRole]
     );
     await executeGeneratedStatements(
       client,
@@ -126,11 +154,13 @@ export async function reconcileRuntimeRoles(
        WHERE EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'app')`,
       [[apiRole, workerRole]]
     );
-    await client.query(
-      "SELECT 'GRANT USAGE ON SCHEMA app TO cvg_installer' AS statement WHERE EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'app')"
-    ).then(async (result: { rows: { statement: string }[] }) => {
-      for (const row of result.rows) await client.query(row.statement);
-    });
+    await client
+      .query(
+        "SELECT 'GRANT USAGE ON SCHEMA app TO cvg_installer' AS statement WHERE EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'app')"
+      )
+      .then(async (result: { rows: { statement: string }[] }) => {
+        for (const row of result.rows) await client.query(row.statement);
+      });
 
     await executeGeneratedStatements(
       client,
@@ -170,6 +200,24 @@ export async function reconcileRuntimeRoles(
     for (const mutation of API_GLOBAL_TABLE_MUTATIONS) {
       await grantExistingTable(client, mutation.tableName, mutation.privileges, apiRole);
     }
+
+    // Broad tenant-table CRUD is needed by the general runtime, but auth and
+    // service-principal tables have an explicit service ownership boundary.
+    // Always close it after the broad grant so reconciliation remains idempotent.
+    for (const tableName of RUNTIME_SENSITIVE_TABLES) {
+      await revokeExistingTable(client, tableName, apiRole);
+      await revokeExistingTable(client, tableName, workerRole);
+    }
+    for (const grant of API_SENSITIVE_TABLE_PRIVILEGES) {
+      await grantExistingTable(client, grant.tableName, grant.privileges, apiRole);
+    }
+    await grantExistingTable(client, 'account_service_principals', 'SELECT', workerRole);
+    await grantExistingTable(
+      client,
+      'users',
+      `SELECT (${WORKER_USER_READ_COLUMNS.join(', ')})`,
+      workerRole
+    );
 
     await executeGeneratedStatements(
       client,
