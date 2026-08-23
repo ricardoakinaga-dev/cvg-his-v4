@@ -533,3 +533,59 @@ reais. A próxima ação é compor/revisar os handlers/manifesto do worker, depo
 rodar failpoints cross-domain e equivalência Helm aplicada. O ERP e a Quality
 Bar seguem `ACTIVE/IN_PROGRESS/PARTIAL`, e o cache user-owned permanece fora do
 stage.
+
+## Estado atual — eventos reais do worker em PostgreSQL/RLS (23/08/2026, 17:26 BRT)
+
+O RED bounded executado com a role `LOGIN NOSUPERUSER NOBYPASSRLS` encontrou
+identificadores financeiros prefixados (`efa_*`, `er_*`, `erp_*`) em colunas
+UUID e um erro secundário de transação abortada. A correção usa `randomUUID()`
+nos IDs persistidos e faz o Vitest resolver os módulos worker para `src`.
+
+`worker-event-consumers-postgres.test.ts` passou **3/3** contra PostgreSQL
+descartável, cobrindo payment → billing → webhook, inbox/outbox, settlement,
+delivery pendente, replay concorrente, rollback pós-mutação, desconhecido
+fail-closed e isolamento A/B. Financial **15/15**, event-bus **23/23**, builds,
+audit, Prettier e diff check passaram. O marcador de falha não mascara mais a
+causa original quando a UoW já foi abortada.
+
+Decisão: **GREEN bounded** somente para esta fatia. O stop decision continua
+`ACTIVE`, `CVG-002C6` permanece `IN_PROGRESS/PARTIAL` e não há promoção de
+readiness, ERP, produção ou Quality Bar. Próximos gates: child process/SIGKILL
+com eventos de domínio, failpoints completos, identidade/collision de cartão,
+retry/DLQ HTTP de webhook, hidratação cross-instance, RLS/FORCE RLS global e
+demais gates de produto/operação/release. Artefato:
+`.agent/artifacts/CVG-002C6-worker-event-postgres-2026-08-23.md`.
+
+## Correção pós-review — identidade composta do cartão (23/08/2026, 17:39 BRT)
+
+A crítica independente encontrou HIGH: a PK global de
+`card_transactions.transaction_id` e `ON CONFLICT DO NOTHING` poderiam
+descartar silenciosamente um mesmo intent em outro account. A migration 0122,
+schema Drizzle e os repositórios agora usam `(account_id, transaction_id)`.
+O teste real usa o mesmo ID em A/B, persiste duas linhas e confirma leitura
+RLS por account; settlement também valida financial account, receivable e
+referência externa. O teste PostgreSQL ficou **3/3** e handlers/gateway
+**17/17**.
+
+O HIGH foi fechado bounded, não global. Continuam abertos child-process/SIGKILL
+com fixture de domínio e takeover, PIX PostgreSQL/RLS, retry/DLQ HTTP e lease
+fencing, isolamento restrito de billing/financial/webhook, failpoints completos,
+hidratação cross-instance, RLS/FORCE RLS global, produto, operação e release.
+Não promover ERP, readiness ou produção; esperar a revisão pós-fix antes de
+publicar os SHAs.
+
+## Revisão pós-fix — resultado final bounded (23/08/2026, 17:45 BRT)
+
+A revisão independente pós-fix classificou **Critical: nenhum; High: nenhum**
+no escopo de identidade do cartão. Os dois bloqueios de teste apontados foram
+corrigidos: a asserção A/B não depende da ordem lexical de UUIDs e o contrato
+unitário espera `ON CONFLICT (account_id, transaction_id)`. A integração
+PostgreSQL passou **3/3**, o contrato unitário **3/3** e TAP handlers/gateway
+**17/17**.
+
+O resultado é aprovação **GREEN bounded**, não aprovação global. Permanecem
+abertos child process/SIGKILL/takeover com domínio, PIX PostgreSQL/RLS,
+retry/DLQ HTTP e lease fencing, isolamento billing/financial/webhook,
+failpoints completos, hidratação cross-instance, RLS/FORCE RLS global e os
+gates de produto/operação/deploy/release. Implementação final: `67d47e2`;
+documentação/control-plane ainda será publicada em commit separado.

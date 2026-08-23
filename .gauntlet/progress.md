@@ -474,3 +474,50 @@ Implementação publicada: `b4f93fd5a0d6e62f80739ecac1d9aa4d08a5bef6`; checkpoin
 documental publicado: `46490fa87cc5aea724a59a4cb071008bd0990c40`. O cache
 `packages/design-system/tsconfig.vue.tsbuildinfo` permanece user-owned e fora
 do stage. O `HEAD` remoto após esta reconciliação é o ponteiro final da sessão.
+
+## Iteração atual — worker event consumers PostgreSQL/RLS (23/08/2026, 17:26 BRT)
+
+RED → GREEN bounded: a fixture real encontrou IDs financeiros prefixados em
+colunas UUID e a correção passou a gerar UUIDs persistidos, além de resolver os
+módulos do worker para `src` no Vitest. O teste
+`tests/integration/database/worker-event-consumers-postgres.test.ts` passou
+**3/3** com role `LOGIN NOSUPERUSER NOBYPASSRLS`, duas contas, inbox/outbox,
+settlement, webhook enqueue, replay concorrente, rollback e isolamento A/B.
+
+Financial passou **15/15**, event-bus **23/23**, builds, audit, Prettier e diff
+check passaram. Artefato: `.agent/artifacts/CVG-002C6-worker-event-postgres-2026-08-23.md`.
+
+Decisão: manter `ACTIVE/IN_PROGRESS/PARTIAL`; não promover ERP, readiness,
+produção ou release. Próximos gates: child-process/SIGKILL com eventos de
+domínio, failpoints completos, identidade/cross-tenant de cartão, retry/DLQ
+HTTP, hidratação cross-instance, RLS/FORCE RLS global e os gates de produto,
+operação, deploy e release.
+
+## Correção pós-review — identidade de cartão tenant-scoped (23/08/2026, 17:39 BRT)
+
+A revisão independente encontrou HIGH na PK global de
+`card_transactions.transaction_id`. A migration 0122, o schema Drizzle e os
+repositórios agora compõem a identidade como `(account_id, transaction_id)`;
+`ON CONFLICT` não descarta outro tenant e o in-memory retorna `null` para
+lookup ambíguo sem contexto. A fixture usa o mesmo ID em A/B, prova duas linhas
+e RLS por account. PostgreSQL passou **3/3**, handlers/gateway **17/17**,
+financial/event-bus **15/15** e **23/23**.
+
+O HIGH está fechado apenas neste bounded slice. Permanecem child-process/
+SIGKILL/takeover com domínio, PIX PostgreSQL/RLS, webhook retry/DLQ e lease
+fencing, isolamento billing/financial/webhook, failpoints completos, async
+hydration, RLS/FORCE RLS global e gates de produto/operação/release. Aguardar
+review pós-fix e publicar sem promover o ERP ou produção.
+
+## Revisão pós-fix — 17:45 BRT
+
+A revisão independente final do escopo de colisão classificou Critical/High
+como **nenhum**. A ordem lexical dos UUIDs na asserção A/B e a expectativa
+unitária do `ON CONFLICT` foram corrigidas; a integração PostgreSQL passou
+**3/3**, contrato unitário **3/3** e handlers/gateway **17/17**.
+
+Aprovação somente **GREEN bounded**. Child process/SIGKILL/takeover com domínio,
+PIX PostgreSQL/RLS, retry/DLQ HTTP/lease fencing, isolamento não-card,
+failpoints, hidratação cross-instance, RLS/FORCE RLS global e gates de produto,
+deploy e release continuam abertos. Implementação final `67d47e2`; falta
+publicar o commit documental/control-plane.

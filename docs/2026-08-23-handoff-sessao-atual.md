@@ -212,6 +212,31 @@ confirmou `HEAD == origin`. O único dirty path continua sendo o cache
 user-owned `packages/design-system/tsconfig.vue.tsbuildinfo`, mantido fora do
 stage.
 
+## Handoff adicional — worker event consumers PostgreSQL (23/08/2026, 17:21 BRT)
+
+O RED de eventos reais do worker foi fechado bounded. O teste
+[`worker-event-consumers-postgres.test.ts`](../tests/integration/database/worker-event-consumers-postgres.test.ts)
+passou **3/3** com role `LOGIN NOSUPERUSER NOBYPASSRLS`, dois accounts e
+PostgreSQL descartável. A prova cobre payment → billing → webhook, três inbox
+por evento, outbox concluído, settlement financeiro, delivery pendente,
+replay/concurrency em dois buses, rollback pós-mutação, captura desconhecida
+falhando fechado e isolamento A/B. A role foi observada com
+`rolsuper=false`/`rolbypassrls=false`.
+
+O defeito encontrado foi concreto: IDs `efa_*`, `er_*` e `erp_*` eram gerados
+para colunas UUID e abortavam o settlement. `EncounterFinancialService` agora
+usa `randomUUID()` para esses registros. O alias de Vitest também foi ampliado
+para os quatro pacotes de worker, garantindo execução do `src` atual.
+
+Artefato: [`CVG-002C6-worker-event-postgres-2026-08-23.md`](../.agent/artifacts/CVG-002C6-worker-event-postgres-2026-08-23.md).
+O resultado é somente `GREEN bounded`; não muda a rejeição da jornada ERP
+completa. Continuam abertos child-process com fixture de domínio/SIGKILL,
+unicidade global do cartão, retry/DLQ HTTP de webhook, failpoints completos,
+Helm aplicado, RLS/FORCE RLS global, hidratação cross-instance, WebAuthn,
+auditoria, providers/Redis, SPA/paridade/WCAG, cobertura, operações,
+deploy/restore e release. A próxima sessão deve começar pela decisão de chave
+do cartão e pela matriz de retry/failpoint.
+
 O ponteiro final desta documentação é `720876ec1f5ce30275b1160df7ef5f35c6fb1b0e`
 (`docs: publish worker runtime checkpoint`); o commit de implementação
 continua sendo `adde66b7a1b33333126f4832b3c728abb2db8500`.
@@ -299,3 +324,58 @@ no branch `origin/agent/sync-v4-full-program`. `git fetch` confirmou
 `HEAD == origin/agent/sync-v4-full-program`. O único caminho dirty continua
 sendo o `packages/design-system/tsconfig.vue.tsbuildinfo` user-owned, fora do
 stage.
+
+## Handoff adicional — eventos reais do worker em PostgreSQL (23/08/2026, 17:26 BRT)
+
+Última fatia executada: o teste
+[`worker-event-consumers-postgres.test.ts`](../tests/integration/database/worker-event-consumers-postgres.test.ts)
+passou **3/3** em PostgreSQL descartável, com duas contas e worker
+`LOGIN NOSUPERUSER NOBYPASSRLS`. A prova cobre composição `payments → billing →
+webhooks`, claim/inbox/outbox, settlement financeiro, delivery pendente,
+replay concorrente em dois buses, rollback depois de mutação, desconhecido
+fail-closed e isolamento A/B. Financial ficou **15/15** e event-bus **23/23**;
+builds, audit, Prettier e diff check também passaram.
+
+O RED e a causa estão no artefato
+[`CVG-002C6-worker-event-postgres-2026-08-23.md`](../.agent/artifacts/CVG-002C6-worker-event-postgres-2026-08-23.md): IDs `efa_*`, `er_*` e
+`erp_*` eram usados em colunas UUID, e o erro útil era mascarado por uma
+segunda operação em UoW abortada. A correção usa `randomUUID()` para esses IDs
+persistidos, preserva a causa original e adiciona aliases Vitest para executar
+o source dos módulos do worker.
+
+Estado: **GREEN bounded**, não pronto para produção. Próximo gate obrigatório:
+fixture de domínio no child process/SIGKILL, failpoints completos, decisão de
+identidade/collision de `card_transactions`, retry/DLQ HTTP de webhook e
+hidratação cross-instance. RLS/FORCE RLS global, WebAuthn, auditoria,
+Redis/providers, SPA, paridade Vetus, WCAG, coverage, operations,
+deploy/restore e release continuam `IN_PROGRESS/PARTIAL`. SHAs exatos serão
+preenchidos após o push; preserve o tsbuildinfo user-owned fora do stage.
+
+## Handoff — chave composta do cartão e revisão independente (23/08/2026, 17:38 BRT)
+
+A revisão encontrou risco alto na PK global de `card_transactions.transaction_id`:
+`ON CONFLICT DO NOTHING` poderia descartar o mesmo intent em outro account. A
+correção foi implementada com a migration `0122_card_transactions_tenant_key.sql`,
+schema Drizzle, repositório SQL e repositório em memória usando
+`(account_id, transaction_id)`. A fixture agora usa o mesmo intent em A/B,
+confirma duas linhas e comprova leitura RLS por account.
+
+O teste PostgreSQL continua **3/3**, com settlement financeiro completo
+(`paid`, `125.00`, `0.00`), receivable `settled` e referência `other`. Os
+handlers/gateways passaram **17/17** via `tsx --test`; financial/event-bus
+passaram **15/15** e **23/23**; builds, audit e diff check estão verdes.
+
+Residuais explícitos para a próxima sessão: child process/SIGKILL com fixture
+de domínio e takeover, PIX PostgreSQL/RLS, retry/DLQ HTTP e fencing de lease,
+isolamento restrito de billing/financial/webhook, todos os failpoints e
+retornos UUID de `syncEncounter`/`closeEncounterFinancial`. O estado permanece
+`GREEN bounded` e `IN_PROGRESS/PARTIAL`; não promover ERP, readiness ou
+produção. A implementação final foi publicada em `67d47e2` (`test: stabilize
+tenant card collision assertions`), sobre `ab08865233c4091edcb83cb7319c78b9f406645e`
+(`fix: harden worker event persistence`); o SHA documental será registrado no ponteiro final após o
+commit de reconciliação. `git fetch` confirmou `HEAD == origin/agent/sync-v4-full-program`.
+
+Ledgers/control-plane atuais: `execution-log.jsonl` **200** linhas e
+`verification.jsonl` **135** linhas parseiam, assim como `state.json` e
+`backlog.json`. `.agent/check_state.py` não está presente no workspace atual;
+nenhum resultado canônico de checker foi inventado.

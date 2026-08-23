@@ -148,3 +148,112 @@ Não usar fallback em memória como evidência de durabilidade. Não marcar
 `CVG-002C6`, `CVG-002` ou o ERP como concluídos. Ao publicar, atualizar neste
 arquivo os SHAs exatos, as contagens dos ledgers e o estado remoto; preservar o
 cache user-owned fora do stage.
+
+## Iteração seguinte — eventos reais do worker em PostgreSQL/RLS (23/08/2026, 17:21 BRT)
+
+O próximo RED foi executado com fixtures reais de cartão, billing e webhook em
+dois accounts e role `LOGIN NOSUPERUSER NOBYPASSRLS`. A falha original era
+`invalid input syntax for type uuid: "erp_*"`: o settlement financeiro usava
+IDs prefixed para colunas PostgreSQL UUID. O erro abortava a UoW depois da
+tentativa de captura e aparecia mascarado como `current transaction is aborted`.
+
+A correção usa `randomUUID()` em contas financeiras, receivables e pagamentos
+persistidos, e o Vitest passou a resolver os módulos de event bus, consumers,
+financial e payments diretamente de `src`, evitando executar `dist` obsoleto.
+O consumidor de pagamento também preserva a causa original ao registrar falha
+de settlement.
+
+O teste reproduzível
+[`worker-event-consumers-postgres.test.ts`](../tests/integration/database/worker-event-consumers-postgres.test.ts)
+passou **3/3** contra PostgreSQL descartável: (1) payment → billing → webhook
+com cartão `captured/applied`, billing `settled`, receivable/payment único,
+delivery pending, inbox/outbox, replay concorrente em dois buses e isolamento
+A/B; (2) rollback depois de mutar cartão/billing, sem inbox ou pagamento novo;
+(3) captura desconhecida falhando fechado sem intent ou inbox. A role foi
+verificada com `rolsuper=false` e `rolbypassrls=false`.
+
+Validações adicionais: financial `15/15`, event-bus `23/23`, builds de
+financial/event-consumers/event-bus/payments/worker, `pnpm audit --prod` sem
+advisories, Prettier e `git diff --check` verdes. Artefato detalhado:
+[`CVG-002C6-worker-event-postgres-2026-08-23.md`](../.agent/artifacts/CVG-002C6-worker-event-postgres-2026-08-23.md).
+
+Este é `GREEN bounded`, não readiness/produção global. Permanecem abertos a
+fixture dentro do child process com SIGKILL, unicidade global ou composta de
+`card_transactions.transaction_id`, cross-tenant card collision, retry/DLQ
+HTTP de webhook, callback ghost, hidratação cross-instance, failpoints
+cross-domain, Helm aplicado, RLS/FORCE RLS global, WebAuthn, auditoria,
+Redis/providers, SPA, paridade, WCAG, coverage, operações, deploy/restore e
+release. A próxima sessão deve atacar a decisão de identidade do cartão e a
+matriz de retry/failpoint sem marcar `CVG-002C6`, o ERP ou a Quality Bar como
+concluídos.
+
+## Atualização de continuidade — RED/GREEN do worker real (23/08/2026, 17:26 BRT)
+
+O RED encontrou IDs `efa_*`, `er_*` e `erp_*` sendo inseridos em colunas UUID
+durante o settlement financeiro. `current transaction is aborted` era somente
+o sintoma secundário da UoW abortada. O harness também recebeu aliases Vitest
+para os módulos do worker, garantindo que o teste use `src` e não `dist`
+obsoleto.
+
+A correção bounded usa `randomUUID()` nos identificadores financeiros
+persistidos em UUID e preserva a causa original quando o marcador de falha não
+pode ser escrito na transação abortada. O teste
+[`worker-event-consumers-postgres.test.ts`](../tests/integration/database/worker-event-consumers-postgres.test.ts)
+passou **3/3** com duas contas, role `LOGIN NOSUPERUSER NOBYPASSRLS`, payment →
+billing → webhook, inbox/outbox, settlement, delivery pendente, replay
+concorrente, rollback pós-mutação, evento desconhecido e isolamento A/B.
+Financial passou **15/15**, event-bus **23/23**, e builds, audit, Prettier e
+diff check ficaram verdes.
+
+Artefato:
+[`CVG-002C6-worker-event-postgres-2026-08-23.md`](../.agent/artifacts/CVG-002C6-worker-event-postgres-2026-08-23.md).
+É **GREEN bounded**: não promove `CVG-002C6`, readiness, ERP, produção ou a
+Quality Bar global. Permanecem abertos child-process/SIGKILL com eventos de
+domínio, failpoints completos, identidade/collision de cartão, retry/DLQ HTTP,
+hidratação cross-instance, RLS/FORCE RLS global, WebAuthn, auditoria,
+Redis/providers, SPA, paridade, WCAG, coverage, operations, deploy/restore e
+release. Os SHAs exatos serão registrados após o commit/push; o cache
+user-owned `packages/design-system/tsconfig.vue.tsbuildinfo` continua fora do
+stage.
+
+## Fechamento do residual de identidade do cartão (23/08/2026, 17:38 BRT)
+
+A revisão independente apontou um risco alto de integridade: a PK global de
+`card_transactions.transaction_id` combinada com `ON CONFLICT DO NOTHING`
+poderia descartar silenciosamente o mesmo intent em outro account. O residual
+foi fechado nesta fatia com a decisão explícita de chave composta
+`(account_id, transaction_id)`:
+
+- migration `0122_card_transactions_tenant_key.sql` troca a PK global pela PK
+  composta e remove o índice redundante;
+- schema Drizzle e `DatabaseCardTransactionRepository` refletem a mesma chave;
+- o repositório em memória também usa chave composta e retorna `null` em lookup
+  não escopado ambíguo, sem vazar ou sobrescrever outro account;
+- a fixture usa o mesmo `transaction_id` em A e B, comprova duas linhas e
+  confirma que cada contexto RLS lê somente sua própria linha.
+
+A execução PostgreSQL permaneceu **3/3**, agora com asserções de
+`financial_status=paid`, `paid_amount=125.00`, `balance_due=0.00`, receivable
+`settled`, valores `125.00/0.00` e `external_reference_type=other`. Os testes
+de handlers/gateway passaram **17/17** via `tsx --test`; financial/event-bus
+passaram **15/15** e **23/23**; builds e audit continuam verdes.
+
+Limitações ainda abertas, conforme a crítica: o teste não atravessa o
+entrypoint child-process/SIGKILL, não cobre PIX PostgreSQL/RLS, retry/DLQ HTTP
+ou fencing de lease, e ainda há fixtures manuais de UUID fora de todos os
+retornos de `syncEncounter`/`closeEncounterFinancial`. Billing/financial/webhook
+cross-tenant precisam de leitura restrita dedicada. Portanto o gate continua
+`GREEN bounded`, `CVG-002C6` `IN_PROGRESS/PARTIAL`, sem promoção de ERP,
+readiness ou produção.
+
+Implementação publicada em `67d47e2` (`test: stabilize tenant card collision assertions`),
+sobre `ab08865233c4091edcb83cb7319c78b9f406645e` (`fix: harden worker event
+persistence`). O ponteiro documental desta sessão
+será registrado após o commit de reconciliação; `git fetch` já confirmou
+`HEAD == origin/agent/sync-v4-full-program`.
+
+Os ledgers atuais parseiam: `execution-log.jsonl` **200** registros e
+`verification.jsonl` **135** registros; `state.json` e `backlog.json` também
+passam pelo parser JSON. O checker histórico `.agent/check_state.py` não está
+presente nesta cópia do workspace, então nenhuma contagem de PASS/Warning
+canônica foi inventada nesta sessão.

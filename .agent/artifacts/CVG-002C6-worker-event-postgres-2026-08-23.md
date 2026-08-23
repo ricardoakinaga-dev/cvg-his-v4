@@ -111,3 +111,13 @@ Próximo gate obrigatório: publicar fixture de domínio no child process com
 SIGKILL/takeover, implementar retry/DLQ de webhook, exercitar PIX, ampliar
 isolamento billing/financial/webhook e executar failpoints/restart cross-domain,
 sem promover `CVG-002C6`, o ERP ou a Quality Bar global para concluído.
+
+## Publicação
+
+Implementação publicada em `67d47e2` (`test: stabilize tenant card collision assertions`),
+sobre `ab08865233c4091edcb83cb7319c78b9f406645e` (`fix: harden worker event
+persistence`) no branch
+`agent/sync-v4-full-program`; `git fetch` confirmou igualdade com
+`origin/agent/sync-v4-full-program`. O ponteiro documental será registrado no
+commit de reconciliação seguinte. O cache user-owned
+`packages/design-system/tsconfig.vue.tsbuildinfo` permaneceu fora do stage.
