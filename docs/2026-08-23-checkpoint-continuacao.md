@@ -581,3 +581,11 @@ Esses achados não invalidam o rollback confirmado no PostgreSQL, mas mantêm a
 fatia como `IN_PROGRESS/PARTIAL`. O próximo RED deve cobrir a superfície HTTP,
 replay e concorrência; a consistência do cache de auditoria deve ser tratada
 antes de promover este limite.
+
+## Publicação da revisão independente — 23/08/2026, 06:45 BRT
+
+O registro acima foi publicado em `1f1017436ec51a6fc0928e1b4f575f92533caf42`
+(`docs: record post-publication review findings`) no branch
+`origin/agent/sync-v4-full-program`. Após `git fetch`, `HEAD` e `origin` estão
+iguais nesse hash. O único caminho dirty continua sendo o cache user-owned
+`packages/design-system/tsconfig.vue.tsbuildinfo`, fora do commit.
