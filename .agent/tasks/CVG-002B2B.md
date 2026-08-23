@@ -414,3 +414,29 @@ failover/clock-skew sob `fail-closed` e decompor a jornada completa
 mantendo B2c/SPA, provider, paridade Vetus, WCAG, operações alvo, cobertura e
 release como gates separados. Não marcar `CVG-002B2B`, `CVG-002` ou o ERP como
 concluídos.
+
+## Handoff adicional — cutoff de alta e fail-closed (23/08/2026)
+
+Continuação executada depois do checkpoint publicado:
+
+- Redis local real passou `21/21` (atomicidade em duas conexões, Redis `TIME`
+  contra clock skew do nó, endpoint indisponível bounded e recuperação após
+  cliente falho). Isto não é failover real entre processos.
+- RED/GREEN de PostgreSQL identificou e fechou a escrita pós-alta: migration
+  `0116_inpatient_discharge_cutoff.sql` instala função `SECURITY DEFINER` e
+  triggers para progresso, ocorrência, diária e consumo de estoque vinculado a
+  `inpatient_stay`. O container PostgreSQL 16 descartável passou `2/2` após
+  migrations `0000..0116`.
+- O login HTTP tem RED de indisponibilidade do rate limiter e passou `1/1`, com
+  `500 INTERNAL_ERROR` sanitizado e sem cookie/token. O texto do experimento
+  Redis foi alinhado ao contrato `fail-closed`.
+
+Artefato novo: `.agent/artifacts/CVG-002D-inpatient-discharge-cutoff-2026-08-23.md`.
+O PostgreSQL compartilhado de testes ficou em recovery durante a criação de
+bases efêmeras; registrar isso como limitação de ambiente e usar um banco
+descartável dedicado antes de novas integrações.
+
+Próximo passo executável: escrever o RED de rollback entre `billing.addItem` e
+`markDailyChargeBilled`, depois uma UoW/saga da jornada admissão →
+handoff/permanência → estoque → alta → billing → recibo/ledger/auditoria/
+outbox, mantendo o estado global `IN_PROGRESS/PARTIAL`.

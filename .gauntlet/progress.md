@@ -170,3 +170,14 @@ checkpoint, exercitar Redis failover/clock-skew sob `fail-closed` e decompor
 `admissão → handoff/permanência → diária → alta → item/recebimento` com REDs
 PostgreSQL/RLS. B2c/SPA, provider, Vetus parity, WCAG, target ops, coverage e
 release permanecem gates separados.
+
+## Checkpoint 23/08/2026 — cutoff de alta e Redis
+
+Redis local passou `21/21`; a migration `0116_inpatient_discharge_cutoff.sql`
+fechou no banco os inserts pós-alta para progresso, ocorrência, diária e
+consumo de estoque `inpatient_stay`, com prova descartável `2/2`. O teste HTTP
+de login quando o rate limiter falha passou `1/1` sem cookie/token, e a
+descrição do chaos foi alinhada a fail-closed. O PostgreSQL compartilhado de
+testes entrou em recovery por repetidas bases efêmeras; isso é limitação de
+ambiente. Próximo round: atomicidade/rollback billing ↔ daily charge e depois
+admission → handoff → inventory → discharge → receipt/ledger/audit/outbox.

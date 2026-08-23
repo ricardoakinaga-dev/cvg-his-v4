@@ -213,3 +213,18 @@ Next largest local action is Redis failover/clock-skew under the explicit
 fail-closed policy, followed by the full admission → handoff/stay → daily
 charge → discharge → item/receipt journey. B2c/SPA, provider, Vetus parity,
 WCAG, target operations, coverage and release remain separate gates.
+
+## Iteração seguinte — cutoff de alta e fail-closed (23/08/2026)
+
+O round seguinte executou Redis local `21/21`, incluindo atomicidade, `TIME` do
+Redis sob clock skew, deadline bounded e recuperação de cliente falho. O RED
+PostgreSQL mostrou que SQL direto ainda inseria filhos depois de uma stay
+discharged; migration `0116` agora rejeita progress, occurrences, daily charges
+e inventory consumption de `inpatient_stay`. A prova PostgreSQL descartável
+passou `2/2`; o login HTTP fail-closed passou `1/1`; builds de API/DB/chaos e
+secrets scan passaram.
+
+O PostgreSQL compartilhado entrou em recovery por acúmulo de bases efêmeras e
+foi deixado intacto. O ERP continua `IN_PROGRESS/PARTIAL`. Próximo round:
+RED de rollback entre billing item e daily charge, seguido da jornada
+admission → handoff → inventory → discharge → receipt/ledger/audit/outbox.

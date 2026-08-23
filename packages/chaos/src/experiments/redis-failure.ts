@@ -1,6 +1,6 @@
 /**
  * Redis failure experiment.
- * Simulates Redis unavailability causing rate limiter fallback to in-memory.
+ * Simulates Redis unavailability; distributed rate-limited requests fail closed.
  */
 import type { Experiment, ExperimentResult, ExperimentStopResult } from '../chaos-engine.js';
 import { chaosFaultInjectedTotal, chaosExperimentActive } from '../metrics.js';
@@ -45,7 +45,7 @@ async function stop(): Promise<ExperimentStopResult> {
 export const redisFailureExperiment: Experiment = {
   id: REDIS_FAILURE_ID,
   name: 'Redis Failure',
-  description: 'Simulates Redis unavailability causing rate-limiter in-memory fallback',
+  description: 'Simulates Redis unavailability causing the distributed rate limiter to fail closed',
   start,
   stop
 };

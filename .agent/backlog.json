@@ -124,9 +124,15 @@
         "tests/integration/database/inpatient-daily-charge-billing-idempotency.test.ts",
         ".agent/verification.jsonl#VFY-CVG-002C-INPATIENT-BILLING-001",
         ".agent/verification.jsonl#VFY-CVG-002B2B-STALE-FENCE-001",
-        ".agent/verification.jsonl#VFY-DOCS-CONTINUATION-008"
+        ".agent/artifacts/CVG-002D-inpatient-discharge-cutoff-2026-08-23.md",
+        "packages/db/migrations/0116_inpatient_discharge_cutoff.sql",
+        "tests/integration/database/inpatient-discharge-cutoff.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-002D-INPATIENT-CUTOFF-001",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-REDIS-REAL-001",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-AUTH-RATELIMIT-001",
+        ".agent/verification.jsonl#VFY-DOCS-CONTINUATION-011"
       ],
-      "next_action": "The stale-fence race and the first inpatient daily-charge -> billing idempotency boundary are implemented and locally verified. Publish this checkpoint, then exercise Redis failover/clock-skew under fail-closed policy and decompose admission -> handoff/permanence -> daily charge -> discharge -> item/receipt with PostgreSQL/RLS REDs while preserving B2c/SPA, provider, parity, WCAG, target-operations, coverage and release gates."
+      "next_action": "The stale-fence, daily-charge billing idempotency and PostgreSQL discharge cutoff boundaries are locally verified. Keep Redis failover between processes open, write the RED for rollback between billing.addItem and markDailyChargeBilled, then implement admission -> handoff/permanence -> inventory -> discharge -> item/receipt with PostgreSQL/RLS and a single UoW or explicit saga while preserving B2c/SPA, provider, parity, WCAG, target-operations, coverage and release gates."
     },
     {
       "id": "CVG-003",

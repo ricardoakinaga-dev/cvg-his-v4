@@ -393,3 +393,33 @@ Esperado: apenas o cache user-owned
    item/recebimento` com REDs PostgreSQL/RLS e estados de UI.
 3. Preservar B2c/SPA, provider real, paridade Vetus, WCAG, operações,
    cobertura e release como gates separados; não marcar `VERIFIED` ou produção.
+
+## Registro de continuidade — cutoff de alta e fail-closed (23/08/2026)
+
+Após a retomada, a auditoria Redis foi executada contra o Redis local: a suíte
+passou `21/21`, incluindo atomicidade entre duas conexões, uso do relógio do
+Redis quando o nó da aplicação está adiantado, rejeição bounded de endpoint
+indisponível e descarte/recuperação de cliente falho. Isso é evidência local;
+failover real entre processos ainda permanece aberto.
+
+O próximo RED clínico confirmou uma lacuna de integridade: antes da proteção,
+SQL direto ainda conseguia inserir evolução, ocorrência e diária depois de uma
+stay `discharged`. A migration `0116_inpatient_discharge_cutoff.sql` agora
+instala uma função PostgreSQL `SECURITY DEFINER` e triggers tenant-scoped para
+esses três filhos e para consumo de estoque com
+`source_entity_type=inpatient_stay`. A prova em PostgreSQL 16 descartável,
+migrado até `0116`, passou `2/2`; o artefato está em
+`.agent/artifacts/CVG-002D-inpatient-discharge-cutoff-2026-08-23.md`.
+
+Também foi adicionada a prova HTTP de login fail-closed (`1/1`): falha do
+backend Redis produz `500 INTERNAL_ERROR`, sem cookie de refresh ou token. A
+descrição do experimento/runbook foi alinhada para não sugerir fallback local.
+Builds de API, DB e chaos e `security:secrets` passaram.
+
+O PostgreSQL compartilhado de testes entrou em recovery após repetidas bases
+efêmeras; ele não deve ser usado para novas rodadas até recuperação/limpeza
+operacional autorizada. O estado do ERP continua `IN_PROGRESS/PARTIAL`. Próxima
+ação: implementar RED de atomicidade/rollback entre item de billing e marcação
+da diária, depois costurar admissão → handoff/permanência → estoque → alta →
+recebimento/ledger/auditoria/outbox sob PostgreSQL/RLS, sem fechar os gates
+externos de provider, SPA/B2c, paridade, WCAG, operações, cobertura e release.

@@ -51,7 +51,7 @@ const CHAOS_EXPERIMENT_DESCRIPTORS: Record<string, ChaosExperimentDescriptor> = 
       path: 'packages/chaos/src/runbooks/redis-failure-runbook.md'
     },
     indicators: ['app_redis_healthy', 'app_rate_limiter_mode'],
-    summary: 'Simula indisponibilidade do Redis e derruba o rate limiter distribuido para fallback em memoria.'
+    summary: 'Simula indisponibilidade do Redis e faz o rate limiter distribuido falhar fechado.'
   },
   [API_LATENCY_ID]: {
     runbook: {

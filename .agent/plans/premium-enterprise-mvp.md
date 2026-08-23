@@ -266,3 +266,15 @@ PostgreSQL integration are aligned. This does not promote the Quality Bar;
 Redis failover/clock-skew, the full admission/handoff/discharge journey,
 journal/outbox/inbox detail, worker target readiness, SPA, provider, parity,
 WCAG, operations and release remain open.
+
+Plan revision note, 2026-08-23 (discharge cutoff): Redis local evidence passed
+21/21, including Redis time under application clock skew and bounded recovery
+after a failed client. A new RED exposed that direct PostgreSQL writes could
+append inpatient children after discharge; migration `0116` now rejects
+progress, occurrences, daily charges and inpatient-stay inventory consumption
+with tenant-scoped `SECURITY DEFINER` triggers. The disposable PostgreSQL
+proof passed 2/2, the HTTP auth fail-closed proof passed 1/1, and API/DB/chaos
+builds plus secret scanning passed. The shared test container entered recovery
+after repeated ephemeral DB creation; no global gate is promoted. The next
+implementation must prove rollback/atomicity across billing item and daily
+charge state before expanding to receipt/ledger/outbox.

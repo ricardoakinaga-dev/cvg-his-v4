@@ -614,6 +614,35 @@ test('PIX attempt replay authenticates first and stores only a derived ledger ke
   assert.equal(ledgerKeys.length, 1);
 });
 
+test('auth login fails closed when the distributed rate-limit backend is unavailable', async () => {
+  const server = createServerUnderTest({
+    authRateLimiter: {
+      async check() {
+        throw new Error('Redis rate limiter unavailable');
+      }
+    }
+  });
+  await server.ready;
+
+  const response = await performRequest(server, {
+    method: 'POST',
+    url: '/auth/login',
+    headers: { 'content-type': 'application/json', host: 'localhost' },
+    body: { username: 'admin', password: 'seed_admin' }
+  });
+
+  assert.equal(response.statusCode, 500);
+  const body = response.bodyJson<{ code: string; message: string }>();
+  assert.deepEqual(
+    { code: body.code, message: body.message },
+    {
+      code: 'INTERNAL_ERROR',
+      message: 'Unexpected error'
+    }
+  );
+  assert.equal(response.getHeader('set-cookie'), undefined);
+});
+
 test('PIX attempt POST is rate limited before idempotency ledger execution', async () => {
   let ledgerCalls = 0;
   const server = createServerUnderTest({
