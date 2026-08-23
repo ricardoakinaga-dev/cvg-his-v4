@@ -248,12 +248,12 @@ readiness ou produção.
 
 Implementação publicada em `67d47e2` (`test: stabilize tenant card collision assertions`),
 sobre `ab08865233c4091edcb83cb7319c78b9f406645e` (`fix: harden worker event
-persistence`). O ponteiro documental desta sessão
-será registrado após o commit de reconciliação; `git fetch` já confirmou
-`HEAD == origin/agent/sync-v4-full-program`.
+persistence`). O ponteiro documental desta sessão é
+`16797efada1747fc2a6046d4dd7842dc6e7eea42` (`docs: publish worker event
+continuity`); `git fetch` confirmou `HEAD == origin/agent/sync-v4-full-program`.
 
-Os ledgers atuais parseiam: `execution-log.jsonl` **200** registros e
-`verification.jsonl` **135** registros; `state.json` e `backlog.json` também
+Os ledgers atuais parseiam: `execution-log.jsonl` **201** registros e
+`verification.jsonl` **136** registros; `state.json` e `backlog.json` também
 passam pelo parser JSON. O checker histórico `.agent/check_state.py` não está
 presente nesta cópia do workspace, então nenhuma contagem de PASS/Warning
 canônica foi inventada nesta sessão.

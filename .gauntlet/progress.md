@@ -519,5 +519,5 @@ unitária do `ON CONFLICT` foram corrigidas; a integração PostgreSQL passou
 Aprovação somente **GREEN bounded**. Child process/SIGKILL/takeover com domínio,
 PIX PostgreSQL/RLS, retry/DLQ HTTP/lease fencing, isolamento não-card,
 failpoints, hidratação cross-instance, RLS/FORCE RLS global e gates de produto,
-deploy e release continuam abertos. Implementação final `67d47e2`; falta
-publicar o commit documental/control-plane.
+deploy e release continuam abertos. Implementação final `67d47e2`; o commit
+documental/control-plane publicado é `16797efada1747fc2a6046d4dd7842dc6e7eea42`.

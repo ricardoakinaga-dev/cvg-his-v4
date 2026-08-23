@@ -588,4 +588,4 @@ abertos child process/SIGKILL/takeover com domínio, PIX PostgreSQL/RLS,
 retry/DLQ HTTP e lease fencing, isolamento billing/financial/webhook,
 failpoints completos, hidratação cross-instance, RLS/FORCE RLS global e os
 gates de produto/operação/deploy/release. Implementação final: `67d47e2`;
-documentação/control-plane ainda será publicada em commit separado.
+documentação/control-plane publicada em `16797efada1747fc2a6046d4dd7842dc6e7eea42`.

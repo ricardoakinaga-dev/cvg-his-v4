@@ -118,6 +118,7 @@ Implementação publicada em `67d47e2` (`test: stabilize tenant card collision a
 sobre `ab08865233c4091edcb83cb7319c78b9f406645e` (`fix: harden worker event
 persistence`) no branch
 `agent/sync-v4-full-program`; `git fetch` confirmou igualdade com
-`origin/agent/sync-v4-full-program`. O ponteiro documental será registrado no
-commit de reconciliação seguinte. O cache user-owned
+`origin/agent/sync-v4-full-program`. O ponteiro documental é
+`16797efada1747fc2a6046d4dd7842dc6e7eea42` (`docs: publish worker event
+continuity`). O cache user-owned
 `packages/design-system/tsconfig.vue.tsbuildinfo` permaneceu fora do stage.
