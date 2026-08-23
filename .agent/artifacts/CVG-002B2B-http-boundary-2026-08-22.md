@@ -1,8 +1,8 @@
 # CVG-002B2B — HTTP callback boundary checkpoint
 
-**Checkpoint:** EVT-0057
+**Checkpoint:** EVT-0059
 
-**Date:** 2026-08-22 22:02 BRT
+**Date:** 2026-08-22 22:10 BRT
 
 **Task:** CVG-002B2B
 **Status:** bounded implementation evidence only; parent remains `IN_PROGRESS/PARTIAL`
@@ -32,7 +32,7 @@ Implemented seams:
 | `pnpm exec vitest run tests/unit/api/startup-secrets-runtime.test.ts apps/api/src/startup-secrets.test.ts --config vitest.config.ts --reporter=dot` | 6/6 PASS |
 | `pnpm exec vitest run tests/integration/pix-provider-webhook-http.test.ts --config vitest.integration.config.ts --reporter=dot` | 6/6 PASS |
 | `pnpm exec vitest run tests/integration/pix-provider-webhook-http.test.ts --config vitest.integration.config.ts --reporter=dot` (fresh raw-socket refresh) | 13/13 PASS |
-| `pnpm validate:openapi` | 334 paths, 40 tags, 384 schemas; PASS |
+| `pnpm validate:openapi` | 334 paths, 40 tags, 385 schemas; PASS |
 
 The integration suite now uses both a real Node HTTP server/request and a raw `node:net` socket. It covers split chunks, real chunked framing, authentication failure, authenticated invalid payload, duplicate critical headers, oversized body, short `Content-Length`, abort without a complete body, rate limiting, browser-only headers and a deferred-ACK barrier. A truncated `Content-Length` can be rejected by Node's HTTP parser before application JSON is available; the test asserts `400` with an empty body and zero persistence.
 
@@ -46,6 +46,7 @@ No real provider credentials or production capability were enabled. The pre-exis
 
 ## Current implementation notes
 
-- Commit `bbbf902` (`feat: harden PIX webhook boundary`) contains the raw-socket harness, opaque conflict mapping, canonical repository interface, CORS decision and OpenAPI contract.
+- Commit `bbbf902` (`feat: harden PIX webhook boundary`) contains the raw-socket harness, opaque conflict mapping, canonical repository interface and CORS decision. Follow-up commit `705052b` aligns the OpenAPI regexes and webhook error correlation schema with runtime behavior.
 - The route remains non-production synthetic capability only; it is explicitly disabled by default and production-like readiness remains fail-closed.
+- Independent review initially rejected the published contract for two MEDIUM mismatches; the follow-up is now green for this bounded slice with no CRITICAL/HIGH finding.
 - The parent `CVG-002B2B` is still `IN_PROGRESS/PARTIAL`; this artifact is not a VERIFIED or production-readiness claim.
