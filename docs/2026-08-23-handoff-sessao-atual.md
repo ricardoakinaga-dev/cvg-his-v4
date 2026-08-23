@@ -428,3 +428,7 @@ global é `FAIL (pass=9, warn=1, fail=43)` por inconsistências históricas de
 tipos/evidence kinds/ordenação nos ledgers. Esses registros antigos continuam
 intactos e devem ser tratados em uma onda documental própria; não foram
 confundidos com aprovação do full critical ou do ERP.
+
+O ponteiro final publicado desta sessão é `3520c22`, já confirmado contra
+`origin/agent/sync-v4-full-program`. A retomada deve usar o checkpoint integral
+e reproduzir primeiro o prefixo que contamina o backfill PIX.

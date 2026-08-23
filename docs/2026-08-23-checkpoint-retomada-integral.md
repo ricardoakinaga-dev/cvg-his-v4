@@ -449,3 +449,11 @@ tipos/eventos/evidence kinds fora do contrato atual e por uma ordem histórica
 de ledger. Esses achados não foram reescritos nesta sessão; ficam explicitamente
 abertos para uma reconciliação documental dedicada. Isso não é evidência de
 `VERIFIED` nem altera o resultado integral **386/387**.
+
+## Ponteiro final desta sessão
+
+O controle documental final está no commit `3520c22` no branch
+`origin/agent/sync-v4-full-program`; `HEAD` e `origin` foram confirmados
+iguais. A próxima sessão deve começar por este arquivo e pelo artefato do
+reteste, mantendo `CVG-002C6=IN_PROGRESS/PARTIAL`, a falha PIX no contexto
+integral e o cache user-owned fora do stage.
