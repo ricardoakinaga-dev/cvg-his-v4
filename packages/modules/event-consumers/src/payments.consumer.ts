@@ -319,12 +319,15 @@ export class PaymentsEventHandlers {
         cashReconciliationError: undefined
       });
     } catch (error) {
-      await this.#pixTransactions.updateBillingSettlement({
-        transactionId: payload.intentId,
-        billingSettlementStatus: 'failed',
-        updatedAt: completedAt,
-        billingSettlementError: error instanceof Error ? error.message : String(error)
-      });
+      // A database error aborts the active tenant transaction. Do not mask the
+      // authoritative failure with a second "transaction is aborted" error
+      // while attempting to persist a failure marker in that same unit of work.
+      await this.#persistSettlementFailureBestEffort(
+        this.#pixTransactions,
+        payload.intentId,
+        completedAt,
+        error
+      );
       throw error;
     }
 
@@ -376,7 +379,15 @@ export class PaymentsEventHandlers {
   async #handleCardCompleted(event: OutboxEvent): Promise<void> {
     const payload = event.payload as unknown as CardCompletedPayload;
     const completedAt = payload.capturedAt ?? payload.completedAt ?? nowIso();
-    const transaction = await this.#cardTransactions.findByTransactionId(payload.intentId);
+    let transaction: CardTransactionRecord | null;
+    try {
+      transaction = await this.#cardTransactions.findByTransactionId(payload.intentId);
+    } catch (error) {
+      throw new Error(
+        `Card completion ${payload.intentId} could not load its authoritative transaction: ${error instanceof Error ? error.message : String(error)}`,
+        { cause: error }
+      );
+    }
 
     // A capture event is not sufficient to reconstruct an authoritative payment
     // intent. In particular, never create an amount=0 placeholder and settle a
@@ -388,9 +399,17 @@ export class PaymentsEventHandlers {
     }
 
     const effectiveBillingRecordId = payload.billingRecordId ?? transaction.billingRecordId;
-    const billingRecord = effectiveBillingRecordId
-      ? this.#billing.getOrThrow(effectiveBillingRecordId as BillingRecordId)
-      : undefined;
+    let billingRecord: ReturnType<BillingService['getOrThrow']> | undefined;
+    try {
+      billingRecord = effectiveBillingRecordId
+        ? this.#billing.getOrThrow(effectiveBillingRecordId as BillingRecordId)
+        : undefined;
+    } catch (error) {
+      throw new Error(
+        `Card completion ${payload.intentId} could not load billing record ${effectiveBillingRecordId ?? 'none'}: ${error instanceof Error ? error.message : String(error)}`,
+        { cause: error }
+      );
+    }
 
     if (transaction.accountId !== payload.accountId || event.accountId !== payload.accountId) {
       throw new Error('Card completion does not match the billing account');
@@ -411,19 +430,27 @@ export class PaymentsEventHandlers {
       }
     }
 
-    const updatedTransaction = await this.#cardTransactions.updateStatus({
-      transactionId: payload.intentId,
-      status: 'captured',
-      updatedAt: completedAt,
-      capturedAt: completedAt,
-      lastProviderSyncAt: completedAt,
-      providerOrderId: payload.providerOrderId ?? transaction?.providerOrderId,
-      providerChargeId: payload.providerChargeId ?? transaction?.providerChargeId,
-      providerAuthorizationCode:
-        payload.providerAuthorizationCode ?? transaction?.providerAuthorizationCode,
-      providerReferenceId: payload.providerReferenceId ?? transaction?.providerReferenceId,
-      billingSettlementStatus: effectiveBillingRecordId ? 'pending_billing' : 'not_applicable'
-    });
+    let updatedTransaction: CardTransactionRecord | null;
+    try {
+      updatedTransaction = await this.#cardTransactions.updateStatus({
+        transactionId: payload.intentId,
+        status: 'captured',
+        updatedAt: completedAt,
+        capturedAt: completedAt,
+        lastProviderSyncAt: completedAt,
+        providerOrderId: payload.providerOrderId ?? transaction.providerOrderId,
+        providerChargeId: payload.providerChargeId ?? transaction.providerChargeId,
+        providerAuthorizationCode:
+          payload.providerAuthorizationCode ?? transaction.providerAuthorizationCode,
+        providerReferenceId: payload.providerReferenceId ?? transaction.providerReferenceId,
+        billingSettlementStatus: effectiveBillingRecordId ? 'pending_billing' : 'not_applicable'
+      });
+    } catch (error) {
+      throw new Error(
+        `Card completion ${payload.intentId} could not mark the transaction as captured: ${error instanceof Error ? error.message : String(error)}`,
+        { cause: error }
+      );
+    }
     const effectiveTransaction = updatedTransaction ?? transaction;
     if (!effectiveTransaction) {
       return;
@@ -468,13 +495,36 @@ export class PaymentsEventHandlers {
         billingSettlementError: undefined
       });
     } catch (error) {
-      await this.#cardTransactions.updateBillingSettlement({
-        transactionId: payload.intentId,
+      // Keep the original database/domain error visible. Once PostgreSQL has
+      // aborted the consumer UoW, a failure-marker UPDATE cannot succeed and
+      // would otherwise replace the useful cause with a generic aborted-TX
+      // message.
+      await this.#persistSettlementFailureBestEffort(
+        this.#cardTransactions,
+        payload.intentId,
+        completedAt,
+        error
+      );
+      throw error;
+    }
+  }
+
+  async #persistSettlementFailureBestEffort(
+    repository: PixTransactionRepository | CardTransactionRepository,
+    transactionId: string,
+    updatedAt: string,
+    error: unknown
+  ): Promise<void> {
+    try {
+      await repository.updateBillingSettlement({
+        transactionId,
         billingSettlementStatus: 'failed',
-        updatedAt: completedAt,
+        updatedAt,
         billingSettlementError: error instanceof Error ? error.message : String(error)
       });
-      throw error;
+    } catch {
+      // The enclosing UoW will roll back all effects. The original error is
+      // rethrown by the caller and remains the retry/DLQ diagnostic.
     }
   }
 

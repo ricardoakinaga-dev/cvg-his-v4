@@ -5,10 +5,10 @@ import {
   index,
   integer,
   numeric,
+  primaryKey,
   pgTable,
   text,
   timestamp,
-  uniqueIndex,
   uuid,
   varchar
 } from 'drizzle-orm/pg-core';
@@ -19,7 +19,7 @@ import { billingRecords } from './billing_records.js';
 export const cardTransactions = pgTable(
   'card_transactions',
   {
-    transactionId: varchar('transaction_id', { length: 255 }).primaryKey(),
+    transactionId: varchar('transaction_id', { length: 255 }).notNull(),
     provider: varchar('provider', { length: 32 }).notNull(),
     accountId: uuid('account_id')
       .notNull()
@@ -49,10 +49,10 @@ export const cardTransactions = pgTable(
     billingSettlementError: text('billing_settlement_error')
   },
   (table) => ({
-    accountTransactionUnique: uniqueIndex('idx_card_transactions_account_transaction_unique').on(
-      table.accountId,
-      table.transactionId
-    ),
+    primaryKey: primaryKey({
+      name: 'card_transactions_pkey',
+      columns: [table.accountId, table.transactionId]
+    }),
     accountStatusIdx: index('idx_card_transactions_account_status').on(
       table.accountId,
       table.status

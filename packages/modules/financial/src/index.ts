@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { BillingService } from '@cvg-his-v2/module-billing';
 import type { EncountersService } from '@cvg-his-v2/module-encounters';
 import type { OwnersService } from '@cvg-his-v2/module-owners';
@@ -923,7 +924,7 @@ export class EncounterFinancialService {
     const now = nowIso();
 
     const account: EncounterFinancialAccountRecord = {
-      id: existingAccount?.id ?? createCorrelationId('efa'),
+      id: existingAccount?.id ?? randomUUID(),
       accountId: encounter.accountId,
       encounterId: encounter.id,
       financialStatus: deriveFinancialStatus(balanceDue, paidAmount, total),
@@ -943,7 +944,7 @@ export class EncounterFinancialService {
 
     if (existingReceivables.length === 0) {
       const receivable: EncounterReceivableRecord = {
-        id: createCorrelationId('er'),
+        id: randomUUID(),
         accountId: encounter.accountId,
         encounterId: encounter.id,
         financialAccountId: account.id,
@@ -1065,7 +1066,7 @@ export class EncounterFinancialService {
     if (existingPayments.length === 0) {
       const now = nowIso();
       const receivables: EncounterReceivableRecord[] = installments.map((installment, index) => ({
-        id: createCorrelationId('er'),
+        id: randomUUID(),
         accountId: account.accountId,
         encounterId,
         financialAccountId: account.id,
@@ -1350,7 +1351,7 @@ export class EncounterFinancialService {
         await this.#repository.updateReceivable(updatedReceivable);
 
         const payment: EncounterReceivablePaymentRecord = {
-          id: createCorrelationId('erp'),
+          id: randomUUID(),
           accountId: account.accountId,
           encounterId,
           financialAccountId,

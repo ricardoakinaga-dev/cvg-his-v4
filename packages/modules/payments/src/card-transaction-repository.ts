@@ -1,6 +1,6 @@
 import { getPool } from '@cvg-his-v2/shared-database';
 import { nowIso } from '@cvg-his-v2/shared-utils';
-import { withTenantQuery } from '@cvg-his-v2/tenant-context';
+import { getTenantContext, withTenantQuery } from '@cvg-his-v2/tenant-context';
 
 export type CardGatewayProviderName = 'local-card' | 'pagarme-card';
 export type CardTransactionStatus =
@@ -120,23 +120,32 @@ function cloneRecord(record: CardTransactionRecord): CardTransactionRecord {
   return { ...record };
 }
 
+function recordKey(accountId: string, transactionId: string): string {
+  return `${accountId}\u0000${transactionId}`;
+}
+
 export class InMemoryCardTransactionRepository implements CardTransactionRepository {
   readonly #records = new Map<string, CardTransactionRecord>();
 
   async create(transaction: CardTransactionRecord): Promise<void> {
-    this.#records.set(transaction.transactionId, cloneRecord(transaction));
+    const key = recordKey(transaction.accountId, transaction.transactionId);
+    if (!this.#records.has(key)) {
+      this.#records.set(key, cloneRecord(transaction));
+    }
   }
 
   async findByTransactionId(transactionId: string): Promise<CardTransactionRecord | null> {
-    const record = this.#records.get(transactionId);
+    const key = this.#resolveKey(transactionId);
+    const record = key ? this.#records.get(key) : undefined;
     return record ? cloneRecord(record) : null;
   }
 
   async updateStatus(
     input: UpdateCardTransactionStatusInput
   ): Promise<CardTransactionRecord | null> {
-    const existing = this.#records.get(input.transactionId);
-    if (!existing) {
+    const key = this.#resolveKey(input.transactionId);
+    const existing = key ? this.#records.get(key) : undefined;
+    if (!key || !existing) {
       return null;
     }
 
@@ -154,15 +163,16 @@ export class InMemoryCardTransactionRepository implements CardTransactionReposit
       failureReason: input.failureReason ?? existing.failureReason,
       billingSettlementStatus: input.billingSettlementStatus ?? existing.billingSettlementStatus
     };
-    this.#records.set(updated.transactionId, updated);
+    this.#records.set(key, updated);
     return cloneRecord(updated);
   }
 
   async updateBillingSettlement(
     input: UpdateCardBillingSettlementInput
   ): Promise<CardTransactionRecord | null> {
-    const existing = this.#records.get(input.transactionId);
-    if (!existing) {
+    const key = this.#resolveKey(input.transactionId);
+    const existing = key ? this.#records.get(key) : undefined;
+    if (!key || !existing) {
       return null;
     }
 
@@ -173,7 +183,7 @@ export class InMemoryCardTransactionRepository implements CardTransactionReposit
       billingSettledAt: input.billingSettledAt,
       billingSettlementError: input.billingSettlementError
     };
-    this.#records.set(updated.transactionId, updated);
+    this.#records.set(key, updated);
     return cloneRecord(updated);
   }
 
@@ -192,6 +202,19 @@ export class InMemoryCardTransactionRepository implements CardTransactionReposit
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
       .map((item) => cloneRecord(item));
   }
+
+  #resolveKey(transactionId: string): string | undefined {
+    const accountId = getTenantContext()?.accountId;
+    if (accountId) {
+      const scopedKey = recordKey(accountId, transactionId);
+      return this.#records.has(scopedKey) ? scopedKey : undefined;
+    }
+
+    const matches = Array.from(this.#records.entries()).filter(
+      ([, record]) => record.transactionId === transactionId
+    );
+    return matches.length === 1 ? matches[0]?.[0] : undefined;
+  }
 }
 
 /** PostgreSQL-authoritative card transaction persistence used by API and worker runtimes. */
@@ -209,7 +232,7 @@ export class DatabaseCardTransactionRepository implements CardTransactionReposit
          ) VALUES (
            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
            $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24
-         ) ON CONFLICT (transaction_id) DO NOTHING`,
+         ) ON CONFLICT (account_id, transaction_id) DO NOTHING`,
         [
           transaction.transactionId,
           transaction.provider,

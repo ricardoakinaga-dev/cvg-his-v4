@@ -21,13 +21,17 @@ export function createWorkspaceAliases(root: string): Record<string, string> {
     '@cvg-his-v2/module-diagnostics': from('packages/modules/diagnostics/src/index.ts'),
     '@cvg-his-v2/module-discharges': from('packages/modules/discharges/src/index.ts'),
     '@cvg-his-v2/module-encounters': from('packages/modules/encounters/src/index.ts'),
+    '@cvg-his-v2/module-event-bus': from('packages/modules/event-bus/src/index.ts'),
+    '@cvg-his-v2/module-event-consumers': from('packages/modules/event-consumers/src/index.ts'),
     '@cvg-his-v2/module-feature-flags': from('packages/modules/feature-flags/src/index.ts'),
+    '@cvg-his-v2/module-financial': from('packages/modules/financial/src/index.ts'),
     '@cvg-his-v2/module-inpatient': from('packages/modules/inpatient/src/index.ts'),
     '@cvg-his-v2/module-inventory': from('packages/modules/inventory/src/index.ts'),
     '@cvg-his-v2/module-medical-records': from('packages/modules/medical-records/src/index.ts'),
     '@cvg-his-v2/module-notifications': from('packages/modules/notifications/src/index.ts'),
     '@cvg-his-v2/module-owners': from('packages/modules/owners/src/index.ts'),
     '@cvg-his-v2/module-patients': from('packages/modules/patients/src/index.ts'),
+    '@cvg-his-v2/module-payments': from('packages/modules/payments/src/index.ts'),
     '@cvg-his-v2/module-prescription-executions': from(
       'packages/modules/prescription-executions/src/index.ts'
     ),
