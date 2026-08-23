@@ -374,9 +374,11 @@ produção. A implementação final foi publicada em `67d47e2` (`test: stabilize
 tenant card collision assertions`), sobre `ab08865233c4091edcb83cb7319c78b9f406645e`
 (`fix: harden worker event persistence`). O SHA documental é
 `16797efada1747fc2a6046d4dd7842dc6e7eea42` (`docs: publish worker event
-continuity`); `git fetch` confirmou `HEAD == origin/agent/sync-v4-full-program`.
+continuity`), seguido da reconciliação final
+`8c21e246136cd32991b6927171fe67c76d41a27a`; `git fetch` confirmou
+`HEAD == origin/agent/sync-v4-full-program`.
 
-Ledgers/control-plane atuais: `execution-log.jsonl` **201** linhas e
-`verification.jsonl` **136** linhas parseiam, assim como `state.json` e
+Ledgers/control-plane atuais: `execution-log.jsonl` **202** linhas e
+`verification.jsonl` **137** linhas parseiam, assim como `state.json` e
 `backlog.json`. `.agent/check_state.py` não está presente no workspace atual;
 nenhum resultado canônico de checker foi inventado.

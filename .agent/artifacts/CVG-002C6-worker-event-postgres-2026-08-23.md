@@ -120,5 +120,6 @@ persistence`) no branch
 `agent/sync-v4-full-program`; `git fetch` confirmou igualdade com
 `origin/agent/sync-v4-full-program`. O ponteiro documental é
 `16797efada1747fc2a6046d4dd7842dc6e7eea42` (`docs: publish worker event
-continuity`). O cache user-owned
+continuity`), seguido da reconciliação final
+`8c21e246136cd32991b6927171fe67c76d41a27a`. O cache user-owned
 `packages/design-system/tsconfig.vue.tsbuildinfo` permaneceu fora do stage.
