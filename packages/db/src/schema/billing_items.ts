@@ -1,5 +1,14 @@
 import { sql } from 'drizzle-orm';
-import { check, index, numeric, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import {
+  check,
+  index,
+  numeric,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid
+} from 'drizzle-orm/pg-core';
 
 import { accounts } from './accounts.js';
 import { billingRecords } from './billing_records.js';
@@ -46,19 +55,29 @@ export const billingItems = pgTable(
       table.sourceEntityType,
       table.sourceEntityId
     ),
+    inpatientDailyChargeSourceUnique: uniqueIndex(
+      'billing_items_inpatient_daily_charge_source_unique'
+    )
+      .on(table.accountId, table.sourceEntityType, table.sourceEntityId)
+      .where(
+        sql`${table.sourceEntityType} = 'inpatient_daily_charge' and ${table.sourceEntityId} is not null`
+      ),
     itemTypeChk: check(
       'billing_items_item_type_chk',
       sql`${table.itemType} in ('service', 'supply', 'procedure', 'exam', 'daily_rate', 'other')`
     ),
     sourceTypeChk: check(
       'billing_items_source_type_chk',
-      sql`${table.sourceEntityType} is null or ${table.sourceEntityType} in ('encounter', 'diagnostic_order', 'surgery_case', 'inpatient_stay', 'prescription')`
+      sql`${table.sourceEntityType} is null or ${table.sourceEntityType} in ('encounter', 'diagnostic_order', 'surgery_case', 'inpatient_stay', 'inpatient_daily_charge', 'prescription')`
     ),
     quantityPositiveChk: check('billing_items_quantity_positive_chk', sql`${table.quantity} > 0`),
     unitPriceNonNegativeChk: check(
       'billing_items_unit_price_non_negative_chk',
       sql`${table.unitPriceAmount} >= 0`
     ),
-    totalNonNegativeChk: check('billing_items_total_non_negative_chk', sql`${table.totalAmount} >= 0`)
+    totalNonNegativeChk: check(
+      'billing_items_total_non_negative_chk',
+      sql`${table.totalAmount} >= 0`
+    )
   })
 );

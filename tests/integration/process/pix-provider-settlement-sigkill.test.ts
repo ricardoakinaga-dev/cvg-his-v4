@@ -15,7 +15,10 @@ import {
 } from '../../helpers/pix-settlement-process-fixture.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const processFixturePath = resolve(__dirname, '../../../apps/worker/test-fixtures/pix-provider-settlement-process.ts');
+const processFixturePath = resolve(
+  __dirname,
+  '../../../apps/worker/test-fixtures/pix-provider-settlement-process.ts'
+);
 const CHECKPOINTS = [
   'after_claim_commit',
   'before_b1',
@@ -33,9 +36,13 @@ interface WorkerProcess {
   readonly child: ChildProcess;
   readonly pid: number;
   readonly stderr: () => string;
+  readonly events: () => readonly ProcessEvent[];
+  release(): void;
   waitFor(event: string, timeoutMs?: number): Promise<ProcessEvent>;
   waitForClose(): Promise<{ readonly code: number | null; readonly signal: NodeJS.Signals | null }>;
-  kill(signal: NodeJS.Signals): Promise<{ readonly code: number | null; readonly signal: NodeJS.Signals | null }>;
+  kill(
+    signal: NodeJS.Signals
+  ): Promise<{ readonly code: number | null; readonly signal: NodeJS.Signals | null }>;
 }
 
 const activeProcesses = new Set<WorkerProcess>();
@@ -57,6 +64,7 @@ function startWorkerProcess(options: {
   readonly workerId: string;
   readonly checkpoint?: Checkpoint;
   readonly leaseMs: number;
+  readonly waitForRelease?: boolean;
   readonly exitAfterResult?: boolean;
 }): WorkerProcess {
   // Launch Node directly so the PID returned by spawn is the worker PID we
@@ -74,9 +82,10 @@ function startWorkerProcess(options: {
       PIX_SETTLEMENT_LEASE_MS: String(options.leaseMs),
       PIX_SETTLEMENT_CHECKPOINT: options.checkpoint ?? '',
       PIX_SETTLEMENT_HEALTH_PORT: '0',
+      PIX_SETTLEMENT_WAIT_FOR_RELEASE: options.waitForRelease ? '1' : '0',
       PIX_SETTLEMENT_EXIT_AFTER_RESULT: options.exitAfterResult ? '1' : '0'
     },
-    stdio: ['ignore', 'ignore', 'pipe', 'pipe']
+    stdio: ['pipe', 'ignore', 'pipe', 'pipe']
   });
   if (!child.pid) throw new Error('settlement process did not expose a PID');
   const controlChannel = child.stdio[3];
@@ -94,7 +103,11 @@ function startWorkerProcess(options: {
   const events: ProcessEvent[] = [];
   const waiters = new Map<
     string,
-    Array<{ resolve: (event: ProcessEvent) => void; reject: (error: Error) => void; timer: NodeJS.Timeout }>
+    Array<{
+      resolve: (event: ProcessEvent) => void;
+      reject: (error: Error) => void;
+      timer: NodeJS.Timeout;
+    }>
   >();
   const lines = createInterface({ input: controlChannel });
   lines.on('line', (line) => {
@@ -110,18 +123,28 @@ function startWorkerProcess(options: {
     }
   });
 
-  let closeResult: { readonly code: number | null; readonly signal: NodeJS.Signals | null } | null = null;
-  let closePromiseResolve: ((result: { readonly code: number | null; readonly signal: NodeJS.Signals | null }) => void) | null = null;
-  const closePromise = new Promise<{ readonly code: number | null; readonly signal: NodeJS.Signals | null }>((resolveClose) => {
+  let closeResult: { readonly code: number | null; readonly signal: NodeJS.Signals | null } | null =
+    null;
+  let closePromiseResolve:
+    | ((result: { readonly code: number | null; readonly signal: NodeJS.Signals | null }) => void)
+    | null = null;
+  const closePromise = new Promise<{
+    readonly code: number | null;
+    readonly signal: NodeJS.Signals | null;
+  }>((resolveClose) => {
     closePromiseResolve = resolveClose;
   });
   child.once('close', (code, signal) => {
     closeResult = { code, signal };
     closePromiseResolve?.(closeResult);
-    for (const pending of waiters.values()) {
+    for (const [eventName, pending] of waiters) {
       for (const waiter of pending) {
         clearTimeout(waiter.timer);
-        waiter.reject(new Error(`child closed before event; stderr=${stderr}`));
+        waiter.reject(
+          new Error(
+            `child closed before event ${eventName}; events=${JSON.stringify(events)}; stderr=${stderr}`
+          )
+        );
       }
     }
     waiters.clear();
@@ -131,14 +154,29 @@ function startWorkerProcess(options: {
     child,
     pid: child.pid,
     stderr: () => stderr,
+    events() {
+      return Object.freeze([...events]);
+    },
+    release() {
+      if (!child.stdin || child.stdin.destroyed)
+        throw new Error(`stdin is closed for PID ${child.pid}`);
+      child.stdin.write('PIX_RELEASE\n');
+    },
     waitFor(event, timeoutMs = 10_000) {
       const existing = events.find((candidate) => candidate.event === event);
       if (existing) return Promise.resolve(existing);
       return new Promise<ProcessEvent>((resolveEvent, rejectEvent) => {
         const timer = setTimeout(() => {
           const list = waiters.get(event) ?? [];
-          waiters.set(event, list.filter((item) => item.resolve !== resolveEvent));
-          rejectEvent(new Error(`timed out waiting for ${event}; stderr=${stderr}`));
+          waiters.set(
+            event,
+            list.filter((item) => item.resolve !== resolveEvent)
+          );
+          rejectEvent(
+            new Error(
+              `timed out waiting for ${event}; events=${JSON.stringify(events)}; stderr=${stderr}`
+            )
+          );
         }, timeoutMs);
         const list = waiters.get(event) ?? [];
         list.push({ resolve: resolveEvent, reject: rejectEvent, timer });
@@ -233,85 +271,195 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await Promise.all([...activeProcesses].map((processHandle) => processHandle.kill('SIGKILL').catch(() => undefined)));
+  await Promise.all(
+    [...activeProcesses].map((processHandle) =>
+      processHandle.kill('SIGKILL').catch(() => undefined)
+    )
+  );
 });
 
 describe('PIX settlement independent-process SIGKILL/restart matrix', () => {
-  it.each(CHECKPOINTS)('recovers after SIGKILL at %s', async (checkpoint) => {
+  it.each(CHECKPOINTS)(
+    'recovers after SIGKILL at %s',
+    async (checkpoint) => {
+      const fixture = await createPixSettlementProcessFixture();
+      await makePixSettlementProcessFixtureReady(fixture);
+      // Keep enough headroom for a cold Node/tsx process and PostgreSQL locks;
+      // the stale-fence test below still uses the short lease deliberately.
+      const leaseMs = 2_000;
+      const workerA = startWorkerProcess({
+        accountId: fixture.accountId,
+        workerId: `sigkill-a-${checkpoint}`,
+        checkpoint,
+        leaseMs
+      });
+      const readyA = await workerA.waitFor('PIX_READY');
+      expect(workerA.pid).toBe(Number(readyA.payload.pid));
+      const healthPort = Number(readyA.payload.port);
+      expect((await waitForHttp(healthPort, '/ready')).status).toBe(200);
+      expect((await waitForHttp(healthPort, '/metrics')).status).toBe(200);
+
+      const checkpointEvent = await workerA.waitFor('PIX_CHECKPOINT');
+      expect(checkpointEvent.payload.checkpoint).toBe(checkpoint);
+      expect(Number(checkpointEvent.payload.pid)).toBe(workerA.pid);
+
+      if (checkpoint === 'after_applied_cas') {
+        const stateAtCheckpoint = await readSettlementState(fixture);
+        expect(stateAtCheckpoint?.receipt_count).toBe('1');
+        expect(stateAtCheckpoint?.delivery_state).toBe('applied');
+      } else {
+        const stateAtCheckpoint = await readSettlementState(fixture);
+        expect(stateAtCheckpoint?.delivery_state).toBe('processing');
+      }
+
+      const killed = await workerA.kill('SIGKILL');
+      expect(killed.signal).toBe('SIGKILL');
+
+      if (checkpoint !== 'after_applied_cas') {
+        await waitForLeaseExpiry(fixture);
+      }
+
+      const workerB = startWorkerProcess({
+        accountId: fixture.accountId,
+        workerId: `sigkill-b-${checkpoint}`,
+        leaseMs,
+        exitAfterResult: true
+      });
+      const readyB = await workerB.waitFor('PIX_READY');
+      expect(Number(readyB.payload.pid)).toBe(workerB.pid);
+      expect(workerB.pid).not.toBe(workerA.pid);
+      expect((await waitForHttp(Number(readyB.payload.port), '/ready')).status).toBe(200);
+      expect((await waitForHttp(Number(readyB.payload.port), '/metrics')).status).toBe(200);
+      const resultEvent = await workerB.waitFor('PIX_RESULT');
+      const result = resultEvent.payload.result as {
+        readonly status: string;
+        readonly deliveryId?: string;
+      };
+      if (checkpoint === 'after_applied_cas') {
+        expect(result.status).toBe('idle');
+      } else {
+        expect(result).toMatchObject({ status: 'applied', deliveryId: fixture.deliveryId });
+      }
+      const closedB = await workerB.waitForClose();
+      expect(closedB).toEqual({ code: 0, signal: null });
+      expect(workerB.stderr()).toBe('');
+
+      const workerC = startWorkerProcess({
+        accountId: fixture.accountId,
+        workerId: `sigkill-c-${checkpoint}`,
+        leaseMs,
+        exitAfterResult: true
+      });
+      await workerC.waitFor('PIX_READY');
+      const idleAfterRestart = await workerC.waitFor('PIX_RESULT');
+      expect(idleAfterRestart.payload.result).toMatchObject({ status: 'idle' });
+      expect(await workerC.waitForClose()).toEqual({ code: 0, signal: null });
+      expect(workerC.stderr()).toBe('');
+
+      const finalState = await readSettlementState(fixture);
+      expect(finalState).toMatchObject({
+        delivery_state: 'applied',
+        attempts: checkpoint === 'after_applied_cas' ? 1 : 2,
+        lease_version: checkpoint === 'after_applied_cas' ? '1' : '2',
+        receipt_count: '1',
+        billing_status: 'settled',
+        attempt_state: 'settled',
+        pix_status: 'completed',
+        pix_settlement_status: 'applied'
+      });
+    },
+    60_000
+  );
+
+  it('observes a live stale process after takeover and fences it before B1', async () => {
     const fixture = await createPixSettlementProcessFixture();
     await makePixSettlementProcessFixtureReady(fixture);
-    const leaseMs = 300;
     const workerA = startWorkerProcess({
       accountId: fixture.accountId,
-      workerId: `sigkill-a-${checkpoint}`,
-      checkpoint,
-      leaseMs
+      workerId: 'stale-process-a',
+      checkpoint: 'after_claim_commit',
+      leaseMs: 300,
+      waitForRelease: true,
+      exitAfterResult: true
     });
     const readyA = await workerA.waitFor('PIX_READY');
-    expect(workerA.pid).toBe(Number(readyA.payload.pid));
-    const healthPort = Number(readyA.payload.port);
-    expect((await waitForHttp(healthPort, '/ready')).status).toBe(200);
-    expect((await waitForHttp(healthPort, '/metrics')).status).toBe(200);
-
-    const checkpointEvent = await workerA.waitFor('PIX_CHECKPOINT');
-    expect(checkpointEvent.payload.checkpoint).toBe(checkpoint);
-    expect(Number(checkpointEvent.payload.pid)).toBe(workerA.pid);
-
-    if (checkpoint === 'after_applied_cas') {
-      const stateAtCheckpoint = await readSettlementState(fixture);
-      expect(stateAtCheckpoint?.receipt_count).toBe('1');
-      expect(stateAtCheckpoint?.delivery_state).toBe('applied');
-    } else {
-      const stateAtCheckpoint = await readSettlementState(fixture);
-      expect(stateAtCheckpoint?.delivery_state).toBe('processing');
-    }
-
-    const killed = await workerA.kill('SIGKILL');
-    expect(killed.signal).toBe('SIGKILL');
-
-    if (checkpoint !== 'after_applied_cas') {
-      await waitForLeaseExpiry(fixture);
-    }
+    expect(Number(readyA.payload.pid)).toBe(workerA.pid);
+    const checkpointA = await workerA.waitFor('PIX_CHECKPOINT');
+    expect(checkpointA.payload).toMatchObject({
+      checkpoint: 'after_claim_commit',
+      leaseVersion: 1,
+      pid: workerA.pid
+    });
+    await waitForLeaseExpiry(fixture);
+    expect(() => process.kill(workerA.pid, 0)).not.toThrow();
 
     const workerB = startWorkerProcess({
       accountId: fixture.accountId,
-      workerId: `sigkill-b-${checkpoint}`,
-      leaseMs,
+      workerId: 'stale-process-b',
+      checkpoint: 'after_claim_commit',
+      leaseMs: 60_000,
+      waitForRelease: true,
       exitAfterResult: true
     });
     const readyB = await workerB.waitFor('PIX_READY');
     expect(Number(readyB.payload.pid)).toBe(workerB.pid);
     expect(workerB.pid).not.toBe(workerA.pid);
-    expect((await waitForHttp(Number(readyB.payload.port), '/ready')).status).toBe(200);
-    expect((await waitForHttp(Number(readyB.payload.port), '/metrics')).status).toBe(200);
-    const resultEvent = await workerB.waitFor('PIX_RESULT');
-    const result = resultEvent.payload.result as { readonly status: string; readonly deliveryId?: string };
-    if (checkpoint === 'after_applied_cas') {
-      expect(result.status).toBe('idle');
-    } else {
-      expect(result).toMatchObject({ status: 'applied', deliveryId: fixture.deliveryId });
-    }
-    const closedB = await workerB.waitForClose();
-    expect(closedB).toEqual({ code: 0, signal: null });
+    const checkpointB = await workerB.waitFor('PIX_CHECKPOINT');
+    expect(checkpointB.payload).toMatchObject({
+      checkpoint: 'after_claim_commit',
+      leaseVersion: 2,
+      pid: workerB.pid
+    });
+    expect(
+      workerB
+        .events()
+        .filter((event) => event.event === 'PIX_CHECKPOINT_OBSERVED')
+        .map((event) => event.payload.checkpoint)
+    ).toEqual(['after_claim_commit']);
+    expect(await readSettlementState(fixture)).toMatchObject({
+      delivery_state: 'processing',
+      attempts: 2,
+      lease_version: '2',
+      receipt_count: '0'
+    });
+
+    workerA.release();
+    await workerA.waitFor('PIX_RELEASED');
+    const staleResult = await workerA.waitFor('PIX_RESULT');
+    expect(staleResult.payload.result).toMatchObject({
+      status: 'lease_lost',
+      deliveryId: fixture.deliveryId
+    });
+    expect(
+      workerA
+        .events()
+        .filter((event) => event.event === 'PIX_CHECKPOINT_OBSERVED')
+        .map((event) => event.payload.checkpoint)
+    ).toEqual(['after_claim_commit']);
+    expect(await workerA.waitForClose()).toEqual({ code: 0, signal: null });
+    expect(workerA.stderr()).toBe('');
+
+    workerB.release();
+    await workerB.waitFor('PIX_RELEASED');
+    const appliedResult = await workerB.waitFor('PIX_RESULT');
+    expect(appliedResult.payload.result).toMatchObject({
+      status: 'applied',
+      deliveryId: fixture.deliveryId
+    });
+    // Once released, B must still traverse B1 and the final CAS exactly once.
+    expect(
+      workerB
+        .events()
+        .filter((event) => event.event === 'PIX_CHECKPOINT_OBSERVED')
+        .map((event) => event.payload.checkpoint)
+    ).toEqual(['after_claim_commit', 'before_b1', 'after_b1_before_cas', 'after_applied_cas']);
+    expect(await workerB.waitForClose()).toEqual({ code: 0, signal: null });
     expect(workerB.stderr()).toBe('');
 
-    const workerC = startWorkerProcess({
-      accountId: fixture.accountId,
-      workerId: `sigkill-c-${checkpoint}`,
-      leaseMs,
-      exitAfterResult: true
-    });
-    await workerC.waitFor('PIX_READY');
-    const idleAfterRestart = await workerC.waitFor('PIX_RESULT');
-    expect(idleAfterRestart.payload.result).toMatchObject({ status: 'idle' });
-    expect(await workerC.waitForClose()).toEqual({ code: 0, signal: null });
-    expect(workerC.stderr()).toBe('');
-
-    const finalState = await readSettlementState(fixture);
-    expect(finalState).toMatchObject({
+    expect(await readSettlementState(fixture)).toMatchObject({
       delivery_state: 'applied',
-      attempts: checkpoint === 'after_applied_cas' ? 1 : 2,
-      lease_version: checkpoint === 'after_applied_cas' ? '1' : '2',
+      attempts: 2,
+      lease_version: '2',
       receipt_count: '1',
       billing_status: 'settled',
       attempt_state: 'settled',

@@ -1,11 +1,8 @@
 import { createServer } from 'node:http';
-import { createWriteStream } from 'node:fs';
+import { createWriteStream, writeSync } from 'node:fs';
+import { createInterface } from 'node:readline';
 
-import {
-  closeDatabaseClient,
-  createDatabaseClient,
-  getPool
-} from '@cvg-his-v2/shared-database';
+import { closeDatabaseClient, createDatabaseClient, getPool } from '@cvg-his-v2/shared-database';
 
 import { DatabasePixProviderEventDeliveryRepository } from '../src/jobs/pix-provider-event-delivery-repository.js';
 import {
@@ -23,6 +20,7 @@ const checkpoint = checkpointValue
   : undefined;
 const leaseMs = Number(process.env.PIX_SETTLEMENT_LEASE_MS ?? '250');
 const healthPort = Number(process.env.PIX_SETTLEMENT_HEALTH_PORT ?? '0');
+const waitForRelease = process.env.PIX_SETTLEMENT_WAIT_FOR_RELEASE === '1';
 const exitAfterResult = process.env.PIX_SETTLEMENT_EXIT_AFTER_RESULT === '1';
 
 const checkpoints: readonly PixProviderSettlementCheckpoint[] = [
@@ -36,10 +34,13 @@ const checkpoints: readonly PixProviderSettlementCheckpoint[] = [
 // integration harness. It is intentionally separate from stdout/stderr so
 // checkpoint synchronization never parses application logs.
 let controlChannel: ReturnType<typeof createWriteStream> | undefined;
+let releaseResolver: (() => void) | undefined;
 
 function getConfig(): { readonly accountId: string; readonly databaseUrl: string } {
   if (process.env.NODE_ENV !== 'test' || process.env.PIX_SETTLEMENT_SYNTHETIC_FIXTURE !== '1') {
-    throw new Error('synthetic settlement process requires NODE_ENV=test and PIX_SETTLEMENT_SYNTHETIC_FIXTURE=1');
+    throw new Error(
+      'synthetic settlement process requires NODE_ENV=test and PIX_SETTLEMENT_SYNTHETIC_FIXTURE=1'
+    );
   }
   if (!accountId || !databaseUrl) throw new Error('process fixture requires account and database');
   if (!checkpoints.includes(checkpoint as PixProviderSettlementCheckpoint)) {
@@ -56,16 +57,36 @@ function getConfig(): { readonly accountId: string; readonly databaseUrl: string
 
 function writeLine(event: string, payload: Record<string, unknown> = {}): void {
   if (!controlChannel) throw new Error('synthetic settlement control channel is not initialized');
-  controlChannel.write(`${event} ${JSON.stringify(payload)}\n`);
+  // The fixture may call process.exit immediately after PIX_RESULT. A sync
+  // write keeps the fd-3 protocol lossless even when several observation
+  // events preceded the terminal result.
+  writeSync(3, `${event} ${JSON.stringify(payload)}\n`);
 }
 
 function waitForever(): Promise<void> {
   return new Promise(() => undefined);
 }
 
+function waitForReleaseSignal(): Promise<void> {
+  if (!waitForRelease) return Promise.resolve();
+  return new Promise<void>((resolve) => {
+    releaseResolver = resolve;
+  });
+}
+
 async function main(): Promise<void> {
   const config = getConfig();
   controlChannel = createWriteStream(null as unknown as string, { fd: 3, autoClose: false });
+  if (waitForRelease) {
+    const commands = createInterface({ input: process.stdin });
+    commands.on('line', (line) => {
+      if (line.trim() !== 'PIX_RELEASE') return;
+      writeLine('PIX_RELEASED', { pid: process.pid });
+      releaseResolver?.();
+      releaseResolver = undefined;
+      commands.close();
+    });
+  }
   createDatabaseClient(config.databaseUrl);
   await getPool().query('SELECT 1');
 
@@ -106,9 +127,10 @@ async function main(): Promise<void> {
     leaseMs,
     allowSyntheticProviders: true,
     onCheckpoint: async (name, context) => {
+      writeLine('PIX_CHECKPOINT_OBSERVED', { checkpoint: name, ...context, pid: process.pid });
       if (name !== checkpoint) return;
       writeLine('PIX_CHECKPOINT', { checkpoint: name, ...context, pid: process.pid });
-      await waitForever();
+      await (waitForRelease ? waitForReleaseSignal() : waitForever());
     }
   });
 
@@ -128,7 +150,9 @@ async function main(): Promise<void> {
 }
 
 main().catch(async (error) => {
-  process.stderr.write(`${error instanceof Error ? error.stack ?? error.message : String(error)}\n`);
+  process.stderr.write(
+    `${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`
+  );
   await closeDatabaseClient().catch(() => undefined);
   process.exitCode = 1;
 });

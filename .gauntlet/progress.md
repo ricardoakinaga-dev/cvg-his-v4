@@ -145,3 +145,28 @@ Após esse gate operacional, a primeira jornada de produto a decompor é
 idempotência, proveniência, auditoria, cutoff de alta, RLS/tenant e estados de
 UI. Esta é uma recomendação de planejamento; não altera o status `BUILD` nem
 promove qualquer gate do ERP.
+
+## Checkpoint mais recente — stale-fence e billing diário (23/08/2026)
+
+O race stale que faltava foi executado no boundary de processos: A permanece
+vivo em `after_claim_commit`, sua lease expira, B assume com fence 2, A é
+liberado primeiro e retorna `lease_lost` sem atravessar B1; B é liberado depois
+e aplica uma vez. A matriz total passou `5/5` (quatro pontos de SIGKILL mais o
+takeover stale). A prova continua delimitada a PostgreSQL descartável,
+`local-pix` e fixture mínimo; readiness do worker principal, journal/outbox/
+inbox detalhados, Redis failover/clock-skew e provider real permanecem abertos.
+
+A primeira fatia clínica-financeira não-PIX também foi implementada:
+`inpatient_daily_charge` é uma fonte financeira idempotente, com replay `200`,
+conflito para vínculo divergente, índice unique partial, convergência de
+`23505` e recuperação do billing record vencedor na corrida de primeira
+criação. Evidência: route `10/10`, module-inpatient `17/17`, module-billing
+`16/16`, integração PostgreSQL `2/2`, API `324/324`, worker `58` + build e
+builds DB/module/API. O artefato é
+`.agent/artifacts/CVG-002C-inpatient-daily-billing-idempotency-2026-08-23.md`.
+
+O Quality Bar continua sem promoção global. Próxima ação: publicar este
+checkpoint, exercitar Redis failover/clock-skew sob `fail-closed` e decompor
+`admissão → handoff/permanência → diária → alta → item/recebimento` com REDs
+PostgreSQL/RLS. B2c/SPA, provider, Vetus parity, WCAG, target ops, coverage e
+release permanecem gates separados.

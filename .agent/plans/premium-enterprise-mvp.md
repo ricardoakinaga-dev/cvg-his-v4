@@ -23,7 +23,9 @@ Transform the current broad, partially implemented veterinary ERP into a behavio
 - [x] (2026-08-23T02:08:00-03:00) Saved the post-DLQ continuation state from published base `d525acc`: checkpoint, handoff, README, backlog, ExecPlan and Gauntlet pointers now capture the current checker result and exact next action; the documentation wave is published in `76f7ec5`, and the user-owned design-system cache remains outside scope.
 - [x] (2026-08-23T02:53:06-03:00) Implemented the minimum authenticated API-key principal and fail-closed distributed rate-limit policy. The SQL capability/function now expose only eight authentication fields; two HTTP instances sharing PostgreSQL proved `2×201`/`6×429`; Redis failure/missing configuration is `fail-closed` with `productionReady=false`; fresh regressions passed module PIX `8/8`, B1 command `17/17`, B2a `33/33`, ingress `11/11` and callback HTTP `13/13`. Artifact: `.agent/artifacts/CVG-002B2B-api-key-principal-rate-limit-2026-08-23.md`.
 - [x] (2026-08-23T03:02:07-03:00) Independent read-only review approved the bounded principal/rate-limit slice without CRITICAL/HIGH/MEDIUM blockers; implementation, tests and control plane were published in `099ac2a1ff5f1ed9f74812d2466dccb42681737d`. The two-listener same-process limitation and the remaining SIGKILL/Redis failover gaps are explicit.
-- [ ] Prove a real process crash/SIGKILL matrix; the bounded principal projection and fail-closed policy are now implemented. Re-run the bounded B1/B2a/ingress/HTTP set if the restart/policy work changes runtime behavior; gate `B2c` separately for coherent SPA/restart E2E.
+- [x] (2026-08-23T04:02:31-03:00) Implemented the independent-process SIGKILL/restart matrix and hardened the synthetic fixture boundary. The four kill checkpoints passed, the fd 3 protocol is deterministic, and the fixture is test-only/outside the production worker tsconfig.
+- [x] (2026-08-23T05:00:00-03:00) Proved the live stale-fence race with A held after lease expiry and B takeover, then implemented and verified the inpatient daily-charge → billing idempotency boundary, including first billing-record creation races and the Drizzle/migration/OpenAPI contract.
+- [ ] Exercise Redis failover/clock-skew under the fail-closed policy; preserve the bounded 5/5 process evidence and expand the clinical journey with PostgreSQL/RLS REDs. Gate `B2c` separately for coherent SPA/restart E2E.
 - [ ] Complete `CVG-001` through TDD, integrated runtime proof and independent critique.
 - [ ] Execute the remaining backlog in dependency order, preserving fresh evidence and explicit human/external boundaries.
 
@@ -168,13 +170,13 @@ From `/home/ricardo/cvg-his-v4`:
    tests first: operator-facing PIX settlement DLQ query/redrive, runbook,
    current-backlog gauge, alerts and dashboard, without mutating financial
    artifacts outside the existing repository contract.
-4. Define and test the multi-replica rate-limit policy and narrow the
-   authenticated pre-context principal projection; then add settlement
-   checkpoints and execute the real two-process SIGKILL/restart matrix at
-   `after_claim_commit`, `before_b1`, `after_b1_before_cas` and
-   `after_applied_cas`, rerunning B1/B2a/ingress/HTTP regressions when runtime
-   behavior changes.
-5. Obtain a fresh independent adversarial review before any `VERIFIED` change;
+4. Completed locally: define the fail-closed rate-limit boundary, narrow the
+   principal, add settlement checkpoints, execute the two-process SIGKILL
+   matrix and prove the live stale-fence takeover. Preserve the 5/5 evidence.
+5. Completed locally: implement the non-PIX inpatient daily-charge → billing
+   idempotency boundary with source provenance, partial unique index, replay,
+   divergent conflict and first-record race coverage.
+6. Obtain a fresh independent adversarial review before any `VERIFIED` change;
    gate B2c/SPA, Vetus parity, WCAG, providers, target operations and release
    separately.
 
@@ -253,3 +255,14 @@ of the matrix, and the minimal fixture probes do not certify the main worker's
 full readiness semantics. The synthetic fixture was moved outside the worker
 production tsconfig and now fails closed without explicit test markers; fd 3 is
 the machine-readable control channel. Preserve these limits in every checkpoint.
+
+Plan revision note, 2026-08-23 (stale-fence and clinical-financial slice): The
+live A-vivo/B-takeover case now passes with A returning `lease_lost` before
+`before_b1` and B applying once; total process evidence is 5/5. The first
+non-PIX clinical-financial boundary is implemented as an idempotent
+`inpatient_daily_charge` source item, including the race where the billing
+record itself does not yet exist. Migration, Drizzle schema, OpenAPI and
+PostgreSQL integration are aligned. This does not promote the Quality Bar;
+Redis failover/clock-skew, the full admission/handoff/discharge journey,
+journal/outbox/inbox detail, worker target readiness, SPA, provider, parity,
+WCAG, operations and release remain open.

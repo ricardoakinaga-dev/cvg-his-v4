@@ -46,21 +46,18 @@ test('InpatientService waits for atomic admission rollback before rejecting pers
     ownerId: 'owner_atomic',
     createdByUserId: 'user_atomic'
   };
-  const service = new InpatientService(
-    { getOrThrow: () => encounter } as never,
-    {
-      stayRepository: {
-        create: async () => {},
-        createWithBedOccupation: async () => {
-          throw new Error('bed occupation failed');
-        },
-        update: async () => {},
-        findById: async () => null,
-        findByEncounterId: async () => [],
-        findByAccountId: async () => []
-      }
+  const service = new InpatientService({ getOrThrow: () => encounter } as never, {
+    stayRepository: {
+      create: async () => {},
+      createWithBedOccupation: async () => {
+        throw new Error('bed occupation failed');
+      },
+      update: async () => {},
+      findById: async () => null,
+      findByEncounterId: async () => [],
+      findByAccountId: async () => []
     }
-  );
+  });
 
   const stay = service.admit(
     {
@@ -199,6 +196,9 @@ test('InpatientService manages daily charge lifecycle for inpatient billing', ()
 
   assert.equal(billed.status, 'billed');
   assert.equal(billed.billingRecordId, 'bill_1');
+
+  const replayed = service.markDailyChargeBilled(stay.id, charge.id);
+  assert.deepEqual(replayed, billed);
 });
 
 test('InpatientService lists daily charge worklist filtered by status and ward', () => {
@@ -315,7 +315,6 @@ test('InpatientService updateStatus blocks invalid transitions', () => {
     status: 'discharged',
     dischargeReason: 'Alta clinica'
   });
-
 
   assert.throws(
     () => service.updateStatus(stay.id, { status: 'admitted' }),

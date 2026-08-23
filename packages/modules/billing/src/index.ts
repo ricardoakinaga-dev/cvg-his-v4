@@ -23,6 +23,32 @@ import {
 } from '@cvg-his-v2/shared-validation';
 import type { BillingRepository } from './repositories/database-billing.repository.js';
 
+function isUniqueViolation(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const code = 'code' in error ? (error as { readonly code?: unknown }).code : undefined;
+  return code === '23505';
+}
+
+function matchesSourceItem(
+  item: BillingItemSummary,
+  payload: CreateBillingItemRequest,
+  encounterId: EncounterId,
+  description: string,
+  quantity: number,
+  unitPriceAmount: number,
+  sourceEntityId: string
+): boolean {
+  return (
+    item.encounterId === encounterId &&
+    item.itemType === payload.itemType &&
+    item.description === description &&
+    item.quantity === quantity &&
+    item.unitPriceAmount === unitPriceAmount &&
+    item.sourceEntityType === payload.sourceEntityType &&
+    item.sourceEntityId === sourceEntityId
+  );
+}
+
 export interface BillingServiceOptions {
   readonly repository?: BillingRepository;
   readonly onRecordCreated?: (record: BillingRecordSummary) => Promise<void>;
@@ -74,9 +100,7 @@ export class BillingService {
     }
   }
 
-  public async findByEncounter(
-    encounterId: EncounterId
-  ): Promise<BillingRecordSummary | null> {
+  public async findByEncounter(encounterId: EncounterId): Promise<BillingRecordSummary | null> {
     const encounter = this.#encounters.getOrThrow(encounterId);
 
     if (this.#repository) {
@@ -131,7 +155,38 @@ export class BillingService {
     this.#items.set(record.id, []);
 
     if (this.#repository) {
-      await this.#repository.createRecord(record);
+      try {
+        await this.#repository.createRecord(record);
+      } catch (error) {
+        // The encounter unique index closes the race between two runtimes
+        // creating the first billing record. Reload the committed winner and
+        // continue the caller's idempotent command against that record.
+        if (!isUniqueViolation(error)) {
+          this.#records.delete(record.id);
+          this.#recordByEncounterId.delete(encounterId);
+          this.#items.delete(record.id);
+          throw error;
+        }
+
+        const concurrent = await this.#repository.findRecordByEncounter(
+          record.accountId,
+          encounterId
+        );
+        if (!concurrent) {
+          this.#records.delete(record.id);
+          this.#recordByEncounterId.delete(encounterId);
+          this.#items.delete(record.id);
+          throw error;
+        }
+
+        this.#records.set(concurrent.id, concurrent);
+        this.#recordByEncounterId.set(encounterId, concurrent.id);
+        const items = await this.#repository.findItemsByRecord(concurrent.accountId, concurrent.id);
+        this.#items.set(concurrent.id, [...items]);
+        this.#records.delete(record.id);
+        this.#items.delete(record.id);
+        return concurrent;
+      }
     }
 
     await this.#onRecordCreated?.(record);
@@ -140,21 +195,14 @@ export class BillingService {
   }
 
   public list(filters?: string | BillingRecordFilters): readonly BillingRecordSummary[] {
-    const normalized =
-      typeof filters === 'string' ? { encounterId: filters } : filters ?? {};
+    const normalized = typeof filters === 'string' ? { encounterId: filters } : (filters ?? {});
     return Array.from(this.#records.values())
-      .filter((record) =>
-        normalized.accountId ? record.accountId === normalized.accountId : true
-      )
+      .filter((record) => (normalized.accountId ? record.accountId === normalized.accountId : true))
       .filter((record) =>
         normalized.encounterId ? record.encounterId === normalized.encounterId : true
       )
-      .filter((record) =>
-        normalized.patientId ? record.patientId === normalized.patientId : true
-      )
-      .filter((record) =>
-        normalized.ownerId ? record.ownerId === normalized.ownerId : true
-      );
+      .filter((record) => (normalized.patientId ? record.patientId === normalized.patientId : true))
+      .filter((record) => (normalized.ownerId ? record.ownerId === normalized.ownerId : true));
   }
 
   public async listAuthoritative(
@@ -168,15 +216,9 @@ export class BillingService {
       this.#recordByEncounterId.set(record.encounterId, record.id);
     }
     return records
-      .filter((record) =>
-        filters.encounterId ? record.encounterId === filters.encounterId : true
-      )
-      .filter((record) =>
-        filters.patientId ? record.patientId === filters.patientId : true
-      )
-      .filter((record) =>
-        filters.ownerId ? record.ownerId === filters.ownerId : true
-      );
+      .filter((record) => (filters.encounterId ? record.encounterId === filters.encounterId : true))
+      .filter((record) => (filters.patientId ? record.patientId === filters.patientId : true))
+      .filter((record) => (filters.ownerId ? record.ownerId === filters.ownerId : true));
   }
 
   public async getByEncounterOrThrow(encounterId: EncounterId): Promise<BillingRecordSummary> {
@@ -220,6 +262,38 @@ export class BillingService {
 
     const quantity = requirePositiveNumber(payload.quantity, 'quantity');
     const unitPriceAmount = requirePositiveNumber(payload.unitPriceAmount, 'unitPriceAmount');
+    const description = requireNonEmptyString(payload.description, 'description');
+    requireEnum(payload.itemType, 'itemType', [
+      'service',
+      'supply',
+      'procedure',
+      'exam',
+      'daily_rate',
+      'other'
+    ]);
+    if (payload.sourceEntityType) {
+      requireEnum(payload.sourceEntityType, 'sourceEntityType', [
+        'encounter',
+        'diagnostic_order',
+        'surgery_case',
+        'inpatient_stay',
+        'inpatient_daily_charge',
+        'prescription'
+      ]);
+    }
+    const sourceEntityId = payload.sourceEntityId?.trim() || undefined;
+
+    const existing = await this.findExistingSourceItem(
+      record,
+      payload,
+      encounterId,
+      description,
+      quantity,
+      unitPriceAmount,
+      sourceEntityId
+    );
+    if (existing) return existing;
+
     const item: BillingItemSummary = {
       id: createCorrelationId('billitem') as BillingItemId,
       billingRecordId: record.id,
@@ -233,12 +307,12 @@ export class BillingService {
         'daily_rate',
         'other'
       ]),
-      description: requireNonEmptyString(payload.description, 'description'),
+      description,
       quantity,
       unitPriceAmount,
       totalAmount: Number((quantity * unitPriceAmount).toFixed(2)),
       sourceEntityType: payload.sourceEntityType,
-      sourceEntityId: payload.sourceEntityId?.trim() || undefined,
+      sourceEntityId,
       createdByUserId: actorUserId,
       createdAt: nowIso()
     };
@@ -252,13 +326,79 @@ export class BillingService {
     };
 
     if (this.#repository) {
-      await this.#repository.createItem(item);
+      try {
+        await this.#repository.createItem(item);
+      } catch (error) {
+        // The source unique index closes the race between two API instances.
+        // Resolve the winner and replay it only when the request is identical.
+        if (isUniqueViolation(error)) {
+          const concurrent = await this.findExistingSourceItem(
+            record,
+            payload,
+            encounterId,
+            description,
+            quantity,
+            unitPriceAmount,
+            sourceEntityId
+          );
+          if (concurrent) return concurrent;
+        }
+        throw error;
+      }
     }
 
     this.#items.set(record.id, nextItems);
     this.#records.set(record.id, updatedRecord);
 
     return item;
+  }
+
+  private async findExistingSourceItem(
+    record: BillingRecordSummary,
+    payload: CreateBillingItemRequest,
+    encounterId: EncounterId,
+    description: string,
+    quantity: number,
+    unitPriceAmount: number,
+    sourceEntityId: string | undefined
+  ): Promise<BillingItemSummary | null> {
+    if (!payload.sourceEntityType || !sourceEntityId) return null;
+
+    const cached = (this.#items.get(record.id) ?? []).find(
+      (item) =>
+        item.sourceEntityType === payload.sourceEntityType && item.sourceEntityId === sourceEntityId
+    );
+    const persisted =
+      cached ??
+      (await this.#repository?.findItemBySource?.(
+        record.accountId,
+        payload.sourceEntityType,
+        sourceEntityId
+      ));
+    if (!persisted) return null;
+
+    if (
+      !matchesSourceItem(
+        persisted,
+        payload,
+        encounterId,
+        description,
+        quantity,
+        unitPriceAmount,
+        sourceEntityId
+      )
+    ) {
+      throw new ConflictError('Billing source item already exists with different values', {
+        sourceEntityType: payload.sourceEntityType,
+        sourceEntityId
+      });
+    }
+
+    const current = this.#items.get(persisted.billingRecordId) ?? [];
+    if (!current.some((item) => item.id === persisted.id)) {
+      this.#items.set(persisted.billingRecordId, [persisted, ...current]);
+    }
+    return persisted;
   }
 
   public async listItems(encounterId: EncounterId): Promise<readonly BillingItemSummary[]> {

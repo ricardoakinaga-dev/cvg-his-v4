@@ -16,10 +16,10 @@ global nem promove `CVG-002B2B` para `VERIFIED`.
 | `REL-SIGKILL-01` | boundary | Worker A e B são processos Node distintos, com PIDs distintos, iniciados pelo harness e ligados ao mesmo PostgreSQL descartável | `pix-provider-settlement-sigkill.test.ts`: quatro casos com `spawn(process.execPath, ['--import','tsx/esm', ...])`, assert de PID e mesmo `DATABASE_URL` descartável — PASS | o provider continua sintético/local; não é homologação externa |
 | `REL-SIGKILL-02` | restart | `SIGKILL` em `after_claim_commit`, `before_b1`, `after_b1_before_cas` e `after_applied_cas` deixa o sucessor tomar a lease e concluir sem erro não observado | matriz parametrizada 4/4 verde; cada kill aguarda o evento de checkpoint e o sucessor aguarda `PIX_RESULT` — PASS | lease curta é deliberadamente de teste; não representa tuning de produção |
 | `REL-SIGKILL-03` | integridade | cada caso termina com delivery canônico único, exatamente uma receipt/efeito B1, sem duas aplicações financeiras; tick seguinte não encontra item | consultas PostgreSQL finais: `delivery_state=applied`, `receipt_count=1`, billing/attempt/PIX settled/completed/applied; B e um tick C retornam o estado esperado — PASS limitado | ainda não agrega nesta matriz contagens detalhadas de journal/outbox/inbox nem valores contábeis linha a linha; provider local sintético não é homologação externa |
-| `REL-SIGKILL-04` | fence | claim antigo não pode executar B1/CAS depois que o sucessor assumiu | casos pré-CAS terminam em `attempts=2`, `lease_version=2`; teste stale negativo existe na suíte do consumer/PostgreSQL — NÃO PROVADO no boundary de processos | A é morto antes de uma corrida pós-takeover deliberada; falta manter A vivo, liberar o checkpoint e observar tentativa stale rejeitada |
+| `REL-SIGKILL-04` | fence | claim antigo não pode executar B1/CAS depois que o sucessor assumiu | teste de processo mantém A vivo após lease expirar, B assume `lease_version=2`, A é liberado primeiro e retorna `lease_lost` sem atravessar `before_b1`; B é então liberado e aplica uma vez — PASS delimitado | prova local usa `local-pix`, PostgreSQL descartável e lease curta; não substitui Redis/failover ou o worker principal em target |
 | `OPS-RESTART-01` | operação | `/ready` ou `/health/ready` e `/metrics` respondem no processo vivo antes do tick e no sucessor após restart | requests HTTP reais para `/ready` e `/metrics` em A e B em todos os quatro casos — PASS | o fixture é um entrypoint mínimo de prova, não um deploy de produção |
 | `REL-SIGKILL-05` | determinismo | checkpoint sinaliza por canal determinístico; o harness não depende de parsing de log ou atraso arbitrário para decidir o kill | fd 3 dedicado com linhas JSON `PIX_READY`/`PIX_CHECKPOINT`/`PIX_RESULT`, `readline`, timeouts e cleanup; stdout/stderr ficam fora do protocolo — PASS limitado | IPC de produção e sinais de orquestrador ainda não foram homologados |
-| `REG-SIGKILL-01` | regressão | suíte unitária do consumer, integração PostgreSQL de settlement e build/typecheck do worker permanecem verdes | worker: 58 testes + build; settlement PostgreSQL 6/6; B1 18/18; ingress HTTP 2/2; matriz processo 4/4 — PASS | regressões adicionais só são necessárias se a próxima fatia alterar este boundary |
+| `REG-SIGKILL-01` | regressão | suíte unitária do consumer, integração PostgreSQL de settlement e build/typecheck do worker permanecem verdes | worker: 58 testes + build; settlement PostgreSQL 6/6; B1 18/18; ingress HTTP 2/2; matriz processo 5/5 — PASS | regressões adicionais só são necessárias se a próxima fatia alterar este boundary |
 
 ## Matriz de eventos
 
@@ -49,27 +49,28 @@ conseguir confirmar o estado deve ser `FAIL`/`NOT_RUN`, nunca PASS implícito.
 - Processo independente: `pnpm vitest run
   tests/integration/process/pix-provider-settlement-sigkill.test.ts
   --config vitest.integration.config.ts --pool=forks
-  --poolOptions.forks.singleFork=true` — 4/4, incluindo os quatro checkpoints,
-  PIDs distintos, takeover, probes e estado final PostgreSQL.
+  --poolOptions.forks.singleFork=true` — 5/5, incluindo os quatro checkpoints
+  de SIGKILL e o race stale com A vivo após takeover de B; PIDs distintos,
+  probes, lease/fence e estado final PostgreSQL.
 - Regressões afetadas: `pix-provider-settlement-consumer.test.ts` 6/6,
   `confirmed-pix-settlement-command.test.ts` 18/18 e
   `pix-provider-webhook-postgres.test.ts` 2/2.
 - Crítica independente: `REL-SIGKILL-01/02` PASS delimitado,
-  `REL-SIGKILL-03` PASS limitado, `REL-SIGKILL-04` não provado no boundary de
-  processos e `REL-SIGKILL-05` PASS limitado após a troca para fd 3 dedicado.
+  `REL-SIGKILL-03` PASS limitado, `REL-SIGKILL-04` PASS delimitado no novo
+  cenário A-vivo/B-takeover e `REL-SIGKILL-05` PASS limitado após a troca para
+  fd 3 dedicado.
   O risco de `allowSyntheticProviders=true` foi corrigido: o entrypoint agora
   exige `NODE_ENV=test`, `PIX_SETTLEMENT_SYNTHETIC_FIXTURE=1` e vive em
   `apps/worker/test-fixtures/`, fora do `tsconfig` de produção.
 
 Este resultado fecha somente a prova local delimitada de processo do slice B2b.
-Não promove o gate global: o race stale pós-takeover, Redis/failover/clock-skew,
-provider real, SPA/Vetus parity, WCAG, operações alvo e release continuam
-separados e pendentes.
+Não promove o gate global: Redis/failover/clock-skew, journal/outbox/inbox
+detalhados, readiness completo do worker principal, provider real, SPA/Vetus
+parity, WCAG, operações alvo e release continuam separados e pendentes.
 
 ## Próxima ação
 
-Registrar a crítica independente, manter o race stale pós-takeover como próximo
-gap de confiabilidade, atualizar os ledgers e publicar este artefato com o
-código. Em seguida, selecionar a próxima fatia do plano (internação → diária →
-item cobrável) sem apagar os gates de Redis, provider, SPA, paridade, WCAG,
-operações e release.
+Registrar a crítica independente, atualizar os ledgers e publicar este artefato
+com o código. Em seguida, preservar a fatia de internação → diária → item
+cobrável e avançar para admissão/handoff/alta, sem apagar os gates de Redis,
+provider, SPA, paridade, WCAG, operações e release.

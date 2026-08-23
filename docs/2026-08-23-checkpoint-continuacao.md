@@ -317,13 +317,13 @@ Regressões após a mudança: worker unit/build `58` testes + build, settlement
 PostgreSQL `6/6`, comando B1 `18/18` e callback HTTP/ingress PostgreSQL `2/2`.
 O contrato e as limitações estão em
 [`CVG-002B2B-sigkill-restart-quality-bar-2026-08-23.md`](../.agent/artifacts/CVG-002B2B-sigkill-restart-quality-bar-2026-08-23.md).
-A crítica independente delimitou o resultado: ainda não há uma corrida em que
-A permaneça vivo após B assumir e tenha sua tentativa stale observada e
-rejeitada no boundary de processos; o teste stale existente é de consumer/
-pools. A matriz também não conta cada linha de journal/outbox/inbox e usa um
-entrypoint mínimo de probes, não a semântica completa de readiness do worker
-principal. O protocolo foi endurecido para fd 3 dedicado (fora de stdout/
-stderr), e o fixture exige `NODE_ENV=test` +
+A crítica independente anterior delimitou o resultado naquele momento: ainda
+não havia uma corrida em que A permanecesse vivo após B assumir. O caso foi
+adicionado e passou no registro mais recente abaixo. A matriz continua sem
+contar cada linha de journal/outbox/inbox e usa um entrypoint mínimo de probes,
+não a semântica completa de readiness do worker principal. O protocolo foi
+endurecido para fd 3 dedicado (fora de stdout/stderr), e o fixture exige
+`NODE_ENV=test` +
 `PIX_SETTLEMENT_SYNTHETIC_FIXTURE=1` e fica fora do build de produção.
 Isto não fecha Redis failover/clock-skew, provider real, SPA/B2c, paridade
 Vetus, WCAG, target operations, cobertura dedicada ou release.
@@ -338,3 +338,54 @@ atualizado para `EVT-0103`/revisão 90 e o checker continua em 11 PASS, 1 WARN
 histórico e 0 FAIL. A próxima ação executável é provar o race stale-fence com A
 vivo após o takeover de B; depois exercitar Redis failover/clock-skew e iniciar
 a fatia clínico-financeira de internação até item cobrável.
+
+## Registro mais recente — stale-fence e cobrança diária idempotente (23/08/2026)
+
+Este é o checkpoint atual para a próxima sessão. A sessão não concluiu o ERP;
+ela fechou duas fatias locais e deixou os gates externos explícitos.
+
+### PIX settlement
+
+- A matriz processual passou `5/5`: quatro pontos de `SIGKILL` e o race stale
+  com A vivo em `after_claim_commit`, lease expirada, B assumindo
+  `lease_version=2`, A liberado primeiro (`lease_lost` antes de `before_b1`) e
+  B liberado depois (`applied` uma vez).
+- PIDs distintos, PostgreSQL descartável, `local-pix`, probes `/ready`/
+  `/metrics` e protocolo fd 3 foram observados. O Quality Bar foi atualizado em
+  `.agent/artifacts/CVG-002B2B-sigkill-restart-quality-bar-2026-08-23.md`.
+- Isto não prova Redis failover/clock-skew, provider real, readiness completo
+  do worker principal ou contabilidade detalhada de journal/outbox/inbox.
+
+### Internação → diária → billing
+
+Foi implementada a primeira fronteira clínica-financeira não-PIX:
+
+- migration `0115` e schema Drizzle aceitam `inpatient_daily_charge` e impõem
+  índice unique partial por tenant/fonte;
+- diária já faturada faz replay `200` e vínculo divergente dá `409`;
+- `BillingService` resolve fonte existente, trata `23505` e recarrega o
+  `billing_record` vencedor numa corrida de criação sem registro prévio;
+- OpenAPI, rota, repository e testes compartilham a mesma proveniência.
+
+Evidência fresca: route `10/10`, module-inpatient `17/17`, module-billing
+`16/16`, integração PostgreSQL `2/2`, API `324/324`, worker `58` + build, DB
+build, module/API builds e process matrix `5/5`. Detalhes em
+`.agent/artifacts/CVG-002C-inpatient-daily-billing-idempotency-2026-08-23.md`.
+
+### Retomada mínima
+
+```bash
+cd /home/ricardo/cvg-his-v4
+git switch agent/sync-v4-full-program
+git status --short
+python3 /home/ricardo/.codex/skills/engineering-framework/scripts/check_state.py "$PWD"
+```
+
+Esperado: apenas o cache user-owned
+`packages/design-system/tsconfig.vue.tsbuildinfo` fora do commit. Depois:
+
+1. Exercitar Redis failover/clock-skew sob `fail-closed`.
+2. Decompor `admissão → handoff/permanência → diária → alta →
+   item/recebimento` com REDs PostgreSQL/RLS e estados de UI.
+3. Preservar B2c/SPA, provider real, paridade Vetus, WCAG, operações,
+   cobertura e release como gates separados; não marcar `VERIFIED` ou produção.

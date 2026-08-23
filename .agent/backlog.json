@@ -41,7 +41,7 @@
         ".agent/verification.jsonl",
         ".gauntlet/state.md"
       ],
-      "next_action": "Resume from the published CVG-002B2B checkpoint: preserve the bounded SIGKILL/restart evidence, exercise Redis failover/clock-skew under fail-closed policy, and keep the separate B2c/SPA gate."
+      "next_action": "Resume from the latest CVG-002B2B/CVG-002C checkpoint: preserve the bounded 5/5 stale-fence process evidence and the inpatient daily-charge billing idempotency boundary, exercise Redis failover/clock-skew under fail-closed policy, then expand the clinical journey with PostgreSQL/RLS REDs while keeping B2c/SPA separate."
     },
     {
       "id": "CVG-002B2A",
@@ -118,9 +118,15 @@
         ".agent/artifacts/CVG-002B2B-sigkill-restart-quality-bar-2026-08-23.md",
         "tests/integration/process/pix-provider-settlement-sigkill.test.ts",
         ".agent/verification.jsonl#VFY-CVG-002B2B-SIGKILL-001",
-        ".agent/verification.jsonl#VFY-CVG-002B2B-REGRESSION-002"
+        ".agent/verification.jsonl#VFY-CVG-002B2B-REGRESSION-002",
+        ".agent/artifacts/CVG-002C-inpatient-daily-billing-idempotency-2026-08-23.md",
+        "packages/db/migrations/0115_inpatient_daily_charge_billing_idempotency.sql",
+        "tests/integration/database/inpatient-daily-charge-billing-idempotency.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-002C-INPATIENT-BILLING-001",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-STALE-FENCE-001",
+        ".agent/verification.jsonl#VFY-DOCS-CONTINUATION-008"
       ],
-      "next_action": "The principal projection, fail-closed policy and bounded independent SIGKILL/restart matrix are implemented. First add the process-level stale-fence race with A alive after B takeover; then exercise Redis failover/clock-skew under fail-closed policy and select the non-PIX clinical-financial slice (internacao -> handoff/permanencia -> diaria -> item cobravel) while preserving B2c/SPA, provider, parity, WCAG, target-operations and release gates."
+      "next_action": "The stale-fence race and the first inpatient daily-charge -> billing idempotency boundary are implemented and locally verified. Publish this checkpoint, then exercise Redis failover/clock-skew under fail-closed policy and decompose admission -> handoff/permanence -> daily charge -> discharge -> item/receipt with PostgreSQL/RLS REDs while preserving B2c/SPA, provider, parity, WCAG, target-operations, coverage and release gates."
     },
     {
       "id": "CVG-003",

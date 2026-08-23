@@ -373,9 +373,44 @@ dedicada e release permanecem separados. A próxima fatia recomendada segue
 sendo `internação -> handoff/permanência -> diária -> item cobrável`, sem
 apagar a dívida operacional restante.
 
-Nota da crítica independente: o boundary de processo passou de forma
-delimitada, mas o race stale pós-takeover ainda não foi observado com A vivo;
-o teste stale de consumer/pools não o substitui. A matriz também não conta
-journal/outbox/inbox linha a linha nem replica a semântica completa de
-readiness do worker principal. O fixture sintético exige guard explícito de
-teste e usa fd 3 dedicado para o protocolo de controle.
+Nota histórica da crítica independente anterior: naquele ponto o boundary de
+processo ainda não tinha observado A vivo após takeover; a matriz também não
+contava journal/outbox/inbox linha a linha nem replicava a semântica completa
+de readiness do worker principal. O cenário A-vivo/B-takeover foi adicionado e
+passou depois, conforme o handoff abaixo. O fixture sintético exige guard
+explícito de teste e usa fd 3 dedicado para o protocolo de controle.
+
+## Handoff adicional — stale-fence e cobrança diária idempotente (23/08/2026)
+
+O cenário processual que faltava foi executado: A permanece vivo parado em
+`after_claim_commit`, sua lease expira, B assume com `lease_version=2`, A é
+liberado primeiro e retorna `lease_lost` sem observar `before_b1`; B então
+atravessa B1/CAS e aplica uma única vez. A matriz completa passou `5/5`
+(quatro checkpoints de SIGKILL + race stale A-vivo/B-takeover). Isso é prova
+local limitada a PostgreSQL descartável e `local-pix`; o worker principal em
+target, Redis failover/clock-skew, journal/outbox/inbox linha a linha e
+provider real continuam abertos.
+
+Foi implementada a primeira fronteira clínica-financeira não-PIX:
+`inpatient_daily_charge` agora é uma fonte financeira única. A diária já
+faturada retorna o vínculo existente; a rota repete `200` sem chamar
+`billing.addItem`; payload divergente retorna conflito. O `BillingService`
+reconcilia fontes existentes, trata `23505` do índice partial e também recarrega
+o `billing_record` vencedor quando duas instâncias o criam simultaneamente.
+Migration `0115`, schema Drizzle, OpenAPI e testes cobrem a proveniência e a
+unicidade tenant-scoped.
+
+Evidência da fatia: rota isolada `10/10`, module-inpatient `17/17`,
+module-billing `16/16`, integração PostgreSQL diária `2/2` (incluindo corrida
+sem billing record prévio), API `324/324`, worker `58` + build, DB build,
+module/API builds e matriz processual `5/5`. A fixture de payments foi alinhada
+ao contrato atual de rate limit; nenhum comportamento de produção foi relaxado.
+O Quality Bar detalhado está em
+`.agent/artifacts/CVG-002C-inpatient-daily-billing-idempotency-2026-08-23.md`.
+
+Próximo passo de retomada: publicar este checkpoint; depois executar Redis
+failover/clock-skew sob `fail-closed` e decompor a jornada completa
+`admissão -> handoff/permanência -> diária -> alta -> item/recebimento`,
+mantendo B2c/SPA, provider, paridade Vetus, WCAG, operações alvo, cobertura e
+release como gates separados. Não marcar `CVG-002B2B`, `CVG-002` ou o ERP como
+concluídos.

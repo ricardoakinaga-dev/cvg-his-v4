@@ -45,9 +45,11 @@ function createRepository(overrides?: Partial<BillingRepository>): BillingReposi
         if (record) records.set(record.id, record);
         return record;
       }
-      return [...records.values()].find(
-        (record) => record.accountId === accountId && record.encounterId === encounterId
-      ) ?? null;
+      return (
+        [...records.values()].find(
+          (record) => record.accountId === accountId && record.encounterId === encounterId
+        ) ?? null
+      );
     },
     async findRecordsByAccountId(accountId) {
       if (overrides?.findRecordsByAccountId) {
@@ -77,7 +79,7 @@ function createRepository(overrides?: Partial<BillingRepository>): BillingReposi
         return persistedItems;
       }
       return (items.get(recordId) ?? []).filter((item) => item.accountId === accountId);
-    },
+    }
   };
 }
 
@@ -92,6 +94,38 @@ test('BillingService createEstimate moves billing record to estimated', async ()
   assert.equal(record.status, 'estimated');
   assert.equal(record.encounterId, 'encounter_1');
   assert.equal(record.administrativeNotes, 'Estimativa inicial');
+});
+
+test('BillingService replays a source-linked item without creating a duplicate', async () => {
+  const repository = createRepository();
+  const service = new BillingService(
+    {
+      getOrThrow(encounterId: string) {
+        return {
+          id: encounterId,
+          accountId: 'acc_test',
+          patientId: 'patient_1',
+          ownerId: 'owner_1'
+        };
+      }
+    } as never,
+    { repository }
+  );
+
+  const payload = {
+    encounterId: 'encounter_source_replay',
+    itemType: 'daily_rate' as const,
+    description: 'Diaria UTI',
+    quantity: 1,
+    unitPriceAmount: 180,
+    sourceEntityType: 'inpatient_daily_charge' as const,
+    sourceEntityId: 'stayday_123'
+  };
+  const first = await service.addItem('user_1' as never, payload);
+  const replay = await service.addItem('user_1' as never, payload);
+
+  assert.equal(replay.id, first.id);
+  assert.equal((await service.listItems(payload.encounterId as never)).length, 1);
 });
 
 test('BillingService read methods do not create billing records', async () => {

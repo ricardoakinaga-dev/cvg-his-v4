@@ -90,11 +90,20 @@ function createHandlers(options: {
           id: 'key_payment_test',
           accountId: ACCOUNT_ID,
           permissions: ['payments.manage'],
+          rateLimit: 1000,
+          rateLimitWindow: 3600,
           keyPrefix: 'cvg_test',
           name: 'test',
           status: 'active',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
+        };
+      },
+      async checkRateLimit() {
+        return {
+          allowed: true,
+          remaining: 999,
+          resetAt: new Date(Date.now() + 3600 * 1000)
         };
       },
       async updateLastUsed() {}

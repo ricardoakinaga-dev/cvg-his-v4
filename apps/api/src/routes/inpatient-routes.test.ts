@@ -263,7 +263,10 @@ test('handleInpatientRoutes appends inpatient progress to clinical record timeli
   assert.equal(onProgressAdded.mock.callCount(), 1);
   const callbackPayload = onProgressAdded.mock.calls[0]?.arguments[0];
   assert.equal(callbackPayload.stay.id, stay.id);
-  assert.equal(callbackPayload.progress.note, 'Paciente aceitou dieta e manteve parametros estaveis');
+  assert.equal(
+    callbackPayload.progress.note,
+    'Paciente aceitou dieta e manteve parametros estaveis'
+  );
   assert.equal(callbackPayload.principal.user.id, 'user-1');
 });
 
@@ -317,7 +320,10 @@ test('handleInpatientRoutes creates and lists inpatient occurrences', async () =
 
   assert.equal(listed, true);
   assert.equal(listResponse.statusCode, 200);
-  assert.equal(listResponse.bodyJson<{ items: Array<{ title: string }> }>().items[0]?.title, 'Hiporexia');
+  assert.equal(
+    listResponse.bodyJson<{ items: Array<{ title: string }> }>().items[0]?.title,
+    'Hiporexia'
+  );
 });
 
 test('handleInpatientRoutes creates and bills daily inpatient charges', async () => {
@@ -391,8 +397,9 @@ test('handleInpatientRoutes creates and bills daily inpatient charges', async ()
   assert.equal(billed, true);
   assert.equal(billResponse.statusCode, 200);
   assert.equal(addBillingItem.mock.callCount(), 1);
-  const addBillingItemPayload =
-    (addBillingItem.mock.calls[0]?.arguments as unknown[] | undefined)?.[1];
+  const addBillingItemPayload = (
+    addBillingItem.mock.calls[0]?.arguments as unknown[] | undefined
+  )?.[1];
   assert.deepEqual(addBillingItemPayload, {
     encounterId: stay.encounterId,
     itemType: 'daily_rate',
@@ -402,8 +409,101 @@ test('handleInpatientRoutes creates and bills daily inpatient charges', async ()
     sourceEntityType: 'inpatient_daily_charge',
     sourceEntityId: charge.id
   });
-  assert.equal(billResponse.bodyJson<{ status: string; billingRecordId: string }>().status, 'billed');
-  assert.equal(billResponse.bodyJson<{ status: string; billingRecordId: string }>().billingRecordId, 'bill_inpatient_1');
+  assert.equal(
+    billResponse.bodyJson<{ status: string; billingRecordId: string }>().status,
+    'billed'
+  );
+  assert.equal(
+    billResponse.bodyJson<{ status: string; billingRecordId: string }>().billingRecordId,
+    'bill_inpatient_1'
+  );
+});
+
+test('handleInpatientRoutes treats a repeated daily-charge billing request as idempotent', async () => {
+  const inpatient = createInpatientService();
+  const stay = inpatient.list()[0];
+  const addBillingItem = test.mock.fn(async () => ({
+    id: 'billitem_idempotent_1',
+    billingRecordId: 'bill_inpatient_idempotent',
+    accountId: 'acc_cvg_demo',
+    encounterId: stay.encounterId,
+    itemType: 'daily_rate',
+    description: 'Diaria UTI',
+    quantity: 1,
+    unitPriceAmount: 180,
+    totalAmount: 180,
+    sourceEntityType: 'inpatient_daily_charge',
+    sourceEntityId: 'charge_idempotent',
+    createdByUserId: 'user-1',
+    createdAt: new Date().toISOString()
+  }));
+  const createdResponse = new MockResponse();
+
+  await handleInpatientRoutes(
+    `/inpatient/${stay.id}/daily-charges`,
+    new MockRequest({
+      method: 'POST',
+      url: `/inpatient/${stay.id}/daily-charges`,
+      body: {
+        description: 'Diaria UTI',
+        chargeDate: '2026-05-28',
+        quantity: 1,
+        unitAmount: 180
+      }
+    }) as never,
+    createdResponse as never,
+    'corr-inpatient-daily-charge-idempotent-create',
+    {
+      inpatient,
+      billing: { addItem: addBillingItem } as never,
+      sectorBedService: {} as never,
+      audit: { write: () => {} } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  const charge = createdResponse.bodyJson<{ id: string }>();
+  const request = () =>
+    new MockRequest({
+      method: 'POST',
+      url: `/inpatient/${stay.id}/daily-charges/${charge.id}/bill`,
+      body: {}
+    });
+  const firstResponse = new MockResponse();
+  const firstHandled = await handleInpatientRoutes(
+    `/inpatient/${stay.id}/daily-charges/${charge.id}/bill`,
+    request() as never,
+    firstResponse as never,
+    'corr-inpatient-daily-charge-idempotent-first',
+    {
+      inpatient,
+      billing: { addItem: addBillingItem } as never,
+      sectorBedService: {} as never,
+      audit: { write: () => {} } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+  const secondResponse = new MockResponse();
+  const secondHandled = await handleInpatientRoutes(
+    `/inpatient/${stay.id}/daily-charges/${charge.id}/bill`,
+    request() as never,
+    secondResponse as never,
+    'corr-inpatient-daily-charge-idempotent-replay',
+    {
+      inpatient,
+      billing: { addItem: addBillingItem } as never,
+      sectorBedService: {} as never,
+      audit: { write: () => {} } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(firstHandled, true);
+  assert.equal(secondHandled, true);
+  assert.equal(firstResponse.statusCode, 200);
+  assert.equal(secondResponse.statusCode, 200);
+  assert.deepEqual(secondResponse.bodyJson(), firstResponse.bodyJson());
+  assert.equal(addBillingItem.mock.callCount(), 1);
 });
 
 test('handleInpatientRoutes lists inpatient daily charge worklist with totals', async () => {
@@ -523,5 +623,8 @@ test('handleInpatientRoutes lists beds with Vetus-like filters', async () => {
   assert.equal(handled, true);
   assert.equal(response.statusCode, 200);
   const payload = response.bodyJson<{ items: Array<{ id: string }> }>();
-  assert.deepEqual(payload.items.map((item) => item.id), ['bed-1']);
+  assert.deepEqual(
+    payload.items.map((item) => item.id),
+    ['bed-1']
+  );
 });

@@ -587,6 +587,22 @@ export class InpatientService {
     if (!charge) {
       throw new NotFoundError('Inpatient daily charge not found', { stayId, chargeId });
     }
+    if (charge.status === 'billed') {
+      if (
+        payload?.billingRecordId &&
+        charge.billingRecordId &&
+        payload.billingRecordId !== charge.billingRecordId
+      ) {
+        throw new ConflictError(
+          'Inpatient daily charge is already linked to another billing record',
+          {
+            chargeId,
+            billingRecordId: charge.billingRecordId
+          }
+        );
+      }
+      return charge;
+    }
     if (charge.status !== 'pending') {
       throw new ValidationError('Only pending daily charges can be billed');
     }

@@ -137,12 +137,13 @@ paridade, WCAG, target operations e release continuam abertos. A próxima
 fatia de produto é `internação -> handoff/permanência -> diária -> item
 cobrável`, ainda somente como planejamento.
 
-Crítica independente delimitou o bar: o race stale pós-takeover com A vivo
-continua NÃO PROVADO no boundary de processos; a matriz não conta cada linha
-de journal/outbox/inbox e o fixture não replica a semântica completa de
-readiness do worker principal. O controle de checkpoint foi movido para fd 3
-dedicado e o provider sintético recebeu guard `NODE_ENV=test` + marcador
-explícito, fora do build de produção.
+Crítica independente anterior delimitou o bar: naquele momento o race stale
+pós-takeover com A vivo ainda não estava provado no boundary de processos. O
+caso foi adicionado e passou no checkpoint mais recente; a matriz ainda não
+conta cada linha de journal/outbox/inbox e o fixture não replica a semântica
+completa de readiness do worker principal. O controle de checkpoint foi movido
+para fd 3 dedicado e o provider sintético recebeu guard `NODE_ENV=test` +
+marcador explícito, fora do build de produção.
 
 ## Incremento 23/08/2026 — principal mínimo e fail-closed
 
@@ -185,3 +186,30 @@ posterior: internação, handoff/permanência, diária idempotente e item cobrá
 sem invadir o slice PIX. Isso é decomposição de backlog, não evidência de
 prontidão. `CVG-002B2B`, `CVG-002` e todos os gates de provider, SPA, paridade,
 WCAG, operações e release permanecem `IN_PROGRESS/PARTIAL` ou abertos.
+
+## Current continuation — 23/08/2026
+
+The process stale-fence gap is now proven at the bounded process boundary. A
+remains alive after its lease expires, B claims with `lease_version=2`, A is
+released first and returns `lease_lost` before `before_b1`, and B then applies
+the settlement once. The independent-process suite is `5/5` across the four
+SIGKILL checkpoints plus the live stale takeover. This remains disposable
+PostgreSQL/`local-pix` evidence; the main worker readiness contract, detailed
+journal/outbox/inbox accounting, Redis failover/clock-skew and real provider
+remain outside the bar.
+
+The first non-PIX clinical-financial boundary is implemented as an idempotent
+inpatient daily-charge source item. Migration `0115`, Drizzle schema, OpenAPI,
+route, repository and service agree on tenant-scoped provenance. Replays return
+the existing item, divergent links conflict, duplicate source inserts converge,
+and two runtimes also converge when the billing record itself is created for the
+first time. Fresh evidence is route `10/10`, inpatient `17/17`, billing `16/16`,
+PostgreSQL integration `2/2`, API `324/324`, worker `58` plus build and DB/API/
+module builds. The detailed local bar is
+`.agent/artifacts/CVG-002C-inpatient-daily-billing-idempotency-2026-08-23.md`.
+
+The Quality Bar remains frozen and the ERP remains `IN_PROGRESS/PARTIAL`.
+Next largest local action is Redis failover/clock-skew under the explicit
+fail-closed policy, followed by the full admission → handoff/stay → daily
+charge → discharge → item/receipt journey. B2c/SPA, provider, Vetus parity,
+WCAG, target operations, coverage and release remain separate gates.

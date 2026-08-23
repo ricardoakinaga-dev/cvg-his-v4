@@ -12866,6 +12866,19 @@ components:
           default: 1
         unitPriceAmount:
           type: number
+        sourceEntityType:
+          type: string
+          enum:
+            [
+              encounter,
+              diagnostic_order,
+              surgery_case,
+              inpatient_stay,
+              inpatient_daily_charge,
+              prescription
+            ]
+        sourceEntityId:
+          type: string
 
     EncounterReceivablePayment:
       type: object

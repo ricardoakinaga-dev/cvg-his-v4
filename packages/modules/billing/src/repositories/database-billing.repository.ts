@@ -23,6 +23,11 @@ export interface BillingRepository {
   ): Promise<BillingRecordSummary | null>;
   findRecordsByAccountId(accountId: AccountId): Promise<readonly BillingRecordSummary[]>;
   createItem(item: BillingItemSummary): Promise<void>;
+  findItemBySource?(
+    accountId: AccountId,
+    sourceEntityType: NonNullable<BillingItemSummary['sourceEntityType']>,
+    sourceEntityId: string
+  ): Promise<BillingItemSummary | null>;
   findItemsByRecord(
     accountId: AccountId,
     recordId: BillingRecordId
@@ -35,9 +40,19 @@ export class DatabaseBillingRepository implements BillingRepository {
       await client.query(
         `INSERT INTO billing_records (id, account_id, encounter_id, patient_id, owner_id, status, subtotal_amount, currency, administrative_notes, created_at, updated_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-        [record.id, record.accountId, record.encounterId, record.patientId, record.ownerId,
-         record.status, record.subtotalAmount, record.currency, record.administrativeNotes ?? null,
-         new Date(record.createdAt), new Date(record.updatedAt)]
+        [
+          record.id,
+          record.accountId,
+          record.encounterId,
+          record.patientId,
+          record.ownerId,
+          record.status,
+          record.subtotalAmount,
+          record.currency,
+          record.administrativeNotes ?? null,
+          new Date(record.createdAt),
+          new Date(record.updatedAt)
+        ]
       );
     });
   }
@@ -58,12 +73,10 @@ export class DatabaseBillingRepository implements BillingRepository {
       );
       const locked = current.rows[0];
       if (
-        locked?.active_payment_attempt_id
-        && (
-          locked.status !== record.status
-          || Number(locked.subtotal_amount) !== record.subtotalAmount
-          || locked.currency !== record.currency
-        )
+        locked?.active_payment_attempt_id &&
+        (locked.status !== record.status ||
+          Number(locked.subtotal_amount) !== record.subtotalAmount ||
+          locked.currency !== record.currency)
       ) {
         throw new ConflictError('Billing record already has a payment in progress', {
           recordId: record.id
@@ -117,7 +130,10 @@ export class DatabaseBillingRepository implements BillingRepository {
 
   async findRecordsByAccountId(accountId: AccountId): Promise<readonly BillingRecordSummary[]> {
     return withTenantQuery(getPool(), async (client) => {
-      const result = await client.query('SELECT * FROM billing_records WHERE account_id = $1 ORDER BY created_at DESC', [accountId]);
+      const result = await client.query(
+        'SELECT * FROM billing_records WHERE account_id = $1 ORDER BY created_at DESC',
+        [accountId]
+      );
       return result.rows.map((r: Record<string, unknown>) => this.mapRecord(r));
     });
   }
@@ -174,6 +190,23 @@ export class DatabaseBillingRepository implements BillingRepository {
     });
   }
 
+  async findItemBySource(
+    accountId: AccountId,
+    sourceEntityType: NonNullable<BillingItemSummary['sourceEntityType']>,
+    sourceEntityId: string
+  ): Promise<BillingItemSummary | null> {
+    return withTenantQuery(getPool(), async (client) => {
+      const result = await client.query(
+        `SELECT * FROM billing_items
+         WHERE account_id = $1 AND source_entity_type = $2 AND source_entity_id = $3
+         LIMIT 1`,
+        [accountId, sourceEntityType, sourceEntityId]
+      );
+      const row = result.rows[0] as Record<string, unknown> | undefined;
+      return row ? this.mapItem(row) : null;
+    });
+  }
+
   async findItemsByRecord(
     accountId: AccountId,
     recordId: BillingRecordId
@@ -216,7 +249,8 @@ export class DatabaseBillingRepository implements BillingRepository {
       quantity: Number(row.quantity),
       unitPriceAmount: Number(row.unit_price_amount),
       totalAmount: Number(row.total_amount),
-      sourceEntityType: (row.source_entity_type as BillingItemSummary['sourceEntityType']) ?? undefined,
+      sourceEntityType:
+        (row.source_entity_type as BillingItemSummary['sourceEntityType']) ?? undefined,
       sourceEntityId: (row.source_entity_id as string) ?? undefined,
       createdByUserId: row.created_by_user_id as UserId,
       createdAt: new Date(row.created_at as string).toISOString()
