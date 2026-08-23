@@ -94,6 +94,6 @@ arquivos e não promove nenhum requisito de produto a comportamento comprovado.
 
 Depois da inclusão do artefato de principal/rate-limit, das regressões e desta
 atualização de controle, a soma dos tamanhos dos arquivos sob `docs/` é
-53.749.923 bytes: 1.449 arquivos, 90 diretórios, 997 Markdown, 255 PNG, 129
+53.750.467 bytes: 1.449 arquivos, 90 diretórios, 997 Markdown, 255 PNG, 129
 JSON, 67 HTML e 1 gzip. A contagem exclui o diretório raiz `docs/`; não é uma
 nova leitura integral do corpus.

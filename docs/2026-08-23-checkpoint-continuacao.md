@@ -144,7 +144,7 @@ implementação CVG-HIS. O inventário de referência registrou 1.447 arquivos n
 checkpoint anterior; após a inclusão do runbook operacional, a recontagem do
 working tree era de 1.449 arquivos, 90 diretórios e 53.746.820 bytes na
 recontagem intermediária; após esta consolidação, a soma atual dos arquivos é
-53.749.923 bytes. O score
+53.750.467 bytes. O score
 estrutural `readiness:enterprise` segue em 95/100, enquanto a paridade
 comportamental segue `0/11` geral e `0/3` clínica.
 O Game Day que sugere fallback em memória continua incompatível com a política
@@ -194,33 +194,37 @@ artefato detalhado está em
   OpenAPI 337/390, alert alignment 5/5, Helm, YAML/JSON e shell checks PASS.
 
 Esse incremento reduz o risco de uma entrega terminal ficar sem operador e foi
-publicado em `35f68fd` com a correção de observabilidade em `1217882`, mas
-não promove o gate: SIGKILL/restart real, rate-limit multi-réplica, principal
-mínima, provider real, SPA, paridade Vetus, WCAG, target ops e release seguem
-abertos. O cache user-owned `packages/design-system/tsconfig.vue.tsbuildinfo`
-continua fora do escopo.
+publicado em `35f68fd` com a correção de observabilidade em `1217882`. A fatia
+seguinte, de principal mínimo e fail-closed, foi publicada em
+`099ac2a1ff5f1ed9f74812d2466dccb42681737d`; ela não promove o gate: SIGKILL/
+restart real, failover/clock-skew Redis, provider real, SPA, paridade Vetus,
+WCAG, target ops e release seguem abertos. O cache user-owned
+`packages/design-system/tsconfig.vue.tsbuildinfo` continua fora do escopo.
 
 ## Registro final para a próxima sessão — 23/08/2026, 02:08 BRT
 
 Este registro é a referência mais recente caso a sessão seja interrompida.
 
-- A base remota antes deste handoff era `d525acc`; o checkpoint documental foi
-  publicado em `76f7ec5` e está confirmado em `origin/agent/sync-v4-full-program`.
+- A base remota deste handoff inclui `099ac2a1ff5f1ed9f74812d2466dccb42681737d`,
+  confirmado em `origin/agent/sync-v4-full-program`; o checkpoint documental
+  anterior foi publicado em `76f7ec5`.
 - `git status --short` deve mostrar somente
   `packages/design-system/tsconfig.vue.tsbuildinfo`; não adicionar, reverter
   ou limpar esse arquivo user-owned.
 - O checker canônico foi executado com
   `python3 /home/ricardo/.codex/skills/engineering-framework/scripts/check_state.py
   "$PWD"`: 11 PASS, 1 WARN histórico de ownership paralelo e 0 FAIL.
-- A evidência mais recente do DLQ é `VFY-CVG-002B2B-DLQ-OPERATOR-001` e a
+- A evidência mais recente desta fatia é
+  `VFY-CVG-002B2B-REVIEW-001`; a evidência de regressões é
+  `VFY-CVG-002B2B-REGRESSION-001`. A evidência mais recente do DLQ é
+  `VFY-CVG-002B2B-DLQ-OPERATOR-001` e a
   correção de agregação é `VFY-CVG-002B2B-DLQ-REPLICA-001`; a publicação
   anterior é `VFY-DOCS-DLQ-PUBLICATION-001` e a correção de wording deste
   handoff é `VFY-DOCS-CONTINUATION-003`. Todas são evidências
   locais/descartáveis, não certificação de produção.
-- Retomada executável: definir a política de rate limit entre réplicas,
-  reduzir a projeção mínima do principal pré-contexto, obter a matriz real de
-  SIGKILL/restart e então repetir B1/B2a/ingress/HTTP antes de reavaliar o
-  gate `VERIFIED`.
+- Retomada executável: obter a matriz real de SIGKILL/restart e o exercício de
+  failover/clock-skew Redis sob a política fail-closed; repetir B1/B2a/ingress/
+  HTTP se esse trabalho mudar o runtime e então reavaliar o gate `VERIFIED`.
 
 Comandos mínimos:
 
@@ -230,3 +234,10 @@ git switch agent/sync-v4-full-program
 git status --short
 python3 /home/ricardo/.codex/skills/engineering-framework/scripts/check_state.py "$PWD"
 ```
+
+## Publicação desta continuação
+
+O código, testes e controle documental desta fatia foram publicados em
+`099ac2a1ff5f1ed9f74812d2466dccb42681737d` no branch
+`origin/agent/sync-v4-full-program`. O cache
+`packages/design-system/tsconfig.vue.tsbuildinfo` permaneceu fora do commit.

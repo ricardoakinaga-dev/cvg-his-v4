@@ -319,3 +319,7 @@ PostgreSQL 11/11 e callback HTTP 13/13. O detalhe reprodutível está em
 A matriz de SIGKILL/restart ainda é uma lacuna distinta e permanece obrigatória
 antes do gate `VERIFIED`; takeover por pool/lease não deve ser contado como
 kill real de processo.
+
+A implementação e esta evidência foram publicadas em
+`099ac2a1ff5f1ed9f74812d2466dccb42681737d`; o próximo agente deve verificar o
+hash remoto antes de continuar.

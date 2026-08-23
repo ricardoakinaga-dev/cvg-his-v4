@@ -106,3 +106,8 @@ callback HTTP 13/13. O artefato detalhado é
 `.agent/artifacts/CVG-002B2B-api-key-principal-rate-limit-2026-08-23.md`.
 O gate não sobe: SIGKILL/restart de processo, Redis failover/clock-skew real,
 provider, SPA, paridade, WCAG, operações alvo e release permanecem abertos.
+
+Publicação confirmada em `099ac2a1ff5f1ed9f74812d2466dccb42681737d` no branch
+`origin/agent/sync-v4-full-program`. A revisão independente registrou
+`VFY-CVG-002B2B-REVIEW-001` como PASS; os dois listeners HTTP são uma prova de
+storage compartilhado no mesmo processo, não de failover entre processos.

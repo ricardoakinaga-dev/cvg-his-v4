@@ -204,7 +204,7 @@ observabilidade multi-réplica foi corrigida em `1217882` e a última
 reconciliação de ledger publicada está em `d525acc`; os documentos derivados
 desta onda foram publicados em `76f7ec5`. A recontagem intermediária de `docs/`
 era 1.449 arquivos, 90 diretórios e 53.746.820 bytes; após a consolidação desta
-sessão, a soma atual dos arquivos é 53.749.923 bytes. A leitura integral anterior de
+sessão, a soma atual dos arquivos é 53.750.467 bytes. A leitura integral anterior de
 1.447 arquivos permanece preservada no artefato de auditoria e não foi
 reclassificada como nova leitura.
 

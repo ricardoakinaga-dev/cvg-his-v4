@@ -110,6 +110,7 @@
         ".agent/verification.jsonl#VFY-CVG-002B2B-PRINCIPAL-RATELIMIT-001",
         ".agent/verification.jsonl#VFY-CVG-002B2B-REGRESSION-001",
         ".agent/verification.jsonl#VFY-CVG-002B2B-REVIEW-001",
+        ".agent/verification.jsonl#VFY-DOCS-APIKEY-PUBLICATION-001",
         "docs/2026-08-23-checkpoint-continuacao.md",
         ".agent/artifacts/CVG-002B2B-pix-settlement-dlq-2026-08-23.md",
         "docs/runbooks/pix-settlement-dlq.md",

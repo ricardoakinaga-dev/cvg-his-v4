@@ -79,3 +79,10 @@ verification. A única observação não bloqueante é que os dois listeners HTT
 compartilham o mesmo processo/runtime; portanto a prova não substitui a matriz
 de processos independentes, SIGKILL/restart e failover Redis já mantida como
 gap.
+
+## Publicação
+
+Esta fatia e seu controle documental foram publicados no commit
+`099ac2a1ff5f1ed9f74812d2466dccb42681737d` em
+`origin/agent/sync-v4-full-program`. O cache
+`packages/design-system/tsconfig.vue.tsbuildinfo` permaneceu fora do commit.
