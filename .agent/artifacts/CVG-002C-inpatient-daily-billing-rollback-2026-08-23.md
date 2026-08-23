@@ -55,3 +55,18 @@ inpatient_daily_charges.status=pending
 - O próximo slice deve encadear admissão → handoff/permanência → consumo de
   estoque → cutoff de alta → item/recebimento/ledger/audit/outbox, além de
   uma matriz RLS A/B e replay/concurrency HTTP real.
+
+## Revisão independente pós-publicação
+
+Não foi encontrado P0. Permanecem dois pontos de continuidade:
+
+- **P1:** falta uma integração HTTP usando o `runTenantCommand` real com
+  `Idempotency-Key`; a prova atual chama a UoW diretamente e os fallbacks de
+  teste/desenvolvimento podem permitir execução fora da transação quando o
+  header não está presente.
+- **P2:** o cache em memória de auditoria pode registrar o evento antes de uma
+  falha tardia e sobreviver ao rollback do banco. Avaliar invalidação/reload no
+  `catch` ou publicação do evento em cache somente depois do commit.
+
+Esses itens são limites conhecidos, não uma promoção de prontidão. O próximo
+RED deve provar a rota HTTP, replay, concorrência e isolamento entre tenants.

@@ -563,3 +563,21 @@ O checkpoint de implementacao e documentação foi publicado em
 dirty remanescente é o cache user-owned
 `packages/design-system/tsconfig.vue.tsbuildinfo`, deliberadamente fora do
 commit.
+
+## Revisão independente registrada — rollback diária/billing (23/08/2026, 06:44 BRT)
+
+Uma revisão independente da fatia publicada não encontrou P0. Foram registrados
+dois pontos para a próxima sessão:
+
+- **P1:** a prova PostgreSQL exercita o `createTenantUnitOfWork` diretamente,
+  mas ainda falta uma prova HTTP com `runTenantCommand` real e
+  `Idempotency-Key`. Em ambientes production-like o header é obrigatório; sem
+  ele, os fallbacks de teste/desenvolvimento podem executar fora da UoW.
+- **P2:** em uma falha tardia, o cache em memória do AuditService pode conservar
+  um evento antes que o rollback do banco seja concluído. Avaliar invalidação/
+  reidratação do cache no `catch` ou publicação do cache somente após commit.
+
+Esses achados não invalidam o rollback confirmado no PostgreSQL, mas mantêm a
+fatia como `IN_PROGRESS/PARTIAL`. O próximo RED deve cobrir a superfície HTTP,
+replay e concorrência; a consistência do cache de auditoria deve ser tratada
+antes de promover este limite.
