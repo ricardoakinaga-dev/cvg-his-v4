@@ -17,7 +17,8 @@ Transform the current broad, partially implemented veterinary ERP into a behavio
 - [x] (2026-08-22T18:50:00-03:00) Consolidated B2b code mapping, official-source research and independent architecture/security/TDD reviews into `.agent/tasks/CVG-002B2B.md` and a session handoff; no B2b implementation or gate PASS is claimed.
 - [x] (2026-08-22T23:15:00-03:00) Executed and independently reviewed a bounded `CVG-002B2B` continuation: shared tenant UoW, explicit transient retry, audited redrive, actual read-only worker-role query and attempt-linked legacy `410`; implementation `46b84cb` and the continuation artifact/docs are recorded, while the B2b gate remains `IN_PROGRESS/PARTIAL`.
 - [x] (2026-08-22T23:55:00-03:00) Executed the next bounded recovery/observability/compatibility loop: worker exhaustion promotions emit safe aggregate telemetry, two PostgreSQL pools prove lease-fenced takeover and one B1 application, HTTP→PostgreSQL proves the legacy `410`/foreign `404`/direct `200` matrix, service-principal backfill/RLS negatives are non-vacuous, and focused regressions are green. Implementation `fdb0995` and documentation `75bfa72` are pushed; the detailed checkpoint is `.agent/artifacts/CVG-002B2B-recovery-dlq-legacy-http-2026-08-22.md`; the B2b gate remains `IN_PROGRESS/PARTIAL` because the default database API-key pre-context path still needs a least-privilege RLS design.
-- [ ] Prove process crash/restart and multi-pool takeover, add DLQ/observability, extend HTTP-to-PostgreSQL evidence for the legacy `410`, then re-run the bounded B1/B2a/ingress/HTTP regressions; gate `B2c` separately for coherent SPA/restart E2E.
+- [x] (2026-08-23T00:20:00-03:00) Implemented and bounded the PostgreSQL API-key capability in `62db87e`: migration `0113`, strict JSONB mapper, tenantized usage/rate-limit tables, worker/API ACL separation, no-leak PIX ownership probe, mandatory helper rate limit and atomic consumption; real HTTP→PostgreSQL evidence is 4/4 including 2 accepted/6 `429` under concurrency. The B2b gate remains `IN_PROGRESS/PARTIAL`.
+- [ ] Prove a real process crash/SIGKILL matrix, add operator DLQ/runbook/alerts and multi-replica rate-limit policy, then re-run the bounded B1/B2a/ingress/HTTP regressions; gate `B2c` separately for coherent SPA/restart E2E.
 - [ ] Complete `CVG-001` through TDD, integrated runtime proof and independent critique.
 - [ ] Execute the remaining backlog in dependency order, preserving fresh evidence and explicit human/external boundaries.
 
@@ -26,9 +27,9 @@ Transform the current broad, partially implemented veterinary ERP into a behavio
 - Observation: The repository's `readiness:enterprise` score is 95/100 while its strict Vetus audit reports 0/11 general and 0/3 clinical areas verified.
   Evidence: `pnpm readiness:enterprise` and `pnpm vetus:parity:audit` executed on the current worktree.
   Impact: Existence-based scores are not acceptance evidence; the Quality Bar must use rejecting behavioral checks.
-- Observation: The current first-access implementation generates and logs a raw bootstrap token when configuration is absent.
-  Evidence: `apps/api/src/index.ts` and `apps/api/src/setup-token.ts` in the dirty worktree.
-  Impact: `CVG-001` must eliminate secret logging and define fail-closed setup behavior before this path can pass.
+- Observation: The historical audit claimed that first access generated/logged a raw bootstrap token when configuration was absent; the current setup helper fails closed and does not fabricate or log one.
+  Evidence: `apps/api/src/index.ts`, `apps/api/src/setup-token.ts`, current secret scan and setup-focused tests.
+  Impact: `CVG-001` remains PARTIAL until every setup/install/session entry point is proven against real PostgreSQL/Redis; the historical raw-token claim must not remain as current-state evidence.
 - Observation: The documented Game Day recommends in-memory writes during database failure, contradicting the active production fail-closed policy.
   Evidence: `docs/game-day/README.md` compared with the active August 7 report/backlog.
   Impact: The runbook must not be executed unchanged and operational certification remains open.
@@ -44,9 +45,9 @@ Transform the current broad, partially implemented veterinary ERP into a behavio
 - Observation: The current payment composition cannot provide durable non-cash settlement: provider calls precede local durability, card state is in memory, production consumers are registered in the API while only the worker processes the guarded outbox, and the SPA PIX contract cannot authenticate or decode the API response.
   Evidence: `apps/api/src/routes/payments-routes.ts`, `apps/api/src/consumers/payments.consumer.ts`, `apps/api/src/runtime.ts`, `apps/worker/src/runner.ts`, `apps/spa/src/services/pix.ts` and five independent read-only mapping/review lanes on 2026-08-22.
   Impact: Freeze a transaction-local settlement command and durable saga boundaries before connecting charge/inventory or writing browser happy paths; do not place provider network calls inside the tenant UoW.
-- Observation: A real HTTP→PostgreSQL API-key harness required an adapter before tenant context because PostgreSQL JSONB permissions arrive from `pg` as an array while `DatabaseApiKeyRepository` calls `JSON.parse`, and `findByPrefix` delegates to `withTenantQuery` before the account is known.
-  Evidence: `tests/integration/pix-legacy-confirmation-http-postgres.test.ts`, `packages/modules/api-keys/src/repositories/database-api-key.repository.ts`, `packages/tenant-context/src/tenant-db.ts` and the 3/3 HTTP→PostgreSQL run.
-  Impact: The legacy 410 barrier is behaviorally proven, but production API-key authentication needs a narrowly privileged pre-context lookup/capability that preserves RLS; do not treat the adapter-backed test as end-to-end production evidence.
+- Observation: The prior HTTP→PostgreSQL API-key harness needed an adapter because JSONB permissions arrive from `pg` as an array and prefix lookup required tenant context before the account was known; the current local path uses a narrow capability and a strict mapper instead.
+  Evidence: migration `0113_api_key_auth_boundary.sql`, `DatabaseApiKeyRepository`, `tests/integration/pix-legacy-confirmation-http-postgres.test.ts` and the 4/4 real-repository run.
+  Impact: The local boundary is now behaviorally exercised, but production readiness still needs multi-replica rate-limit policy, minimal-principal narrowing and target-environment evidence; do not promote the B2b gate.
 
 ## Decision Log
 

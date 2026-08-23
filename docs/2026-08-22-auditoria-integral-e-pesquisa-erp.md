@@ -2,7 +2,7 @@
 
 **Escopo:** leitura consolidada de `docs/`, `docs/docs2/`, `docs/vetus/`, auditoria read-only do código e pesquisa de referências oficiais de ERPs/PIMS veterinários.
 
-**Status:** documento de decisão e rastreabilidade. Não representa paridade concluída, prontidão de produção ou homologação de provider.
+**Status:** documento de decisão e rastreabilidade, atualizado em 23/08/2026. Não representa paridade concluída, prontidão de produção ou homologação de provider.
 
 ## 1. Autoridade e estado comprovado
 
@@ -15,8 +15,8 @@ O estado executável auditado nesta sessão registra:
 | `pnpm readiness:enterprise` | 95/100; 42 PASS, 3 WARN, 1 FAIL | readiness estrutural alto, mas o FAIL é a paridade funcional Vetus |
 | `pnpm vetus:parity:audit` | 0/11 verificado | paridade geral bloqueada |
 | `pnpm vetus:clinical-parity` | 0/3 verificado | paridade clínica bloqueada |
-| `pnpm validate:rls` | 148/149 tabelas protegidas | uma exceção documentada ainda precisa de decisão/fechamento |
-| `pnpm validate:openapi` | 333 paths, 40 tags, 382 schemas | contrato estrutural; não prova comportamento dos handlers |
+| `pnpm validate:rls` | 153/154 tabelas protegidas | uma exceção documentada ainda precisa de decisão/fechamento |
+| `pnpm validate:openapi` | 335 paths, 40 tags, 386 schemas | contrato estrutural; não prova comportamento dos handlers |
 | `node tools/migration-consistency-report.mjs` | falhou por manifesto ausente | falta `docs/phase-9-migration-manifest.json` no caminho esperado |
 
 O programa `CVG-002B2B` segue `IN_PROGRESS/PARTIAL`. B1/B2a estão verificados; a extensão B1 foi extraída para `packages/modules/pix` e a regressão focada está em 18/18. O verificador raw-body/HMAC, ingresso HTTP→PostgreSQL, migration 0111/0112, filtros de principal, ACL/RLS e um consumer B1 cercado possuem evidência focada verde, mas continuam slices limitados: UoW compartilhada, restart/takeover/redrive, fronteira legada `410`, providers reais, paridade Vetus e produção ainda não estão certificados.
@@ -24,7 +24,7 @@ O programa `CVG-002B2B` segue `IN_PROGRESS/PARTIAL`. B1/B2a estão verificados; 
 ## 2. Lacunas de maior impacto no código
 
 1. **Durabilidade incompleta:** ainda existem fallbacks `Map`/in-memory em agenda, entregas de comunicação, Google Calendar, importação laboratorial, logs de importação Vetus, WebAuthn/challenges e OIDC. Isso impede restart seguro, múltiplas réplicas e recuperação de filas.
-2. **Atomicidade cross-domain insuficiente:** o maior risco financeiro é uma comanda atualizar parcialmente atendimento, estoque/lote, recebível, caixa/pagamento, auditoria ou outbox.
+2. **Atomicidade cross-domain insuficiente:** o maior risco financeiro é uma comanda atualizar parcialmente atendimento, estoque/lote, recebível, caixa/pagamento, auditoria ou outbox. O rate limit de API key agora possui consumo atômico no PostgreSQL, mas ainda não há prova multi-réplica.
 3. **Evidência de cobertura enviesada:** a configuração global exclui `server.ts`, rotas, repositórios, migrations e grande parte dos módulos críticos. A cobertura declarada não substitui E2E PostgreSQL.
 4. **Frontend com lacunas explícitas:** existe rota administrativa placeholder e páginas monolíticas que dificultam evolução e revisão; rotas declaradas não equivalem a jornadas completas.
 5. **Deploy ainda não comprovado:** values de produção declaram réplicas/Vault, mas a injeção de segredos de PIX, fiscal, comunicação, calendário, Redis e Vault precisa de renderização e smoke reais; fallback de secrets deve falhar fechado em produção.
@@ -181,10 +181,18 @@ O checkpoint seguinte foi validado em PostgreSQL efêmero e no workspace local, 
 | API payments route | 4/4 |
 | Worker PostgreSQL fencing/restart | 6/6 |
 | Service principals/RLS | 5/5 |
-| HTTP→PostgreSQL legacy 410 | 3/3 |
-| API keys module | 10/10 |
-| OpenAPI / secret scan / diff check | PASS — 335 paths/386 schemas |
+| HTTP→PostgreSQL legacy/rate-limit | 4/4 |
+| API keys module | 13/13 |
+| API-key mapper + auth helper | 3/3 + 2/2 |
+| Runtime ACL/RLS | 1/1 |
+| OpenAPI / RLS / secret scan / diff check | PASS — 335 paths/386 schemas; 153/154 RLS |
 
-A integração HTTP prova que um `pix_transactions.payment_attempt_id` persistido retorna `410 LEGACY_PIX_CONFIRMATION_DISABLED` antes de gateway e outbox; uma API key de outro account recebe `404` opaco; um PIX direto sem vínculo continua `200` com um gateway e um evento. A evidência usa um adaptador de API key no harness porque o `DatabaseApiKeyRepository` de produção ainda chama `JSON.parse(row.permissions)` quando `pg` entrega JSONB como array e porque a resolução da chave ocorre antes do contexto tenant exigido por `withTenantQuery`. Este é um gap de produção documentado, não uma conclusão de autenticação end-to-end.
+A integração HTTP prova que um `pix_transactions.payment_attempt_id` persistido retorna `410 LEGACY_PIX_CONFIRMATION_DISABLED` antes de gateway e outbox; uma API key de outro account recebe `404` opaco; um PIX direto sem vínculo continua `200` com um gateway e um evento; oito requests concorrentes com uma chave limitada resultam em dois `201` e seis `429`. O harness usa agora o `DatabaseApiKeyRepository` real: lookup pré-contexto por capability `SECURITY DEFINER`, mapper JSONB estrito, probe PIX sem retorno de `account_id` e tabelas de uso/rate-limit tenantizadas. Este é um resultado local/descartável, não uma conclusão de produção.
 
-O próximo ciclo deve corrigir essa fronteira com uma capacidade pré-contexto least-privilege compatível com RLS, além de publicar DLQ/runbook/alertas e abrir o gate B2c/SPA separadamente. A prova não promove o ERP, a paridade Vetus, providers, UX, operações ou release.
+O próximo ciclo deve publicar DLQ/runbook/alertas e abrir o gate B2c/SPA separadamente. O rate limit atômico ainda precisa de benchmark multi-réplica/política operacional. A prova não promove o ERP, a paridade Vetus, providers, UX, operações ou release.
+
+## 13. Atualização de continuidade — capability API-key e cutover — 23/08/2026
+
+Esta sessão fechou a lacuna funcional que havia forçado o adapter do teste HTTP (implementação publicada em `62db87e`): `DatabaseApiKeyRepository.findActiveByKeyHash` usa uma função pré-contexto estreita; `mapDatabaseApiKeyRow` aceita o formato JSONB do driver `pg`; o role worker não possui acesso a `api_keys`, `api_key_usage` ou `api_key_rate_limits`; e o helper das rotas extraídas aplica rate limit antes de `last_used_at`. O probe PIX retorna apenas `true`, `false` ou `NULL` (ausente), nunca o `account_id` estrangeiro.
+
+A migration `0113` e os scripts de runtime/Helm usam `cvg_api_key_auth` sem login, inherit, bypass RLS ou memberships. A função API-only é reconciliada depois da migration no cutover e no serviço `database-migrate` do Compose; a integração ACL/HTTP valida o privilégio efetivo, o worker/PUBLIC negados e a matriz 410/404/200/429. O estado canônico continua `IN_PROGRESS/PARTIAL`: restart real, DLQ operacional, providers, SPA/Vetus parity, WCAG, target environment e release ainda não foram provados.
