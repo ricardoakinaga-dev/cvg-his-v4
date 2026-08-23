@@ -386,3 +386,22 @@ depois, com todos os gates externos ainda separados.
   **331/331**, typecheck/build e diff check passaram; revisão independente foi
   PASS para esse escopo. A barra global continua `IN_PROGRESS/PARTIAL`; ainda
   faltam harness real de schema/role e a jornada clínica-financeira única.
+
+## Checkpoint 16:35 BRT — defesa de bootstrap publicada e RED vertical aberto
+
+O harness real de startup production-like passou **6/6** em PostgreSQL
+descartável com role restrita `NOBYPASSRLS`, role insegura, schema incompleto e
+subprocessos API/worker sem listener/loop após DB recusado. O commit publicado
+é `25d7aa2`; o artefato é
+`.agent/artifacts/CVG-001-runtime-bootstrap-harness-2026-08-23.md`.
+
+O maior gap local agora é o RED
+`tests/integration/database/inpatient-clinical-financial-vertical-http-postgres.test.ts`:
+admission → handoff → inventory → daily → discharge → close já executam em
+PostgreSQL efêmero. A revisão independente corrigiu o fixture (billing-open
+HTTP, casts `::text` e bearer A→recurso B) e a repetição passou **4/4**,
+incluindo receipt, ledger/reconciliation, rollback e isolamento A/B. Isso é
+GREEN bounded; não promover ERP, produção ou release. Permanecem abertos
+NOBYPASSRLS comportamental clínico,
+failpoints/restart/reconciliação cross-domain, SPA, provider, paridade, WCAG,
+operações e cobertura.

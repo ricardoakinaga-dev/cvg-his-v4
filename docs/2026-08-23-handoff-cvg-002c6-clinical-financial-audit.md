@@ -334,3 +334,32 @@ O código e a evidência do gate fail-closed foram publicados em
 origin/agent/sync-v4-full-program`. O cache user-owned do design-system segue
 fora do commit. A jornada clínica-financeira e todos os gates externos
 continuam `IN_PROGRESS/PARTIAL`.
+
+## Nova evidência — RED público da jornada admission → receipt (23/08/2026)
+
+O teste vertical
+`tests/integration/database/inpatient-clinical-financial-vertical-http-postgres.test.ts`
+foi executado com PostgreSQL descartável, dois tenants, duas instâncias HTTP
+e dados clínicos/estoque sem semear billing/receivable final. A jornada já
+prova admission, handoff/ack, consumo com charge capture, diária faturada,
+alta, close e a tentativa de recebimento, além de replay/conflito,
+concorrência de mesma chave, rollback por constraint e tentativa de spoofing.
+
+O RED inicial foi corrigido apenas no fixture: a abertura do billing agora usa
+o endpoint HTTP público, as verificações comparam `entity_id`/payload como
+text e o spoof usa bearer A contra encounter/patient B. A repetição passou
+**4/4** e confirmou a jornada pública até cash receipt, ledger balanceado,
+replay/conflito, corrida de billing, rollback de close sem resíduos e
+isolamento A/B. O artefato é
+[`.agent/artifacts/CVG-002C6-vertical-http-red-green-2026-08-23.md`](../.agent/artifacts/CVG-002C6-vertical-http-red-green-2026-08-23.md).
+
+A aceitação global continua rejeitada: este GREEN não usa uma role runtime
+clínica `NOBYPASSRLS` para todas as mutações, não cobre SIGKILL/restart entre
+cada boundary, failpoints cross-domain completos, hidratação cross-instance,
+`FORCE ROW LEVEL SECURITY` global, todos os campos clínicos ou todos os
+domínios de reconciliação. Esses gates seguem necessários antes de promoção.
+
+O harness de startup que antecede este RED está GREEN bounded em **6/6**, no
+commit `25d7aa209fffeda7ce566d6a237f39b76d609be5`; isso não certifica o
+comportamento clínico-financeiro sob uma role de runtime real
+`NOBYPASSRLS`.

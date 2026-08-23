@@ -447,3 +447,19 @@ local é escrever o RED vertical com PostgreSQL descartável, dois tenants,
 failpoints/restart, replay/conflito e reconciliação. SPA, providers, Redis
 failover, Vetus, WCAG, target operations, cobertura, deploy/restore e release
 continuam gates separados.
+
+## Estado atual — 23/08/2026, 16:35 BRT
+
+O gate CVG-001 de bootstrap production-like está GREEN bounded em `6/6` com
+PostgreSQL descartável real, role restrita `NOBYPASSRLS`, role insegura,
+schema incompleto e subprocessos dos entrypoints reais. Publicação: `25d7aa2`.
+Isso cobre somente a fronteira antes de `listen`/loop; não cobre fatal
+pós-start, contrato global de RLS/ACL, instalação/sessão ou deploy alvo.
+
+O novo RED vertical público alcança admission → handoff/stay → inventory →
+daily → discharge → close → receipt; após correção somente do fixture (billing-
+open HTTP, casts `::text`, bearer A→recurso B), a execução passou `4/4`, com
+ledger/reconciliation, rollback e isolamento A/B. O resultado é GREEN bounded,
+não promoção global. Próxima ação: repetir o mesmo fluxo com role runtime
+NOBYPASSRLS, failpoints/restart cross-domain e reconciliação completa. A barra
+global continua `ACTIVE/IN_PROGRESS/PARTIAL`.

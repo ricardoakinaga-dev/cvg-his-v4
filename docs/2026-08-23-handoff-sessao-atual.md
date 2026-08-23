@@ -159,3 +159,46 @@ production-like bootstrap`) foi enviado para
 `origin/agent/sync-v4-full-program`. O `fetch` posterior confirmou igualdade
 entre `HEAD` e o remoto. O único caminho local fora do commit continua sendo
 `packages/design-system/tsconfig.vue.tsbuildinfo`, preservado fora do stage.
+
+## Checkpoint mais recente — harness real de bootstrap (23/08/2026, 16:35 BRT)
+
+O gate de defesa de inicialização foi ampliado e publicado em
+`25d7aa209fffeda7ce566d6a237f39b76d609be5` (`test: prove production-like
+bootstrap boundaries`). O teste usa PostgreSQL descartável real, roles de
+login restritas com `NOSUPERUSER`/`NOBYPASSRLS`, uma role superuser insegura,
+schema com `public.inbox_events` renomeada e subprocessos dos entrypoints
+reais da API e do worker sob `NODE_ENV=staging`.
+
+Evidência fresca: `production-like-runtime-bootstrap.test.ts` passou **6/6**.
+O API e o worker rejeitam role insegura e schema de delivery incompleto; com
+PostgreSQL recusado, nenhum entrypoint emite `listening`, abre health listener
+ou entra no loop de worker. O artefato reproduzível é
+[`.agent/artifacts/CVG-001-runtime-bootstrap-harness-2026-08-23.md`](../.agent/artifacts/CVG-001-runtime-bootstrap-harness-2026-08-23.md).
+
+Este resultado é GREEN apenas no limite de startup. Não certifica ACL/RLS
+global, `FORCE ROW LEVEL SECURITY` em todas as tabelas, falha fatal pós-start,
+durabilidade de instalação/sessão nem deploy alvo.
+
+## RED vertical retomado — admissão até recebimento
+
+O novo teste
+[`inpatient-clinical-financial-vertical-http-postgres.test.ts`](../tests/integration/database/inpatient-clinical-financial-vertical-http-postgres.test.ts)
+foi executado contra PostgreSQL descartável com dois tenants, duas instâncias
+HTTP, replay/conflito de idempotência, corrida de diária, failpoint de close e
+spoofing de headers. Após a revisão independente, o fixture abriu o billing
+via `PATCH /billing/:encounterId/status` público, corrigiu casts `::text` e
+usou bearer A contra recurso B. O resultado corrigido passou **4/4** e cobre
+admissão → handoff/ack → consumo de estoque → diária/billing → billing-open →
+alta → close → receipt, além de ledger/reconciliation e isolamento A/B.
+
+O artefato reproduzível é
+[`.agent/artifacts/CVG-002C6-vertical-http-red-green-2026-08-23.md`](../.agent/artifacts/CVG-002C6-vertical-http-red-green-2026-08-23.md).
+Este é GREEN bounded de HTTP/PostgreSQL; não certifica todas as mutações sob
+role clínica `NOBYPASSRLS`, SIGKILL/restart entre boundaries, failpoints
+cross-domain completos, `FORCE ROW LEVEL SECURITY` global, hidratação
+cross-instance ou qualquer gate externo. A jornada/Quality Bar continua
+`IN_PROGRESS/PARTIAL`.
+
+Próxima ação exata: obter a revisão independente final do 4/4 e então elevar
+o mesmo fluxo para role runtime `NOBYPASSRLS`, failpoints/restart e
+reconciliação completa antes de qualquer promoção.

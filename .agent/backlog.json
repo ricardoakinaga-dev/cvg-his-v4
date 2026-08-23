@@ -18,9 +18,12 @@
         ".gauntlet/state.md",
         "docs/2026-08-23-checkpoint-continuacao.md",
         ".agent/artifacts/CVG-001-startup-fail-closed-2026-08-23.md",
-        ".agent/verification.jsonl#VFY-CVG-001-STARTUP-FAILCLOSED-001"
+        ".agent/verification.jsonl#VFY-CVG-001-STARTUP-FAILCLOSED-001",
+        "tests/integration/setup/production-like-runtime-bootstrap.test.ts",
+        ".agent/artifacts/CVG-001-runtime-bootstrap-harness-2026-08-23.md",
+        ".agent/verification.jsonl#VFY-CVG-001-STARTUP-HARNESS-001"
       ],
-      "next_action": "Startup fail-closed is GREEN for aliases, unavailable DB, explicit RLS/schema flags and monotonic process-vs-option policy. Add disposable-PostgreSQL doubles for incomplete schema/unsafe role and process-level listen/loop assertions; then continue explicit-secret and durable installation-sentinel behavior before the single clinical-financial vertical."
+      "next_action": "Startup fail-closed is GREEN bounded for aliases, unavailable DB, explicit RLS/schema flags, monotonic process-vs-option policy, disposable restricted/unsafe roles, incomplete delivery schema and real entrypoints with no listen/loop. Continue explicit-secret and durable installation-sentinel behavior later; do not broaden this gate into global RLS/post-start fatal behavior."
     },
     {
       "id": "CVG-002",
@@ -271,9 +274,14 @@
         ".agent/verification.jsonl#VFY-CVG-002C6-INVENTORY-OUTBOX-001",
         ".agent/verification.jsonl#VFY-CVG-002C6-BOUNDARY-002",
         ".agent/verification.jsonl#VFY-CVG-002C6-FOCUS-002",
-        ".agent/verification.jsonl#VFY-CVG-002C6-REVIEW-002"
+        ".agent/verification.jsonl#VFY-CVG-002C6-REVIEW-002",
+        "tests/integration/database/inpatient-clinical-financial-vertical-http-postgres.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-002C6-VERTICAL-RED-001",
+        ".agent/artifacts/CVG-002C6-vertical-http-red-green-2026-08-23.md",
+        ".agent/verification.jsonl#VFY-CVG-002C6-VERTICAL-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-002C6-VERTICAL-GREEN-REVIEW-001"
       ],
-      "next_action": "Start with one public admission -> handoff/stay -> inventory charge capture -> daily charge -> discharge -> close -> receipt/ledger/audit/outbox RED using disposable PostgreSQL, two tenants and a NOBYPASSRLS role; cover replay, divergent-payload conflict, concurrency, failpoints, restart and reconciliation before promotion. Keep callback ghost, async cross-instance hydration, Redis/provider/SPA/parity/WCAG/coverage/operations/deploy/release gates explicitly open and keep the user-owned tsbuildinfo cache out of scope."
+      "next_action": "The public vertical HTTP/PostgreSQL boundary is GREEN bounded at 4/4 after fixture-only billing-open, SQL-cast and bearer-A-to-resource-B corrections. Next run the same admission -> handoff/ack -> inventory charge capture -> daily charge -> discharge -> close -> receipt path under a real clinical runtime NOBYPASSRLS role, add boundary failpoints and SIGKILL/restart, and reconcile each stock/billing/receivable/payment/cash/journal/audit/outbox record before promotion. Keep callback ghost, async cross-instance hydration, Redis/provider/SPA/parity/WCAG/coverage/operations/deploy/release gates explicitly open and keep the user-owned tsbuildinfo cache out of scope."
     },
     {
       "id": "CVG-003",

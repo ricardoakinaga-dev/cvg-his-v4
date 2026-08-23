@@ -1112,3 +1112,33 @@ O gate foi publicado no commit
 `packages/design-system/tsconfig.vue.tsbuildinfo` permanece dirty e fora do
 stage. A próxima sessão deve ler o artefato fail-closed e seguir para o
 harness de schema/role e para o RED vertical, sem promover a barra global.
+
+## Checkpoint 16:35 BRT — bootstrap real e RED vertical
+
+O harness de bootstrap production-like foi publicado em
+`25d7aa209fffeda7ce566d6a237f39b76d609be5`. PostgreSQL descartável, roles
+restritas `NOBYPASSRLS`, role superuser insegura, schema incompleto e
+subprocessos dos entrypoints reais produziram **6/6 PASS**. O limite provado é
+startup fail-closed: sem URL/DB íntegro não há listener API, health listener
+do worker nem loop; schema/role inseguros são rejeitados. O detalhe está em
+[`.agent/artifacts/CVG-001-runtime-bootstrap-harness-2026-08-23.md`](../.agent/artifacts/CVG-001-runtime-bootstrap-harness-2026-08-23.md).
+
+O RED seguinte foi escrito em
+`tests/integration/database/inpatient-clinical-financial-vertical-http-postgres.test.ts`.
+Em PostgreSQL efêmero com dois tenants e duas instâncias HTTP, ele percorre
+admissão, handoff/ack, consumo, diária, alta, close e tentativa de receipt,
+incluindo replay/conflito, corrida e rollback. Após corrigir somente o fixture
+(abertura HTTP do billing, casts `::text` e spoof bearer A→recurso B), a
+execução passou **4/4**. A jornada agora cobre admission, handoff/ack,
+consumo/charge capture, diária, billing-open, alta, close, receipt,
+ledger/reconciliation e isolamento A/B. O artefato é
+[`.agent/artifacts/CVG-002C6-vertical-http-red-green-2026-08-23.md`](../.agent/artifacts/CVG-002C6-vertical-http-red-green-2026-08-23.md).
+Esse GREEN é bounded: ainda falta provar as mesmas mutações com role de
+runtime `NOBYPASSRLS`, failpoints/restart cross-domain, reconciliação completa,
+hidratação cross-instance e RLS/ACL global. Não iniciar promoção antes desses
+gates.
+
+O Quality Bar/ERP continua `ACTIVE` e `IN_PROGRESS/PARTIAL`; não há promoção
+global, de produção, release, SPA, paridade, WCAG, operações ou cobertura.
+O cache `packages/design-system/tsconfig.vue.tsbuildinfo` continua fora do
+stage.
