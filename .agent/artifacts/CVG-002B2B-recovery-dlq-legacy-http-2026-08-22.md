@@ -4,7 +4,7 @@
 **Branch:** `agent/sync-v4-full-program`
 **Estado:** implementação local verificada em fatias limitadas; `CVG-002B2B` permanece `IN_PROGRESS/PARTIAL`.
 
-Este artefato é o ponto de retomada para a próxima sessão. Ele registra somente evidência observada no workspace e no PostgreSQL descartável; não promove o ERP, o provider sintético ou a API key database para produção.
+Este artefato é o ponto de retomada para a próxima sessão. A implementação está publicada em `fdb0995` e a documentação/ledgers em `75bfa72`. Ele registra somente evidência observada no workspace e no PostgreSQL descartável; não promove o ERP, o provider sintético ou a API key database para produção.
 
 ## Incrementos implementados
 
