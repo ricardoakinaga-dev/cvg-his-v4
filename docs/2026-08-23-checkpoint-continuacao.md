@@ -344,6 +344,10 @@ a fatia clínico-financeira de internação até item cobrável.
 Este é o checkpoint atual para a próxima sessão. A sessão não concluiu o ERP;
 ela fechou duas fatias locais e deixou os gates externos explícitos.
 
+O código desta atualização foi consolidado localmente em `a89a2f0`; a
+reconciliação documental e a confirmação do branch remoto serão registradas no
+próximo ponteiro após o push.
+
 ### PIX settlement
 
 - A matriz processual passou `5/5`: quatro pontos de `SIGKILL` e o race stale

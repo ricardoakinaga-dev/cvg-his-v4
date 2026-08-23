@@ -14,16 +14,16 @@
   "active_execplan": ".agent/plans/premium-enterprise-mvp.md",
   "active_task": "CVG-002B2B",
   "verification_state": "PARTIAL",
-  "repository_state": "Working tree now contains the bounded follow-on slices pending publication: the independent-process PIX matrix includes a live stale-fence takeover case (5/5 total), and migration 0115 plus the inpatient/billing boundary make daily-charge source items idempotent across replays, duplicate source inserts and first billing-record creation races. Fresh local evidence is process 5/5, API 324/324, worker 58 tests + build, module-inpatient 17/17, module-billing 16/16, inpatient billing integration 2/2, route 10/10 and DB/API/module builds. The process proof remains bounded to disposable PostgreSQL, local-pix and a minimal fixture; detailed journal/outbox/inbox accounting, full worker readiness, Redis failover/clock-skew, provider, SPA, parity, WCAG, target operations, coverage and release remain open. The API payments fixture was aligned with the mandatory rate-limit contract without changing production behavior. The preserved user-owned packages/design-system/tsconfig.vue.tsbuildinfo cache remains outside scope and must not be staged",
+  "repository_state": "Implementation commit `a89a2f0` now contains the bounded follow-on slices: the independent-process PIX matrix includes a live stale-fence takeover case (5/5 total), and migration 0115 plus the inpatient/billing boundary make daily-charge source items idempotent across replays, duplicate source inserts and first billing-record creation races. Fresh local evidence is process 5/5, API 324/324, worker 58 tests + build, module-inpatient 17/17, module-billing 16/16, inpatient billing integration 2/2, route 10/10 and DB/API/module builds. The process proof remains bounded to disposable PostgreSQL, local-pix and a minimal fixture; detailed journal/outbox/inbox accounting, full worker readiness, Redis failover/clock-skew, provider, SPA, parity, WCAG, target operations, coverage and release remain open. The API payments fixture was aligned with the mandatory rate-limit contract without changing production behavior. Documentation reconciliation is the pending follow-up commit; the preserved user-owned packages/design-system/tsconfig.vue.tsbuildinfo cache remains outside scope and must not be staged",
   "instruction_scope_refs": [".agent/instruction-scope.md"],
   "last_gate_record": ".agent/gates/implementation-ready-CVG-002B2B.json",
-  "last_event_id": "EVT-0108",
-  "state_revision": 95,
+  "last_event_id": "EVT-0109",
+  "state_revision": 96,
   "next_gate": "VERIFIED",
   "next_action": "Publish the stale-fence 5/5 and inpatient daily-charge idempotency checkpoint. On resume, exercise Redis failover/clock skew under fail-closed policy, then decompose admission -> handoff/permanence -> daily charge -> discharge -> item/receipt with PostgreSQL/RLS REDs while preserving B2c/SPA, provider, parity, WCAG, target-operations, coverage and release gates",
   "blocked_by": [],
   "human_approval_required": [
     "Production go-live, credential rotation, provider selection, fiscal homologation, and residual HIGH/CRITICAL risk acceptance remain outside repository implementation authority"
   ],
-  "updated_at": "2026-08-23T05:03:00-03:00"
+  "updated_at": "2026-08-23T05:10:00-03:00"
 }
