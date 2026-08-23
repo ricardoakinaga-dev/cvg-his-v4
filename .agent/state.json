@@ -14,16 +14,16 @@
   "active_execplan": ".agent/plans/premium-enterprise-mvp.md",
   "active_task": "CVG-002B2B",
   "verification_state": "PARTIAL",
-  "repository_state": "Published checkpoints through `f0c38c3` remain intact. The current local continuation implements the PIX settlement operator DLQ slice: migration 0114 capability/function ACL, tenant-scoped sanitized list and audited redrive, OpenAPI error envelopes with correlation IDs, DB-backed current backlog gauge, Prometheus/Grafana/runbook and focused regressions; publication commit is pending. It remains below VERIFIED because the minimum principal projection, multi-replica rate-limit policy, real SIGKILL restart matrix, provider, SPA and release evidence are open. Corrected 18/18 B1 remains extracted into module-pix with API shims, and the preserved user-owned packages/design-system/tsconfig.vue.tsbuildinfo cache remains outside scope",
+  "repository_state": "Published checkpoints through `f0c38c3` remain intact. The PIX settlement operator DLQ implementation is published in `35f68fd` and the replicated-observability correction in `1217882`: migration 0114 capability/function ACL, tenant-scoped sanitized list and audited redrive, OpenAPI error envelopes with correlation IDs, DB-backed current backlog gauge with max-across-replicas alert semantics, Prometheus/Grafana/runbook and focused regressions. It remains below VERIFIED because the minimum principal projection, multi-replica rate-limit policy, real SIGKILL restart matrix, provider, SPA and release evidence are open. Corrected 18/18 B1 remains extracted into module-pix with API shims, and the preserved user-owned packages/design-system/tsconfig.vue.tsbuildinfo cache remains outside scope",
   "instruction_scope_refs": [".agent/instruction-scope.md"],
   "last_gate_record": ".agent/gates/implementation-ready-CVG-002B2B.json",
-  "last_event_id": "EVT-0088",
-  "state_revision": 75,
+  "last_event_id": "EVT-0089",
+  "state_revision": 76,
   "next_gate": "VERIFIED",
-  "next_action": "Publish the operator-DLQ implementation/docs and replicated-observability correction commits, then define and test the multi-replica rate-limit policy and minimum principal projection, prove the real SIGKILL/restart matrix, rerun B1/B2a/ingress/HTTP regressions and reassess VERIFIED while preserving the bounded evidence",
+  "next_action": "Define and test the multi-replica rate-limit policy and minimum principal projection, prove the real SIGKILL/restart matrix, rerun B1/B2a/ingress/HTTP regressions and reassess VERIFIED while preserving the bounded evidence",
   "blocked_by": [],
   "human_approval_required": [
     "Production go-live, credential rotation, provider selection, fiscal homologation, and residual HIGH/CRITICAL risk acceptance remain outside repository implementation authority"
   ],
-  "updated_at": "2026-08-23T01:59:00-03:00"
+  "updated_at": "2026-08-23T02:03:00-03:00"
 }

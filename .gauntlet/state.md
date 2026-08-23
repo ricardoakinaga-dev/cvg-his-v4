@@ -93,7 +93,9 @@ and an atomic `SECURITY DEFINER` function that resets only the delivery and
 appends the audit event in the same transaction. API/worker ACL surfaces,
 OpenAPI, Prometheus alert, Grafana panel and runbook are aligned.
 
-Fresh evidence: route 4/4; disposable PostgreSQL DLQ/ACL 3/3 (durable backlog
+Implementation `35f68fd` and replicated-observability correction `1217882` are
+published to `origin/agent/sync-v4-full-program`. Fresh evidence: route 4/4;
+disposable PostgreSQL DLQ/ACL 3/3 (durable backlog
 1→0 after redrive); runtime role contract 9/9; worker 54/54; alert alignment
 4/4; API/DB/worker builds, OpenAPI 337/390, Helm static checks, YAML/JSON
 parsers and shell syntax PASS. The alert/panel use the current DB-backed gauge

@@ -1,8 +1,8 @@
 # CVG-002B2B — PIX settlement DLQ operator slice
 
 **Data:** 23 de agosto de 2026
-**Estado:** implementado e verificado localmente; aguardando publicação do
-commit antes de qualquer promoção de gate
+**Estado:** implementado, verificado e publicado em `35f68fd` + `1217882`;
+nenhum gate foi promovido
 **Escopo:** somente a fila terminal `pix_provider_event_deliveries` em
 `reconciliation_required`
 

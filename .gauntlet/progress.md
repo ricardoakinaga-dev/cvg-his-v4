@@ -61,6 +61,9 @@
 
 ## Checkpoint 2026-08-23 — PIX settlement DLQ operator slice
 
+Published implementation `35f68fd` and replicated-observability correction
+`1217882` to `origin/agent/sync-v4-full-program`.
+
 - Added tenant-scoped, sanitized `GET /internal/pix-settlement/deliveries` and
   audited `POST /internal/pix-settlement/deliveries/:deliveryId/redrive`.
 - Migration `0114` keeps direct API `UPDATE` denied and exposes one atomic

@@ -20,6 +20,8 @@ release.
 - O arquivo user-owned
   `packages/design-system/tsconfig.vue.tsbuildinfo` permanece modificado e
   deve ficar fora de qualquer commit.
+- O slice DLQ desta sessão foi publicado em `35f68fd`; a correção de
+  observabilidade multi-réplica foi publicada em `1217882`.
 
 Retomada mínima:
 
@@ -152,7 +154,8 @@ artefato detalhado está em
   `1→0` após redrive; runtime grant 9/9; worker 54/54; API/DB/worker build,
   OpenAPI 337/390, alert alignment 4/4, Helm, YAML/JSON e shell checks PASS.
 
-Esse incremento reduz o risco de uma entrega terminal ficar sem operador, mas
+Esse incremento reduz o risco de uma entrega terminal ficar sem operador e foi
+publicado em `35f68fd` com a correção de observabilidade em `1217882`, mas
 não promove o gate: SIGKILL/restart real, rate-limit multi-réplica, principal
 mínima, provider real, SPA, paridade Vetus, WCAG, target ops e release seguem
 abertos. O cache user-owned `packages/design-system/tsconfig.vue.tsbuildinfo`
