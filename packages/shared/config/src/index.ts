@@ -254,8 +254,13 @@ export interface WorkerAppConfig {
   readonly workerFeatureFlags: readonly string[];
 }
 
-function isProductionEnvironment(env: string): boolean {
+export function isProductionLikeEnvironment(environment: string | undefined): boolean {
+  const env = environment?.trim().toLowerCase();
   return env === 'production' || env === 'staging' || env === 'prod' || env === 'stage';
+}
+
+function isProductionEnvironment(env: string): boolean {
+  return isProductionLikeEnvironment(env);
 }
 
 function validateSecret(secret: string, environment: string): void {

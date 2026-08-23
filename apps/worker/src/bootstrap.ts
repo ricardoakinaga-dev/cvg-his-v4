@@ -30,6 +30,7 @@ import type { NotificationRepository } from '@cvg-his-v2/module-notifications';
 import type { OutboxRepository } from '@cvg-his-v2/module-event-bus';
 import type { ReportRepository } from '@cvg-his-v2/module-reports';
 import { createLogger } from '@cvg-his-v2/shared-logging';
+import { isProductionLikeEnvironment } from '@cvg-his-v2/shared-config';
 import type { AdministrativeExecutiveReportSources } from './runner.js';
 import {
   PixPaymentDispatchConfigurationError,
@@ -221,14 +222,14 @@ export function createSyntheticPixPaymentDispatchRuntime(
   });
 }
 
-async function loadPersistedAccountIds(): Promise<readonly string[]> {
+async function loadPersistedAccountIds(productionLike: boolean): Promise<readonly string[]> {
   const configured = (process.env.WORKER_ACCOUNT_IDS ?? process.env.WORKER_ACCOUNT_ID ?? '')
     .split(',')
     .map((accountId) => accountId.trim())
     .filter(Boolean);
   if (configured.length > 0) return [...new Set(configured)];
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('WORKER_ACCOUNT_IDS is required in production');
+  if (productionLike) {
+    throw new Error('WORKER_ACCOUNT_IDS is required in production-like environments');
   }
   const result = await getPool().query<{ id: string }>('SELECT id::text FROM accounts ORDER BY id');
   return result.rows.map((account) => account.id);
@@ -237,10 +238,20 @@ async function loadPersistedAccountIds(): Promise<readonly string[]> {
 export async function bootstrapWorkerServices(
   options: WorkerBootstrapOptions = {}
 ): Promise<WorkerBootstrapResult> {
+  const productionLike =
+    isProductionLikeEnvironment(process.env.NODE_ENV) ||
+    isProductionLikeEnvironment(options.environment) ||
+    process.env.DATABASE_REQUIRE_RLS_ROLE === '1' ||
+    process.env.DATABASE_REQUIRE_SCHEMA === '1';
   if (options.allowSyntheticPixProvider === true) {
     assertSyntheticEnvironment(options.environment);
   }
   if (!options.databaseUrl) {
+    if (productionLike) {
+      throw new Error(
+        'Production-like worker runtime requires DATABASE_URL; refusing degraded startup'
+      );
+    }
     return {
       databaseHealthy: false,
       databaseDetail: 'DATABASE_URL not configured'
@@ -252,12 +263,17 @@ export async function bootstrapWorkerServices(
     const health = await checkDatabaseHealth();
 
     if (!health.healthy) {
+      if (productionLike) {
+        throw new Error(
+          `Production-like worker database is unavailable; refusing degraded startup (${health.detail})`
+        );
+      }
       return {
         databaseHealthy: false,
         databaseDetail: health.detail
       };
     }
-    if (process.env.NODE_ENV === 'production' || process.env.DATABASE_REQUIRE_RLS_ROLE === '1') {
+    if (productionLike) {
       const runtimeRole = await checkDatabaseRuntimeRole();
       if (!runtimeRole.safe) {
         throw new Error(`Unsafe PostgreSQL runtime role: ${runtimeRole.detail}`);
@@ -308,10 +324,10 @@ export async function bootstrapWorkerServices(
          ) AS ready`
     );
     const deliveryGuaranteesReady = deliveryGuarantees.rows[0]?.ready === true;
-    if (!deliveryGuaranteesReady && process.env.NODE_ENV === 'production') {
+    if (!deliveryGuaranteesReady && productionLike) {
       throw new Error('Worker delivery guarantee schema is not ready');
     }
-    const accountIds = await loadPersistedAccountIds();
+    const accountIds = await loadPersistedAccountIds(productionLike);
     logger.info('Worker database connection established', {
       detail: health.detail
     });
@@ -320,7 +336,7 @@ export async function bootstrapWorkerServices(
       databaseHealthy: true,
       databaseDetail: health.detail,
       accountIds,
-      loadAccountIds: loadPersistedAccountIds,
+      loadAccountIds: () => loadPersistedAccountIds(productionLike),
       notificationRepository: new DatabaseNotificationRepository(db),
       outboxRepository: new DatabaseOutboxRepository(),
       unitOfWork: deliveryGuaranteesReady ? createTenantUnitOfWork(getPool()) : undefined,
@@ -340,7 +356,7 @@ export async function bootstrapWorkerServices(
       })
     };
   } catch (error) {
-    if (process.env.NODE_ENV === 'production' || process.env.DATABASE_REQUIRE_RLS_ROLE === '1') {
+    if (productionLike) {
       throw error;
     }
     return {

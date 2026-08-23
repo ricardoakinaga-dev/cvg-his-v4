@@ -372,3 +372,17 @@ iniciar com repositórios em memória/mistos quando DB/schema falham, e o worker
 tem assimetria. O próximo gate local passa a ser RED/GREEN de startup
 fail-closed e bloqueio de mutações; a jornada vertical clínica permanece logo
 depois, com todos os gates externos ainda separados.
+
+## Gate concluído localmente — CVG-001 startup fail-closed (23/08/2026)
+
+- API e worker agora compartilham a classificação production-like para
+  `production`, `prod`, `staging` e `stage`; `NODE_ENV` do processo, ambiente
+  explícito e flags RLS/schema são monotônicos e não permitem downgrade.
+- URL ausente, DB indisponível, role insegura, schema de delivery incompleto,
+  repositório misto ou UoW ausente abortam antes de listen/loop em ambientes
+  protegidos. O artefato é
+  `.agent/artifacts/CVG-001-startup-fail-closed-2026-08-23.md`.
+- API bootstrap **18/18**, shared-config **40/40**, worker **62**, API package
+  **331/331**, typecheck/build e diff check passaram; revisão independente foi
+  PASS para esse escopo. A barra global continua `IN_PROGRESS/PARTIAL`; ainda
+  faltam harness real de schema/role e a jornada clínica-financeira única.

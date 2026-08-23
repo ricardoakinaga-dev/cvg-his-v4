@@ -303,6 +303,22 @@ O handoff documental curto foi publicado em
 `d355513e82fc0a51b7e4e39e2a93ed3d9daf154d`; o branch remoto foi revalidado
 após o push e ficou alinhado ao `HEAD` local.
 
+## Correção de bootstrap que precede o próximo RED
+
+O bloqueio de segurança encontrado em `staging`/`stage` recebeu uma correção
+fail-closed compartilhada em API e worker. Os quatro aliases production-like,
+as flags de RLS/schema e o `NODE_ENV` do processo prevalecem sobre qualquer
+opção menos restritiva. URL ausente, DB down, role/schema/repositórios/UoW
+incompletos agora abortam antes de listen/loop. A evidência detalhada e os
+limites estão em [`.agent/artifacts/CVG-001-startup-fail-closed-2026-08-23.md`](../.agent/artifacts/CVG-001-startup-fail-closed-2026-08-23.md).
+
+Gates locais: API bootstrap 18/18, shared-config 40/40, worker 62 e API
+package 331/331, com typechecks/builds, diff check e revisão independente PASS.
+Isso não muda a conclusão deste handoff: a jornada completa permanece
+`REJECT`, e o próximo RED continua admission → handoff/stay → inventory →
+daily → discharge → close → receipt, com `NOBYPASSRLS`, dois tenants,
+failpoints, restart e reconciliação.
+
 Uma revisão de segurança posterior encontrou risco `HIGH/P0` de fallback
 fail-open em `staging`/`stage` quando DB/schema estão ausentes, além de
 assimetria no worker. Antes do RED vertical de inventory→receipt, a próxima

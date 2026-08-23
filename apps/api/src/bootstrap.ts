@@ -10,6 +10,7 @@ import {
   type TenantUnitOfWork
 } from '@cvg-his-v2/shared-database';
 import { createLogger } from '@cvg-his-v2/shared-logging';
+import { isProductionLikeEnvironment as isProductionLikeConfigEnvironment } from '@cvg-his-v2/shared-config';
 import {
   DatabaseMfaLoginChallengeRepository,
   DatabaseSessionRepository,
@@ -176,6 +177,7 @@ import { DatabasePrescriptionRepository } from './repositories/database-prescrip
 
 export interface BootstrapOptions {
   databaseUrl?: string;
+  environment?: string;
   fileStoragePath?: string;
   skipDatabase?: boolean;
   maxRetries?: number;
@@ -407,7 +409,7 @@ export function isProductionLikeEnvironment(
   environment: Readonly<Record<string, string | undefined>> = process.env
 ): boolean {
   return (
-    environment.NODE_ENV === 'production' ||
+    isProductionLikeConfigEnvironment(environment.NODE_ENV) ||
     environment.DATABASE_REQUIRE_RLS_ROLE === '1' ||
     environment.DATABASE_REQUIRE_SCHEMA === '1'
   );
@@ -920,6 +922,17 @@ class InMemoryWebhookRepository {
 }
 
 export async function bootstrapServices(options: BootstrapOptions = {}): Promise<BootstrapResult> {
+  const productionLike =
+    isProductionLikeEnvironment({
+      NODE_ENV: process.env.NODE_ENV,
+      DATABASE_REQUIRE_RLS_ROLE: process.env.DATABASE_REQUIRE_RLS_ROLE,
+      DATABASE_REQUIRE_SCHEMA: process.env.DATABASE_REQUIRE_SCHEMA
+    }) ||
+    isProductionLikeEnvironment({
+      NODE_ENV: options.environment,
+      DATABASE_REQUIRE_RLS_ROLE: process.env.DATABASE_REQUIRE_RLS_ROLE,
+      DATABASE_REQUIRE_SCHEMA: process.env.DATABASE_REQUIRE_SCHEMA
+    });
   const results: BootstrapResult = {
     databaseHealthy: false,
     databaseDetail: 'Not initialized',
@@ -949,6 +962,11 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
   };
 
   if (options.skipDatabase || !options.databaseUrl) {
+    if (productionLike) {
+      throw new Error(
+        'Production-like database runtime requires DATABASE_URL; refusing in-memory fallback'
+      );
+    }
     logger.info(
       'Database initialization skipped (no DATABASE_URL provided), using in-memory repositories'
     );
@@ -973,7 +991,6 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
     results.databaseDetail = health.detail;
 
     if (health.healthy) {
-      const productionLike = isProductionLikeEnvironment();
       if (productionLike) {
         const runtimeRole = await checkDatabaseRuntimeRole();
         if (!runtimeRole.safe) {
@@ -1286,12 +1303,17 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
         encounterTimelinePersistence: 'database'
       });
     } else {
+      if (productionLike) {
+        throw new Error(
+          `Production-like database runtime is unavailable; refusing in-memory fallback (${health.detail})`
+        );
+      }
       logger.error('Database connection failed after retries, using in-memory repositories', {
         detail: health.detail
       });
     }
   } catch (error) {
-    if (isProductionLikeEnvironment()) {
+    if (productionLike) {
       throw error;
     }
     const message = error instanceof Error ? error.message : 'Unknown error';

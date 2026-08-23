@@ -117,3 +117,37 @@ do commit.
 O adendo de segurança e a reconciliação final desta sessão foram publicados em
 `6caecfde57a8c50941de3eac5d76d66da04f827b` (`docs: record staging fail-closed
 security gap`), também alinhado ao remoto após `git fetch`.
+
+## Implementação local posterior — startup fail-closed (23/08/2026)
+
+O finding `HIGH/P0` foi tratado em uma fatia local e independente antes de
+retomar o RED clínico. O classificador production-like agora é compartilhado
+por config/API/worker e reconhece `production`, `prod`, `staging` e `stage`.
+Além disso, a política é monotônica: `NODE_ENV` do processo, ambiente explícito
+do bootstrap e as flags `DATABASE_REQUIRE_RLS_ROLE`/
+`DATABASE_REQUIRE_SCHEMA` só podem elevar a exigência, nunca rebaixá-la por
+`environment: 'development'`.
+
+API e worker recusam URL ausente, PostgreSQL indisponível, role insegura,
+schema de garantias incompleto e qualquer erro que produziria repositório
+`Map`, modo misto ou worker sem UoW. A API lança antes de chegar ao `listen`; o
+worker lança antes do loop. RED/GREEN, arquivos, limites e próximos gates estão
+em [`.agent/artifacts/CVG-001-startup-fail-closed-2026-08-23.md`](../.agent/artifacts/CVG-001-startup-fail-closed-2026-08-23.md).
+
+Evidência executada:
+
+- API bootstrap: **18/18**;
+- shared-config: **40/40**;
+- worker: **62 testes**, cinco suites, todos PASS;
+- API package: **331/331**;
+- typecheck/build e `git diff --check`: PASS;
+- revisão independente posterior: **PASS** para o escopo fail-closed, sem
+  bypass restante; schema/role via doubles e harness process-level são
+  recomendações não bloqueantes deste patch.
+
+O ERP, `CVG-001`, `CVG-002C6` e a Quality Bar continuam
+`IN_PROGRESS/PARTIAL`. Ainda não há certificação de PostgreSQL alvo com schema
+parcial/role `NOBYPASSRLS`, nem jornada clínica-financeira única, failpoints,
+restart/reconciliação, SPA, Redis, providers, paridade, WCAG, coverage,
+operações, deploy/restore ou release. O próximo gate segue sendo o RED vertical
+admissão → handoff/stay → inventário → diária → alta → close → receipt.

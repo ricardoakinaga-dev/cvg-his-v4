@@ -16,9 +16,11 @@
         ".agent/artifacts/market-benchmark.md",
         ".agent/tasks/CVG-001.md",
         ".gauntlet/state.md",
-        "docs/2026-08-23-checkpoint-continuacao.md"
+        "docs/2026-08-23-checkpoint-continuacao.md",
+        ".agent/artifacts/CVG-001-startup-fail-closed-2026-08-23.md",
+        ".agent/verification.jsonl#VFY-CVG-001-STARTUP-FAILCLOSED-001"
       ],
-      "next_action": "Before the clinical vertical, write and run RED tests proving production/staging/stage startup fails closed when DB/schema/role are unavailable or incomplete, mutating routes are blocked, health/readiness semantics are honest, and worker/API agree; then continue explicit-secret and durable installation-sentinel behavior."
+      "next_action": "Startup fail-closed is GREEN for aliases, unavailable DB, explicit RLS/schema flags and monotonic process-vs-option policy. Add disposable-PostgreSQL doubles for incomplete schema/unsafe role and process-level listen/loop assertions; then continue explicit-secret and durable installation-sentinel behavior before the single clinical-financial vertical."
     },
     {
       "id": "CVG-002",

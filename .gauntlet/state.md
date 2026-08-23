@@ -74,6 +74,21 @@ The callback/worker slice remains below the `VERIFIED` bar: a real SIGKILL/proce
 - Last integrated verification: B2b parser/ingress checkpoint `VFY-CVG-002B2B-PARSER-INGRESS-001` passed focused 77/77, PostgreSQL ingress 11/11, B1 18/18 and B2a 33/33 with independent APPROVE; B2a's VERIFIED gate still records coverage 1.646/1.646 at 83% lines/80,3% branches plus typecheck/lint, OpenAPI, RLS, dependency/secret scans and independent review PASS. Earlier SPA 1.001/1.001 evidence remains bounded and current.
 - Next largest locally actionable gap: prove real SIGKILL/restart and Redis failover/clock-skew under the now fail-closed policy; rerun bounded regressions if behavior changes. Coherent SPA remains separate `B2c` work.
 
+## Local security gate — CVG-001 startup fail-closed (23/08/2026)
+
+The confirmed staging/stage bootstrap fail-open was corrected before the next
+clinical RED. API and worker use the shared production-like classifier for
+`production`, `prod`, `staging` and `stage`; process `NODE_ENV`, explicit
+bootstrap environment and `DATABASE_REQUIRE_RLS_ROLE`/
+`DATABASE_REQUIRE_SCHEMA` are monotonic. Missing/unavailable DB, unsafe role,
+incomplete delivery schema, mixed repositories or missing UoW now abort before
+API listen or worker loop. Evidence: API bootstrap 18/18, shared-config 40/40,
+worker 62, API package 331/331, typecheck/build/diff check PASS, independent
+security review PASS for this scope. The ERP and all global bars remain
+`IN_PROGRESS/PARTIAL`; schema/role doubles, process harness, the single
+admission-to-receipt journey, RLS NOBYPASSRLS, failpoints/restart, SPA and
+release gates remain open.
+
 ## Documentation continuation — 2026-08-23
 
 The short resumption pointer is

@@ -8,6 +8,7 @@ import {
   API_CONFIG_FIELDS,
   WORKER_CONFIG_FIELDS,
   SPA_CONFIG_FIELDS,
+  isProductionLikeEnvironment,
 } from './index.js';
 
 function cleanApiEnv(): Record<string, string> {
@@ -33,6 +34,20 @@ describe('config module', () => {
   beforeEach(() => {
     // Reset env between tests if needed
   });
+
+  it.each(['production', 'prod', 'staging', 'stage'])(
+    'classifies %s as production-like',
+    (environment) => {
+      expect(isProductionLikeEnvironment(environment)).toBe(true);
+    }
+  );
+
+  it.each(['development', 'test', '', undefined])(
+    'does not classify %s as production-like',
+    (environment) => {
+      expect(isProductionLikeEnvironment(environment)).toBe(false);
+    }
+  );
 
   describe('API_CONFIG_FIELDS, WORKER_CONFIG_FIELDS, SPA_CONFIG_FIELDS', () => {
     it('exposes API_CONFIG_FIELDS', () => {

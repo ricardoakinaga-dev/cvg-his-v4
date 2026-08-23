@@ -32,6 +32,62 @@ test('bootstrapWorkerServices returns unhealthy when databaseUrl is empty string
   assert.equal(result.databaseDetail, 'DATABASE_URL not configured');
 });
 
+test('bootstrapWorkerServices fails closed without a database in every production-like alias', async () => {
+  for (const environment of ['production', 'prod', 'staging', 'stage']) {
+    await assert.rejects(
+      bootstrapWorkerServices({ databaseUrl: '', environment }),
+      /DATABASE_URL|production-like|durable/i
+    );
+  }
+});
+
+test('bootstrapWorkerServices does not allow an explicit development option to downgrade NODE_ENV', async () => {
+  const previousEnvironment = process.env.NODE_ENV;
+  try {
+    for (const environment of ['production', 'prod', 'staging', 'stage']) {
+      process.env.NODE_ENV = environment;
+      await assert.rejects(
+        bootstrapWorkerServices({ databaseUrl: '', environment: 'development' }),
+        /DATABASE_URL|production-like|degraded/i
+      );
+    }
+  } finally {
+    if (previousEnvironment === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = previousEnvironment;
+  }
+});
+
+test('bootstrapWorkerServices fails closed when PostgreSQL is unavailable in staging', async () => {
+  await assert.rejects(
+    bootstrapWorkerServices({
+      environment: 'staging',
+      databaseUrl: 'postgresql://invalid:invalid@127.0.0.1:1/unavailable'
+    }),
+    /database|connection|production-like/i
+  );
+});
+
+test('bootstrapWorkerServices fails closed when an explicit database policy flag is enabled', async () => {
+  const previousRlsRole = process.env.DATABASE_REQUIRE_RLS_ROLE;
+  const previousSchema = process.env.DATABASE_REQUIRE_SCHEMA;
+  try {
+    for (const flag of ['DATABASE_REQUIRE_RLS_ROLE', 'DATABASE_REQUIRE_SCHEMA'] as const) {
+      delete process.env.DATABASE_REQUIRE_RLS_ROLE;
+      delete process.env.DATABASE_REQUIRE_SCHEMA;
+      process.env[flag] = '1';
+      await assert.rejects(
+        bootstrapWorkerServices({ databaseUrl: '' }),
+        /DATABASE_URL|production-like|degraded/i
+      );
+    }
+  } finally {
+    if (previousRlsRole === undefined) delete process.env.DATABASE_REQUIRE_RLS_ROLE;
+    else process.env.DATABASE_REQUIRE_RLS_ROLE = previousRlsRole;
+    if (previousSchema === undefined) delete process.env.DATABASE_REQUIRE_SCHEMA;
+    else process.env.DATABASE_REQUIRE_SCHEMA = previousSchema;
+  }
+});
+
 test('shutdownWorkerServices completes without error', async () => {
   await shutdownWorkerServices();
 });

@@ -1,4 +1,5 @@
 import { createLogger } from '@cvg-his-v2/shared-logging';
+import { isProductionLikeEnvironment } from '@cvg-his-v2/shared-config';
 import {
   createDatabaseClient,
   getDatabaseClient,
@@ -147,11 +148,12 @@ async function main() {
 
   const bootstrapResult = await bootstrapServices({
     databaseUrl,
+    environment: config.environment,
     fileStoragePath: config.fileStoragePath,
     skipDatabase: !databaseUrl
   });
 
-  const productionLike = ['production', 'prod', 'staging', 'stage'].includes(config.environment);
+  const productionLike = isProductionLikeEnvironment(config.environment);
   const attachmentScanner = productionLike
     ? config.attachmentScannerHost
       ? new ClamAvAttachmentSecurityScanner({

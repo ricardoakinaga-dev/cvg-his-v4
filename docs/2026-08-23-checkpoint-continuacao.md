@@ -1086,3 +1086,22 @@ não pode ser considerado resolvido por probe de health.
 O adendo de segurança foi publicado em
 `6caecfde57a8c50941de3eac5d76d66da04f827b`, com o ponteiro remoto novamente
 confirmado após o push.
+
+## Gate adicional — bootstrap fail-closed
+
+Antes do RED vertical, a correção local do bloqueio `HIGH/P0` foi implementada
+e revisada. API e worker agora tratam `production`, `prod`, `staging` e `stage`
+como production-like, sem permitir downgrade por `environment=development`
+quando `NODE_ENV` do processo é protegido. URL ausente, DB indisponível, role,
+schema, repositório misto e UoW ausente não produzem fallback/degraded runtime.
+
+Resultados: API bootstrap **18/18**, shared-config **40/40**, worker **62**
+testes e API package **331/331**; typechecks/builds e diff check passaram. A
+revisão independente final foi PASS para esse escopo. O artefato reproduzível é
+`.agent/artifacts/CVG-001-startup-fail-closed-2026-08-23.md`.
+
+Isso não certifica schema parcial/role insegura em PostgreSQL descartável nem
+listen/loop por harness de processo; são os próximos testes de defesa em
+profundidade. O programa continua `IN_PROGRESS/PARTIAL` e o próximo RED é a
+jornada clínica-financeira única com `NOBYPASSRLS`, replay, concorrência,
+failpoints, restart e reconciliação.
