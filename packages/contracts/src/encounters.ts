@@ -47,11 +47,17 @@ export const createEncounterBodySchema = z.object({
 });
 
 /**
- * POST /encounters/:id/close - Close encounter request body
+ * POST /encounters/:id/close - Close encounter request body.
+ *
+ * The runtime command and shared type use `closeReason`; keeping this field
+ * required prevents the public contract from silently accepting a payload the
+ * service cannot execute.
  */
-export const closeEncounterBodySchema = z.object({
-  reason: reasonSchema
-});
+export const closeEncounterBodySchema = z
+  .object({
+    closeReason: z.string().trim().min(1).max(500)
+  })
+  .strict();
 
 /**
  * GET /encounters/:id - Get encounter by ID params

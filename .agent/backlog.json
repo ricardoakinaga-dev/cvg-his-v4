@@ -254,9 +254,23 @@
         "tests/integration/database/inpatient-discharge-cutoff.test.ts",
         ".agent/verification.jsonl#VFY-CVG-002C6-IMPLEMENTATION-001",
         ".agent/verification.jsonl#VFY-CVG-002C6-REGRESSION-001",
-        ".agent/verification.jsonl#VFY-CVG-002C6-REVIEW-001"
+        ".agent/verification.jsonl#VFY-CVG-002C6-REVIEW-001",
+        "tests/integration/database/inpatient-clinical-financial-close-receipt-http-postgres.test.ts",
+        ".agent/artifacts/CVG-002C6-clinical-financial-audit-2026-08-23.md",
+        "packages/db/migrations/0119_encounter_close_reason.sql",
+        "packages/db/src/schema/encounters.ts",
+        "packages/shared/database/src/schemas/index.ts",
+        "packages/modules/encounters/src/repositories/database-encounter.repository.ts",
+        "packages/modules/inventory/src/repositories/database-inventory.repository.ts",
+        "packages/modules/event-bus/src/event-catalog.ts",
+        "packages/modules/scheduling/src/index.ts",
+        ".agent/verification.jsonl#VFY-CVG-002C6-CLOSE-RECEIPT-HTTP-002",
+        ".agent/verification.jsonl#VFY-CVG-002C6-INVENTORY-OUTBOX-001",
+        ".agent/verification.jsonl#VFY-CVG-002C6-BOUNDARY-002",
+        ".agent/verification.jsonl#VFY-CVG-002C6-FOCUS-002",
+        ".agent/verification.jsonl#VFY-CVG-002C6-REVIEW-002"
       ],
-      "next_action": "Extend the bounded charge capture into discharge -> billing -> cash receipt -> journal/audit/outbox with failpoints, same-key payload conflict, explicit outbox semantics and a single public HTTP/PostgreSQL journey; keep external gates and the user-owned tsbuildinfo cache out of scope."
+      "next_action": "Continue with the vertical inventory -> close -> receipt failpoint/restart journey; keep callback ghost, async cross-instance hydration, admission/handoff, Redis/provider/SPA/parity/WCAG/coverage/operations/deploy/release gates explicitly open and keep the user-owned tsbuildinfo cache out of scope."
     },
     {
       "id": "CVG-003",

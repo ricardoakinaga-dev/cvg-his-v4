@@ -102,6 +102,11 @@ export interface EncountersServiceOptions {
   ) => Promise<void>;
 }
 
+export interface EncounterStateSnapshot {
+  readonly encounter: EncounterSummary;
+  readonly timeline: readonly EncounterTimelineEventSummary[];
+}
+
 export class EncountersService {
   readonly #owners: OwnersService;
   readonly #patients: PatientsService;
@@ -164,6 +169,24 @@ export class EncountersService {
     }
 
     return encounter;
+  }
+
+  /**
+   * Captures the hot encounter state before a command starts mutating it.
+   * Route-level transaction failures use this snapshot to remove speculative
+   * cache state immediately, before the database transaction releases its
+   * client and a best-effort hydration runs.
+   */
+  public snapshotState(encounterId: EncounterId): EncounterStateSnapshot {
+    return {
+      encounter: this.getOrThrow(encounterId),
+      timeline: [...(this.#timeline.get(encounterId) ?? [])]
+    };
+  }
+
+  public restoreState(snapshot: EncounterStateSnapshot): void {
+    this.#encounters.set(snapshot.encounter.id, snapshot.encounter);
+    this.#timeline.set(snapshot.encounter.id, [...snapshot.timeline]);
   }
 
   public async waitForPersistence(): Promise<void> {
@@ -340,6 +363,7 @@ export class EncountersService {
       updatedAt: nowIso()
     };
 
+    const previousTimeline = [...(this.#timeline.get(encounterId) ?? [])];
     this.#encounters.set(encounterId, updated);
     this.appendTimeline(encounterId, {
       accountId: updated.accountId,
@@ -354,6 +378,7 @@ export class EncountersService {
         () => this.#encounterRepository!.update(updated),
         () => {
           this.#encounters.set(encounterId, current);
+          this.#timeline.set(encounterId, previousTimeline);
         }
       );
     }

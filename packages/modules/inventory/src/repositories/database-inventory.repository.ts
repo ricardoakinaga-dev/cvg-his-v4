@@ -1,5 +1,10 @@
 import { sql } from 'drizzle-orm';
-import { getPool, withTenantTransaction, type DatabaseClient } from '@cvg-his-v2/shared-database';
+import {
+  getPool,
+  getTenantTransactionContext,
+  withTenantTransaction,
+  type DatabaseClient
+} from '@cvg-his-v2/shared-database';
 import { ConflictError } from '@cvg-his-v2/shared-errors';
 import { withTenantQuery } from '@cvg-his-v2/tenant-context';
 import type {
@@ -118,7 +123,7 @@ export class DatabaseInventoryRepository implements InventoryRepository {
     movement: InventoryStockMovementSummary,
     lotUpdates: readonly InventoryLotSummary[] = []
   ): Promise<void> {
-    await withTenantTransaction(item.accountId, async (database) => {
+    const persist = async (database: DatabaseClient): Promise<void> => {
       const updated = await database.execute(sql`UPDATE inventory_items
         SET on_hand_quantity = ${item.onHandQuantity - consumption.quantity},
             updated_at = ${new Date(item.updatedAt)}
@@ -153,7 +158,20 @@ export class DatabaseInventoryRepository implements InventoryRepository {
             ${movement.reference ?? null}, ${movement.recordedByUserId}, ${new Date(movement.createdAt)})`);
       }
       await this.persistLots(database, lotUpdates);
-    });
+    };
+
+    const transaction = getTenantTransactionContext();
+    if (transaction) {
+      if (transaction.accountId !== item.accountId) {
+        throw new ConflictError('Inventory transaction account does not match the item account', {
+          inventoryItemId: item.id
+        });
+      }
+      await persist(transaction.database);
+      return;
+    }
+
+    await withTenantTransaction(item.accountId, persist);
   }
 
   async adjustAtomically(

@@ -3,6 +3,7 @@ import { test } from 'vitest';
 
 import {
   EVENT_CATALOG,
+  INVENTORY_CONSUMPTION_CREATED,
   PAYMENT_CARD_COMPLETED,
   PAYMENT_CARD_FAILED,
   PAYMENT_CARD_INTENT_CREATED,
@@ -24,4 +25,6 @@ test('payment events in catalog use the canonical dotted naming used by runtime 
   assert.equal(isKnownEvent('payment.pix.confirmed'), true);
   assert.equal(isKnownEvent('payment.card.intent.created'), true);
   assert.equal(EVENT_CATALOG.includes('payment.card.intent.created'), true);
+  assert.equal(INVENTORY_CONSUMPTION_CREATED, 'inventory.consumption.created');
+  assert.equal(isKnownEvent(INVENTORY_CONSUMPTION_CREATED), true);
 });

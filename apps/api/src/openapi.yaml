@@ -1990,6 +1990,13 @@ paths:
           schema:
             type: string
             format: uuid
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 255
       requestBody:
         required: true
         content:
@@ -1999,6 +2006,12 @@ paths:
       responses:
         '200':
           description: Encounter closed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Encounter'
+        '409':
+          description: Idempotency conflict or encounter already closed
 
   /encounters/{encounterId}/reopen:
     post:
@@ -12012,6 +12025,13 @@ components:
         createdAt:
           type: string
           format: date-time
+        closedAt:
+          type: string
+          format: date-time
+          nullable: true
+        closeReason:
+          type: string
+          nullable: true
 
     ReopenEncounterRequest:
       type: object
@@ -12033,9 +12053,13 @@ components:
 
     CloseEncounterRequest:
       type: object
+      required: [closeReason]
       properties:
         closeReason:
           type: string
+          minLength: 1
+          maxLength: 500
+      additionalProperties: false
 
     TransitionEncounterRequest:
       type: object

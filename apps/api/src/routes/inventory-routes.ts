@@ -6,6 +6,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import type { AuditService } from '@cvg-his-v2/module-audit';
 import type { BillingService } from '@cvg-his-v2/module-billing';
+import { INVENTORY_CONSUMPTION_CREATED } from '@cvg-his-v2/module-event-bus';
 import type { InpatientService } from '@cvg-his-v2/module-inpatient';
 import type {
   CreateInventoryPurchaseInput,
@@ -24,6 +25,7 @@ import type {
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 import {
   getDatabaseTransactionScope,
+  getTenantTransactionContext,
   runWithoutDatabaseTransactionScope,
   type JsonValue
 } from '@cvg-his-v2/shared-database';
@@ -440,11 +442,22 @@ export async function handleInventoryRoutes(
             }
           }
 
+          const transaction = getTenantTransactionContext();
+          if (inventory.persistenceMode === 'database' && !transaction) {
+            throw new AppError(
+              'TRANSACTION_REQUIRED',
+              'Inventory consumption requires the canonical tenant transaction context',
+              503
+            );
+          }
+
           const created = await inventory.consume(
             principal.user.id as never,
             payload,
             principal.user.accountId
           );
+
+          let billingItemId: string | undefined;
 
           if (inpatientCharge) {
             const billingItem = await billing!.addItem(principal.user.id as never, {
@@ -456,6 +469,7 @@ export async function handleInventoryRoutes(
               sourceEntityType: 'inventory_consumption',
               sourceEntityId: created.id
             });
+            billingItemId = billingItem.id;
             await appendAuditAndWait(audit, {
               actorId: principal.user.id,
               accountId: principal.user.accountId,
@@ -480,6 +494,26 @@ export async function handleInventoryRoutes(
             riskLevel: 'high',
             correlationId
           });
+          if (transaction) {
+            await transaction.outbox.append({
+              moduleName: 'inventory',
+              eventType: INVENTORY_CONSUMPTION_CREATED,
+              payload: {
+                consumptionId: created.id,
+                inventoryItemId: created.inventoryItemId,
+                encounterId: created.encounterId,
+                patientId: created.patientId,
+                quantity: created.quantity,
+                unit: created.unit,
+                costAmount: created.costAmount,
+                sourceEntityType: created.sourceEntityType,
+                ...(created.sourceEntityId === undefined
+                  ? {}
+                  : { sourceEntityId: created.sourceEntityId }),
+                ...(billingItemId === undefined ? {} : { billingItemId })
+              }
+            });
+          }
           return created;
         }
       });

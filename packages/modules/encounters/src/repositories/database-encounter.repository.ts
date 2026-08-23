@@ -50,6 +50,7 @@ export class DatabaseEncounterRepository implements EncounterRepository {
       closedByUserId: encounter.status === 'closed' ? encounter.createdByUserId : null,
       openedAt: new Date(encounter.openedAt),
       closedAt: encounter.closedAt ? new Date(encounter.closedAt) : null,
+      closeReason: encounter.closeReason ?? null,
       reason: encounter.reason,
       createdAt: new Date(encounter.openedAt),
       updatedAt: new Date(encounter.updatedAt)
@@ -67,6 +68,7 @@ export class DatabaseEncounterRepository implements EncounterRepository {
         status: encounter.status === 'closed' ? 'closed' : 'open',
         closedByUserId: encounter.status === 'closed' ? encounter.createdByUserId : null,
         closedAt: encounter.closedAt ? new Date(encounter.closedAt) : null,
+        closeReason: encounter.closeReason ?? null,
         reason: encounter.reason,
         updatedAt: new Date(encounter.updatedAt)
       })
@@ -160,7 +162,7 @@ export class DatabaseEncounterRepository implements EncounterRepository {
       createdByUserId: row.openedByUserId as UserId,
       updatedAt: row.updatedAt.toISOString(),
       closedAt: row.closedAt?.toISOString(),
-      closeReason: undefined
+      closeReason: row.closeReason ?? undefined
     };
   }
 }

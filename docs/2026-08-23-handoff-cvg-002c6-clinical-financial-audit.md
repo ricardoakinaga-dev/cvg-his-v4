@@ -203,3 +203,66 @@ O commit de implementação `ef4ee2d` e a reconciliação documental
 PASS, 1 WARN histórico de ownership paralelo e 0 FAIL. O único caminho dirty
 continua sendo o cache user-owned
 `packages/design-system/tsconfig.vue.tsbuildinfo`, que não foi estagiado.
+
+## Próxima fatia P0 — C6-NEXT (fechamento público até recebimento)
+
+O mapeamento executado após a publicação confirmou que a rota
+`POST /encounters/:encounterId/close` ainda é o bypass central: ela atualiza o
+serviço/cache, espera a fila de persistência e chama auditoria fora do
+`runTenantCommand`. O comportamento esperado agora é um UoW tenantizado com
+`Idempotency-Key`, payload canônico `closeReason`, timeline, auditoria
+transacional e outbox `encounter.closed`; a mesma chave deve reproduzir a
+mesma resposta e payload divergente deve retornar `409` sem mutação.
+
+O RED será o teste HTTP/PostgreSQL
+`tests/integration/database/inpatient-clinical-financial-close-receipt-http-postgres.test.ts`.
+Ele começa com encounter aberto e billing originado no episódio, chama close
+e só depois receipt. Além do isolamento A/B e corrida de chaves distintas,
+consulta o grafo SQL (`encounters`, `encounter_timeline`, `billing_records`,
+`encounter_cash_receipts`, `encounter_receivable_payments`, `cash_movements`,
+`financial_journal_entries/lines`, `audit_events`, `outbox_events` e
+`idempotency_requests`) e exige journal balanceado e ausência de duplicatas.
+O RED precisa falhar hoje pela ausência de idempotência/outbox no close, não
+por fixture pré-fechado.
+
+A crítica independente manteve a jornada ERP ampla em `REJECT`: continuam
+abertos failpoints entre escritas, outbox de charge capture de inventário,
+prova cross-domain e reconciliação observável. O benchmark oficial atualizado
+em [`.agent/artifacts/market-benchmark.md`](../.agent/artifacts/market-benchmark.md)
+registra Shepherd, ezyVet/Vet Radar, Covetrus Ascend, DaySmart Vet, Provet
+Cloud, Digitail e Vetspire, com ressalvas de claims e certificações.
+
+## Hardening verificado antes da publicação — C6-NEXT (23/08/2026)
+
+O patch local resolve os findings do review: `closeReason` agora tem migration
+e persistência real; `EncountersService` captura/restaura encounter + timeline
+imediatamente em falha; o audit event é identificado antes da persistência; e
+OpenAPI declara limites, campos extras proibidos e resposta `Encounter`.
+
+Evidência fresca: close → receipt HTTP/PostgreSQL **5/5**, com SQL
+`close_reason`, failpoint de constraint sem mutação fantasma, replay/conflict,
+corrida `200/409`, receipt/journal e tenant B `404`.
+
+O outbox `inventory.consumption.created` também foi adicionado ao comando
+inpatient e catalogado no event-bus. O repositório CAS reutiliza
+`getTenantTransactionContext()` quando o dispatcher já abriu UoW, mantendo
+consumo, billing, audit e outbox no mesmo commit. A integração de charge
+capture passou **3/3** e confirma três eventos de outbox. A primeira rodada
+retornou `201/409` na corrida; o resultado foi mantido como evidência e a
+assertiva só ficou verde após a correção transacional.
+
+Antes do commit/push ainda executar revisão independente final, checker,
+`git diff --check`, audit e reconciliação dos ledgers. O programa amplo segue
+`IN_PROGRESS/PARTIAL`; failpoints/restart cross-domain, admission/handoff,
+paginação, Redis, providers, SPA/B2c, paridade, WCAG, operações, cobertura,
+deploy/restore e release continuam abertos.
+
+### Ajuste final de boundary
+
+O estado especulativo de scheduling também participa do rollback: a rota
+captura/restaura queue entry e appointment vinculados e agenda hidratação da
+conta. O consumo PostgreSQL agora exige contexto UoW canônico antes da
+mutação; sem ele retorna `503 TRANSACTION_REQUIRED`, evitando outbox omitido
+no caminho alternativo. A hidratação posterior continua best-effort e
+assíncrona para convergência de dados externos, mas o snapshot local cobre a
+mutação do comando que falhou.

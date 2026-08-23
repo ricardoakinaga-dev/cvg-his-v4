@@ -381,20 +381,20 @@ describe('Encounters Contract', () => {
   });
 
   describe('POST /encounters/:id/close', () => {
-    it('should validate close body with reason', () => {
+    it('should validate close body with closeReason', () => {
       const validInput = {
-        reason: 'Patient discharged'
+        closeReason: 'Patient discharged'
       };
 
       const result = closeEncounterBodySchema.safeParse(validInput);
       expect(result.success).toBe(true);
     });
 
-    it('should validate empty close body', () => {
+    it('should reject a close body without closeReason', () => {
       const emptyInput = {};
 
       const result = closeEncounterBodySchema.safeParse(emptyInput);
-      expect(result.success).toBe(true);
+      expect(result.success).toBe(false);
     });
   });
 

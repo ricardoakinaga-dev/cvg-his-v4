@@ -367,3 +367,36 @@ idempotência, concorrência, dois tenants e failpoints. O próximo RED é
 `tests/integration/database/inpatient-inventory-charge-capture-http-postgres.test.ts`.
 O Quality Bar permanece congelado; nenhum gate global, provider, SPA, parity,
 WCAG, target operations ou release foi promovido.
+
+## Continuação bounded — C6-NEXT close → receipt (23/08/2026)
+
+O RED HTTP/PostgreSQL mostrou que o close público ainda não publicava outbox
+`encounter.closed` e permitia dois commits em corrida de chaves distintas. O
+GREEN adicionou lock `FOR UPDATE`, auditoria/outbox no UoW, recuperação de
+cache após rollback e contrato estrito `closeReason`. A integração passou
+`4/4`: replay/conflict `200/200/409`, corrida `200/409`, uma timeline/audit/
+outbox, receipt settled com cash/journal balanceado e tenant B `404`.
+
+Este é um gate bounded. A jornada completa continua `IN_PROGRESS/PARTIAL`;
+outbox por consumo de inventário, failpoints/restart cross-domain, admissão/
+handoff e reconciliação global permanecem próximos gaps. Não promover
+produção, release ou qualquer gate externo.
+
+## Estado de continuação — C6-NEXT hardening (23/08/2026)
+
+Última iteração local: close → receipt **5/5** com `close_reason` persistido,
+rollback de constraint sem cache/timeline/audit/outbox/idempotência fantasma;
+inventory charge capture **3/3** com três outbox events e CAS concorrente
+verde após reutilização do tenant UoW. Typechecks focados, contracts `43/43` e
+OpenAPI `337/390` passaram.
+
+O estado continua `BUILD / VERIFY`, `IN_PROGRESS/PARTIAL`, sem promoção do
+ERP/Quality Bar. Antes da publicação: review independente final, checker
+canônico, audit, diff check, commit/push e fetch. Depois: failpoints/restart
+cross-domain, admission/handoff e reconciliação observável. O cache
+`packages/design-system/tsconfig.vue.tsbuildinfo` é user-owned e fica fora do
+stage.
+
+Follow-up review: sem Critical/High no bounded slice após snapshot de
+encounter/timeline/scheduling e guard de contexto transacional; a jornada
+vertical completa e a hidratação cross-instance continuam gates abertos.

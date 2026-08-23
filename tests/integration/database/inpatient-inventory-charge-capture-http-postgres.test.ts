@@ -387,6 +387,7 @@ describe('inpatient inventory charge capture HTTP PostgreSQL boundary', () => {
       readonly chargeTotal: number;
       readonly onHand: number;
       readonly completedIdempotency: number;
+      readonly outboxEvents: number;
     }>(
       `SELECT
          (SELECT COUNT(*)::int FROM inventory_consumptions
@@ -407,7 +408,11 @@ describe('inpatient inventory charge capture HTTP PostgreSQL boundary', () => {
            WHERE account_id = $1 AND id = $4) AS "onHand",
          (SELECT COUNT(*)::int FROM idempotency_requests
            WHERE account_id = $1 AND operation = 'POST /inventory/consumptions'
-             AND idempotency_key = ANY($5::text[]) AND status = 'completed') AS "completedIdempotency"`,
+             AND idempotency_key = ANY($5::text[]) AND status = 'completed') AS "completedIdempotency",
+         (SELECT COUNT(*)::int FROM outbox_events
+           WHERE account_id = $1 AND module_name = 'inventory'
+             AND event_type = 'inventory.consumption.created'
+             AND payload->>'encounterId' = $2::text) AS "outboxEvents"`,
       [ACCOUNT_A, ENCOUNTER_A, stayId, ITEM_A, [idempotencyKey, ...concurrentKeys]]
     );
 
@@ -418,7 +423,8 @@ describe('inpatient inventory charge capture HTTP PostgreSQL boundary', () => {
       billingRecords: 1,
       chargeTotal: 240,
       onHand: 4,
-      completedIdempotency: 3
+      completedIdempotency: 3,
+      outboxEvents: 3
     });
   });
 

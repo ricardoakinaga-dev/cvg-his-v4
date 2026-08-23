@@ -962,3 +962,73 @@ publicados em `origin/agent/sync-v4-full-program`. O `fetch` confirmou
 canônico permanece em 11 PASS, 1 WARN histórico de ownership paralelo e 0 FAIL.
 O cache `packages/design-system/tsconfig.vue.tsbuildinfo` segue local,
 preservado e fora do stage.
+
+## Retomada P0 — C6-NEXT: fechamento público até recebimento (23/08/2026)
+
+O scout da próxima fatia encontrou o bypass crítico em
+`POST /encounters/:encounterId/close`: a rota chama `closeEncounter`, aguarda
+persistência e escreve auditoria fora do `runTenantCommand`. Não há, portanto,
+registro `idempotency_requests`, replay da mesma chave ou outbox
+`encounter.closed` transacional. O recibo já possui esse contrato e foi
+verificado isoladamente em
+`tests/integration/database/encounter-cash-receipt-http-postgres.test.ts`.
+
+O próximo RED dedicado será
+`tests/integration/database/inpatient-clinical-financial-close-receipt-http-postgres.test.ts`.
+Ele semeará somente identidade clínica/financeira mínima, fechará o encontro
+por HTTP e exigirá: replay igual, conflito de payload na mesma chave, corrida
+de chaves distintas, `encounter_timeline` + status persistidos, uma auditoria,
+um outbox `encounter.closed`, uma idempotência concluída, isolamento entre
+tenants e, depois, receipt com billing settled, payment, caixa e journal
+balanceado. O primeiro RED deve falhar especificamente porque o close atual
+não entra no UoW; não será usado fixture de encontro já fechado.
+
+O revisor adversarial confirmou que a jornada completa continua `REJECT`:
+faltam failpoints por escrita, outbox por charge capture de inventário, prova
+cross-domain e observabilidade de reconciliação. Esses gaps permanecem
+explícitos e não serão mascarados pelo gate C6-NEXT.
+
+A pesquisa oficial continuada está registrada em
+[`.agent/artifacts/market-benchmark.md`](../.agent/artifacts/market-benchmark.md)
+e inclui Shepherd, ezyVet/Vet Radar, Covetrus Ascend, DaySmart Vet, Provet
+Cloud, Digitail e Vetspire, com ressalvas sobre claims de fornecedor,
+certificações e acessibilidade. O padrão transferido para o CVG é: board de
+internação + handoff auditável, evento clínico como fonte idempotente de
+estoque/billing, alta segura e API versionada com webhooks/replay.
+
+## Hardening local antes da publicação — C6-NEXT (23/08/2026)
+
+A revisão independente encontrou perda de `closeReason` após hidratação,
+janela de cache fantasma no rollback, ID tardio de auditoria e OpenAPI
+subespecificado. A correção adiciona migration `0119_encounter_close_reason`,
+mapeamento Drizzle/repositório, snapshot/restauração imediata de encounter e
+timeline, captura do ID de auditoria antes do `await` e request/response
+OpenAPI estritos (`closeReason` obrigatório, 1–500, `Idempotency-Key` e
+resposta `Encounter`).
+
+O teste HTTP/PostgreSQL close → receipt passou **5/5**, incluindo `close_reason`
+persistido no SQL e constraint failpoint que retorna `500` sem status,
+timeline, audit, outbox ou idempotência fantasma; GET posterior confirma o
+cache aberto restaurado. O próximo teste de charge capture passou **3/3** e
+agora verifica três `inventory.consumption.created` no outbox. Para eliminar
+uma corrida real `201/409` observada na primeira rodada, o repositório de
+inventário passou a reutilizar o UoW tenant ativo em vez de abrir transação
+interna separada.
+
+Typechecks focados, contratos `43/43` e OpenAPI `337 paths / 390 schemas`
+passaram. Ainda falta revisão/publicação final desta continuação, failpoint e
+restart cross-domain, admissão/handoff, paginação de auditoria, Redis failover,
+providers, SPA/B2c, paridade Vetus, WCAG, operações, cobertura, deploy/restore
+e release. O cache `packages/design-system/tsconfig.vue.tsbuildinfo` segue
+local e fora do stage.
+
+### Último ajuste de consistência
+
+O rollback do close agora também captura/restaura a entrada de fila e o
+appointment ligado, e agenda hidratação do `SchedulingService` junto com
+encounters. Para não omitir eventos em um caminho alternativo, consumo com
+persistência PostgreSQL sem `TenantTransactionContext` falha fechado com
+`503 TRANSACTION_REQUIRED` antes de mutar estoque; o fallback em memória
+continua compatível com testes leves. O residual é apenas a hidratação
+assíncrona best-effort após rollback, não uma mutação especulativa deixada pelo
+próprio comando.

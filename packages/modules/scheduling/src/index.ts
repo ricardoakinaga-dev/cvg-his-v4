@@ -64,6 +64,11 @@ const DEFAULT_APPOINTMENT_DURATION: Record<SchedulingAppointmentSummary['visitTy
   walk_in: 45
 };
 
+export interface SchedulingQueueStateSnapshot {
+  readonly queueEntry: QueueEntrySummary;
+  readonly appointment?: SchedulingAppointmentSummary;
+}
+
 const SCHEDULING_WINDOW_START_HOUR = 7;
 const SCHEDULING_WINDOW_END_HOUR = 19;
 const LUNCH_BREAK_START_HOUR = 12;
@@ -797,6 +802,21 @@ export class SchedulingService {
     }
 
     return entry;
+  }
+
+  public snapshotQueueState(queueEntryId: QueueEntryId): SchedulingQueueStateSnapshot {
+    const queueEntry = this.getQueueEntryOrThrow(queueEntryId);
+    const appointment = queueEntry.appointmentId
+      ? this.#appointments.get(queueEntry.appointmentId)
+      : undefined;
+    return { queueEntry, appointment };
+  }
+
+  public restoreQueueState(snapshot: SchedulingQueueStateSnapshot): void {
+    this.#queue.set(snapshot.queueEntry.id, snapshot.queueEntry);
+    if (snapshot.appointment) {
+      this.#appointments.set(snapshot.appointment.id, snapshot.appointment);
+    }
   }
 
   public listQueueTransfers(queueEntryId: QueueEntryId): readonly QueueTransferSummary[] {

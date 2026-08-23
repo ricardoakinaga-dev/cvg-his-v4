@@ -302,3 +302,40 @@ O próximo trabalho continua sendo a jornada admission → handoff/permanence �
 inventory → discharge → billing → cash receipt → journal/audit/outbox, com
 failpoints e conflito de payload same-key. O programa permanece
 `IN_PROGRESS/PARTIAL`; nenhum gate externo ou de release foi promovido.
+
+## C6-NEXT — close HTTP transacional até receipt (23/08/2026)
+
+RED/GREEN local: o novo teste HTTP/PostgreSQL passou `4/4`, incluindo
+replay/conflict, corrida de chaves distintas `200/409`, auditoria e outbox
+`encounter.closed`, settlement do cash receipt com journal debit=credit e
+isolamento A/B. A rota agora bloqueia a linha do encounter, grava audit/outbox
+no mesmo UoW e reidrata cache depois de rollback; `closeReason` e
+`Idempotency-Key` estão alinhados no contrato/OpenAPI.
+
+Próximo passo: RED/GREEN de outbox por `inventory_consumption` e failpoints
+cross-domain. A barra global não muda: `IN_PROGRESS/PARTIAL`, sem promoção de
+produção, release, provider, SPA, paridade, WCAG ou operações.
+
+## Iteração local — hardening closeReason/cache + inventory outbox (23/08/2026)
+
+O review adversarial foi incorporado antes da publicação: migration 0119 e
+schema/repositório persistem `closeReason`; snapshot/restore remove estado
+especulativo de encounter/timeline; auditoria captura o ID antes do await; e
+OpenAPI exige request estrito e descreve a resposta. A integração close →
+receipt passou **5/5**, incluindo failpoint SQL com 500, rollback sem ghosts e
+GET de cache aberto.
+
+O próximo gap bounded passou **3/3** depois que o repositório de inventário
+reutilizou o UoW tenant ativo. A suíte agora prova três
+`inventory.consumption.created` no outbox, replay/concurrency `201/201`,
+billing capture, no-price rollback e tenant isolation. A primeira rodada
+`201/409` foi registrada como RED da fronteira transacional.
+
+Quality bar global continua `IN_PROGRESS/PARTIAL`; revisão final, checker,
+security/diff, commit/push e failpoints/restart cross-domain permanecem os
+próximos gates.
+
+O último hardening também restaura queue entry + appointment no rollback do
+close e falha fechado (`503 TRANSACTION_REQUIRED`) antes de consumo PostgreSQL
+sem contexto UoW canônico. A hidratação assíncrona posterior permanece apenas
+convergência best-effort para mudanças externas concorrentes.

@@ -112,6 +112,7 @@ export const encounters = pgTable('encounters', {
   closedByUserId: uuid('closed_by_user_id'),
   openedAt: timestamp('opened_at').notNull(),
   closedAt: timestamp('closed_at'),
+  closeReason: text('close_reason'),
   reason: text('reason'),
   createdAt: timestamp('created_at').notNull(),
   updatedAt: timestamp('updated_at').notNull()

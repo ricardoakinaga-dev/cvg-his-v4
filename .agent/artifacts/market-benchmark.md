@@ -66,6 +66,36 @@ Pesquisa atualizada em 2026-08-22. As fontes são páginas oficiais atuais; serv
 
 O diferencial que importa nesta fase não é quantidade de telas nem uma alegação de IA. É uma única operação multiunidade na qual contexto clínico, cobrança, estoque, comunicação e auditoria permanecem coerentes. Por isso o benchmark reforça, mas não muda, a ordem técnica já derivada da auditoria: identidade/tenancy, encontro-até-recebimento, prova comportamental, paridade e somente então integrações/otimizações.
 
+## Revalidação oficial — 23 de agosto de 2026 (continuação)
+
+Uma segunda consulta às páginas oficiais de PIMS confirmou o mesmo eixo para
+a próxima fatia técnica: o evento clínico deve atravessar operação hospitalar,
+estoque, captura de cobrança, recebimento e rastreabilidade numa única cadeia.
+
+- [Digitail](https://digitail.com/) apresenta flowboard/tratamento hospitalar,
+  prontuário, laboratório/farmácia, inventário, pagamentos, comunicação e
+  relatórios como partes da mesma plataforma; isso mantém `encounter → close →
+  receipt` como jornada P0, não como telas independentes.
+- [ezyVet Features](https://www.ezyvet.com/features) explicita gestão de
+  inventário, lotes/validade, captura de cobranças, faturamento, pagamentos,
+  relatórios, tarefas e integrações; o CVG precisa provar unicidade,
+  idempotência e reconciliação desses efeitos.
+- [Shepherd Features](https://www.shepherd.vet/features/) combina prontuário,
+  alta, activity log, inventário e charge capture; a alta/fechamento do
+  encontro deve publicar auditoria e outbox correlacionados antes do
+  recebimento.
+- [Vetspire Features](https://www.vetspire.ai/features/all) e o [manual de
+  Orders/Financials](https://manual.vetspire.ai/financials) orientam registrar
+  itens faturáveis pelo fluxo clínico/Orders; o próximo RED deve observar que
+  o recebimento público consome o billing originado no episódio, sem fixture
+  financeiro desconectado.
+
+Essas fontes não são evidência de paridade nem certificação do produto. Elas
+reforçam o critério executável C6-NEXT: `POST /encounters/:id/close` precisa
+ser idempotente, tenantizado, transacional e publicar `encounter.closed` com
+auditoria; em seguida o recibo deve liquidar o billing do mesmo encontro com
+cash movement, journal balanceado e outbox, sem duplicação.
+
 ## Atualização de pesquisa oficial — 23 de agosto de 2026
 
 Uma nova consulta a páginas oficiais confirmou sinais competitivos que devem

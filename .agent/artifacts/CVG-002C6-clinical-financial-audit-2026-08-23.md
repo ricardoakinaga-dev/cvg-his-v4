@@ -133,3 +133,95 @@ em `e480952`. `git fetch` confirmou `HEAD == origin/agent/sync-v4-full-program`
 em `e480952bb8ec55f288ab48f8982f0510b9f9d05d`; o checker canônico ficou em
 11 PASS, 1 WARN histórico e 0 FAIL. O cache user-owned de tsbuildinfo ficou
 fora do commit.
+
+## C6-NEXT — fechamento público transacional até recebimento (23/08/2026)
+
+### RED observado
+
+O novo teste
+`tests/integration/database/inpatient-clinical-financial-close-receipt-http-postgres.test.ts`
+foi escrito contra HTTP real e PostgreSQL efêmero. Antes do GREEN, o close
+reproduzia a ausência de `outbox_events` para `encounter.closed` e a corrida
+de chaves distintas retornava dois `200`, apesar de o recebimento isolado já
+estar coberto.
+
+### GREEN executado
+
+O `POST /encounters/:id/close` agora:
+
+- valida o payload canônico obrigatório `closeReason`;
+- bloqueia a linha do encounter dentro da transação para que a segunda chave
+  concorrente observe `closed` e receba `409`;
+- aguarda update e timeline antes de auditar;
+- grava auditoria e outbox `encounter.closed` no mesmo UoW, removendo o evento
+  do cache se a transação falhar e reidratando o cache após o rollback;
+- mantém replay/conflict pelo envelope HTTP/UoW já aplicado pelo dispatcher.
+
+O contrato Zod foi alinhado a `closeReason` obrigatório/estrito e o OpenAPI
+passou a declarar `Idempotency-Key` e `409`.
+
+### Evidência fresca
+
+| Verificação | Resultado |
+| --- | ---: |
+| `inpatient-clinical-financial-close-receipt-http-postgres.test.ts` | **4/4** |
+| close replay/conflito same-key | **200/200/409** |
+| corrida de chaves distintas | **200/409**, uma timeline/audit/outbox |
+| receipt após close | **201 + replay 201**, billing settled, payment, caixa e journal debit=credit=125.50 |
+| tenant B / headers falsos | **404**, sem mutação de A |
+| API typecheck | **PASS** |
+| contracts `src/__tests__/contracts.test.ts` | **43/43** |
+| `pnpm validate:openapi` | **337 paths / 390 schemas** |
+| `git diff --check` | **PASS** |
+
+### Limites e próxima ação
+
+O teste usa billing mínimo semeado para provar a costura close→receipt; não
+certifica admissão/handoff nem cria outbox para o consumo de inventário. Ainda
+faltam failpoints por escrita, outbox do C6 inventory, rollback tardio
+cross-domain, cursor de auditoria e uma jornada única admission→consumo→alta→
+receipt. O próximo RED deve cobrir a ausência de outbox no
+`POST /inventory/consumptions`, preservando este close/receipt como regressão.
+
+O Quality Bar, `CVG-002C6`, `CVG-002` e o ERP continuam
+`IN_PROGRESS/PARTIAL`; nenhum gate externo, de produção ou release foi
+promovido.
+
+## Hardening local — closeReason, rollback e inventory outbox (23/08/2026)
+
+O review classificou como HIGH a ausência de persistência de `closeReason` e
+rollback incompleto da timeline/cache; MEDIUMs foram o ID tardio de auditoria
+e o OpenAPI subespecificado. O patch adiciona `0119_encounter_close_reason`,
+atualiza os dois schemas Drizzle e o repositório, implementa
+`snapshotState`/`restoreState`, captura o audit ID antes do `await` e alinha o
+contrato público.
+
+`inpatient-clinical-financial-close-receipt-http-postgres.test.ts` passou
+**5/5** com PostgreSQL efêmero e duas instâncias. O failpoint de constraint
+retorna `500` sem encounter/timeline/audit/outbox/idempotência persistidos e
+GET posterior confirma status aberto; o caso feliz confirma `close_reason` no
+SQL, além de replay/conflict, corrida, receipt/journal e tenant B.
+
+O evento `inventory.consumption.created` foi catalogado e appendado no mesmo
+UoW do consumo inpatient, billing e auditoria. O repositório CAS reutiliza o
+transaction context ativo. A integração de charge capture passou **3/3** e
+verifica três outbox events. O primeiro run expôs `201/409` na corrida; após a
+correção de transação interna, a assertiva original `201/201` voltou a passar.
+
+Typechecks API/encounters/inventory/event-bus, contracts `43/43` e OpenAPI
+`337/390` passaram. Este registro ainda aguarda review final, checker, audit,
+diff check, commit e push. A jornada maior permanece `REJECT` e
+`IN_PROGRESS/PARTIAL`, com failpoints/restart cross-domain, admission/handoff,
+paginação, Redis, providers, SPA/B2c, paridade, WCAG, operações, cobertura,
+deploy/restore e release como gates separados.
+
+### Boundary adicional — scheduling e fail-closed
+
+O rollback do close agora restaura também `QueueEntrySummary` e o appointment
+ligado, além de agendar `SchedulingService.hydrateFromDatabase()` fora do
+escopo transacional. Para o risco de outbox omitido em runners alternativos,
+`POST /inventory/consumptions` recusa mutação PostgreSQL sem
+`getTenantTransactionContext()` com `503 TRANSACTION_REQUIRED`; em memória o
+fallback segue permitido. O único residual de consistência é a hidratação
+posterior best-effort para alterações externas concorrentes, explicitamente
+fora do bounded proof.

@@ -5,6 +5,8 @@ import { URL } from 'node:url';
 import {
   getDatabaseTransactionScope,
   getPool,
+  getTenantTransactionContext,
+  runWithoutDatabaseTransactionScope,
   withTenantTransaction
 } from '@cvg-his-v2/shared-database';
 import { extractBearerToken } from '@cvg-his-v2/shared-auth-sdk';
@@ -64,6 +66,7 @@ import type {
 import {
   AppError,
   AuthenticationError,
+  ConflictError,
   ForbiddenError,
   NotFoundError,
   ValidationError,
@@ -5413,26 +5416,101 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
             const encounterId = requireNonEmptyString(pathname.split('/')[2], 'encounterId');
             requireEncounterForAccount(encounterId, principal.user.accountId);
             const payload = (await readJsonBody(request)) as CloseEncounterRequest;
-            const encounter = encounters.closeEncounter(
-              encounterId as never,
-              principal.user.id,
-              payload
-            );
-            await syncQueueWithEncounter(encounter.id, encounter.status);
-            await encounters.waitForPersistence();
-            appendAudit(
-              principal.user.id,
-              principal.user.accountId,
-              'encounters',
-              'close',
-              'encounter',
-              encounter.id,
-              `Encounter closed: ${encounter.closeReason}`,
-              'high',
+            validateRequestBody(
+              payload as unknown as Record<string, unknown>,
+              { closeReason: { type: 'string', required: true, minLength: 1, maxLength: 500 } },
               correlationId
             );
-            response.statusCode = 200;
-            response.end(JSON.stringify(encounter));
+            const transaction = getTenantTransactionContext();
+            const previousEncounterState = encounters.snapshotState(encounterId as never);
+            const previousSchedulingState = previousEncounterState.encounter.queueEntryId
+              ? scheduling.snapshotQueueState(previousEncounterState.encounter.queueEntryId)
+              : undefined;
+            let auditEventId: string | undefined;
+            try {
+              if (transaction) {
+                const locked = await transaction.client.query<{ readonly status: string }>(
+                  `SELECT status
+                     FROM encounters
+                    WHERE account_id = $1 AND id = $2
+                    FOR UPDATE`,
+                  [principal.user.accountId, encounterId]
+                );
+                if (!locked.rows[0]) {
+                  throw new NotFoundError('Encounter not found', { encounterId });
+                }
+                if (locked.rows[0].status === 'closed') {
+                  throw new ConflictError('Encounter is already closed', { encounterId });
+                }
+              }
+
+              const encounter = encounters.closeEncounter(
+                encounterId as never,
+                principal.user.id,
+                payload
+              );
+              await syncQueueWithEncounter(encounter.id, encounter.status);
+              await encounters.waitForPersistence();
+
+              if (transaction) {
+                const auditEvent = audit.write({
+                  actorId: principal.user.id,
+                  accountId: principal.user.accountId,
+                  module: 'encounters',
+                  action: 'close',
+                  entityType: 'encounter',
+                  entityId: encounter.id,
+                  payloadSummary: `Encounter closed: ${encounter.closeReason}`,
+                  riskLevel: 'high',
+                  correlationId
+                });
+                auditEventId = auditEvent.eventId;
+                await audit.waitForPersistence();
+                await transaction.outbox.append({
+                  moduleName: 'encounters',
+                  eventType: 'encounter.closed',
+                  payload: {
+                    encounterId: encounter.id,
+                    patientId: encounter.patientId,
+                    ownerId: encounter.ownerId,
+                    closeReason: encounter.closeReason ?? payload.closeReason,
+                    closedAt: encounter.closedAt ?? null,
+                    status: encounter.status
+                  }
+                });
+              } else {
+                appendAudit(
+                  principal.user.id,
+                  principal.user.accountId,
+                  'encounters',
+                  'close',
+                  'encounter',
+                  encounter.id,
+                  `Encounter closed: ${encounter.closeReason}`,
+                  'high',
+                  correlationId
+                );
+              }
+              response.statusCode = 200;
+              response.end(JSON.stringify(encounter));
+            } catch (error) {
+              encounters.restoreState(previousEncounterState);
+              if (previousSchedulingState) {
+                scheduling.restoreQueueState(previousSchedulingState);
+              }
+              if (auditEventId) {
+                audit.removeFromCache(auditEventId as never);
+              }
+              // The unit of work rolls back after this command rejects. Refresh
+              // the hot encounter/timeline cache only after its client is free.
+              setImmediate(() => {
+                runWithoutDatabaseTransactionScope(() => {
+                  void encounters.hydrateFromDatabase(principal.user.accountId as never);
+                  void scheduling.hydrateFromDatabase(principal.user.accountId as never);
+                });
+              });
+              throw error;
+            }
             return;
           }
 

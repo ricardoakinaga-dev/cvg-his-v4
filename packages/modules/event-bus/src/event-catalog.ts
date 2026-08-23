@@ -83,6 +83,7 @@ export const INPATIENT_PROGRESS_NOTE_ADDED = 'inpatient.progress_note_added';
    =========================== */
 
 export const STOCK_MOVED = 'stock.moved';
+export const INVENTORY_CONSUMPTION_CREATED = 'inventory.consumption.created';
 export const STOCK_LOW = 'stock.low';
 export const STOCK_REORDER_TRIGGERED = 'stock.reorder_triggered';
 export const PRODUCT_CREATED = 'product.created';
@@ -165,6 +166,7 @@ export const EVENT_CATALOG: readonly string[] = [
   INPATIENT_BED_CHANGED,
   INPATIENT_PROGRESS_NOTE_ADDED,
   // Inventory
+  INVENTORY_CONSUMPTION_CREATED,
   STOCK_MOVED,
   STOCK_LOW,
   STOCK_REORDER_TRIGGERED,
@@ -246,6 +248,7 @@ export const EVENTS_BY_DOMAIN: Record<string, readonly string[]> = {
     INPATIENT_PROGRESS_NOTE_ADDED,
   ],
   inventory: [
+    INVENTORY_CONSUMPTION_CREATED,
     STOCK_MOVED,
     STOCK_LOW,
     STOCK_REORDER_TRIGGERED,
