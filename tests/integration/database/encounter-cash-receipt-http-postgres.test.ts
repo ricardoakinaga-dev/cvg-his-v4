@@ -15,6 +15,9 @@ import { TEST_DB_URL } from '../../setup/env.js';
 const TENANT_ID = randomUUID();
 const ACCOUNT_ID = randomUUID();
 const USER_ID = randomUUID();
+const FOREIGN_TENANT_ID = randomUUID();
+const FOREIGN_ACCOUNT_ID = randomUUID();
+const FOREIGN_USER_ID = randomUUID();
 const OWNER_ID = randomUUID();
 const PATIENT_ID = randomUUID();
 const ENCOUNTER_ID = randomUUID();
@@ -23,12 +26,15 @@ const BILLING_RECORD_ID = randomUUID();
 const BILLING_ITEM_ID = randomUUID();
 const USERNAME = `cash-http-${USER_ID.slice(0, 8)}`;
 const EMAIL = `${USERNAME}@example.com`;
+const FOREIGN_USERNAME = `cash-http-foreign-${FOREIGN_USER_ID.slice(0, 8)}`;
+const FOREIGN_EMAIL = `${FOREIGN_USERNAME}@example.com`;
 const AMOUNT = 125.5;
 const HTTP_OPERATION = `POST /encounters/${ENCOUNTER_ID}/cash-receipts`;
 
 let server: ApiServer | undefined;
 let baseUrl = '';
 let accessToken = '';
+let foreignAccessToken = '';
 
 interface LoginResponse {
   readonly accessToken: string;
@@ -106,6 +112,34 @@ async function seedFixture(): Promise<void> {
   );
 }
 
+async function seedForeignFixture(): Promise<void> {
+  const pool = getTestPool();
+  await pool.query(
+    `INSERT INTO tenants (id, slug, name, status)
+     VALUES ($1, $2, 'Cash receipt foreign tenant', 'active')`,
+    [FOREIGN_TENANT_ID, `cash-http-foreign-tenant-${FOREIGN_TENANT_ID.slice(0, 8)}`]
+  );
+  await pool.query(
+    `INSERT INTO accounts (id, tenant_id, slug, name)
+     VALUES ($1, $2, $3, 'Cash receipt foreign account')`,
+    [FOREIGN_ACCOUNT_ID, FOREIGN_TENANT_ID, `cash-http-foreign-account-${FOREIGN_ACCOUNT_ID.slice(0, 8)}`]
+  );
+  const poolRole = await pool.query<{ readonly id: string }>(
+    `SELECT id FROM roles WHERE name = 'admin' ORDER BY created_at LIMIT 1`
+  );
+  if (!poolRole.rows[0]) throw new Error('admin role is missing from the test seed');
+  await pool.query(
+    `INSERT INTO users (
+       id, account_id, username, email, password_hash, full_name, is_active
+     ) VALUES ($1, $2, $3, $4, 'cvg-his-v2-seed-salt-v1:seed_admin', 'Cash HTTP Foreign Operator', true)`,
+    [FOREIGN_USER_ID, FOREIGN_ACCOUNT_ID, FOREIGN_USERNAME, FOREIGN_EMAIL]
+  );
+  await pool.query(
+    `INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)`,
+    [FOREIGN_USER_ID, poolRole.rows[0].id]
+  );
+}
+
 async function requestJson<T>(path: string, init: RequestInit = {}) {
   const response = await fetch(`${baseUrl}${path}`, init);
   const text = await response.text();
@@ -124,14 +158,30 @@ function authHeaders(): HeadersInit {
   };
 }
 
+function foreignAuthHeaders(): HeadersInit {
+  return {
+    authorization: `Bearer ${foreignAccessToken}`,
+    'x-tenant-id': FOREIGN_TENANT_ID,
+    'x-account-id': FOREIGN_ACCOUNT_ID
+  };
+}
+
 async function postReceipt(
+  idempotencyKey: string,
+  expectedAmount = AMOUNT
+): Promise<{ status: number; body?: ReceiptResponse; text: string }> {
+  return postReceiptAs(authHeaders(), idempotencyKey, expectedAmount);
+}
+
+async function postReceiptAs(
+  headers: HeadersInit,
   idempotencyKey: string,
   expectedAmount = AMOUNT
 ): Promise<{ status: number; body?: ReceiptResponse; text: string }> {
   return requestJson<ReceiptResponse>(`/encounters/${ENCOUNTER_ID}/cash-receipts`, {
     method: 'POST',
     headers: {
-      ...authHeaders(),
+      ...headers,
       'content-type': 'application/json',
       'idempotency-key': idempotencyKey
     },
@@ -145,6 +195,7 @@ async function postReceipt(
 
 beforeAll(async () => {
   await seedFixture();
+  await seedForeignFixture();
   const bootstrap = await bootstrapServices({
     databaseUrl: TEST_DB_URL,
     fileStoragePath: mkdtempSync(join(tmpdir(), 'cvg-his-v2-cash-http-')),
@@ -196,6 +247,16 @@ beforeAll(async () => {
     throw new Error(`HTTP fixture login failed: ${login.status} ${login.text}`);
   }
   accessToken = login.body.accessToken;
+
+  const foreignLogin = await requestJson<LoginResponse>('/auth/login', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ username: FOREIGN_USERNAME, password: 'seed_admin' })
+  });
+  if (foreignLogin.status !== 200 || !foreignLogin.body?.accessToken) {
+    throw new Error(`Foreign HTTP fixture login failed: ${foreignLogin.status} ${foreignLogin.text}`);
+  }
+  foreignAccessToken = foreignLogin.body.accessToken;
 });
 
 afterAll(async () => {
@@ -258,6 +319,44 @@ describe('cash receipt HTTP PostgreSQL boundary', () => {
       outboxEvents: 1,
       idempotencyRows: 1,
       billingStatus: 'settled'
+    });
+  });
+
+  it('keeps the published receipt route opaque across tenants', async () => {
+    const foreignKey = randomUUID();
+    const read = await requestJson<{ readonly code: string }>(
+      `/encounters/${ENCOUNTER_ID}/cash-receipts`,
+      {
+        method: 'GET',
+        headers: foreignAuthHeaders()
+      }
+    );
+    const create = await postReceiptAs(foreignAuthHeaders(), foreignKey);
+
+    expect(read.status).toBe(404);
+    expect(read.body?.code).toBe('CASH_RECEIPT_NOT_FOUND');
+    expect(create.status).toBe(404);
+    expect(create.body).toMatchObject({ code: 'BILLING_RECORD_NOT_FOUND' });
+
+    const state = await getTestPool().query<{
+      readonly foreignReceipts: number;
+      readonly foreignIdempotencyRows: number;
+    }>(
+      `SELECT
+         (SELECT COUNT(*)::int
+            FROM encounter_cash_receipts
+           WHERE account_id = $1 AND encounter_id = $2) AS "foreignReceipts",
+         (SELECT COUNT(*)::int
+            FROM idempotency_requests
+           WHERE account_id = $1
+             AND operation = $3
+             AND idempotency_key = $4) AS "foreignIdempotencyRows"`,
+      [FOREIGN_ACCOUNT_ID, ENCOUNTER_ID, HTTP_OPERATION, foreignKey]
+    );
+
+    expect(state.rows[0]).toEqual({
+      foreignReceipts: 0,
+      foreignIdempotencyRows: 0
     });
   });
 });
