@@ -576,3 +576,8 @@ critical serial sem cache com ambos os timeouts explícitos, guardar a saída
 bruta e submeter o resultado a uma crítica independente antes de qualquer
 promoção. O cache `packages/design-system/tsconfig.vue.tsbuildinfo` continua
 fora do stage.
+
+Publicação da rodada confirmada em `75a5ccd`, com a migração 0123, fixtures,
+teardown e documentação de retomada no remoto. Esta é apenas uma publicação de
+continuidade: o próximo passo continua sendo o full critical pós-fix com
+387/387 reproduzível e crítica independente atualizada.

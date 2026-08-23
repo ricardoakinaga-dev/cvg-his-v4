@@ -653,3 +653,11 @@ pendente, a evidência integral vigente é 383/387, e a nova crítica independen
 ainda deve verificar ausência de vacuidade e teardown real. Stop decision segue
 `ACTIVE`; CVG-002C6, Quality Bar, ERP, produção, providers, SPA, paridade,
 WCAG, operações e release seguem `IN_PROGRESS/PARTIAL`.
+
+## Publicação da rodada — 23/08/2026, 20:09 BRT
+
+O commit `75a5ccd` publicou a implementação delimitada e o checkpoint de
+continuidade no branch remoto com upstream. O stop decision permanece `ACTIVE`;
+o full critical pós-fix e a crítica independente continuam obrigatórios antes
+de qualquer promoção. O cache `packages/design-system/tsconfig.vue.tsbuildinfo`
+permanece fora do stage.

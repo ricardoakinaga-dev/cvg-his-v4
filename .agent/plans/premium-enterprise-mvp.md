@@ -458,3 +458,11 @@ reexecutado após a correção e a crítica independente pós-fix ainda está
 pendente; o plano mantém `CVG-002C6=IN_PROGRESS/PARTIAL` e exige 387/387 antes
 de retomar child-process domain, failpoints, PIX PostgreSQL/RLS e webhook
 retry/DLQ/fencing.
+
+Publication note, 2026-08-23: implementation and continuation evidence for the
+deterministic fixture/teardown wave were published in `75a5ccd` (`fix: make
+critical integration fixtures deterministic`) and pushed with upstream to
+`origin/agent/sync-v4-full-program`. This publication does not promote the
+critical harness: the post-fix full run and fresh independent critique remain
+the next gate, and the user-owned design-system tsbuildinfo cache remains
+outside scope.

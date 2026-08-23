@@ -367,3 +367,14 @@ domain/SIGKILL/takeover, failpoints completos, PIX PostgreSQL/RLS e webhook HTTP
 retry/DLQ/lease fencing; manter WebAuthn, hidratação cross-instance, RLS/FORCE
 RLS global, providers, Redis, SPA/paridade, WCAG, cobertura, operações,
 deploy/restore e release explicitamente abertos.
+
+## Publicação da rodada — 23/08/2026, 20:09 BRT
+
+O código e o checkpoint desta rodada foram publicados no commit `75a5ccd`
+(`fix: make critical integration fixtures deterministic`) e enviados com
+upstream para `origin/agent/sync-v4-full-program`. O commit contém a migration
+0123, os fixtures determinísticos, os limites explícitos do Vitest e os
+documentos/ledgers de continuidade. O próximo operador deve partir deste SHA,
+validar o full critical pós-fix e não interpretar o commit como aprovação
+global; o cache user-owned `packages/design-system/tsconfig.vue.tsbuildinfo`
+continua fora do stage.
