@@ -266,3 +266,19 @@ mutação; sem ele retorna `503 TRANSACTION_REQUIRED`, evitando outbox omitido
 no caminho alternativo. A hidratação posterior continua best-effort e
 assíncrona para convergência de dados externos, mas o snapshot local cobre a
 mutação do comando que falhou.
+
+## Publicação da continuação — 23/08/2026
+
+O bounded C6-NEXT foi publicado no commit
+`90873f1dfa0ad0e649a8813927d78c66249373b8` em
+`origin/agent/sync-v4-full-program`. O `fetch` pós-push confirmou
+`HEAD == origin/agent/sync-v4-full-program` nesse SHA. Este é o ponto de
+entrada da próxima sessão: executar a jornada vertical
+inventory → close → receipt com failpoints/restart e reconciliação.
+
+O ERP completo não foi declarado pronto. Permanecem explicitamente
+`IN_PROGRESS/PARTIAL` o failpoint do callback de status, hidratação assíncrona
+cross-instance, admission/handoff, Redis/provider, SPA/B2c, paridade Vetus,
+WCAG, cobertura, operações, deploy/restore e release. O cache user-owned
+`packages/design-system/tsconfig.vue.tsbuildinfo` foi preservado fora do
+commit.

@@ -400,3 +400,12 @@ stage.
 Follow-up review: sem Critical/High no bounded slice após snapshot de
 encounter/timeline/scheduling e guard de contexto transacional; a jornada
 vertical completa e a hidratação cross-instance continuam gates abertos.
+
+## Publicação atual — C6-NEXT
+
+O bounded slice foi publicado em `90873f1dfa0ad0e649a8813927d78c66249373b8`;
+`git fetch` confirmou igualdade entre `HEAD` e
+`origin/agent/sync-v4-full-program`. Retomar pela jornada vertical
+inventory → close → receipt com failpoints/restart. Nenhuma alegação de ERP
+completo, produção ou release foi promovida; o tsbuildinfo user-owned segue
+fora do stage.

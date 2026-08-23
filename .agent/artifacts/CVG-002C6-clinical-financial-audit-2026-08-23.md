@@ -225,3 +225,12 @@ escopo transacional. Para o risco de outbox omitido em runners alternativos,
 fallback segue permitido. O único residual de consistência é a hidratação
 posterior best-effort para alterações externas concorrentes, explicitamente
 fora do bounded proof.
+
+## Publicação reconciliada
+
+O bounded C6-NEXT foi publicado em `90873f1dfa0ad0e649a8813927d78c66249373b8`
+no branch `origin/agent/sync-v4-full-program`; o fetch posterior confirmou
+`HEAD == origin`. A próxima sessão deve continuar com a jornada vertical
+inventory → close → receipt, failpoints/restart e reconciliação. O ERP amplo e
+as integrações externas permanecem `IN_PROGRESS/PARTIAL`; o tsbuildinfo
+user-owned não foi estagiado.

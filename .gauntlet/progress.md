@@ -339,3 +339,11 @@ O último hardening também restaura queue entry + appointment no rollback do
 close e falha fechado (`503 TRANSACTION_REQUIRED`) antes de consumo PostgreSQL
 sem contexto UoW canônico. A hidratação assíncrona posterior permanece apenas
 convergência best-effort para mudanças externas concorrentes.
+
+## Publicação C6-NEXT — 23/08/2026
+
+O commit bounded `90873f1dfa0ad0e649a8813927d78c66249373b8` foi enviado para
+`origin/agent/sync-v4-full-program`, e o fetch confirmou `HEAD == origin`.
+Próxima ação: provar inventory → close → receipt como uma jornada vertical com
+failpoints/restart. O cache `packages/design-system/tsconfig.vue.tsbuildinfo`
+continua fora do stage; os gates globais seguem `IN_PROGRESS/PARTIAL`.

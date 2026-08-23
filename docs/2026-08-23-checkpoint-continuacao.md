@@ -1032,3 +1032,16 @@ persistência PostgreSQL sem `TenantTransactionContext` falha fechado com
 continua compatível com testes leves. O residual é apenas a hidratação
 assíncrona best-effort após rollback, não uma mutação especulativa deixada pelo
 próprio comando.
+
+## Publicação reconciliada — C6-NEXT (23/08/2026)
+
+O commit `90873f1dfa0ad0e649a8813927d78c66249373b8` foi enviado com
+`git push -u origin agent/sync-v4-full-program`; o `fetch` confirmou
+`HEAD == origin/agent/sync-v4-full-program` no mesmo SHA. A próxima sessão
+deve partir deste ponto e escrever o RED da jornada vertical
+inventory → close → receipt com failpoints/restart.
+
+O escopo global continua `IN_PROGRESS/PARTIAL`; não promover produção,
+release, provider, Redis, SPA/B2c, paridade, WCAG ou cobertura. O arquivo
+`packages/design-system/tsconfig.vue.tsbuildinfo` permanece local e fora do
+stage.
