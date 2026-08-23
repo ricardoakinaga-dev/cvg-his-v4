@@ -151,3 +151,11 @@ parcial/role `NOBYPASSRLS`, nem jornada clínica-financeira única, failpoints,
 restart/reconciliação, SPA, Redis, providers, paridade, WCAG, coverage,
 operações, deploy/restore ou release. O próximo gate segue sendo o RED vertical
 admissão → handoff/stay → inventário → diária → alta → close → receipt.
+
+## Publicação do gate fail-closed
+
+O commit `620791e61a275af47974ad5dae4d5b5848b53406` (`fix: fail closed in
+production-like bootstrap`) foi enviado para
+`origin/agent/sync-v4-full-program`. O `fetch` posterior confirmou igualdade
+entre `HEAD` e o remoto. O único caminho local fora do commit continua sendo
+`packages/design-system/tsconfig.vue.tsbuildinfo`, preservado fora do stage.

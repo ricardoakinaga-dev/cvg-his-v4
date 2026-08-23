@@ -328,3 +328,9 @@ ficam registrados como riscos abertos.
 
 Esse adendo foi publicado em `6caecfde57a8c50941de3eac5d76d66da04f827b` e
 confirmado no branch remoto.
+
+O código e a evidência do gate fail-closed foram publicados em
+`620791e61a275af47974ad5dae4d5b5848b53406`; o `fetch` confirmou `HEAD ==
+origin/agent/sync-v4-full-program`. O cache user-owned do design-system segue
+fora do commit. A jornada clínica-financeira e todos os gates externos
+continuam `IN_PROGRESS/PARTIAL`.

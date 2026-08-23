@@ -1105,3 +1105,10 @@ listen/loop por harness de processo; são os próximos testes de defesa em
 profundidade. O programa continua `IN_PROGRESS/PARTIAL` e o próximo RED é a
 jornada clínica-financeira única com `NOBYPASSRLS`, replay, concorrência,
 failpoints, restart e reconciliação.
+
+O gate foi publicado no commit
+`620791e61a275af47974ad5dae4d5b5848b53406`; `git fetch` confirmou
+`HEAD == origin/agent/sync-v4-full-program`. O cache
+`packages/design-system/tsconfig.vue.tsbuildinfo` permanece dirty e fora do
+stage. A próxima sessão deve ler o artefato fail-closed e seguir para o
+harness de schema/role e para o RED vertical, sem promover a barra global.
