@@ -250,7 +250,8 @@ remota verificada antes desta onda documental é
 `origin/agent/sync-v4-full-program`. O checker canônico retornou 11 PASS, 1
 WARN histórico de ownership e 0 FAIL. O único caminho dirty continua sendo o
 cache user-owned `packages/design-system/tsconfig.vue.tsbuildinfo`, que não
-deve entrar no commit.
+deve entrar no commit. Esta onda documental foi publicada em
+`a7bacda985e678970d562d0c0be9eb72c33b9124` no mesmo branch.
 
 ### Maior gap local confirmado
 
