@@ -388,3 +388,45 @@ verificação, `HEAD` deve coincidir com `origin`. O ponto de entrada continua
 este arquivo, com o próximo passo integral explicitado acima; somente o cache
 user-owned `packages/design-system/tsconfig.vue.tsbuildinfo` pode permanecer
 dirty.
+
+## Reteste crítico pós-fix — 23/08/2026
+
+O full critical pós-correção foi finalmente executado contra PostgreSQL
+descartável novo, sem cache e sem paralelismo entre arquivos, com
+`hookTimeout` e `teardownTimeout` explícitos de 120 s. Migrations `0000`–`0123`
+foram aplicadas; o banco reportou 172 tabelas, 43 enums e 456 FKs. O teardown
+terminou sem timeout reportado.
+
+Comando:
+
+```bash
+REQUIRE_TEST_DB=1 pnpm exec vitest run \
+  tests/integration/database tests/integration/setup \
+  tests/integration/foundational.test.ts \
+  --config vitest.integration.config.ts --reporter=dot \
+  --no-cache --no-file-parallelism \
+  --hookTimeout=120000 --teardownTimeout=120000
+```
+
+Resultado bruto: **27/28 arquivos**, **386/387 testes**, `exit 1`, duração
+`646.58s`. A única falha foi
+`pix-service-principals.test.ts > backfills and defaults existing and new users
+to interactive human principals`, com violação de
+`users_account_id_accounts_id_fk` durante a aplicação da migration de service
+principals. O arquivo PIX passa isoladamente **5/5** e provider → PIX passa
+**11/11**; portanto a causa pendente é uma divergência de isolamento/fixture no
+contexto integral, não uma justificativa para remover FK, apagar órfãos ou
+relaxar a migration 0112. A evidência detalhada está em
+[`CVG-002C6-critical-retest-postfix-2026-08-23.md`](../.agent/artifacts/CVG-002C6-critical-retest-postfix-2026-08-23.md).
+
+O gate `QB-REL-CRITICAL-HARNESS` permanece `PARTIAL/FAIL`; `CVG-002C6`, ERP,
+Quality Bar, produção, providers, SPA, paridade, WCAG, operações, cobertura,
+deploy/restore e release continuam `IN_PROGRESS/PARTIAL`. A próxima sessão
+deve reproduzir a menor sequência que introduz o usuário órfão antes do PIX,
+corrigir somente a causa de isolamento, repetir os focados e o full critical,
+e obter uma crítica independente pós-fix sobre vacuidade, constraints,
+isolamento tenant e teardown antes de retomar child-process/SIGKILL,
+failpoints, PIX PostgreSQL/RLS ou webhook HTTP retry/DLQ/fencing.
+
+O cache user-owned `packages/design-system/tsconfig.vue.tsbuildinfo` continua
+fora do stage.

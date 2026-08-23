@@ -471,3 +471,17 @@ Publication note, 2026-08-23: final pointer reconciliation for this checkpoint
 is `dce9c36`, following implementation commit `75a5ccd`; the remote branch is
 the canonical continuation source. The next gate remains the post-fix full
 critical run and fresh independent critique, not a global readiness promotion.
+
+Plan revision note, 2026-08-23 (full critical pós-fix): a execução integral
+serial, sem cache, com `hookTimeout` e `teardownTimeout` de 120 s, aplicou as
+migrations `0000`–`0123` em PostgreSQL descartável e terminou em **386/387
+testes**, **27/28 arquivos**, `exit 1`, com teardown concluído. A única falha é
+o backfill de `pix-service-principals.test.ts`, que encontra
+`users_account_id_accounts_id_fk` apenas no contexto integral; PIX isolado é
+5/5 e provider → PIX 11/11. A hipótese operacional é usuário órfão introduzido
+por uma suite anterior, ainda sem prova mínima. O artefato
+`.agent/artifacts/CVG-002C6-critical-retest-postfix-2026-08-23.md` preserva o
+comando e o resultado. O plano continua `IN_PROGRESS/PARTIAL`: reproduzir a
+menor sequência contaminante, corrigir apenas seu isolamento, repetir o full
+critical e obter crítica independente fresca antes de retomar SIGKILL,
+failpoints, PIX PostgreSQL/RLS ou webhook retry/DLQ/fencing.

@@ -668,3 +668,19 @@ O conteúdo `75a5ccd` e o ponteiro documental `dce9c36` estão publicados no
 branch remoto. A sessão seguinte deve confirmar `HEAD == origin` e retomar o
 full critical pós-fix; stop decision segue `ACTIVE` e todos os gates amplos
 seguem `IN_PROGRESS/PARTIAL`.
+
+## Reteste crítico pós-fix — 23/08/2026
+
+O full critical foi executado contra PostgreSQL descartável novo com cache e
+paralelismo de arquivos desativados e `hookTimeout`/`teardownTimeout` de 120 s.
+Migrations `0000`–`0123` foram aplicadas; o teardown terminou. Resultado:
+**386/387 testes**, **27/28 arquivos**, `exit 1`, em 646,58 s.
+
+A única falha está em `pix-service-principals.test.ts`, no backfill da migration
+de principals, com `users_account_id_accounts_id_fk`. O arquivo passa 5/5
+isoladamente e provider → PIX passa 11/11. Até haver uma reprodução mínima, a
+causa é tratada como contaminação/isolamento do harness; não remover FK, apagar
+órfãos ou relaxar a migration. `QB-REL-CRITICAL-HARNESS`, CVG-002C6 e todos os
+gates globais permanecem `ACTIVE/IN_PROGRESS/PARTIAL`. Próximo passo: localizar
+o primeiro suite que deixa usuário sem account, corrigir apenas sua limpeza e
+repetir o full critical antes da crítica independente pós-fix.

@@ -382,3 +382,34 @@ Ledgers/control-plane atuais: `execution-log.jsonl` **202** linhas e
 `verification.jsonl` **137** linhas parseiam, assim como `state.json` e
 `backlog.json`. `.agent/check_state.py` não está presente no workspace atual;
 nenhum resultado canônico de checker foi inventado.
+
+## Registro de continuidade mais recente — full critical pós-fix (registrado às 20:38 BRT)
+
+O comando integral pós-correção foi executado com banco PostgreSQL descartável,
+`--no-cache`, `--no-file-parallelism`, `--hookTimeout=120000` e
+`--teardownTimeout=120000`. Resultado: **386/387 testes**, **27/28 arquivos**,
+`exit 1`, em **646,58 s**; migrations `0000`–`0123` aplicadas, 172 tabelas,
+43 enums, 456 FKs e teardown concluído.
+
+A única falha ficou em
+`tests/integration/database/pix-service-principals.test.ts`, no backfill de
+usuários/principals, por `users_account_id_accounts_id_fk` ao aplicar a
+migration de service principals. PIX isolado segue **5/5** e provider → PIX
+**11/11**. O diagnóstico atual é divergência de isolamento/fixture no contexto
+integral; não apagar órfãos, remover FK ou flexibilizar a migration. O artefato
+comando/resultado é
+[`CVG-002C6-critical-retest-postfix-2026-08-23.md`](../.agent/artifacts/CVG-002C6-critical-retest-postfix-2026-08-23.md).
+
+Retomada executável:
+
+1. Reproduzir a menor sequência de suites anterior ao PIX que deixa usuário
+   sem account, começando pelos testes que fazem `TRUNCATE accounts CASCADE` ou
+   alteram schema.
+2. Corrigir a causa de isolamento no produtor do órfão e preservar o backfill
+   como prova real de defaults/FK.
+3. Reexecutar PIX/provider e o full critical serial; então obter crítica
+   independente pós-fix antes de qualquer promoção.
+
+O estado permanece `BUILD/VERIFY`, `IN_PROGRESS/PARTIAL`; o cache
+`packages/design-system/tsconfig.vue.tsbuildinfo` é user-owned e fica fora do
+stage.

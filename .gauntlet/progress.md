@@ -585,3 +585,19 @@ continuidade: o próximo passo continua sendo o full critical pós-fix com
 Ponteiro final de reconciliação: `dce9c36`, após o commit de implementação
 `75a5ccd`. O remoto é a fonte de continuidade; nenhum full critical novo foi
 declarado nesta etapa.
+
+## Full critical pós-fix — 23/08/2026
+
+A execução integral posterior à migration 0123 e à serialização do harness foi
+realizada com PostgreSQL descartável, `--no-cache`, `--no-file-parallelism`,
+`--hookTimeout=120000` e `--teardownTimeout=120000`. Resultado: **386/387**,
+**27/28 arquivos**, `exit 1`, duração 646,58 s; migrations `0000`–`0123`
+aplicadas e teardown concluído.
+
+A única falha é o backfill de `pix-service-principals.test.ts`, por
+`users_account_id_accounts_id_fk` no contexto integral. PIX focal continua 5/5
+e provider → PIX 11/11. O diagnóstico permanece aberto: reproduzir a menor
+sequência anterior que introduz usuário órfão e corrigir seu isolamento sem
+relaxar constraints. Não promover nenhum gate; crítica independente pós-fix e
+novo full critical continuam obrigatórios. Artefato:
+`.agent/artifacts/CVG-002C6-critical-retest-postfix-2026-08-23.md`.
