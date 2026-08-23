@@ -16,18 +16,18 @@
   "active_execplan": ".agent/plans/premium-enterprise-mvp.md",
   "active_task": "CVG-002B2B",
   "verification_state": "PARTIAL",
-  "repository_state": "CVG-002B2 parser/fingerprint plus durable 0111 receipt/delivery ingress checkpoint is verified locally and ready to publish; corrected 18/18 B1 extension remains extracted into module-pix with API shims, raw reader/verifier/parser/fingerprints are green at 77/77, ingress is green at 11/11 with disposable ACL/RLS evidence, ERP audit/research handoff is documented, and the preserved user-owned packages/design-system/tsconfig.vue.tsbuildinfo cache remains outside scope",
+  "repository_state": "CVG-002B2 parser/fingerprint plus durable 0111 receipt/delivery ingress checkpoint is committed as 61cdef4 and pushed to origin/agent/sync-v4-full-program; corrected 18/18 B1 extension remains extracted into module-pix with API shims, raw reader/verifier/parser/fingerprints are green at 77/77, ingress is green at 11/11 with disposable ACL/RLS evidence, ERP audit/research handoff is documented, and the preserved user-owned packages/design-system/tsconfig.vue.tsbuildinfo cache remains outside scope",
   "instruction_scope_refs": [
     ".agent/instruction-scope.md"
   ],
   "last_gate_record": ".agent/gates/implementation-ready-CVG-002B2B.json",
-  "last_event_id": "EVT-0050",
-  "state_revision": 39,
+  "last_event_id": "EVT-0051",
+  "state_revision": 40,
   "next_gate": "VERIFIED",
   "next_action": "Implement the real socket HTTP callback RED, then service-principal migration/login exclusions and the shared fenced worker UoW; preserve 18/18 B1, 25/25 raw-body/HMAC, 77/77 focused and 11/11 ingress evidence",
   "blocked_by": [],
   "human_approval_required": [
     "Production go-live, credential rotation, provider selection, fiscal homologation, and residual HIGH/CRITICAL risk acceptance remain outside repository implementation authority"
   ],
-  "updated_at": "2026-08-22T21:10:53-03:00"
+  "updated_at": "2026-08-22T21:13:12-03:00"
 }
