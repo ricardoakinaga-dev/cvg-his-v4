@@ -515,3 +515,17 @@ de isolamento. `CVG-002B2B` segue `IN_PROGRESS/PARTIAL`, e o próximo trabalho
 recebimento/ledger/auditoria/outbox com replay, concorrência, dois tenants e
 failpoints. Nenhum gate de produção, provider, paridade, WCAG ou release foi
 promovido.
+## Handoff executado — matriz HTTP cross-tenant (23/08/2026, 07:20 BRT)
+
+O P2 de isolamento da rota de recibo foi fechado no commit `0e0163c`. O teste
+`tests/integration/database/encounter-cash-receipt-http-postgres.test.ts`
+semeia um segundo tenant/usuário, usa seu token real e prova GET `404
+CASH_RECEIPT_NOT_FOUND`, POST `404 BILLING_RECORD_NOT_FOUND` e zero recibo/
+idempotência persistidos para a conta estrangeira. A integração passou `2/2`;
+rota + response-buffer `10/10`, API typecheck e `git diff --check` também
+passaram.
+
+O boundary HTTP de cash receipt agora cobre commit, replay, conflito e
+cross-tenant A/B. O contrato `CVG-002B2B` continua `IN_PROGRESS/PARTIAL`; a
+próxima execução deve expandir a jornada clínica-financeira completa, sem
+reabrir este P2.

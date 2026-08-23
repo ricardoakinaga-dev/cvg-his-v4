@@ -265,3 +265,16 @@ Quality Bar permanece `ACTIVE`/`IN_PROGRESS/PARTIAL` e a próxima ação é essa
 matriz seguida da jornada admissão → handoff/permanência → estoque → alta →
 billing → recebimento/ledger/auditoria/outbox. Nenhum gate externo foi
 promovido.
+## Atualização — isolamento HTTP cross-tenant do recibo (23/08/2026, 07:20 BRT)
+
+O P2 residual do boundary de cash receipt foi fechado no commit `0e0163c`.
+Uma integração PostgreSQL com segundo tenant/token passou `2/2`: GET do
+encounter estrangeiro retorna `404 CASH_RECEIPT_NOT_FOUND`, POST retorna `404
+BILLING_RECORD_NOT_FOUND` e não há recibo/idempotência persistidos na conta B.
+Somada à prova anterior de commit/replay/conflito, a fronteira HTTP tem agora
+isolamento A/B explícito.
+
+O Quality Bar continua `ACTIVE`/`IN_PROGRESS/PARTIAL`. O próximo maior gap é a
+jornada clínica-financeira admissão → handoff/permanência → estoque → alta →
+billing → recebimento/ledger/auditoria/outbox; Redis failover real, provider,
+SPA/B2c, paridade, WCAG, operações, cobertura e release continuam separados.

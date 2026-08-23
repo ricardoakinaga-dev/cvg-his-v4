@@ -211,3 +211,11 @@ A revisão independente aprovou sem P0/P1. O próximo gap local é P2: HTTP
 cross-tenant A/B com segundo token. Depois, continuar a jornada completa com
 PostgreSQL/RLS, replay, concorrência e failpoints; o ERP e os gates externos
 continuam `IN_PROGRESS/PARTIAL`.
+## Progresso mais recente — matriz HTTP A/B concluída (23/08/2026, 07:20 BRT)
+
+O teste `encounter-cash-receipt-http-postgres` agora cria um segundo tenant e
+token e prova GET/POST cross-tenant opacos (`404`), sem recibo ou idempotência
+estrangeira. A integração passou `2/2`; rota + response-buffer `10/10`, API
+typecheck e diff check PASS. O P2 local foi removido. Próxima ação: jornada
+clínica-financeira completa com PostgreSQL/RLS, replay, concorrência e
+failpoints, preservando todos os gates externos.

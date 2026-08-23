@@ -646,3 +646,20 @@ O checker canônico retorna 11 PASS, 1 WARN histórico de ownership paralelo e
 0 FAIL. O único caminho dirty é o cache user-owned
 `packages/design-system/tsconfig.vue.tsbuildinfo`, deliberadamente fora dos
 commits.
+## Atualização mais recente — isolamento HTTP cross-tenant (23/08/2026, 07:20 BRT)
+
+O P2 restante do recibo de caixa foi fechado no commit `0e0163c`
+(`test: prove cash receipt tenant isolation`). O teste PostgreSQL agora cria
+um segundo tenant e token e comprova que:
+
+- o token B não lê o recibo do encounter A (`404 CASH_RECEIPT_NOT_FOUND`);
+- o token B não cria recibo no encounter A (`404 BILLING_RECORD_NOT_FOUND`);
+- o tenant B não recebe recibo nem linha de idempotência persistida.
+
+Evidência: integração HTTP/PostgreSQL `2/2`, rota + response-buffer `10/10`,
+API typecheck PASS e `git diff --check` PASS. A fronteira HTTP de recebimento
+agora tem commit, replay, conflito e isolamento A/B comprovados. O próximo
+trabalho volta à jornada maior admissão → handoff/permanência → estoque → alta
+→ billing → recebimento/ledger/auditoria/outbox, mantendo o ERP
+`IN_PROGRESS/PARTIAL` e os gates de Redis failover real, provider, SPA/B2c,
+paridade Vetus, WCAG, operações, cobertura e release abertos.

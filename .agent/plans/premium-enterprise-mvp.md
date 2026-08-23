@@ -304,3 +304,9 @@ HTTP helpers 6/6, direct PostgreSQL command 8/8, published HTTP/PostgreSQL
 without P0/P1; the remaining local P2 is an HTTP two-tenant A/B case. The plan
 still does not promote the ERP or any provider/production/parity/WCAG/release
 gate.
+Plan revision note, 2026-08-23 (HTTP tenant isolation): The cash-receipt
+boundary now has a second-tenant/token integration proof. GET and POST attempts
+against tenant A from tenant B return opaque 404 responses and persist no
+foreign receipt/idempotency row; the focused PostgreSQL test passed 2/2. The
+P2 is closed, while the full clinical-financial journey and external gates
+remain open.

@@ -88,3 +88,39 @@ paridade Vetus, WCAG, failover Redis entre processos, cobertura global,
 operações alvo ou release. O próximo trabalho continua sendo a jornada
 admissão → handoff/permanência → estoque → alta → billing → recebimento/
 ledger/auditoria/outbox, com replay, concorrência, dois tenants e RLS.
+
+## Atualização — matriz HTTP cross-tenant (23/08/2026, 07:20 BRT)
+
+O P2 da crítica independente foi fechado no commit
+`0e0163c` (`test: prove cash receipt tenant isolation`). A integração agora
+semeia um segundo tenant/usuário, autentica um segundo token e exerce:
+
+- `GET /encounters/:encounterId/cash-receipts` do tenant A usando o token B,
+  retornando `404 CASH_RECEIPT_NOT_FOUND`;
+- `POST /encounters/:encounterId/cash-receipts` do encounter A usando o token
+  B e headers do tenant B, retornando `404 BILLING_RECORD_NOT_FOUND`;
+- consulta SQL confirmando zero recibos e zero linha de idempotência persistida
+  para o tenant B.
+
+Evidência fresca:
+
+```text
+REQUIRE_TEST_DB=1 TEST_DB_SUFFIX=cash_receipt_http_cross_tenant \
+  pnpm exec vitest run tests/integration/database/encounter-cash-receipt-http-postgres.test.ts \
+  --config vitest.integration.config.ts --reporter=verbose
+  2/2
+rota + response-buffer: 10/10
+API typecheck: PASS
+git diff --check: PASS
+```
+
+O `HTTP_OPERATION` consultado no SQL é a operação da UoW externa
+(`POST /encounters/.../cash-receipts`); a operação semântica aninhada
+`encounter.cash-receipt.create` passa em modo pass-through quando a transação
+HTTP já está ativa. Os erros `404` registrados no log são respostas esperadas
+da prova de isolamento, não falhas do teste.
+
+Com isso, a fronteira HTTP de recibo tem prova de commit, replay, conflito e
+isolamento entre tenants. Permanecem fora deste slice a jornada clínica
+completa, Redis failover entre processos, providers, SPA/B2c, paridade Vetus,
+WCAG, operações alvo, cobertura global e release.
