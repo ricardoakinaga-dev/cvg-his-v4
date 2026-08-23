@@ -12,6 +12,18 @@
 
 Este arquivo consolida o mapeamento do código e as revisões independentes de arquitetura, segurança e TDD executadas em 22 de agosto de 2026. Ele continua sendo o contrato técnico, não evidência de que o B2b inteiro foi entregue. O gate de prontidão passou após duas rejeições corrigidas; cada RED/GREEN posterior ainda exige evidência própria.
 
+## Checkpoint implementado — EVT-0050 / VFY-CVG-002B2B-PARSER-INGRESS-001
+
+O primeiro sub-slice inbound foi implementado e revisado independentemente:
+
+- `apps/api/src/pix-provider-webhook-payload.ts` fecha UTF-8/BOM, JSON estrito, chaves duplicadas, allowlist, UUID/valor/moeda/timestamp e binding de conta;
+- `apps/api/src/pix-provider-event-fingerprints.ts` calcula os dois SHA-256 domain-separated usando o corpo bruto e claims canonicalizadas na ordem congelada;
+- `packages/db/migrations/0111_pix_provider_event_ingress.sql` e `packages/db/src/schema/pix_provider_event_ingress.ts` criam receipt append-only e delivery operacional com FK composta, RLS/FORCE, checks de estado/lease/agendamento e ACL condicional sem fallback de role obsoleta;
+- `apps/api/src/pix-provider-event-ingress-repository.ts` calcula fingerprints internamente, confirma que claims vieram do mesmo raw body, persiste receipt+delivery na mesma transação, faz replay/conflict opaco, traduz target incompatível e protege corridas com savepoints;
+- `packages/db/src/reconcile-runtime-roles.ts`, `infra/postgres/init-runtime-role.sh` e o ConfigMap Helm reaplicam a matriz least-privilege depois do CRUD amplo; a suíte cria roles descartáveis, executa duas reconciliações e limpa `DROP OWNED`;
+- evidência fresca: unit-focused `77/77`, ingress PostgreSQL `11/11`, regressão B1 `18/18`, regressão B2a `33/33`, lint/build/Prettier/shell/diff e crítica independente `APPROVE` — ver `.agent/verification.jsonl#VFY-CVG-002B2B-PARSER-INGRESS-001`;
+- limite explícito: isso não implementa nem prova socket HTTP/ACK/rate-limit, principal de serviço, primitive shared sem idempotência, worker/consumer fenced, fronteira legada `410`, SPA, provider real ou produção.
+
 ## Problema e dependências bloqueantes identificadas
 
 1. O B1 está em `apps/api`, portanto o worker não pode importá-lo sem violar a fronteira entre aplicações. O mesmo núcleo deve ser extraído para `packages/modules/pix`, mantendo reexports de compatibilidade na API.
@@ -221,8 +233,8 @@ Arquivos RED previstos:
 2. GREEN mínimo no B1 atual, incluindo integridade de timestamp/provider/reserva/replay e rollback — concluído (`EVT-0041`, 18/18).
 3. Extração para `packages/modules/pix`, exports/dependências e shims da API — implementado; aguarda revisão independente específica da extração.
 4. Escrever/rodar REDs de verifier/raw body, incluindo dummy-key/comparação 32/32 instrumentável e clock injetado — concluído com `EVT-0043`/`EVT-0044`; o leitor/verificador está verde em 24/24, mas ainda não há rota HTTP.
-5. Escrever/rodar REDs de migration/RLS/ACL/receipt/delivery/principal, reconciler/init/Helm reruns e implementar `0111`.
-6. Implementar ingresso/rota/composição/OpenAPI somente após seus REDs; HTTP deve usar socket bruto (`node:net`) para framing/abort/headers duplicados, e produção deve falhar fechado no bootstrap API/worker.
+5. Escrever/rodar REDs de migration/RLS/ACL/receipt/delivery/principal, reconciler/init/Helm reruns e implementar `0111` — o receipt/delivery/parser/fingerprint sub-slice está GREEN em `EVT-0047`/`EVT-0048`, com review APPROVE em `EVT-0049`.
+6. Implementar ingresso/rota/composição/OpenAPI somente após seus REDs; migration, repository e ACL já têm evidência própria. HTTP ainda deve usar socket bruto (`node:net`) para framing/abort/headers duplicados, e produção deve falhar fechado no bootstrap API/worker.
 7. Implementar o primitive shared `runPixProviderSettlementTransaction` e seus REDs; só depois escrever/rodar REDs do consumer e implementar claim, principal, chamada única ao B1 estendido e fenced completion na mesma UoW; o consumer não possui staging financeiro.
 8. Rodar restart/concurrency multi-pool, revogação com barreiras determinísticas e harness de known-bad.
 9. Rodar uma configuração de cobertura dedicada que inclua explicitamente B1 extraído, `apps/worker`, rotas API e todos os seams críticos, com thresholds por seam além do global >=80%.

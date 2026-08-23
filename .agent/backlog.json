@@ -79,9 +79,10 @@
         "docs/2026-08-22-handoff-cvg-002b2.md",
         ".agent/artifacts/CVG-002B2B-gate-review-2026-08-22.md",
         ".agent/gates/verified-CVG-002B2a.json",
-        ".agent/gates/verified-CVG-002B1.json"
+        ".agent/gates/verified-CVG-002B1.json",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-PARSER-INGRESS-001"
       ],
-      "next_action": "Write authenticated JSON parser and append-only receipt/delivery REDs while preserving the extracted 18/18 B1 and 25/25 raw-body/HMAC regressions; callback, migration, principal and worker remain gated by later evidence."
+      "next_action": "Write the real socket HTTP callback RED, then service-principal migration/login exclusions and the shared fenced worker UoW; preserve 18/18 B1, 25/25 raw-body/HMAC, 77/77 focused and 11/11 ingress evidence."
     },
     {
       "id": "CVG-003",

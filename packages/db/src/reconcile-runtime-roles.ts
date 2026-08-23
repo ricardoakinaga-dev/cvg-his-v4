@@ -1,21 +1,9 @@
 import type { PoolClient } from 'pg';
 
 import { closeDbConnection, pool } from './connection.js';
+import { API_GLOBAL_TABLE_MUTATIONS } from './runtime-role-policy.js';
 
-export const API_GLOBAL_TABLE_MUTATIONS = [
-  { tableName: 'roles', privileges: 'INSERT' },
-  { tableName: 'permissions', privileges: 'INSERT' },
-  { tableName: 'role_permissions', privileges: 'INSERT, DELETE' },
-  { tableName: 'user_roles', privileges: 'INSERT, DELETE' },
-  { tableName: 'cfop_entries', privileges: 'INSERT, UPDATE' },
-  { tableName: 'icms_tables', privileges: 'INSERT, UPDATE' },
-  { tableName: 'ipi_tables', privileges: 'INSERT, UPDATE' },
-  { tableName: 'pis_tables', privileges: 'INSERT, UPDATE' },
-  { tableName: 'cofins_tables', privileges: 'INSERT, UPDATE' },
-  { tableName: 'ibs_cbs_tables', privileges: 'INSERT, UPDATE' },
-  { tableName: 'icms_rules', privileges: 'INSERT' },
-  { tableName: 'nfse_layouts', privileges: 'INSERT, UPDATE' }
-] as const;
+export { API_GLOBAL_TABLE_MUTATIONS } from './runtime-role-policy.js';
 
 const SHARED_READ_TABLES = [
   'accounts',
@@ -75,8 +63,8 @@ async function grantExistingTable(
 ): Promise<void> {
   await executeGeneratedStatements(
     client,
-    `SELECT format('GRANT %s ON TABLE public.%I TO %I', $2, $1, $3) AS statement
-     WHERE to_regclass(format('public.%I', $1)) IS NOT NULL`,
+    `SELECT format('GRANT %s ON TABLE public.%I TO %I', $2::text, $1::text, $3::text) AS statement
+     WHERE to_regclass(format('public.%I', $1::text)) IS NOT NULL`,
     [tableName, privileges, roleName]
   );
 }
@@ -118,8 +106,8 @@ export async function reconcileRuntimeRoles(
     );
     await executeGeneratedStatements(
       client,
-      `SELECT format('REVOKE cvg_installer FROM %I', $1) AS statement
-       UNION ALL SELECT format('GRANT cvg_installer TO %I', $2)`,
+      `SELECT format('REVOKE cvg_installer FROM %I', $1::text) AS statement
+       UNION ALL SELECT format('GRANT cvg_installer TO %I', $2::text)`,
       [workerRole, apiRole]
     );
     await executeGeneratedStatements(
@@ -216,6 +204,33 @@ export async function reconcileRuntimeRoles(
        FROM unnest($1::text[]) AS role_name
        WHERE to_regclass('public.audit_events') IS NOT NULL`,
       [[apiRole, workerRole]]
+    );
+    await executeGeneratedStatements(
+      client,
+      `SELECT format('REVOKE UPDATE, DELETE, TRUNCATE ON TABLE public.pix_provider_events FROM %I', $1::text) AS statement
+       WHERE to_regclass('public.pix_provider_events') IS NOT NULL
+       UNION ALL
+       SELECT format('REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLE public.pix_provider_events FROM %I', $2::text)
+       WHERE to_regclass('public.pix_provider_events') IS NOT NULL
+       UNION ALL
+       SELECT format('REVOKE UPDATE, DELETE, TRUNCATE ON TABLE public.pix_provider_event_deliveries FROM %I', $1::text)
+       WHERE to_regclass('public.pix_provider_event_deliveries') IS NOT NULL
+       UNION ALL
+       SELECT format('REVOKE INSERT, DELETE, TRUNCATE ON TABLE public.pix_provider_event_deliveries FROM %I', $2::text)
+       WHERE to_regclass('public.pix_provider_event_deliveries') IS NOT NULL
+       UNION ALL
+       SELECT format('GRANT SELECT, INSERT ON TABLE public.pix_provider_events TO %I', $1::text)
+       WHERE to_regclass('public.pix_provider_events') IS NOT NULL
+       UNION ALL
+       SELECT format('GRANT SELECT ON TABLE public.pix_provider_events TO %I', $2::text)
+       WHERE to_regclass('public.pix_provider_events') IS NOT NULL
+       UNION ALL
+       SELECT format('GRANT SELECT, INSERT ON TABLE public.pix_provider_event_deliveries TO %I', $1::text)
+       WHERE to_regclass('public.pix_provider_event_deliveries') IS NOT NULL
+       UNION ALL
+       SELECT format('GRANT SELECT, UPDATE ON TABLE public.pix_provider_event_deliveries TO %I', $2::text)
+       WHERE to_regclass('public.pix_provider_event_deliveries') IS NOT NULL`,
+      [apiRole, workerRole]
     );
     await executeGeneratedStatements(
       client,

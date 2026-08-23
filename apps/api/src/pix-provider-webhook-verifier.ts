@@ -115,9 +115,11 @@ export function verifyPixProviderWebhook(
 
   const now = options.nowSeconds();
   const maxAge = options.maxAgeSeconds ?? DEFAULT_MAX_AGE_SECONDS;
+  const maxAgeValid = Number.isSafeInteger(maxAge) && maxAge >= 0;
   const fresh =
     timestampValid
     && Number.isSafeInteger(now)
+    && maxAgeValid
     && timestamp >= now - maxAge
     && timestamp <= now + maxAge;
 

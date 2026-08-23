@@ -101,6 +101,10 @@ JOIN pg_namespace AS namespace ON namespace.oid = class.relnamespace
 WHERE namespace.nspname = 'public' AND class.relname = 'audit_events';
 \gexec
 
+SELECT format('REVOKE UPDATE, DELETE, TRUNCATE ON TABLE public.pix_provider_events FROM %I', :'runtime_user')
+WHERE to_regclass('public.pix_provider_events') IS NOT NULL;
+\gexec
+
 SELECT format('GRANT SELECT ON TABLE public.%I TO %I', candidate.table_name, :'runtime_user')
 FROM (
   VALUES
@@ -155,6 +159,34 @@ ALTER ROLE cvg_installer
 REVOKE cvg_installer FROM :"runtime_user";
 REVOKE cvg_installer FROM :"worker_user";
 GRANT cvg_installer TO :"api_user";
+
+-- The inbound PIX receipt is forensic; only the API may append it and only
+-- the worker may mutate the separate delivery queue. Reapply this after the
+-- broad RLS CRUD grant above so bootstrap reruns cannot widen the boundary.
+SELECT format('REVOKE UPDATE, DELETE, TRUNCATE ON TABLE public.pix_provider_events FROM %I', :'api_user')
+WHERE to_regclass('public.pix_provider_events') IS NOT NULL;
+\gexec
+SELECT format('REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLE public.pix_provider_events FROM %I', :'worker_user')
+WHERE to_regclass('public.pix_provider_events') IS NOT NULL;
+\gexec
+SELECT format('REVOKE UPDATE, DELETE, TRUNCATE ON TABLE public.pix_provider_event_deliveries FROM %I', :'api_user')
+WHERE to_regclass('public.pix_provider_event_deliveries') IS NOT NULL;
+\gexec
+SELECT format('REVOKE INSERT, DELETE, TRUNCATE ON TABLE public.pix_provider_event_deliveries FROM %I', :'worker_user')
+WHERE to_regclass('public.pix_provider_event_deliveries') IS NOT NULL;
+\gexec
+SELECT format('GRANT SELECT, INSERT ON TABLE public.pix_provider_events TO %I', :'api_user')
+WHERE to_regclass('public.pix_provider_events') IS NOT NULL;
+\gexec
+SELECT format('GRANT SELECT ON TABLE public.pix_provider_events TO %I', :'worker_user')
+WHERE to_regclass('public.pix_provider_events') IS NOT NULL;
+\gexec
+SELECT format('GRANT SELECT, INSERT ON TABLE public.pix_provider_event_deliveries TO %I', :'api_user')
+WHERE to_regclass('public.pix_provider_event_deliveries') IS NOT NULL;
+\gexec
+SELECT format('GRANT SELECT, UPDATE ON TABLE public.pix_provider_event_deliveries TO %I', :'worker_user')
+WHERE to_regclass('public.pix_provider_event_deliveries') IS NOT NULL;
+\gexec
 
 SELECT format(
   'GRANT %s ON TABLE public.%I TO %I',

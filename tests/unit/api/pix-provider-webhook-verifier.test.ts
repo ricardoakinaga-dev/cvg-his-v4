@@ -14,10 +14,7 @@ const EVENT_ID = 'evt_01J8PX7Y4C:synthetic';
 const NOW = 1_756_000_000;
 
 function sign(rawBody: Buffer, timestamp = NOW, eventId = EVENT_ID, secret = SECRET): string {
-  const message = Buffer.concat([
-    Buffer.from(`v1.${timestamp}.${eventId}.`, 'ascii'),
-    rawBody
-  ]);
+  const message = Buffer.concat([Buffer.from(`v1.${timestamp}.${eventId}.`, 'ascii'), rawBody]);
   return `v1=${createHmac('sha256', secret).update(message).digest('hex')}`;
 }
 
@@ -72,20 +69,35 @@ describe('PIX synthetic provider webhook verifier', () => {
     ['too new', NOW + 301]
   ])('rejects timestamps %s outside the inclusive five-minute window', (_label, timestamp) => {
     const rawBody = Buffer.from('{}', 'utf8');
-    expect(() => verifyPixProviderWebhook({ headers: headers(rawBody, {}, timestamp), rawBody }, options)).toThrow(
-      PixProviderWebhookAuthenticationError
-    );
+    expect(() =>
+      verifyPixProviderWebhook({ headers: headers(rawBody, {}, timestamp), rawBody }, options)
+    ).toThrow(PixProviderWebhookAuthenticationError);
   });
 
   it('accepts both exact freshness boundaries', () => {
     const rawBody = Buffer.from('{}', 'utf8');
-    expect(verifyPixProviderWebhook({ headers: headers(rawBody, {}, NOW - 300), rawBody }, options).timestamp).toBe(
-      NOW - 300
-    );
-    expect(verifyPixProviderWebhook({ headers: headers(rawBody, {}, NOW + 300), rawBody }, options).timestamp).toBe(
-      NOW + 300
-    );
+    expect(
+      verifyPixProviderWebhook({ headers: headers(rawBody, {}, NOW - 300), rawBody }, options)
+        .timestamp
+    ).toBe(NOW - 300);
+    expect(
+      verifyPixProviderWebhook({ headers: headers(rawBody, {}, NOW + 300), rawBody }, options)
+        .timestamp
+    ).toBe(NOW + 300);
   });
+
+  it.each([Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY, -1, Number.MAX_SAFE_INTEGER + 1])(
+    'rejects an invalid maxAgeSeconds override: %s',
+    (maxAgeSeconds) => {
+      const rawBody = Buffer.from('{}', 'utf8');
+      expect(() =>
+        verifyPixProviderWebhook(
+          { headers: headers(rawBody), rawBody },
+          { ...options, maxAgeSeconds }
+        )
+      ).toThrow(PixProviderWebhookAuthenticationError);
+    }
+  );
 
   it.each([
     ['x-cvg-pix-key-id', [KEY_ID, KEY_ID]],
@@ -126,7 +138,9 @@ describe('PIX synthetic provider webhook verifier', () => {
   });
 
   it('keeps unknown-key signatures on the fixed 32-byte comparison path', () => {
-    const compareDigests = vi.fn((expected: Buffer, supplied: Buffer) => timingSafeEqual(expected, supplied));
+    const compareDigests = vi.fn((expected: Buffer, supplied: Buffer) =>
+      timingSafeEqual(expected, supplied)
+    );
     const rawBody = Buffer.from('{}', 'utf8');
 
     expect(() =>

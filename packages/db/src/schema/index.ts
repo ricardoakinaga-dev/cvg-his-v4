@@ -59,6 +59,7 @@ export * from './users.js';
 export * from './wards.js';
 export * from './payments.js';
 export * from './pix_transactions.js';
+export * from './pix_provider_event_ingress.js';
 export * from './cash.js';
 export * from './counterSales.js';
 export * from './quotes.js';
