@@ -373,3 +373,6 @@ origin/agent/sync-v4-full-program`. O artefato 4/4 é
 [`.agent/artifacts/CVG-002C6-vertical-http-red-green-2026-08-23.md`](../.agent/artifacts/CVG-002C6-vertical-http-red-green-2026-08-23.md).
 O cache `packages/design-system/tsconfig.vue.tsbuildinfo` foi preservado fora
 do commit; nenhum gate global foi promovido.
+
+O ponteiro documental final desta sessão é `7d57225ce1936f174eae5c4012ea69accac94519`;
+`HEAD` e `origin/agent/sync-v4-full-program` ficaram alinhados após o push.

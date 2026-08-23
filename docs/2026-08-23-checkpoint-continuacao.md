@@ -1151,3 +1151,6 @@ financial vertical`) no branch `origin/agent/sync-v4-full-program`; o fetch
 confirmou igualdade entre `HEAD` e o remoto. A evidência 4/4 e os limites
 estão em [`.agent/artifacts/CVG-002C6-vertical-http-red-green-2026-08-23.md`](../.agent/artifacts/CVG-002C6-vertical-http-red-green-2026-08-23.md).
 O cache user-owned do design-system permanece dirty e fora do stage.
+
+O commit documental `7d57225ce1936f174eae5c4012ea69accac94519` é o ponteiro
+mais recente desta sessão e está alinhado ao branch remoto.
