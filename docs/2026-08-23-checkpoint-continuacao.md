@@ -296,3 +296,35 @@ Ler primeiro este checkpoint, o artefato de continuidade, `.agent/state.json`,
 `.agent/verification.jsonl`. Manter `CVG-002B2B` e o ERP geral em
 `IN_PROGRESS/PARTIAL`; não promover provider, SPA, Vetus, WCAG, operações ou
 release.
+
+## Incremento executado — prova independente de SIGKILL/restart (23/08/2026)
+
+O gap de processo foi fechado como slice local, sintético e reversível. O
+consumer agora expõe checkpoints imutáveis em
+`after_claim_commit`, `before_b1`, `after_b1_before_cas` e
+`after_applied_cas`; callbacks com erro entram no fluxo existente de retry/
+falha. O harness inicia A e B como processos Node distintos, usando o mesmo
+PostgreSQL efêmero e `local-pix` sintético, bloqueia A no checkpoint, envia
+`SIGKILL`, aguarda a lease expirar quando necessário e deixa B concluir.
+
+Resultado fresco: matriz `4/4` verde nos quatro checkpoints, com PIDs distintos,
+probes HTTP reais `/ready` e `/metrics` em A e B, takeover/fence e consulta
+PostgreSQL final. Todos os casos terminaram com uma receipt, billing/attempt
+settled, PIX completed/applied e delivery `applied`; o caso pós-CAS retornou
+`idle` no sucessor e os casos pré-CAS convergiram com `attempts=2` e
+`lease_version=2`.
+
+Regressões após a mudança: worker unit/build `58` testes + build, settlement
+PostgreSQL `6/6`, comando B1 `18/18` e callback HTTP/ingress PostgreSQL `2/2`.
+O contrato e as limitações estão em
+[`CVG-002B2B-sigkill-restart-quality-bar-2026-08-23.md`](../.agent/artifacts/CVG-002B2B-sigkill-restart-quality-bar-2026-08-23.md).
+A crítica independente delimitou o resultado: ainda não há uma corrida em que
+A permaneça vivo após B assumir e tenha sua tentativa stale observada e
+rejeitada no boundary de processos; o teste stale existente é de consumer/
+pools. A matriz também não conta cada linha de journal/outbox/inbox e usa um
+entrypoint mínimo de probes, não a semântica completa de readiness do worker
+principal. O protocolo foi endurecido para fd 3 dedicado (fora de stdout/
+stderr), e o fixture exige `NODE_ENV=test` +
+`PIX_SETTLEMENT_SYNTHETIC_FIXTURE=1` e fica fora do build de produção.
+Isto não fecha Redis failover/clock-skew, provider real, SPA/B2c, paridade
+Vetus, WCAG, target operations, cobertura dedicada ou release.

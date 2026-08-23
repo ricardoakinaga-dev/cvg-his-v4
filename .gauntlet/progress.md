@@ -112,6 +112,24 @@ Publicação confirmada em `099ac2a1ff5f1ed9f74812d2466dccb42681737d` no branch
 `VFY-CVG-002B2B-REVIEW-001` como PASS; os dois listeners HTTP são uma prova de
 storage compartilhado no mesmo processo, não de failover entre processos.
 
+## Checkpoint 2026-08-23 — processo PIX comprovado
+
+O settlement consumer agora possui checkpoints `after_claim_commit`,
+`before_b1`, `after_b1_before_cas` e `after_applied_cas`; o harness de processo
+independente passou `4/4` com `SIGKILL` real, PIDs distintos, takeover/fence,
+estado PostgreSQL final canônico e probes `/ready`/`/metrics` em A e B. A
+suíte do worker/build (`58`), settlement PostgreSQL (`6/6`), B1 (`18/18`) e
+ingress/callback HTTP (`2/2`) permaneceu verde. O bar continua local e
+sintético; não há promoção de `VERIFIED` nem de ERP/provider/SPA/paridade/
+WCAG/target/release. Próximo produto recomendado: jornada de internação até
+item cobrável, depois de preservar Redis failover/clock-skew como gate aberto.
+
+Limite registrado pela crítica independente: `REL-SIGKILL-04` ainda não tem
+prova processual de A vivo tentando operar após takeover de B; journal/outbox/
+inbox detalhados e readiness do worker principal também permanecem fora desta
+matriz. O fixture sintético agora é fail-closed (`NODE_ENV=test` + marcador)
+e o canal de controle usa fd 3 dedicado.
+
 ## Handoff de continuidade — 23/08/2026, 03:13 BRT
 
 Read-only audit: o teste de dois pools (`6/6`) prova takeover/fence, mas não

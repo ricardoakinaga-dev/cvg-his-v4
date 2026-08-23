@@ -14,16 +14,16 @@
   "active_execplan": ".agent/plans/premium-enterprise-mvp.md",
   "active_task": "CVG-002B2B",
   "verification_state": "PARTIAL",
-  "repository_state": "Published base checkpoints through `d525acc` remain intact; the post-DLQ checkpoint is `76f7ec5`, the API-key principal/rate-limit slice is published in `099ac2a1ff5f1ed9f74812d2466dccb42681737d`, and the next-session ERP handoff is published in `a7bacda985e678970d562d0c0be9eb72c33b9124` on origin. Migration 0114 capability/function ACL, tenant-scoped sanitized list and audited redrive, OpenAPI error envelopes with correlation IDs, DB-backed current backlog gauge with max-across-replicas alert semantics, Prometheus/Grafana/runbook, minimum eight-field API-key principal, fail-closed distributed rate-limit policy and fresh bounded regressions are recorded. An independent read-only review approved the bounded API-key slice without CRITICAL/HIGH/MEDIUM blockers. The new handoff confirms that pool takeover is not real SIGKILL evidence and records the required checkpoint/process harness plus the next non-PIX clinical-financial slice. It remains below VERIFIED because real Redis failover/clock-skew, SIGKILL restart matrix, provider, SPA and release evidence are open. Fresh local command evidence is B1 17/17, B2a 33/33, ingress 11/11 and callback HTTP 13/13; prior B1 18/18 remains historical. The preserved user-owned packages/design-system/tsconfig.vue.tsbuildinfo cache remains outside scope",
+  "repository_state": "Published base checkpoints through `d525acc` remain intact; the post-DLQ checkpoint is `76f7ec5`, the API-key principal/rate-limit slice is published in `099ac2a1ff5f1ed9f74812d2466dccb42681737d`, and the next-session ERP handoff is published in `a7bacda985e678970d562d0c0be9eb72c33b9124` on origin. The current local slice adds immutable settlement checkpoints, a four-case independent-process SIGKILL matrix, a dedicated fd 3 control channel, a synthetic fixture guard requiring NODE_ENV=test plus PIX_SETTLEMENT_SYNTHETIC_FIXTURE=1, and a test-fixtures path outside the production worker tsconfig. Fresh process evidence is 4/4 with worker 58 tests + build, settlement PostgreSQL 6/6, B1 18/18 and callback HTTP/ingress 2/2. Independent review leaves the process stale-fence race, detailed journal/outbox/inbox accounting and main-worker readiness semantics open. It remains below VERIFIED because real Redis failover/clock-skew, provider, SPA and release evidence are open. The preserved user-owned packages/design-system/tsconfig.vue.tsbuildinfo cache remains outside scope",
   "instruction_scope_refs": [".agent/instruction-scope.md"],
   "last_gate_record": ".agent/gates/implementation-ready-CVG-002B2B.json",
-  "last_event_id": "EVT-0098",
-  "state_revision": 86,
+  "last_event_id": "EVT-0101",
+  "state_revision": 88,
   "next_gate": "VERIFIED",
-  "next_action": "Add settlement checkpoints and a two-process SIGKILL harness for after_claim_commit, before_b1, after_b1_before_cas and after_applied_cas; prove takeover/fence/exactly-one B1 and readiness/metrics under the fail-closed policy. Then exercise Redis failover/clock skew and rerun B1/B2a/ingress/HTTP regressions only if runtime behavior changes before reassessing VERIFIED while preserving the bounded evidence and separate B2c/SPA gate",
+  "next_action": "Add a process-level stale-fence race with A alive after B takeover and assert the stale B1/CAS is rejected. Then exercise Redis failover/clock skew under fail-closed policy and select the non-PIX clinical-financial slice, rerunning affected regressions before reassessing VERIFIED while preserving the bounded evidence and separate B2c/SPA gate",
   "blocked_by": [],
   "human_approval_required": [
     "Production go-live, credential rotation, provider selection, fiscal homologation, and residual HIGH/CRITICAL risk acceptance remain outside repository implementation authority"
   ],
-  "updated_at": "2026-08-23T03:15:10-03:00"
+  "updated_at": "2026-08-23T04:04:18-03:00"
 }

@@ -237,3 +237,19 @@ also preserved `internação -> handoff/permanência -> diária -> item cobráve
 as the first clinical-financial slice after the operational gate; it remains
 planning only and does not authorize provider, production, SPA, parity, WCAG or
 release claims.
+
+Plan revision note, 2026-08-23 (SIGKILL/restart evidence): The consumer
+checkpoint contract and two-process harness are now GREEN across all four kill
+boundaries. PostgreSQL state queries prove takeover/fence and exactly one
+financial receipt; readiness/metrics are observed in both processes. The
+Quality Bar remains bounded to disposable PostgreSQL and `local-pix`; Redis
+failover/clock-skew, provider, SPA/B2c, parity, WCAG, target operations and
+release remain separate gates. The next actionable product slice is the
+non-PIX `internação -> handoff/permanência -> diária -> item cobrável` journey.
+
+Review correction, 2026-08-23: The process stale-fence race with A alive after
+B takeover is not yet proven, detailed journal/outbox/inbox counts are not part
+of the matrix, and the minimal fixture probes do not certify the main worker's
+full readiness semantics. The synthetic fixture was moved outside the worker
+production tsconfig and now fails closed without explicit test markers; fd 3 is
+the machine-readable control channel. Preserve these limits in every checkpoint.

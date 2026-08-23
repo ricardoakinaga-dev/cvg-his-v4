@@ -345,3 +345,37 @@ O próximo slice clínico-financeiro não concorrente com PIX é
 idempotência por stay/período, proveniência, auditoria, cutoff de alta,
 tenant/RLS e estados de UI. Esta recomendação é planejamento; não promove
 `CVG-002B2B`, `CVG-002`, paridade, WCAG, provider, operações ou release.
+
+## Handoff adicional — prova de SIGKILL/restart concluída (23/08/2026)
+
+O contrato de checkpoints foi implementado no consumer e coberto por testes
+unitários. O harness agora inicia dois processos Node separados diretamente
+com `process.execPath` + `tsx/esm`, evitando o PID intermediário do shim `tsx`;
+A trava em um checkpoint determinístico, recebe `SIGKILL`, e B assume a lease
+no mesmo PostgreSQL descartável. A matriz passou 4/4 em
+`after_claim_commit`, `before_b1`, `after_b1_before_cas` e `after_applied_cas`.
+
+Cada caso confirmou probes HTTP `/ready` e `/metrics` em A e B, PID distinto,
+estado final `delivery=applied`, `receipt_count=1`, billing/attempt settled,
+PIX completed/applied e `idle` no sucessor quando o CAS já havia sido aplicado.
+Os casos pré-CAS convergiram com `attempts=2`/`lease_version=2`; o caso
+pós-CAS permaneceu em `1/1`. O provider continua exclusivamente sintético e
+local.
+
+Regressões frescas: worker unit/build `58` testes + build, settlement
+PostgreSQL `6/6`, comando B1 `18/18` e ingresso HTTP PostgreSQL `2/2`. O
+Quality Bar e a evidência detalhada estão em
+[`CVG-002B2B-sigkill-restart-quality-bar-2026-08-23.md`](../artifacts/CVG-002B2B-sigkill-restart-quality-bar-2026-08-23.md).
+
+O gate global continua `IN_PROGRESS/PARTIAL`: Redis failover/clock-skew,
+provider real, SPA/B2c, paridade Vetus, WCAG, operações alvo, cobertura
+dedicada e release permanecem separados. A próxima fatia recomendada segue
+sendo `internação -> handoff/permanência -> diária -> item cobrável`, sem
+apagar a dívida operacional restante.
+
+Nota da crítica independente: o boundary de processo passou de forma
+delimitada, mas o race stale pós-takeover ainda não foi observado com A vivo;
+o teste stale de consumer/pools não o substitui. A matriz também não conta
+journal/outbox/inbox linha a linha nem replica a semântica completa de
+readiness do worker principal. O fixture sintético exige guard explícito de
+teste e usa fd 3 dedicado para o protocolo de controle.

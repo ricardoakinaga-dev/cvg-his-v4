@@ -41,7 +41,7 @@
         ".agent/verification.jsonl",
         ".gauntlet/state.md"
       ],
-      "next_action": "Resume from the published CVG-002B2B checkpoint: define the multi-replica rate-limit policy, narrow the principal, prove SIGKILL/restart, and preserve the separate B2c/SPA gate."
+      "next_action": "Resume from the published CVG-002B2B checkpoint: preserve the bounded SIGKILL/restart evidence, exercise Redis failover/clock-skew under fail-closed policy, and keep the separate B2c/SPA gate."
     },
     {
       "id": "CVG-002B2A",
@@ -114,9 +114,13 @@
         "docs/2026-08-23-checkpoint-continuacao.md",
         ".agent/artifacts/CVG-002B2B-pix-settlement-dlq-2026-08-23.md",
         "docs/runbooks/pix-settlement-dlq.md",
-        "tests/integration/database/pix-provider-settlement-dlq-operator.test.ts"
+        "tests/integration/database/pix-provider-settlement-dlq-operator.test.ts",
+        ".agent/artifacts/CVG-002B2B-sigkill-restart-quality-bar-2026-08-23.md",
+        "tests/integration/process/pix-provider-settlement-sigkill.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-SIGKILL-001",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-REGRESSION-002"
       ],
-      "next_action": "The bounded principal projection and fail-closed policy are implemented and tested. First add executable checkpoints to apps/worker/src/jobs/pix-provider-settlement-consumer.ts and a two-process SIGKILL harness covering after_claim_commit, before_b1, after_b1_before_cas and after_applied_cas; then prove takeover/fence/exactly-one B1 and readiness/metrics. If runtime behavior changes, rerun B1/B2a/ingress/HTTP regressions before reassessing VERIFIED while preserving 17/17 fresh B1 command, 33/33 B2a request+dispatch, 11/11 ingress, 13/13 callback HTTP, 4/4 HTTP-to-PostgreSQL, 8/8 ACL, 5/5 service-principal, 54/54 worker and 3/3 DLQ operator evidence. Keep B2c/SPA and the broader ERP gates separate."
+      "next_action": "The principal projection, fail-closed policy and bounded independent SIGKILL/restart matrix are implemented. First add the process-level stale-fence race with A alive after B takeover; then exercise Redis failover/clock-skew under fail-closed policy and select the non-PIX clinical-financial slice (internacao -> handoff/permanencia -> diaria -> item cobravel) while preserving B2c/SPA, provider, parity, WCAG, target-operations and release gates."
     },
     {
       "id": "CVG-003",

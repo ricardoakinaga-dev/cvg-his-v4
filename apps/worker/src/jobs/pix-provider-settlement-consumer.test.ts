@@ -10,6 +10,7 @@ import type {
 } from './pix-provider-event-delivery-repository.js';
 import {
   PixProviderSettlementConsumer,
+  type PixProviderSettlementCheckpointContext,
   type PixProviderSettlementTelemetryEvent,
   pixProviderSettlementBackoffSeconds
 } from './pix-provider-settlement-consumer.js';
@@ -38,6 +39,7 @@ class FakeRepository implements PixProviderEventDeliveryRepository {
   public executionError: unknown;
   public failures: PixProviderEventDeliveryFailure[] = [];
   public settlementCalls = 0;
+  public casCommitted = false;
 
   async claimNext(): Promise<PixProviderEventDeliveryClaim | null> {
     return this.nextClaim;
@@ -64,6 +66,7 @@ class FakeRepository implements PixProviderEventDeliveryRepository {
       }),
       {} as never
     );
+    if (this.execution === 'applied') this.casCommitted = true;
     return this.execution;
   }
 
@@ -117,6 +120,103 @@ test('consumer invokes the B1 executor once and applies the delivery', async () 
   assert.deepEqual(result, { status: 'applied', deliveryId: claim.deliveryId });
   assert.equal(repository.settlementCalls, 1);
   assert.equal(b1Calls, 1);
+});
+
+test('consumer exposes immutable restart checkpoints around claim, B1 and the final CAS', async () => {
+  const repository = new FakeRepository();
+  let b1Calls = 0;
+  const checkpoints: Array<{
+    readonly checkpoint: string;
+    readonly context: PixProviderSettlementCheckpointContext;
+  }> = [];
+
+  const consumer = new PixProviderSettlementConsumer(repository, {
+    workerId: 'pix-settlement-worker',
+    leaseMs: 60_000,
+    createSettlementExecutor: () => ({
+      execute: async () => {
+        b1Calls += 1;
+      }
+    }),
+    onCheckpoint: async (checkpoint, context) => {
+      checkpoints.push({ checkpoint, context });
+      assert.equal(Object.isFrozen(context), true);
+      if (checkpoint === 'after_claim_commit') {
+        assert.equal(repository.settlementCalls, 0);
+        assert.equal(b1Calls, 0);
+      }
+      if (checkpoint === 'before_b1') {
+        assert.equal(repository.settlementCalls, 1);
+        assert.equal(b1Calls, 0);
+      }
+      if (checkpoint === 'after_b1_before_cas') {
+        assert.equal(b1Calls, 1);
+        assert.equal(repository.casCommitted, false);
+      }
+      if (checkpoint === 'after_applied_cas') {
+        assert.equal(repository.casCommitted, true);
+      }
+    }
+  });
+
+  const result = await consumer.processNext(claim.accountId);
+
+  assert.deepEqual(result, { status: 'applied', deliveryId: claim.deliveryId });
+  assert.deepEqual(
+    checkpoints.map(({ checkpoint }) => checkpoint),
+    ['after_claim_commit', 'before_b1', 'after_b1_before_cas', 'after_applied_cas']
+  );
+  assert.deepEqual(
+    checkpoints.map(({ context }) => context),
+    [
+      {
+        deliveryId: claim.deliveryId,
+        accountId: claim.accountId,
+        leaseVersion: claim.leaseVersion
+      },
+      {
+        deliveryId: claim.deliveryId,
+        accountId: claim.accountId,
+        leaseVersion: claim.leaseVersion
+      },
+      {
+        deliveryId: claim.deliveryId,
+        accountId: claim.accountId,
+        leaseVersion: claim.leaseVersion
+      },
+      {
+        deliveryId: claim.deliveryId,
+        accountId: claim.accountId,
+        leaseVersion: claim.leaseVersion
+      }
+    ]
+  );
+});
+
+test('checkpoint failures enter the existing settlement failure flow', async () => {
+  const repository = new FakeRepository();
+  const consumer = new PixProviderSettlementConsumer(repository, {
+    workerId: 'pix-settlement-worker',
+    leaseMs: 60_000,
+    createSettlementExecutor: () => ({ execute: async () => ({}) as never }),
+    onCheckpoint: (checkpoint) => {
+      if (checkpoint === 'before_b1') {
+        throw Object.assign(new Error('checkpoint unavailable'), { code: 'ECONNRESET' });
+      }
+    }
+  });
+
+  const result = await consumer.processNext(claim.accountId);
+
+  assert.deepEqual(result, {
+    status: 'retry_scheduled',
+    deliveryId: claim.deliveryId,
+    failureCode: 'ECONNRESET',
+    failureClass: 'retryable'
+  });
+  assert.deepEqual(repository.failures, [
+    { code: 'ECONNRESET', errorClass: 'retryable', retryDelaySeconds: 5 }
+  ]);
 });
 
 test('consumer retries only allowlisted correlation and principal failures', async () => {

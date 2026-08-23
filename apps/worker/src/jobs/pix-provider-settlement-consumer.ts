@@ -60,6 +60,18 @@ export interface ConfirmedPixSettlementExecutor {
   execute(input: ApplyConfirmedPixSettlementInput): Promise<unknown>;
 }
 
+export type PixProviderSettlementCheckpoint =
+  | 'after_claim_commit'
+  | 'before_b1'
+  | 'after_b1_before_cas'
+  | 'after_applied_cas';
+
+export interface PixProviderSettlementCheckpointContext {
+  readonly deliveryId: string;
+  readonly accountId: string;
+  readonly leaseVersion: number;
+}
+
 export interface PixProviderSettlementConsumerOptions {
   readonly workerId: string;
   readonly leaseMs: number;
@@ -67,6 +79,14 @@ export interface PixProviderSettlementConsumerOptions {
   readonly createSettlementExecutor?: (
     transaction: TenantTransactionContext
   ) => ConfirmedPixSettlementExecutor;
+  /**
+   * Test/operations failpoints for proving process recovery around durable
+   * settlement boundaries. The callback receives only immutable identifiers.
+   */
+  readonly onCheckpoint?: (
+    checkpoint: PixProviderSettlementCheckpoint,
+    context: PixProviderSettlementCheckpointContext
+  ) => void | Promise<void>;
   /**
    * Best-effort hook for structured operational events. It receives only
    * bounded state and safe error codes; tenant and payment data are omitted.
@@ -227,6 +247,7 @@ export class PixProviderSettlementConsumer {
     }
 
     try {
+      await this.#checkpoint('after_claim_commit', claim);
       const execution = await this.#repository.executeSettlement(
         claim,
         async (input, transaction) => {
@@ -237,9 +258,12 @@ export class PixProviderSettlementConsumer {
                 { allowSyntheticProviders: this.#options.allowSyntheticProviders === true },
                 () => transaction
               );
+          await this.#checkpoint('before_b1', claim);
           await executor.execute(input);
+          await this.#checkpoint('after_b1_before_cas', claim);
         }
       );
+      if (execution === 'applied') await this.#checkpoint('after_applied_cas', claim);
       return this.#recordOutcome(
         Object.freeze({ status: execution, deliveryId: claim.deliveryId, ...promotionObservation }),
         claim
@@ -268,6 +292,18 @@ export class PixProviderSettlementConsumer {
         claim
       );
     }
+  }
+
+  async #checkpoint(
+    checkpoint: PixProviderSettlementCheckpoint,
+    claim: PixProviderEventDeliveryClaim
+  ): Promise<void> {
+    const context = Object.freeze({
+      deliveryId: claim.deliveryId,
+      accountId: claim.accountId,
+      leaseVersion: claim.leaseVersion
+    });
+    await this.#options.onCheckpoint?.(checkpoint, context);
   }
 
   async #claimNext(input: {

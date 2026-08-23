@@ -118,6 +118,32 @@ WARN histórico e 0 FAIL. O único dirty path permitido é o cache
 registrada no `.agent/state.json`; não repetir o slice DLQ nem promover gates
 ERP, provider, SPA, paridade, WCAG ou release.
 
+## Checkpoint 2026-08-23 — SIGKILL/restart independente
+
+O contrato de checkpoints do settlement consumer foi implementado com contexto
+imutável e o harness passou a iniciar A/B como PIDs Node distintos. A matriz
+parametrizada passou `4/4` em `after_claim_commit`, `before_b1`,
+`after_b1_before_cas` e `after_applied_cas`, usando `SIGKILL` real, lease/fence
+no mesmo PostgreSQL descartável e provider `local-pix` sintético. Em cada caso
+foram observados `/ready` e `/metrics` em A e B e consultado o estado final:
+uma receipt, billing/attempt settled, PIX completed/applied e delivery applied;
+quando o CAS já havia sido aplicado, B retornou `idle`.
+
+Regressões: worker unit/build `58` testes + build, settlement PostgreSQL `6/6`,
+B1 `18/18` e callback HTTP/ingress `2/2`. A evidência detalhada está no
+Quality Bar `.agent/artifacts/CVG-002B2B-sigkill-restart-quality-bar-2026-08-23.md`.
+O resultado não promove o ERP: Redis failover/clock-skew, provider, SPA/B2c,
+paridade, WCAG, target operations e release continuam abertos. A próxima
+fatia de produto é `internação -> handoff/permanência -> diária -> item
+cobrável`, ainda somente como planejamento.
+
+Crítica independente delimitou o bar: o race stale pós-takeover com A vivo
+continua NÃO PROVADO no boundary de processos; a matriz não conta cada linha
+de journal/outbox/inbox e o fixture não replica a semântica completa de
+readiness do worker principal. O controle de checkpoint foi movido para fd 3
+dedicado e o provider sintético recebeu guard `NODE_ENV=test` + marcador
+explícito, fora do build de produção.
+
 ## Incremento 23/08/2026 — principal mínimo e fail-closed
 
 O caminho pré-contexto de API key agora usa uma projeção mínima de oito campos,
