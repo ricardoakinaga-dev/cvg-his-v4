@@ -202,8 +202,9 @@ A migration `0113` e os scripts de runtime/Helm usam `cvg_api_key_auth` sem logi
 O slice de DLQ operacional foi publicado em `35f68fd`, a semântica de
 observabilidade multi-réplica foi corrigida em `1217882` e a última
 reconciliação de ledger publicada está em `d525acc`; os documentos derivados
-desta onda foram publicados em `76f7ec5`. A recontagem atual de `docs/` é 1.449
-arquivos, 91 diretórios e 53.742.847 bytes; a leitura integral anterior de
+desta onda foram publicados em `76f7ec5`. A recontagem intermediária de `docs/`
+era 1.449 arquivos, 90 diretórios e 53.746.820 bytes; após a consolidação desta
+sessão, a soma atual dos arquivos é 53.749.923 bytes. A leitura integral anterior de
 1.447 arquivos permanece preservada no artefato de auditoria e não foi
 reclassificada como nova leitura.
 
@@ -213,3 +214,19 @@ O próximo gap executável é a política de rate limit entre réplicas, a proje
 mínima do principal autenticado e a matriz real de SIGKILL/restart, seguida das
 regressões B1/B2a/ingress/HTTP. O ERP geral continua sem paridade Vetus,
 provider homologado, SPA, WCAG, target operations ou release evidence.
+
+## 15. Atualização de pesquisa e implementação — 23/08/2026
+
+Fontes oficiais consultadas novamente (Shepherd, ezyVet, Digitail, Covetrus
+Ascend e Vetspire) reforçam que autosave/versionamento clínico, flowboard 24h,
+charge capture, estoque auditável, portal do tutor e APIs com sandbox são
+capacidades competitivas observáveis. O benchmark detalhado e os links
+primários estão em [`.agent/artifacts/market-benchmark.md`](../.agent/artifacts/market-benchmark.md).
+
+No código, a fronteira pré-contexto de API key foi estreitada para oito campos
+de autenticação/rate-limit e o runtime agora falha fechado quando o backend
+distribuído exigido está indisponível. Duas instâncias HTTP no mesmo PostgreSQL
+provaram a janela compartilhada (`2×201`, `6×429` em oito requests). Isso é
+progresso verificável de segurança e operação, mas não altera o estado
+`CVG-002B2B IN_PROGRESS/PARTIAL` nem prova SIGKILL/restart real, provedor,
+paridade, SPA, WCAG ou produção.

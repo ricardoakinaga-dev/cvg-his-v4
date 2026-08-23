@@ -2,7 +2,10 @@
 
 ## Scenario
 
-Redis becomes unavailable, causing the rate limiter to fall back to in-memory mode and potentially affecting other cache-dependent features.
+Redis becomes unavailable. Production-like runtimes fail closed for
+rate-limited requests so a multi-replica deployment never silently widens its
+abuse budget. Development-only runtimes may use an explicitly configured
+local store, but that mode is not a production recovery strategy.
 
 **Related Experiments:**
 - `redis-failure` — Chaos experiment that simulates Redis unavailability
@@ -10,15 +13,15 @@ Redis becomes unavailable, causing the rate limiter to fall back to in-memory mo
 **Metrics to Monitor:**
 - `chaos_experiment_active{experiment="redis-failure"}` — Experiment running
 - `app_redis_healthy` — Redis health status
-- `app_rate_limiter_mode{mode="in-memory-fallback"}` — Rate limiter fallback gauge
+- `app_rate_limiter_mode{mode="fail-closed"}` — Rate limiter rejects requests while the distributed backend is unavailable
 
 ---
 
 ## Symptoms
 
-- Rate limiter falls back to in-memory mode
-- `app_rate_limiter_mode{mode="in-memory-fallback"}` switches to 1
-- Rate limiting may be less effective (in-memory limits are per-instance)
+- Rate-limited authentication/integration requests fail closed
+- `app_rate_limiter_mode{mode="fail-closed"}` switches to 1
+- The service must not silently widen limits per instance
 - Cache misses increase (if cache is Redis-backed)
 - Possible increased database load due to cache misses
 
@@ -87,9 +90,9 @@ redis-cli client list | grep -i error
 
 ### Strategy A: Redis Recovers Automatically
 If Redis issue is transient:
-1. Monitor `app_rate_limiter_mode` - should return from `in-memory-fallback` to `redis`
-2. Rate limiter automatically switches back when Redis responds
-3. In-memory state is discarded, fresh state loaded from Redis
+1. Monitor `app_rate_limiter_mode` - it should return from `fail-closed` to `redis`
+2. Retry only after the distributed backend is healthy
+3. The shared store remains the authority; no local counter is promoted
 
 ### Strategy B: Redis Requires Restart
 
@@ -114,7 +117,7 @@ redis-cli cluster failover FORCE
 
 ### Strategy C: Extended Outage (> 10 minutes)
 
-1. **Monitor Database Load**: In-memory rate limiting may increase DB load
+1. **Monitor Database Load**: rejected requests must not create a local rate-limit bypass
    ```bash
    # Watch database connections
    # If connection pool approaches limit, consider scaling down workers
@@ -122,9 +125,9 @@ redis-cli cluster failover FORCE
    ```
 
 2. **Rate Limiting Impact Assessment**:
-   - In-memory rate limits are per-process, not global
-   - Multi-instance deployments will have separate limits per instance
-   - Abuse detection may be less effective
+   - production-like requests are rejected until the shared backend returns
+   - multi-instance deployments preserve one authoritative window
+   - record the outage and rejected integration traffic for follow-up
 
 3. **Consider Temporary Measures**:
    - Block high-risk endpoints if abuse increases
@@ -132,19 +135,21 @@ redis-cli cluster failover FORCE
 
 ---
 
-## In-Memory Rate Limiter Behavior
+## Fail-closed rate limiter behavior
 
-When `app_rate_limiter_mode{mode="in-memory-fallback"} = 1`:
+When `app_rate_limiter_mode{mode="fail-closed"} = 1`:
 
-| Aspect | Normal (Redis) | Fallback (In-Memory) |
-|--------|---------------|---------------------|
-| Limit scope | Global across all instances | Per-instance only |
-| Limit accuracy | Exact | Approximate (sliding window) |
-| State after restart | Preserved | Lost (starts fresh) |
-| Distributed attack protection | Yes | No (per-instance limits) |
-| Performance impact | Low | Minimal |
+| Aspect | Normal (Redis) | Fail-closed |
+|--------|---------------|-------------|
+| Limit scope | Global across all instances | No request is admitted without a shared decision |
+| Limit accuracy | Exact | No bypass decision is made |
+| State after restart | Preserved | Requests resume after backend health returns |
+| Distributed attack protection | Yes | Preserved by rejecting during outage |
+| Operational impact | Low | Authentication/integration availability is reduced |
 
-**Risk**: In a multi-instance deployment, an attacker could get `N` times the normal rate limit where `N` is the number of instances.
+**Risk trade-off**: availability is intentionally sacrificed to prevent a
+multi-replica rate-limit bypass. Restore the shared backend or apply a reviewed
+gateway-level mitigation; do not enable an unreviewed process-local fallback.
 
 ---
 
@@ -174,7 +179,7 @@ When `app_rate_limiter_mode{mode="in-memory-fallback"} = 1`:
 
 | Feature | Impact During Redis Outage | Mitigation |
 |---------|---------------------------|------------|
-| Rate Limiting | Reduced effectiveness | Monitor for abuse patterns |
+| Rate Limiting | Rate-limited requests rejected | Restore the shared backend and verify the window |
 | Session Cache | Cache misses, re-auth required | Users may need to re-login |
 | Job Queue | Workers may reconnect repeatedly | Workers handle gracefully |
 | Feature Flags | Fall back to defaults | Some features may behave differently |
@@ -194,12 +199,12 @@ When `app_rate_limiter_mode{mode="in-memory-fallback"} = 1`:
    ```
 
 2. **Assess Abuse Risk**
-   - Review logs for suspicious patterns during fallback
+   - Review logs for rejected requests during the outage
    - Check if rate limits were circumvented
    - Consider adding anomaly detection for future incidents
 
 3. **Update Monitoring**
-   - Add alert for `app_rate_limiter_mode{mode="in-memory-fallback"} == 1`
+   - Add alert for `app_rate_limiter_mode{mode="fail-closed"} == 1`
    - Consider adding Redis memory usage alert before OOM
 
 4. **Capacity Planning**

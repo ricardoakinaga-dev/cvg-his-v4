@@ -90,3 +90,19 @@ is published in `76f7ec5`; the canonical checker returned 11 PASS, 1 historical
 WARN and 0 FAIL. Preserve the only dirty user-owned cache path and resume from
 `docs/2026-08-23-checkpoint-continuacao.md`. Do not repeat the DLQ slice or
 promote the ERP, provider, SPA, parity, WCAG or release gates.
+
+## Incremento 23/08/2026 — principal mínimo e fail-closed
+
+O caminho pré-contexto de API key agora usa uma projeção de oito campos, com
+`GRANT` e `RETURNS TABLE` estreitos na migration `0113`; o mapper dedicado e a
+ACL PostgreSQL passaram. O runtime não mascara indisponibilidade do Redis
+distribuído: expõe `fail-closed`, marca `productionReady=false` e retorna
+`503 RATE_LIMIT_UNAVAILABLE`, sem contador em memória por réplica.
+
+Evidência fresca e limitada: duas instâncias HTTP no mesmo PostgreSQL passaram
+4/4, com oito requests produzindo 2×201 e 6×429; política de caos 22/22,
+auth-helper 3/3, module PIX 8/8, B1 command 17/17, B2a 33/33, ingress 11/11 e
+callback HTTP 13/13. O artefato detalhado é
+`.agent/artifacts/CVG-002B2B-api-key-principal-rate-limit-2026-08-23.md`.
+O gate não sobe: SIGKILL/restart de processo, Redis failover/clock-skew real,
+provider, SPA, paridade, WCAG, operações alvo e release permanecem abertos.

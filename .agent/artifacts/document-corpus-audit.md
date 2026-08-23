@@ -50,7 +50,7 @@ O programa exige oito jornadas E2E em PostgreSQL real, sem atalhos de API, `retr
 ## Reauditoria de continuidade — 23 de agosto de 2026
 
 O inventário determinístico foi reexecutado após os checkpoints de API-key e
-documentação. O corpus agora contém 1.447 arquivos, 90 diretórios e
+documentação. O corpus então continha 1.447 arquivos, 90 diretórios e
 53.728.402 bytes: 995 Markdown, 255 PNG, 129 JSON, 67 HTML e 1 gzip. Foram
 identificados 1.191 arquivos textuais para leitura/varredura; a classificação
 por caminho separa 46 arquivos ativos raiz/especiais, 23 notas de
@@ -73,11 +73,27 @@ mercado permanece em `docs/2026-08-22-auditoria-integral-e-pesquisa-erp.md`.
 ## Recontagem pós-DLQ — 23 de agosto de 2026
 
 Após a inclusão do runbook `docs/runbooks/pix-settlement-dlq.md` e dos
-checkpoints de reconciliação, a recontagem do working tree encontrou 1.449
-arquivos, 91 diretórios e 53.742.847 bytes sob `docs/`: 997 Markdown, 255 PNG,
+checkpoints de reconciliação, a recontagem intermediária do working tree
+encontrou 1.449 arquivos, 90 diretórios e 53.746.820 bytes sob `docs/`: 997 Markdown, 255 PNG,
 129 JSON, 67 HTML e 1 gzip. A auditoria textual/hash de 1.447 arquivos
 continua sendo a última leitura integral do corpus; esta atualização é uma
 recontagem de inventário e não transforma imagens ou histórico em requisitos
 executáveis. O checkpoint vigente é
 `docs/2026-08-23-checkpoint-continuacao.md`, e os dois novos artefatos
 operacionais são cobertos por testes e pelo handoff do DLQ.
+
+## Recontagem e correção de autoridade — 23 de agosto de 2026
+
+Uma verificação read-only posterior confirmou 1.449 arquivos, 90 diretórios e
+53.746.820 bytes naquela revisão intermediária. A fonte de verdade `docs/430-fonte-de-verdade-documental.md`
+agora aponta para o checkpoint curto de 23/08; o handoff de 22/08 permanece
+como histórico detalhado. Esta verificação não relê integralmente os 1.449
+arquivos e não promove nenhum requisito de produto a comportamento comprovado.
+
+## Recontagem após a consolidação desta sessão — 23 de agosto de 2026
+
+Depois da inclusão do artefato de principal/rate-limit, das regressões e desta
+atualização de controle, a soma dos tamanhos dos arquivos sob `docs/` é
+53.749.923 bytes: 1.449 arquivos, 90 diretórios, 997 Markdown, 255 PNG, 129
+JSON, 67 HTML e 1 gzip. A contagem exclui o diretório raiz `docs/`; não é uma
+nova leitura integral do corpus.

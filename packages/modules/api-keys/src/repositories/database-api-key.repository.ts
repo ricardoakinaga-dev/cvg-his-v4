@@ -1,6 +1,12 @@
 import { getPool } from '@cvg-his-v2/shared-database';
 import { withTenantQuery } from '@cvg-his-v2/tenant-context';
-import type { AccountId, ApiKeyId, ApiKeySummary, ApiKeyUsageSummary } from '@cvg-his-v2/shared-types';
+import type {
+  AccountId,
+  ApiKeyAuthenticationPrincipal,
+  ApiKeyId,
+  ApiKeySummary,
+  ApiKeyUsageSummary
+} from '@cvg-his-v2/shared-types';
 import type {
   ApiKeyRateLimitDecision,
   ApiKeyRepository
@@ -74,6 +80,21 @@ export function mapDatabaseApiKeyRow(row: Record<string, unknown>): ApiKeySummar
   };
 }
 
+export function mapDatabaseApiKeyAuthRow(
+  row: Record<string, unknown>
+): ApiKeyAuthenticationPrincipal {
+  return {
+    id: requiredString(row, 'id') as ApiKeyId,
+    accountId: requiredString(row, 'account_id') as AccountId,
+    keyHash: requiredString(row, 'key_hash'),
+    permissions: parsePermissions(row.permissions),
+    rateLimit: requiredNumber(row, 'rate_limit'),
+    rateLimitWindow: requiredNumber(row, 'rate_limit_window'),
+    expiresAt: optionalIsoDate(row, 'expires_at'),
+    isActive: requiredBoolean(row, 'is_active')
+  };
+}
+
 export class DatabaseApiKeyRepository implements ApiKeyRepository {
   async create(apiKey: ApiKeySummary): Promise<void> {
     return withTenantQuery(getPool(), async (client) => {
@@ -128,12 +149,15 @@ export class DatabaseApiKeyRepository implements ApiKeyRepository {
     });
   }
 
-  async findActiveByKeyHash(keyPrefix: string, keyHash: string): Promise<readonly ApiKeySummary[]> {
+  async findActiveByKeyHash(
+    keyPrefix: string,
+    keyHash: string
+  ): Promise<readonly ApiKeyAuthenticationPrincipal[]> {
     const result = await getPool().query(
       'SELECT * FROM app.resolve_active_api_key($1, $2)',
       [keyPrefix, keyHash]
     );
-    return result.rows.map(mapDatabaseApiKeyRow);
+    return result.rows.map(mapDatabaseApiKeyAuthRow);
   }
 
   async findActiveById(id: ApiKeyId): Promise<ApiKeySummary | null> {

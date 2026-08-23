@@ -4,7 +4,10 @@
  */
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { AppError, AuthenticationError, ForbiddenError } from '@cvg-his-v2/shared-errors';
-import type { ApiKeySummary } from '@cvg-his-v2/shared-types';
+import type {
+  ApiKeyAuthenticationPrincipal,
+  ApiKeySummary
+} from '@cvg-his-v2/shared-types';
 import type { ApiKeysService } from '@cvg-his-v2/module-api-keys';
 
 function readHeader(request: IncomingMessage, name: string): string | undefined {
@@ -13,7 +16,7 @@ function readHeader(request: IncomingMessage, name: string): string | undefined 
 }
 
 export interface RequireApiKeyResult {
-  apiKey: ApiKeySummary;
+  apiKey: ApiKeyAuthenticationPrincipal;
 }
 
 /**
@@ -40,11 +43,20 @@ export async function requireApiKey(
     throw new ForbiddenError(`API key lacks required permission: ${permissionCode}`);
   }
 
-  const rateLimit = await apiKeys.checkRateLimit(
-    apiKey.id,
-    apiKey.rateLimit,
-    apiKey.rateLimitWindow
-  );
+  let rateLimit: Awaited<ReturnType<ApiKeysService['checkRateLimit']>>;
+  try {
+    rateLimit = await apiKeys.checkRateLimit(
+      apiKey.id,
+      apiKey.rateLimit,
+      apiKey.rateLimitWindow
+    );
+  } catch {
+    throw new AppError(
+      'RATE_LIMIT_UNAVAILABLE',
+      'Rate limit service unavailable',
+      503
+    );
+  }
   if (!rateLimit.allowed) {
     throw new AppError('RATE_LIMIT_EXCEEDED', 'API key rate limit exceeded', 429, {
       resetAt: rateLimit.resetAt.toISOString()

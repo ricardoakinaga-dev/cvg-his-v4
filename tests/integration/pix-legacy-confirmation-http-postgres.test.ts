@@ -41,6 +41,7 @@ interface RuntimeFixture {
 const servers: ApiServer[] = [];
 let server: ApiServer;
 let baseUrl: string;
+let replicaBaseUrl: string;
 let runtime: RuntimeFixture;
 let owner: AccountFixture;
 let foreign: AccountFixture;
@@ -194,9 +195,10 @@ async function persistAttemptLinkedTransaction(fixture: AccountFixture): Promise
 async function requestJson<T>(
   path: string,
   rawKey: string,
-  init: RequestInit = {}
+  init: RequestInit = {},
+  requestBaseUrl = baseUrl
 ): Promise<{ readonly status: number; readonly body: T }> {
-  const response = await fetch(`${baseUrl}${path}`, {
+  const response = await fetch(`${requestBaseUrl}${path}`, {
     ...init,
     headers: {
       'x-api-key': rawKey,
@@ -379,6 +381,23 @@ beforeAll(async () => {
   await server.ready;
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+
+  const replica = createApiServer({
+    appName: 'legacy-pix-http-postgres-replica-test',
+    environment: 'test',
+    version: '0.1.0',
+    authSecret: 'legacy-pix-http-postgres-test-secret',
+    accessTokenTtlSeconds: 900,
+    refreshTokenTtlSeconds: 3_600,
+    pixMockMode: true,
+    preserveSeedUsersWithRepository: false,
+    repositories: runtime.repositories,
+    fileStorage: runtime.fileStorage
+  });
+  servers.push(replica);
+  await replica.ready;
+  await new Promise<void>((resolve) => replica.listen(0, '127.0.0.1', resolve));
+  replicaBaseUrl = `http://127.0.0.1:${(replica.address() as AddressInfo).port}`;
 });
 
 afterAll(async () => {
@@ -496,7 +515,8 @@ describe('legacy PIX confirmation HTTP to PostgreSQL boundary', () => {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify({ amount: 10 + index, description: `rate-limit-${index}` })
-          }
+          },
+          index % 2 === 0 ? baseUrl : replicaBaseUrl
         )
       )
     );

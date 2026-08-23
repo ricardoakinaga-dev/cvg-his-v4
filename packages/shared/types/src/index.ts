@@ -63,6 +63,24 @@ export interface ApiKeySummary {
   readonly updatedAt: string;
 }
 
+/**
+ * Minimum data needed to authenticate an API-key request before a tenant
+ * context exists. Keep this projection deliberately separate from the
+ * management/read model so pre-context capabilities cannot hydrate metadata
+ * that is irrelevant to authentication or rate limiting.
+ */
+export type ApiKeyAuthenticationPrincipal = Pick<
+  ApiKeySummary,
+  | 'id'
+  | 'accountId'
+  | 'keyHash'
+  | 'permissions'
+  | 'rateLimit'
+  | 'rateLimitWindow'
+  | 'expiresAt'
+  | 'isActive'
+>;
+
 export interface ApiKeyUsageSummary {
   readonly id: string;
   readonly apiKeyId: string;

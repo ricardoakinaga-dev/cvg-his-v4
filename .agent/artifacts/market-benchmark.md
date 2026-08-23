@@ -65,3 +65,22 @@ Pesquisa atualizada em 2026-08-22. As fontes são páginas oficiais atuais; serv
 ## Limite de decisão
 
 O diferencial que importa nesta fase não é quantidade de telas nem uma alegação de IA. É uma única operação multiunidade na qual contexto clínico, cobrança, estoque, comunicação e auditoria permanecem coerentes. Por isso o benchmark reforça, mas não muda, a ordem técnica já derivada da auditoria: identidade/tenancy, encontro-até-recebimento, prova comportamental, paridade e somente então integrações/otimizações.
+
+## Atualização de pesquisa oficial — 23 de agosto de 2026
+
+Uma nova consulta a páginas oficiais confirmou sinais competitivos que devem
+ser tratados como requisitos verificáveis, não como cópia de marketing:
+
+| Fonte oficial | Sinal observado | Requisito executável no CVG HIS |
+| --- | --- | --- |
+| [Shepherd features](https://www.shepherd.vet/features/) | SOAP, autosave, activity log, charge capture, alta, portal, inventário, tarefas e whiteboard no mesmo fluxo | Prontuário colaborativo deve versionar/autosalvar, exigir autoria humana e derivar cobrança/alta/tarefas com correlação auditável. |
+| [ezyVet API applications](https://developers.ezyvet.com/apply.html) e [VetRec integration](https://docs.ezyvet.com/en/see-all-integrations/veterinary-care/vetrec/about-the-vetrec-integration) | Integrações comerciais/privadas, scribe e receptionist com confirmação explícita antes de agir | Integrações precisam ambientes separados, escopos mínimos, consentimento, idempotência, revogação e confirmação humana para ações assistidas. |
+| [Digitail platform](https://digitail.com/) | Flowboard, hospitalização/boarding, AI SOAP, vitais, treatment plans, record collaboration, laboratório/farmácia, portal e relatórios | Flowboard 24h, jornada clínica-financeira única e portal do tutor devem compartilhar o mesmo episódio e trilha de auditoria. |
+| [Covetrus Ascend](https://software.covetrus.com/emea/veterinary-solutions/ascend-cloud-veterinary-software/) e [stocktake](https://software.covetrus.com/emea/stocktake/) | Acesso multi-dispositivo, multi-local, inpatients workflow, inventário, stocktake com responsável/ajuste/aprovação | Estoque deve suportar contagem cíclica aprovada, localização, rastreabilidade e reconciliação; internação deve ser operável em tablet/whiteboard. |
+| [Vetspire developer portal](https://developer.vetspire.com/) | API GraphQL tipada com orientação explícita de breaking changes e boas práticas | A API pública do CVG HIS deve ser versionada, possuir sandbox, limites, webhooks assinados, replay/DLQ e documentação de compatibilidade. |
+
+Estas fontes reforçam seis tarefas ainda não fechadas no backlog: prontuário
+versionado/autosave, flowboard hospitalar 24h, laboratório/imagem com
+proveniência e correção, portal do tutor, interoperabilidade com sandbox e
+governança de IA assistiva. Nenhuma delas é considerada implementada apenas
+por existir uma tela ou uma integração mockada.

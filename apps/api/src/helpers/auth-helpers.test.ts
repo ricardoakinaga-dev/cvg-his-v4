@@ -80,3 +80,24 @@ test('requireApiKey updates usage metadata after an allowed rate-limit check', a
   assert.equal(result.apiKey.id, 'key_test');
   assert.equal(updateLastUsedCalls, 1);
 });
+
+test('requireApiKey fails closed with a sanitized 503 when the shared rate-limit store is unavailable', async () => {
+  let updateLastUsedCalls = 0;
+  const service = apiKeyService({
+    checkRateLimit: async () => {
+      throw new Error('database writer unavailable');
+    },
+    updateLastUsed: async () => {
+      updateLastUsedCalls += 1;
+    }
+  });
+
+  await assert.rejects(
+    () => requireApiKey(requestWithApiKey() as never, 'payments.manage', service),
+    (error: unknown) =>
+      error instanceof AppError &&
+      error.code === 'RATE_LIMIT_UNAVAILABLE' &&
+      error.statusCode === 503 &&
+      updateLastUsedCalls === 0
+  );
+});

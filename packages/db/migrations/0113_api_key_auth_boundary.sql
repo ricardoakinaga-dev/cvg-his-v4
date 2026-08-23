@@ -73,9 +73,8 @@ END
 $api_key_auth_memberships$;
 GRANT USAGE ON SCHEMA public, app TO cvg_api_key_auth;
 GRANT SELECT (
-  id, account_id, name, key_prefix, key_hash, permissions, rate_limit,
-  rate_limit_window, expires_at, last_used_at, is_active, created_by,
-  created_at, updated_at
+  id, account_id, key_hash, permissions, rate_limit, rate_limit_window,
+  expires_at, is_active
 ) ON TABLE api_keys TO cvg_api_key_auth;
 GRANT SELECT (transaction_id, account_id) ON TABLE pix_transactions TO cvg_api_key_auth;
 
@@ -139,18 +138,12 @@ CREATE OR REPLACE FUNCTION app.resolve_active_api_key(
 RETURNS TABLE (
   id VARCHAR,
   account_id VARCHAR,
-  name VARCHAR,
-  key_prefix VARCHAR,
   key_hash VARCHAR,
   permissions JSONB,
   rate_limit INTEGER,
   rate_limit_window INTEGER,
   expires_at TIMESTAMPTZ,
-  last_used_at TIMESTAMPTZ,
-  is_active BOOLEAN,
-  created_by VARCHAR,
-  created_at TIMESTAMPTZ,
-  updated_at TIMESTAMPTZ
+  is_active BOOLEAN
 )
 LANGUAGE sql
 SECURITY DEFINER
@@ -158,18 +151,12 @@ SET search_path = pg_catalog, public
 AS $$
   SELECT key.id,
          key.account_id,
-         key.name,
-         key.key_prefix,
          key.key_hash,
          key.permissions,
          key.rate_limit,
          key.rate_limit_window,
          key.expires_at,
-         key.last_used_at,
-         key.is_active,
-         key.created_by,
-         key.created_at,
-         key.updated_at
+         key.is_active
     FROM public.api_keys AS key
    WHERE key.key_prefix = expected_key_prefix
      AND key.key_hash = expected_key_hash

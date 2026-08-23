@@ -91,7 +91,7 @@ Experiments should be run in this order, from least to most impactful:
 |-------|------------|------------|----------|---------|
 | 1 | API Latency Spike | Low | 60s | Validate timeout handling |
 | 2 | Network Latency | Medium | 60s | Test async operation resilience |
-| 3 | Redis Failure | Medium | 60s | Verify rate limiter fallback |
+| 3 | Redis Failure | Medium | 60s | Verify rate limiter fail-closed behavior |
 | 4 | Worker Failure | Medium | 60s | Check DLQ behavior |
 | 5 | Database Failure | High | 60s | Validate in-memory mode |
 
@@ -175,16 +175,16 @@ curl -X POST http://localhost:3001/chaos/experiments/redis-failure/start \
 ```
 
 ### Expected Behavior
-- Rate limiter switches to in-memory mode
-- `rate_limiter_fallback_total` counter increments
-- Rate limiting less effective (per-instance limits)
-- Increased database load possible
+- Production-like rate-limited requests fail closed while Redis is unavailable
+- `app_rate_limiter_mode{mode="fail-closed"}` becomes active
+- No per-instance fallback is promoted
+- Recovery returns the mode to `redis` only after shared-backend health returns
 
 ### Success Criteria
-- [ ] `rate_limiter_fallback_total` increments
-- [ ] System continues operating (no hard failure)
-- [ ] Rate limiting still partially functional
-- [ ] Fallback counter resets when Redis recovers
+- [ ] `app_rate_limiter_mode{mode="fail-closed"}` is observable
+- [ ] Rate-limited requests are rejected without updating `last_used_at`
+- [ ] No local process counter admits traffic during the outage
+- [ ] Mode returns to `redis` only after recovery verification
 
 ### Rollback
 ```bash

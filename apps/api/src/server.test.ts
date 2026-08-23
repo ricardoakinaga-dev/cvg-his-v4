@@ -988,7 +988,7 @@ test('chaos operations expose effective runtime state, runbooks and metrics', as
     assert.equal(experimentsPayload.runtimeState.persistenceMode, 'in-memory');
     assert.equal(experimentsPayload.runtimeState.workerReady, false);
     assert.equal(experimentsPayload.runtimeState.redisHealthy, false);
-    assert.equal(experimentsPayload.runtimeState.rateLimiterMode, 'in-memory-fallback');
+    assert.equal(experimentsPayload.runtimeState.rateLimiterMode, 'fail-closed');
     assert.equal(
       experimentsPayload.runtimeState.activeExperimentIds.includes('database-failure'),
       true
@@ -1036,7 +1036,7 @@ test('chaos operations expose effective runtime state, runbooks and metrics', as
     assert.match(metricsText, /^app_database_healthy 0$/m);
     assert.match(metricsText, /^app_redis_healthy 0$/m);
     assert.match(metricsText, /^app_persistence_mode\{mode="in-memory"\} 1$/m);
-    assert.match(metricsText, /^app_rate_limiter_mode\{mode="in-memory-fallback"\} 1$/m);
+    assert.match(metricsText, /^app_rate_limiter_mode\{mode="fail-closed"\} 1$/m);
   } finally {
     for (const experimentId of ['database-failure', 'redis-failure', 'worker-failure']) {
       if (chaos.isActive(experimentId)) {

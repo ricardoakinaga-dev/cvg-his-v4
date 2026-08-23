@@ -175,7 +175,7 @@ describe('chaos-operational-state', () => {
       expect(result.productionReady).toBe(false);
     });
 
-    it('sets rateLimiterMode to in-memory-fallback when REDIS_FAILURE_ID is active and redis is configured', () => {
+    it('fails closed when REDIS_FAILURE_ID is active and distributed state is required', () => {
       const appState = createMockAppState();
       const result = resolveOperationalRuntimeState({
         ...baseInput,
@@ -183,9 +183,10 @@ describe('chaos-operational-state', () => {
         appState
       });
 
-      expect(result.rateLimiterMode).toBe('in-memory-fallback');
+      expect(result.rateLimiterMode).toBe('fail-closed');
       expect(result.redisHealthy).toBe(false);
       expect(result.redisDetail).toContain('Simulated Redis failure');
+      expect(result.productionReady).toBe(false);
     });
 
     it('sets redisHealthy to false when redis is not configured', () => {
@@ -225,7 +226,7 @@ describe('chaos-operational-state', () => {
       expect(result.redisDetail).toBe('Redis configured, but distributed runtime state is disabled.');
     });
 
-    it('uses in-memory rate limiter when redisUrl is empty string', () => {
+    it('fails closed when distributed state is enabled without a redis backend', () => {
       const appState = createMockAppState();
       const result = resolveOperationalRuntimeState({
         ...baseInput,
@@ -233,8 +234,9 @@ describe('chaos-operational-state', () => {
         appState
       });
 
-      expect(result.rateLimiterMode).toBe('in-memory');
+      expect(result.rateLimiterMode).toBe('fail-closed');
       expect(result.redisConfigured).toBe(false);
+      expect(result.productionReady).toBe(false);
     });
 
     it('returns correct redisDetail for configured redis with disabled distributed state', () => {

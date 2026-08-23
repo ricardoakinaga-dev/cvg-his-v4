@@ -1,5 +1,6 @@
 import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
 import type {
+  ApiKeyAuthenticationPrincipal,
   ApiKeyId,
   ApiKeySummary,
   ApiKeyUsageSummary,
@@ -59,7 +60,7 @@ export class ApiKeysService {
     return { apiKey, rawKey };
   }
 
-  async validate(key: string): Promise<ApiKeySummary | null> {
+  async validate(key: string): Promise<ApiKeyAuthenticationPrincipal | null> {
     if (!key || key.length < 8) return null;
 
     const keyPrefix = key.substring(0, 8);

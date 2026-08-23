@@ -14,16 +14,16 @@
   "active_execplan": ".agent/plans/premium-enterprise-mvp.md",
   "active_task": "CVG-002B2B",
   "verification_state": "PARTIAL",
-  "repository_state": "Published base checkpoints through `d525acc` remain intact and the continuation checkpoint is now published in `76f7ec5`: migration 0114 capability/function ACL, tenant-scoped sanitized list and audited redrive, OpenAPI error envelopes with correlation IDs, DB-backed current backlog gauge with max-across-replicas alert semantics, Prometheus/Grafana/runbook and focused regressions. It remains below VERIFIED because the minimum principal projection, multi-replica rate-limit policy, real SIGKILL restart matrix, provider, SPA and release evidence are open. Corrected 18/18 B1 remains extracted into module-pix with API shims, and the preserved user-owned packages/design-system/tsconfig.vue.tsbuildinfo cache remains outside scope",
+  "repository_state": "Published base checkpoints through `d525acc` remain intact and the continuation checkpoint is now published in `76f7ec5`: migration 0114 capability/function ACL, tenant-scoped sanitized list and audited redrive, OpenAPI error envelopes with correlation IDs, DB-backed current backlog gauge with max-across-replicas alert semantics, Prometheus/Grafana/runbook, minimum eight-field API-key principal, fail-closed distributed rate-limit policy and fresh bounded regressions are recorded. An independent read-only review approved this bounded slice without CRITICAL/HIGH/MEDIUM blockers. It remains below VERIFIED because real Redis failover/clock-skew, SIGKILL restart matrix, provider, SPA and release evidence are open. Fresh local command evidence is B1 17/17, B2a 33/33, ingress 11/11 and callback HTTP 13/13; prior B1 18/18 remains historical. The preserved user-owned packages/design-system/tsconfig.vue.tsbuildinfo cache remains outside scope",
   "instruction_scope_refs": [".agent/instruction-scope.md"],
   "last_gate_record": ".agent/gates/implementation-ready-CVG-002B2B.json",
-  "last_event_id": "EVT-0093",
-  "state_revision": 81,
+  "last_event_id": "EVT-0095",
+  "state_revision": 83,
   "next_gate": "VERIFIED",
-  "next_action": "Define and test the multi-replica rate-limit policy and minimum principal projection, prove the real SIGKILL/restart matrix, rerun B1/B2a/ingress/HTTP regressions and reassess VERIFIED while preserving the bounded evidence",
+  "next_action": "Prove the real SIGKILL/restart matrix and Redis failover/clock-skew behavior under the now fail-closed policy; rerun B1/B2a/ingress/HTTP regressions if that work changes runtime behavior, then reassess VERIFIED while preserving the bounded evidence and separate B2c/SPA gate",
   "blocked_by": [],
   "human_approval_required": [
     "Production go-live, credential rotation, provider selection, fiscal homologation, and residual HIGH/CRITICAL risk acceptance remain outside repository implementation authority"
   ],
-  "updated_at": "2026-08-23T02:24:30-03:00"
+  "updated_at": "2026-08-23T03:02:07-03:00"
 }

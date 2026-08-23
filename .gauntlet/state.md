@@ -48,7 +48,7 @@ Deliver a behaviorally proven Premium Enterprise veterinary ERP MVP with secure 
 
 ## Rounds
 
-Round 0 completed discovery and froze Quality Bar v1. Rounds 1-3 delivered local recoverability and credential-bound, database-authoritative MFA login/enrollment state. Round 4 delivered `CVG-002A`: one tenant-safe PostgreSQL transaction for encounter cash receipt, append-only proof, idempotent recovery, legacy-bypass closure and concurrency guards against cash close/reopen/delete. Round 5 delivered `CVG-002B1`: provider-scoped inbox/idempotency and direct confirmed-PIX settlement with exact cents, tenant/RLS isolation, 13 per-write failpoint rollbacks, concurrency, canonical financial links and no physical cash movement. Round 6 delivered `CVG-002B2a`: durable exact-cents outbound request, fenced synthetic dispatcher, opt-in worker and internal bearer polling API. Round 7 delivered the bounded B2b authenticated parser/fingerprints and expand-only receipt/delivery ingress with RLS/ACL evidence, while an independent review approved only that sub-slice. The recovery continuation then added shared worker UoW, transient retry, audited redrive, bounded takeover, legacy `410`, DLQ exhaustion telemetry and HTTP→PostgreSQL evidence. The current continuation adds the API-key capability boundary, strict JSONB mapping, tenantized usage/rate-limit tables, worker/API ACL, atomic local rate-limit consumption and an operator-facing DLQ surface with audited redrive plus replicated-safe `max(...)` observability. It still lacks a real SIGKILL matrix, multi-replica rate-limit policy, minimum principal projection, SPA, provider and release evidence. `QB-AUTH-01`, `QB-CORE-01` and `QB-REL-01` remain PARTIAL because their broader cluster, product-journey and release criteria are not yet fully certified.
+Round 0 completed discovery and froze Quality Bar v1. Rounds 1-3 delivered local recoverability and credential-bound, database-authoritative MFA login/enrollment state. Round 4 delivered `CVG-002A`: one tenant-safe PostgreSQL transaction for encounter cash receipt, append-only proof, idempotent recovery, legacy-bypass closure and concurrency guards against cash close/reopen/delete. Round 5 delivered `CVG-002B1`: provider-scoped inbox/idempotency and direct confirmed-PIX settlement with exact cents, tenant/RLS isolation, 13 per-write failpoint rollbacks, concurrency, canonical financial links and no physical cash movement. Round 6 delivered `CVG-002B2a`: durable exact-cents outbound request, fenced synthetic dispatcher, opt-in worker and internal bearer polling API. Round 7 delivered the bounded B2b authenticated parser/fingerprints and expand-only receipt/delivery ingress with RLS/ACL evidence, while an independent review approved only that sub-slice. The recovery continuation then added shared worker UoW, transient retry, audited redrive, bounded takeover, legacy `410`, DLQ exhaustion telemetry and HTTP→PostgreSQL evidence. The current continuation adds the API-key capability boundary, strict JSONB mapping, tenantized usage/rate-limit tables, worker/API ACL, atomic local rate-limit consumption, an operator-facing DLQ surface with audited redrive, replicated-safe `max(...)` observability, a minimum eight-field authentication projection and an explicit fail-closed distributed-rate-limit mode. It still lacks a real SIGKILL matrix, Redis failover/clock-skew drill, SPA, provider and release evidence. `QB-AUTH-01`, `QB-CORE-01` and `QB-REL-01` remain PARTIAL because their broader cluster, product-journey and release criteria are not yet fully certified.
 
 ## Open Gaps
 
@@ -56,23 +56,23 @@ Round 0 completed discovery and froze Quality Bar v1. Rounds 1-3 delivered local
 - Prove a durable, one-time, atomic installation sentinel and least-privilege bootstrap against real PostgreSQL.
 - Certify session refresh/revocation and MFA rollout across two physical replicas and Redis races in a target-like environment.
 - Add HTTP/PostgreSQL/Redis/SPA evidence before moving `CVG-001` to VERIFY.
-- Keep the API-key capability, signed callback, non-interactive principal and bounded consumer connected; then close real process crash/restart, DLQ/observability, multi-replica rate-limit policy, SPA flow, card, stock and the full scheduled/walk-in journey.
+- Keep the API-key capability, signed callback, non-interactive principal and bounded consumer connected; then close real process crash/restart and Redis failover/clock-skew evidence, followed by SPA flow, card, stock and the full scheduled/walk-in journey.
 - Add a dedicated HTTP-to-UoW-to-PostgreSQL receipt E2E and the remaining critical browser E2E gates.
 
 ## Latest bounded checkpoint
 
-`EVT-0072`–`EVT-0090` follow the earlier `EVT-0068`–`EVT-0071` callback, database, principal and consumer checkpoints. The recovery implementation/docs are published through `13dbd01`; the API-key implementation is published in `62db87e`, the DLQ implementation in `35f68fd`, the replicated-observability correction in `1217882` and the prior ledger reconciliation in `d525acc`; this continuation extends that base with the current checkpoint documents, while the design-system tsbuildinfo cache remains excluded. Fresh bounded evidence is worker 54/54, shared transaction context 4/4, API route 4/4, disposable PostgreSQL worker fencing/restart 6/6, service principals/RLS 5/5, HTTP→PostgreSQL legacy/rate-limit 4/4, API-key service 13/13, mapper 3/3, auth helper 2/2, ACL 1/1, DLQ operator 3/3 and OpenAPI 337 paths/390 schemas. Automatic attempts-exhausted promotions now emit safe terminal telemetry and aggregate metrics without unbounded labels; API-key rate-limit consumption is atomic in the local PostgreSQL concurrency proof but has no multi-replica benchmark/policy yet.
+`EVT-0072`–`EVT-0090` follow the earlier `EVT-0068`–`EVT-0071` callback, database, principal and consumer checkpoints. The recovery implementation/docs are published through `13dbd01`; the API-key implementation is published in `62db87e`, the DLQ implementation in `35f68fd`, the replicated-observability correction in `1217882` and the prior ledger reconciliation in `d525acc`; this continuation extends that base with the current checkpoint documents, while the design-system tsbuildinfo cache remains excluded. Fresh bounded evidence is worker 54/54, shared transaction context 4/4, API route 4/4, disposable PostgreSQL worker fencing/restart 6/6, service principals/RLS 5/5, HTTP→PostgreSQL legacy/rate-limit 4/4, API-key service 13/13, mapper 4/4, auth helper 3/3, ACL 1/1, fail-closed chaos policy 22/22, DLQ operator 3/3 and OpenAPI 337 paths/390 schemas. Automatic attempts-exhausted promotions now emit safe terminal telemetry and aggregate metrics without unbounded labels; API-key rate-limit consumption is atomic in the local PostgreSQL concurrency proof and the runtime has no silent in-memory fallback when distributed state is required. Real Redis failover/clock-skew remains unproven.
 
-The recovery test uses two independent PostgreSQL pools: A loses its pool after claim and before B1/CAS; B takes over after lease expiry with a new fence and applies B1 once. The HTTP boundary proves owner `410`, foreign-account opaque `404` and direct legacy `200` with exactly one gateway/outbox effect, plus eight concurrent low-limit requests yielding two `201` and six `429`. The harness now uses the real PostgreSQL API-key repository and capability; the remaining production gaps are target-like DLQ exercise, multi-replica rate-limit policy, real SIGKILL/restart evidence, minimal-principal narrowing and the broader release gates.
+The recovery test uses two independent PostgreSQL pools: A loses its pool after claim and before B1/CAS; B takes over after lease expiry with a new fence and applies B1 once. The HTTP boundary proves owner `410`, foreign-account opaque `404` and direct legacy `200` with exactly one gateway/outbox effect, plus eight concurrent low-limit requests yielding two `201` and six `429` across two API instances. The harness now uses the real PostgreSQL API-key repository and capability; the remaining production gaps are target-like DLQ exercise, Redis failover/clock-skew, real SIGKILL/restart evidence and the broader release gates.
 
-The callback/worker slice remains below the `VERIFIED` bar: a real SIGKILL/process restart matrix, multi-replica rate-limit policy, minimal authenticated-principal narrowing, provider, SPA, Vetus parity, WCAG, operations and release gates remain open. The local DLQ endpoint, runbook and alert/dashboard are implemented, but target scrape/failover exercise remains open. No quality-bar dimension is promoted by this checkpoint.
+The callback/worker slice remains below the `VERIFIED` bar: a real SIGKILL/process restart matrix, Redis failover/clock-skew exercise, provider, SPA, Vetus parity, WCAG, operations and release gates remain open. The local DLQ endpoint, runbook and alert/dashboard are implemented, but target scrape/failover exercise remains open. No quality-bar dimension is promoted by this checkpoint.
 
 ## Stop Decision
 
 - State: ACTIVE
 - Reason: Required P0 criteria fail or have not run; target-environment work is externally blocked but local safe work remains.
 - Last integrated verification: B2b parser/ingress checkpoint `VFY-CVG-002B2B-PARSER-INGRESS-001` passed focused 77/77, PostgreSQL ingress 11/11, B1 18/18 and B2a 33/33 with independent APPROVE; B2a's VERIFIED gate still records coverage 1.646/1.646 at 83% lines/80,3% branches plus typecheck/lint, OpenAPI, RLS, dependency/secret scans and independent review PASS. Earlier SPA 1.001/1.001 evidence remains bounded and current.
-- Next largest locally actionable gap: define the multi-replica rate-limit policy, narrow the authenticated principal, prove real SIGKILL/restart and rerun the bounded regressions; coherent SPA remains separate `B2c` work.
+- Next largest locally actionable gap: prove real SIGKILL/restart and Redis failover/clock-skew under the now fail-closed policy; rerun bounded regressions if behavior changes. Coherent SPA remains separate `B2c` work.
 
 ## Documentation continuation — 2026-08-23
 
@@ -103,9 +103,10 @@ parsers and shell syntax PASS. The alert/panel use the current DB-backed gauge
 replicated full-account observers; direct 404/503
 envelopes include the request correlation ID required by OpenAPI. This reduces
 the operational black hole but does not promote any Quality Bar dimension.
-`CVG-002B2B` remains `IN_PROGRESS/PARTIAL`; next gaps are multi-replica
-rate-limit policy, minimum principal projection and real SIGKILL/restart,
-followed by B2c/SPA, provider, Vetus parity, WCAG and release evidence.
+`CVG-002B2B` remains `IN_PROGRESS/PARTIAL`; the next gaps are real
+SIGKILL/restart and Redis failover/clock-skew evidence under the now
+fail-closed policy, followed by B2c/SPA, provider, Vetus parity, WCAG and
+release evidence.
 
 ## Handoff final — 23/08/2026, 02:08 BRT
 
@@ -116,3 +117,19 @@ WARN histórico e 0 FAIL. O único dirty path permitido é o cache
 `docs/2026-08-23-checkpoint-continuacao.md` e executar a ação concreta já
 registrada no `.agent/state.json`; não repetir o slice DLQ nem promover gates
 ERP, provider, SPA, paridade, WCAG ou release.
+
+## Incremento 23/08/2026 — principal mínimo e fail-closed
+
+O caminho pré-contexto de API key agora usa uma projeção mínima de oito campos,
+com `GRANT` e `RETURNS TABLE` estreitos na migration `0113`; o mapper dedicado
+e a ACL PostgreSQL passaram. O runtime não mascara indisponibilidade do Redis
+distribuído: expõe `fail-closed`, marca `productionReady=false` e retorna
+`503 RATE_LIMIT_UNAVAILABLE`, sem contador em memória por réplica.
+
+Evidência fresca e limitada: duas instâncias HTTP no mesmo PostgreSQL passaram
+4/4, com oito requests produzindo 2×201 e 6×429; política de caos 22/22,
+auth-helper 3/3, module PIX 8/8, B1 command 17/17, B2a 33/33, ingress 11/11 e
+callback HTTP 13/13. O artefato detalhado é
+`.agent/artifacts/CVG-002B2B-api-key-principal-rate-limit-2026-08-23.md`.
+O gate não sobe: SIGKILL/restart de processo, Redis failover/clock-skew real,
+provider, SPA, paridade, WCAG, operações alvo e release permanecem abertos.

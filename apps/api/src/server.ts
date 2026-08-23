@@ -4,6 +4,7 @@ import { URL } from 'node:url';
 
 import { getDatabaseTransactionScope, getPool } from '@cvg-his-v2/shared-database';
 import { extractBearerToken } from '@cvg-his-v2/shared-auth-sdk';
+import type { ApiKeysService } from '@cvg-his-v2/module-api-keys';
 import { createAuthRateLimiter } from './http/auth-rate-limiter.js';
 import {
   assertPixProviderWebhookReadiness,
@@ -4182,8 +4183,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               e.id === 'database-failure' ? 'in-memory' : operationalState.persistenceMode,
             workerReady: e.id === 'worker-failure' ? false : operationalState.workerReady,
             redisHealthy: e.id === 'redis-failure' ? false : operationalState.redisHealthy,
-            rateLimiterMode:
-              e.id === 'redis-failure' ? 'in-memory-fallback' : operationalState.rateLimiterMode
+            rateLimiterMode: operationalState.rateLimiterMode
           }
         }));
         response.setHeader('content-type', 'application/json');
@@ -7444,11 +7444,16 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
       throw new ForbiddenError(`API key lacks required permission: ${permissionCode}`);
     }
 
-    const rateLimit = await apiKeys.checkRateLimit(
-      apiKey.id,
-      apiKey.rateLimit,
-      apiKey.rateLimitWindow
-    );
+    let rateLimit: Awaited<ReturnType<ApiKeysService['checkRateLimit']>>;
+    try {
+      rateLimit = await apiKeys.checkRateLimit(
+        apiKey.id,
+        apiKey.rateLimit,
+        apiKey.rateLimitWindow
+      );
+    } catch {
+      throw new AppError('RATE_LIMIT_UNAVAILABLE', 'Rate limit service unavailable', 503);
+    }
     if (!rateLimit.allowed) {
       throw new AppError('RATE_LIMIT_EXCEEDED', 'API key rate limit exceeded', 429, {
         resetAt: rateLimit.resetAt.toISOString()

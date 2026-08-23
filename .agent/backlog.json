@@ -106,12 +106,16 @@
         ".agent/verification.jsonl#VFY-CVG-002B2B-DLQ-OPERATOR-001",
         ".agent/verification.jsonl#VFY-CVG-002B2B-DLQ-REPLICA-001",
         ".agent/verification.jsonl#VFY-DOCS-DLQ-PUBLICATION-001",
+        ".agent/artifacts/CVG-002B2B-api-key-principal-rate-limit-2026-08-23.md",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-PRINCIPAL-RATELIMIT-001",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-REGRESSION-001",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-REVIEW-001",
         "docs/2026-08-23-checkpoint-continuacao.md",
         ".agent/artifacts/CVG-002B2B-pix-settlement-dlq-2026-08-23.md",
         "docs/runbooks/pix-settlement-dlq.md",
         "tests/integration/database/pix-provider-settlement-dlq-operator.test.ts"
       ],
-      "next_action": "Define and test the multi-replica rate-limit policy and minimal authenticated-principal projection, prove the real SIGKILL/restart matrix, then rerun B1/B2a/ingress/HTTP regressions and reassess VERIFIED while preserving 18/18 B1, 35/35 verifier/keyring, 77/77 focused, 11/11 ingress, 13/13 HTTP, 4/4 HTTP-to-PostgreSQL, 8/8 ACL, 5/5 service-principal, 54/54 worker and 3/3 DLQ operator evidence."
+      "next_action": "The bounded principal projection and fail-closed policy are implemented and tested. Prove the real SIGKILL/restart matrix and, if the runtime policy changes, rerun B1/B2a/ingress/HTTP regressions; then reassess VERIFIED while preserving 17/17 fresh B1 command, 33/33 B2a request+dispatch, 11/11 ingress, 13/13 callback HTTP, 4/4 HTTP-to-PostgreSQL, 8/8 ACL, 5/5 service-principal, 54/54 worker and 3/3 DLQ operator evidence. Keep B2c/SPA and ERP gates separate."
     },
     {
       "id": "CVG-003",

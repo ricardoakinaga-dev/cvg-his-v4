@@ -1,7 +1,7 @@
 # Fonte de verdade documental
 
 **Status:** vigente
-**Validado em:** 2026-08-22
+**Validado em:** 2026-08-23
 **Owner:** engenharia e produto CVG-HIS
 
 ## Regra central
@@ -12,7 +12,7 @@ Documento nao transforma uma funcionalidade em pronta. O estado real e determina
 
 | Tema | Fonte vigente |
 |---|---|
-| Checkpoint de continuidade atual | `2026-08-22-handoff-cvg-002b2.md` |
+| Checkpoint de continuidade atual | `2026-08-23-checkpoint-continuacao.md` |
 | Estado do produto e auditoria | `2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md` |
 | Plano executivo vigente | `2026-08-07-plano-executivo-resolucao-auditoria-cvg-his-v4.md` |
 | Backlog e roadmap vigentes | `2026-08-07-backlog-roadmap-resolucao-auditoria-cvg-his-v4.md` |

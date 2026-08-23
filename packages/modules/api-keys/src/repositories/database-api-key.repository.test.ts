@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
 
-import { test } from 'vitest';
+import { expect, test } from 'vitest';
 
-import { mapDatabaseApiKeyRow } from './database-api-key.repository.js';
+import {
+  mapDatabaseApiKeyAuthRow,
+  mapDatabaseApiKeyRow
+} from './database-api-key.repository.js';
 
 const row = {
   id: 'key_1',
@@ -40,4 +43,30 @@ test('mapDatabaseApiKeyRow rejects malformed JSONB permissions', () => {
     () => mapDatabaseApiKeyRow({ ...row, permissions: { permission: 'payments.manage' } }),
     /permissions must be an array of strings/
   );
+});
+
+test('mapDatabaseApiKeyAuthRow accepts only the minimum pre-context authentication projection', () => {
+  const mapped = mapDatabaseApiKeyAuthRow({
+    id: row.id,
+    account_id: row.account_id,
+    key_hash: row.key_hash,
+    permissions: row.permissions,
+    rate_limit: row.rate_limit,
+    rate_limit_window: row.rate_limit_window,
+    expires_at: row.expires_at,
+    is_active: row.is_active
+  });
+
+  expect(Object.keys(mapped).sort()).toEqual([
+    'accountId',
+    'expiresAt',
+    'id',
+    'isActive',
+    'keyHash',
+    'permissions',
+    'rateLimit',
+    'rateLimitWindow'
+  ]);
+  expect(mapped.accountId).toBe(row.account_id);
+  expect(mapped.permissions).toEqual(row.permissions);
 });

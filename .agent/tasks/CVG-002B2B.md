@@ -290,3 +290,32 @@ SPA/B2c, provider real, paridade Vetus, WCAG, operações alvo e release. O
 próximo agente deve iniciar por
 [`docs/2026-08-23-checkpoint-continuacao.md`](../../docs/2026-08-23-checkpoint-continuacao.md)
 e não repetir o DLQ já verificado.
+
+## Atualização de continuidade — principal mínimo e política de rate limit
+
+O boundary pré-contexto da API key foi estreitado e verificado sem alterar a
+semântica financeira:
+
+- `ApiKeyAuthenticationPrincipal` é uma projeção separada do modelo de
+  administração e contém somente os oito campos necessários para validar a
+  chave, autorizar a permissão e consumir a janela;
+- a capability `cvg_api_key_auth` recebe `SELECT` apenas nessas colunas e a
+  função `app.resolve_active_api_key` não retorna metadados administrativos;
+- o mapper dedicado rejeita shape incompleto, preserva cópia imutável das
+  permissões e não reintroduz o modelo largo;
+- duas instâncias HTTP compartilhando PostgreSQL produziram exatamente `2×201`
+  e `6×429` em oito requests concorrentes para a mesma chave limitada;
+- quando o estado distribuído é exigido e Redis falha/não está configurado, o
+  runtime expõe `rateLimiterMode=fail-closed`, marca produção como não pronta e
+  não promove um contador em memória por processo.
+
+RED/GREEN e evidências: mapper 4/4, contrato SQL 1/1, ACL PostgreSQL 1/1,
+HTTP multi-réplica 4/4, política operacional 22/22, auth-helper 3/3 e builds
+de types/module/api PASS. Após a mudança, as regressões frescas passaram:
+module PIX 8/8, B1 command 17/17, B2a request+dispatch 33/33, ingress
+PostgreSQL 11/11 e callback HTTP 13/13. O detalhe reprodutível está em
+[`CVG-002B2B-api-key-principal-rate-limit-2026-08-23.md`](../artifacts/CVG-002B2B-api-key-principal-rate-limit-2026-08-23.md).
+
+A matriz de SIGKILL/restart ainda é uma lacuna distinta e permanece obrigatória
+antes do gate `VERIFIED`; takeover por pool/lease não deve ser contado como
+kill real de processo.

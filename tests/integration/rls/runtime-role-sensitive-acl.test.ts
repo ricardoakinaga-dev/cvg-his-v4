@@ -241,11 +241,22 @@ describe('runtime role sensitive-table ACL', () => {
       try {
         await apiClient.query('BEGIN');
         await apiClient.query(`SET ROLE "${apiRole}"`);
-        const resolved = await apiClient.query<{ readonly id: string; readonly account_id: string }>(
-          'SELECT id, account_id FROM app.resolve_active_api_key($1, $2)',
+        const resolved = await apiClient.query<Record<string, unknown>>(
+          'SELECT * FROM app.resolve_active_api_key($1, $2)',
           [apiKeyPrefix, apiKeyHash]
         );
-        expect(resolved.rows).toEqual([{ id: apiKeyId, account_id: accountId }]);
+        expect(resolved.rows).toEqual([
+          {
+            id: apiKeyId,
+            account_id: accountId,
+            key_hash: apiKeyHash,
+            permissions: ['payments.manage'],
+            rate_limit: 1000,
+            rate_limit_window: 3600,
+            expires_at: null,
+            is_active: true
+          }
+        ]);
         await apiClient.query('ROLLBACK');
       } finally {
         apiClient.release();

@@ -33,6 +33,37 @@ git status --short
 python3 /home/ricardo/.codex/skills/engineering-framework/scripts/check_state.py "$PWD"
 ```
 
+## Incremento executado após o checkpoint — fronteira de API key
+
+Foi implementada a projeção mínima do principal pré-contexto:
+
+- `ApiKeyAuthenticationPrincipal` contém somente `id`, `accountId`, `keyHash`,
+  `permissions`, `rateLimit`, `rateLimitWindow`, `expiresAt` e `isActive`;
+- a capability `cvg_api_key_auth` e `app.resolve_active_api_key` não expõem
+  mais nome, prefixo, timestamps, criador ou `last_used_at`;
+- o teste de ACL sob PostgreSQL confirma exatamente as oito colunas mínimas e
+  a negação para o worker continua preservada;
+- duas instâncias HTTP no mesmo PostgreSQL compartilharam a janela de rate
+  limit: 8 requests concorrentes produziram `2×201` e `6×429`;
+- a política de runtime agora falha fechado (`fail-closed`) quando o Redis
+  distribuído é exigido e está indisponível; não há fallback silencioso por
+  processo. O runbook Redis foi alinhado a essa decisão.
+
+Evidência desta fatia: mapper 4/4, contrato de migration 1/1, ACL PostgreSQL
+1/1, API-key HTTP multi-réplica 4/4, política operacional 22/22 e builds de
+types/module/api PASS. SIGKILL/restart real, provider, SPA, paridade Vetus,
+WCAG, target ops e release continuam abertos.
+
+## Regressão bounded após a implementação
+
+Para evitar que a projeção estreita alterasse o slice PIX já verificado, foram
+reexecutados PostgreSQL efêmero e HTTP real: module PIX `8/8`, B1 command
+`17/17`, B2a request+dispatch `33/33`, ingress `11/11` e callback HTTP
+`13/13`. A matriz anterior registrada como B1 `18/18` permanece evidência
+histórica do conjunto então existente; o comando atual reporta 17 testes
+independentes e não teve falha ou skip. O próximo gate continua sendo
+SIGKILL/restart de processo, não um novo score de paridade.
+
 ## O que já foi implementado e verificado
 
 Os números abaixo são evidência local, descartável e limitada ao escopo de cada
@@ -111,7 +142,9 @@ Foi refeito o inventário determinístico completo de `docs/`:
 O acervo Vetus contém evidência de produto e imagens repetidas; não é prova de
 implementação CVG-HIS. O inventário de referência registrou 1.447 arquivos no
 checkpoint anterior; após a inclusão do runbook operacional, a recontagem do
-working tree é de 1.449 arquivos, 91 diretórios e 53.742.847 bytes. O score
+working tree era de 1.449 arquivos, 90 diretórios e 53.746.820 bytes na
+recontagem intermediária; após esta consolidação, a soma atual dos arquivos é
+53.749.923 bytes. O score
 estrutural `readiness:enterprise` segue em 95/100, enquanto a paridade
 comportamental segue `0/11` geral e `0/3` clínica.
 O Game Day que sugere fallback em memória continua incompatível com a política

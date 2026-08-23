@@ -8,7 +8,7 @@ import {
 
 import type { AppState, PersistenceMode } from './app-state.js';
 
-export type RateLimiterMode = 'redis' | 'in-memory' | 'in-memory-fallback';
+export type RateLimiterMode = 'redis' | 'in-memory' | 'fail-closed';
 
 export interface OperationalRuntimeState {
   readonly activeExperimentIds: readonly string[];
@@ -111,19 +111,24 @@ export function resolveOperationalRuntimeState(input: {
     ? `Simulated worker failure via chaos experiment "${WORKER_FAILURE_ID}".`
     : input.appState.workerDetail;
 
+  const redisHealthy = redisConfigured && !redisFailureActive;
+  const distributedStateReady =
+    !input.runtimeDistributedStateEnabled || (redisConfigured && redisHealthy);
+
   const productionReady = (
     input.appState.productionReady
     && databaseHealthy
     && workerReady
     && persistenceMode === 'database'
+    && distributedStateReady
   );
 
-  let rateLimiterMode: RateLimiterMode = 'in-memory';
-  if (input.runtimeDistributedStateEnabled && redisConfigured) {
-    rateLimiterMode = redisFailureActive ? 'in-memory-fallback' : 'redis';
-  }
+  const rateLimiterMode: RateLimiterMode = !input.runtimeDistributedStateEnabled
+    ? 'in-memory'
+    : redisConfigured && redisHealthy
+      ? 'redis'
+      : 'fail-closed';
 
-  const redisHealthy = redisConfigured && !redisFailureActive;
   let redisDetail = 'Redis not configured for this runtime.';
   if (redisConfigured && input.runtimeDistributedStateEnabled) {
     redisDetail = redisFailureActive

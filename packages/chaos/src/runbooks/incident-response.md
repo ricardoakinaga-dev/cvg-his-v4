@@ -33,7 +33,7 @@ This runbook covers the general incident response process for CVG HIS production
    - `http_request_duration_seconds_p99` — API latency
    - `chaos_experiment_active` — active chaos experiments
    - `app_persistence_mode` — in-memory vs database mode
-   - `app_rate_limiter_mode` — Redis rate limiter backend / fallback mode
+   - `app_rate_limiter_mode` — Redis rate limiter backend / fail-closed state
 
 4. Confirm effective runtime state directly:
    ```bash
@@ -114,9 +114,9 @@ SEV-1 → CTO + Engineering Manager + VP Engineering + All available engineers
    # Check pg_stat_activity for blocked queries
    ```
 
-5. For Redis issues: Verify rate limiter fallback is working
+5. For Redis issues: Verify the rate limiter is fail-closed
    ```bash
-   # Check if app_rate_limiter_mode moved to in-memory-fallback
+   # Check if app_rate_limiter_mode moved to fail-closed
    curl -s http://localhost:3001/chaos/experiments | jq '.runtimeState'
    ```
 

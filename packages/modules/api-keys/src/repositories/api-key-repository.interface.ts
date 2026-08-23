@@ -1,4 +1,9 @@
-import type { ApiKeyId, ApiKeySummary, ApiKeyUsageSummary } from '@cvg-his-v2/shared-types';
+import type {
+  ApiKeyAuthenticationPrincipal,
+  ApiKeyId,
+  ApiKeySummary,
+  ApiKeyUsageSummary
+} from '@cvg-his-v2/shared-types';
 
 export interface ApiKeyRateLimitDecision {
   readonly allowed: boolean;
@@ -15,7 +20,10 @@ export interface ApiKeyRepository {
    * Optional pre-tenant authentication lookup. Implementations must only
    * return active, non-expired keys matching both the prefix and full hash.
    */
-  findActiveByKeyHash?(keyPrefix: string, keyHash: string): Promise<readonly ApiKeySummary[]>;
+  findActiveByKeyHash?(
+    keyPrefix: string,
+    keyHash: string
+  ): Promise<readonly ApiKeyAuthenticationPrincipal[]>;
   findActiveById(id: ApiKeyId): Promise<ApiKeySummary | null>;
   update(apiKey: ApiKeySummary): Promise<void>;
   delete(id: ApiKeyId): Promise<void>;

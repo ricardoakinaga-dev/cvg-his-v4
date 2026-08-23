@@ -21,7 +21,8 @@ Transform the current broad, partially implemented veterinary ERP into a behavio
 - [x] (2026-08-23T01:47:00-03:00) Implemented and independently re-reviewed the operator-facing PIX settlement DLQ slice: tenant-scoped sanitized list, audited atomic redrive through migration `0114`, API/worker ACL reconciliation, OpenAPI error envelopes with correlation IDs, DB-backed current-backlog gauge, Prometheus/Grafana/runbook and focused regressions. The B2b gate remains `IN_PROGRESS/PARTIAL`.
 - [x] (2026-08-23T01:59:00-03:00) Corrected replicated-worker observability semantics: each worker recomputes the full known-account backlog and alert/dashboard use `max(...)` rather than `sum(...)`; static contract evidence is 5/5 and the B2b gate remains `IN_PROGRESS/PARTIAL`. Implementation `35f68fd` and correction `1217882` are pushed.
 - [x] (2026-08-23T02:08:00-03:00) Saved the post-DLQ continuation state from published base `d525acc`: checkpoint, handoff, README, backlog, ExecPlan and Gauntlet pointers now capture the current checker result and exact next action; the documentation wave is published in `76f7ec5`, and the user-owned design-system cache remains outside scope.
-- [ ] Prove a real process crash/SIGKILL matrix, define and measure the multi-replica rate-limit policy, narrow the authenticated pre-context principal projection, then re-run the bounded B1/B2a/ingress/HTTP regressions; gate `B2c` separately for coherent SPA/restart E2E.
+- [x] (2026-08-23T02:53:06-03:00) Implemented the minimum authenticated API-key principal and fail-closed distributed rate-limit policy. The SQL capability/function now expose only eight authentication fields; two HTTP instances sharing PostgreSQL proved `2×201`/`6×429`; Redis failure/missing configuration is `fail-closed` with `productionReady=false`; fresh regressions passed module PIX `8/8`, B1 command `17/17`, B2a `33/33`, ingress `11/11` and callback HTTP `13/13`. Artifact: `.agent/artifacts/CVG-002B2B-api-key-principal-rate-limit-2026-08-23.md`.
+- [ ] Prove a real process crash/SIGKILL matrix; the bounded principal projection and fail-closed policy are now implemented. Re-run the bounded B1/B2a/ingress/HTTP set if the restart/policy work changes runtime behavior; gate `B2c` separately for coherent SPA/restart E2E.
 - [ ] Complete `CVG-001` through TDD, integrated runtime proof and independent critique.
 - [ ] Execute the remaining backlog in dependency order, preserving fresh evidence and explicit human/external boundaries.
 
@@ -51,6 +52,9 @@ Transform the current broad, partially implemented veterinary ERP into a behavio
 - Observation: The prior HTTP→PostgreSQL API-key harness needed an adapter because JSONB permissions arrive from `pg` as an array and prefix lookup required tenant context before the account was known; the current local path uses a narrow capability and a strict mapper instead.
   Evidence: migration `0113_api_key_auth_boundary.sql`, `DatabaseApiKeyRepository`, `tests/integration/pix-legacy-confirmation-http-postgres.test.ts` and the 4/4 real-repository run.
   Impact: The local boundary is now behaviorally exercised, but production readiness still needs multi-replica rate-limit policy, minimal-principal narrowing and target-environment evidence; do not promote the B2b gate.
+- Observation: The pre-context API-key path now has a separate eight-field authentication projection, and distributed rate-limit loss is explicitly fail-closed rather than silently per-process.
+  Evidence: migration `0113_api_key_auth_boundary.sql`, `mapDatabaseApiKeyAuthRow`, `tests/unit/db/api-key-auth-boundary.test.ts`, two-instance HTTP `4/4`, chaos policy `22/22` and auth-helper `3/3`.
+  Impact: This removes the local broad-row and silent-fallback hazards, but does not prove Redis failover/clock skew or process SIGKILL/restart; retain `IN_PROGRESS/PARTIAL`.
 
 ## Decision Log
 
