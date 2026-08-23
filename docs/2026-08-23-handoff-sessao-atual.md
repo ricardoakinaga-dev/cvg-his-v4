@@ -244,3 +244,9 @@ filho, matriz completa de failpoints em cada boundary, execução independente d
 worker, equivalência aplicada de Helm, RLS/FORCE RLS global, hidratação
 cross-instance, Redis/providers/SPA/paridade/WCAG/cobertura/operações/deploy/
 restore/release e demais gates externos.
+
+## Ponteiro remoto desta documentação
+
+O checkpoint foi publicado em `b8fc3eccbfff7ab30e44ee92b109c08cc60159e2`
+(`docs: save restricted clinical financial checkpoint`) no branch
+`origin/agent/sync-v4-full-program`; `git fetch` confirmou `HEAD == origin`.

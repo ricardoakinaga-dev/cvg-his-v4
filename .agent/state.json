@@ -18,13 +18,13 @@
   "latest_bounded_evidence": "2026-08-23: CVG-001 startup/process harness 6/6 PASS in 25d7aa2; CVG-002C6 restricted-runtime inpatient HTTP/PostgreSQL vertical 5/5 PASS, including pg_temp shadow rejection after migration 0120, and controlled restart/replay 1/1 PASS. Exact evidence is in .agent/artifacts/CVG-002C6-runtime-role-restart-reconciliation-2026-08-23.md. Commits ee126a6 and 67bfe2d contain the security hardening and bounded tests. These are bounded and do not promote the global ERP/Quality Bar.",
   "instruction_scope_refs": [".agent/instruction-scope.md"],
   "last_gate_record": ".agent/gates/implementation-ready-CVG-002C6.json",
-  "last_event_id": "EVT-0182",
-  "state_revision": 170,
+  "last_event_id": "EVT-0183",
+  "state_revision": 171,
   "next_gate": "VERIFIED",
   "next_action": "CVG-001 startup harness is GREEN bounded in commit 25d7aa2 for disposable PostgreSQL restricted/unsafe roles, incomplete delivery schema and real API/worker entrypoints with no listen/loop on DB failure. CVG-002C6 restricted runtime vertical is GREEN bounded at 5/5 and controlled restart/replay is GREEN bounded at 1/1; migration 0120 closes the discovered pg_temp shadowing HIGH. Before promotion, add a true child-process SIGKILL harness, complete failpoints across every write boundary, execute worker runtime independently and close the Helm/reconciler equivalence gap. Keep WebAuthn durability, audit account attribution, callback ghost, asynchronous cross-instance hydration, global RLS/FORCE RLS, Redis/provider/SPA/parity/WCAG/coverage/operations/deploy/release explicitly IN_PROGRESS/PARTIAL",
   "blocked_by": [],
   "human_approval_required": [
     "Production go-live, credential rotation, provider selection, fiscal homologation, and residual HIGH/CRITICAL risk acceptance remain outside repository implementation authority"
   ],
-  "updated_at": "2026-08-23T17:31:00-03:00"
+  "updated_at": "2026-08-23T17:34:00-03:00"
 }

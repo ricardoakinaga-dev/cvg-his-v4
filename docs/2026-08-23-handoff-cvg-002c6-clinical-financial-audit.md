@@ -401,3 +401,7 @@ Artefato: `.agent/artifacts/CVG-002C6-runtime-role-restart-reconciliation-2026-0
 Commits: `ee126a6` e `67bfe2d`. Não promover ainda: faltam SIGKILL de processo
 filho, failpoints admission/inventory/daily/discharge/close/receipt, worker
 independente, equivalência Helm executada e todos os gates globais/exteriores.
+
+O commit documental desta atualização é
+`b8fc3eccbfff7ab30e44ee92b109c08cc60159e2`; o branch remoto foi revalidado e
+permanece alinhado ao `HEAD`.

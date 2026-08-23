@@ -1173,3 +1173,6 @@ Evidência detalhada: `.agent/artifacts/CVG-002C6-runtime-role-restart-reconcili
 Commits: `ee126a6` (ACL + hardening) e `67bfe2d` (vertical/restart). O programa
 continua `IN_PROGRESS/PARTIAL`; SIGKILL real, failpoints em todos os writes,
 worker independente, equivalência Helm e gates globais permanecem abertos.
+
+O commit documental deste checkpoint é `b8fc3eccbfff7ab30e44ee92b109c08cc60159e2`;
+após o push, `HEAD == origin/agent/sync-v4-full-program`.
