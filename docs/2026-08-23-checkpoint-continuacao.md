@@ -869,3 +869,17 @@ admissão → handoff/permanência → inventário → alta → billing →
 recebimento/ledger/auditoria/outbox com PostgreSQL/RLS, replay, concorrência e
 failpoints. Paginação/cursor de auditoria, Redis failover real, provider, SPA,
 paridade Vetus, WCAG, operações, cobertura e release seguem gates separados.
+
+## Publicação documental — CVG-002C5 (23/08/2026)
+
+O commit funcional `db73cb72ac5d36e24030651959cdcc18ec1d82d9` e o commit-base
+de documentação/controle-plane `b03204f` estão registrados nesta continuação.
+O artefato `.agent/artifacts/CVG-002C5-discharge-http-closes-stay-audit-refresh-2026-08-23.md`,
+o contrato `.agent/tasks/CVG-002C5.md`, o handoff executável e os ledgers
+`.agent/state.json`, `.agent/backlog.json`, `.agent/execution-log.jsonl` e
+`.agent/verification.jsonl` formam o ponto de entrada da próxima sessão.
+
+Após confirmar `git fetch` e a igualdade entre `HEAD` e `origin/agent/sync-v4-full-program`,
+retomar pela jornada admissão → handoff/permanência → inventário → alta →
+billing → recebimento/ledger/auditoria/outbox. O ERP e os gates externos
+continuam `IN_PROGRESS/PARTIAL`.

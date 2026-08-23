@@ -15,6 +15,9 @@ dirty e é cache user-owned, não parte desta entrega.
 
 Implementação publicada: `db73cb72ac5d36e24030651959cdcc18ec1d82d9`
 (`fix: close inpatient stay on discharge and preserve audit cache`).
+Documentação/controle-plane publicada no commit-base `b03204f`
+(`docs: record discharge and audit continuation`); sincronize o branch antes
+de iniciar a próxima fatia.
 
 ## O que foi fechado
 
