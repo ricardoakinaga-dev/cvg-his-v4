@@ -32,11 +32,11 @@ export class DatabaseAuditRepository implements AuditRepository {
         payloadSummary: event.payloadSummary,
         riskLevel: event.riskLevel,
         ...(accountId ? {} : { legacyAccountId: event.accountId }),
-        ...(actorUserId ? {} : { legacyActorId: event.actorId }),
+        ...(actorUserId ? {} : { legacyActorId: event.actorId })
       },
       correlationId: event.correlationId,
       occurredAt: new Date(event.occurredAt),
-      createdAt: new Date(event.occurredAt),
+      createdAt: new Date(event.occurredAt)
     });
   }
 
@@ -48,16 +48,26 @@ export class DatabaseAuditRepository implements AuditRepository {
       .limit(Math.max(limit * 5, limit));
 
     const summaries = rows.map((row) => mapAuditRow(row));
-    const filtered = accountId ? summaries.filter((event) => event.accountId === accountId) : summaries;
+    const filtered = accountId
+      ? summaries.filter((event) => event.accountId === accountId)
+      : summaries;
     return filtered.slice(0, limit);
   }
 
+  public async listForCacheRefresh(accountId?: AccountId): Promise<readonly AuditEventSummary[]> {
+    const rows = accountId
+      ? await this.#db
+          .select()
+          .from(auditEvents)
+          .where(eq(auditEvents.accountId, accountId))
+          .orderBy(desc(auditEvents.occurredAt))
+      : await this.#db.select().from(auditEvents).orderBy(desc(auditEvents.occurredAt));
+    const summaries = rows.map((row) => mapAuditRow(row));
+    return accountId ? summaries.filter((event) => event.accountId === accountId) : summaries;
+  }
+
   public async findById(id: AuditEventId): Promise<AuditEventSummary | null> {
-    const result = await this.#db
-      .select()
-      .from(auditEvents)
-      .where(eq(auditEvents.id, id))
-      .limit(1);
+    const result = await this.#db.select().from(auditEvents).where(eq(auditEvents.id, id)).limit(1);
 
     if (result.length === 0) {
       return null;
@@ -76,9 +86,7 @@ function normalizeUuid(value: string | null | undefined): string | null {
 }
 
 function isUuid(value: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    value
-  );
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
 function mapAuditRow(row: Record<string, unknown>): AuditEventSummary {
@@ -95,7 +103,9 @@ function mapAuditRow(row: Record<string, unknown>): AuditEventSummary {
     occurredAt: new Date(row.occurredAt as string | Date).toISOString(),
     actorId: storedActorId ?? legacyActorId ?? 'system',
     accountId: (storedAccountId ?? legacyAccountId ?? 'unknown') as AccountId,
-    module: module ?? (typeof row.action === 'string' ? row.action.split('_')[0] ?? 'unknown' : 'unknown'),
+    module:
+      module ??
+      (typeof row.action === 'string' ? (row.action.split('_')[0] ?? 'unknown') : 'unknown'),
     action: (row.action as string | null) ?? 'unknown',
     entityType: (row.entityType as string | null) ?? 'unknown',
     entityId: (row.entityId as string | null) ?? 'unknown',

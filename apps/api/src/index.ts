@@ -1,5 +1,9 @@
 import { createLogger } from '@cvg-his-v2/shared-logging';
-import { createDatabaseClient, getDatabaseClient } from '@cvg-his-v2/shared-database';
+import {
+  createDatabaseClient,
+  getDatabaseClient,
+  withTenantTransaction
+} from '@cvg-his-v2/shared-database';
 import { createFeatureFlagMetricsCollector } from './metrics.js';
 
 import { bootstrapServices, resolveProductionReadiness } from './bootstrap.js';
@@ -285,6 +289,10 @@ async function main() {
     // repositories before the canonical runtime is selected.
     sectorBedOptions: persistenceMode === 'database' && db ? { databaseClient: db } : undefined,
     unitOfWork: bootstrapResult.unitOfWork,
+    tenantTransaction: bootstrapResult.repositoriesUseDatabase
+      ? async <T>(accountId: string, command: () => Promise<T>): Promise<T> =>
+          withTenantTransaction(accountId, async () => command())
+      : undefined,
     featureFlagsProvider: config.featureFlagsProvider,
     runtimeDistributedStateEnabled: config.runtimeDistributedStateEnabled,
     preserveSeedUsersWithRepository: persistenceMode !== 'database',

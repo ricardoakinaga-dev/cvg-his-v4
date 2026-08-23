@@ -20,6 +20,12 @@ export class InMemoryAuditRepository implements AuditRepository {
     return filtered.slice(0, limit);
   }
 
+  async listForCacheRefresh(accountId?: AccountId): Promise<readonly AuditEventSummary[]> {
+    return accountId
+      ? this.#events.filter((event) => event.accountId === accountId)
+      : [...this.#events];
+  }
+
   async findById(id: AuditEventId): Promise<AuditEventSummary | null> {
     return this.#events.find((e) => e.eventId === id) ?? null;
   }

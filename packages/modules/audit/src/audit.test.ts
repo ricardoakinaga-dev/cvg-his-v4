@@ -299,13 +299,49 @@ describe('AuditService with repository', () => {
 
     await rollbackService.refreshFromDatabase(committed.accountId);
 
-    expect(rollbackService.list()).toEqual([
-      committed,
-      expect.objectContaining({ accountId: 'acc_other', entityId: 'owner_other' })
-    ]);
+    expect(rollbackService.list()).toEqual(
+      expect.arrayContaining([
+        committed,
+        expect.objectContaining({ accountId: 'acc_other', entityId: 'owner_other' })
+      ])
+    );
+    expect(rollbackService.list()).toHaveLength(2);
     expect(rollbackService.list().some((event) => event.entityId === 'charge_rolled_back')).toBe(
       false
     );
+  });
+
+  it('preserves all committed events when refreshing beyond the repository default page', async () => {
+    const accountId = 'acc_rollback_page' as AccountId;
+    for (let index = 0; index < 101; index += 1) {
+      service.write({
+        actorId: 'user_rollback',
+        accountId,
+        module: 'audit',
+        action: `committed_${index}`,
+        entityType: 'audit-event',
+        entityId: `committed_${index}`,
+        payloadSummary: `Committed ${index}`,
+        riskLevel: 'low'
+      });
+    }
+    await service.waitForPersistence();
+
+    service.write({
+      actorId: 'user_rollback',
+      accountId,
+      module: 'inpatient',
+      action: 'bill_daily_charge',
+      entityType: 'inpatient-daily-charge',
+      entityId: 'rolled_back_charge',
+      payloadSummary: 'Rolled-back event',
+      riskLevel: 'high'
+    });
+    await service.refreshFromDatabase(accountId);
+
+    const accountEvents = service.list().filter((event) => event.accountId === accountId);
+    expect(accountEvents).toHaveLength(101);
+    expect(accountEvents.some((event) => event.entityId === 'rolled_back_charge')).toBe(false);
   });
 });
 

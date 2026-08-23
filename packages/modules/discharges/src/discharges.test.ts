@@ -5,6 +5,7 @@ import { ConflictError, NotFoundError } from '@cvg-his-v2/shared-errors';
 import type { AccountId, DischargeId, EncounterId, UserId } from '@cvg-his-v2/shared-types';
 
 const ACCOUNT_ID = 'acc_test' as AccountId;
+const OTHER_ACCOUNT_ID = 'acc_other' as AccountId;
 const USER_ID = 'user_test' as UserId;
 const ENCOUNTER_1 = 'enc_001' as EncounterId;
 const ENCOUNTER_2 = 'enc_002' as EncounterId;
@@ -75,6 +76,34 @@ describe('DischargesService', () => {
         dischargeType: 'inpatient'
       })
     ).toThrow(ConflictError);
+  });
+
+  it('should scope duplicate discharge checks to the owning account', () => {
+    service.create(ACCOUNT_ID, USER_ID, {
+      encounterId: ENCOUNTER_1,
+      dischargeType: 'ambulatory'
+    });
+
+    const otherAccountDischarge = service.create(OTHER_ACCOUNT_ID, USER_ID, {
+      encounterId: ENCOUNTER_1,
+      dischargeType: 'ambulatory'
+    });
+
+    expect(otherAccountDischarge.accountId).toBe(OTHER_ACCOUNT_ID);
+  });
+
+  it('should refresh one account cache from committed repository rows', async () => {
+    const repository = new InMemoryDischargeRepository();
+    const cachedService = new DischargesService({ dischargeRepository: repository });
+    const created = cachedService.create(ACCOUNT_ID, USER_ID, {
+      encounterId: ENCOUNTER_1,
+      dischargeType: 'ambulatory'
+    });
+    await cachedService.waitForPersistence();
+    await repository.delete(created.id);
+    await cachedService.refreshAccount(ACCOUNT_ID);
+
+    expect(cachedService.list(ACCOUNT_ID)).toHaveLength(0);
   });
 
   it('should list discharges by account', () => {

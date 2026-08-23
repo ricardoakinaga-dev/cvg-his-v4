@@ -8874,7 +8874,17 @@ paths:
     post:
       operationId: createDischarge
       summary: Create discharge
+      description: Creates a tenant-scoped discharge. For an inpatient encounter, the active stay is closed atomically with the discharge and subsequent daily-charge writes are rejected.
       tags: [Discharges]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: Stable key for safe replay of the discharge command.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 255
       requestBody:
         required: true
         content:
@@ -8884,6 +8894,34 @@ paths:
       responses:
         '201':
           description: Discharge created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Discharge'
+        '400':
+          description: Invalid discharge payload or idempotency key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Encounter or active inpatient stay not found in the current account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Encounter already has a discharge or the idempotency key conflicts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /discharges/{dischargeId}:
     get:
@@ -8921,16 +8959,14 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                dischargeType:
-                  type: string
-                  enum: [ambulatory, inpatient, transfer, death]
-                notes:
-                  type: string
+              $ref: '#/components/schemas/UpdateDischargeRequest'
       responses:
         '200':
           description: Discharge updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Discharge'
 
   /cep/lookup:
     get:
@@ -16977,19 +17013,44 @@ components:
         id:
           type: string
           format: uuid
+        accountId:
+          type: string
+          format: uuid
         encounterId:
           type: string
           format: uuid
         dischargeType:
           type: string
           enum: [ambulatory, inpatient, transfer, death]
+        outcome:
+          type: string
+        clinicalSummary:
+          type: string
+        continuityInstructions:
+          type: string
+        followUpDate:
+          type: string
+        followUpNotes:
+          type: string
+        dischargedBy:
+          type: string
+          format: uuid
+        dischargedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
         createdAt:
+          type: string
+          format: date-time
+        updatedAt:
           type: string
           format: date-time
 
     CreateDischargeRequest:
       type: object
       required: [encounterId, dischargeType]
+      additionalProperties: false
       properties:
         encounterId:
           type: string
@@ -16997,6 +17058,16 @@ components:
         dischargeType:
           type: string
           enum: [ambulatory, inpatient, transfer, death]
+        outcome:
+          type: string
+        clinicalSummary:
+          type: string
+        continuityInstructions:
+          type: string
+        followUpDate:
+          type: string
+        followUpNotes:
+          type: string
 
     TimelineEvent:
       type: object
@@ -17056,12 +17127,21 @@ components:
 
     UpdateDischargeRequest:
       type: object
+      additionalProperties: false
       properties:
-        dischargeType:
+        outcome:
           type: string
-          enum: [ambulatory, inpatient, transfer, death]
-        notes:
+        clinicalSummary:
           type: string
+        continuityInstructions:
+          type: string
+        followUpDate:
+          type: string
+        followUpNotes:
+          type: string
+        expectedVersion:
+          type: integer
+          minimum: 1
 
     LogAdministrationEventRequest:
       type: object

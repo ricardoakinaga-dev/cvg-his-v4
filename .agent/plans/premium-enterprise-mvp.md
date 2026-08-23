@@ -333,3 +333,19 @@ follow-up. The next plan step is the complete admission → handoff/permanence �
 inventory → discharge → billing → receipt/ledger/audit/outbox journey; Redis
 process failover, provider, SPA/B2c, parity, WCAG, target operations, coverage
 and release remain separate gates.
+
+Plan revision note, 2026-08-23 (CVG-002C5 discharge HTTP): The next bounded
+clinical-financial gap is now closed locally. A fresh two-instance
+PostgreSQL-backed integration passed 5/5: inpatient discharge closes the active
+stay, replay is stable, rollback removes discharge/stay/audit/idempotency/cache
+effects, bearer authority defeats spoofed tenant headers for inpatient and
+non-inpatient paths, and distinct-key races return one 201 plus one 409. The
+runner now has an explicit SQL transaction fallback without `unitOfWork`; audit
+rehydration bypasses the legacy 100-row limit and remains tenant-filtered; the
+OpenAPI discharge/PATCH contract is aligned. Audit/discharges passed 31/31,
+daily-charge plus cash HTTP regressions 6/6, tenant-command 5/5, and API/module
+build/typechecks passed. The complete admission → handoff/permanence →
+inventory → discharge → billing → receipt/ledger/audit/outbox journey remains
+the next product gate; cursor pagination for very large audit histories, Redis
+failover, provider, SPA/B2c, Vetus parity, WCAG, target operations, coverage
+and release remain open.

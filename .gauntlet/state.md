@@ -315,3 +315,22 @@ do `AsyncLocalStorage` inativo. A implementação permanece limitada ao
 handoff/permanência → inventário → alta → billing → recebimento/ledger/
 auditoria/outbox, preservando Redis failover real, provider, SPA/B2c, paridade,
 WCAG, operações, cobertura e release como gates separados.
+
+## Fechamento local — CVG-002C5 alta HTTP e auditoria (23/08/2026)
+
+O RED de alta que deixava a stay aberta, aceitava rollback e permitia
+cross-tenant foi convertido em GREEN com PostgreSQL efêmero. A matriz de duas
+instâncias passou `5/5`, incluindo replay, rollback sem discharge/stay/audit/
+idempotência/cache, autoridade bearer contra headers falsos, alta
+non-inpatient cross-tenant e corrida de chaves distintas em `201` + `409`.
+
+O runtime SQL agora possui `tenantTransaction` explícito mesmo sem
+`unitOfWork`; o cache de auditoria reidrata por conta sem o corte legado de 100
+eventos, e o contrato OpenAPI de POST/PATCH está alinhado. Audit/discharges
+passou `31/31`, as regressões HTTP de diária e cash `6/6`, tenant-command `5/5`
+e build/typechecks também passaram.
+
+O Quality Bar permanece `ACTIVE`, e o ERP permanece `IN_PROGRESS/PARTIAL`.
+Cursor pagination para grandes históricos, jornada clínica-financeira completa,
+Redis failover real, provider, SPA/B2c, paridade Vetus, WCAG, operações,
+cobertura e release continuam gates separados.

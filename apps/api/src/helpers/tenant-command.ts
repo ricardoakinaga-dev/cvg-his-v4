@@ -25,6 +25,7 @@ export type TenantCommandRunner = <T>(input: TenantCommandInput<T>) => Promise<T
 export function createTenantCommandRunner(options: {
   readonly environment: string;
   readonly unitOfWork?: TenantUnitOfWork;
+  readonly transaction?: <T>(accountId: string, command: () => Promise<T>) => Promise<T>;
 }): TenantCommandRunner {
   return async <T>(input: TenantCommandInput<T>): Promise<T> => {
     // Route-specific wrappers can be used by direct route tests and by the
@@ -40,6 +41,9 @@ export function createTenantCommandRunner(options: {
       throw new ValidationError('Idempotency-Key header is required for mutating commands');
     }
     if (!options.unitOfWork || !idempotencyKey) {
+      if (options.transaction) {
+        return options.transaction(input.accountId, input.command);
+      }
       return input.command();
     }
 
@@ -60,7 +64,10 @@ export function createTenantCommandRunner(options: {
       );
       return execution.value as unknown as T;
     } catch (error) {
-      if (error instanceof IdempotencyConflictError || error instanceof IdempotencyInProgressError) {
+      if (
+        error instanceof IdempotencyConflictError ||
+        error instanceof IdempotencyInProgressError
+      ) {
         throw new AppError(error.code, error.message, 409);
       }
       throw error;
@@ -75,8 +82,10 @@ function readIdempotencyKey(request: IncomingMessage): string | undefined {
 }
 
 function isProductionLikeEnvironment(environment: string): boolean {
-  return environment === 'production'
-    || environment === 'staging'
-    || environment === 'prod'
-    || environment === 'stage';
+  return (
+    environment === 'production' ||
+    environment === 'staging' ||
+    environment === 'prod' ||
+    environment === 'stage'
+  );
 }

@@ -37,12 +37,33 @@ export class DischargesService {
   }
 
   #nextId(): DischargeId {
-    return (this.#useUuidIdentifiers ? randomUUID() : createCorrelationId('discharge')) as DischargeId;
+    return (
+      this.#useUuidIdentifiers ? randomUUID() : createCorrelationId('discharge')
+    ) as DischargeId;
   }
 
   public async hydrateFromDatabase(accountId: AccountId): Promise<void> {
     if (!this.#dischargeRepository) return;
     const persisted = await this.#dischargeRepository.findByAccountId(accountId);
+    for (const discharge of persisted) {
+      this.#discharges.set(discharge.id, discharge);
+    }
+  }
+
+  /**
+   * Rebuild one tenant's hot cache from committed rows after a failed command.
+   * The discharge route can update both the discharge and inpatient caches in
+   * one tenant UoW; replacing the account slice prevents a rolled-back
+   * discharge from remaining visible to a subsequent request.
+   */
+  public async refreshAccount(accountId: AccountId): Promise<void> {
+    if (!this.#dischargeRepository) return;
+    const persisted = await this.#dischargeRepository.findByAccountId(accountId);
+    for (const [id, discharge] of this.#discharges) {
+      if (discharge.accountId === accountId) {
+        this.#discharges.delete(id);
+      }
+    }
     for (const discharge of persisted) {
       this.#discharges.set(discharge.id, discharge);
     }
@@ -86,9 +107,15 @@ export class DischargesService {
     return discharge;
   }
 
-  public getByEncounterId(encounterId: EncounterId): DischargeSummary | null {
+  public getByEncounterId(
+    encounterId: EncounterId,
+    accountId?: AccountId
+  ): DischargeSummary | null {
     for (const discharge of this.#discharges.values()) {
-      if (discharge.encounterId === encounterId) {
+      if (
+        discharge.encounterId === encounterId &&
+        (!accountId || discharge.accountId === accountId)
+      ) {
         return discharge;
       }
     }
@@ -99,14 +126,22 @@ export class DischargesService {
     return Array.from(this.#discharges.values()).filter((d) => d.accountId === accountId);
   }
 
-  public create(accountId: AccountId, dischargedBy: UserId, payload: CreateDischargeRequest): DischargeSummary {
+  public removeFromCache(id: DischargeId): void {
+    this.#discharges.delete(id);
+  }
+
+  public create(
+    accountId: AccountId,
+    dischargedBy: UserId,
+    payload: CreateDischargeRequest
+  ): DischargeSummary {
     requireNonEmptyString(payload.encounterId, 'encounterId');
     requireNonEmptyString(payload.dischargeType, 'dischargeType');
 
     const encounterId = payload.encounterId as EncounterId;
 
     // Check for duplicate discharge per encounter
-    const existing = this.getByEncounterId(encounterId);
+    const existing = this.getByEncounterId(encounterId, accountId);
     if (existing) {
       throw new ConflictError('Encounter already has a discharge', {
         dischargeId: existing.id,
@@ -148,7 +183,11 @@ export class DischargesService {
     return discharge;
   }
 
-  public update(id: DischargeId, payload: UpdateDischargeRequest, expectedVersion?: number): DischargeSummary {
+  public update(
+    id: DischargeId,
+    payload: UpdateDischargeRequest,
+    expectedVersion?: number
+  ): DischargeSummary {
     const current = this.getById(id);
 
     if (expectedVersion !== undefined && current.version !== expectedVersion) {
@@ -161,7 +200,8 @@ export class DischargesService {
 
     const updated: DischargeSummary = {
       ...current,
-      outcome: payload.outcome !== undefined ? requireOptionalString(payload.outcome) : current.outcome,
+      outcome:
+        payload.outcome !== undefined ? requireOptionalString(payload.outcome) : current.outcome,
       clinicalSummary:
         payload.clinicalSummary !== undefined
           ? requireOptionalString(payload.clinicalSummary)

@@ -6,6 +6,8 @@ import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
 export interface AuditRepository {
   create(event: AuditEventSummary): Promise<void>;
   list(accountId?: AccountId, limit?: number): Promise<readonly AuditEventSummary[]>;
+  /** Full tenant snapshot used to repair the hot cache after rollback. */
+  listForCacheRefresh?(accountId?: AccountId): Promise<readonly AuditEventSummary[]>;
   findById(id: AuditEventId): Promise<AuditEventSummary | null>;
 }
 
@@ -189,6 +191,10 @@ export class AuditService {
     return [...this.#events];
   }
 
+  public removeFromCache(eventId: AuditEventId): void {
+    this.#events = this.#events.filter((event) => event.eventId !== eventId);
+  }
+
   /**
    * Rebuilds the hot audit cache from committed repository rows.
    *
@@ -200,7 +206,9 @@ export class AuditService {
   public async refreshFromDatabase(accountId?: AccountId): Promise<void> {
     if (!this.#auditRepository) return;
 
-    const committed = await this.#auditRepository.list(accountId);
+    const committed = this.#auditRepository.listForCacheRefresh
+      ? await this.#auditRepository.listForCacheRefresh(accountId)
+      : await this.#auditRepository.list(accountId);
     const retained = accountId ? this.#events.filter((event) => event.accountId !== accountId) : [];
     this.#events = [...committed, ...retained].sort(
       (left, right) => new Date(right.occurredAt).getTime() - new Date(left.occurredAt).getTime()

@@ -466,6 +466,10 @@ export class InpatientService {
     return stay;
   }
 
+  public restoreStayCache(stay: InpatientStaySummary): void {
+    this.#stays.set(stay.id, { ...stay });
+  }
+
   public addProgress(
     actorUserId: UserId,
     payload: AddInpatientProgressRequest

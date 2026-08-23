@@ -835,3 +835,33 @@ dirty é `packages/design-system/tsconfig.vue.tsbuildinfo`, preservado fora do
 stage. Retomar pelo artefato `CVG-002C4-inpatient-http-isolation-audit-cache-2026-08-23.md`
 e pela jornada admissão → handoff/permanência → inventário → alta → billing →
 recebimento/ledger/auditoria/outbox.
+
+## Continuidade preparada — alta HTTP fecha stay e auditoria sem truncamento (23/08/2026)
+
+O slice `CVG-002C5` está GREEN no limite HTTP/PostgreSQL. A nova integração
+`tests/integration/database/inpatient-discharge-http-postgres.test.ts` passou
+`5/5`: alta inpatient fecha a stay, replay retorna o mesmo corpo, diária
+posterior é bloqueada, rollback não persiste discharge/stay/audit/idempotência,
+headers de tenant falsificados não atravessam o bearer, alta não-inpatient
+cross-tenant retorna `404` e duas instâncias com chaves distintas convergem
+para `201` + `409`.
+
+O runner agora recebe `tenantTransaction` explícito no runtime SQL mesmo quando
+não há `unitOfWork`; o caminho em memória permanece direto. O `AuditRepository`
+possui leitura de reidratação tenant-scoped sem o limite default de 100 eventos,
+com limpeza de identidade em rollback. O OpenAPI de alta/PATCH foi alinhado ao
+contrato clínico real.
+
+Evidência fresca: AuditService + discharges `31/31`, regressões HTTP de diária e
+cash `6/6`, tenant-command `5/5`, API build/typecheck, module typechecks,
+OpenAPI parse, Prettier direcionado e `git diff --check` PASS. O artefato é
+`.agent/artifacts/CVG-002C5-discharge-http-closes-stay-audit-refresh-2026-08-23.md`
+e o handoff executável é
+`docs/2026-08-23-handoff-cvg-002c5-discharge-cache.md`.
+
+O parent `CVG-002C2`, `CVG-002B2B`, o ERP e o Quality Bar continuam
+`IN_PROGRESS/PARTIAL`. A próxima sessão deve construir a jornada única
+admissão → handoff/permanência → inventário → alta → billing →
+recebimento/ledger/auditoria/outbox com PostgreSQL/RLS, replay, concorrência e
+failpoints. Paginação/cursor de auditoria, Redis failover real, provider, SPA,
+paridade Vetus, WCAG, operações, cobertura e release seguem gates separados.

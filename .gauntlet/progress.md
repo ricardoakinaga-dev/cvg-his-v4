@@ -252,3 +252,18 @@ O default de 100 eventos do repositório continua documentado como limite de
 produção a revisar. A próxima ação é a jornada admissão → handoff/permanência →
 inventário → alta → billing → recebimento/ledger/auditoria/outbox; nenhum gate
 global ou externo foi promovido.
+
+## Checkpoint atual — CVG-002C5 discharge HTTP (23/08/2026)
+
+- Alta HTTP/PostgreSQL passou `5/5`, incluindo fechamento da stay inpatient,
+  replay, rollback limpo, dois tenants com bearer/headers falsos, guarda
+  non-inpatient e corrida entre duas instâncias com `201` + `409`.
+- AuditService + discharges passaram `31/31`; daily-charge + cash HTTP `6/6`;
+  tenant-command `5/5`; API build/typecheck, module typechecks, OpenAPI parse,
+  Prettier direcionado e diff check passaram.
+- O runner SQL recebe `tenantTransaction`; a reidratação de auditoria evita o
+  corte de 100 eventos e o OpenAPI de alta/PATCH reflete o contrato real.
+- O maior gap segue a jornada admissão → handoff/permanência → inventário →
+  alta → billing → recebimento/ledger/auditoria/outbox. Cursor pagination,
+  Redis failover, provider, SPA/B2c, Vetus parity, WCAG, target operations,
+  cobertura e release continuam abertos.

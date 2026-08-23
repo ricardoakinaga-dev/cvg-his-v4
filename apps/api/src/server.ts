@@ -2,7 +2,11 @@ import { createHash } from 'node:crypto';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { URL } from 'node:url';
 
-import { getDatabaseTransactionScope, getPool } from '@cvg-his-v2/shared-database';
+import {
+  getDatabaseTransactionScope,
+  getPool,
+  withTenantTransaction
+} from '@cvg-his-v2/shared-database';
 import { extractBearerToken } from '@cvg-his-v2/shared-auth-sdk';
 import type { ApiKeysService } from '@cvg-his-v2/module-api-keys';
 import { createAuthRateLimiter } from './http/auth-rate-limiter.js';
@@ -293,6 +297,8 @@ export interface ApiServerOptions {
   readonly attachmentScanner?: AttachmentSecurityScanner;
   readonly sectorBedOptions?: SectorBedServiceOptions;
   readonly unitOfWork?: TenantUnitOfWork;
+  /** Optional database transaction primitive for database-backed runtimes that do not expose idempotency UoW. */
+  readonly tenantTransaction?: <T>(accountId: string, command: () => Promise<T>) => Promise<T>;
   readonly featureFlagsProvider?: string;
   /** Pre-resolved feature flags snapshot (GAP-06: avoids async call inside createApiServer) */
   readonly featureFlags?: ApiFeatureFlagsSnapshot;
@@ -3659,7 +3665,13 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
   });
   const runTenantCommand = createTenantCommandRunner({
     environment: options.environment,
-    unitOfWork: options.unitOfWork
+    unitOfWork: options.unitOfWork,
+    transaction:
+      options.tenantTransaction ??
+      (options.unitOfWork
+        ? async <T>(accountId: string, command: () => Promise<T>): Promise<T> =>
+            withTenantTransaction(accountId, async () => command())
+        : undefined)
   });
   const encounterCashReceiptRepository = options.repositories?.encounterCashReceipt;
   const encounterCashReceiptCommand = encounterCashReceiptRepository
@@ -7072,8 +7084,11 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           if (
             await handleDischargesRoutes(pathname, request, response, correlationId, {
               discharges,
+              encounters,
+              inpatient,
               audit,
-              requirePrincipal
+              requirePrincipal,
+              runCommand: runTenantCommand
             })
           ) {
             return;

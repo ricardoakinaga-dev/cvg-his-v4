@@ -49,17 +49,42 @@ test('tenant command runner requires idempotency keys in production-like environ
   });
 
   await assert.rejects(
-    () => runner({
-      request: request(),
-      accountId: '00000000-0000-0000-0000-000000000001',
-      actorUserId: '00000000-0000-0000-0000-000000000002',
-      correlationId: 'corr-2',
-      operation: 'inventory.purchase.approve',
-      payload: {},
-      command: async () => 'never'
-    }),
+    () =>
+      runner({
+        request: request(),
+        accountId: '00000000-0000-0000-0000-000000000001',
+        actorUserId: '00000000-0000-0000-0000-000000000002',
+        correlationId: 'corr-2',
+        operation: 'inventory.purchase.approve',
+        payload: {},
+        command: async () => 'never'
+      }),
     (error: unknown) => error instanceof ValidationError
   );
+});
+
+test('tenant command runner uses the tenant transaction fallback without an idempotency key or UoW', async () => {
+  const calls: string[] = [];
+  const runner = createTenantCommandRunner({
+    environment: 'test',
+    transaction: async (accountId, command) => {
+      calls.push(accountId);
+      return command();
+    }
+  });
+
+  const result = await runner({
+    request: request(),
+    accountId: '00000000-0000-0000-0000-000000000001',
+    actorUserId: '00000000-0000-0000-0000-000000000002',
+    correlationId: 'corr-transaction-fallback',
+    operation: 'discharges.create',
+    payload: {},
+    command: async () => 'transactional'
+  });
+
+  assert.equal(result, 'transactional');
+  assert.deepEqual(calls, ['00000000-0000-0000-0000-000000000001']);
 });
 
 test('tenant command runner rejects oversized idempotency keys before database execution', async () => {
@@ -75,15 +100,16 @@ test('tenant command runner rejects oversized idempotency keys before database e
   });
 
   await assert.rejects(
-    () => runner({
-      request: request({ 'idempotency-key': 'x'.repeat(256) }),
-      accountId: '00000000-0000-0000-0000-000000000001',
-      actorUserId: '00000000-0000-0000-0000-000000000002',
-      correlationId: 'corr-oversized-idempotency',
-      operation: 'encounter.cash-receipt.create',
-      payload: {},
-      command: async () => 'never'
-    }),
+    () =>
+      runner({
+        request: request({ 'idempotency-key': 'x'.repeat(256) }),
+        accountId: '00000000-0000-0000-0000-000000000001',
+        actorUserId: '00000000-0000-0000-0000-000000000002',
+        correlationId: 'corr-oversized-idempotency',
+        operation: 'encounter.cash-receipt.create',
+        payload: {},
+        command: async () => 'never'
+      }),
     (error: unknown) => error instanceof ValidationError
   );
   assert.equal(executed, false);
@@ -104,19 +130,18 @@ test('tenant command runner maps idempotency races to stable 409 application err
     });
 
     await assert.rejects(
-      () => runner({
-        request: request({ 'idempotency-key': `request-${expectedCode}` }),
-        accountId: '00000000-0000-0000-0000-000000000001',
-        actorUserId: '00000000-0000-0000-0000-000000000002',
-        correlationId: 'corr-idempotency',
-        operation: 'encounter.cash-receipt.create',
-        payload: {},
-        command: async () => 'never'
-      }),
+      () =>
+        runner({
+          request: request({ 'idempotency-key': `request-${expectedCode}` }),
+          accountId: '00000000-0000-0000-0000-000000000001',
+          actorUserId: '00000000-0000-0000-0000-000000000002',
+          correlationId: 'corr-idempotency',
+          operation: 'encounter.cash-receipt.create',
+          payload: {},
+          command: async () => 'never'
+        }),
       (error: unknown) =>
-        error instanceof AppError
-        && error.statusCode === 409
-        && error.code === expectedCode
+        error instanceof AppError && error.statusCode === 409 && error.code === expectedCode
     );
   }
 });
