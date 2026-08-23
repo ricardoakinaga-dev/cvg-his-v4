@@ -279,9 +279,16 @@
         ".agent/verification.jsonl#VFY-CVG-002C6-VERTICAL-RED-001",
         ".agent/artifacts/CVG-002C6-vertical-http-red-green-2026-08-23.md",
         ".agent/verification.jsonl#VFY-CVG-002C6-VERTICAL-GREEN-001",
-        ".agent/verification.jsonl#VFY-CVG-002C6-VERTICAL-GREEN-REVIEW-001"
+        ".agent/verification.jsonl#VFY-CVG-002C6-VERTICAL-GREEN-REVIEW-001",
+        ".agent/artifacts/CVG-002C6-runtime-role-restart-reconciliation-2026-08-23.md",
+        "packages/db/migrations/0120_cash_receipt_consistency_search_path.sql",
+        "tests/integration/process/inpatient-clinical-financial-restart.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-002C6-RUNTIME-ROLE-001",
+        ".agent/verification.jsonl#VFY-CVG-002C6-RESTART-001",
+        ".agent/verification.jsonl#VFY-CVG-002C6-SEARCH-PATH-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-002C6-SEARCH-PATH-GREEN-001"
       ],
-      "next_action": "The public vertical HTTP/PostgreSQL boundary is GREEN bounded at 4/4 after fixture-only billing-open, SQL-cast and bearer-A-to-resource-B corrections. Next run the same admission -> handoff/ack -> inventory charge capture -> daily charge -> discharge -> close -> receipt path under a real clinical runtime NOBYPASSRLS role, add boundary failpoints and SIGKILL/restart, and reconcile each stock/billing/receivable/payment/cash/journal/audit/outbox record before promotion. Keep callback ghost, async cross-instance hydration, Redis/provider/SPA/parity/WCAG/coverage/operations/deploy/release gates explicitly open and keep the user-owned tsbuildinfo cache out of scope."
+      "next_action": "The restricted runtime vertical is GREEN bounded at 5/5 and the controlled restart/replay proof is GREEN bounded at 1/1. Before any promotion, add a true child-process SIGKILL harness, complete failpoints across admission/inventory/daily/discharge/close/receipt, execute the worker role independently, and close the Helm-vs-reconciler equivalence gap. Keep callback ghost, async cross-instance hydration, global RLS/FORCE RLS, Redis/provider/SPA/parity/WCAG/coverage/operations/deploy/release gates explicitly open and keep the user-owned tsbuildinfo cache out of scope."
     },
     {
       "id": "CVG-003",

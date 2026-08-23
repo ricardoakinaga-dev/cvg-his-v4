@@ -1154,3 +1154,22 @@ O cache user-owned do design-system permanece dirty e fora do stage.
 
 O commit documental `7d57225ce1936f174eae5c4012ea69accac94519` é o ponteiro
 mais recente desta sessão e está alinhado ao branch remoto.
+
+## Continuação — runtime restrito, restart e hardening de search_path (17:28 BRT)
+
+O mesmo vertical foi reexecutado com role API LOGIN real e `NOBYPASSRLS`; a
+suíte passou **5/5**. Ela confirma ACL API/worker sem `PUBLIC EXECUTE`, headers
+falsificados A/B, reconciliação por registro e o grafo financeiro completo. O
+teste separado de restart controlado passou **1/1**, com replay idempotente
+após rebootstrap e contagens finais sem duplicidade.
+
+A crítica independente encontrou uma vulnerabilidade HIGH de `search_path`: a
+função invoker aceitava tabelas temporárias quando `pg_temp` era colocado no
+início. O teste foi RED antes da correção; a migration
+`0120_cash_receipt_consistency_search_path.sql` fixa
+`pg_catalog, public, app, pg_temp`, e o cenário de shadowing passou GREEN.
+
+Evidência detalhada: `.agent/artifacts/CVG-002C6-runtime-role-restart-reconciliation-2026-08-23.md`.
+Commits: `ee126a6` (ACL + hardening) e `67bfe2d` (vertical/restart). O programa
+continua `IN_PROGRESS/PARTIAL`; SIGKILL real, failpoints em todos os writes,
+worker independente, equivalência Helm e gates globais permanecem abertos.

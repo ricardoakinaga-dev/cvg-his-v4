@@ -371,3 +371,17 @@ bounded slice without Critical/High/Medium findings. The parent plan remains
 IN_PROGRESS/PARTIAL: discharge, receipt, journal and outbox are not yet one
 public journey, and payload-conflict, failpoint, price-CRUD and audit-cursor
 follow-ups remain open.
+
+Plan revision note, 2026-08-23 (CVG-002C6 restricted runtime/restart): The
+single clinical-financial vertical now runs with a real API LOGIN role marked
+`NOSUPERUSER NOBYPASSRLS` and passes 5/5, including per-record stock/billing/
+receivable/payment/cash/journal reconciliation, bearer/header isolation and a
+`pg_temp` shadowing test. A controlled same-process restart/rebootstrap with
+idempotent inventory replay passes 1/1 and leaves one financial graph. The
+independent review found a HIGH invoker `search_path` issue; migration 0120
+pins `pg_catalog, public, app, pg_temp`, and the pre-fix RED plus post-fix GREEN
+are preserved in the runtime-role artifact. Commits `ee126a6` and `67bfe2d`
+publish this bounded slice. The plan remains IN_PROGRESS/PARTIAL: real
+child-process SIGKILL, complete per-boundary failpoints, independent worker
+execution, Helm equivalence, global RLS/FORCE RLS and all external
+product/operations/release gates remain open.

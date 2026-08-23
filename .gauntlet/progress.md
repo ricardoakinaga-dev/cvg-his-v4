@@ -409,3 +409,21 @@ operações e cobertura.
 Publicação: commit `d25151d96b1f7f0a17e3e08122d263507ec0353d` foi enviado ao
 branch remoto e o fetch confirmou `HEAD == origin`; o cache user-owned do
 design-system permaneceu fora do commit.
+
+## Iteração 17:28 BRT — role runtime, restart e search_path hardening
+
+O gate bounded foi elevado para login API real `NOBYPASSRLS` e passou **5/5**;
+um teste separado de restart/replay controlado passou **1/1**. A execução
+confirma ACL API/worker sem `PUBLIC EXECUTE`, reconciliação por registro,
+headers falsificados e o grafo inventory → billing → receivable → payment →
+cash → journal com total `260` balanceado.
+
+A crítica encontrou HIGH no `search_path` da função invoker. O cenário de
+shadowing foi mantido como RED até a migration `0120` fixar
+`pg_catalog, public, app, pg_temp`; depois passou GREEN sob a mesma role real.
+Commits locais: `ee126a6` e `67bfe2d`. Artefato:
+`.agent/artifacts/CVG-002C6-runtime-role-restart-reconciliation-2026-08-23.md`.
+
+Quality Bar global continua `IN_PROGRESS/PARTIAL`: ainda faltam SIGKILL de
+processo filho, failpoints por boundary, worker independente, equivalência Helm
+executada, RLS/FORCE RLS global e gates de produto/operação/release.

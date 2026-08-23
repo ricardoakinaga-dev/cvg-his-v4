@@ -467,3 +467,18 @@ global continua `ACTIVE/IN_PROGRESS/PARTIAL`.
 O checkpoint 4/4 foi publicado em `d25151d96b1f7f0a17e3e08122d263507ec0353d`;
 `git fetch` confirmou `HEAD == origin/agent/sync-v4-full-program`, e somente o
 tsbuildinfo user-owned permaneceu fora do stage.
+
+## Estado atual — 23/08/2026, 17:28 BRT
+
+CVG-002C6 agora tem GREEN bounded sob role API runtime
+`NOSUPERUSER/NOBYPASSRLS`: a vertical passa **5/5** e o restart/replay
+controlado passa **1/1**. A função de settlement tem `EXECUTE` apenas em
+API/worker e a migration `0120` protege contra shadowing de `pg_temp`; o RED e
+o GREEN desse hardening estão documentados no artefato
+`.agent/artifacts/CVG-002C6-runtime-role-restart-reconciliation-2026-08-23.md`.
+
+Não é promoção global. Próximos gates locais: SIGKILL de processo filho,
+failpoints em todas as escritas, worker independente e equivalência Helm. A
+barra global permanece `ACTIVE/IN_PROGRESS/PARTIAL`; SPA, providers, Redis,
+paridade, WCAG, cobertura, operações, deploy/restore e release continuam
+separados. O tsbuildinfo user-owned segue fora do stage.

@@ -376,3 +376,28 @@ do commit; nenhum gate global foi promovido.
 
 O ponteiro documental final desta sessão é `7d57225ce1936f174eae5c4012ea69accac94519`;
 `HEAD` e `origin/agent/sync-v4-full-program` ficaram alinhados após o push.
+
+## Gate seguinte executado — runtime role, restart e proteção contra pg_temp (17:28 BRT)
+
+O RED vertical foi elevado para um login API real com
+`NOSUPERUSER/NOBYPASSRLS`. A execução passou **5/5** e confirmou:
+
+- `current_user` API, `rolsuper = false`, `rolbypassrls = false`;
+- `EXECUTE` do helper de settlement apenas para API/worker, sem `PUBLIC`;
+- fluxo único admission → handoff/stay → inventory → daily/billing-open →
+  discharge → close → receipt;
+- vínculos por registro e valores `2×50 → 80`, `180`, total `260`, pagamento,
+  caixa e journal balanceados;
+- replay, corrida, rollback, headers falsificados e isolamento A/B.
+
+O teste de processo de restart controlado passou **1/1**: consumo confirmado,
+rebootstrap, replay idempotente e conclusão sem duplicatas. A revisão
+independente bloqueou temporariamente o gate por HIGH de `search_path`; o
+teste de shadowing foi RED antes da migration `0120`, que agora fixa
+`pg_catalog, public, app, pg_temp` com `pg_temp` no fim. Depois do hardening,
+o mesmo caso passou GREEN.
+
+Artefato: `.agent/artifacts/CVG-002C6-runtime-role-restart-reconciliation-2026-08-23.md`.
+Commits: `ee126a6` e `67bfe2d`. Não promover ainda: faltam SIGKILL de processo
+filho, failpoints admission/inventory/daily/discharge/close/receipt, worker
+independente, equivalência Helm executada e todos os gates globais/exteriores.

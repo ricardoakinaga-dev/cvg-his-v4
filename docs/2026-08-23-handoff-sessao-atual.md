@@ -215,3 +215,32 @@ stage.
 O ponteiro documental mais recente desta sessão é o commit
 `7d57225ce1936f174eae5c4012ea69accac94519` (`docs: publish vertical
 checkpoint`); após o push, `HEAD == origin/agent/sync-v4-full-program`.
+
+## Atualização mais recente — role runtime, restart e shadowing (23/08/2026, 17:28 BRT)
+
+O próximo gate foi executado contra PostgreSQL descartável com login API real
+`NOSUPERUSER/NOBYPASSRLS`, sem `rolsuper` e sem `rolbypassrls`. A reconciliação
+agora concede `EXECUTE` da função auxiliar de consistência do recebimento apenas
+aos papéis API/worker; `PUBLIC` permanece sem esse privilégio. A vertical HTTP
+passou **5/5**, pois também rejeitou uma tentativa de settlement falso com
+`SET LOCAL search_path = pg_temp, public, app` e tabelas temporárias sombra.
+
+O RED de segurança foi real: antes da migration `0120`, a função invoker
+aceitava a sombra em `pg_temp`. A migration fixa a resolução em
+`pg_catalog, public, app, pg_temp`, com `pg_temp` explicitamente no fim. O teste
+separado de restart controlado passou **1/1**: consumo confirmado, parada e
+rebootstrap, replay idempotente com resposta igual e conclusão única até
+receipt/payment/cash/journal. A reconciliação por registro valida os vínculos e
+valores `2×50 → 80`, `180`, total `260` e débito/crédito balanceados.
+
+Artefato reproduzível:
+[`CVG-002C6-runtime-role-restart-reconciliation-2026-08-23.md`](../.agent/artifacts/CVG-002C6-runtime-role-restart-reconciliation-2026-08-23.md).
+Commits de implementação: `ee126a6` (hardening ACL/search_path) e `67bfe2d`
+(vertical restrita/restart). O cache user-owned
+`packages/design-system/tsconfig.vue.tsbuildinfo` continua fora do stage.
+
+O gate continua bounded e não promove produção. Restam SIGKILL em processo
+filho, matriz completa de failpoints em cada boundary, execução independente do
+worker, equivalência aplicada de Helm, RLS/FORCE RLS global, hidratação
+cross-instance, Redis/providers/SPA/paridade/WCAG/cobertura/operações/deploy/
+restore/release e demais gates externos.
