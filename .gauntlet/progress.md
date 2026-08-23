@@ -58,3 +58,22 @@
   repository já possui redrive interno auditado.
 - Estado permanece `CVG-002B2B IN_PROGRESS/PARTIAL`; não houve promoção de
   quality bar, produção, provider, SPA, paridade Vetus ou release.
+
+## Checkpoint 2026-08-23 — PIX settlement DLQ operator slice
+
+- Added tenant-scoped, sanitized `GET /internal/pix-settlement/deliveries` and
+  audited `POST /internal/pix-settlement/deliveries/:deliveryId/redrive`.
+- Migration `0114` keeps direct API `UPDATE` denied and exposes one atomic
+  `SECURITY DEFINER` redrive function owned by a non-login capability; the
+  worker retains delivery mutation and the API receives only function execute.
+- Added OpenAPI paths/schemas, Prometheus alert, Grafana DLQ panel and the
+  operator runbook `docs/runbooks/pix-settlement-dlq.md`.
+- Fresh evidence: route 4/4, PostgreSQL/ACL 3/3 (durable backlog 1→0 after
+  redrive), runtime grants 9/9, worker 54/54, alert alignment 4/4, OpenAPI
+  337/390, API/DB/worker builds and Helm/YAML/JSON/shell checks PASS. The
+  alert/panel use the current DB-backed gauge
+  `worker_pix_provider_settlement_reconciliation_required`; direct 404/503
+  envelopes include the request correlation ID required by OpenAPI.
+- The quality bar remains frozen and `CVG-002B2B` remains `IN_PROGRESS/PARTIAL`.
+  The next local work is multi-replica rate-limit policy, minimal principal,
+  real SIGKILL/restart and then the separate B2c/SPA/ERP gates.

@@ -86,6 +86,7 @@ export interface WorkerPixProviderSettlementRuntime {
   readonly consumer: PixProviderSettlementConsumer;
   readonly workerId: string;
   readonly leaseMs: number;
+  readonly countReconciliationRequired: (accountId: string) => Promise<number>;
 }
 
 export interface WorkerBootstrapResult {
@@ -177,15 +178,22 @@ export function createPixProviderSettlementRuntime(
     );
   }
   const workerId = resolvePixSettlementWorkerId(options.workerId);
+  const repository = new DatabasePixProviderEventDeliveryRepository(options.pool);
   const consumer = new PixProviderSettlementConsumer(
-    new DatabasePixProviderEventDeliveryRepository(options.pool),
+    repository,
     {
       workerId,
       leaseMs: PIX_PROVIDER_SETTLEMENT_DEFAULTS.leaseMs,
       allowSyntheticProviders: true
     }
   );
-  return Object.freeze({ consumer, workerId, ...PIX_PROVIDER_SETTLEMENT_DEFAULTS });
+  return Object.freeze({
+    consumer,
+    workerId,
+    countReconciliationRequired: (accountId: string) =>
+      repository.countReconciliationRequired(accountId),
+    ...PIX_PROVIDER_SETTLEMENT_DEFAULTS
+  });
 }
 
 export function createSyntheticPixPaymentDispatchRuntime(

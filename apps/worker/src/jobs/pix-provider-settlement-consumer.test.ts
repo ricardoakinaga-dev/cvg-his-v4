@@ -15,7 +15,9 @@ import {
 } from './pix-provider-settlement-consumer.js';
 import {
   getWorkerMetricsText,
-  pixProviderSettlementReconciliationRequiredTotal
+  pixProviderSettlementReconciliationRequired,
+  pixProviderSettlementReconciliationRequiredTotal,
+  setPixProviderSettlementReconciliationRequired
 } from '../worker-metrics.js';
 
 const claim: PixProviderEventDeliveryClaim = Object.freeze({
@@ -349,6 +351,33 @@ test('default PIX settlement telemetry exports bounded Prometheus DLQ counters w
     metrics.includes('00000000-0000-0000-0000-000000000001'),
     false,
     'tenant identifiers must not appear in PIX settlement metric labels'
+  );
+});
+
+test('worker exposes a current unlabeled durable PIX settlement DLQ gauge', async () => {
+  setPixProviderSettlementReconciliationRequired(3);
+  const metrics = await getWorkerMetricsText();
+  assert.match(metrics, /worker_pix_provider_settlement_reconciliation_required 3/);
+  assert.equal(
+    metrics.includes('00000000-0000-0000-0000-000000000001'),
+    false,
+    'tenant identifiers must not appear in PIX settlement metric labels'
+  );
+  assert.equal(
+    (await pixProviderSettlementReconciliationRequired.get()).values[0]?.value,
+    3
+  );
+  setPixProviderSettlementReconciliationRequired(0);
+});
+
+test('worker rejects an invalid current PIX settlement DLQ gauge value', () => {
+  assert.throws(
+    () => setPixProviderSettlementReconciliationRequired(-1),
+    /backlog must be a non-negative safe integer/
+  );
+  assert.throws(
+    () => setPixProviderSettlementReconciliationRequired(Number.POSITIVE_INFINITY),
+    /backlog must be a non-negative safe integer/
   );
 });
 

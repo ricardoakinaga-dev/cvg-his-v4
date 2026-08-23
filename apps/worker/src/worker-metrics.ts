@@ -1,4 +1,4 @@
-import { Registry, Counter, Histogram, collectDefaultMetrics } from 'prom-client';
+import { Registry, Counter, Gauge, Histogram, collectDefaultMetrics } from 'prom-client';
 import type {
   FeatureFlagMetricsCollector,
   FeatureFlagEvaluationMetrics,
@@ -110,6 +110,26 @@ export const pixProviderSettlementReconciliationRequiredTotal = new Counter({
   labelNames: ['failure_class'] as const,
   registers: [registry]
 });
+
+/**
+ * Current durable reconciliation-required backlog observed by the worker.
+ * This is deliberately an unlabeled gauge: tenant identifiers and delivery
+ * identifiers must not become Prometheus label values.
+ */
+export const pixProviderSettlementReconciliationRequired = new Gauge({
+  name: 'worker_pix_provider_settlement_reconciliation_required',
+  help: 'Current PIX provider settlement deliveries in reconciliation-required state',
+  registers: [registry]
+});
+
+export function setPixProviderSettlementReconciliationRequired(count: number): void {
+  if (!Number.isSafeInteger(count) || count < 0) {
+    throw new Error(
+      'PIX settlement reconciliation-required backlog must be a non-negative safe integer'
+    );
+  }
+  pixProviderSettlementReconciliationRequired.set(count);
+}
 
 export function recordPixProviderSettlementMetric(metric: PixProviderSettlementMetric): void {
   const failureClass: PixProviderSettlementMetricFailureClass = metric.failureClass ?? 'none';

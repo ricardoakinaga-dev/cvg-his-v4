@@ -302,6 +302,7 @@ async function main() {
     pixProviderWebhookSyntheticEnabled: config.pixSyntheticWebhookEnabled,
     pixProviderWebhookKeyring,
     pixProviderEventIngressRepository,
+    pixProviderSettlementDlqRepository: bootstrapResult.pixProviderSettlementDlqRepository,
     nfseProvider: parseNfseProvider(config.nfseProvider),
     nfseApiUrl: config.nfseApiUrl,
     nfseApiKey: config.nfseApiKey,

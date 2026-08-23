@@ -143,6 +143,105 @@ tags:
     description: Utility endpoints for master search and address lookup
 
 paths:
+  /internal/pix-settlement/deliveries:
+    get:
+      operationId: listPixSettlementDlqDeliveries
+      summary: List terminal PIX settlement deliveries requiring reconciliation
+      description: |
+        Returns a bounded, tenant-scoped and sanitized view of the PIX
+        settlement delivery DLQ. Raw provider bodies, fingerprints and
+        provider transaction details never cross this operator boundary.
+      tags: [Audit]
+      parameters:
+        - in: query
+          name: state
+          required: false
+          schema:
+            type: string
+            enum: [reconciliation_required]
+            default: reconciliation_required
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        '200':
+          description: Tenant-scoped terminal delivery summaries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PixSettlementDlqListResponse'
+        '400':
+          description: Invalid filter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+        '403':
+          description: Audit read permission required
+        '503':
+          description: Durable settlement operations are unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /internal/pix-settlement/deliveries/{deliveryId}/redrive:
+    post:
+      operationId: redrivePixSettlementDlqDelivery
+      summary: Redrive one terminal PIX settlement delivery
+      description: |
+        Atomically resets one reconciliation-required delivery to pending and
+        appends an audit event. The handler does not mutate receipts,
+        receivables, ledger entries or other financial artifacts.
+      tags: [Audit]
+      parameters:
+        - in: path
+          name: deliveryId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PixSettlementDlqRedriveRequest'
+      responses:
+        '202':
+          description: Delivery queued for worker redrive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PixSettlementDlqRedriveResponse'
+        '400':
+          description: Invalid delivery or reason
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+        '403':
+          description: Audit write permission required
+        '404':
+          description: Delivery is absent, cross-tenant or not terminal
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Durable settlement operations are unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /health:
     get:
       operationId: getHealth
@@ -10553,6 +10652,87 @@ components:
       description: Canonical feature flag key.
 
   schemas:
+    PixSettlementDlqDelivery:
+      type: object
+      required:
+        - id
+        - eventId
+        - state
+        - attempts
+        - maxAttempts
+        - nextAttemptAt
+        - lastErrorCode
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        eventId:
+          type: string
+          format: uuid
+        state:
+          type: string
+          enum: [reconciliation_required]
+        attempts:
+          type: integer
+          minimum: 0
+        maxAttempts:
+          type: integer
+          minimum: 1
+        nextAttemptAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastErrorCode:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PixSettlementDlqListResponse:
+      type: object
+      required: [items, count]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PixSettlementDlqDelivery'
+        count:
+          type: integer
+          minimum: 0
+
+    PixSettlementDlqRedriveRequest:
+      type: object
+      additionalProperties: false
+      required: [eventId, reason]
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+
+    PixSettlementDlqRedriveResponse:
+      type: object
+      required: [id, eventId, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        eventId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [redrive_scheduled]
+
     ErrorResponse:
       type: object
       required: [code, message, correlationId]
@@ -10571,7 +10751,6 @@ components:
           description: Additional error context
         correlationId:
           type: string
-          format: uuid
           description: Request correlation ID for tracing
 
     PixProviderWebhookPayload:

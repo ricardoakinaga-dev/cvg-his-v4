@@ -68,9 +68,9 @@ telemetria. Os artefatos detalhados estão referenciados em
 
 ## O que ainda está aberto — ordem de retomada
 
-1. Criar superfície de operador para a fila
-   `reconciliation_required` (consulta sanitizada, redrive auditado e escopo
-   tenant), contrato OpenAPI, runbook, alertas Prometheus e dashboard.
+1. Exercitar a superfície de operador da fila
+   `reconciliation_required` em target-like/produção autorizada, incluindo
+   refresh do gauge, rotação de credenciais e resposta a incidentes.
 2. Definir e medir a política de rate limit em múltiplas réplicas (janela,
    relógio, failover, Redis/PostgreSQL e comportamento quando a dependência
    está indisponível).
@@ -124,3 +124,34 @@ produção, provedor homologado, paridade, acessibilidade ou release com base
 somente nestes slices. Antes de qualquer novo gate, revisar `git diff`, o
 estado canônico, a validade dos artefatos e a presença exclusiva do cache
 user-owned no worktree.
+
+## Incremento executado nesta sessão — PIX settlement DLQ
+
+O maior gap local foi convertido em uma fatia vertical implementável. O
+artefato detalhado está em
+[`CVG-002B2B-pix-settlement-dlq-2026-08-23.md`](../.agent/artifacts/CVG-002B2B-pix-settlement-dlq-2026-08-23.md).
+
+- API: `GET /internal/pix-settlement/deliveries` sanitizado e tenant-scoped;
+  `POST /internal/pix-settlement/deliveries/:deliveryId/redrive` com authz,
+  validação e 404 opaco.
+- PostgreSQL: migration `0114` com capability não-login e função
+  `SECURITY DEFINER` que faz a transição terminal→pending e a auditoria na
+  mesma transação, sem `UPDATE` direto para a API.
+- ACL: reconciler, bootstrap shell e Helm preservam a separação API/worker;
+  função só é executável pela API e a capability interna não possui login.
+- Operação: alerta Prometheus, painel Grafana e runbook foram adicionados. O
+  alerta/painel usam o gauge atual
+  `worker_pix_provider_settlement_reconciliation_required`, alimentado por
+  contagem PostgreSQL tenant-scoped a cada 15s; o contador monotônico fica
+  reservado para histórico de promoções.
+- Os erros diretos `404/503` também carregam `correlationId`, alinhados ao
+  envelope `ErrorResponse` do OpenAPI.
+- Evidência fresca: route 4/4; PostgreSQL/ACL 3/3, incluindo backlog durável
+  `1→0` após redrive; runtime grant 9/9; worker 54/54; API/DB/worker build,
+  OpenAPI 337/390, alert alignment 4/4, Helm, YAML/JSON e shell checks PASS.
+
+Esse incremento reduz o risco de uma entrega terminal ficar sem operador, mas
+não promove o gate: SIGKILL/restart real, rate-limit multi-réplica, principal
+mínima, provider real, SPA, paridade Vetus, WCAG, target ops e release seguem
+abertos. O cache user-owned `packages/design-system/tsconfig.vue.tsbuildinfo`
+continua fora do escopo.

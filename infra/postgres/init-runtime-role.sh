@@ -155,10 +155,15 @@ WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'cvg_installer')
 SELECT 'CREATE ROLE cvg_api_key_auth NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS'
 WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'cvg_api_key_auth')
 \gexec
+SELECT 'CREATE ROLE cvg_pix_dlq_operator NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS'
+WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'cvg_pix_dlq_operator')
+\gexec
 
 ALTER ROLE cvg_installer
   NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
 ALTER ROLE cvg_api_key_auth
+  NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;
+ALTER ROLE cvg_pix_dlq_operator
   NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;
 
 REVOKE cvg_installer FROM :"runtime_user";
@@ -167,6 +172,9 @@ GRANT cvg_installer TO :"api_user";
 REVOKE cvg_api_key_auth FROM :"runtime_user";
 REVOKE cvg_api_key_auth FROM :"api_user";
 REVOKE cvg_api_key_auth FROM :"worker_user";
+REVOKE cvg_pix_dlq_operator FROM :"runtime_user";
+REVOKE cvg_pix_dlq_operator FROM :"api_user";
+REVOKE cvg_pix_dlq_operator FROM :"worker_user";
 GRANT USAGE ON SCHEMA public TO cvg_api_key_auth;
 SELECT 'GRANT USAGE ON SCHEMA app TO cvg_api_key_auth'
 WHERE EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'app')
@@ -176,6 +184,25 @@ WHERE to_regclass('public.api_keys') IS NOT NULL
 \gexec
 SELECT 'GRANT SELECT (transaction_id, account_id) ON TABLE public.pix_transactions TO cvg_api_key_auth'
 WHERE to_regclass('public.pix_transactions') IS NOT NULL
+\gexec
+GRANT USAGE ON SCHEMA public TO cvg_pix_dlq_operator;
+SELECT 'GRANT USAGE ON SCHEMA app TO cvg_pix_dlq_operator'
+WHERE EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'app')
+\gexec
+SELECT 'GRANT SELECT, UPDATE ON TABLE public.pix_provider_event_deliveries TO cvg_pix_dlq_operator'
+WHERE to_regclass('public.pix_provider_event_deliveries') IS NOT NULL
+\gexec
+SELECT 'GRANT SELECT (id, account_id, is_active) ON TABLE public.users TO cvg_pix_dlq_operator'
+WHERE to_regclass('public.users') IS NOT NULL
+\gexec
+SELECT 'GRANT INSERT ON TABLE public.audit_events TO cvg_pix_dlq_operator'
+WHERE to_regclass('public.audit_events') IS NOT NULL
+\gexec
+SELECT 'GRANT EXECUTE ON FUNCTION app.current_account_id() TO cvg_pix_dlq_operator'
+WHERE to_regprocedure('app.current_account_id()') IS NOT NULL
+\gexec
+SELECT 'GRANT EXECUTE ON FUNCTION app.has_account_context() TO cvg_pix_dlq_operator'
+WHERE to_regprocedure('app.has_account_context()') IS NOT NULL
 \gexec
 
 -- Authentication state is API-owned. The settlement worker may only resolve
@@ -312,5 +339,19 @@ JOIN pg_namespace AS namespace ON namespace.oid = procedure.pronamespace
 WHERE namespace.nspname = 'app'
   AND ((procedure.proname = 'resolve_active_api_key' AND pg_catalog.oidvectortypes(procedure.proargtypes) = 'text, text')
     OR (procedure.proname = 'is_pix_transaction_owned_by' AND pg_catalog.oidvectortypes(procedure.proargtypes) = 'text, uuid'))
+\gexec
+SELECT format('REVOKE ALL ON FUNCTION %s FROM %I, %I', procedure.oid::regprocedure, :'api_user', :'worker_user')
+FROM pg_proc AS procedure
+JOIN pg_namespace AS namespace ON namespace.oid = procedure.pronamespace
+WHERE namespace.nspname = 'app'
+  AND procedure.proname = 'redrive_pix_provider_event_delivery'
+  AND pg_catalog.oidvectortypes(procedure.proargtypes) = 'uuid, uuid, uuid, text, text'
+\gexec
+SELECT format('GRANT EXECUTE ON FUNCTION %s TO %I', procedure.oid::regprocedure, :'api_user')
+FROM pg_proc AS procedure
+JOIN pg_namespace AS namespace ON namespace.oid = procedure.pronamespace
+WHERE namespace.nspname = 'app'
+  AND procedure.proname = 'redrive_pix_provider_event_delivery'
+  AND pg_catalog.oidvectortypes(procedure.proargtypes) = 'uuid, uuid, uuid, text, text'
 \gexec
 SQL

@@ -170,6 +170,8 @@ import type { PersistenceMode } from './app-state.js';
 import { DatabasePixTransactionRepository } from './pix-transaction-repository.js';
 import { DatabaseEncounterCashReceiptRepository } from './encounter-cash-receipt-repository.js';
 import { DatabaseEncounterPixPaymentAttemptRepository } from './encounter-pix-payment-attempt-repository.js';
+import { DatabasePixProviderSettlementDlqRepository } from './pix-provider-settlement-dlq-repository.js';
+import type { PixProviderSettlementDlqRepository } from './routes/pix-provider-settlement-routes.js';
 import { DatabasePrescriptionRepository } from './repositories/database-prescription.repository.js';
 
 export interface BootstrapOptions {
@@ -187,6 +189,8 @@ export interface BootstrapResult {
   repositories: RuntimeRepositories;
   fileStorage: FileStorage;
   unitOfWork?: TenantUnitOfWork;
+  /** Set only when the durable PIX settlement DLQ schema/function is ready. */
+  pixProviderSettlementDlqRepository?: PixProviderSettlementDlqRepository;
 }
 
 const logger = createLogger('bootstrap');
@@ -237,6 +241,14 @@ async function databaseTableExists(tableName: string): Promise<boolean> {
   const result = await getPool().query<{ exists: boolean }>(
     'SELECT to_regclass($1) IS NOT NULL AS exists',
     [`public.${tableName}`]
+  );
+  return result.rows[0]?.exists === true;
+}
+
+async function databaseFunctionExists(signature: string): Promise<boolean> {
+  const result = await getPool().query<{ exists: boolean }>(
+    'SELECT to_regprocedure($1) IS NOT NULL AS exists',
+    [signature]
   );
   return result.rows[0]?.exists === true;
 }
@@ -1120,6 +1132,12 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
       );
       const outboxTablesReady = await databaseTableExists('outbox_events');
       const pixTablesReady = await databaseTableExists('pix_transactions');
+      const pixProviderSettlementDlqReady =
+        (await databaseTableExists('pix_provider_events')) &&
+        (await databaseTableExists('pix_provider_event_deliveries')) &&
+        (await databaseFunctionExists(
+          'app.redrive_pix_provider_event_delivery(uuid,uuid,uuid,text,text)'
+        ));
       const encounterCashReceiptsReady = await databaseTableExists('encounter_cash_receipts');
       const encounterPixPaymentAttemptsReady = await databaseTableExists(
         'encounter_payment_attempts'
@@ -1229,6 +1247,9 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
           ? new DatabaseEncounterPixPaymentAttemptRepository()
           : undefined
       };
+      results.pixProviderSettlementDlqRepository = pixProviderSettlementDlqReady
+        ? new DatabasePixProviderSettlementDlqRepository()
+        : undefined;
       if (productionLike) {
         assertProductionDatabaseReadiness({
           repositories: results.repositories,

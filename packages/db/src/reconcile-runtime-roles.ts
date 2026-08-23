@@ -126,6 +126,34 @@ export async function reconcileRuntimeRoles(
       GRANT USAGE ON SCHEMA public TO cvg_api_key_auth;
       GRANT USAGE ON SCHEMA app TO cvg_api_key_auth;
     `);
+    await client.query(`
+      DO $pix_dlq_operator_role$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'cvg_pix_dlq_operator') THEN
+          CREATE ROLE cvg_pix_dlq_operator NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;
+        END IF;
+      END
+      $pix_dlq_operator_role$;
+      ALTER ROLE cvg_pix_dlq_operator NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;
+      GRANT USAGE ON SCHEMA public TO cvg_pix_dlq_operator;
+      GRANT USAGE ON SCHEMA app TO cvg_pix_dlq_operator;
+      GRANT EXECUTE ON FUNCTION app.current_account_id(), app.has_account_context()
+        TO cvg_pix_dlq_operator;
+    `);
+    await executeGeneratedStatements(
+      client,
+      `SELECT format('REVOKE cvg_pix_dlq_operator FROM %I', member.rolname) AS statement
+       FROM pg_auth_members membership
+       JOIN pg_roles member ON member.oid = membership.member
+       JOIN pg_roles capability ON capability.oid = membership.roleid
+       WHERE capability.rolname = 'cvg_pix_dlq_operator'
+       UNION ALL
+       SELECT format('REVOKE %I FROM cvg_pix_dlq_operator', inherited.rolname) AS statement
+       FROM pg_auth_members membership
+       JOIN pg_roles member ON member.oid = membership.member
+       JOIN pg_roles inherited ON inherited.oid = membership.roleid
+       WHERE member.rolname = 'cvg_pix_dlq_operator'`
+    );
     await executeGeneratedStatements(
       client,
       `SELECT format('REVOKE cvg_api_key_auth FROM %I', role_name) AS statement
@@ -293,7 +321,43 @@ export async function reconcileRuntimeRoles(
              AND pg_catalog.oidvectortypes(procedure.proargtypes) = 'text, text')
            OR (procedure.proname = 'is_pix_transaction_owned_by'
              AND pg_catalog.oidvectortypes(procedure.proargtypes) = 'text, uuid')
+           OR (procedure.proname = 'redrive_pix_provider_event_delivery'
+             AND pg_catalog.oidvectortypes(procedure.proargtypes) = 'uuid, uuid, uuid, text, text')
          )`,
+      [apiRole]
+    );
+    await grantExistingTable(
+      client,
+      'pix_provider_event_deliveries',
+      'SELECT, UPDATE',
+      'cvg_pix_dlq_operator'
+    );
+    await grantExistingTable(
+      client,
+      'users',
+      'SELECT (id, account_id, is_active)',
+      'cvg_pix_dlq_operator'
+    );
+    await grantExistingTable(client, 'audit_events', 'INSERT', 'cvg_pix_dlq_operator');
+    await executeGeneratedStatements(
+      client,
+      `SELECT format('REVOKE ALL ON FUNCTION %s FROM %I', procedure.oid::regprocedure, role_name) AS statement
+       FROM pg_proc procedure
+       JOIN pg_namespace namespace ON namespace.oid = procedure.pronamespace
+       CROSS JOIN unnest($1::text[]) AS role_name
+       WHERE namespace.nspname = 'app'
+         AND procedure.proname = 'redrive_pix_provider_event_delivery'
+         AND pg_catalog.oidvectortypes(procedure.proargtypes) = 'uuid, uuid, uuid, text, text'`,
+      [[apiRole, workerRole]]
+    );
+    await executeGeneratedStatements(
+      client,
+      `SELECT format('GRANT EXECUTE ON FUNCTION %s TO %I', procedure.oid::regprocedure, $1::text) AS statement
+       FROM pg_proc procedure
+       JOIN pg_namespace namespace ON namespace.oid = procedure.pronamespace
+       WHERE namespace.nspname = 'app'
+         AND procedure.proname = 'redrive_pix_provider_event_delivery'
+         AND pg_catalog.oidvectortypes(procedure.proargtypes) = 'uuid, uuid, uuid, text, text'`,
       [apiRole]
     );
     await executeGeneratedStatements(

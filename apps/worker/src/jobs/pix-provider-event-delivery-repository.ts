@@ -76,6 +76,11 @@ export interface PixProviderEventDeliveryRepository {
     claim: PixProviderEventDeliveryClaim,
     failure: PixProviderEventDeliveryFailure
   ): Promise<PixProviderEventDeliveryFailureStatus | null>;
+  /**
+   * Returns the current tenant-scoped durable DLQ backlog. Optional so
+   * in-memory/unit-test repositories remain compatible with the consumer.
+   */
+  countReconciliationRequired?(accountId: string): Promise<number>;
   redrive(input: RedrivePixProviderEventDeliveryInput): Promise<boolean>;
 }
 
@@ -265,6 +270,23 @@ function settlementInput(
 
 export class DatabasePixProviderEventDeliveryRepository implements PixProviderEventDeliveryRepository {
   public constructor(private readonly pool: Pool) {}
+
+  public async countReconciliationRequired(accountId: string): Promise<number> {
+    assertUuid(accountId, 'PIX settlement account id');
+    return runInTenantTransaction(this.pool, accountId, async (client) => {
+      const result = await client.query<{ readonly count: string }>(
+        `SELECT COUNT(*)::text AS count
+           FROM pix_provider_event_deliveries
+          WHERE account_id = $1 AND state = 'reconciliation_required'`,
+        [accountId]
+      );
+      const count = Number(result.rows[0]?.count ?? '0');
+      if (!Number.isSafeInteger(count) || count < 0) {
+        throw new Error('PIX settlement reconciliation-required backlog is invalid');
+      }
+      return count;
+    });
+  }
 
   public async claimNext(
     input: ClaimPixProviderEventDeliveryInput

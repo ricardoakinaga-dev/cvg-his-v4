@@ -18,7 +18,8 @@ Transform the current broad, partially implemented veterinary ERP into a behavio
 - [x] (2026-08-22T23:15:00-03:00) Executed and independently reviewed a bounded `CVG-002B2B` continuation: shared tenant UoW, explicit transient retry, audited redrive, actual read-only worker-role query and attempt-linked legacy `410`; implementation `46b84cb` and the continuation artifact/docs are recorded, while the B2b gate remains `IN_PROGRESS/PARTIAL`.
 - [x] (2026-08-22T23:55:00-03:00) Executed the next bounded recovery/observability/compatibility loop: worker exhaustion promotions emit safe aggregate telemetry, two PostgreSQL pools prove lease-fenced takeover and one B1 application, HTTP→PostgreSQL proves the legacy `410`/foreign `404`/direct `200` matrix, service-principal backfill/RLS negatives are non-vacuous, and focused regressions are green. Implementation `fdb0995` and documentation `75bfa72` are pushed; the detailed checkpoint is `.agent/artifacts/CVG-002B2B-recovery-dlq-legacy-http-2026-08-22.md`; the B2b gate remains `IN_PROGRESS/PARTIAL` because the default database API-key pre-context path still needs a least-privilege RLS design.
 - [x] (2026-08-23T00:20:00-03:00) Implemented and bounded the PostgreSQL API-key capability in `62db87e`: migration `0113`, strict JSONB mapper, tenantized usage/rate-limit tables, worker/API ACL separation, no-leak PIX ownership probe, mandatory helper rate limit and atomic consumption; real HTTP→PostgreSQL evidence is 4/4 including 2 accepted/6 `429` under concurrency. The B2b gate remains `IN_PROGRESS/PARTIAL`.
-- [ ] Prove a real process crash/SIGKILL matrix, add operator DLQ/runbook/alerts and multi-replica rate-limit policy, then re-run the bounded B1/B2a/ingress/HTTP regressions; gate `B2c` separately for coherent SPA/restart E2E.
+- [x] (2026-08-23T01:47:00-03:00) Implemented and independently re-reviewed the operator-facing PIX settlement DLQ slice: tenant-scoped sanitized list, audited atomic redrive through migration `0114`, API/worker ACL reconciliation, OpenAPI error envelopes with correlation IDs, DB-backed current-backlog gauge, Prometheus/Grafana/runbook and focused regressions. The B2b gate remains `IN_PROGRESS/PARTIAL`.
+- [ ] Prove a real process crash/SIGKILL matrix, define and measure the multi-replica rate-limit policy, narrow the authenticated pre-context principal projection, then re-run the bounded B1/B2a/ingress/HTTP regressions; gate `B2c` separately for coherent SPA/restart E2E.
 - [ ] Complete `CVG-001` through TDD, integrated runtime proof and independent critique.
 - [ ] Execute the remaining backlog in dependency order, preserving fresh evidence and explicit human/external boundaries.
 
@@ -156,10 +157,10 @@ From `/home/ricardo/cvg-his-v4`:
 2. Keep `.gauntlet/state.md` v1 and `.agent/tasks/CVG-001.md` as the secure
    installation contract, but do not let their historical first-step wording
    override the active `CVG-002B2B` continuation pointer.
-3. Close the current bounded B2b operational gap with RED tests first:
-   operator-facing PIX settlement DLQ query/redrive, runbook, alerts and
-   dashboard, without mutating financial artifacts outside the existing
-   repository contract.
+3. Completed on 2026-08-23: close the bounded B2b operational gap with RED
+   tests first: operator-facing PIX settlement DLQ query/redrive, runbook,
+   current-backlog gauge, alerts and dashboard, without mutating financial
+   artifacts outside the existing repository contract.
 4. Define and test the multi-replica rate-limit policy and narrow the
    authenticated pre-context principal projection; then execute the real
    SIGKILL/restart matrix and rerun B1/B2a/ingress/HTTP regressions.
@@ -211,3 +212,9 @@ API-key boundary checkpoint. The concrete steps were reconciled so a resumed
 agent starts from the operational DLQ/rate-limit/principal gaps instead of
 repeating the already completed corpus audit. This revision does not change the
 Quality Bar or promote any gate.
+
+Plan revision note, 2026-08-23 (DLQ slice): The operator-facing settlement DLQ
+surface is now implemented and independently re-reviewed. The current backlog
+signal is DB-backed and aggregate-only; the remaining local work is the
+multi-replica rate-limit policy, minimum principal projection and real
+SIGKILL/restart evidence. No quality-bar or ERP gate was promoted.

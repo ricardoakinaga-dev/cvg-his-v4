@@ -103,9 +103,12 @@
         ".agent/verification.jsonl#VFY-CVG-002B2B-UOW-002",
         ".agent/verification.jsonl#VFY-CVG-002B2B-APIKEY-BOUNDARY-001",
         ".agent/verification.jsonl#VFY-CVG-002B2B-HTTP-POSTGRES-003",
-        "docs/2026-08-23-checkpoint-continuacao.md"
+        "docs/2026-08-23-checkpoint-continuacao.md",
+        ".agent/artifacts/CVG-002B2B-pix-settlement-dlq-2026-08-23.md",
+        "docs/runbooks/pix-settlement-dlq.md",
+        "tests/integration/database/pix-provider-settlement-dlq-operator.test.ts"
       ],
-      "next_action": "Add the operator-facing DLQ endpoint/runbook/alerts, define the multi-replica rate-limit policy and minimal authenticated-principal projection, then rerun B1/B2a/ingress/HTTP regressions and reassess VERIFIED while preserving 18/18 B1, 35/35 verifier/keyring, 77/77 focused, 11/11 ingress, 13/13 HTTP, 4/4 HTTP-to-PostgreSQL, 8/8 ACL, 5/5 service-principal and 54/54 worker evidence."
+      "next_action": "Define and test the multi-replica rate-limit policy and minimal authenticated-principal projection, prove the real SIGKILL/restart matrix, then rerun B1/B2a/ingress/HTTP regressions and reassess VERIFIED while preserving 18/18 B1, 35/35 verifier/keyring, 77/77 focused, 11/11 ingress, 13/13 HTTP, 4/4 HTTP-to-PostgreSQL, 8/8 ACL, 5/5 service-principal, 54/54 worker and 3/3 DLQ operator evidence."
     },
     {
       "id": "CVG-003",

@@ -82,3 +82,24 @@ re-audited at 1,447 files and the active control plane now points to the same
 `CVG-002B2B` operational next slice. This is documentation reconciliation only:
 the Quality Bar remains frozen, `CVG-002B2B` remains `IN_PROGRESS/PARTIAL`, and
 no production, provider, SPA, parity or release criterion is promoted.
+
+## Incremento 2026-08-23 — PIX settlement DLQ
+
+Implemented a bounded operator-facing slice for the terminal PIX settlement
+queue. `GET /internal/pix-settlement/deliveries` is sanitized and tenant-scoped;
+`POST .../:deliveryId/redrive` is permissioned, validated and opaque on
+cross-tenant/non-terminal misses. Migration `0114` adds a non-login capability
+and an atomic `SECURITY DEFINER` function that resets only the delivery and
+appends the audit event in the same transaction. API/worker ACL surfaces,
+OpenAPI, Prometheus alert, Grafana panel and runbook are aligned.
+
+Fresh evidence: route 4/4; disposable PostgreSQL DLQ/ACL 3/3 (durable backlog
+1→0 after redrive); runtime role contract 9/9; worker 54/54; alert alignment
+4/4; API/DB/worker builds, OpenAPI 337/390, Helm static checks, YAML/JSON
+parsers and shell syntax PASS. The alert/panel use the current DB-backed gauge
+`worker_pix_provider_settlement_reconciliation_required`; direct 404/503
+envelopes include the request correlation ID required by OpenAPI. This reduces
+the operational black hole but does not promote any Quality Bar dimension.
+`CVG-002B2B` remains `IN_PROGRESS/PARTIAL`; next gaps are multi-replica
+rate-limit policy, minimum principal projection and real SIGKILL/restart,
+followed by B2c/SPA, provider, Vetus parity, WCAG and release evidence.

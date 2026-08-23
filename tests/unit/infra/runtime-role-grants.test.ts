@@ -25,6 +25,10 @@ const ingressMigration = readFileSync(
   resolve(root, 'packages/db/migrations/0111_pix_provider_event_ingress.sql'),
   'utf8'
 );
+const settlementDlqMigration = readFileSync(
+  resolve(root, 'packages/db/migrations/0114_pix_settlement_dlq_operator.sql'),
+  'utf8'
+);
 
 describe('runtime PostgreSQL role grants', () => {
   it('preserves the exact API mutations used by global repositories', () => {
@@ -216,5 +220,23 @@ describe('runtime PostgreSQL role grants', () => {
       'node packages/db/dist/migrate.js && node packages/db/dist/reconcile-runtime-roles.js'
     );
     expect(composeStack).toContain('condition: service_completed_successfully');
+  });
+
+  it('keeps PIX settlement redrive behind a non-login capability function', () => {
+    expect(settlementDlqMigration).toContain('CREATE ROLE cvg_pix_dlq_operator');
+    expect(settlementDlqMigration).toContain('SECURITY DEFINER');
+    expect(settlementDlqMigration).toContain('SET search_path = pg_catalog, public, app');
+    expect(settlementDlqMigration).toContain("state = 'reconciliation_required'");
+    expect(settlementDlqMigration).toContain("'pix_settlement_redrive'");
+    expect(settlementDlqMigration).toContain('GRANT SELECT ON TABLE public.pix_provider_event_deliveries TO cvg_pix_dlq_operator');
+    expect(settlementDlqMigration).toContain('GRANT UPDATE ON TABLE public.pix_provider_event_deliveries TO cvg_pix_dlq_operator');
+    expect(settlementDlqMigration).toContain('REVOKE ALL ON FUNCTION app.redrive_pix_provider_event_delivery');
+    expect(runtimeReconciler).toContain('redrive_pix_provider_event_delivery');
+    expect(runtimeReconciler).toContain("'SELECT, UPDATE'");
+    for (const script of roleScripts) {
+      expect(script.content).toContain('cvg_pix_dlq_operator');
+      expect(script.content).toContain('redrive_pix_provider_event_delivery');
+      expect(script.content).toContain('GRANT SELECT, UPDATE ON TABLE public.pix_provider_event_deliveries TO cvg_pix_dlq_operator');
+    }
   });
 });

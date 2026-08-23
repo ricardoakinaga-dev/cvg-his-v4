@@ -10,7 +10,11 @@ import { startWorkerObservability, withWorkerSpan } from './observability.js';
 import { createWorkerNotifications, createWorkerEventBus, createWorkerReports } from './runner.js';
 import { runWorkerTick, runEventBusTick, runScheduledReportsTick } from './runner.js';
 import { createWorkerFeatureFlags } from './feature-flags.js';
-import { createWorkerFeatureFlagMetricsCollector, getWorkerMetricsText } from './worker-metrics.js';
+import {
+  createWorkerFeatureFlagMetricsCollector,
+  getWorkerMetricsText,
+  setPixProviderSettlementReconciliationRequired
+} from './worker-metrics.js';
 import {
   createWorkerHealthResponse,
   createWorkerLivenessResponse,
@@ -25,6 +29,7 @@ const logger = createLogger(config.appName);
 let workerObservabilityShutdown: (() => Promise<void>) | null = null;
 const configuredWorkerAccountId = process.env.WORKER_ACCOUNT_ID?.trim();
 const ACCOUNT_REFRESH_INTERVAL_MS = 60_000;
+const PIX_SETTLEMENT_DLQ_REFRESH_INTERVAL_MS = 15_000;
 
 const workerState = {
   startedAt: new Date().toISOString(),
@@ -117,6 +122,7 @@ async function main() {
   const loadAccountIds = bootstrap.loadAccountIds ?? (async () => bootstrap.accountIds ?? []);
   let workerAccountIds: readonly string[] = [];
   let lastAccountRefreshAt = 0;
+  let lastPixSettlementDlqRefreshAt = 0;
 
   const refreshAccounts = async (tolerateLoadFailure: boolean): Promise<void> => {
     const refresh = await refreshWorkerAccounts({
@@ -145,6 +151,29 @@ async function main() {
   };
 
   await refreshAccounts(false);
+
+  const refreshPixSettlementDlqBacklog = async (): Promise<void> => {
+    const pixProviderSettlement = bootstrap.pixProviderSettlement;
+    if (!pixProviderSettlement) return;
+    try {
+      const counts = await Promise.all(
+        workerAccountIds.map((accountId) =>
+          pixProviderSettlement.countReconciliationRequired(accountId)
+        )
+      );
+      setPixProviderSettlementReconciliationRequired(
+        counts.reduce((total, count) => total + count, 0)
+      );
+      lastPixSettlementDlqRefreshAt = Date.now();
+    } catch (error) {
+      logger.warn('worker PIX settlement DLQ backlog refresh failed', {
+        error: error instanceof Error ? error.message : String(error),
+        accountCount: workerAccountIds.length
+      });
+    }
+  };
+
+  await refreshPixSettlementDlqBacklog();
 
   const healthServer = createServer(async (req, res) => {
     res.setHeader('content-type', 'application/json');
@@ -266,6 +295,12 @@ async function main() {
     try {
       if (Date.now() - lastAccountRefreshAt >= ACCOUNT_REFRESH_INTERVAL_MS) {
         await refreshAccounts(true);
+      }
+      if (
+        bootstrap.pixProviderSettlement &&
+        Date.now() - lastPixSettlementDlqRefreshAt >= PIX_SETTLEMENT_DLQ_REFRESH_INTERVAL_MS
+      ) {
+        await refreshPixSettlementDlqBacklog();
       }
 
       const tickContext = {

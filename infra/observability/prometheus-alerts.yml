@@ -109,3 +109,14 @@ groups:
         annotations:
           summary: 'API CVG-HIS-V2 rodando em modo in-memory'
           description: 'API está em fallback in-memory há mais de 5 minutos. Dados serão perdidos em restart.'
+
+      - alert: CVG_HIS_PIX_Settlement_ReconciliationRequired
+        expr: sum(worker_pix_provider_settlement_reconciliation_required) > 0
+        for: 5m
+        labels:
+          severity: critical
+          component: pix-settlement
+        annotations:
+          summary: 'PIX settlement exige reconciliação manual'
+          description: 'Há pelo menos uma entrega PIX terminal na DLQ durável. Inspecione a fila tenant-scoped e redrive somente após validar a causa.'
+          runbook: 'docs/runbooks/pix-settlement-dlq.md'

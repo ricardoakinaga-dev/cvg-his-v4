@@ -141,6 +141,10 @@ import { handleAccessControlRoutes } from './routes/access-control-routes.js';
 import { handleInpatientRoutes } from './routes/inpatient-routes.js';
 import { handleApiKeysRoutes } from './routes/api-keys-routes.js';
 import { handleInternalEventsRoutes } from './routes/internal-events-routes.js';
+import {
+  handlePixProviderSettlementRoutes,
+  type PixProviderSettlementDlqRepository
+} from './routes/pix-provider-settlement-routes.js';
 import { handleCounterSalesRoutes } from './routes/counter-sales-routes.js';
 import { handleOwnersRoutes } from './routes/owners-routes.js';
 import { handlePatientsRoutes } from './routes/patients-routes.js';
@@ -333,6 +337,8 @@ export interface ApiServerOptions {
   readonly pixProviderWebhookSyntheticEnabled?: boolean;
   /** Durable receipt+delivery repository for the synthetic PIX callback. */
   readonly pixProviderEventIngressRepository?: PixProviderEventIngressRepository;
+  /** Tenant-scoped operator surface for terminal PIX settlement deliveries. */
+  readonly pixProviderSettlementDlqRepository?: PixProviderSettlementDlqRepository;
   /** Injectable rate limiter for the public synthetic PIX callback. */
   readonly pixProviderWebhookRateLimiter?: PixProviderWebhookRateLimiter;
   /** Secrets manager for reading credentials at startup. Uses EnvSecretsProvider when omitted. */
@@ -7216,6 +7222,16 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           if (
             handleInternalEventsRoutes(pathname, request, response, correlationId, {
               eventBus,
+              requirePrincipal
+            })
+          ) {
+            return;
+          }
+
+          // --- PIX settlement DLQ (delegated) ---
+          if (
+            await handlePixProviderSettlementRoutes(pathname, request, response, correlationId, {
+              repository: options.pixProviderSettlementDlqRepository,
               requirePrincipal
             })
           ) {

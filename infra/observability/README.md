@@ -77,6 +77,7 @@ Ref: `apps/api/src/slos.ts`
 | Saude do banco | `/ready`, Prometheus gauge | `CVG_HIS_DB_Unhealthy` | readiness + alert |
 | Runtime em memoria indevido | `/health`, Prometheus gauge | `CVG_HIS_API_InMemoryMode` | health + alert |
 | Liveness da aplicacao | `/health`, `/live` | `CVG_HIS_API_Liveness_Failing` | probe + alert |
+| PIX settlement DLQ | `/internal/pix-settlement/deliveries`, worker metric | `CVG_HIS_PIX_Settlement_ReconciliationRequired` | painel DLQ + [runbook](../../docs/runbooks/pix-settlement-dlq.md) |
 
 ---
 
@@ -193,6 +194,7 @@ Arquivo: `infra/observability/prometheus-alerts.yml`
 | `CVG_HIS_API_HighLatency` | Warning | P95 > 1s |
 | `CVG_HIS_API_InMemoryMode` | Warning | In-memory > 5min |
 | `CVG_HIS_API_HighClientErrorRate` | Warning | >10% erros 4xx |
+| `CVG_HIS_PIX_Settlement_ReconciliationRequired` | Critical | Backlog PIX terminal atual maior que zero |
 
 ---
 
@@ -209,6 +211,16 @@ Arquivo: `infra/observability/prometheus-alerts.yml`
 ---
 
 ## 9. Operações
+
+### 9.0 PIX settlement DLQ
+
+O painel **PIX Settlement DLQ (current)** acompanha o backlog durável atual,
+refrescado pelo worker sem labels de tenant. O contador
+`worker_pix_provider_settlement_reconciliation_required_total` continua
+disponível para investigar novas promoções, mas não é a fonte do alerta. A
+lista e o redrive são tenant-scoped e documentados no
+[runbook de PIX settlement](../../docs/runbooks/pix-settlement-dlq.md). Não há
+fallback em memória nem `UPDATE` direto da API na tabela de deliveries.
 
 ### 9.1 Verificar se API está expondo métricas
 
