@@ -298,3 +298,14 @@ handoff/stay, consumo com charge capture, diária, alta, close e receipt, com
 replay, conflito de payload, corrida, failpoints, restart e consultas de
 clínica/estoque/billing/caixa/journal/audit/outbox/idempotência. O cache
 `packages/design-system/tsconfig.vue.tsbuildinfo` permanece fora do stage.
+
+O handoff documental curto foi publicado em
+`d355513e82fc0a51b7e4e39e2a93ed3d9daf154d`; o branch remoto foi revalidado
+após o push e ficou alinhado ao `HEAD` local.
+
+Uma revisão de segurança posterior encontrou risco `HIGH/P0` de fallback
+fail-open em `staging`/`stage` quando DB/schema estão ausentes, além de
+assimetria no worker. Antes do RED vertical de inventory→receipt, a próxima
+sessão deve provar startup fail-closed, bloqueio de rotas mutáveis e health /
+readiness; WebAuthn process-local e auditoria com `account_id` nulo também
+ficam registrados como riscos abertos.

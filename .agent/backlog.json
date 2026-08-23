@@ -18,7 +18,7 @@
         ".gauntlet/state.md",
         "docs/2026-08-23-checkpoint-continuacao.md"
       ],
-      "next_action": "Remain pending while CVG-002B2B closes its current operational proof; then write and run the first RED tests for explicit-secret and durable installation-sentinel behavior."
+      "next_action": "Before the clinical vertical, write and run RED tests proving production/staging/stage startup fails closed when DB/schema/role are unavailable or incomplete, mutating routes are blocked, health/readiness semantics are honest, and worker/API agree; then continue explicit-secret and durable installation-sentinel behavior."
     },
     {
       "id": "CVG-002",

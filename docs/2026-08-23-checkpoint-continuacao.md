@@ -1066,3 +1066,19 @@ recebimento → caixa/ledger/audit/outbox`, com role sem `BYPASSRLS`, failpoints
 restart, replay/conflito, dois tenants e reconciliação. A próxima sessão deve
 começar por esse RED vertical; SPA, providers, Redis, paridade, WCAG,
 operações, cobertura, deploy/restore e release continuam gates separados.
+
+Este handoff foi publicado em `d355513e82fc0a51b7e4e39e2a93ed3d9daf154d`;
+`git fetch` confirmou igualdade entre o commit local e
+`origin/agent/sync-v4-full-program`. O cache
+`packages/design-system/tsconfig.vue.tsbuildinfo` continuou fora do stage.
+
+Após a publicação, a auditoria de segurança identificou um bloqueio
+`HIGH/P0`: `staging`/`stage` ainda pode iniciar em modo in-memory/misto quando
+DB ou schema estão indisponíveis, permitindo rotas mutáveis sem a garantia de
+RLS/UoW. O worker possui assimetria semelhante. Esse RED fail-closed deve vir
+antes da jornada clínica; WebAuthn process-local e `audit_events` com possível
+`account_id` nulo permanecem riscos separados.
+
+A segunda revisão independente confirmou o caminho concreto de `listen` da API
+e do loop do worker mesmo com readiness degradado; o problema é de bootstrap e
+não pode ser considerado resolvido por probe de health.

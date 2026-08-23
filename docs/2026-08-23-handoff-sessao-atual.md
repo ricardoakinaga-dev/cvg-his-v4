@@ -66,12 +66,31 @@ O teste de inventário e o teste close→receipt continuam provas separadas. A r
 
 Os relatórios completos e a matriz de mercado permanecem em [`2026-08-22-auditoria-integral-e-pesquisa-erp.md`](2026-08-22-auditoria-integral-e-pesquisa-erp.md) e [`.agent/artifacts/market-benchmark.md`](../.agent/artifacts/market-benchmark.md). Claims de fornecedores não são evidência do CVG-HIS.
 
+### Bloqueio de segurança encontrado na auditoria final
+
+Uma revisão de segurança read-only, confirmada por uma segunda revisão
+independente, encontrou um risco `HIGH/P0` que deve preceder a próxima fatia
+clínica: com `NODE_ENV=staging`/`stage`, banco indisponível ou schema
+incompleto pode haver fallback para repositórios em memória (ou modo misto)
+enquanto o servidor continua aceitando rotas mutáveis. O worker possui
+assimetria semelhante e pode entrar no loop sem UoW durável. Isso remove as
+garantias de durabilidade, RLS, idempotência, auditoria e consistência entre
+réplicas; `/ready` em 503 não desfaz o fato de o processo já estar escutando.
+
+Também ficaram registrados como riscos separados WebAuthn process-local e a
+política de auditoria com possíveis `account_id` nulos. A retomada deve
+primeiro escrever REDs de startup fail-closed para `production`, `staging` e
+`stage`, schema/role ausentes e health/readiness; só depois retomar o RED
+vertical clínico-financeiro. Nenhuma credencial, provedor ou ambiente de
+produção foi acessado nesta auditoria.
+
 ## Próxima ação obrigatória
 
-1. Criar primeiro um RED novo para a jornada vertical completa, preferencialmente em `tests/integration/database/inpatient-inventory-close-receipt-vertical-http-postgres.test.ts`, sem semear billing/receipt final.
-2. Exercitar admission/handoff/stay, consumo com charge capture, diária, alta, close e cash receipt usando HTTP real, PostgreSQL descartável, dois tenants e uma role `NOBYPASSRLS`.
-3. Cobrir replay da mesma chave, payload divergente, corrida de chaves distintas, reinício e failpoints após cada escrita; consultar clínica, estoque, billing, caixa, journal, audit, outbox e idempotência.
-4. Só promover o slice se o RED/GREEN deixar ausência de órfãos, duplicatas e vazamentos demonstrada; depois executar a mesma jornada pela SPA real.
+1. Escrever REDs de startup fail-closed para `staging`/`stage` com DB indisponível, schema incompleto, role insegura e modo misto; bloquear rotas mutáveis e separar `/health` de `/ready` corretamente.
+2. Criar o RED novo da jornada vertical completa, preferencialmente em `tests/integration/database/inpatient-inventory-close-receipt-vertical-http-postgres.test.ts`, sem semear billing/receipt final.
+3. Exercitar admission/handoff/stay, consumo com charge capture, diária, alta, close e cash receipt usando HTTP real, PostgreSQL descartável, dois tenants e uma role `NOBYPASSRLS`.
+4. Cobrir replay da mesma chave, payload divergente, corrida de chaves distintas, reinício e failpoints após cada escrita; consultar clínica, estoque, billing, caixa, journal, audit, outbox e idempotência.
+5. Só promover os slices se o RED/GREEN deixar ausência de órfãos, duplicatas, fallback inseguro e vazamentos demonstrada; depois executar a mesma jornada pela SPA real.
 
 Não reabrir PIX/DLQ, diária, alta ou close bounded sem um defeito/regressão nova. Não usar fallback em memória como evidência de durabilidade e não marcar `CVG-002C6`, `CVG-002` ou o ERP como concluídos.
 
@@ -85,3 +104,12 @@ Não reabrir PIX/DLQ, diária, alta ou close bounded sem um defeito/regressão n
 - [`../.gauntlet/state.md`](../.gauntlet/state.md)
 
 Esta página é um handoff de continuidade, não uma declaração de prontidão operacional.
+
+## Publicação
+
+Este handoff e a reconciliação documental foram publicados em
+`d355513e82fc0a51b7e4e39e2a93ed3d9daf154d`
+(`docs: save current session handoff`) no branch
+`origin/agent/sync-v4-full-program`. O `fetch` posterior confirmou
+`HEAD == origin`; somente o cache user-owned do design-system permanece fora
+do commit.

@@ -298,6 +298,14 @@ recebimento/ledger/auditoria/outbox com PostgreSQL/RLS. Redis failover real,
 provider, SPA/B2c, paridade Vetus, WCAG, target operations, cobertura e release
 continuam gates separados.
 
+O handoff foi publicado em `d355513e82fc0a51b7e4e39e2a93ed3d9daf154d` e o
+ponteiro remoto foi confirmado após o push; esta publicação não promove
+nenhum gate global.
+
+O stop decision continua `ACTIVE`: a revisão de segurança adicionou um
+`HIGH/P0` fail-open de bootstrap em `staging`/`stage` e worker, portanto o
+próximo maior gap local é provar startup fail-closed antes do RED clínico.
+
 ## Fechamento do próximo gap — internação HTTP A/B e auditoria pós-rollback
 
 O commit `c647db1` fecha a lacuna local seguinte sem promover o Quality Bar.

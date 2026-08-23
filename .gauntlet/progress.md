@@ -363,3 +363,12 @@ close e receipt com PostgreSQL, dois tenants, role sem `BYPASSRLS`, replay,
 conflito, corrida, failpoints, restart e reconciliação de journal/audit/outbox.
 Nenhum gate de provider, Redis, SPA, paridade, WCAG, operações, cobertura,
 deploy/restore ou release foi promovido.
+
+Publicação documental confirmada em `d355513e82fc0a51b7e4e39e2a93ed3d9daf154d`;
+o cache user-owned do design-system permanece fora do commit.
+
+Auditoria de segurança posterior encontrou `HIGH/P0`: `staging`/`stage` pode
+iniciar com repositórios em memória/mistos quando DB/schema falham, e o worker
+tem assimetria. O próximo gate local passa a ser RED/GREEN de startup
+fail-closed e bloqueio de mutações; a jornada vertical clínica permanece logo
+depois, com todos os gates externos ainda separados.
