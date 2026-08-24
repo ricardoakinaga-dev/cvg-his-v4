@@ -204,6 +204,16 @@
                   {{ callingId === row.entry.id ? 'Chamando...' : 'Chamar' }}
                 </DsButton>
                 <DsButton
+                  v-if="row.entry.operationalStatus === 'waiting_handoff'"
+                  variant="success"
+                  size="sm"
+                  :loading="receivingTransferId === row.entry.id"
+                  :disabled="receivingTransferId === row.entry.id"
+                  @click="handleReceiveTransfer(row.entry)"
+                >
+                  {{ receivingTransferId === row.entry.id ? 'Recebendo...' : 'Receber setor' }}
+                </DsButton>
+                <DsButton
                   v-if="canHandleEncounter(row.entry)"
                   variant="success"
                   size="sm"
@@ -326,7 +336,9 @@ import {
   callQueueEntry,
   completeQueueEntry,
   noShowQueueEntry,
-  checkInQueue
+  checkInQueue,
+  listQueueTransfers,
+  receiveQueueTransfer
 } from '@/services/scheduling';
 import { encounterService } from '@/services/encounter';
 import type {
@@ -364,6 +376,7 @@ const callingId = ref<string | null>(null);
 const startingCareId = ref<string | null>(null);
 const completingId = ref<string | null>(null);
 const noShowId = ref<string | null>(null);
+const receivingTransferId = ref<string | null>(null);
 const entityCache = useEntityCache();
 
 const lastRefresh = ref<Date | null>(null);
@@ -666,6 +679,7 @@ function queueCounterSalePath(entry: QueueEntrySummary): string {
   if (entry.encounterId) params.set('encounterId', entry.encounterId);
   params.set('patientId', entry.patientId);
   params.set('ownerId', entry.ownerId);
+  params.set('queueEntryId', entry.id);
   return `/counter-sales?${params.toString()}`;
 }
 
@@ -912,6 +926,24 @@ async function handleCall(queueEntryId: string) {
     error.value = err instanceof Error ? err.message : 'Erro ao chamar paciente da fila';
   } finally {
     callingId.value = null;
+  }
+}
+
+async function handleReceiveTransfer(entry: QueueEntrySummary): Promise<void> {
+  receivingTransferId.value = entry.id;
+  error.value = '';
+  try {
+    const pending = (await listQueueTransfers(entry.id)).find((transfer) => transfer.status === 'sent');
+    if (!pending) {
+      throw new Error('Nenhum handoff pendente foi encontrado para este setor.');
+    }
+    await receiveQueueTransfer(entry.id, pending.id);
+    successMessage.value = `Transferência para ${entry.currentSector ?? 'o setor atual'} recebida.`;
+    await loadQueue();
+  } catch (cause) {
+    error.value = cause instanceof Error ? cause.message : 'Não foi possível receber a transferência.';
+  } finally {
+    receivingTransferId.value = null;
   }
 }
 

@@ -297,6 +297,38 @@ test('handlePatientsRoutes GET /patients/:id/summary returns owner snapshot and 
   ]);
 });
 
+test('handlePatientsRoutes GET /patients/:id/owner returns the account-scoped owner snapshot', async () => {
+  const response = new MockResponse();
+  const { owners, patients } = createRegistryServices();
+
+  const handled = await handlePatientsRoutes(
+    '/patients/patient_luna/owner',
+    new MockRequest({
+      method: 'GET',
+      url: '/patients/patient_luna/owner'
+    }) as never,
+    response as never,
+    'corr-patients-owner-snapshot',
+    {
+      patients,
+      owners,
+      audit: { write: () => {} } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 200);
+  const payload = response.bodyJson<{
+    ownerId: string;
+    owner: { id: string; fullName: string; contacts: Array<{ value: string }> };
+  }>();
+  assert.equal(payload.ownerId, 'owner_maria_silva');
+  assert.equal(payload.owner.id, 'owner_maria_silva');
+  assert.equal(payload.owner.fullName, 'Maria Silva');
+  assert.equal(payload.owner.contacts[0]?.value, '+55 11 99999-1111');
+});
+
 test('handlePatientsRoutes hides patients from another account', async () => {
   const owners = new OwnersService();
   const foreignOwner = owners.create('acc_other' as never, {

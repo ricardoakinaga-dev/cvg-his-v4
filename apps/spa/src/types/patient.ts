@@ -94,7 +94,7 @@ export interface OwnerPatientLinkSummary {
   accountId: string;
   ownerId: string;
   patientId: string;
-  relationshipType: 'primary' | 'secondary' | 'financial';
+  relationshipType: 'primary' | 'secondary' | 'financial' | 'authorized' | 'spouse';
   financialResponsible: boolean;
   createdAt: string;
 }

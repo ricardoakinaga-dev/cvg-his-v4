@@ -64,8 +64,65 @@ describe('FiscalService coverage guard', () => {
     expect(created.numero).toBeGreaterThan(0);
   });
 
+  it('fails closed by default and persists a safe provider failure', async () => {
+    const stored: Record<string, unknown>[] = [];
+    const repository = {
+      listNfseDocuments: async () => stored.map((document) => ({ ...document })),
+      findNfseDocument: async (_accountId: unknown, id: string) =>
+        (stored.find((document) => document.id === id) as never) ?? null,
+      createNfseDocument: async (_accountId: unknown, document: Record<string, unknown>) => {
+        stored.unshift({ ...document });
+        return { ...document };
+      },
+      updateNfseDocument: async (_accountId: unknown, document: Record<string, unknown>) => {
+        const index = stored.findIndex((current) => current.id === document.id);
+        if (index < 0) return null;
+        stored[index] = { ...document };
+        return { ...document };
+      }
+    } as unknown as DatabaseFiscalRepository;
+
+    const service = new FiscalService(repository, 'acc-fiscal-error' as never);
+    const created = await service.createNfseDocument({
+      provider: 'abrasf',
+      customer: { type: 'cpf', document: '12345678909', name: 'Cliente Fiscal' },
+      services: [{
+        description: 'Consulta',
+        codigoServico: '0407',
+        cnae: '7500-1/00',
+        quantity: 1,
+        unitValue: 100,
+        totalValue: 100,
+        issRate: 0.05,
+        issValue: 5,
+        pisValue: 0,
+        cofinsValue: 0,
+        csllValue: 0
+      }]
+    });
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 403,
+      text: async () => 'private-provider-secret',
+      headers: new Headers()
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    try {
+      const issued = await service.issueNfseDocument(created.id);
+      expect(issued?.status).toBe('error');
+      expect(issued?.observations).toContain('provider endpoint');
+      expect(issued?.observations).not.toContain('private-provider-secret');
+      expect((await service.getNfseDocument(created.id))?.status).toBe('error');
+      expect((stored[0]?.status as string | undefined)).toBe('error');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('rejects invalid draft payloads and invalid NFS-e transitions', async () => {
-    const service = new FiscalService();
+    const service = new FiscalService(undefined, undefined, { allowNfseSimulation: true });
 
     await expect(
       service.createNfseDocument({

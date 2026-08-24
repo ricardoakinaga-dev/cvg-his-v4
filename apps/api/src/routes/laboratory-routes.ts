@@ -1,7 +1,10 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import type { AuditService } from '@cvg-his-v2/module-audit';
-import type { LaboratoryService } from '@cvg-his-v2/module-diagnostics';
+import type {
+  LaboratoryService,
+  LaboratoryWorkflowTransitionRequest
+} from '@cvg-his-v2/module-diagnostics';
 import type {
   CreateDiagnosticOrderRequest,
   CreateLaboratoryEquipmentRequest,
@@ -17,6 +20,7 @@ import type {
   UpdateLaboratoryReferenceValueRequest,
   UpdateLaboratoryReportTypeRequest
 } from '@cvg-his-v2/shared-contracts';
+import { ForbiddenError, ValidationError } from '@cvg-his-v2/shared-errors';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 
@@ -377,6 +381,92 @@ function parseUpdateReferenceValuePayload(payload: Record<string, unknown>): Upd
   return update;
 }
 
+function parseCanonicalLaboratoryTransition(
+  payload: Record<string, unknown>,
+  principalUserId: string,
+  idempotencyKey: string
+): LaboratoryWorkflowTransitionRequest {
+  const status = payload.status;
+  if (Object.hasOwn(payload, 'signedByUserId') || Object.hasOwn(payload, 'signatureHash')) {
+    throw new ValidationError(
+      'Laboratory signer and signature fields are server-generated from the authenticated principal'
+    );
+  }
+  if (status === 'collected') {
+    return {
+      status,
+      collectedByUserId: principalUserId,
+      idempotencyKey
+    };
+  }
+  if (status === 'in_analysis') {
+    return {
+      status,
+      actorUserId: principalUserId,
+      idempotencyKey
+    };
+  }
+  if (status === 'reported') {
+    return {
+      status,
+      resultSummary: typeof payload.resultSummary === 'string' ? payload.resultSummary : undefined,
+      resultAttachmentId:
+        typeof payload.resultAttachmentId === 'string' ? payload.resultAttachmentId : undefined,
+      actorUserId: principalUserId,
+      idempotencyKey
+    };
+  }
+  if (status === 'delivered') {
+    return {
+      status,
+      deliveredByUserId: principalUserId,
+      deliveryChannel: requireNonEmptyString(
+        String(payload.deliveryChannel ?? payload.channel ?? ''),
+        'deliveryChannel'
+      ),
+      deliveredAt: typeof payload.deliveredAt === 'string' ? payload.deliveredAt : undefined,
+      idempotencyKey
+    };
+  }
+  if (status === 'cancelled') {
+    return {
+      status,
+      cancelledByUserId: principalUserId,
+      cancellationReason:
+        typeof payload.cancellationReason === 'string' ? payload.cancellationReason : undefined,
+      idempotencyKey
+    };
+  }
+  throw new Error(`Unsupported laboratory status '${String(status ?? '')}'`);
+}
+
+function requireEnabledLaboratorySigner(principal: AuthenticatedPrincipal): string {
+  const staff = principal.staff;
+  const hasEnabledProfessionalStaff = principal.user.status === 'active'
+    && !!staff
+    && staff.accountId === principal.user.accountId
+    && staff.userId === principal.user.id
+    && staff.status === 'active'
+    && typeof staff.professionId === 'string'
+    && staff.professionId.trim().length > 0;
+  if (!hasEnabledProfessionalStaff) {
+    throw new ForbiddenError(
+      'Laboratory result requires an enabled professional/staff principal'
+    );
+  }
+  return principal.user.id;
+}
+
+function requireLaboratoryIdempotencyKey(request: IncomingMessage): string {
+  const raw = request.headers?.['idempotency-key'];
+  const value = Array.isArray(raw) ? undefined : raw;
+  const key = requireNonEmptyString(value ?? '', 'idempotency-key').trim();
+  if (key.length > 255 || /[\u0000-\u001f\u007f]/u.test(key)) {
+    throw new ValidationError('idempotency-key must contain 1 to 255 printable characters');
+  }
+  return key;
+}
+
 export async function handleLaboratoryRoutes(
   pathname: string,
   request: IncomingMessage,
@@ -437,13 +527,16 @@ export async function handleLaboratoryRoutes(
     const patientFilter = normalizeSearch(url.searchParams.get('patientId') ?? url.searchParams.get('animal'));
     const idFilter = normalizeSearch(url.searchParams.get('id'));
     const dateFilter = url.searchParams.get('date') ?? url.searchParams.get('data') ?? undefined;
-    const items = (await laboratory.listOrders(principal.user.accountId as never, encounterId)).filter((order) => {
+    const sourceItems = pathname === '/diagnostics/orders'
+      ? await laboratory.listOrders(principal.user.accountId as never, encounterId)
+      : await laboratory.listWorkflowOrders(principal.user.accountId as never, encounterId);
+    const items = sourceItems.filter((order) => {
       if (idFilter && !order.id.toLowerCase().includes(idFilter)) return false;
       if (patientFilter && !order.patientId.toLowerCase().includes(patientFilter)) return false;
       if (dateFilter && !createdAtMatchesDate(order.createdAt, dateFilter)) return false;
       return true;
     });
-    const payload: DiagnosticOrderListResponse = { items };
+    const payload = { items };
 
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -495,7 +588,9 @@ export async function handleLaboratoryRoutes(
   if (orderRouteMatch && request.method === 'GET') {
     const principal = requirePrincipal(request, 'diagnostics.read');
     const orderId = requireNonEmptyString(orderRouteMatch[1], 'diagnosticOrderId');
-    const payload = laboratory.getOrder(principal.user.accountId as never, orderId as never);
+    const payload = pathname.startsWith('/laboratory/')
+      ? laboratory.getWorkflowOrder(principal.user.accountId as never, orderId as never)
+      : laboratory.getOrder(principal.user.accountId as never, orderId as never);
 
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -754,14 +849,82 @@ export async function handleLaboratoryRoutes(
   if (resultRouteMatch && request.method === 'POST') {
     const principal = requirePrincipal(request, 'diagnostics.manage');
     const orderId = requireNonEmptyString(resultRouteMatch[1], 'diagnosticOrderId');
-    const incomingPayload = (await readJsonBody(request)) as RecordDiagnosticResultRequest;
-    const payload: RecordDiagnosticResultRequest = incomingPayload.status === 'resulted'
-      ? {
-        ...incomingPayload,
-        releasedByUserId: principal.user.id,
-        signedByUserId: incomingPayload.signedByUserId ?? principal.user.id
+    const idempotencyKey = requireLaboratoryIdempotencyKey(request);
+    const incomingPayload = (await readJsonBody(request)) as Record<string, unknown>;
+    const canonicalStatus = incomingPayload.status;
+    if (
+      canonicalStatus === 'collected'
+      || canonicalStatus === 'in_analysis'
+      || canonicalStatus === 'reported'
+      || canonicalStatus === 'cancelled'
+      || canonicalStatus === 'delivered'
+    ) {
+      if (canonicalStatus === 'reported') {
+        requireEnabledLaboratorySigner(principal);
       }
-      : incomingPayload;
+      const transition = parseCanonicalLaboratoryTransition(
+        incomingPayload,
+        principal.user.id,
+        idempotencyKey
+      );
+      const order = await laboratory.transitionOrderAndPersistForAccount(
+        principal.user.accountId as never,
+        orderId as never,
+        transition
+      );
+      const callbackStatus: RecordDiagnosticResultRequest['status'] =
+        transition.status === 'reported' || transition.status === 'delivered'
+          ? 'resulted'
+          : transition.status === 'in_analysis'
+            ? 'collected'
+            : transition.status;
+      handlers.onOrderStatusChanged?.(
+        order,
+        {
+          status: callbackStatus,
+          resultSummary: order.resultSummary,
+          resultAttachmentId: order.resultAttachmentId,
+          collectedByUserId: order.collectedByUserId,
+          releasedByUserId: order.releasedByUserId,
+          signedByUserId: order.signedByUserId
+        },
+        principal.user.id
+      );
+      appendAudit(audit, {
+        actorId: principal.user.id,
+        accountId: principal.user.accountId,
+        module: routeModule,
+        action: transition.status,
+        entityType: 'diagnostic-order',
+        entityId: order.id,
+        payloadSummary: `Laboratory order moved to ${transition.status}`,
+        riskLevel: 'high',
+        correlationId
+      });
+      return json(response, 200, order);
+    }
+
+    if (canonicalStatus !== 'resulted') {
+      throw new Error(`Unsupported laboratory status '${String(canonicalStatus ?? '')}'`);
+    }
+
+    requireEnabledLaboratorySigner(principal);
+    if (Object.hasOwn(incomingPayload, 'signedByUserId') || Object.hasOwn(incomingPayload, 'signatureHash')) {
+      throw new ValidationError(
+        'Laboratory signer and signature fields are server-generated from the authenticated principal'
+      );
+    }
+    const payload: RecordDiagnosticResultRequest & { readonly idempotencyKey: string } = {
+      status: 'resulted',
+      resultSummary: typeof incomingPayload.resultSummary === 'string'
+        ? incomingPayload.resultSummary
+        : undefined,
+      resultAttachmentId: typeof incomingPayload.resultAttachmentId === 'string'
+        ? incomingPayload.resultAttachmentId
+        : undefined,
+      releasedByUserId: principal.user.id,
+      idempotencyKey
+    };
     const order = await laboratory.recordResultAndPersistForAccount(
       principal.user.accountId as never,
       orderId as never,
@@ -777,6 +940,71 @@ export async function handleLaboratoryRoutes(
       entityType: 'diagnostic-order',
       entityId: order.id,
       payloadSummary: `Laboratory order moved to ${payload.status}`,
+      riskLevel: 'high',
+      correlationId
+    });
+    return json(response, 200, order);
+  }
+
+  const recollectRouteMatch = pathname.match(/^\/laboratory\/orders\/([^/]+)\/recollect$/);
+  if (recollectRouteMatch && request.method === 'POST') {
+    const principal = requirePrincipal(request, 'diagnostics.manage');
+    const orderId = requireNonEmptyString(recollectRouteMatch[1], 'diagnosticOrderId');
+    const idempotencyKey = requireLaboratoryIdempotencyKey(request);
+    const incomingPayload = (await readJsonBody(request)) as Record<string, unknown>;
+    const order = await laboratory.recollectOrderAndPersistForAccount(
+      principal.user.accountId as never,
+      orderId as never,
+      {
+        reason: requireNonEmptyString(String(incomingPayload.reason ?? ''), 'reason'),
+        collectedByUserId: principal.user.id,
+        idempotencyKey
+      }
+    );
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: routeModule,
+      action: 'recollected',
+      entityType: 'diagnostic-order',
+      entityId: order.id,
+      payloadSummary: `Laboratory order ${order.id} recollected (attempt ${order.collectionAttempt})`,
+      riskLevel: 'high',
+      correlationId
+    });
+    return json(response, 200, order);
+  }
+
+  const deliverRouteMatch = pathname.match(/^\/laboratory\/orders\/([^/]+)\/deliver$/);
+  if (deliverRouteMatch && request.method === 'POST') {
+    const principal = requirePrincipal(request, 'diagnostics.manage');
+    const orderId = requireNonEmptyString(deliverRouteMatch[1], 'diagnosticOrderId');
+    const idempotencyKey = requireLaboratoryIdempotencyKey(request);
+    const incomingPayload = (await readJsonBody(request)) as Record<string, unknown>;
+    const order = await laboratory.transitionOrderAndPersistForAccount(
+      principal.user.accountId as never,
+      orderId as never,
+      {
+        status: 'delivered',
+        deliveredByUserId: principal.user.id,
+        deliveryChannel: requireNonEmptyString(
+          String(incomingPayload.deliveryChannel ?? incomingPayload.channel ?? ''),
+          'deliveryChannel'
+        ),
+        deliveredAt: typeof incomingPayload.deliveredAt === 'string'
+          ? incomingPayload.deliveredAt
+          : undefined,
+        idempotencyKey
+      }
+    );
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: routeModule,
+      action: 'delivered',
+      entityType: 'diagnostic-order',
+      entityId: order.id,
+      payloadSummary: `Laboratory order ${order.id} delivered via ${order.deliveryChannel}`,
       riskLevel: 'high',
       correlationId
     });

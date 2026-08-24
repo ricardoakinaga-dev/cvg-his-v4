@@ -9,7 +9,8 @@ import {
   createWorkerNotifications,
   createWorkerEventBus,
   runWorkerTick,
-  runEventBusTick
+  runEventBusTick,
+  runWebhookDeliveriesTick
 } from './runner.js';
 
 async function main() {
@@ -80,6 +81,30 @@ async function main() {
           accountId: accountId as never
         },
         eventBus
+      )
+  );
+
+  if (!bootstrap.webhookDeliveryExecutor || !bootstrap.webhookDeliverySchemaReady) {
+    throw new Error('Worker webhook delivery executor is not ready');
+  }
+  const webhookDeliveryExecutor = bootstrap.webhookDeliveryExecutor;
+
+  await runWithTenantContext(
+    { tenantId: accountId, accountId, correlationId: createCorrelationId('worker') },
+    () =>
+      runWebhookDeliveriesTick(
+        logger,
+        {
+          service: config.appName,
+          environment: config.environment,
+          correlationId: createCorrelationId('worker'),
+          persistenceMode: 'database',
+          databaseHealthy: bootstrap.databaseHealthy,
+          databaseDetail: bootstrap.databaseDetail,
+          accountId: accountId as never
+        },
+        webhookDeliveryExecutor,
+        process.env.WORKER_INSTANCE_ID?.trim() || `run-once-webhook-${process.pid}`
       )
   );
 

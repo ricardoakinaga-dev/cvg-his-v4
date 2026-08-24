@@ -121,6 +121,13 @@ export interface DbNfseDocumentFilters extends DbFiscalFilters {
   readonly customerSearch?: string;
 }
 
+export type NfseOperationKind = 'issue' | 'cancel';
+
+export interface NfseOperationClaim {
+  readonly state: 'claimed' | 'completed';
+  readonly document: PersistedNfseDocument;
+}
+
 function parseJson<T>(value: unknown): T {
   return (typeof value === 'string' ? JSON.parse(value) : value) as T;
 }
@@ -1094,6 +1101,69 @@ export class DatabaseFiscalRepository {
     });
   }
 
+  async claimNfseOperation(
+    accountId: AccountId,
+    id: string,
+    operationKind: NfseOperationKind,
+    operationKey: string,
+    providerRequestKey: string,
+    leaseMs = 120_000
+  ): Promise<NfseOperationClaim | null> {
+    return withTenantQueryExplicit(this.pool, accountId, async (client) => {
+      const result = await client.query(
+        `SELECT * FROM fiscal_nfse_documents
+         WHERE account_id = $1 AND id = $2
+         FOR UPDATE`,
+        [accountId, id]
+      );
+      if (result.rows.length === 0) return null;
+
+      const row = result.rows[0] as Record<string, unknown>;
+      const current = mapNfseDocumentRow(row);
+      const status = String(row.status);
+      const lastOperationKind = row.last_operation_kind as NfseOperationKind | null | undefined;
+
+      if (
+        (operationKind === 'issue' && status === 'issued')
+        || (operationKind === 'cancel' && status === 'cancelled')
+      ) {
+        return { state: 'completed', document: current };
+      }
+
+      const allowed = operationKind === 'issue'
+        ? status === 'draft' || (status === 'error' && lastOperationKind === 'issue')
+        : status === 'issued' || (status === 'error' && lastOperationKind === 'cancel');
+      if (!allowed) {
+        const verb = operationKind === 'issue' ? 'issue' : 'cancel';
+        throw new Error(`Cannot ${verb} document in status: ${status}`);
+      }
+
+      const leaseUntil = row.operation_lease_until
+        ? new Date(String(row.operation_lease_until)).getTime()
+        : 0;
+      if (leaseUntil > Date.now()) {
+        throw new Error('NFS-e operation is already in progress');
+      }
+
+      const claimed = await client.query(
+        `UPDATE fiscal_nfse_documents
+            SET operation_key = $3,
+                operation_kind = $4,
+                operation_lease_until = CURRENT_TIMESTAMP + ($5 * INTERVAL '1 millisecond'),
+                last_operation_kind = $4,
+                last_provider_request_key = $6,
+                updated_at = CURRENT_TIMESTAMP
+          WHERE account_id = $1 AND id = $2
+         RETURNING *`,
+        [accountId, id, operationKey, operationKind, leaseMs, providerRequestKey]
+      );
+      return {
+        state: 'claimed',
+        document: mapNfseDocumentRow(claimed.rows[0] as Record<string, unknown>)
+      };
+    });
+  }
+
   async createNfseDocument(
     accountId: AccountId,
     document: PersistedNfseDocument
@@ -1120,7 +1190,10 @@ export class DatabaseFiscalRepository {
     document: PersistedNfseDocument
   ): Promise<PersistedNfseDocument | null> {
     return withTenantQueryExplicit(this.pool, accountId, async (client) => {
-      const parameters = this.documentParameters(accountId, document);
+      // The update keeps created_at immutable and sets updated_at in SQL.
+      // Reuse only the 24 document fields addressed by the UPDATE placeholders;
+      // the INSERT-only timestamps are the final two values in this array.
+      const parameters = this.documentParameters(accountId, document).slice(0, 24);
       const result = await client.query(
         `UPDATE fiscal_nfse_documents SET
           serie = $3, numero = $4, competencia = $5, provider = $6, municipality_code = $7,
@@ -1128,7 +1201,8 @@ export class DatabaseFiscalRepository {
           subtotal = $13, total_iss = $14, total_pis = $15, total_cofins = $16,
           total_csll = $17, total_irrf = $18, total_inss = $19, total_document = $20,
           observations = $21, status = $22, authorization_code = $23,
-          verification_url = $24, updated_at = CURRENT_TIMESTAMP
+          verification_url = $24, operation_key = NULL, operation_kind = NULL,
+          operation_lease_until = NULL, updated_at = CURRENT_TIMESTAMP
          WHERE id = $1 AND account_id = $2
          RETURNING *`,
         parameters

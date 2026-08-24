@@ -15,6 +15,7 @@ const mockCounterSalesUpdateItem = vi.fn();
 const mockCounterSalesRemoveItem = vi.fn();
 const mockCounterSalesAddPayment = vi.fn();
 const mockCounterSalesClose = vi.fn();
+const mockCounterSalesSettle = vi.fn();
 const mockCounterSalesCancel = vi.fn();
 const mockCounterSalesReopen = vi.fn();
 const mockCounterSalesCommercialDashboard = vi.fn();
@@ -42,6 +43,7 @@ vi.mock('@/services/counterSales', () => ({
     removeItem: (...args: unknown[]) => mockCounterSalesRemoveItem(...args),
     addPayment: (...args: unknown[]) => mockCounterSalesAddPayment(...args),
     close: (...args: unknown[]) => mockCounterSalesClose(...args),
+    settle: (...args: unknown[]) => mockCounterSalesSettle(...args),
     cancel: (...args: unknown[]) => mockCounterSalesCancel(...args),
     reopen: (...args: unknown[]) => mockCounterSalesReopen(...args)
   }
@@ -103,6 +105,10 @@ const saleSummary: CounterSaleSummary = {
   accountId: 'acc-1',
   number: 'CS-000001',
   ownerId: 'owner-1',
+  patientId: 'patient-1',
+  encounterId: 'encounter-1',
+  queueEntryId: 'queue-1',
+  billingRecordId: null,
   status: 'open',
   subtotal: 150,
   discountAmount: 0,
@@ -149,7 +155,8 @@ const saleDetail: CounterSaleDetail = {
       notes: null,
       createdAt: '2026-04-15T10:10:00Z'
     }
-  ]
+  ],
+  receipt: null
 };
 
 describe('CounterSalesPage', () => {
@@ -225,6 +232,24 @@ describe('CounterSalesPage', () => {
       createdAt: '2026-04-15T10:12:00Z'
     });
     mockCounterSalesClose.mockResolvedValue({ ...saleSummary, status: 'closed', balanceDue: 0 });
+    mockCounterSalesSettle.mockResolvedValue({
+      ...saleSummary,
+      status: 'closed',
+      balanceDue: 0,
+      receipt: {
+        id: 'receipt-1',
+        accountId: 'acc-1',
+        counterSaleId: 'cs-1',
+        amount: 150,
+        currency: 'BRL',
+        receivedByUserId: 'user-1',
+        receivedAt: '2026-04-15T10:15:00Z',
+        cashRegisterId: null,
+        cashMovementId: null,
+        journalEntryId: null,
+        createdAt: '2026-04-15T10:15:00Z'
+      }
+    });
     mockCounterSalesCancel.mockResolvedValue({ ...saleSummary, status: 'cancelled' });
     mockCounterSalesReopen.mockResolvedValue({ ...saleSummary, status: 'open' });
 
@@ -490,6 +515,32 @@ describe('CounterSalesPage', () => {
     );
   });
 
+  it('finaliza comanda com saldo usando o comando de liquidação atômica', async () => {
+    const CounterSalesPage = (await import('../CounterSalesPage.vue')).default;
+    const wrapper = mount(CounterSalesPage, { attachTo: document.body });
+
+    await flushPromises();
+
+    const closeButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('Finalizar Comanda'));
+    expect(closeButton).toBeTruthy();
+    await closeButton!.trigger('click');
+    await flushPromises();
+
+    expect(mockCounterSalesSettle).toHaveBeenCalledWith(
+      'cs-1',
+      [
+        expect.objectContaining({
+          method: 'pix',
+          amount: 100,
+          installments: 1
+        })
+      ]
+    );
+    expect(mockCounterSalesClose).not.toHaveBeenCalled();
+  });
+
   it('prepara impressão operacional da comanda selecionada', async () => {
     const CounterSalesPage = (await import('../CounterSalesPage.vue')).default;
     const wrapper = mount(CounterSalesPage, { attachTo: document.body });
@@ -698,6 +749,9 @@ describe('CounterSalesPage', () => {
 
     expect(mockCounterSalesCreate).toHaveBeenCalledWith({
       ownerId: 'owner-1',
+      patientId: null,
+      encounterId: null,
+      queueEntryId: null,
       notes: null
     });
   });

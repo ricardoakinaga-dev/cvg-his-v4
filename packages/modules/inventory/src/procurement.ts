@@ -266,27 +266,51 @@ export class ProcurementService {
         throw new ConflictError('Purchase is not ready for receiving', { purchaseId, status: purchase.status });
       }
       if (input.lines.length === 0) throw new ValidationError('Receiving must contain at least one line');
-      const requested = new Map(input.lines.map((line) => [line.lineId, line]));
-      const lines = purchase.lines.map((line) => {
-        const receipt = requested.get(line.id);
-        if (!receipt) return line;
+      const lineIds = new Set<string>();
+      for (const receipt of input.lines) {
+        if (lineIds.has(receipt.lineId)) {
+          throw new ValidationError('Receiving cannot contain duplicate purchase lines', {
+            lineId: receipt.lineId
+          });
+        }
+        lineIds.add(receipt.lineId);
+      }
+      const receipts = input.lines.map((receipt) => {
+        const line = purchase.lines.find((candidate) => candidate.id === receipt.lineId);
+        if (!line) throw new NotFoundError('Purchase line not found', { lineId: receipt.lineId });
         const quantity = positive(receipt.quantity, 'quantity');
         if (line.receivedQuantity + quantity > line.orderedQuantity) {
           throw new ConflictError('Received quantity exceeds ordered quantity', { lineId: line.id });
         }
-        return { ...line, receivedQuantity: round(line.receivedQuantity + quantity) };
-      });
-      for (const receipt of input.lines) {
-        const line = purchase.lines.find((candidate) => candidate.id === receipt.lineId);
-        if (!line) throw new NotFoundError('Purchase line not found', { lineId: receipt.lineId });
-        await this.#inventory.receiveInbound(accountId, receivedByUserId, {
-          inventoryItemId: line.inventoryItemId,
-          quantity: positive(receipt.quantity, 'quantity'),
-          unitCostAmount: line.unitCostAmount,
-          lotNumber: line.lotNumber,
+        return {
+          line,
+          quantity,
           expiryDate: normalizeDate(receipt.expiryDate) ?? line.expiryDate,
           manufactureDate: normalizeDate(receipt.manufactureDate) ?? line.manufactureDate,
-          location: normalizeOptional(receipt.location) ?? line.location,
+          location: normalizeOptional(receipt.location) ?? line.location
+        };
+      });
+      if (!purchase.invoiceNumber) {
+        throw new ValidationError('Invoice number is required before receiving stock', {
+          purchaseId
+        });
+      }
+      const requested = new Map(receipts.map((receipt) => [receipt.line.id, receipt]));
+      const lines = purchase.lines.map((line) => {
+        const receipt = requested.get(line.id);
+        if (!receipt) return line;
+        return { ...line, receivedQuantity: round(line.receivedQuantity + receipt.quantity) };
+      });
+      for (const receipt of receipts) {
+        const { line } = receipt;
+        await this.#inventory.receiveInbound(accountId, receivedByUserId, {
+          inventoryItemId: line.inventoryItemId,
+          quantity: receipt.quantity,
+          unitCostAmount: line.unitCostAmount,
+          lotNumber: line.lotNumber,
+          expiryDate: receipt.expiryDate,
+          manufactureDate: receipt.manufactureDate,
+          location: receipt.location,
           supplier: purchase.supplierName,
           reference: purchase.invoiceNumber ?? purchase.id
         } satisfies CreateInventoryInboundRequest);

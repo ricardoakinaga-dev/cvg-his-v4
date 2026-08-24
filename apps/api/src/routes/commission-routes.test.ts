@@ -6,6 +6,7 @@ import { CommissionsService } from '@cvg-his-v2/module-commissions';
 import type { AuditService } from '@cvg-his-v2/module-audit';
 import type { AccountId, AuthenticatedPrincipal, UserId } from '@cvg-his-v2/shared-types';
 
+import type { TenantCommandInput, TenantCommandRunner } from '../helpers/tenant-command.js';
 import { handleCommissionRoutes } from './commission-routes.js';
 
 const ACCOUNT = 'acc-commission-route' as AccountId;
@@ -94,7 +95,15 @@ test('handleCommissionRoutes ignores unrelated paths', async () => {
 
 test('handleCommissionRoutes exposes rule, calculation, review and payment lifecycle', async () => {
   const commissions = new CommissionsService();
-  const routeHandlers = handlers(commissions);
+  const paymentPayloads: unknown[] = [];
+  const runCommand: TenantCommandRunner = async <T>(input: TenantCommandInput<T>): Promise<T> => {
+    if (input.operation === 'commission-calculations.pay') paymentPayloads.push(input.payload);
+    return input.command();
+  };
+  const routeHandlers = {
+    ...handlers(commissions),
+    runCommand
+  };
 
   const createRuleResponse = new MockResponse();
   await handleCommissionRoutes(
@@ -163,7 +172,7 @@ test('handleCommissionRoutes exposes rule, calculation, review and payment lifec
     `/commission-calculations/${calculation.id}/pay`,
     request(
       'POST',
-      { paymentMethod: 'cash', paymentReference: 'COM-TEST-CASH' },
+      { payId: 'forged-pay-id', paymentMethod: 'cash', paymentReference: 'COM-TEST-CASH' },
       `/commission-calculations/${calculation.id}/pay`
     ),
     payResponse as never,
@@ -171,4 +180,9 @@ test('handleCommissionRoutes exposes rule, calculation, review and payment lifec
     routeHandlers
   );
   assert.equal(payResponse.bodyJson<{ status: string }>().status, 'paid');
+  assert.deepEqual(paymentPayloads, [{
+    payId: calculation.id,
+    paymentMethod: 'cash',
+    paymentReference: 'COM-TEST-CASH'
+  }]);
 });

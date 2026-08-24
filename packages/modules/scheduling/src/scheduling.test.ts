@@ -22,6 +22,7 @@ class InMemorySchedulingRepository implements SchedulingRepository {
   readonly appointments = new Map<AppointmentId, SchedulingAppointmentSummary>();
   readonly queueEntries = new Map<QueueEntryId, QueueEntrySummary>();
   readonly queueTransfers = new Map<QueueTransferId, QueueTransferSummary>();
+  persistCheckInCalls = 0;
 
   constructor(
     seedAppointments: readonly SchedulingAppointmentSummary[] = [],
@@ -60,6 +61,15 @@ class InMemorySchedulingRepository implements SchedulingRepository {
     this.queueEntries.set(entry.id, entry);
   }
 
+  async persistCheckIn(
+    entry: QueueEntrySummary,
+    appointment?: SchedulingAppointmentSummary
+  ): Promise<void> {
+    this.persistCheckInCalls += 1;
+    if (appointment) this.appointments.set(appointment.id, appointment);
+    this.queueEntries.set(entry.id, entry);
+  }
+
   async updateQueueEntry(entry: QueueEntrySummary): Promise<void> {
     this.queueEntries.set(entry.id, entry);
   }
@@ -75,6 +85,22 @@ class InMemorySchedulingRepository implements SchedulingRepository {
   }
 
   async createQueueTransfer(transfer: QueueTransferSummary): Promise<void> {
+    this.queueTransfers.set(transfer.id, transfer);
+  }
+
+  async persistQueueTransfer(
+    entry: QueueEntrySummary,
+    transfer: QueueTransferSummary
+  ): Promise<void> {
+    this.queueEntries.set(entry.id, entry);
+    this.queueTransfers.set(transfer.id, transfer);
+  }
+
+  async persistQueueTransferReceipt(
+    entry: QueueEntrySummary,
+    transfer: QueueTransferSummary
+  ): Promise<void> {
+    this.queueEntries.set(entry.id, entry);
     this.queueTransfers.set(transfer.id, transfer);
   }
 
@@ -157,6 +183,184 @@ describe('SchedulingService', () => {
     expect(appointment.id).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
     );
+  });
+
+  it('rejects new appointments and check-ins for inactive owners or patients', async () => {
+    const owner = owners.create('acc_cvg_demo' as AccountId, {
+      fullName: 'Tutor Inativo',
+      contacts: [{ label: 'Telefone', value: '11999999999', type: 'phone', primary: true }],
+      financialResponsible: true
+    });
+    const patient = patients.create('acc_cvg_demo' as AccountId, {
+      name: 'Paciente Inativo',
+      species: 'canine',
+      sex: 'female',
+      primaryOwnerId: owner.id
+    });
+
+    owners.update(owner.id, { status: 'inactive' });
+
+    await expect(
+      service.createAppointment('acc_cvg_demo' as AccountId, {
+        patientId: patient.id,
+        ownerId: owner.id,
+        scheduledAt: '2026-04-01T08:30:00.000Z',
+        reason: 'Tutor inativo'
+      })
+    ).rejects.toThrow('inactive owner');
+
+    owners.update(owner.id, { status: 'active' });
+    patients.update(patient.id, { status: 'inactive' });
+
+    await expect(
+      service.createAppointment('acc_cvg_demo' as AccountId, {
+        patientId: patient.id,
+        ownerId: owner.id,
+        scheduledAt: '2026-04-01T08:30:00.000Z',
+        reason: 'Paciente inativo'
+      })
+    ).rejects.toThrow('inactive patient');
+
+    await expect(
+      service.checkIn('acc_cvg_demo' as AccountId, {
+        patientId: patient.id,
+        ownerId: owner.id,
+        reason: 'Check-in de paciente inativo'
+      })
+    ).rejects.toThrow('inactive patient');
+  });
+
+  it('rejects rescheduling appointments for inactive owners or patients', async () => {
+    const accountId = 'acc_cvg_demo' as AccountId;
+    const appointment = await service.createAppointment(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-04-01T08:00:00.000Z',
+      reason: 'Consulta a reagendar'
+    });
+
+    owners.update('owner_maria_silva' as never, { status: 'inactive' });
+    await expect(
+      service.rescheduleAppointment(accountId, appointment.id, {
+        scheduledAt: '2026-04-01T10:00:00.000Z'
+      })
+    ).rejects.toThrow('inactive owner');
+
+    owners.update('owner_maria_silva' as never, { status: 'active' });
+    patients.update('patient_luna' as never, { status: 'inactive' });
+    await expect(
+      service.rescheduleAppointment(accountId, appointment.id, {
+        scheduledAt: '2026-04-01T10:00:00.000Z'
+      })
+    ).rejects.toThrow('inactive patient');
+  });
+
+  it('rejects lifecycle changes observed after the service cache was hydrated', async () => {
+    const cachedOwner = owners.getOrThrow('owner_maria_silva' as never);
+    const cachedPatient = patients.getOrThrow('patient_luna' as never);
+    const staleOwner = { ...cachedOwner, status: 'inactive' as const };
+    const stalePatient = { ...cachedPatient, status: 'inactive' as const };
+    const authoritativeOwners = new OwnersService({
+      seedOwners: [cachedOwner],
+      ownerRepository: {
+        create: async () => undefined,
+        update: async () => undefined,
+        findById: async () => staleOwner,
+        findByAccountId: async () => [staleOwner],
+        delete: async () => undefined
+      }
+    });
+    const authoritativePatients = new PatientsService({
+      owners: authoritativeOwners,
+      seedPatients: [cachedPatient],
+      seedLinks: [],
+      patientRepository: {
+        create: async () => undefined,
+        update: async () => undefined,
+        findById: async () => stalePatient,
+        findByAccountId: async () => [stalePatient],
+        delete: async () => undefined
+      }
+    });
+    const authoritativeService = new SchedulingService(
+      authoritativeOwners,
+      authoritativePatients,
+      [],
+      { staff: staff as never, services: services as never }
+    );
+
+    await expect(
+      authoritativeService.createAppointment('acc_cvg_demo' as AccountId, {
+        patientId: cachedPatient.id,
+        ownerId: cachedOwner.id,
+        scheduledAt: '2026-04-01T08:00:00.000Z',
+        reason: 'Stale owner cache'
+      })
+    ).rejects.toThrow('inactive owner');
+  });
+
+  it('rejects participants from another account before scheduling or check-in', async () => {
+    const otherAccount = 'acc_other' as AccountId;
+    const owner = owners.create(otherAccount, {
+      fullName: 'Tutor de Outra Conta',
+      contacts: [{ label: 'Telefone', value: '11888888888', type: 'phone', primary: true }],
+      financialResponsible: true
+    });
+    const patient = patients.create(otherAccount, {
+      name: 'Paciente de Outra Conta',
+      species: 'feline',
+      sex: 'male',
+      primaryOwnerId: owner.id
+    });
+
+    await expect(
+      service.createAppointment('acc_cvg_demo' as AccountId, {
+        patientId: patient.id,
+        ownerId: owner.id,
+        scheduledAt: '2026-04-01T09:00:00.000Z',
+        reason: 'Tenant isolation'
+      })
+    ).rejects.toThrow('current account');
+
+    await expect(
+      service.checkIn('acc_cvg_demo' as AccountId, {
+        patientId: patient.id,
+        ownerId: owner.id,
+        reason: 'Tenant isolation check-in'
+      })
+    ).rejects.toThrow('current account');
+  });
+
+  it('requires check-in participants to match the linked appointment', async () => {
+    const accountId = 'acc_cvg_demo' as AccountId;
+    const appointment = await service.createAppointment(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-04-01T09:15:00.000Z',
+      reason: 'Appointment participant binding'
+    });
+    const otherOwner = owners.create(accountId, {
+      fullName: 'Other check-in owner',
+      contacts: [{ label: 'Phone', value: '11999997777', type: 'phone', primary: true }],
+      financialResponsible: true
+    });
+    const otherPatient = patients.create(accountId, {
+      name: 'Other check-in patient',
+      species: 'feline',
+      sex: 'female',
+      primaryOwnerId: otherOwner.id
+    });
+
+    await expect(
+      service.checkIn(accountId, {
+        patientId: otherPatient.id,
+        ownerId: otherOwner.id,
+        appointmentId: appointment.id,
+        reason: 'Mismatched appointment participants'
+      })
+    ).rejects.toThrow('must match the appointment participants');
+    expect(service.getAppointmentOrThrow(appointment.id).status).toBe('scheduled');
+    expect(service.getQueue()).toHaveLength(0);
   });
 
   it('blocks appointment creation during staff time off', async () => {
@@ -793,6 +997,29 @@ describe('SchedulingService', () => {
     expect(service.getQueue().map((entry) => entry.id)).toEqual([critical.id, medium.id]);
   });
 
+  it('uses one persistence command for the linked appointment and queue entry', async () => {
+    const repository = new InMemorySchedulingRepository();
+    const persistent = new SchedulingService(owners, patients, [], { repository });
+    const accountId = 'acc_cvg_demo' as AccountId;
+    const appointment = await persistent.createAppointment(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      scheduledAt: '2026-04-01T09:30:00.000Z',
+      reason: 'Atomic check-in'
+    });
+
+    const queueEntry = await persistent.checkIn(accountId, {
+      patientId: appointment.patientId,
+      ownerId: appointment.ownerId,
+      appointmentId: appointment.id,
+      reason: 'Atomic check-in'
+    });
+
+    expect(repository.persistCheckInCalls).toBe(1);
+    expect(repository.appointments.get(appointment.id)?.status).toBe('checked_in');
+    expect(repository.queueEntries.get(queueEntry.id)?.status).toBe('waiting');
+  });
+
   it('calls queue entries, attaches encounter and transitions main statuses', async () => {
     const accountId = 'acc_cvg_demo' as AccountId;
     const queued = await service.checkIn(accountId, {
@@ -885,6 +1112,7 @@ describe('SchedulingService', () => {
       id: 'queue_transfer_repo_1' as QueueTransferId,
       accountId: queueEntry.accountId,
       queueEntryId: queueEntry.id,
+      status: 'received',
       fromSector: 'Recepcao',
       toSector: 'Clinica',
       sentByUserId: 'user_reception' as never,
@@ -1031,6 +1259,74 @@ describe('SchedulingService', () => {
       urgency: 'high'
     });
     expect(repository.queueTransfers.size).toBe(1);
+  });
+
+  it('keeps a transfer pending until the receiving sector explicitly acknowledges it', async () => {
+    const repository = new InMemorySchedulingRepository();
+    const persistent = new SchedulingService(owners, patients, [], { repository });
+    const accountId = 'acc_cvg_demo' as AccountId;
+
+    const queueEntry = await persistent.checkIn(accountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      reason: 'Recebimento setorial explícito',
+      currentSector: 'Recepcao'
+    });
+
+    const sent = await persistent.transferQueueEntry(queueEntry.id, {
+      toSector: 'Financeiro',
+      sentByUserId: 'user_reception',
+      reason: 'Enviar para cobrança'
+    });
+
+    expect(sent.operationalStatus).toBe('waiting_handoff');
+    const pending = persistent.listQueueTransfers(queueEntry.id);
+    expect(pending[0]).toMatchObject({
+      toSector: 'Financeiro',
+      status: 'sent',
+      receivedByUserId: undefined,
+      receivedAt: undefined
+    });
+
+    const received = await persistent.receiveQueueTransfer(
+      queueEntry.id,
+      pending[0]!.id,
+      'user_finance' as UserId
+    );
+
+    expect(received.operationalStatus).toBe('waiting');
+    expect(persistent.listQueueTransfers(queueEntry.id)[0]).toMatchObject({
+      status: 'received',
+      receivedByUserId: 'user_finance'
+    });
+
+    await expect(
+      persistent.receiveQueueTransfer(queueEntry.id, pending[0]!.id, 'user_finance' as UserId)
+    ).rejects.toThrow('Queue transfer is already received');
+  });
+
+  it('rejects a second pending transfer for the same queue entry', async () => {
+    const repository = new InMemorySchedulingRepository();
+    const persistent = new SchedulingService(owners, patients, [], { repository });
+    const queueEntry = await persistent.checkIn('acc_cvg_demo' as AccountId, {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      reason: 'Apenas um handoff pendente'
+    });
+
+    await persistent.transferQueueEntry(queueEntry.id, {
+      toSector: 'Clinica',
+      sentByUserId: 'user_reception',
+      reason: 'Primeiro envio'
+    });
+
+    await expect(
+      persistent.transferQueueEntry(queueEntry.id, {
+        toSector: 'Financeiro',
+        sentByUserId: 'user_reception',
+        reason: 'Segundo envio antes do recebimento'
+      })
+    ).rejects.toThrow('Queue entry already has a pending transfer');
   });
 
   it('should invoke onAppointmentCreated callback when creating an appointment', async () => {

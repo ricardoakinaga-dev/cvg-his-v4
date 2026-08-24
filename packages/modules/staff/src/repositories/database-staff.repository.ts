@@ -4,6 +4,31 @@ import { withTenantQuery } from '@cvg-his-v2/tenant-context';
 import type { AccountId, UserId } from '@cvg-his-v2/shared-types';
 import { nowIso } from '@cvg-his-v2/shared-utils';
 
+export interface ProfessionRecord {
+  readonly id: string;
+  readonly accountId: AccountId;
+  readonly code: string;
+  readonly name: string;
+  readonly description: string | null;
+  readonly isActive: boolean;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+export interface ProfessionCreateInput {
+  readonly accountId: AccountId;
+  readonly code: string;
+  readonly name: string;
+  readonly description?: string | null;
+}
+
+export interface ProfessionUpdateInput {
+  readonly code?: string;
+  readonly name?: string;
+  readonly description?: string | null;
+  readonly isActive?: boolean;
+}
+
 export interface StaffRecord {
   readonly id: string;
   readonly accountId: AccountId;
@@ -12,6 +37,7 @@ export interface StaffRecord {
   readonly fullName: string;
   readonly department: string | null;
   readonly jobTitle: string | null;
+  readonly professionId?: string | null;
   readonly isActive: boolean;
   readonly createdAt: string;
   readonly updatedAt: string;
@@ -24,12 +50,14 @@ export interface StaffCreateInput {
   readonly fullName: string;
   readonly department?: string | null;
   readonly jobTitle?: string | null;
+  readonly professionId?: string | null;
 }
 
 export interface StaffUpdateInput {
   readonly fullName?: string;
   readonly department?: string | null;
   readonly jobTitle?: string | null;
+  readonly professionId?: string | null;
   readonly isActive?: boolean;
 }
 
@@ -39,6 +67,10 @@ export interface StaffRepository {
   findByAccountId(accountId?: AccountId): Promise<readonly StaffRecord[]>;
   findByUserId(accountId: AccountId, userId: UserId): Promise<StaffRecord | null>;
   update(id: string, input: StaffUpdateInput): Promise<StaffRecord>;
+  createProfession?(input: ProfessionCreateInput): Promise<ProfessionRecord>;
+  findProfessionById?(id: string): Promise<ProfessionRecord | null>;
+  findProfessionsByAccountId?(accountId: AccountId): Promise<readonly ProfessionRecord[]>;
+  updateProfession?(id: string, input: ProfessionUpdateInput): Promise<ProfessionRecord>;
 }
 
 export class DatabaseStaffRepository implements StaffRepository {
@@ -47,8 +79,8 @@ export class DatabaseStaffRepository implements StaffRepository {
       const now = nowIso();
       const id = randomUUID();
       await client.query(
-        `INSERT INTO staff (id, account_id, user_id, employee_code, full_name, department, job_title, is_active, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+        `INSERT INTO staff (id, account_id, user_id, employee_code, full_name, department, job_title, profession_id, is_active, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
         [
           id,
           input.accountId,
@@ -57,6 +89,7 @@ export class DatabaseStaffRepository implements StaffRepository {
           input.fullName,
           input.department ?? null,
           input.jobTitle ?? null,
+          input.professionId ?? null,
           true,
           new Date(now),
           new Date(now)
@@ -70,6 +103,7 @@ export class DatabaseStaffRepository implements StaffRepository {
         fullName: input.fullName,
         department: input.department ?? null,
         jobTitle: input.jobTitle ?? null,
+        professionId: input.professionId ?? null,
         isActive: true,
         createdAt: now,
         updatedAt: now
@@ -130,6 +164,10 @@ export class DatabaseStaffRepository implements StaffRepository {
         sets.push(`job_title = $${idx++}`);
         values.push(input.jobTitle);
       }
+      if (input.professionId !== undefined) {
+        sets.push(`profession_id = $${idx++}`);
+        values.push(input.professionId);
+      }
       if (input.isActive !== undefined) {
         sets.push(`is_active = $${idx++}`);
         values.push(input.isActive);
@@ -145,6 +183,8 @@ export class DatabaseStaffRepository implements StaffRepository {
         fullName: input.fullName ?? existing.fullName,
         department: input.department !== undefined ? input.department : existing.department,
         jobTitle: input.jobTitle !== undefined ? input.jobTitle : existing.jobTitle,
+        professionId:
+          input.professionId !== undefined ? input.professionId : existing.professionId,
         isActive: input.isActive !== undefined ? input.isActive : existing.isActive,
         updatedAt: now
       };
@@ -160,6 +200,99 @@ export class DatabaseStaffRepository implements StaffRepository {
       fullName: row.full_name as string,
       department: (row.department as string) ?? null,
       jobTitle: (row.job_title as string) ?? null,
+      professionId: (row.profession_id as string) ?? null,
+      isActive: row.is_active as boolean,
+      createdAt: new Date(row.created_at as string).toISOString(),
+      updatedAt: new Date(row.updated_at as string).toISOString()
+    };
+  }
+
+  async createProfession(input: ProfessionCreateInput): Promise<ProfessionRecord> {
+    return withTenantQuery(getPool(), async (client) => {
+      const now = nowIso();
+      const id = randomUUID();
+      await client.query(
+        `INSERT INTO professions (id, account_id, code, name, description, is_active, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, true, $6, $7)`,
+        [id, input.accountId, input.code, input.name, input.description ?? null, new Date(now), new Date(now)]
+      );
+      return {
+        id,
+        accountId: input.accountId,
+        code: input.code,
+        name: input.name,
+        description: input.description ?? null,
+        isActive: true,
+        createdAt: now,
+        updatedAt: now
+      };
+    });
+  }
+
+  async findProfessionById(id: string): Promise<ProfessionRecord | null> {
+    return withTenantQuery(getPool(), async (client) => {
+      const result = await client.query('SELECT * FROM professions WHERE id = $1', [id]);
+      return result.rows[0] ? this.mapProfessionRow(result.rows[0]) : null;
+    });
+  }
+
+  async findProfessionsByAccountId(accountId: AccountId): Promise<readonly ProfessionRecord[]> {
+    return withTenantQuery(getPool(), async (client) => {
+      const result = await client.query(
+        'SELECT * FROM professions WHERE account_id = $1 ORDER BY name ASC',
+        [accountId]
+      );
+      return result.rows.map((row: Record<string, unknown>) => this.mapProfessionRow(row));
+    });
+  }
+
+  async updateProfession(id: string, input: ProfessionUpdateInput): Promise<ProfessionRecord> {
+    return withTenantQuery(getPool(), async (client) => {
+      const existingResult = await client.query('SELECT * FROM professions WHERE id = $1', [id]);
+      if (existingResult.rows.length === 0) throw new Error(`Profession not found: ${id}`);
+      const existing = this.mapProfessionRow(existingResult.rows[0]);
+      const now = nowIso();
+      const sets: string[] = [];
+      const values: unknown[] = [];
+      let index = 1;
+      if (input.code !== undefined) {
+        sets.push(`code = $${index++}`);
+        values.push(input.code);
+      }
+      if (input.name !== undefined) {
+        sets.push(`name = $${index++}`);
+        values.push(input.name);
+      }
+      if (input.description !== undefined) {
+        sets.push(`description = $${index++}`);
+        values.push(input.description);
+      }
+      if (input.isActive !== undefined) {
+        sets.push(`is_active = $${index++}`);
+        values.push(input.isActive);
+      }
+      sets.push(`updated_at = $${index++}`);
+      values.push(new Date(now));
+      values.push(id);
+      await client.query(`UPDATE professions SET ${sets.join(', ')} WHERE id = $${index}`, values);
+      return {
+        ...existing,
+        code: input.code ?? existing.code,
+        name: input.name ?? existing.name,
+        description: input.description !== undefined ? input.description : existing.description,
+        isActive: input.isActive ?? existing.isActive,
+        updatedAt: now
+      };
+    });
+  }
+
+  private mapProfessionRow(row: Record<string, unknown>): ProfessionRecord {
+    return {
+      id: row.id as string,
+      accountId: row.account_id as AccountId,
+      code: row.code as string,
+      name: row.name as string,
+      description: (row.description as string) ?? null,
       isActive: row.is_active as boolean,
       createdAt: new Date(row.created_at as string).toISOString(),
       updatedAt: new Date(row.updated_at as string).toISOString()

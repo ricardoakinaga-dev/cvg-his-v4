@@ -37,6 +37,7 @@ import { CFOP_TABLE, type CfopSection } from './cfop-table.js';
 import { DEFAULT_TAX_RATES, TaxCalculator, type TaxRegime } from './tax-calculator.js';
 import {
   DatabaseFiscalRepository,
+  type NfseOperationKind,
   type PersistedNfseDocument
 } from './database-fiscal.repository.js';
 import {
@@ -419,6 +420,7 @@ const inMemoryCfopEntries: FiscalCfopSummary[] = CFOP_TABLE.map((entry) => ({
   documentTypesLabel: entry.applicableTo.join(', ').toUpperCase()
 }));
 const inMemoryNfseDocuments: NfseIssuerDocument[] = [];
+const inMemoryNfseDocumentsByAccount = new Map<string, NfseIssuerDocument[]>();
 
 type NfseIssuerDocument = PersistedNfseDocument;
 
@@ -710,7 +712,7 @@ function toEmitter(
   provider: NfseIssuerDocument['provider'],
   municipalityCode: string,
   apiUrl: string,
-  allowSimulation = true,
+  allowSimulation = false,
   runtime?: FiscalNfseRuntimeConfig
 ): NfseEmitter {
   const effectiveProvider = runtime?.provider ?? provider;
@@ -789,12 +791,44 @@ export class FiscalService {
   ) {
     this.dbRepo = dbRepo;
     this.accountId = accountId;
-    this.allowNfseSimulation = options.allowNfseSimulation ?? true;
+    this.allowNfseSimulation = options.allowNfseSimulation ?? false;
     this.nfseRuntime = options.nfse;
   }
 
   private hasDbRepo(): boolean {
     return this.dbRepo != null && this.accountId != null;
+  }
+
+  /**
+   * Rebuilds the tenant-scoped service while preserving the runtime NFS-e
+   * boundary. API routes use this instead of silently dropping credentials or
+   * the explicit simulation policy when switching to the database repository.
+   */
+  public forAccount(accountId: AccountId): FiscalService {
+    return new FiscalService(
+      this.dbRepo,
+      accountId,
+      {
+        allowNfseSimulation: this.allowNfseSimulation,
+        nfse: this.nfseRuntime
+      }
+    );
+  }
+
+  private inMemoryNfseStore(): NfseIssuerDocument[] {
+    if (!this.accountId) {
+      return inMemoryNfseDocuments;
+    }
+
+    const accountKey = String(this.accountId);
+    const existing = inMemoryNfseDocumentsByAccount.get(accountKey);
+    if (existing) {
+      return existing;
+    }
+
+    const created: NfseIssuerDocument[] = [];
+    inMemoryNfseDocumentsByAccount.set(accountKey, created);
+    return created;
   }
 
   public async listIcmsRules(filters: FiscalIcmsRuleFilters = {}): Promise<FiscalIcmsRuleSummary[]> {
@@ -1494,7 +1528,7 @@ export class FiscalService {
 
     const normalizedSearch = normalizeTerm(filters.customerSearch);
 
-    return inMemoryNfseDocuments
+    return this.inMemoryNfseStore()
       .filter((document) => !filters.status || document.status === filters.status)
       .filter((document) =>
         normalizedSearch.length === 0
@@ -1510,7 +1544,7 @@ export class FiscalService {
       return found ? toFiscalDocumentSummary(found) : null;
     }
 
-    const found = inMemoryNfseDocuments.find((document) => document.id === id);
+    const found = this.inMemoryNfseStore().find((document) => document.id === id);
     return found ? toFiscalDocumentSummary(found) : null;
   }
 
@@ -1569,14 +1603,33 @@ export class FiscalService {
       return toFiscalDocumentSummary(persisted);
     }
 
-    inMemoryNfseDocuments.unshift(document);
+    this.inMemoryNfseStore().unshift(document);
     return toFiscalDocumentSummary(document);
   }
 
-  public async issueNfseDocument(id: string): Promise<FiscalNfseDocumentSummary | null> {
+  public async issueNfseDocument(
+    id: string,
+    operationKey = `nfse:${id}:issue`
+  ): Promise<FiscalNfseDocumentSummary | null> {
     if (this.hasDbRepo()) {
-      const current = await this.dbRepo!.findNfseDocument(this.accountId!, id);
+      let current = await this.dbRepo!.findNfseDocument(this.accountId!, id);
       if (!current) return null;
+
+      const providerRequestKey = `nfse:${id}:issue`;
+      const claimOperation = this.dbRepo!.claimNfseOperation;
+      if (typeof claimOperation === 'function') {
+        const claim = await claimOperation.call(
+          this.dbRepo,
+          this.accountId!,
+          id,
+          'issue' satisfies NfseOperationKind,
+          operationKey,
+          providerRequestKey
+        );
+        if (!claim) return null;
+        if (claim.state === 'completed') return toFiscalDocumentSummary(claim.document);
+        current = claim.document;
+      }
 
       const emitter = toEmitter(
         current.provider,
@@ -1586,7 +1639,7 @@ export class FiscalService {
         this.nfseRuntime
       );
       const next: NfseIssuerDocument = {
-        ...(await emitter.issue(current)),
+        ...(await emitter.issue(current, providerRequestKey)),
         municipalityCode: current.municipalityCode,
         apiUrl: current.apiUrl,
         environment: current.environment
@@ -1595,12 +1648,13 @@ export class FiscalService {
       return persisted ? toFiscalDocumentSummary(persisted) : null;
     }
 
-    const index = inMemoryNfseDocuments.findIndex((document) => document.id === id);
+    const documents = this.inMemoryNfseStore();
+    const index = documents.findIndex((document) => document.id === id);
     if (index === -1) {
       return null;
     }
 
-    const current = inMemoryNfseDocuments[index];
+    const current = documents[index];
     const emitter = toEmitter(
       current.provider,
       current.municipalityCode,
@@ -1608,7 +1662,7 @@ export class FiscalService {
       this.allowNfseSimulation,
       this.nfseRuntime
     );
-    const nextDocument = await emitter.issue(current);
+    const nextDocument = await emitter.issue(current, operationKey);
     const next: NfseIssuerDocument = {
       ...nextDocument,
       municipalityCode: current.municipalityCode,
@@ -1616,17 +1670,34 @@ export class FiscalService {
       environment: 'homologacao'
     };
 
-    inMemoryNfseDocuments[index] = next;
+    documents[index] = next;
     return toFiscalDocumentSummary(next);
   }
 
   public async cancelNfseDocument(
     id: string,
-    payload: CancelFiscalNfseDocumentRequest
+    payload: CancelFiscalNfseDocumentRequest,
+    operationKey = `nfse:${id}:cancel`
   ): Promise<FiscalNfseDocumentSummary | null> {
     if (this.hasDbRepo()) {
-      const current = await this.dbRepo!.findNfseDocument(this.accountId!, id);
+      let current = await this.dbRepo!.findNfseDocument(this.accountId!, id);
       if (!current) return null;
+
+      const providerRequestKey = `nfse:${id}:cancel`;
+      const claimOperation = this.dbRepo!.claimNfseOperation;
+      if (typeof claimOperation === 'function') {
+        const claim = await claimOperation.call(
+          this.dbRepo,
+          this.accountId!,
+          id,
+          'cancel' satisfies NfseOperationKind,
+          operationKey,
+          providerRequestKey
+        );
+        if (!claim) return null;
+        if (claim.state === 'completed') return toFiscalDocumentSummary(claim.document);
+        current = claim.document;
+      }
 
       const emitter = toEmitter(
         current.provider,
@@ -1636,7 +1707,11 @@ export class FiscalService {
         this.nfseRuntime
       );
       const next: NfseIssuerDocument = {
-        ...(await emitter.cancel(current, assertNonEmpty(payload.reason, 'reason'))),
+        ...(await emitter.cancel(
+          current,
+          assertNonEmpty(payload.reason, 'reason'),
+          providerRequestKey
+        )),
         municipalityCode: current.municipalityCode,
         apiUrl: current.apiUrl,
         environment: current.environment
@@ -1645,12 +1720,13 @@ export class FiscalService {
       return persisted ? toFiscalDocumentSummary(persisted) : null;
     }
 
-    const index = inMemoryNfseDocuments.findIndex((document) => document.id === id);
+    const documents = this.inMemoryNfseStore();
+    const index = documents.findIndex((document) => document.id === id);
     if (index === -1) {
       return null;
     }
 
-    const current = inMemoryNfseDocuments[index];
+    const current = documents[index];
     const emitter = toEmitter(
       current.provider,
       current.municipalityCode,
@@ -1658,7 +1734,11 @@ export class FiscalService {
       this.allowNfseSimulation,
       this.nfseRuntime
     );
-    const nextDocument = await emitter.cancel(current, assertNonEmpty(payload.reason, 'reason'));
+    const nextDocument = await emitter.cancel(
+      current,
+      assertNonEmpty(payload.reason, 'reason'),
+      `nfse:${id}:cancel`
+    );
     const next: NfseIssuerDocument = {
       ...nextDocument,
       municipalityCode: current.municipalityCode,
@@ -1666,7 +1746,7 @@ export class FiscalService {
       environment: 'homologacao'
     };
 
-    inMemoryNfseDocuments[index] = next;
+    documents[index] = next;
     return toFiscalDocumentSummary(next);
   }
 

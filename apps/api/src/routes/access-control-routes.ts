@@ -9,8 +9,13 @@ import type { AccessControlService } from '@cvg-his-v2/module-access-control';
 import type { AuditService } from '@cvg-his-v2/module-audit';
 import type { UsersService } from '@cvg-his-v2/module-users';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
-import { AuthenticationError } from '@cvg-his-v2/shared-errors';
-import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
+import { AuthenticationError, ValidationError } from '@cvg-his-v2/shared-errors';
+import {
+  requireBoolean,
+  requireEnum,
+  requireNonEmptyString,
+  requireStringArray
+} from '@cvg-his-v2/shared-validation';
 
 import { appendAudit } from '../helpers/audit-helper.js';
 import { readJsonBody } from '../helpers/common.js';
@@ -20,6 +25,102 @@ export interface AccessControlRoutesHandlers {
   users: UsersService;
   audit: AuditService;
   requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
+}
+
+const SUBJECT_TYPES = ['user', 'team', 'sector'] as const;
+const ASSIGNMENT_EFFECTS = ['allow', 'deny', 'inherit'] as const;
+const MAX_ACCESS_FIELD_LENGTH = 255;
+const MAX_ACCESS_MEMBERSHIPS = 100;
+
+type AccessSubjectType = (typeof SUBJECT_TYPES)[number];
+type AssignmentEffect = (typeof ASSIGNMENT_EFFECTS)[number];
+
+function requireObjectPayload(payload: unknown): Record<string, unknown> {
+  if (payload === null || typeof payload !== 'object' || Array.isArray(payload)) {
+    throw new ValidationError('Request body must be a JSON object');
+  }
+  return payload as Record<string, unknown>;
+}
+
+function requireBoundedString(value: unknown, field: string, maxLength = MAX_ACCESS_FIELD_LENGTH): string {
+  const resolved = requireNonEmptyString(value, field);
+  if (resolved.length > maxLength) {
+    throw new ValidationError(`Field ${field} must have at most ${maxLength} characters`);
+  }
+  return resolved;
+}
+
+function requireNullableBoundedString(
+  value: unknown,
+  field: string,
+  maxLength = MAX_ACCESS_FIELD_LENGTH
+): string | null | undefined {
+  if (value === undefined || value === null) return value as null | undefined;
+  return requireBoundedString(value, field, maxLength);
+}
+
+function requireBoundedStringArray(value: unknown, field: string): readonly string[] {
+  const values = requireStringArray(value, field);
+  if (values.length > MAX_ACCESS_MEMBERSHIPS) {
+    throw new ValidationError(`Field ${field} cannot contain more than ${MAX_ACCESS_MEMBERSHIPS} items`);
+  }
+  return [...new Set(values)];
+}
+
+function parseEntityCreatePayload(payload: unknown): {
+  code: string;
+  name: string;
+  description?: string | null;
+} {
+  const body = requireObjectPayload(payload);
+  return {
+    code: requireBoundedString(body.code, 'code', 128),
+    name: requireBoundedString(body.name, 'name'),
+    description: requireNullableBoundedString(body.description, 'description')
+  };
+}
+
+function parseEntityPatchPayload(payload: unknown): {
+  code?: string;
+  name?: string;
+  description?: string | null;
+  isActive?: boolean;
+} {
+  const body = requireObjectPayload(payload);
+  return {
+    ...(body.code !== undefined ? { code: requireBoundedString(body.code, 'code', 128) } : {}),
+    ...(body.name !== undefined ? { name: requireBoundedString(body.name, 'name') } : {}),
+    ...(body.description !== undefined
+      ? { description: requireNullableBoundedString(body.description, 'description') }
+      : {}),
+    ...(body.isActive !== undefined ? { isActive: requireBoolean(body.isActive, 'isActive') } : {})
+  };
+}
+
+function parseSubjectType(value: unknown): AccessSubjectType {
+  return requireEnum(value, 'subjectType', SUBJECT_TYPES);
+}
+
+function appendAccessMutationAudit(
+  audit: AuditService,
+  principal: AuthenticatedPrincipal,
+  action: string,
+  entityType: string,
+  entityId: string,
+  payloadSummary: string,
+  correlationId: string
+): void {
+  appendAudit(audit, {
+    actorId: principal.user.id,
+    accountId: principal.user.accountId,
+    module: 'access-control',
+    action,
+    entityType,
+    entityId,
+    payloadSummary,
+    riskLevel: 'high',
+    correlationId
+  });
 }
 
 function getUserForCurrentAccount(
@@ -180,22 +281,35 @@ export async function handleAccessControlRoutes(
   // GET /access-control/teams
   if (pathname === '/access-control/teams' && request.method === 'GET') {
     const principal = rp(request, 'access.read');
-    response.statusCode = 200;
-    response.end(
-      JSON.stringify({ items: accessControl.listTeams(principal.user.accountId) })
+    const items = accessControl.listTeams(principal.user.accountId);
+    appendAccessMutationAudit(
+      audit,
+      principal,
+      'teams_read',
+      'access-team',
+      'current',
+      `Access teams inspected count=${items.length}`,
+      correlationId
     );
+    response.statusCode = 200;
+    response.end(JSON.stringify({ items }));
     return true;
   }
 
   // POST /access-control/teams
   if (pathname === '/access-control/teams' && request.method === 'POST') {
     const principal = rp(request, 'users.manage');
-    const payload = (await readJsonBody(request)) as {
-      code: string;
-      name: string;
-      description?: string | null;
-    };
+    const payload = parseEntityCreatePayload(await readJsonBody(request));
     const team = await accessControl.createTeam(principal.user.accountId, payload);
+    appendAccessMutationAudit(
+      audit,
+      principal,
+      'team_created',
+      'access-team',
+      team.id,
+      `Access team created code=${team.code}`,
+      correlationId
+    );
     response.statusCode = 201;
     response.end(JSON.stringify(team));
     return true;
@@ -206,13 +320,17 @@ export async function handleAccessControlRoutes(
     const principal = rp(request, 'users.manage');
     const teamId = requireNonEmptyString(pathname.split('/')[3], 'teamId');
     assertTeamForCurrentAccount(accessControl, teamId, principal);
-    const payload = (await readJsonBody(request)) as {
-      code?: string;
-      name?: string;
-      description?: string | null;
-      isActive?: boolean;
-    };
+    const payload = parseEntityPatchPayload(await readJsonBody(request));
     const team = await accessControl.updateTeam(teamId as never, payload);
+    appendAccessMutationAudit(
+      audit,
+      principal,
+      'team_updated',
+      'access-team',
+      team.id,
+      `Access team updated code=${team.code} status=${team.status}`,
+      correlationId
+    );
     response.statusCode = 200;
     response.end(JSON.stringify(team));
     return true;
@@ -221,22 +339,35 @@ export async function handleAccessControlRoutes(
   // GET /access-control/org-sectors
   if (pathname === '/access-control/org-sectors' && request.method === 'GET') {
     const principal = rp(request, 'access.read');
-    response.statusCode = 200;
-    response.end(
-      JSON.stringify({ items: accessControl.listSectors(principal.user.accountId) })
+    const items = accessControl.listSectors(principal.user.accountId);
+    appendAccessMutationAudit(
+      audit,
+      principal,
+      'sectors_read',
+      'access-sector',
+      'current',
+      `Access sectors inspected count=${items.length}`,
+      correlationId
     );
+    response.statusCode = 200;
+    response.end(JSON.stringify({ items }));
     return true;
   }
 
   // POST /access-control/org-sectors
   if (pathname === '/access-control/org-sectors' && request.method === 'POST') {
     const principal = rp(request, 'users.manage');
-    const payload = (await readJsonBody(request)) as {
-      code: string;
-      name: string;
-      description?: string | null;
-    };
+    const payload = parseEntityCreatePayload(await readJsonBody(request));
     const sector = await accessControl.createSector(principal.user.accountId, payload);
+    appendAccessMutationAudit(
+      audit,
+      principal,
+      'sector_created',
+      'access-sector',
+      sector.id,
+      `Access sector created code=${sector.code}`,
+      correlationId
+    );
     response.statusCode = 201;
     response.end(JSON.stringify(sector));
     return true;
@@ -247,13 +378,17 @@ export async function handleAccessControlRoutes(
     const principal = rp(request, 'users.manage');
     const sectorId = requireNonEmptyString(pathname.split('/')[3], 'sectorId');
     assertSectorForCurrentAccount(accessControl, sectorId, principal);
-    const payload = (await readJsonBody(request)) as {
-      code?: string;
-      name?: string;
-      description?: string | null;
-      isActive?: boolean;
-    };
+    const payload = parseEntityPatchPayload(await readJsonBody(request));
     const sector = await accessControl.updateSector(sectorId as never, payload);
+    appendAccessMutationAudit(
+      audit,
+      principal,
+      'sector_updated',
+      'access-sector',
+      sector.id,
+      `Access sector updated code=${sector.code} status=${sector.status}`,
+      correlationId
+    );
     response.statusCode = 200;
     response.end(JSON.stringify(sector));
     return true;
@@ -268,11 +403,21 @@ export async function handleAccessControlRoutes(
     const principal = rp(request, 'users.manage');
     const userId = requireNonEmptyString(pathname.split('/')[3], 'userId');
     getUserForCurrentAccount(users, userId, principal);
-    const payload = (await readJsonBody(request)) as { teamIds?: readonly string[] };
-    for (const teamId of payload.teamIds ?? []) {
+    const body = requireObjectPayload(await readJsonBody(request));
+    const teamIds = body.teamIds === undefined ? [] : requireBoundedStringArray(body.teamIds, 'teamIds');
+    for (const teamId of teamIds) {
       assertTeamForCurrentAccount(accessControl, teamId, principal);
     }
-    await accessControl.replaceUserTeams(userId as never, (payload.teamIds ?? []) as never);
+    await accessControl.replaceUserTeams(userId as never, teamIds as never);
+    appendAccessMutationAudit(
+      audit,
+      principal,
+      'user_teams_replaced',
+      'user-access-membership',
+      userId,
+      `User teams replaced count=${teamIds.length}`,
+      correlationId
+    );
     response.statusCode = 200;
     response.end(JSON.stringify({ ok: true }));
     return true;
@@ -287,11 +432,21 @@ export async function handleAccessControlRoutes(
     const principal = rp(request, 'users.manage');
     const userId = requireNonEmptyString(pathname.split('/')[3], 'userId');
     getUserForCurrentAccount(users, userId, principal);
-    const payload = (await readJsonBody(request)) as { sectorIds?: readonly string[] };
-    for (const sectorId of payload.sectorIds ?? []) {
+    const body = requireObjectPayload(await readJsonBody(request));
+    const sectorIds = body.sectorIds === undefined ? [] : requireBoundedStringArray(body.sectorIds, 'sectorIds');
+    for (const sectorId of sectorIds) {
       assertSectorForCurrentAccount(accessControl, sectorId, principal);
     }
-    await accessControl.replaceUserSectors(userId as never, (payload.sectorIds ?? []) as never);
+    await accessControl.replaceUserSectors(userId as never, sectorIds as never);
+    appendAccessMutationAudit(
+      audit,
+      principal,
+      'user_sectors_replaced',
+      'user-access-membership',
+      userId,
+      `User sectors replaced count=${sectorIds.length}`,
+      correlationId
+    );
     response.statusCode = 200;
     response.end(JSON.stringify({ ok: true }));
     return true;
@@ -306,8 +461,24 @@ export async function handleAccessControlRoutes(
     const principal = rp(request, 'users.manage');
     const userId = requireNonEmptyString(pathname.split('/')[3], 'userId');
     getUserForCurrentAccount(users, userId, principal);
-    const payload = (await readJsonBody(request)) as { roleCodes?: readonly string[] };
-    await accessControl.replaceLegacyRoles(userId as never, payload.roleCodes ?? []);
+    const body = requireObjectPayload(await readJsonBody(request));
+    const roleCodes = body.roleCodes === undefined ? [] : requireBoundedStringArray(body.roleCodes, 'roleCodes');
+    const knownRoleCodes = new Set(accessControl.listRoles().map((role) => role.code));
+    for (const roleCode of roleCodes) {
+      if (!knownRoleCodes.has(roleCode)) {
+        throw new ValidationError(`Unknown role code: ${roleCode}`);
+      }
+    }
+    await accessControl.replaceLegacyRoles(userId as never, roleCodes);
+    appendAccessMutationAudit(
+      audit,
+      principal,
+      'user_roles_replaced',
+      'user-access-role',
+      userId,
+      `User legacy roles replaced count=${roleCodes.length}`,
+      correlationId
+    );
     response.statusCode = 200;
     response.end(JSON.stringify({ ok: true }));
     return true;
@@ -322,6 +493,15 @@ export async function handleAccessControlRoutes(
     const principal = rp(request, 'access.read');
     const userId = requireNonEmptyString(pathname.split('/')[3], 'userId');
     const targetUser = getUserForCurrentAccount(users, userId, principal);
+    appendAccessMutationAudit(
+      audit,
+      principal,
+      'user_effective_permissions_read',
+      'user-access-profile',
+      targetUser.id,
+      'Effective permissions inspected for an account-local user',
+      correlationId
+    );
     response.statusCode = 200;
     response.end(
       JSON.stringify({
@@ -340,21 +520,32 @@ export async function handleAccessControlRoutes(
   // POST /access-control/grants
   if (pathname === '/access-control/grants' && request.method === 'POST') {
     const principal = rp(request, 'users.manage');
-    const payload = (await readJsonBody(request)) as {
-      subjectType: 'user' | 'team' | 'sector';
-      subjectId: string;
-      permissionCode: string;
-      effect?: 'allow' | 'deny' | 'inherit';
-    };
-    assertPermissionExists(accessControl, payload.permissionCode);
-    assertGrantSubjectForCurrentAccount(accessControl, users, payload, principal);
+    const body = requireObjectPayload(await readJsonBody(request));
+    const subjectType = parseSubjectType(body.subjectType);
+    const subjectId = requireBoundedString(body.subjectId, 'subjectId', 128);
+    const permissionCode = requireBoundedString(body.permissionCode, 'permissionCode', 128);
+    const effect: AssignmentEffect =
+      body.effect === undefined
+        ? 'inherit'
+        : requireEnum(body.effect, 'effect', ASSIGNMENT_EFFECTS);
+    assertPermissionExists(accessControl, permissionCode);
+    assertGrantSubjectForCurrentAccount(accessControl, users, { subjectType, subjectId }, principal);
     await accessControl.setPermissionAssignment({
       accountId: principal.user.accountId,
-      subjectType: payload.subjectType,
-      subjectId: payload.subjectId,
-      permissionCode: payload.permissionCode,
-      effect: payload.effect
+      subjectType,
+      subjectId,
+      permissionCode,
+      effect
     });
+    appendAccessMutationAudit(
+      audit,
+      principal,
+      effect === 'inherit' ? 'permission_inherited' : 'permission_granted',
+      'access-permission-assignment',
+      subjectId,
+      `Permission assignment changed permission=${permissionCode} subjectType=${subjectType} effect=${effect}`,
+      correlationId
+    );
     response.statusCode = 200;
     response.end(JSON.stringify({ ok: true }));
     return true;

@@ -800,7 +800,7 @@ test('handleFiscalRoutes creates and updates NFS-e layouts when fiscal backoffic
 
 test('handleFiscalRoutes executes complete NFSe document lifecycle', async () => {
   const response = new MockResponse();
-  const service = new FiscalService();
+  const service = new FiscalService(undefined, undefined, { allowNfseSimulation: true });
 
   const createHandled = await handleFiscalRoutes(
     '/fiscal/nfse/documents',
@@ -935,6 +935,108 @@ test('handleFiscalRoutes executes complete NFSe document lifecycle', async () =>
   assert.equal(cancelResponse.statusCode, 200);
   const cancelledPayload = cancelResponse.bodyJson<{ status: string }>();
   assert.equal(cancelledPayload.status, 'cancelled');
+});
+
+test('handleFiscalRoutes returns a safe provider error after persisting an unauthorized NFS-e response', async () => {
+  const service = new FiscalService(undefined, undefined, {
+    allowNfseSimulation: false,
+    nfse: {
+      provider: 'abrasf',
+      apiUrl: 'https://municipal.example.test/nfse',
+      municipalityCode: '3550308',
+      apiKey: 'test-only-token'
+    }
+  });
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = (async () => ({
+    ok: false,
+    status: 401,
+    text: async () => 'municipal-private-secret',
+    headers: new Headers()
+  })) as unknown as typeof fetch;
+
+  try {
+    const createResponse = new MockResponse();
+    await handleFiscalRoutes(
+      '/fiscal/nfse/documents',
+      createMockRequest('POST', '/fiscal/nfse/documents', {
+        numero: 1999,
+        provider: 'abrasf',
+        customer: {
+          type: 'cpf',
+          document: '12345678909',
+          name: 'Cliente Fiscal'
+        },
+        services: [{
+          description: 'Consulta',
+          codigoServico: '0407',
+          cnae: '7500-1/00',
+          quantity: 1,
+          unitValue: 100,
+          totalValue: 100,
+          issRate: 0.05,
+          issValue: 5,
+          pisValue: 0,
+          cofinsValue: 0,
+          csllValue: 0
+        }]
+      }) as never,
+      createResponse as never,
+      'corr-fiscal-provider-error-create',
+      {
+        fiscal: service,
+        audit: { write: () => ({}) } as never,
+        requirePrincipal: () => createPrincipal(),
+        fiscalBackofficeEnabled: true
+      }
+    );
+    const created = createResponse.bodyJson<{ id: string; status: string }>();
+    assert.equal(created.status, 'draft');
+
+    const issueResponse = new MockResponse();
+    const handled = await handleFiscalRoutes(
+      `/fiscal/nfse/documents/${created.id}/issue`,
+      createMockRequest('POST', `/fiscal/nfse/documents/${created.id}/issue`) as never,
+      issueResponse as never,
+      'corr-fiscal-provider-error-issue',
+      {
+        fiscal: service,
+        audit: { write: () => ({}) } as never,
+        requirePrincipal: () => createPrincipal(),
+        fiscalBackofficeEnabled: true
+      }
+    );
+
+    assert.equal(handled, true);
+    assert.equal(issueResponse.statusCode, 502);
+    const payload = issueResponse.bodyJson<{
+      code: string;
+      message: string;
+      document: { status: string; observations?: string };
+    }>();
+    assert.equal(payload.code, 'NFSE_PROVIDER_ERROR');
+    assert.equal(payload.message, 'NFS-e provider did not authorize the document');
+    assert.equal(payload.document.status, 'error');
+    assert.match(payload.document.observations ?? '', /HTTP 401/);
+    assert.doesNotMatch(JSON.stringify(payload), /municipal-private-secret|test-only-token/);
+
+    const getResponse = new MockResponse();
+    await handleFiscalRoutes(
+      `/fiscal/nfse/documents/${created.id}`,
+      createMockRequest('GET', `/fiscal/nfse/documents/${created.id}`) as never,
+      getResponse as never,
+      'corr-fiscal-provider-error-get',
+      {
+        fiscal: service,
+        audit: { write: () => ({}) } as never,
+        requirePrincipal: () => createPrincipal(),
+        fiscalBackofficeEnabled: true
+      }
+    );
+    assert.equal(getResponse.bodyJson<{ status: string }>().status, 'error');
+  } finally {
+    globalThis.fetch = previousFetch;
+  }
 });
 
 test('handleFiscalRoutes blocks write operations when fiscal backoffice flag is disabled', async () => {

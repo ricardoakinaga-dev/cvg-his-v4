@@ -21,8 +21,17 @@ import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 
 export { DatabaseWebhookRepository } from './repositories/database-webhook.repository.js';
 
-import type { WebhookRepository as IWebhookRepository } from './repositories/database-webhook.repository.js';
-export type { WebhookRepository } from './repositories/database-webhook.repository.js';
+import type {
+  ClaimPendingWebhookDeliveriesInput,
+  WebhookDeliveryClaim,
+  WebhookRepository as IWebhookRepository
+} from './repositories/database-webhook.repository.js';
+export type {
+  ClaimPendingWebhookDeliveriesInput,
+  RetryWebhookDeliveryInput,
+  WebhookDeliveryClaim,
+  WebhookRepository
+} from './repositories/database-webhook.repository.js';
 
 export interface WebhooksServiceOptions {
   readonly repository?: IWebhookRepository;
@@ -34,6 +43,7 @@ export interface WebhooksServiceOptions {
 export interface WebhookDeliveryRequest {
   readonly url: string;
   readonly address: string;
+  /** Stable for the persisted delivery across retries and lease takeovers. */
   readonly headers: Readonly<Record<string, string>>;
   readonly body: string;
   readonly timeoutMs: number;
@@ -43,10 +53,29 @@ export interface WebhookDeliveryResult {
   readonly success: boolean;
   readonly statusCode?: number;
   readonly body?: string;
+  readonly error?: string;
+}
+
+export interface ProcessWebhookDeliveriesOptions {
+  readonly workerId: string;
+  readonly leaseMs?: number;
+  readonly limit?: number;
+}
+
+export interface ProcessWebhookDeliveriesResult {
+  readonly claimed: number;
+  readonly delivered: number;
+  readonly retried: number;
+  readonly failed: number;
+  readonly leaseLost: number;
 }
 
 const MAX_RETRY_ATTEMPTS = 3;
 const RETRY_DELAYS_MS = [5000, 30000, 90000];
+const DEFAULT_MAX_ATTEMPTS = MAX_RETRY_ATTEMPTS + 1;
+const DEFAULT_WEBHOOK_LEASE_MS = 60_000;
+const MAX_WEBHOOK_CLAIM_LIMIT = 100;
+const MAX_WEBHOOK_WORKER_ID_BYTES = 160;
 const MAX_EVENTS_PER_WEBHOOK = 50;
 const MAX_EVENT_LENGTH = 120;
 const MAX_RESPONSE_BODY_BYTES = 64 * 1024;
@@ -85,6 +114,19 @@ function isPrivateAddress(address: string): boolean {
   const family = isIP(address);
   if (family === 0) return true;
   return nonPublicAddresses.check(address, family === 6 ? 'ipv6' : 'ipv4');
+}
+
+function normalizeWebhookWorkerId(rawWorkerId: string): string {
+  const workerId = rawWorkerId.trim();
+  if (
+    !workerId ||
+    workerId !== rawWorkerId ||
+    !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/.test(workerId) ||
+    Buffer.byteLength(workerId, 'utf8') > MAX_WEBHOOK_WORKER_ID_BYTES
+  ) {
+    throw new Error('Webhook worker id is invalid');
+  }
+  return workerId;
 }
 
 function createPinnedLookup(address: string): LookupFunction {
@@ -372,25 +414,71 @@ export class WebhooksService {
     }
 
     // Reset delivery to pending for retry
-    const resetDelivery: WebhookDeliverySummary = {
-      ...delivery,
-      status: 'pending',
-      attempts: 0,
-      lastAttemptAt: undefined,
-      responseStatus: undefined,
-      responseBody: undefined,
-      nextRetryAt: undefined
-    };
-    await this.#repository.updateDelivery(resetDelivery);
-
-    // Trigger async retry
-    void this.#deliverWithRetry(
-      webhook,
-      resetDelivery,
-      delivery.payload as unknown as WebhookPayload
-    );
+    const requeue = this.#repository.requeueDelivery;
+    if (requeue) {
+      const accepted = await requeue(accountId, deliveryId);
+      if (!accepted) return null;
+    } else {
+      const resetDelivery: WebhookDeliverySummary = {
+        ...delivery,
+        status: 'pending',
+        attempts: 0,
+        lastAttemptAt: undefined,
+        responseStatus: undefined,
+        responseBody: undefined,
+        responseError: undefined,
+        deadLetteredAt: undefined,
+        nextRetryAt: undefined
+      };
+      await this.#repository.updateDelivery(resetDelivery);
+    }
 
     return { success: true, message: 'Delivery re-queued for retry' };
+  }
+
+  /**
+   * Claims and executes due webhook deliveries. Network I/O occurs only after
+   * the database claim commits; every terminal transition is fenced by the
+   * exact owner, token and version returned by the claim.
+   */
+  public async processPendingDeliveries(
+    accountId: AccountId,
+    options: ProcessWebhookDeliveriesOptions
+  ): Promise<ProcessWebhookDeliveriesResult> {
+    const claimPending = this.#repository?.claimPending;
+    if (!claimPending) {
+      return { claimed: 0, delivered: 0, retried: 0, failed: 0, leaseLost: 0 };
+    }
+
+    const leaseMs = options.leaseMs ?? DEFAULT_WEBHOOK_LEASE_MS;
+    const limit = options.limit ?? 25;
+    const workerId = normalizeWebhookWorkerId(options.workerId);
+    if (!Number.isInteger(limit) || limit < 1 || limit > MAX_WEBHOOK_CLAIM_LIMIT) {
+      throw new Error(`Webhook claim limit must be between 1 and ${MAX_WEBHOOK_CLAIM_LIMIT}`);
+    }
+    if (!Number.isInteger(leaseMs) || leaseMs < 1_000 || leaseMs > 900_000) {
+      throw new Error('Webhook lease duration must be between 1000 and 900000 milliseconds');
+    }
+
+    const claims = await claimPending.call(this.#repository, accountId, {
+      limit,
+      leaseOwner: workerId,
+      leaseMs
+    });
+    let delivered = 0;
+    let retried = 0;
+    let failed = 0;
+    let leaseLost = 0;
+
+    for (const claim of claims) {
+      const outcome = await this.#processClaim(claim, leaseMs);
+      if (outcome === 'delivered') delivered++;
+      else if (outcome === 'retried') retried++;
+      else if (outcome === 'failed') failed++;
+      else leaseLost++;
+    }
+
+    return { claimed: claims.length, delivered, retried, failed, leaseLost };
   }
 
   /**
@@ -415,7 +503,9 @@ export class WebhooksService {
     const deliveries = await this.#repository.findDeliveriesByWebhook(accountId, webhookId);
     const stats = { total: deliveries.length, pending: 0, delivered: 0, failed: 0 };
     for (const d of deliveries) {
-      if (d.status === 'pending') stats.pending++;
+      if (d.status === 'pending' || d.status === 'processing' || d.status === 'retrying') {
+        stats.pending++;
+      }
       else if (d.status === 'delivered') stats.delivered++;
       else if (d.status === 'failed') stats.failed++;
     }
@@ -427,43 +517,9 @@ export class WebhooksService {
     event: string,
     data: Record<string, unknown>
   ): Promise<number> {
-    if (!this.#repository) {
-      return 0;
-    }
-
-    const webhooks = await this.#repository.findActiveByEvent(accountId, event);
-    if (webhooks.length === 0) {
-      return 0;
-    }
-
-    const payload: WebhookPayload = {
-      id: createCorrelationId('whpay'),
-      event,
-      timestamp: nowIso(),
-      accountId,
-      data
-    };
-
-    let dispatched = 0;
-
-    for (const webhook of webhooks) {
-      const delivery: WebhookDeliverySummary = {
-        id: createCorrelationId('whdel') as WebhookDeliveryId,
-        accountId,
-        webhookId: webhook.id,
-        event,
-        payload: payload as unknown as Record<string, unknown>,
-        status: 'pending',
-        attempts: 0,
-        createdAt: nowIso()
-      };
-
-      await this.#repository.createDelivery(delivery);
-      dispatched++;
-      await this.#deliverWithRetry(webhook, delivery, payload);
-    }
-
-    return dispatched;
+    // Keep the legacy API name, but make the durable queue the only dispatch
+    // path. Network I/O belongs to the lease-fenced worker tick.
+    return this.enqueue(accountId, event, data);
   }
 
   /**
@@ -511,66 +567,17 @@ export class WebhooksService {
     return webhooks.length;
   }
 
-  async #deliverWithRetry(
-    webhook: WebhookSummary,
-    delivery: WebhookDeliverySummary,
-    payload: WebhookPayload
-  ): Promise<void> {
-    for (let attempt = 0; attempt <= MAX_RETRY_ATTEMPTS; attempt++) {
-      const result = await this.#attemptDelivery(webhook, payload, delivery);
-
-      if (result.success) {
-        const updated: WebhookDeliverySummary = {
-          ...delivery,
-          status: 'delivered',
-          attempts: attempt + 1,
-          lastAttemptAt: nowIso(),
-          responseStatus: result.statusCode,
-          responseBody: result.body
-        };
-
-        await this.#updateDelivery(updated);
-        return;
-      }
-
-      if (attempt === MAX_RETRY_ATTEMPTS) {
-        const updated: WebhookDeliverySummary = {
-          ...delivery,
-          status: 'failed',
-          attempts: attempt + 1,
-          lastAttemptAt: nowIso(),
-          responseStatus: result.statusCode,
-          responseBody: result.body
-        };
-
-        await this.#updateDelivery(updated);
-        return;
-      }
-
-      const delay = RETRY_DELAYS_MS[attempt] ?? RETRY_DELAYS_MS[RETRY_DELAYS_MS.length - 1];
-      const nextRetry = new Date(Date.now() + delay);
-
-      const updated: WebhookDeliverySummary = {
-        ...delivery,
-        status: 'pending',
-        attempts: attempt + 1,
-        lastAttemptAt: nowIso(),
-        responseStatus: result.statusCode,
-        responseBody: result.body,
-        nextRetryAt: nextRetry.toISOString()
-      };
-
-      await this.#updateDelivery(updated);
-    }
-  }
-
   async #attemptDelivery(
     webhook: WebhookSummary,
     payload: WebhookPayload,
     delivery: WebhookDeliverySummary
-  ): Promise<{ success: boolean; statusCode?: number; body?: string }> {
+  ): Promise<WebhookDeliveryResult> {
     try {
-      const target = new URL(webhook.url);
+      // Re-validate values loaded from PostgreSQL as well as values received by
+      // the registration API. This protects against legacy rows, manual SQL,
+      // and any future repository implementation that bypasses register().
+      const normalizedUrl = normalizeWebhookUrl(webhook.url);
+      const target = new URL(normalizedUrl);
       const addresses = await this.#resolveHostname(target.hostname);
       if (addresses.length === 0 || addresses.some(isPrivateAddress)) {
         return { success: false };
@@ -579,31 +586,129 @@ export class WebhooksService {
       const signature = webhook.secret
         ? `sha256=${createHmac('sha256', webhook.secret).update(body).digest('hex')}`
         : undefined;
-      return await this.#deliverRequest({
-        url: webhook.url,
+      const result = await this.#deliverRequest({
+        url: normalizedUrl,
         address: addresses[0],
         headers: {
           'Content-Type': 'application/json',
           'X-Webhook-ID': webhook.id,
           'X-Webhook-Event': delivery.event,
           'X-Webhook-Delivery-ID': delivery.id,
+          // External receivers must use this stable key to deduplicate the
+          // unavoidable crash window after provider acceptance and before the
+          // worker can durably complete its lease-fenced claim.
+          'Idempotency-Key': delivery.id,
           ...(signature ? { 'X-Webhook-Signature': signature } : {})
         },
         body,
         timeoutMs: 10000
       });
+      return result;
     } catch {
-      return { success: false };
+      return { success: false, error: 'webhook delivery request failed' };
     }
   }
 
-  async #updateDelivery(delivery: WebhookDeliverySummary): Promise<void> {
-    if (this.#repository) {
-      await this.#repository.updateDelivery(delivery);
+  async #processClaim(claim: WebhookDeliveryClaim, leaseMs: number): Promise<'delivered' | 'retried' | 'failed' | 'lease_lost'> {
+    const repository = this.#repository;
+    if (!repository?.completeClaim || !repository.retryClaim || !repository.failClaim) {
+      return 'lease_lost';
     }
 
-    if (this.#onDeliver) {
-      await this.#onDeliver(delivery);
+    const webhook = await repository.findById(claim.delivery.accountId, claim.delivery.webhookId);
+    if (!webhook || !webhook.isActive) {
+      const failedDelivery: WebhookDeliverySummary = {
+        ...claim.delivery,
+        status: 'failed',
+        responseError: 'webhook is inactive or missing',
+        deadLetteredAt: nowIso()
+      };
+      const failed = await repository.failClaim(claim, failedDelivery);
+      if (failed) await this.#notifyDelivery(failedDelivery);
+      return failed ? 'failed' : 'lease_lost';
     }
+
+    let leaseLost = false;
+    const heartbeat = setInterval(() => {
+      const renewClaim = repository.renewClaim;
+      if (!renewClaim) return;
+      void renewClaim.call(repository, claim, leaseMs).then((renewed) => {
+        if (!renewed) leaseLost = true;
+      }).catch(() => {
+        leaseLost = true;
+      });
+    }, Math.max(250, Math.floor(leaseMs / 3)));
+
+    let result: WebhookDeliveryResult;
+    try {
+      result = await this.#attemptDelivery(
+        webhook,
+        claim.delivery.payload as unknown as WebhookPayload,
+        claim.delivery
+      );
+    } finally {
+      clearInterval(heartbeat);
+    }
+
+    if (leaseLost) return 'lease_lost';
+
+    const attempted = claim.delivery.attempts;
+    const maxAttempts = claim.delivery.maxAttempts ?? DEFAULT_MAX_ATTEMPTS;
+    if (result.success) {
+      const completedDelivery: WebhookDeliverySummary = {
+        ...claim.delivery,
+        status: 'delivered',
+        lastAttemptAt: nowIso(),
+        responseStatus: result.statusCode,
+        responseBody: result.body,
+        responseError: undefined,
+        nextRetryAt: undefined,
+        deadLetteredAt: undefined
+      };
+      const completed = await repository.completeClaim(claim, completedDelivery);
+      if (completed) await this.#notifyDelivery(completedDelivery);
+      return completed ? 'delivered' : 'lease_lost';
+    }
+
+    if (attempted >= maxAttempts) {
+      const terminalDelivery: WebhookDeliverySummary = {
+        ...claim.delivery,
+        status: 'failed',
+        lastAttemptAt: nowIso(),
+        responseStatus: result.statusCode,
+        responseBody: result.body,
+        responseError: result.error ?? 'webhook delivery failed',
+        deadLetteredAt: nowIso(),
+        nextRetryAt: undefined
+      };
+      const terminal = await repository.failClaim(claim, terminalDelivery);
+      if (terminal) await this.#notifyDelivery(terminalDelivery);
+      return terminal ? 'failed' : 'lease_lost';
+    }
+
+    const delayIndex = Math.min(Math.max(attempted - 1, 0), RETRY_DELAYS_MS.length - 1);
+    const scheduledAt = new Date(Date.now() + RETRY_DELAYS_MS[delayIndex]).toISOString();
+    const retryDelivery: WebhookDeliverySummary = {
+      ...claim.delivery,
+      status: 'retrying',
+      lastAttemptAt: nowIso(),
+      responseStatus: result.statusCode,
+      responseBody: result.body,
+      responseError: result.error ?? 'webhook delivery failed',
+      nextRetryAt: scheduledAt,
+      deadLetteredAt: undefined
+    };
+    const retry = await repository.retryClaim(
+      claim,
+      { scheduledAt, error: result.error ?? 'webhook delivery failed' },
+      retryDelivery
+    );
+    if (retry) await this.#notifyDelivery(retryDelivery);
+    return retry ? 'retried' : 'lease_lost';
   }
+
+  async #notifyDelivery(delivery: WebhookDeliverySummary): Promise<void> {
+    if (this.#onDeliver) await this.#onDeliver(delivery);
+  }
+
 }

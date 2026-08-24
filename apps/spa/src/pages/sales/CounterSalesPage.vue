@@ -834,6 +834,20 @@
                     </div>
                   </div>
 
+                  <div v-if="selectedSale.receipt" class="receipt-summary" data-testid="counter-sale-receipt">
+                    <div>
+                      <span class="summary-card__label">Comprovante financeiro</span>
+                      <strong>{{ formatCurrency(selectedSale.receipt.amount) }}</strong>
+                    </div>
+                    <div class="receipt-summary__meta">
+                      <span>ID {{ selectedSale.receipt.id }}</span>
+                      <span>{{ formatDateTime(selectedSale.receipt.receivedAt) }}</span>
+                      <span v-if="selectedSale.receipt.journalEntryId">
+                        Diário {{ selectedSale.receipt.journalEntryId }}
+                      </span>
+                    </div>
+                  </div>
+
                   <div class="sidebar-actions">
                     <DsButton
                       v-if="selectedSale.status === 'open'"
@@ -868,7 +882,7 @@
                       Cancelar Comanda
                     </DsButton>
                     <DsButton
-                      v-if="selectedSale.status === 'closed'"
+                      v-if="selectedSale.status === 'closed' && !selectedSale.receipt"
                       variant="secondary"
                       :loading="transitioningSale"
                       @click="reopenSale"
@@ -2007,14 +2021,30 @@ async function submitPayment() {
 }
 
 async function closeSale() {
-  if (!selectedSale.value) return;
+  const sale = selectedSale.value;
+  if (!sale) return;
+  const saleId = sale.id;
+  const saleNumber = sale.number;
   transitioningSale.value = true;
   error.value = '';
   try {
-    await counterSalesService.close(selectedSale.value.id);
-    successMessage.value = `Comanda ${selectedSale.value.number} finalizada.`;
+    const closed =
+      sale.balanceDue > 0.01
+        ? await counterSalesService.settle(saleId, [
+            {
+              method: paymentForm.method,
+              amount: paymentForm.amount,
+              installments: paymentForm.installments,
+              reference: paymentForm.reference || null,
+              notes: paymentForm.notes || null
+            }
+          ])
+        : await counterSalesService.close(saleId);
+    successMessage.value = closed.receipt
+      ? `Comanda ${saleNumber} finalizada com recibo ${closed.receipt.id}.`
+      : `Comanda ${saleNumber} finalizada.`;
     await loadPage();
-    await selectSale(selectedSale.value.id);
+    await selectSale(saleId);
   } catch (actionError) {
     error.value = actionError instanceof Error ? actionError.message : 'Erro ao fechar comanda';
   } finally {
@@ -2131,6 +2161,18 @@ async function createSaleForSelectedOwner() {
   try {
     const sale = await counterSalesService.create({
       ownerId: selectedOwnerId.value,
+      patientId:
+        selectedOwnerId.value === workflowContext.ownerId
+          ? workflowContext.patientId || null
+          : null,
+      encounterId:
+        selectedOwnerId.value === workflowContext.ownerId
+          ? workflowContext.encounterId || null
+          : null,
+      queueEntryId:
+        selectedOwnerId.value === workflowContext.ownerId
+          ? workflowContext.queueEntryId || null
+          : null,
       notes: createSaleNotes.value || null
     });
     successMessage.value = `Comanda ${sale.number} aberta com sucesso.`;
@@ -2462,14 +2504,15 @@ function normalizeCatalogCode(value: string) {
 
 function readWorkflowContext() {
   if (typeof window === 'undefined') {
-    return { encounterId: '', patientId: '', ownerId: '' };
+    return { encounterId: '', patientId: '', ownerId: '', queueEntryId: '' };
   }
 
   const params = new URLSearchParams(window.location.search);
   return {
     encounterId: params.get('encounterId')?.trim() || '',
     patientId: params.get('patientId')?.trim() || '',
-    ownerId: params.get('ownerId')?.trim() || ''
+    ownerId: params.get('ownerId')?.trim() || '',
+    queueEntryId: params.get('queueEntryId')?.trim() || ''
   };
 }
 
@@ -3016,6 +3059,24 @@ function formatDateTime(value: string): string {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.receipt-summary {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid rgba(22, 163, 74, 0.28);
+  border-left: 4px solid #16a34a;
+  border-radius: 12px;
+  background: rgba(240, 253, 244, 0.9);
+}
+
+.receipt-summary__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  color: var(--color-text-secondary, #475569);
+  font-size: 12px;
 }
 
 .create-sale-modal__tabs {

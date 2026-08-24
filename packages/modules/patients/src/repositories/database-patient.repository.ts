@@ -362,16 +362,25 @@ export class DatabaseOwnerPatientLinkRepository implements OwnerPatientLinkRepos
   }
 
   private mapRowToLink(row: typeof ownerPatientLinks.$inferSelect): OwnerPatientLinkSummary {
-    const relType = row.relationship ?? 'primary';
+    const relType = (row.relationship ?? 'primary') as
+      | 'primary'
+      | 'secondary'
+      | 'financial'
+      | 'authorized'
+      | 'spouse';
     return {
       id: row.id as OwnerPatientLinkId,
       accountId: row.accountId as AccountId,
       ownerId: row.ownerId as OwnerId,
       patientId: row.patientId as PatientId,
       relationshipType:
-        relType === 'primary' || relType === 'secondary' || relType === 'financial'
+        relType === 'primary'
+          || relType === 'secondary'
+          || relType === 'financial'
+          || relType === 'authorized'
+          || relType === 'spouse'
           ? relType
-          : ('primary' as 'primary' | 'secondary' | 'financial'),
+          : ('primary' as 'primary' | 'secondary' | 'financial' | 'authorized' | 'spouse'),
       financialResponsible: row.financialResponsible,
       createdAt: row.createdAt.toISOString()
     };

@@ -12,7 +12,7 @@ export const schedulingQueueEntries = pgTable(
     patientId: text('patient_id').notNull(),
     ownerId: text('owner_id').notNull(),
     appointmentId: text('appointment_id'),
-    encounterId: text('encounter_id'),
+    encounterId: uuid('encounter_id'),
     entryType: text('entry_type').notNull().default('standard'),
     reason: text('reason').notNull(),
     priority: text('priority').notNull().default('medium'),
@@ -73,7 +73,7 @@ export const schedulingQueueTransfers = pgTable(
     reason: text('reason').notNull(),
     urgency: text('urgency').notNull().default('medium'),
     billingRecordId: text('billing_record_id'),
-    counterSaleId: text('counter_sale_id'),
+    counterSaleId: uuid('counter_sale_id'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
   },
   (table) => ({

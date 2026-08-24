@@ -6,6 +6,8 @@ import type {
   InventoryItemsListResponse,
   InventoryLotSummary,
   InventoryLotsListResponse,
+  InventoryPurchaseSummary,
+  InventoryPurchasesListResponse,
   InventoryStockMovementListResponse,
   InventoryStockMovementSummary
 } from '@/types/inventory';
@@ -34,6 +36,30 @@ export interface CreateInventoryStockAdjustmentPayload {
   reference?: string;
 }
 
+export interface CreateInventoryPurchasePayload {
+  supplierName: string;
+  invoiceNumber: string;
+  lines: Array<{
+    inventoryItemId: string;
+    quantity: number;
+    unitCostAmount: number;
+    lotNumber: string;
+    expiryDate?: string | null;
+    manufactureDate?: string | null;
+    location?: string | null;
+  }>;
+}
+
+export interface ReceiveInventoryPurchasePayload {
+  lines: Array<{
+    lineId: string;
+    quantity: number;
+    expiryDate?: string | null;
+    manufactureDate?: string | null;
+    location?: string | null;
+  }>;
+}
+
 export const inventoryService = {
   async list(search?: string): Promise<InventoryItemSummary[]> {
     const params = search ? `?q=${encodeURIComponent(search)}` : '';
@@ -56,6 +82,35 @@ export const inventoryService = {
   async listLots(): Promise<InventoryLotSummary[]> {
     const response = await apiRequest<InventoryLotsListResponse>('/inventory/lots');
     return response.items ?? [];
+  },
+
+  async listPurchases(): Promise<InventoryPurchaseSummary[]> {
+    const response = await apiRequest<InventoryPurchasesListResponse>('/inventory/purchases');
+    return response.items ?? [];
+  },
+
+  async createPurchase(payload: CreateInventoryPurchasePayload): Promise<InventoryPurchaseSummary> {
+    return apiRequest<InventoryPurchaseSummary>('/inventory/purchases', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
+
+  async approvePurchase(purchaseId: string): Promise<InventoryPurchaseSummary> {
+    return apiRequest<InventoryPurchaseSummary>(`/inventory/purchases/${encodeURIComponent(purchaseId)}/approve`, {
+      method: 'POST',
+      body: JSON.stringify({})
+    });
+  },
+
+  async receivePurchase(
+    purchaseId: string,
+    payload: ReceiveInventoryPurchasePayload
+  ): Promise<InventoryPurchaseSummary> {
+    return apiRequest<InventoryPurchaseSummary>(`/inventory/purchases/${encodeURIComponent(purchaseId)}/receive`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
   },
 
   async listStockMovements(inventoryItemId?: string): Promise<InventoryStockMovementSummary[]> {

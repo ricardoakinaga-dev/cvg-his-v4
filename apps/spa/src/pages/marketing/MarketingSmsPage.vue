@@ -65,6 +65,40 @@
       </div>
     </form>
 
+    <section
+      v-if="selectedOwner"
+      class="marketing-sms-consent"
+      aria-label="Consentimento de marketing"
+    >
+      <div>
+        <h2>Consentimento de marketing</h2>
+        <p v-if="consentLoading">Carregando preferência de comunicação…</p>
+        <p v-else-if="consentAllowed">Consentimento de marketing ativo</p>
+        <p v-else>Comunicações bloqueadas para este cliente</p>
+      </div>
+      <DsButton
+        v-if="consentAllowed"
+        id="marketing-sms-opt-out"
+        variant="secondary"
+        type="button"
+        :disabled="consentSaving"
+        @click="toggleConsent('revoked')"
+      >
+        Bloquear comunicações
+      </DsButton>
+      <DsButton
+        v-else
+        id="marketing-sms-opt-in"
+        variant="primary"
+        type="button"
+        :disabled="consentSaving || consentLoading"
+        @click="toggleConsent('granted')"
+      >
+        Permitir comunicações
+      </DsButton>
+      <DsAlert v-if="consentError" variant="danger">{{ consentError }}</DsAlert>
+    </section>
+
     <section v-if="preparedDraft" class="marketing-sms-preview" aria-label="Prévia do SMS">
       <h2>Prévia do SMS</h2>
       <dl>
@@ -108,6 +142,7 @@ import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
 import { ownerService } from '@/services/owner';
+import { marketingService, type MarketingConsentStatus, type MarketingConsentSummary } from '@/services/marketing';
 import type { OwnerContact, OwnerSummary } from '@/types/owner';
 
 const SMS_LIMIT = 150;
@@ -129,8 +164,13 @@ const draftMessage = ref('');
 const loading = ref(false);
 const error = ref('');
 const historyRows = ref<DataTableRow[]>([]);
+const consent = ref<MarketingConsentSummary | null>(null);
+const consentLoading = ref(false);
+const consentSaving = ref(false);
+const consentError = ref('');
 
 const selectedOwner = computed(() => owners.value.find((owner) => owner.id === selectedOwnerId.value) ?? null);
+const consentAllowed = computed(() => consent.value?.status === 'granted');
 const remainingCharacters = computed(() => SMS_LIMIT - body.value.length);
 const canPrepareDraft = computed(() => Boolean(selectedOwnerId.value && phone.value.trim() && body.value.trim()));
 const headerSecondaryActions = computed(() => [
@@ -146,6 +186,9 @@ const headerSecondaryActions = computed(() => [
 watch(selectedOwnerId, () => {
   const contact = preferredSmsContact(selectedOwner.value);
   phone.value = contact?.value ?? '';
+  consent.value = null;
+  consentError.value = '';
+  void loadConsent();
 });
 
 watch(body, (value) => {
@@ -164,6 +207,40 @@ async function loadOwners() {
     owners.value = [];
   } finally {
     loading.value = false;
+  }
+}
+
+async function loadConsent() {
+  const ownerId = selectedOwnerId.value;
+  if (!ownerId) {
+    consent.value = null;
+    return;
+  }
+  consentLoading.value = true;
+  consentError.value = '';
+  try {
+    consent.value = await marketingService.getConsent(ownerId);
+  } catch (err: unknown) {
+    consentError.value = err instanceof Error ? err.message : 'Falha ao carregar consentimento';
+  } finally {
+    consentLoading.value = false;
+  }
+}
+
+async function toggleConsent(status: MarketingConsentStatus) {
+  const ownerId = selectedOwnerId.value;
+  if (!ownerId) return;
+  consentSaving.value = true;
+  consentError.value = '';
+  try {
+    consent.value = await marketingService.setConsent({ ownerId, status });
+    draftMessage.value = status === 'revoked'
+      ? 'Comunicações bloqueadas para este cliente'
+      : 'Comunicações permitidas para este cliente';
+  } catch (err: unknown) {
+    consentError.value = err instanceof Error ? err.message : 'Falha ao atualizar consentimento';
+  } finally {
+    consentSaving.value = false;
   }
 }
 
@@ -230,12 +307,27 @@ onMounted(() => {
 }
 
 .marketing-sms-preview,
+.marketing-sms-consent,
 .marketing-sms-history {
   display: grid;
   gap: 12px;
 }
 
+.marketing-sms-consent {
+  align-items: center;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 8px;
+  grid-template-columns: 1fr auto;
+  padding: 16px;
+}
+
+.marketing-sms-consent h2,
+.marketing-sms-consent p {
+  margin: 0;
+}
+
 .marketing-sms-preview h2,
+.marketing-sms-consent h2,
 .marketing-sms-history h2 {
   font-size: 18px;
   margin: 0;

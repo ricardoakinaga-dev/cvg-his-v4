@@ -1,16 +1,20 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
-import type {
+import {
   CreateMarketingCampaignInput,
   CreateMarketingSegmentInput,
   CreateMarketingTemplateInput,
+  DeterministicMarketingSandboxGateway,
   MarketingAudienceMember,
   MarketingCampaignStatus,
   MarketingChannel,
+  MarketingConsentStatus,
   MarketingDispatchGateway,
+  MarketingProviderMode,
   MarketingService,
   MarketingSettingKey,
-  SaveMarketingSettingInput
+  SaveMarketingSettingInput,
+  resolveMarketingProviderMode
 } from '@cvg-his-v2/module-marketing';
 import type { AuditService } from '@cvg-his-v2/module-audit';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
@@ -27,6 +31,7 @@ export interface MarketingRoutesHandlers {
   smsGateway?: SmsGateway;
   emailGateway?: EmailGateway;
   whatsAppProvider?: WhatsAppProviderService;
+  marketingProviderMode?: MarketingProviderMode;
   audit: AuditService;
   requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
 }
@@ -68,6 +73,57 @@ function parseSettingKey(value: string | null): MarketingSettingKey {
   throw new ValidationError('setting key must be sms_automations or vaccine_email');
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function parseOwnerId(value: unknown): string {
+  if (typeof value !== 'string' || !UUID_PATTERN.test(value)) {
+    throw new ValidationError('ownerId must be a valid UUID');
+  }
+  return value;
+}
+
+function parseMarketingAudience(value: unknown): readonly MarketingAudienceMember[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value)) throw new ValidationError('audience must be an array');
+
+  return value.map((item, index) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      throw new ValidationError(`audience[${index}] must be an object`);
+    }
+    const record = item as Record<string, unknown>;
+    if (typeof record.ownerId !== 'string' || record.ownerId.trim().length === 0) {
+      throw new ValidationError(`audience[${index}].ownerId is required`);
+    }
+    if (record.contacts !== undefined && !Array.isArray(record.contacts)) {
+      throw new ValidationError(`audience[${index}].contacts must be an array`);
+    }
+    const contacts = (record.contacts ?? []).map((contact, contactIndex) => {
+      if (!contact || typeof contact !== 'object' || Array.isArray(contact)) {
+        throw new ValidationError(`audience[${index}].contacts[${contactIndex}] must be an object`);
+      }
+      const parsedContact = contact as Record<string, unknown>;
+      if (
+        parsedContact.type !== 'sms'
+        && parsedContact.type !== 'whatsapp'
+        && parsedContact.type !== 'email'
+      ) {
+        throw new ValidationError(`audience[${index}].contacts[${contactIndex}].type is invalid`);
+      }
+      if (typeof parsedContact.value !== 'string' || parsedContact.value.trim().length === 0) {
+        throw new ValidationError(`audience[${index}].contacts[${contactIndex}].value is required`);
+      }
+      return { type: parsedContact.type, value: parsedContact.value.trim() };
+    });
+
+    return {
+      ...record,
+      ownerId: record.ownerId.trim(),
+      ownerName: typeof record.ownerName === 'string' ? record.ownerName.trim() : '',
+      contacts
+    } as MarketingAudienceMember;
+  });
+}
+
 function parseSettingPayload(value: unknown, key: MarketingSettingKey): SaveMarketingSettingInput {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new ValidationError('setting payload is required');
@@ -102,6 +158,45 @@ export async function handleMarketingRoutes(
 
   const { marketing, audit, requirePrincipal } = handlers;
   const url = new URL(request.url ?? pathname, 'http://localhost');
+
+  if (pathname === '/marketing/consent' && request.method === 'GET') {
+    const principal = requirePrincipal(request, 'marketing.read');
+    const ownerId = parseOwnerId(url.searchParams.get('ownerId'));
+    const consent = await marketing.getConsent(principal.user.accountId, ownerId);
+    return json(response, 200, { consent });
+  }
+
+  const consentAction = pathname === '/marketing/consent/opt-out'
+    ? 'revoked'
+    : pathname === '/marketing/consent/opt-in'
+      ? 'granted'
+      : null;
+  if (consentAction && request.method === 'POST') {
+    const principal = requirePrincipal(request, 'marketing.manage');
+    const payload = await readJsonBody(request);
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      throw new ValidationError('consent payload is required');
+    }
+    const ownerId = parseOwnerId((payload as Record<string, unknown>).ownerId);
+    const consent = await marketing.setConsent(
+      principal.user.accountId,
+      principal.user.id,
+      ownerId,
+      consentAction satisfies MarketingConsentStatus
+    );
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'marketing',
+      action: consentAction === 'revoked' ? 'marketing_opt_out' : 'marketing_opt_in',
+      entityType: 'marketing-consent',
+      entityId: `${principal.user.accountId}:${ownerId}`,
+      payloadSummary: `Marketing consent ${consentAction} for owner ${ownerId}`,
+      riskLevel: 'high',
+      correlationId
+    });
+    return json(response, 200, consent);
+  }
 
   if (pathname === '/marketing/segments' && request.method === 'GET') {
     const principal = requirePrincipal(request, 'marketing.read');
@@ -189,7 +284,14 @@ export async function handleMarketingRoutes(
 
   if (pathname === '/marketing/campaigns' && request.method === 'POST') {
     const principal = requirePrincipal(request, 'marketing.manage');
-    const payload = await readJsonBody(request) as CreateMarketingCampaignInput;
+    const rawPayload = await readJsonBody(request);
+    if (!rawPayload || typeof rawPayload !== 'object' || Array.isArray(rawPayload)) {
+      throw new ValidationError('campaign payload is required');
+    }
+    const payload = {
+      ...(rawPayload as Record<string, unknown>),
+      audience: parseMarketingAudience((rawPayload as Record<string, unknown>).audience)
+    } as CreateMarketingCampaignInput;
     const campaign = await marketing.createCampaign(principal.user.accountId, principal.user.id, payload);
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -226,13 +328,18 @@ export async function handleMarketingRoutes(
   const dispatchCampaignId = parseCampaignId(pathname, '/dispatch');
   if (dispatchCampaignId && request.method === 'POST') {
     const principal = requirePrincipal(request, 'marketing.manage');
-    const payload = await readJsonBody(request) as { audience?: readonly MarketingAudienceMember[] };
+    const rawPayload = await readJsonBody(request);
+    if (!rawPayload || typeof rawPayload !== 'object' || Array.isArray(rawPayload)) {
+      throw new ValidationError('dispatch payload is required');
+    }
+    const payload = rawPayload as { audience?: unknown };
     const result = await marketing.dispatchCampaign(principal.user.accountId, principal.user.id, dispatchCampaignId, {
-      audience: Array.isArray(payload.audience) ? payload.audience : [],
+      audience: parseMarketingAudience(payload.audience),
       gateway: createMarketingGateway(
         handlers.smsGateway,
         handlers.emailGateway,
-        handlers.whatsAppProvider
+        handlers.whatsAppProvider,
+        handlers.marketingProviderMode
       )
     });
     appendAudit(audit, {
@@ -256,7 +363,12 @@ export async function handleMarketingRoutes(
       principal.user.accountId,
       principal.user.id,
       retryDeliveryId,
-      createMarketingGateway(handlers.smsGateway, handlers.emailGateway, handlers.whatsAppProvider)
+      createMarketingGateway(
+        handlers.smsGateway,
+        handlers.emailGateway,
+        handlers.whatsAppProvider,
+        handlers.marketingProviderMode
+      )
     );
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -286,12 +398,21 @@ export async function handleMarketingRoutes(
 function createMarketingGateway(
   smsGateway?: SmsGateway,
   emailGateway?: EmailGateway,
-  whatsAppProvider?: WhatsAppProviderService
+  whatsAppProvider?: WhatsAppProviderService,
+  configuredMode?: MarketingProviderMode
 ): MarketingDispatchGateway {
+  const mode = resolveMarketingProviderMode(configuredMode);
+  if (mode === 'sandbox') return new DeterministicMarketingSandboxGateway();
+
   return {
     async send(input) {
       if (input.channel === 'sms' && smsGateway) {
-        const result = await smsGateway.send({ to: input.to, text: input.body });
+        const result = await smsGateway.send({
+          to: input.to,
+          text: input.body,
+          idempotencyKey: input.idempotencyKey ?? input.deliveryKey,
+          deliveryKey: input.deliveryKey
+        } as Parameters<SmsGateway['send']>[0] & { readonly deliveryKey?: string });
         return {
           status: result.status,
           provider: result.provider,
@@ -305,8 +426,10 @@ function createMarketingGateway(
         const result = await emailGateway.send({
           to: input.to,
           subject: input.subject ?? 'Comunicação da clínica',
-          text: input.body
-        });
+          text: input.body,
+          idempotencyKey: input.idempotencyKey ?? input.deliveryKey,
+          deliveryKey: input.deliveryKey
+        } as Parameters<EmailGateway['send']>[0] & { readonly deliveryKey?: string });
         return {
           status: result.status,
           provider: result.provider,
@@ -330,8 +453,10 @@ function createMarketingGateway(
           patientId: input.patientId as never,
           recipient: input.to,
           recipientName: input.ownerName ?? 'Tutor',
-          body: input.body
-        });
+          body: input.body,
+          deliveryKey: input.deliveryKey,
+          idempotencyKey: input.idempotencyKey ?? input.deliveryKey
+        } as never);
         return {
           status: result.sent ? 'sent' : 'failed',
           provider: result.provider ?? 'whatsapp',
@@ -350,21 +475,11 @@ function createMarketingGateway(
         };
       }
 
-      const sentAt = new Date().toISOString();
-      if (input.to.includes('0000')) {
-        return {
-          status: 'failed',
-          provider: `local-${input.channel}`,
-          failureReason: `Simulated local ${input.channel} failure`,
-          sentAt
-        };
-      }
-
       return {
-        status: 'sent',
-        provider: `local-${input.channel}`,
-        providerMessageId: `local_${input.channel}_${Buffer.from(`${input.to}|${input.body}`).toString('base64url')}`,
-        sentAt
+        status: 'failed',
+        provider: 'marketing-external-unconfigured',
+        failureReason: `No external ${input.channel} provider is configured for marketing dispatch`,
+        sentAt: new Date().toISOString()
       };
     }
   };

@@ -161,6 +161,38 @@ describe('StaffService', () => {
     expect(service.findByUserId('user_admin_ops' as UserId)?.id).toBe(first.id);
   });
 
+  it('persists professions and only links staff to an active profession in the same account', async () => {
+    const profession = await service.createProfession('acc_professions' as AccountId, {
+      code: 'VET-CLIN',
+      name: 'Médico Veterinário'
+    });
+    const member = await service.create('acc_professions' as AccountId, {
+      employeeCode: 'VET-001',
+      fullName: 'Dra. Ana',
+      professionId: profession.id
+    });
+
+    expect(service.listProfessions('acc_professions' as AccountId)).toEqual([profession]);
+    expect(member.professionId).toBe(profession.id);
+
+    await expect(
+      service.create('other_account' as AccountId, {
+        employeeCode: 'VET-002',
+        fullName: 'Outro veterinário',
+        professionId: profession.id
+      })
+    ).rejects.toThrow(/profession/i);
+
+    await service.toggleProfession(profession.id, false, 'acc_professions' as AccountId);
+    await expect(
+      service.create('acc_professions' as AccountId, {
+        employeeCode: 'VET-003',
+        fullName: 'Profissional inativo',
+        professionId: profession.id
+      })
+    ).rejects.toThrow(/active/i);
+  });
+
   it('updates collaborator data and toggles active flag', async () => {
     const member = await service.create('acc_demo' as AccountId, {
       employeeCode: 'OPS-001',

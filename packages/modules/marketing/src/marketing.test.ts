@@ -4,9 +4,13 @@ import { test } from 'vitest';
 import type { AccountId, UserId } from '@cvg-his-v2/shared-types';
 
 import {
+  DeterministicMarketingSandboxGateway,
   MarketingService,
+  type MarketingAudienceMember,
   type MarketingCampaignSummary,
   type MarketingDispatchGateway,
+  type MarketingOwnerReference,
+  type MarketingPatientReference,
   type MarketingRepository,
   type MarketingCampaignDeliverySummary,
   type MarketingSegmentSummary,
@@ -196,7 +200,11 @@ test('MarketingService dispatches scheduled campaigns and records delivery outco
 });
 
 test('MarketingService retries a failed delivery and preserves attempt history', async () => {
-  const service = new MarketingService();
+  let retryNow = new Date('2026-06-01T09:05:00.000Z');
+  const service = new MarketingService({
+    retryBaseDelayMs: 1,
+    clock: () => new Date(retryNow)
+  });
   const segment = await service.createSegment(ACCOUNT, USER, {
     name: 'Retry consentido',
     criteria: { consentPurpose: 'marketing' }
@@ -228,6 +236,7 @@ test('MarketingService retries a failed delivery and preserves attempt history',
   assert.equal(failedDelivery.status, 'failed');
   assert.equal(failedDelivery.attemptCount, 1);
 
+  retryNow = new Date('2026-06-01T09:05:00.001Z');
   const retried = await service.retryDelivery(ACCOUNT, USER, failedDelivery.id, {
     async send(input) {
       return {
@@ -262,9 +271,12 @@ test('MarketingService covers validation, durable consent and retry outcomes', a
     ['owner-denied', true],
     ['owner-allowed', true]
   ]);
+  let now = new Date('2026-08-07T12:00:00.000Z');
   const service = new MarketingService({
     repository,
     requireConsentChecker: true,
+    retryBaseDelayMs: 1,
+    clock: () => new Date(now),
     consentChecker: {
       async hasActiveConsent(_accountId, ownerId) {
         return consent.get(ownerId) ?? false;
@@ -387,6 +399,7 @@ test('MarketingService covers validation, durable consent and retry outcomes', a
     ]
   });
   assert.equal(dispatched.summary.failed, 2);
+  now = new Date('2026-08-07T12:01:00.000Z');
   consent.set('owner-denied', false);
   const skipped = await service.retryDelivery(ACCOUNT, USER, dispatched.deliveries[0]!.id, gateway);
   assert.equal(skipped.status, 'skipped');
@@ -414,6 +427,145 @@ test('MarketingService covers validation, durable consent and retry outcomes', a
   assert.equal(service.listDeliveries(ACCOUNT, campaign.id).length, 2);
 });
 
+test('MarketingService records explicit opt-out and blocks preventive dispatch', async () => {
+  const service = new MarketingService();
+  const consent = await service.setConsent(ACCOUNT, USER, 'owner-opted-out', 'revoked');
+
+  assert.equal(consent.status, 'revoked');
+  assert.equal((await service.getConsent(ACCOUNT, 'owner-opted-out'))?.status, 'revoked');
+
+  const segment = await service.createSegment(ACCOUNT, USER, {
+    name: 'Opt-out segment',
+    criteria: { consentPurpose: 'marketing' }
+  });
+  const template = await service.createTemplate(ACCOUNT, USER, {
+    name: 'Opt-out SMS',
+    channel: 'sms',
+    body: 'Mensagem preventiva'
+  });
+  const campaign = await service.createCampaign(ACCOUNT, USER, {
+    name: 'Opt-out campaign',
+    channel: 'sms',
+    segmentId: segment.id,
+    templateId: template.id,
+    scheduledAt: '2026-08-07T12:00:00.000Z'
+  });
+  await service.scheduleCampaign(ACCOUNT, USER, campaign.id);
+
+  const result = await service.dispatchCampaign(ACCOUNT, USER, campaign.id, {
+    audience: [{
+      ownerId: 'owner-opted-out',
+      ownerName: 'Sem comunicações',
+      consentPurposes: ['marketing'],
+      contacts: [{ type: 'sms', value: '5511999999999' }]
+    }],
+    gateway: new DeterministicMarketingSandboxGateway()
+  });
+
+  assert.deepEqual(result.deliveries, []);
+  assert.deepEqual(result.summary, { total: 0, sent: 0, failed: 0, skipped: 1 });
+});
+
+test('MarketingService deduplicates deliveries and applies exponential retry backoff', async () => {
+  let now = new Date('2026-08-07T12:00:00.000Z');
+  const service = new MarketingService({
+    clock: () => new Date(now),
+    retryBaseDelayMs: 1_000,
+    retryMaxDelayMs: 4_000
+  });
+  const segment = await service.createSegment(ACCOUNT, USER, {
+    name: 'Idempotent segment',
+    criteria: { consentPurpose: 'marketing' }
+  });
+  const template = await service.createTemplate(ACCOUNT, USER, {
+    name: 'Idempotent SMS',
+    channel: 'sms',
+    body: 'Mensagem para {{ownerName}}'
+  });
+  const campaign = await service.createCampaign(ACCOUNT, USER, {
+    name: 'Idempotent campaign',
+    channel: 'sms',
+    segmentId: segment.id,
+    templateId: template.id,
+    scheduledAt: '2026-08-07T12:00:00.000Z'
+  });
+  await service.scheduleCampaign(ACCOUNT, USER, campaign.id);
+
+  const attempts: string[] = [];
+  const failedGateway: MarketingDispatchGateway = {
+    async send(input) {
+      attempts.push(input.idempotencyKey ?? '');
+      return {
+        status: 'failed',
+        provider: 'test-provider',
+        failureReason: 'temporary failure',
+        sentAt: now.toISOString()
+      };
+    }
+  };
+  const member = {
+    ownerId: 'owner-idempotent',
+    ownerName: 'Idempotente',
+    consentPurposes: ['marketing'] as const,
+    contacts: [{ type: 'sms' as const, value: '5511999999999' }]
+  };
+
+  const first = await service.dispatchCampaign(ACCOUNT, USER, campaign.id, {
+    audience: [member, member],
+    gateway: failedGateway
+  });
+
+  assert.equal(first.deliveries.length, 1);
+  assert.equal(attempts.length, 1);
+  assert.equal(first.deliveries[0]?.attemptCount, 1);
+  assert.equal(first.deliveries[0]?.nextAttemptAt, '2026-08-07T12:00:01.000Z');
+
+  await assert.rejects(
+    () => service.retryDelivery(ACCOUNT, USER, first.deliveries[0]!.id, failedGateway),
+    /retry available after/
+  );
+
+  now = new Date('2026-08-07T12:00:01.000Z');
+  const retried = await service.retryDelivery(ACCOUNT, USER, first.deliveries[0]!.id, {
+    async send(input) {
+      attempts.push(input.idempotencyKey ?? '');
+      return {
+        status: 'sent',
+        provider: 'test-provider',
+        providerMessageId: `provider-${input.idempotencyKey}`,
+        sentAt: now.toISOString()
+      };
+    }
+  });
+
+  assert.equal(retried.status, 'sent');
+  assert.equal(retried.attemptCount, 2);
+  assert.equal(retried.nextAttemptAt, undefined);
+  assert.equal(attempts[0], attempts[1]);
+});
+
+test('DeterministicMarketingSandboxGateway is stable and exposes failure state without external calls', async () => {
+  const gateway = new DeterministicMarketingSandboxGateway({
+    clock: () => new Date('2026-08-07T12:00:00.000Z')
+  });
+  const input = {
+    channel: 'sms' as const,
+    to: '5511999999999',
+    body: 'Mensagem sandbox',
+    idempotencyKey: 'mkt-delivery-key'
+  };
+
+  const first = await gateway.send(input);
+  const second = await gateway.send(input);
+  const failed = await gateway.send({ ...input, to: '5511000000000' });
+
+  assert.equal(first.status, 'sent');
+  assert.equal(first.provider, 'marketing-sandbox');
+  assert.equal(first.providerMessageId, second.providerMessageId);
+  assert.equal(failed.status, 'failed');
+  assert.equal(failed.failureReason, 'Deterministic sandbox failure');
+});
+
 test('MarketingService fails closed when durable consent is unavailable', async () => {
   const service = new MarketingService({ requireConsentChecker: true });
   await assert.rejects(
@@ -423,6 +575,172 @@ test('MarketingService fails closed when durable consent is unavailable', async 
     }),
     /durable consent checker/
   );
+});
+
+test('MarketingService validates consent and audience references inside the active tenant', async () => {
+  const repository = new TenantScopedMarketingRepository([
+    {
+      accountId: ACCOUNT,
+      id: '00000000-0000-4000-8000-000000000001',
+      fullName: 'Nome canonico',
+      contacts: [{ type: 'sms', value: '5511999999999' }]
+    },
+    {
+      accountId: OTHER_ACCOUNT,
+      id: '00000000-0000-4000-8000-000000000002',
+      fullName: 'Outro tenant',
+      contacts: [{ type: 'sms', value: '5511888888888' }]
+    }
+  ], [
+    {
+      accountId: ACCOUNT,
+      id: '00000000-0000-4000-8000-000000000101',
+      ownerId: '00000000-0000-4000-8000-000000000001',
+      name: 'Thor canonico',
+      species: 'Canina'
+    }
+  ]);
+  const service = new MarketingService({
+    repository,
+    requireConsentChecker: true,
+    consentChecker: { async hasActiveConsent() { return true; } }
+  });
+
+  await assert.rejects(
+    () => service.setConsent(
+      ACCOUNT,
+      USER,
+      '00000000-0000-4000-8000-000000000002',
+      'granted'
+    ),
+    /Owner not found/
+  );
+
+  const segment = await service.createSegment(ACCOUNT, USER, {
+    name: 'Tenant scoped',
+    criteria: { consentPurpose: 'marketing', patientSpecies: ['Canina'] }
+  });
+  const template = await service.createTemplate(ACCOUNT, USER, {
+    name: 'Tenant scoped SMS',
+    channel: 'sms',
+    body: 'Ola {{ownerName}}, {{patientName}}'
+  });
+  const audience: MarketingAudienceMember[] = [
+    {
+      ownerId: '00000000-0000-4000-8000-000000000001',
+      ownerName: 'Nome falsificado',
+      patientId: '00000000-0000-4000-8000-000000000101',
+      patientName: 'Paciente falsificado',
+      patientSpecies: 'Felina',
+      consentPurposes: ['marketing'],
+      contacts: [{ type: 'sms', value: 'cross-tenant-contact' }]
+    },
+    {
+      ownerId: '00000000-0000-4000-8000-000000000002',
+      ownerName: 'Outro tenant falsificado',
+      contacts: [{ type: 'sms', value: '5511888888888' }]
+    }
+  ];
+  const campaign = await service.createCampaign(ACCOUNT, USER, {
+    name: 'Campanha tenant scoped',
+    channel: 'sms',
+    segmentId: segment.id,
+    templateId: template.id,
+    scheduledAt: '2026-08-08T12:00:00.000Z',
+    audience
+  });
+  assert.equal(campaign.estimatedAudience, 1);
+
+  const preview = await service.previewAudienceForAccount(
+    ACCOUNT,
+    segment.criteria,
+    'sms',
+    audience
+  );
+  assert.deepEqual(preview.map((member) => ({
+    ownerId: member.ownerId,
+    ownerName: member.ownerName,
+    patientName: member.patientName,
+    recipient: member.contacts[0]?.value
+  })), [{
+    ownerId: '00000000-0000-4000-8000-000000000001',
+    ownerName: 'Nome canonico',
+    patientName: 'Thor canonico',
+    recipient: '5511999999999'
+  }]);
+
+  await service.scheduleCampaign(ACCOUNT, USER, campaign.id);
+  const gatewayInputs: Array<{ readonly to: string; readonly idempotencyKey?: string }> = [];
+  const dispatched = await service.dispatchCampaign(ACCOUNT, USER, campaign.id, {
+    audience,
+    gateway: {
+      async send(input) {
+        gatewayInputs.push({ to: input.to, idempotencyKey: input.idempotencyKey });
+        return {
+          status: 'sent',
+          provider: 'tenant-test',
+          sentAt: '2026-08-08T12:01:00.000Z'
+        };
+      }
+    }
+  });
+  assert.equal(dispatched.deliveries.length, 1);
+  assert.deepEqual(gatewayInputs, [{
+    to: '5511999999999',
+    idempotencyKey: dispatched.deliveries[0]?.deliveryKey
+  }]);
+});
+
+test('MarketingService claims a queued delivery once and sends only the lease owner', async () => {
+  const repository = new LeasedMarketingRepository();
+  const consentChecker = { async hasActiveConsent() { return true; } };
+  const service = new MarketingService({ repository, consentChecker, retryBaseDelayMs: 1 });
+  const segment = await service.createSegment(ACCOUNT, USER, {
+    name: 'Lease segment',
+    criteria: { consentPurpose: 'marketing' }
+  });
+  const template = await service.createTemplate(ACCOUNT, USER, {
+    name: 'Lease SMS',
+    channel: 'sms',
+    body: 'Mensagem'
+  });
+  const campaign = await service.createCampaign(ACCOUNT, USER, {
+    name: 'Lease campaign',
+    channel: 'sms',
+    segmentId: segment.id,
+    templateId: template.id,
+    scheduledAt: '2026-08-08T12:00:00.000Z'
+  });
+  await service.scheduleCampaign(ACCOUNT, USER, campaign.id);
+
+  const secondService = new MarketingService({ repository, consentChecker, retryBaseDelayMs: 1 });
+  await secondService.hydrateFromDatabase(ACCOUNT);
+
+  let sendCount = 0;
+  const gateway: MarketingDispatchGateway = {
+    async send() {
+      sendCount += 1;
+      return {
+        status: 'sent',
+        provider: 'lease-test',
+        sentAt: '2026-08-08T12:01:00.000Z'
+      };
+    }
+  };
+  const [first, second] = await Promise.all([
+    service.dispatchCampaign(ACCOUNT, USER, campaign.id, {
+      audience: [repository.audienceMember],
+      gateway
+    }),
+    secondService.dispatchCampaign(ACCOUNT, USER, campaign.id, {
+      audience: [repository.audienceMember],
+      gateway
+    })
+  ]);
+
+  assert.equal(sendCount, 1);
+  assert.equal([first, second].filter((result) => result.deliveries[0]?.status === 'sent').length, 1);
+  assert.equal(repository.claimCount, 2);
 });
 
 class InMemoryMarketingRepository implements MarketingRepository {
@@ -476,6 +794,20 @@ class InMemoryMarketingRepository implements MarketingRepository {
       (delivery) => delivery.accountId === accountId && (!campaignId || delivery.campaignId === campaignId)
     );
   }
+
+  async findDeliveryByKey(accountId: AccountId, deliveryKey: string): Promise<MarketingCampaignDeliverySummary | null> {
+    return [...this.#deliveries.values()].find(
+      (delivery) => delivery.accountId === accountId && delivery.deliveryKey === deliveryKey
+    ) ?? null;
+  }
+
+  async resolveAudience(
+    _accountId: AccountId,
+    _channel: MarketingAudienceMember['contacts'][number]['type'],
+    audience: readonly MarketingAudienceMember[]
+  ): Promise<readonly MarketingAudienceMember[]> {
+    return audience;
+  }
 }
 
 class FakeMarketingGateway implements MarketingDispatchGateway {
@@ -501,5 +833,101 @@ class FakeMarketingGateway implements MarketingDispatchGateway {
       providerMessageId: `fake-${input.to}`,
       sentAt
     };
+  }
+}
+
+type StoredMarketingOwner = MarketingOwnerReference & { readonly accountId: AccountId };
+type StoredMarketingPatient = MarketingPatientReference & { readonly accountId: AccountId };
+
+class TenantScopedMarketingRepository implements MarketingRepository {
+  readonly #owners = new Map<string, StoredMarketingOwner>();
+  readonly #patients = new Map<string, StoredMarketingPatient>();
+
+  public constructor(owners: readonly StoredMarketingOwner[], patients: readonly StoredMarketingPatient[]) {
+    for (const owner of owners) this.#owners.set(`${owner.accountId}:${owner.id}`, owner);
+    for (const patient of patients) this.#patients.set(`${patient.accountId}:${patient.id}`, patient);
+  }
+
+  async saveSegment(): Promise<void> {}
+  async saveTemplate(): Promise<void> {}
+  async saveCampaign(): Promise<void> {}
+  async saveDelivery(): Promise<void> {}
+  async findSegments(): Promise<readonly MarketingSegmentSummary[]> { return []; }
+  async findTemplates(): Promise<readonly MarketingTemplateSummary[]> { return []; }
+  async findCampaigns(): Promise<readonly MarketingCampaignSummary[]> { return []; }
+  async findDeliveries(): Promise<readonly MarketingCampaignDeliverySummary[]> { return []; }
+
+  async findOwner(accountId: AccountId, ownerId: string): Promise<MarketingOwnerReference | null> {
+    return this.#owners.get(`${accountId}:${ownerId}`) ?? null;
+  }
+
+  async resolveAudience(
+    accountId: AccountId,
+    channel: MarketingAudienceMember['contacts'][number]['type'],
+    audience: readonly MarketingAudienceMember[]
+  ): Promise<readonly MarketingAudienceMember[]> {
+    return audience.flatMap((member) => {
+      const owner = this.#owners.get(`${accountId}:${member.ownerId}`);
+      if (!owner) return [];
+      const patient = member.patientId
+        ? this.#patients.get(`${accountId}:${member.patientId}`)
+        : undefined;
+      if (member.patientId && (!patient || patient.ownerId !== owner.id)) return [];
+      const contacts = owner.contacts.filter((contact) => contact.type === channel);
+      if (contacts.length === 0) return [];
+      return [{
+        ...member,
+        ownerName: owner.fullName,
+        patientName: patient?.name,
+        patientSpecies: patient?.species,
+        contacts
+      }];
+    });
+  }
+}
+
+class LeasedMarketingRepository extends InMemoryMarketingRepository {
+  public readonly audienceMember: MarketingAudienceMember = {
+    ownerId: 'owner-leased',
+    ownerName: 'Lease owner',
+    consentPurposes: ['marketing'],
+    contacts: [{ type: 'sms', value: '5511999999999' }]
+  };
+  public claimCount = 0;
+  #claimed = false;
+
+  override async resolveAudience(
+    _accountId: AccountId,
+    _channel: MarketingAudienceMember['contacts'][number]['type'],
+    audience: readonly MarketingAudienceMember[]
+  ): Promise<readonly MarketingAudienceMember[]> {
+    return audience;
+  }
+
+  async claimDelivery(
+    delivery: MarketingCampaignDeliverySummary,
+    claim: { readonly leaseOwner: string; readonly leaseExpiresAt: string; readonly now: string }
+  ): Promise<MarketingCampaignDeliverySummary | null> {
+    this.claimCount += 1;
+    if (this.#claimed) return null;
+    this.#claimed = true;
+    const leased = {
+      ...delivery,
+      status: 'sending' as const,
+      attemptCount: delivery.attemptCount + 1,
+      leaseOwner: claim.leaseOwner,
+      leaseExpiresAt: claim.leaseExpiresAt,
+      lastAttemptAt: claim.now,
+      updatedAt: claim.now
+    };
+    await super.saveDelivery(leased);
+    return leased;
+  }
+
+  async completeDelivery(
+    delivery: MarketingCampaignDeliverySummary
+  ): Promise<MarketingCampaignDeliverySummary> {
+    await super.saveDelivery(delivery);
+    return delivery;
   }
 }

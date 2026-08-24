@@ -5,6 +5,7 @@ export type CorrelationId = Brand<string, 'CorrelationId'>;
 export type ModuleName = Brand<string, 'ModuleName'>;
 export type UserId = Brand<string, 'UserId'>;
 export type StaffId = Brand<string, 'StaffId'>;
+export type ProfessionId = Brand<string, 'ProfessionId'>;
 export type SessionId = Brand<string, 'SessionId'>;
 export type RoleId = Brand<string, 'RoleId'>;
 export type PermissionId = Brand<string, 'PermissionId'>;
@@ -118,6 +119,17 @@ export interface UserSummary {
   readonly staffId?: StaffId;
 }
 
+export interface ProfessionSummary {
+  readonly id: ProfessionId;
+  readonly accountId: AccountId;
+  readonly code: string;
+  readonly name: string;
+  readonly description: string | null;
+  readonly status: 'active' | 'inactive';
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
 export interface StaffSummary {
   readonly id: StaffId;
   readonly accountId: AccountId;
@@ -126,6 +138,7 @@ export interface StaffSummary {
   readonly fullName: string;
   readonly department: string;
   readonly jobTitle: string;
+  readonly professionId?: ProfessionId | null;
   readonly status: 'active' | 'inactive';
   readonly createdAt: string;
   readonly updatedAt: string;
@@ -362,7 +375,7 @@ export interface OwnerPatientLinkSummary {
   readonly accountId: AccountId;
   readonly ownerId: OwnerId;
   readonly patientId: PatientId;
-  readonly relationshipType: 'primary' | 'secondary' | 'financial';
+  readonly relationshipType: 'primary' | 'secondary' | 'financial' | 'authorized' | 'spouse';
   readonly financialResponsible: boolean;
   readonly createdAt: string;
 }
@@ -510,6 +523,7 @@ export interface QueueTransferSummary {
   readonly toSector: string;
   readonly sentByUserId: UserId;
   readonly sentAt: string;
+  readonly status: 'sent' | 'received';
   readonly receivedByUserId?: UserId;
   readonly receivedAt?: string;
   readonly responsibleUserId?: UserId;
@@ -1170,11 +1184,14 @@ export interface WebhookDeliverySummary {
   readonly webhookId: WebhookId;
   readonly event: string;
   readonly payload: Record<string, unknown>;
-  readonly status: 'pending' | 'delivered' | 'failed';
+  readonly status: 'pending' | 'processing' | 'retrying' | 'delivered' | 'failed';
   readonly attempts: number;
+  readonly maxAttempts?: number;
   readonly lastAttemptAt?: string;
   readonly responseStatus?: number;
   readonly responseBody?: string;
+  readonly responseError?: string;
   readonly nextRetryAt?: string;
+  readonly deadLetteredAt?: string;
   readonly createdAt: string;
 }

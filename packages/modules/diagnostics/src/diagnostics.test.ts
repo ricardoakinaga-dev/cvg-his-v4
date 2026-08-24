@@ -21,7 +21,16 @@ function createService() {
       return encounter;
     }
   };
-  const service = new DiagnosticsService(encounters as never);
+  const service = new DiagnosticsService(
+    encounters as never,
+    {
+      laboratorySignerAuthority: {
+        async isEnabledLaboratorySigner(_accountId: string, userId: string) {
+          return userId !== 'disabled-signer';
+        }
+      }
+    } as never
+  );
 
   return { service, encounter };
 }
@@ -157,7 +166,7 @@ test('DiagnosticsService recordResult follows valid lifecycle', () => {
   assert.equal(resulted.status, 'resulted');
   assert.equal(resulted.resultSummary, 'Valores dentro da normalidade');
   assert.equal(resulted.releasedByUserId, 'vet_ana');
-  assert.equal(resulted.signedByUserId, 'rt_laboratorio');
+  assert.equal(resulted.signedByUserId, 'vet_ana');
   assert.ok(resulted.signatureHash);
 });
 
@@ -283,6 +292,198 @@ test('DiagnosticsService recordResult requires collector and clinical evidence w
       }),
     /releasedByUserId/
   );
+});
+
+test('LaboratoryService runs the canonical workflow through delivery with signed reporting', async () => {
+  const { service: diagnostics, encounter } = createService();
+  const laboratory = new LaboratoryService(diagnostics);
+  const order = diagnostics.createOrder({
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    examType: 'Hemograma',
+    reason: 'Esteira completa'
+  });
+
+  const collected = await laboratory.transitionOrderAndPersistForAccount('acc_test' as never, order.id, {
+    status: 'collected',
+    collectedByUserId: 'collector-1'
+  });
+  assert.equal(collected.status, 'collected');
+  assert.equal(collected.collectionAttempt, 1);
+
+  const inAnalysis = await laboratory.transitionOrderAndPersistForAccount('acc_test' as never, order.id, {
+    status: 'in_analysis',
+    actorUserId: 'analyst-1'
+  });
+  assert.equal(inAnalysis.status, 'in_analysis');
+  assert.equal(inAnalysis.analysisStartedByUserId, 'analyst-1');
+
+  const reported = await laboratory.transitionOrderAndPersistForAccount('acc_test' as never, order.id, {
+    status: 'reported',
+    resultSummary: 'Sem alteracoes',
+    actorUserId: 'rt-1',
+    signedByUserId: 'attacker',
+    signatureHash: 'forged'
+  } as never);
+  assert.equal(reported.status, 'reported');
+  assert.equal(reported.reportedByUserId, 'rt-1');
+  assert.equal(reported.signedByUserId, 'rt-1');
+  assert.ok(reported.signatureHash);
+
+  const delivered = await laboratory.transitionOrderAndPersistForAccount('acc_test' as never, order.id, {
+    status: 'delivered',
+    deliveredByUserId: 'user-1',
+    deliveryChannel: 'portal'
+  });
+  assert.equal(delivered.status, 'delivered');
+  assert.equal(delivered.deliveredByUserId, 'user-1');
+  assert.equal(delivered.deliveryChannel, 'portal');
+  assert.ok(delivered.deliveredAt);
+  assert.deepEqual(
+    delivered.history.map((event) => event.eventType),
+    ['collected', 'in_analysis', 'reported', 'delivered']
+  );
+});
+
+test('LaboratoryService rejects an inactive signer even when the caller supplies only an actor id', async () => {
+  const { service: diagnostics, encounter } = createService();
+  const laboratory = new LaboratoryService(diagnostics);
+  const order = diagnostics.createOrder({
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    examType: 'Hemograma',
+    reason: 'Assinatura sem autoridade'
+  });
+
+  await laboratory.transitionOrderAndPersistForAccount('acc_test' as never, order.id, {
+    status: 'collected',
+    collectedByUserId: 'collector-1'
+  });
+  await laboratory.transitionOrderAndPersistForAccount('acc_test' as never, order.id, {
+    status: 'in_analysis',
+    actorUserId: 'analyst-1'
+  });
+
+  await assert.rejects(
+    () => laboratory.transitionOrderAndPersistForAccount('acc_test' as never, order.id, {
+      status: 'reported',
+      resultSummary: 'Resultado',
+      actorUserId: 'disabled-signer'
+    }),
+    /active|enabled|professional|signat/i
+  );
+});
+
+test('LaboratoryService replays an idempotent transition without duplicating history', async () => {
+  const { service: diagnostics, encounter } = createService();
+  const laboratory = new LaboratoryService(diagnostics);
+  const order = diagnostics.createOrder({
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    examType: 'Hemograma',
+    reason: 'Retry de coleta'
+  });
+
+  const request = {
+    status: 'collected',
+    collectedByUserId: 'collector-1',
+    idempotencyKey: 'lab-collect-retry-1'
+  } as never;
+  const first = await laboratory.transitionOrderAndPersistForAccount(
+    'acc_test' as never,
+    order.id,
+    request
+  );
+  const replay = await laboratory.transitionOrderAndPersistForAccount(
+    'acc_test' as never,
+    order.id,
+    request
+  );
+
+  assert.equal(replay.status, 'collected');
+  assert.equal(replay.collectionAttempt, 1);
+  assert.deepEqual(replay.history, first.history);
+});
+
+test('LaboratoryService delegates the order, workflow and history write as one persistence unit', async () => {
+  let atomicCalls = 0;
+  const repository = {
+    async create() {},
+    async update() {},
+    async findById() {
+      return null;
+    },
+    async findAll() {
+      return [];
+    },
+    async findByEncounterId() {
+      return [];
+    },
+    async upsertLaboratoryWorkflow() {},
+    async isEnabledLaboratorySigner() {
+      return true;
+    },
+    async persistLaboratoryTransition(input: {
+      readonly order: unknown;
+      readonly workflow: unknown;
+    }) {
+      atomicCalls += 1;
+      return { order: input.order, workflow: input.workflow, replayed: false };
+    }
+  };
+  const encounter = {
+    id: 'encounter_atomic',
+    accountId: 'acc_atomic',
+    patientId: 'patient_atomic'
+  };
+  const diagnostics = new DiagnosticsService(
+    {
+      getOrThrow() {
+        return encounter;
+      }
+    } as never,
+    { diagnosticOrderRepository: repository as never } as never
+  );
+  const laboratory = new LaboratoryService(diagnostics);
+  const order = await diagnostics.createOrderAndPersistForAccount('acc_atomic' as never, {
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    examType: 'Hemograma',
+    reason: 'Persistencia atomica'
+  });
+
+  await laboratory.transitionOrderAndPersistForAccount('acc_atomic' as never, order.id, {
+    status: 'collected',
+    collectedByUserId: 'collector-atomic'
+  });
+
+  assert.equal(atomicCalls, 1);
+});
+
+test('LaboratoryService records a reasoned recollection as a new attempt and keeps history', async () => {
+  const { service: diagnostics, encounter } = createService();
+  const laboratory = new LaboratoryService(diagnostics);
+  const order = diagnostics.createOrder({
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    examType: 'Bioquimico',
+    reason: 'Recoleta'
+  });
+
+  await laboratory.transitionOrderAndPersistForAccount('acc_test' as never, order.id, {
+    status: 'collected',
+    collectedByUserId: 'collector-1'
+  });
+  const recollected = await laboratory.recollectOrderAndPersistForAccount('acc_test' as never, order.id, {
+    reason: 'Amostra hemolisada',
+    collectedByUserId: 'collector-2'
+  });
+
+  assert.equal(recollected.status, 'collected');
+  assert.equal(recollected.collectionAttempt, 2);
+  assert.equal(recollected.recollectionReason, 'Amostra hemolisada');
+  assert.equal(recollected.history.at(-1)?.eventType, 'recollected');
+  assert.equal(recollected.history.at(-1)?.attempt, 2);
 });
 
 test('DiagnosticsService hydrateFromDatabase loads persisted orders by account', async () => {

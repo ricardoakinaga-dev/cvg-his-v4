@@ -137,6 +137,32 @@ export interface TransferQueueEntryRequest {
   counterSaleId?: string;
 }
 
+export interface QueueTransferSummary {
+  id: string;
+  accountId: string;
+  queueEntryId: string;
+  encounterId?: string;
+  fromSector: string;
+  toSector: string;
+  sentByUserId: string;
+  sentAt: string;
+  status: 'sent' | 'received';
+  receivedByUserId?: string;
+  receivedAt?: string;
+  responsibleUserId?: string;
+  responsibleStaffId?: string;
+  nextSector?: string;
+  reason: string;
+  urgency: QueuePriority;
+  billingRecordId?: string;
+  counterSaleId?: string;
+  createdAt: string;
+}
+
+export interface QueueTransferListResponse {
+  items: QueueTransferSummary[];
+}
+
 /**
  * Resposta paginada da lista de entradas na fila.
  */

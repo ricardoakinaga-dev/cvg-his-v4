@@ -2,10 +2,19 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
 
 const mockListOwners = vi.fn();
+const mockGetConsent = vi.fn();
+const mockSetConsent = vi.fn();
 
 vi.mock('@/services/owner', () => ({
   ownerService: {
     list: (...args: unknown[]) => mockListOwners(...args)
+  }
+}));
+
+vi.mock('@/services/marketing', () => ({
+  marketingService: {
+    getConsent: (...args: unknown[]) => mockGetConsent(...args),
+    setConsent: (...args: unknown[]) => mockSetConsent(...args)
   }
 }));
 
@@ -40,6 +49,22 @@ describe('MarketingSmsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockListOwners.mockResolvedValue(structuredClone(owners));
+    mockGetConsent.mockResolvedValue({
+      id: 'consent-1',
+      accountId: 'acc-1',
+      ownerId: 'owner-1',
+      purpose: 'marketing',
+      status: 'granted',
+      updatedAt: '2026-08-07T12:00:00Z'
+    });
+    mockSetConsent.mockImplementation(async (payload: { ownerId: string; status: string }) => ({
+      id: 'consent-1',
+      accountId: 'acc-1',
+      ownerId: payload.ownerId,
+      purpose: 'marketing',
+      status: payload.status,
+      updatedAt: '2026-08-07T12:00:00Z'
+    }));
   });
 
   it('renders a Vetus-like safe SMS drafting surface without sending messages', async () => {
@@ -82,5 +107,21 @@ describe('MarketingSmsPage', () => {
 
     expect(wrapper.text()).toContain('Falha ao carregar clientes');
     expect(wrapper.find('button[disabled]').text()).toContain('Enviar SMS');
+  });
+
+  it('allows an operator to record a marketing opt-out for the selected owner', async () => {
+    const MarketingSmsPage = (await import('../MarketingSmsPage.vue')).default;
+    const wrapper = mount(MarketingSmsPage);
+    await flushPromises();
+
+    await wrapper.find('#marketing-sms-client').setValue('owner-1');
+    await flushPromises();
+    expect(wrapper.text()).toContain('Consentimento de marketing ativo');
+
+    await wrapper.find('#marketing-sms-opt-out').trigger('click');
+    await flushPromises();
+
+    expect(mockSetConsent).toHaveBeenCalledWith({ ownerId: 'owner-1', status: 'revoked' });
+    expect(wrapper.text()).toContain('Comunicações bloqueadas para este cliente');
   });
 });

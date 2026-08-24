@@ -15,6 +15,59 @@
       {{ error }}
     </DsAlert>
 
+    <DsAlert v-if="successMessage" variant="success" dismissible @dismiss="successMessage = ''">
+      {{ successMessage }}
+    </DsAlert>
+
+    <form class="receipt-panel" aria-label="Registrar entrada de nota fiscal" @submit.prevent="registerReceipt">
+      <h2>Registrar entrada</h2>
+      <div class="receipt-grid">
+        <label class="filter-field">
+          <span>Fornecedor</span>
+          <input v-model="receipt.supplier" type="text" autocomplete="organization" data-testid="invoice-supplier" />
+        </label>
+        <label class="filter-field">
+          <span>Número da NF</span>
+          <input v-model="receipt.invoiceNumber" type="text" autocomplete="off" data-testid="invoice-number" />
+        </label>
+        <label class="filter-field receipt-field--wide">
+          <span>Produto</span>
+          <select v-model="receipt.inventoryItemId" data-testid="invoice-product">
+            <option value="">Selecione</option>
+            <option v-for="item in inventoryItems" :key="item.id" :value="item.id">
+              {{ item.sku }} - {{ item.name }}
+            </option>
+          </select>
+        </label>
+        <label class="filter-field">
+          <span>Quantidade</span>
+          <input v-model.number="receipt.quantity" type="number" min="0.01" step="0.01" data-testid="invoice-quantity" />
+        </label>
+        <label class="filter-field">
+          <span>Custo unitário</span>
+          <input v-model.number="receipt.unitCostAmount" type="number" min="0" step="0.01" data-testid="invoice-cost" />
+        </label>
+        <label class="filter-field">
+          <span>Lote</span>
+          <input v-model="receipt.lotNumber" type="text" autocomplete="off" data-testid="invoice-lot" />
+        </label>
+        <label class="filter-field">
+          <span>Validade</span>
+          <input v-model="receipt.expiryDate" type="date" data-testid="invoice-expiry" />
+        </label>
+        <label class="filter-field">
+          <span>Localização</span>
+          <input v-model="receipt.location" type="text" autocomplete="off" data-testid="invoice-location" />
+        </label>
+      </div>
+      <div class="receipt-actions">
+        <span v-if="selectedReceiptItem" class="muted">
+          Saldo após entrada: {{ formatQuantity(selectedReceiptItem.onHandQuantity + Number(receipt.quantity || 0)) }}
+        </span>
+        <DsButton type="submit" variant="primary" :loading="saving">Registrar entrada NF</DsButton>
+      </div>
+    </form>
+
     <section class="hub-kpis" aria-label="Resumo da entrada de nota fiscal">
       <DsStatCard :label="`${rows.length} item(ns) conferíveis`" value="" icon="🧾" />
       <DsStatCard :label="`${lotRowsCount} lote(s)`" value="" icon="🏷️" />
@@ -23,7 +76,7 @@
     </section>
 
     <section class="filter-panel" aria-label="Filtros da entrada de nota fiscal">
-      <form class="filters" @submit.prevent="applyFilters">
+      <form class="filters" aria-label="Filtros de entrada de nota fiscal" @submit.prevent="applyFilters">
         <label class="filter-field">
           <span>Nota Fiscal</span>
           <input v-model="draftFilters.invoice" type="search" autocomplete="off" />
@@ -118,7 +171,11 @@ import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
 import { inventoryService } from '@/services/inventory';
-import type { InventoryItemSummary, InventoryLotSummary } from '@/types/inventory';
+import type {
+  InventoryItemSummary,
+  InventoryLotSummary,
+  InventoryPurchaseSummary
+} from '@/types/inventory';
 
 type InvoiceStatus = 'pending' | 'checked' | 'attention';
 type StatusVariant = 'success' | 'warning' | 'danger' | 'info' | 'neutral';
@@ -145,8 +202,21 @@ interface InvoiceEntryRow {
 
 const inventoryItems = ref<InventoryItemSummary[]>([]);
 const lots = ref<InventoryLotSummary[]>([]);
+const purchases = ref<InventoryPurchaseSummary[]>([]);
 const loading = ref(false);
+const saving = ref(false);
 const error = ref('');
+const successMessage = ref('');
+const receipt = reactive({
+  supplier: '',
+  invoiceNumber: '',
+  inventoryItemId: '',
+  quantity: 1,
+  unitCostAmount: 0,
+  lotNumber: '',
+  expiryDate: '',
+  location: ''
+});
 const draftFilters = reactive({
   invoice: '',
   supplier: '',
@@ -155,6 +225,10 @@ const draftFilters = reactive({
   status: ''
 });
 const appliedFilters = reactive({ ...draftFilters });
+
+const selectedReceiptItem = computed(() =>
+  inventoryItems.value.find((item) => item.id === receipt.inventoryItemId) ?? null
+);
 
 const columns: DataTableColumn[] = [
   { key: 'invoiceNumber', label: 'Nota Fiscal', width: '140px' },
@@ -171,12 +245,18 @@ const columns: DataTableColumn[] = [
 ];
 
 const rows = computed<InvoiceEntryRow[]>(() => {
-  const lotRows = lots.value.map(lotToRow);
+  const purchaseRows = purchases.value.flatMap(purchaseToRows);
+  const persistedLotKeys = new Set(
+    purchaseRows.map((row) => `${row.code}:${row.lotNumber}`)
+  );
+  const lotRows = lots.value
+    .filter((lot) => !persistedLotKeys.has(`${lot.sku}:${lot.lotNumber}`))
+    .map(lotToRow);
   const lotItemIds = new Set(lots.value.map((lot) => lot.inventoryItemId));
   const inventoryRows = inventoryItems.value
     .filter((item) => !lotItemIds.has(item.id))
     .map(inventoryItemToRow);
-  return [...lotRows, ...inventoryRows].sort((left, right) =>
+  return [...purchaseRows, ...lotRows, ...inventoryRows].sort((left, right) =>
     left.product.localeCompare(right.product)
   );
 });
@@ -227,6 +307,41 @@ function lotToRow(lot: InventoryLotSummary): InvoiceEntryRow {
     statusVariant: status === 'attention' ? 'warning' : 'success',
     detailPath: `/inventory/${lot.inventoryItemId}`
   };
+}
+
+function purchaseToRows(purchase: InventoryPurchaseSummary): InvoiceEntryRow[] {
+  return purchase.lines.map((line) => {
+    const status: InvoiceStatus = purchase.status === 'received'
+      ? 'checked'
+      : purchase.status === 'partially_received' || purchase.status === 'cancelled'
+        ? 'attention'
+        : 'pending';
+    const statusLabel = status === 'checked'
+      ? 'Conferida'
+      : status === 'attention'
+        ? purchase.status === 'cancelled' ? 'Cancelada' : 'Atenção'
+        : 'Pendente';
+    const quantity = line.receivedQuantity > 0 ? line.receivedQuantity : line.orderedQuantity;
+    return {
+      id: line.id,
+      source: 'inventory',
+      invoiceNumber: purchase.invoiceNumber ?? 'NF pendente',
+      supplier: purchase.supplierName,
+      product: line.itemName,
+      code: line.sku,
+      lotNumber: line.lotNumber,
+      entryDate: purchase.receivedAt ?? purchase.createdAt,
+      expiryDate: line.expiryDate ?? undefined,
+      quantity,
+      unit: line.unit,
+      unitCost: line.unitCostAmount,
+      total: quantity * line.unitCostAmount,
+      status,
+      statusLabel,
+      statusVariant: status === 'checked' ? 'success' : status === 'attention' ? 'warning' : 'info',
+      detailPath: `/inventory/${line.inventoryItemId}`
+    };
+  });
 }
 
 function inventoryItemToRow(item: InventoryItemSummary): InvoiceEntryRow {
@@ -288,21 +403,98 @@ function applyFilters() {
   void load();
 }
 
+function resetReceipt() {
+  receipt.supplier = '';
+  receipt.invoiceNumber = '';
+  receipt.inventoryItemId = '';
+  receipt.quantity = 1;
+  receipt.unitCostAmount = 0;
+  receipt.lotNumber = '';
+  receipt.expiryDate = '';
+  receipt.location = '';
+}
+
+async function registerReceipt() {
+  error.value = '';
+  successMessage.value = '';
+  const item = selectedReceiptItem.value;
+  const quantity = Number(receipt.quantity);
+  const unitCostAmount = Number(receipt.unitCostAmount);
+  if (!receipt.supplier.trim() || !receipt.invoiceNumber.trim()) {
+    error.value = 'Informe fornecedor e número da NF';
+    return;
+  }
+  if (!item) {
+    error.value = 'Selecione um produto para a entrada NF';
+    return;
+  }
+  if (!Number.isFinite(quantity) || quantity <= 0) {
+    error.value = 'Informe uma quantidade maior que zero';
+    return;
+  }
+  if (!Number.isFinite(unitCostAmount) || unitCostAmount < 0) {
+    error.value = 'Informe um custo unitário válido';
+    return;
+  }
+  if (!receipt.lotNumber.trim()) {
+    error.value = 'Informe o lote da entrada NF';
+    return;
+  }
+
+  saving.value = true;
+  try {
+    const created = await inventoryService.createPurchase({
+      supplierName: receipt.supplier.trim(),
+      invoiceNumber: receipt.invoiceNumber.trim(),
+      lines: [{
+        inventoryItemId: item.id,
+        quantity,
+        unitCostAmount,
+        lotNumber: receipt.lotNumber.trim(),
+        expiryDate: dateInputToIso(receipt.expiryDate),
+        location: receipt.location.trim() || null
+      }]
+    });
+    const approved = await inventoryService.approvePurchase(created.id);
+    const line = approved.lines[0] ?? created.lines[0];
+    if (!line) throw new Error('A compra persistida não retornou sua linha de entrada');
+    await inventoryService.receivePurchase(created.id, {
+      lines: [{ lineId: line.id, quantity }]
+    });
+    successMessage.value = `Entrada NF registrada: ${receipt.invoiceNumber.trim()}`;
+    resetReceipt();
+    await load();
+  } catch (err: unknown) {
+    error.value = err instanceof Error ? err.message : 'Erro ao registrar entrada NF';
+  } finally {
+    saving.value = false;
+  }
+}
+
+function dateInputToIso(value: string): string | null {
+  if (!value) return null;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
 async function load() {
   loading.value = true;
   error.value = '';
   try {
     const query = draftFilters.product || draftFilters.invoice || draftFilters.lot || undefined;
-    const [items, loadedLots] = await Promise.all([
+    const [items, loadedLots, loadedPurchases] = await Promise.all([
       inventoryService.list(query),
-      inventoryService.listLots()
+      inventoryService.listLots(),
+      inventoryService.listPurchases()
     ]);
     inventoryItems.value = items;
     lots.value = loadedLots;
+    purchases.value = loadedPurchases;
   } catch (err: unknown) {
     error.value = err instanceof Error ? err.message : 'Erro ao carregar entrada de nota fiscal';
     inventoryItems.value = [];
     lots.value = [];
+    purchases.value = [];
   } finally {
     loading.value = false;
   }
@@ -331,11 +523,54 @@ onMounted(load);
   background: var(--color-surface, #ffffff);
 }
 
+.receipt-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 8px;
+  background: var(--color-surface, #ffffff);
+}
+
+.receipt-panel h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.receipt-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.receipt-field--wide {
+  grid-column: span 2;
+}
+
+.receipt-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .filters {
   display: grid;
   grid-template-columns: minmax(120px, 0.8fr) minmax(160px, 1fr) minmax(180px, 1.2fr) minmax(120px, 0.8fr) minmax(130px, 0.7fr) auto;
   align-items: end;
   gap: 12px;
+}
+
+@media (max-width: 720px) {
+  .receipt-field--wide {
+    grid-column: span 1;
+  }
+
+  .receipt-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
 }
 
 .filter-field {

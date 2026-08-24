@@ -248,6 +248,50 @@ export async function handlePatientsRoutes(
     return json(response, 200, { source: merged, target });
   }
 
+  // GET /patients/:id/owner - Get owner of patient
+  // This route must precede the generic patient GET matcher below.
+  if (pathname.match(/^\/patients\/[^/]+\/owner$/) && method === 'GET') {
+    const match = pathname.match(/^\/patients\/([^/]+)\/owner$/);
+    if (!match) return false;
+    if (!owners) return false;
+
+    const principal = requirePrincipal(request, 'patients.read');
+    const patientId = match[1];
+
+    const patient = patients.getOrThrow(patientId as never);
+    if (patient.accountId !== principal.user.accountId) {
+      throw new NotFoundError('Patient not found', { patientId });
+    }
+    const owner = owners.getOrThrow(patient.primaryOwnerId);
+    if (owner.accountId !== principal.user.accountId) {
+      throw new NotFoundError('Owner not found', { ownerId: patient.primaryOwnerId });
+    }
+
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'patients',
+      action: 'get_patient_owner',
+      entityType: 'patient',
+      entityId: patientId,
+      payloadSummary: `Owner snapshot retrieved for patient: ${patient.name}`,
+      riskLevel: 'low',
+      correlationId
+    });
+
+    return json(response, 200, {
+      ownerId: owner.id,
+      owner: {
+        id: owner.id,
+        fullName: owner.fullName,
+        documentId: owner.documentId,
+        contacts: owner.contacts,
+        financialResponsible: owner.financialResponsible,
+        status: owner.status
+      }
+    });
+  }
+
   // GET /patients/:id - Get patient by ID
   if (pathname.startsWith('/patients/') && method === 'GET') {
     const match = pathname.match(/^\/patients\/([^/]+)$/);
@@ -363,37 +407,6 @@ export async function handlePatientsRoutes(
     response.statusCode = 204;
     response.end();
     return true;
-  }
-
-  // GET /patients/:id/owner - Get owner of patient
-  if (pathname.match(/^\/patients\/[^/]+\/owner$/) && method === 'GET') {
-    const match = pathname.match(/^\/patients\/([^/]+)\/owner$/);
-    if (!match) return false;
-
-    const principal = requirePrincipal(request, 'patients.read');
-    const patientId = match[1];
-
-    const patient = patients.getOrThrow(patientId as never);
-    if (patient.accountId !== principal.user.accountId) {
-      throw new NotFoundError('Patient not found', { patientId });
-    }
-    // We need access to owners service to get the owner
-    // For now, return a placeholder - this will be enhanced with actual owner lookup
-    const ownerId = patient.primaryOwnerId;
-
-    appendAudit(audit, {
-      actorId: principal.user.id,
-      accountId: principal.user.accountId,
-      module: 'patients',
-      action: 'get_patient_owner',
-      entityType: 'patient',
-      entityId: patientId,
-      payloadSummary: `Owner retrieved for patient: ${patient.name}`,
-      riskLevel: 'low',
-      correlationId
-    });
-
-    return json(response, 200, { ownerId });
   }
 
   if (pathname === '/owner-patient-links' && method === 'GET') {

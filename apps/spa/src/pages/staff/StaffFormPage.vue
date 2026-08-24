@@ -29,6 +29,18 @@
           <DsInput v-model="form.fullName" label="Nome Completo" required placeholder="Ex: João Silva" />
           <DsInput v-model="form.department" label="Departamento" placeholder="Ex: Clínica" />
           <DsInput v-model="form.jobTitle" label="Cargo" placeholder="Ex: Médico Veterinário" />
+          <DsInput
+            id="professionId"
+            v-model="form.professionId"
+            type="select"
+            label="Profissão mestre"
+            :disabled="loadingProfessions"
+          >
+            <option value="">Sem profissão vinculada</option>
+            <option v-for="profession in activeProfessions" :key="profession.id" :value="profession.id">
+              {{ profession.code }} · {{ profession.name }}
+            </option>
+          </DsInput>
           <div class="active-toggle">
             <label class="toggle-label">
               <input type="checkbox" v-model="form.isActive" />
@@ -78,7 +90,7 @@ import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import { staffService } from '@/services/staff';
-import type { StaffSummary } from '@cvg-his-v2/shared-types';
+import type { ProfessionSummary, StaffSummary } from '@cvg-his-v2/shared-types';
 
 const router = useRouter();
 const route = useRoute();
@@ -90,8 +102,11 @@ const form = ref({
   fullName: '',
   department: '',
   jobTitle: '',
+  professionId: '',
   isActive: true
 });
+const professions = ref<ProfessionSummary[]>([]);
+const loadingProfessions = ref(false);
 const submitting = ref(false);
 const error = ref('');
 const successMessage = ref('');
@@ -102,20 +117,30 @@ const summaryCards = computed(() => [
   { label: 'Departamento', value: form.value.department.trim() || '—', hint: 'Área operacional' },
   { label: 'Status', value: form.value.isActive ? 'Ativo' : 'Inativo', hint: 'Situação operacional' }
 ]);
+const activeProfessions = computed(() => professions.value.filter((profession) => profession.status === 'active'));
 
 async function loadStaff() {
-  if (!staffId.value) return;
+  loadingProfessions.value = true;
   try {
-    const member = await staffService.getById(staffId.value);
-    form.value = {
-      employeeCode: member.employeeCode,
-      fullName: member.fullName,
-      department: member.department ?? '',
-      jobTitle: member.jobTitle ?? '',
-      isActive: member.status === 'active'
-    };
+    const [professionItems, member] = await Promise.all([
+      staffService.listProfessions({ isActive: true }),
+      staffId.value ? staffService.getById(staffId.value) : Promise.resolve<StaffSummary | null>(null)
+    ]);
+    professions.value = professionItems;
+    if (member) {
+      form.value = {
+        employeeCode: member.employeeCode,
+        fullName: member.fullName,
+        department: member.department ?? '',
+        jobTitle: member.jobTitle ?? '',
+        professionId: member.professionId ?? '',
+        isActive: member.status === 'active'
+      };
+    }
   } catch (err: unknown) {
     error.value = err instanceof Error ? err.message : 'Erro ao carregar membro';
+  } finally {
+    loadingProfessions.value = false;
   }
 }
 
@@ -138,6 +163,7 @@ async function submitForm() {
         fullName: form.value.fullName.trim(),
         department: form.value.department.trim() || null,
         jobTitle: form.value.jobTitle.trim() || null,
+        professionId: form.value.professionId || null,
         isActive: form.value.isActive
       });
       successMessage.value = 'Membro atualizado com sucesso.';
@@ -146,7 +172,8 @@ async function submitForm() {
         employeeCode: form.value.employeeCode.trim(),
         fullName: form.value.fullName.trim(),
         department: form.value.department.trim() || null,
-        jobTitle: form.value.jobTitle.trim() || null
+        jobTitle: form.value.jobTitle.trim() || null,
+        professionId: form.value.professionId || null
       });
       successMessage.value = 'Membro cadastrado com sucesso.';
     }

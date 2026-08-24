@@ -145,6 +145,26 @@ describe('OpenAPI Contract Tests', () => {
       }
     });
 
+    it('documents the durable webhook delivery lifecycle and retry metadata', () => {
+      const spec = loadSpec();
+      const delivery = spec.components?.schemas?.WebhookDelivery;
+      expect(delivery).toBeDefined();
+      expect(delivery.properties.status.enum).toEqual([
+        'pending',
+        'processing',
+        'retrying',
+        'delivered',
+        'failed'
+      ]);
+      expect(delivery.properties).toEqual(
+        expect.objectContaining({
+          maxAttempts: expect.any(Object),
+          responseError: expect.any(Object),
+          deadLetteredAt: expect.any(Object)
+        })
+      );
+    });
+
     it('should have paths count consistent with spec summary', () => {
       const spec = loadSpec();
       const pathCount = Object.keys(spec.paths).length;

@@ -10,6 +10,8 @@ const mockReplaceUserTeams = vi.fn();
 const mockReplaceUserSectors = vi.fn();
 const mockCreateTeam = vi.fn();
 const mockCreateSector = vi.fn();
+const mockUpdateTeam = vi.fn();
+const mockUpdateSector = vi.fn();
 
 vi.mock('@/services/accessControl', () => ({
   accessControlService: {
@@ -21,7 +23,9 @@ vi.mock('@/services/accessControl', () => ({
     replaceUserTeams: mockReplaceUserTeams,
     replaceUserSectors: mockReplaceUserSectors,
     createTeam: mockCreateTeam,
-    createSector: mockCreateSector
+    createSector: mockCreateSector,
+    updateTeam: mockUpdateTeam,
+    updateSector: mockUpdateSector
   }
 }));
 
@@ -153,6 +157,8 @@ describe('AccessControlPage', () => {
     mockReplaceUserSectors.mockResolvedValue({ ok: true });
     mockCreateTeam.mockResolvedValue(catalogResponse.teams[0]);
     mockCreateSector.mockResolvedValue(catalogResponse.sectors[0]);
+    mockUpdateTeam.mockResolvedValue(catalogResponse.teams[0]);
+    mockUpdateSector.mockResolvedValue(catalogResponse.sectors[0]);
   });
 
   it('shows a loading state while the catalog is being fetched', async () => {
@@ -251,6 +257,36 @@ describe('AccessControlPage', () => {
     expect(wrapper.text()).toContain('Grupos de acesso cadastrados');
     expect(wrapper.text()).toContain('Equipe Cirúrgica');
     expect(wrapper.text()).toContain('surgery');
+  });
+
+  it('edits and deactivates an access group through the persisted service', async () => {
+    const AccessControlPage = (await import('../AccessControlPage.vue')).default;
+    const wrapper = mount(AccessControlPage);
+
+    await flushPromises();
+    const groupsTab = wrapper.findAll('button').find((button) => button.text() === 'Grupos');
+    await groupsTab!.trigger('click');
+    await flushPromises();
+
+    await wrapper.get('button[aria-label="Editar Equipe Cirúrgica"]').trigger('click');
+    const nameInput = wrapper.find('input[placeholder="Grupo Cirúrgico"]');
+    await nameInput.setValue('Equipe Cirúrgica Central');
+    const buttons = wrapper.findAll('button');
+    const saveButton = buttons.find((button: (typeof buttons)[number]) => button.text() === 'Salvar grupo');
+    expect(saveButton).toBeTruthy();
+    await saveButton!.trigger('click');
+    await flushPromises();
+
+    expect(mockUpdateTeam).toHaveBeenCalledWith('team-1', {
+      name: 'Equipe Cirúrgica Central',
+      code: 'surgery',
+      description: 'Equipe do centro cirúrgico',
+      isActive: true
+    });
+
+    await wrapper.get('button[aria-label="Desativar Equipe Cirúrgica"]').trigger('click');
+    await flushPromises();
+    expect(mockUpdateTeam).toHaveBeenCalledWith('team-1', { isActive: false });
   });
 
   it('renders routine action coverage in the matrix tab', async () => {

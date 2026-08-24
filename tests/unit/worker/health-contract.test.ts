@@ -25,7 +25,8 @@ describe('worker health contract', () => {
         requiredEventBusConsumers: ['payments'],
         registeredEventBusConsumers: ['payments'],
         deliveryGuaranteesReady: true,
-        durableConsumerGuardReady: true
+        durableConsumerGuardReady: true,
+        webhookDeliveryExecutorReady: true
       }
     );
 
@@ -53,7 +54,8 @@ describe('worker health contract', () => {
         requiredEventBusConsumers: ['payments'],
         registeredEventBusConsumers: ['payments'],
         deliveryGuaranteesReady: true,
-        durableConsumerGuardReady: true
+        durableConsumerGuardReady: true,
+        webhookDeliveryExecutorReady: true
       }
     );
 
@@ -95,7 +97,8 @@ describe('worker health contract', () => {
         requiredEventBusConsumers: ['payments', 'billing', 'webhooks'],
         registeredEventBusConsumers: [],
         deliveryGuaranteesReady: true,
-        durableConsumerGuardReady: true
+        durableConsumerGuardReady: true,
+        webhookDeliveryExecutorReady: true
       } as never
     );
 
@@ -104,5 +107,34 @@ describe('worker health contract', () => {
     expect(response.readiness.productionReady).toBe(false);
     expect(response.dependencies.worker.state).toBe('degraded');
     expect(response.dependencies.worker.detail).toContain('missing event bus consumers');
+  });
+
+  it('fails readiness when the durable webhook executor is unavailable', () => {
+    const response = createWorkerReadinessResponse(
+      'worker',
+      'production',
+      '0.1.0',
+      { headers: {} } as never,
+      {
+        databaseConfigured: true,
+        databaseHealthy: true,
+        databaseDetail: 'database connected',
+        persistenceMode: 'database',
+        ticksCompleted: 5,
+        lastTickAt: '2026-07-12T00:00:00.000Z',
+        lastError: null,
+        initialized: true,
+        requiredEventBusConsumers: ['payments'],
+        registeredEventBusConsumers: ['payments'],
+        deliveryGuaranteesReady: true,
+        durableConsumerGuardReady: true,
+        webhookDeliveryExecutorReady: false
+      } as never
+    );
+
+    expect(response.ok).toBe(false);
+    expect(response.readiness.ready).toBe(false);
+    expect(response.dependencies.worker.state).toBe('degraded');
+    expect(response.dependencies.worker.detail).toContain('webhook delivery executor');
   });
 });

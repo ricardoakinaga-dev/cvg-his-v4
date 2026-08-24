@@ -25,7 +25,9 @@ import type {
   QueueEntrySummary,
   QueueListResponse,
   CheckInQueueRequest,
-  TransferQueueEntryRequest
+  TransferQueueEntryRequest,
+  QueueTransferListResponse,
+  QueueTransferSummary
 } from '@/types/scheduling';
 
 export interface SchedulingOverviewParams {
@@ -109,6 +111,25 @@ export async function transferQueueEntry(
     method: 'POST',
     body: JSON.stringify(payload)
   });
+}
+
+export async function listQueueTransfers(
+  queueEntryId: string
+): Promise<QueueTransferSummary[]> {
+  const response = await apiRequest<QueueTransferListResponse>(
+    `/queue/${queueEntryId}/transfers`
+  );
+  return response.items ?? [];
+}
+
+export async function receiveQueueTransfer(
+  queueEntryId: string,
+  transferId: string
+): Promise<QueueEntrySummary> {
+  return apiRequest<QueueEntrySummary>(
+    `/queue/${queueEntryId}/transfers/${transferId}/receive`,
+    { method: 'POST' }
+  );
 }
 
 /**

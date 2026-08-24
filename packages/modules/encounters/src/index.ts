@@ -35,6 +35,7 @@ import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 export interface EncounterRepository {
   create(encounter: EncounterSummary): Promise<void>;
   update(encounter: EncounterSummary): Promise<void>;
+  updateForReopen?(encounter: EncounterSummary): Promise<void>;
   findById(id: EncounterId): Promise<EncounterSummary | null>;
   findActiveByPatientId(patientId: PatientId): Promise<EncounterSummary | null>;
   findAll(accountId: AccountId): Promise<readonly EncounterSummary[]>;
@@ -218,6 +219,29 @@ export class EncountersService {
     this.#pendingPersist = pending;
   }
 
+  #assertActiveParticipants(
+    accountId: AccountId,
+    patientId: PatientId,
+    ownerId: OwnerId
+  ): { readonly patient: ReturnType<PatientsService['getOrThrow']>; readonly owner: ReturnType<OwnersService['getOrThrow']> } {
+    const patient = this.#patients.getOrThrow(patientId);
+    const owner = this.#owners.getOrThrow(ownerId);
+    if (patient.accountId !== accountId || owner.accountId !== accountId) {
+      throw new ValidationError('Patient and owner must belong to the current account');
+    }
+    if (owner.status !== 'active') {
+      throw new ConflictError('Cannot open or reopen an encounter for an inactive owner', {
+        ownerId
+      });
+    }
+    if (patient.status !== 'active') {
+      throw new ConflictError('Cannot open or reopen an encounter for an inactive patient', {
+        patientId
+      });
+    }
+    return { patient, owner };
+  }
+
   public openEncounter(
     accountId: AccountId,
     actorUserId: UserId,
@@ -225,11 +249,7 @@ export class EncountersService {
   ): EncounterSummary {
     const patientId = requireNonEmptyString(payload.patientId, 'patientId') as PatientId;
     const ownerId = requireNonEmptyString(payload.ownerId, 'ownerId') as OwnerId;
-    const patient = this.#patients.getOrThrow(patientId);
-    const owner = this.#owners.getOrThrow(ownerId);
-    if (patient.accountId !== accountId || owner.accountId !== accountId) {
-      throw new ValidationError('Patient and owner must belong to the current account');
-    }
+    const { patient, owner } = this.#assertActiveParticipants(accountId, patientId, ownerId);
     if (patient.primaryOwnerId !== ownerId) {
       throw new ValidationError('Owner must be the primary owner of the patient');
     }
@@ -296,6 +316,26 @@ export class EncountersService {
     }
 
     return encounter;
+  }
+
+  /**
+   * Database-backed entry point for API workflows. It refreshes both
+   * participants before invoking the synchronous domain transition, so a
+   * process-local hydration snapshot cannot authorize an inactive owner or
+   * patient.
+   */
+  public async openEncounterAuthoritatively(
+    accountId: AccountId,
+    actorUserId: UserId,
+    payload: CreateEncounterRequest
+  ): Promise<EncounterSummary> {
+    const patientId = requireNonEmptyString(payload.patientId, 'patientId') as PatientId;
+    const ownerId = requireNonEmptyString(payload.ownerId, 'ownerId') as OwnerId;
+    await Promise.all([
+      this.#patients.getAuthoritativeOrThrow(accountId, patientId),
+      this.#owners.getAuthoritativeOrThrow(accountId, ownerId)
+    ]);
+    return this.openEncounter(accountId, actorUserId, payload);
   }
 
   public transitionEncounter(
@@ -399,6 +439,7 @@ export class EncountersService {
     if (current.status !== 'closed') {
       throw new ConflictError('Only a closed encounter can be reopened', { encounterId });
     }
+    this.#assertActiveParticipants(current.accountId, current.patientId, current.ownerId);
     const reopenReason = requireNonEmptyString(reason, 'reason');
     const updated: EncounterSummary = {
       ...current,
@@ -416,7 +457,9 @@ export class EncountersService {
     });
     if (this.#encounterRepository) {
       this.#enqueuePersist(
-        () => this.#encounterRepository!.update(updated),
+        () =>
+          this.#encounterRepository!.updateForReopen?.(updated) ??
+          this.#encounterRepository!.update(updated),
         () => this.#encounters.set(encounterId, current)
       );
     }
@@ -424,6 +467,19 @@ export class EncountersService {
       this.#enqueueCallback(() => this.#onEncounterStatusChanged!(updated, current.status));
     }
     return updated;
+  }
+
+  public async reopenEncounterAuthoritatively(
+    encounterId: EncounterId,
+    actorUserId: UserId,
+    reason: string
+  ): Promise<EncounterSummary> {
+    const current = this.getOrThrow(encounterId);
+    await Promise.all([
+      this.#patients.getAuthoritativeOrThrow(current.accountId, current.patientId),
+      this.#owners.getAuthoritativeOrThrow(current.accountId, current.ownerId)
+    ]);
+    return this.reopenEncounter(encounterId, actorUserId, reason);
   }
 
   public deleteEncounter(encounterId: EncounterId): void {

@@ -139,7 +139,7 @@ describe('UsersService coverage guard', () => {
     expect(repository.created).toHaveLength(1);
     expect(repository.updated).toHaveLength(1);
     expect(updated.displayName).toBe('Repositorio Atualizado');
-    expect(repositoryBacked.findByUsername('repo_user')?.email).toBe('repo.updated@cvg.local');
+    expect(repositoryBacked.findByUsername('repo_user')).toBeUndefined();
     expect(repositoryBacked.list()).toEqual([
       expect.objectContaining({
         id: created.id,

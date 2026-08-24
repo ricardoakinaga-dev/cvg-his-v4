@@ -61,6 +61,59 @@ describe('EncountersService coverage guard', () => {
     ).toThrow(ConflictError);
   });
 
+  it('fails closed when persisted participants are inactive or cross-account', () => {
+    const owners = {
+      getOrThrow(ownerId: string) {
+        return {
+          id: ownerId,
+          accountId: 'acc_cvg_demo',
+          status: ownerId === 'inactive_owner' ? 'inactive' : 'active'
+        };
+      }
+    };
+    const patients = {
+      getOrThrow(patientId: string) {
+        return {
+          id: patientId,
+          accountId: 'acc_cvg_demo',
+          primaryOwnerId: 'active_owner',
+          status: patientId === 'inactive_patient' ? 'inactive' : 'active'
+        };
+      }
+    };
+    const encounters = createService({ owners: owners as never, patients: patients as never });
+
+    expect(() =>
+      encounters.openEncounter('acc_cvg_demo' as never, 'user_admin' as never, {
+        patientId: 'active_patient',
+        ownerId: 'inactive_owner',
+        visitType: 'walk_in',
+        origin: 'reception',
+        reason: 'Owner inativo'
+      })
+    ).toThrow(ConflictError);
+
+    expect(() =>
+      encounters.openEncounter('acc_cvg_demo' as never, 'user_admin' as never, {
+        patientId: 'inactive_patient',
+        ownerId: 'active_owner',
+        visitType: 'walk_in',
+        origin: 'reception',
+        reason: 'Paciente inativo'
+      })
+    ).toThrow(ConflictError);
+
+    expect(() =>
+      encounters.openEncounter('other_account' as never, 'user_admin' as never, {
+        patientId: 'active_patient',
+        ownerId: 'active_owner',
+        visitType: 'walk_in',
+        origin: 'reception',
+        reason: 'Conta incorreta'
+      })
+    ).toThrow(ValidationError);
+  });
+
   it('hydrates persisted encounters and timelines and caches async timeline reads', async () => {
     const findByEncounterId = vi.fn(async () => [
       {
@@ -79,12 +132,17 @@ describe('EncountersService coverage guard', () => {
     const encounters = createService({
       owners: {
         getOrThrow(ownerId: string) {
-          return { id: ownerId, accountId: 'acc_cvg_demo' };
+          return { id: ownerId, accountId: 'acc_cvg_demo', status: 'active' };
         }
       } as never,
       patients: {
         getOrThrow(patientId: string) {
-          return { id: patientId, accountId: 'acc_cvg_demo', primaryOwnerId: persistedOwnerId };
+          return {
+            id: patientId,
+            accountId: 'acc_cvg_demo',
+            primaryOwnerId: persistedOwnerId,
+            status: 'active'
+          };
         }
       } as never,
       encounterRepository: {
@@ -168,12 +226,17 @@ describe('EncountersService coverage guard', () => {
     const encounters = createService({
       owners: {
         getOrThrow(ownerId: string) {
-          return { id: ownerId, accountId: 'acc_cvg_demo' };
+          return { id: ownerId, accountId: 'acc_cvg_demo', status: 'active' };
         }
       } as never,
       patients: {
         getOrThrow(patientId: string) {
-          return { id: patientId, accountId: 'acc_cvg_demo', primaryOwnerId: persistedOwnerId };
+          return {
+            id: patientId,
+            accountId: 'acc_cvg_demo',
+            primaryOwnerId: persistedOwnerId,
+            status: 'active'
+          };
         }
       } as never,
       encounterRepository: {

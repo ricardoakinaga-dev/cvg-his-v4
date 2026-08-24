@@ -116,6 +116,149 @@ test('EncountersService: openEncounter rejects an unrelated owner from the same 
   );
 });
 
+test('EncountersService: inactivated owners and patients cannot start new encounters', () => {
+  const owners = new OwnersService({ seedOwners: [] });
+  const patients = new PatientsService({ owners, seedPatients: [], seedLinks: [] });
+  const encounters = new EncountersService({ owners, patients });
+  const accountId = '00000000-0000-4000-8000-000000000004' as never;
+  const owner = owners.create(accountId, {
+    fullName: 'Owner with lifecycle guard',
+    contacts: [{ label: 'Phone', value: '11999990004', type: 'phone', primary: true }],
+    financialResponsible: true
+  });
+  const patient = patients.create(accountId, {
+    name: 'Patient with lifecycle guard',
+    species: 'canine',
+    sex: 'unknown',
+    primaryOwnerId: owner.id
+  });
+
+  owners.update(owner.id, { status: 'inactive' });
+  assert.throws(
+    () =>
+      encounters.openEncounter(accountId, 'user_lifecycle_guard' as never, {
+        patientId: patient.id,
+        ownerId: owner.id,
+        visitType: 'walk_in',
+        origin: 'reception',
+        reason: 'Inactive owner attempt'
+      }),
+    ConflictError
+  );
+
+  owners.update(owner.id, { status: 'active' });
+  patients.update(patient.id, { status: 'inactive' });
+  assert.throws(
+    () =>
+      encounters.openEncounter(accountId, 'user_lifecycle_guard' as never, {
+        patientId: patient.id,
+        ownerId: owner.id,
+        visitType: 'walk_in',
+        origin: 'reception',
+        reason: 'Inactive patient attempt'
+      }),
+    ConflictError
+  );
+});
+
+test('EncountersService: inactivated owners and patients cannot reopen a closed encounter', () => {
+  const owners = new OwnersService({ seedOwners: [] });
+  const patients = new PatientsService({ owners, seedPatients: [], seedLinks: [] });
+  const encounters = new EncountersService({ owners, patients });
+  const accountId = '00000000-0000-4000-8000-000000000005' as never;
+  const owner = owners.create(accountId, {
+    fullName: 'Owner reopen guard',
+    contacts: [{ label: 'Phone', value: '11999990005', type: 'phone', primary: true }],
+    financialResponsible: true
+  });
+  const patient = patients.create(accountId, {
+    name: 'Patient reopen guard',
+    species: 'canine',
+    sex: 'unknown',
+    primaryOwnerId: owner.id
+  });
+  const encounter = encounters.openEncounter(accountId, 'user_reopen_guard' as never, {
+    patientId: patient.id,
+    ownerId: owner.id,
+    visitType: 'walk_in',
+    origin: 'reception',
+    reason: 'Reopen lifecycle guard'
+  });
+  encounters.closeEncounter(encounter.id, 'user_reopen_guard' as never, {
+    closeReason: 'Closed before lifecycle change'
+  });
+
+  owners.update(owner.id, { status: 'inactive' });
+  assert.throws(
+    () =>
+      encounters.reopenEncounter(
+        encounter.id,
+        'user_reopen_guard' as never,
+        'Inactive owner reopen attempt'
+      ),
+    ConflictError
+  );
+
+  owners.update(owner.id, { status: 'active' });
+  patients.update(patient.id, { status: 'inactive' });
+  assert.throws(
+    () =>
+      encounters.reopenEncounter(
+        encounter.id,
+        'user_reopen_guard' as never,
+        'Inactive patient reopen attempt'
+      ),
+    ConflictError
+  );
+});
+
+test('EncountersService: authoritative open refreshes lifecycle state before transition', async () => {
+  const cachedOwners = new OwnersService();
+  const cachedPatients = new PatientsService({ owners: cachedOwners });
+  const cachedOwner = cachedOwners.getOrThrow('owner_maria_silva' as never);
+  const cachedPatient = cachedPatients.getOrThrow('patient_luna' as never);
+  const authoritativeOwner = { ...cachedOwner, status: 'inactive' as const };
+  const owners = new OwnersService({
+    seedOwners: [cachedOwner],
+    ownerRepository: {
+      create: async () => undefined,
+      update: async () => undefined,
+      findById: async () => authoritativeOwner,
+      findByAccountId: async () => [authoritativeOwner],
+      delete: async () => undefined
+    }
+  });
+  const patients = new PatientsService({
+    owners,
+    seedPatients: [cachedPatient],
+    seedLinks: [],
+    patientRepository: {
+      create: async () => undefined,
+      update: async () => undefined,
+      findById: async () => cachedPatient,
+      findByAccountId: async () => [cachedPatient],
+      delete: async () => undefined
+    }
+  });
+  const encounters = new EncountersService({ owners, patients });
+
+  await assert.rejects(
+    () =>
+      encounters.openEncounterAuthoritatively(
+        'acc_cvg_demo' as never,
+        'user_authoritative' as never,
+        {
+          patientId: cachedPatient.id,
+          ownerId: cachedOwner.id,
+          visitType: 'walk_in',
+          origin: 'reception',
+          reason: 'Authoritative lifecycle guard'
+        }
+      ),
+    ConflictError
+  );
+});
+
 test('ClinicalHandoffsService: sends minimal handoff to reception and records timeline', () => {
   const encounters = createEncountersService();
   const encounter = openTestEncounter(encounters);

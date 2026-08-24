@@ -325,6 +325,28 @@ export class PatientsService {
     return patient;
   }
 
+  /**
+   * Read the participant from the persistence boundary when one exists.
+   * Lifecycle-sensitive operations should use this method instead of relying
+   * on a process-local hydration snapshot.
+   */
+  public async getAuthoritativeOrThrow(
+    accountId: AccountId,
+    patientId: PatientId
+  ): Promise<PatientSummary> {
+    if (!this.#patientRepository) {
+      return this.getOrThrow(patientId);
+    }
+
+    const patient = await this.#patientRepository.findById(patientId);
+    if (!patient || patient.accountId !== accountId) {
+      throw new NotFoundError('Patient not found', { patientId });
+    }
+
+    this.#patients.set(patient.id, patient);
+    return patient;
+  }
+
   public create(accountId: AccountId, payload: CreatePatientRequest): PatientSummary {
     const primaryOwnerId = requireNonEmptyString(
       payload.primaryOwnerId,
@@ -333,6 +355,11 @@ export class PatientsService {
     const primaryOwner = this.#owners.getOrThrow(primaryOwnerId);
     if (primaryOwner.accountId !== accountId) {
       throw new ValidationError('Primary owner must belong to the same account as the patient');
+    }
+    if (primaryOwner.status !== 'active') {
+      throw new ConflictError('Cannot assign an inactive owner as the primary owner', {
+        ownerId: primaryOwnerId
+      });
     }
 
     const name = requireNonEmptyString(payload.name, 'name');
@@ -425,6 +452,14 @@ export class PatientsService {
     if (nextPrimaryOwner.accountId !== current.accountId) {
       throw new ValidationError('Primary owner must belong to the same account as the patient');
     }
+    if (
+      nextPrimaryOwnerId !== current.primaryOwnerId &&
+      nextPrimaryOwner.status !== 'active'
+    ) {
+      throw new ConflictError('Cannot transfer a patient to an inactive primary owner', {
+        ownerId: nextPrimaryOwnerId
+      });
+    }
 
     const updated: PatientSummary = {
       ...current,
@@ -511,9 +546,30 @@ export class PatientsService {
     if (owner.accountId !== accountId || patient.accountId !== accountId) {
       throw new ValidationError('Owner and patient must belong to the current account');
     }
+    if (owner.status !== 'active') {
+      throw new ConflictError('Cannot create a relationship with an inactive owner', { ownerId });
+    }
+    if (patient.status !== 'active') {
+      throw new ConflictError('Cannot create a relationship with an inactive patient', {
+        patientId
+      });
+    }
+
+    const relationshipType = payload.relationshipType;
+    if (
+      relationshipType !== 'primary' &&
+      relationshipType !== 'secondary' &&
+      relationshipType !== 'financial' &&
+      relationshipType !== 'authorized' &&
+      relationshipType !== 'spouse'
+    ) {
+      throw new ValidationError('Unsupported owner-patient relationship type', {
+        relationshipType
+      });
+    }
 
     const duplicate = this.listLinks({ ownerId, patientId }).find(
-      (link) => link.relationshipType === payload.relationshipType
+      (link) => link.relationshipType === relationshipType
     );
     if (duplicate) {
       throw new ConflictError('Owner-patient relationship already exists', {
@@ -521,7 +577,7 @@ export class PatientsService {
       });
     }
 
-    if (payload.relationshipType === 'primary' && patient.primaryOwnerId !== ownerId) {
+    if (relationshipType === 'primary' && patient.primaryOwnerId !== ownerId) {
       throw new ValidationError("Primary relationship must match the patient's primary owner");
     }
 
@@ -530,7 +586,7 @@ export class PatientsService {
       accountId,
       ownerId,
       patientId,
-      relationshipType: payload.relationshipType,
+      relationshipType,
       financialResponsible: requireBoolean(payload.financialResponsible, 'financialResponsible'),
       createdAt: nowIso()
     };

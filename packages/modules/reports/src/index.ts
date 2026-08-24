@@ -1,4 +1,5 @@
 import { deflateRawSync } from 'node:zlib';
+import { createHash } from 'node:crypto';
 
 import { getPool } from '@cvg-his-v2/shared-database';
 import { NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
@@ -109,6 +110,7 @@ export interface ReportScheduleDeliveryAlertSummary {
 
 export interface ExecuteReportInput {
   readonly reportId: string;
+  readonly executionId?: string;
   readonly filters?: Record<string, unknown>;
   readonly rows: readonly Record<string, unknown>[];
 }
@@ -148,6 +150,12 @@ export interface ReportRepository {
   findExports(accountId: AccountId): Promise<readonly ReportExportSummary[]>;
   findSchedules(accountId: AccountId): Promise<readonly ReportScheduleSummary[]>;
   findDeliveries(accountId: AccountId): Promise<readonly ReportScheduleDeliverySummary[]>;
+  readonly claimDueSchedules?: (
+    accountId: AccountId,
+    asOf: string,
+    workerId: string,
+    leaseMs?: number
+  ) => Promise<readonly ReportScheduleSummary[]>;
 }
 
 export interface ReportsServiceOptions {
@@ -160,6 +168,9 @@ export interface ReportDeliveryProvider {
     readonly accountId: AccountId;
     readonly scheduleId: string;
     readonly executionId: string;
+    /** Stable delivery identity used by an adapter to deduplicate retries. */
+    readonly deliveryId: string;
+    readonly idempotencyKey: string;
     readonly recipient: string;
     readonly exported: ReportExportSummary;
   }): Promise<void>;
@@ -222,6 +233,8 @@ export class ReportsService {
   readonly #exports = new Map<string, ReportExportSummary>();
   readonly #schedules = new Map<string, ReportScheduleSummary>();
   readonly #deliveries = new Map<string, ReportScheduleDeliverySummary>();
+  readonly #retryOperations = new Map<string, Promise<ReportScheduleDeliverySummary>>();
+  readonly #scheduleClaims = new Map<string, { readonly workerId: string; readonly claimUntil: number }>();
 
   public constructor(options?: ReportsServiceOptions | readonly ReportDefinition[]) {
     if (isReportDefinitionList(options)) {
@@ -277,7 +290,7 @@ export class ReportsService {
     const rows = input.rows.map((row) => normalizeRow(definition, row));
     const generatedAt = nowIso();
     const execution: ReportExecutionDetail = {
-      id: createCorrelationId('rep_exec'),
+      id: input.executionId?.trim() || createCorrelationId('rep_exec'),
       accountId,
       reportId: definition.id,
       requestedByUserId,
@@ -324,7 +337,7 @@ export class ReportsService {
     const filename = `${definition.id}-${execution.id}.${format}`;
     const artifact = renderExport(execution, format);
     const result: ReportExportSummary = {
-      id: createCorrelationId('rep_exp'),
+      id: stableReportId('rep_exp', accountId, executionId, format),
       accountId,
       executionId,
       format,
@@ -400,6 +413,42 @@ export class ReportsService {
       .sort((left, right) => left.nextRunAt.localeCompare(right.nextRunAt));
   }
 
+  public async claimDueSchedules(
+    accountId: AccountId,
+    asOf = nowIso(),
+    workerId = 'reports-worker',
+    leaseMs = 120_000
+  ): Promise<readonly ReportScheduleSummary[]> {
+    const asOfTime = new Date(asOf).getTime();
+    if (Number.isNaN(asOfTime)) {
+      throw new ValidationError('asOf must be a valid ISO date', { asOf });
+    }
+    if (!workerId.trim() || !Number.isFinite(leaseMs) || leaseMs <= 0) {
+      throw new ValidationError('workerId and leaseMs are required for report schedule claims');
+    }
+
+    if (this.#repository?.claimDueSchedules) {
+      const claimed = await this.#repository.claimDueSchedules(
+        accountId,
+        asOf,
+        workerId.trim(),
+        leaseMs
+      );
+      for (const schedule of claimed) this.#schedules.set(schedule.id, schedule);
+      return claimed;
+    }
+
+    const claimUntil = asOfTime + leaseMs;
+    const claimed: ReportScheduleSummary[] = [];
+    for (const schedule of this.listDueSchedules(accountId, asOf)) {
+      const existing = this.#scheduleClaims.get(schedule.id);
+      if (existing && existing.claimUntil > asOfTime) continue;
+      this.#scheduleClaims.set(schedule.id, { workerId: workerId.trim(), claimUntil });
+      claimed.push(schedule);
+    }
+    return claimed;
+  }
+
   public async recordScheduleExecution(
     accountId: AccountId,
     scheduleId: string,
@@ -420,6 +469,7 @@ export class ReportsService {
       updatedAt: ranAt
     };
     this.#schedules.set(updated.id, updated);
+    this.#scheduleClaims.delete(updated.id);
     await this.#repository?.saveSchedule(updated);
     return updated;
   }
@@ -436,8 +486,15 @@ export class ReportsService {
 
     const deliveredAt = input.deliveredAt ?? nowIso();
     const recipients = normalizeRecipients(input.recipients);
+    const deliveryExecutionKey = `${input.executionId ?? 'none'}:${deliveredAt}`;
     const deliveries = recipients.map((recipient) => ({
-      id: createCorrelationId('rep_deliv'),
+      id: stableReportId(
+        'rep_deliv',
+        accountId,
+        schedule.id,
+        deliveryExecutionKey,
+        recipient
+      ),
       accountId,
       scheduleId: schedule.id,
       executionId: input.executionId ?? null,
@@ -451,8 +508,7 @@ export class ReportsService {
     }));
 
     for (const delivery of deliveries) {
-      this.#deliveries.set(delivery.id, delivery);
-      await this.#repository?.saveDelivery(delivery);
+      await this.persistDelivery(delivery);
     }
 
     return deliveries;
@@ -535,7 +591,8 @@ export class ReportsService {
     executionId: string,
     exported: ReportExportSummary,
     recipients: readonly string[],
-    deliveredAt?: string
+    deliveredAt?: string,
+    existingDeliveryId?: string
   ): Promise<{
     readonly deliveries: readonly ReportScheduleDeliverySummary[];
     readonly failures: readonly { readonly recipient: string; readonly error: string }[];
@@ -551,10 +608,37 @@ export class ReportsService {
         exportId: exported.id
       });
     }
+    const normalizedRecipients = normalizeRecipients(recipients);
+    const existingDelivery = existingDeliveryId ? this.#deliveries.get(existingDeliveryId) : undefined;
+    if (existingDeliveryId && (
+      !existingDelivery ||
+      existingDelivery.accountId !== accountId ||
+      existingDelivery.scheduleId !== scheduleId ||
+      normalizedRecipients.length !== 1 ||
+      existingDelivery.recipient !== normalizedRecipients[0]
+    )) {
+      throw new NotFoundError('Report schedule delivery not found', { deliveryId: existingDeliveryId });
+    }
 
     const deliveries: ReportScheduleDeliverySummary[] = [];
     const failures: Array<{ readonly recipient: string; readonly error: string }> = [];
-    for (const recipient of normalizeRecipients(recipients)) {
+    for (const recipient of normalizedRecipients) {
+      const attemptAt = deliveredAt ?? nowIso();
+      const delivery = existingDelivery ?? {
+        id: stableReportId('rep_deliv', accountId, schedule.id, executionId, recipient),
+        accountId,
+        scheduleId: schedule.id,
+        executionId,
+        exportId: exported.id,
+        recipient,
+        status: 'failed' as const,
+        format: exported.format,
+        deliveredAt: attemptAt,
+        error: null,
+        createdAt: attemptAt
+      };
+      let providerFailed = false;
+      let providerError: string | null = null;
       try {
         if (!this.#deliveryProvider) {
           throw new Error('No report delivery provider is configured');
@@ -563,37 +647,75 @@ export class ReportsService {
           accountId,
           scheduleId,
           executionId,
+          deliveryId: delivery.id,
+          idempotencyKey: delivery.id,
           recipient,
           exported
         });
-        const [delivery] = await this.recordScheduleDeliveries(accountId, scheduleId, {
-          executionId,
-          exportId: exported.id,
-          recipients: [recipient],
-          status: 'sent',
-          format: exported.format,
-          deliveredAt
-        });
-        if (delivery) deliveries.push(delivery);
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        failures.push({ recipient, error: message });
-        const [delivery] = await this.recordScheduleDeliveries(accountId, scheduleId, {
+        providerFailed = true;
+        providerError = error instanceof Error ? error.message : String(error);
+      }
+
+      if (providerFailed) {
+        const failureMessage = providerError ?? 'Report delivery provider failed';
+        const failed = {
+          ...delivery,
           executionId,
           exportId: exported.id,
-          recipients: [recipient],
-          status: 'failed',
+          status: 'failed' as const,
           format: exported.format,
-          deliveredAt,
-          error: message
-        });
-        if (delivery) deliveries.push(delivery);
+          deliveredAt: attemptAt,
+          error: failureMessage
+        };
+        await this.persistDelivery(failed);
+        deliveries.push(failed);
+        failures.push({ recipient, error: failureMessage });
+        continue;
       }
+
+      const sent = {
+        ...delivery,
+        executionId,
+        exportId: exported.id,
+        status: 'sent' as const,
+        format: exported.format,
+        deliveredAt: attemptAt,
+        error: null
+      };
+      await this.persistDelivery(sent);
+      deliveries.push(sent);
     }
     return { deliveries, failures };
   }
 
   public async retryScheduleDelivery(
+    accountId: AccountId,
+    retriedByUserId: UserId,
+    scheduleId: string,
+    deliveryId: string
+  ): Promise<ReportScheduleDeliverySummary> {
+    const operationKey = `${accountId}:${deliveryId}`;
+    const inFlight = this.#retryOperations.get(operationKey);
+    if (inFlight) return inFlight;
+
+    const operation = this.retryScheduleDeliveryOnce(
+      accountId,
+      retriedByUserId,
+      scheduleId,
+      deliveryId
+    );
+    this.#retryOperations.set(operationKey, operation);
+    try {
+      return await operation;
+    } finally {
+      if (this.#retryOperations.get(operationKey) === operation) {
+        this.#retryOperations.delete(operationKey);
+      }
+    }
+  }
+
+  private async retryScheduleDeliveryOnce(
     accountId: AccountId,
     retriedByUserId: UserId,
     scheduleId: string,
@@ -615,24 +737,36 @@ export class ReportsService {
       throw new ValidationError('Report delivery retry requires an execution id', { deliveryId });
     }
 
-    const exported = await this.exportExecution(
-      accountId,
-      retriedByUserId,
-      delivery.executionId,
-      delivery.format
-    );
+    const exported = delivery.exportId
+      ? this.getExport(accountId, delivery.exportId)
+      : await this.exportExecution(accountId, retriedByUserId, delivery.executionId, delivery.format);
+    if (exported.format !== delivery.format) {
+      throw new ValidationError('Report delivery artifact format does not match the failed delivery', {
+        deliveryId,
+        exportId: exported.id,
+        expectedFormat: delivery.format,
+        actualFormat: exported.format
+      });
+    }
     const retry = await this.deliverExport(
       accountId,
       scheduleId,
       delivery.executionId,
       exported,
-      [delivery.recipient]
+      [delivery.recipient],
+      undefined,
+      delivery.id
     );
     const retried = retry.deliveries.at(-1);
     if (!retried || retried.status !== 'sent') {
       throw new ValidationError('Report delivery retry did not create a delivery record', { deliveryId });
     }
     return retried;
+  }
+
+  private async persistDelivery(delivery: ReportScheduleDeliverySummary): Promise<void> {
+    await this.#repository?.saveDelivery(delivery);
+    this.#deliveries.set(delivery.id, delivery);
   }
 
   public async setScheduleActive(
@@ -651,6 +785,7 @@ export class ReportsService {
       updatedAt: nowIso()
     };
     this.#schedules.set(updated.id, updated);
+    this.#scheduleClaims.delete(updated.id);
     await this.#repository?.saveSchedule(updated);
     return updated;
   }
@@ -664,7 +799,8 @@ export class DatabaseReportRepository implements ReportRepository {
         `INSERT INTO report_executions (
           id, account_id, report_id, requested_by_user_id, status, filters, row_count,
           generated_at, expires_at, columns, rows
-        ) VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9, $10::jsonb, $11::jsonb)`,
+        ) VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9, $10::jsonb, $11::jsonb)
+        ON CONFLICT (account_id, id) DO NOTHING`,
         executionParams(execution)
       );
     });
@@ -676,7 +812,8 @@ export class DatabaseReportRepository implements ReportRepository {
         `INSERT INTO report_exports (
           id, account_id, execution_id, format, filename, content_type, content,
           content_encoding, exported_by_user_id, exported_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $8, $7, $9, $10)`,
+        ) VALUES ($1, $2, $3, $4, $5, $6, $8, $7, $9, $10)
+        ON CONFLICT (account_id, id) DO NOTHING`,
         exportParams(exported)
       );
     });
@@ -701,6 +838,9 @@ export class DatabaseReportRepository implements ReportRepository {
           last_run_at = EXCLUDED.last_run_at,
           last_execution_id = EXCLUDED.last_execution_id,
           last_error = EXCLUDED.last_error,
+          claim_token = NULL,
+          claim_until = NULL,
+          claim_worker_id = NULL,
           updated_at = EXCLUDED.updated_at`,
         scheduleParams(schedule)
       );
@@ -713,9 +853,51 @@ export class DatabaseReportRepository implements ReportRepository {
         `INSERT INTO report_schedule_deliveries (
           id, account_id, schedule_id, execution_id, export_id, recipient, status, format,
           delivered_at, error, created_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        ON CONFLICT (id) DO UPDATE SET
+          execution_id = EXCLUDED.execution_id,
+          export_id = EXCLUDED.export_id,
+          recipient = EXCLUDED.recipient,
+          status = EXCLUDED.status,
+          format = EXCLUDED.format,
+          delivered_at = EXCLUDED.delivered_at,
+          error = EXCLUDED.error
+        WHERE report_schedule_deliveries.account_id = EXCLUDED.account_id`,
         deliveryParams(delivery)
       );
+    });
+  }
+
+  async claimDueSchedules(
+    accountId: AccountId,
+    asOf: string,
+    workerId: string,
+    leaseMs = 120_000
+  ): Promise<readonly ReportScheduleSummary[]> {
+    return withTenantQuery(getPool(), async (client) => {
+      const result = await client.query(
+        `WITH due AS (
+           SELECT id
+             FROM report_schedules
+            WHERE account_id = $1
+              AND is_active = TRUE
+              AND next_run_at <= $2
+              AND (claim_until IS NULL OR claim_until <= CURRENT_TIMESTAMP)
+            ORDER BY next_run_at ASC, id ASC
+            LIMIT 25
+            FOR UPDATE SKIP LOCKED
+         )
+         UPDATE report_schedules AS schedules
+            SET claim_token = $3,
+                claim_until = CURRENT_TIMESTAMP + ($4 * INTERVAL '1 millisecond'),
+                claim_worker_id = $5,
+                updated_at = CURRENT_TIMESTAMP
+           FROM due
+          WHERE schedules.account_id = $1 AND schedules.id = due.id
+         RETURNING schedules.*`,
+        [accountId, asOf, createCorrelationId('rep_claim'), leaseMs, workerId]
+      );
+      return result.rows.map(mapSchedule);
     });
   }
 
@@ -758,6 +940,14 @@ export class DatabaseReportRepository implements ReportRepository {
       return result.rows.map(mapDelivery);
     });
   }
+}
+
+function stableReportId(prefix: string, ...parts: readonly unknown[]): string {
+  const digest = createHash('sha256')
+    .update(parts.map((part) => String(part)).join('\u001f'))
+    .digest('hex')
+    .slice(0, 40);
+  return `${prefix}_${digest}`;
 }
 
 function normalizeRow(definition: ReportDefinition, row: Record<string, unknown>): Record<string, unknown> {

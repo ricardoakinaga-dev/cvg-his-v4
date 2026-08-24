@@ -306,6 +306,29 @@ export class OwnersService {
     return owner;
   }
 
+  /**
+   * Read the participant from the persistence boundary when one exists.
+   * Synchronous callers may use getOrThrow for local/in-memory workflows, but
+   * lifecycle-sensitive operations must use this method so a stale process
+   * cache cannot authorize an inactive owner.
+   */
+  public async getAuthoritativeOrThrow(
+    accountId: AccountId,
+    ownerId: OwnerId
+  ): Promise<OwnerSummary> {
+    if (!this.#ownerRepository) {
+      return this.getOrThrow(ownerId);
+    }
+
+    const owner = await this.#ownerRepository.findById(ownerId);
+    if (!owner || owner.accountId !== accountId) {
+      throw new NotFoundError('Owner not found', { ownerId });
+    }
+
+    this.#owners.set(owner.id, owner);
+    return owner;
+  }
+
   public create(accountId: AccountId, payload: CreateOwnerRequest): OwnerSummary {
     const fullName = requireNonEmptyString(payload.fullName, 'fullName');
     const documentId = requireOptionalString(payload.documentId);

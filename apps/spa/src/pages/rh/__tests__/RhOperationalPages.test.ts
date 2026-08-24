@@ -10,11 +10,15 @@ import { commissionService } from '@/services/commissions';
 import { staffService } from '@/services/staff';
 import type { AdministrativeReportsResponse } from '@/services/administrativeReports';
 import type { CommissionCalculationDetail, CommissionRuleSummary } from '@/services/commissions';
-import type { StaffSummary } from '@cvg-his-v2/shared-types';
+import type { ProfessionSummary, StaffSummary } from '@cvg-his-v2/shared-types';
 
 vi.mock('@/services/staff', () => ({
   staffService: {
-    list: vi.fn()
+    list: vi.fn(),
+    listProfessions: vi.fn(),
+    createProfession: vi.fn(),
+    updateProfession: vi.fn(),
+    toggleProfession: vi.fn()
   }
 }));
 
@@ -45,6 +49,7 @@ const staff: StaffSummary[] = [
     fullName: 'Ana Paula',
     department: 'Clínica',
     jobTitle: 'Médica Veterinária',
+    professionId: 'profession-vet' as never,
     status: 'active',
     createdAt: '2026-04-01T00:00:00.000Z',
     updatedAt: '2026-04-01T00:00:00.000Z'
@@ -56,11 +61,35 @@ const staff: StaffSummary[] = [
     fullName: 'Rafael Lima',
     department: 'Laboratório',
     jobTitle: 'Bioquímico',
+    professionId: 'profession-lab' as never,
     status: 'active',
     createdAt: '2026-04-01T00:00:00.000Z',
     updatedAt: '2026-04-01T00:00:00.000Z'
   }
-] as StaffSummary[];
+] as unknown as StaffSummary[];
+
+const professions: ProfessionSummary[] = [
+  {
+    id: 'profession-vet' as never,
+    accountId: 'acc-1' as never,
+    code: 'VET-CLIN',
+    name: 'Médica Veterinária',
+    description: 'Atendimento clínico',
+    status: 'active',
+    createdAt: '2026-04-01T00:00:00.000Z',
+    updatedAt: '2026-04-01T00:00:00.000Z'
+  },
+  {
+    id: 'profession-lab' as never,
+    accountId: 'acc-1' as never,
+    code: 'LAB-BIO',
+    name: 'Bioquímico',
+    description: 'Análises laboratoriais',
+    status: 'active',
+    createdAt: '2026-04-01T00:00:00.000Z',
+    updatedAt: '2026-04-01T00:00:00.000Z'
+  }
+];
 
 const report = {
   executive: {
@@ -213,6 +242,21 @@ describe('RH operational pages', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(staffService.list).mockResolvedValue(staff);
+    vi.mocked(staffService.listProfessions).mockResolvedValue(professions);
+    vi.mocked(staffService.createProfession).mockImplementation(async (payload) => ({
+      id: 'profession-new' as never,
+      accountId: 'acc-1' as never,
+      code: payload.code,
+      name: payload.name,
+      description: payload.description ?? null,
+      status: 'active',
+      createdAt: '2026-04-01T00:00:00.000Z',
+      updatedAt: '2026-04-01T00:00:00.000Z'
+    }));
+    vi.mocked(staffService.toggleProfession).mockImplementation(async (id, isActive) => ({
+      ...(professions.find((item) => item.id === id) ?? professions[0]),
+      status: isActive ? 'active' : 'inactive'
+    }));
     vi.mocked(administrativeReportsService.getHubs).mockResolvedValue(report);
     vi.mocked(commissionService.listRules).mockResolvedValue(commissionRules);
     vi.mocked(commissionService.createRule).mockImplementation(async (payload) => ({
@@ -291,10 +335,31 @@ describe('RH operational pages', () => {
     await searchButton!.trigger('click');
     await flushPromises();
 
-    expect(wrapper.text()).toContain('Pesquisa preparada para profissões com descrição Bioquímico e vínculo Rafael');
+    expect(wrapper.text()).toContain('Pesquisa aplicada para profissões com descrição Bioquímico e vínculo Rafael');
     expect(wrapper.text()).toContain('Bioquímico');
     expect(wrapper.text()).toContain('Rafael Lima');
     expect(wrapper.text()).not.toContain('Médica VeterináriaClínica');
+  });
+
+  it('creates a profession through the persisted master-data workflow', async () => {
+    const wrapper = mount(RhProfessionsPage);
+    await flushPromises();
+
+    const includeButton = wrapper.findAll('button').find((button) => button.text() === 'Incluir');
+    expect(includeButton).toBeTruthy();
+    await includeButton!.trigger('click');
+    await wrapper.find('input#profession-code').setValue('NUT-001');
+    await wrapper.find('input#profession-name').setValue('Nutricionista');
+    await wrapper.find('input#profession-create-description').setValue('Plano nutricional');
+    await wrapper.find('form[aria-label="Cadastrar profissão"]').trigger('submit');
+    await flushPromises();
+
+    expect(staffService.createProfession).toHaveBeenCalledWith({
+      code: 'NUT-001',
+      name: 'Nutricionista',
+      description: 'Plano nutricional'
+    });
+    expect(wrapper.text()).toContain('Profissão cadastrada com sucesso');
   });
 
   it('renders commission rules from staff departments and job titles', async () => {

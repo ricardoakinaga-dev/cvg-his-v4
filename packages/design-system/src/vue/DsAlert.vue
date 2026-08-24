@@ -121,25 +121,25 @@ const classes = computed(() => ['ds-alert', `ds-alert--${props.variant}`]);
 /* Dark mode support follows the explicit application theme. */
 :global(:root[data-theme='dark'] .ds-alert--info) {
     background: var(--color-info-900, #1e3a8a);
-    color: var(--color-info-100, #dbeafe);
+    color: var(--color-text, #e7eef8);
     border-color: var(--color-info-700, #1d4ed8);
 }
 
 :global(:root[data-theme='dark'] .ds-alert--success) {
     background: var(--color-success-900, #14532d);
-    color: var(--color-success-100, #d1fae5);
+    color: var(--color-text, #e7eef8);
     border-color: var(--color-success-700, #047857);
 }
 
 :global(:root[data-theme='dark'] .ds-alert--warning) {
     background: var(--color-warning-900, #78350f);
-    color: var(--color-warning-100, #fef3c7);
+    color: var(--color-text, #e7eef8);
     border-color: var(--color-warning-700, #b45309);
 }
 
 :global(:root[data-theme='dark'] .ds-alert--danger) {
     background: var(--color-danger-900, #7f1d1d);
-    color: var(--color-danger-100, #fee2e2);
+    color: var(--color-text, #e7eef8);
     border-color: var(--color-danger-700, #b91c1c);
 }
 
@@ -147,25 +147,25 @@ const classes = computed(() => ['ds-alert', `ds-alert--${props.variant}`]);
 @media (prefers-color-scheme: dark) {
   :global(:root:not([data-theme='light']) .ds-alert--info) {
     background: var(--color-info-900, #1e3a8a);
-    color: var(--color-info-100, #dbeafe);
+    color: var(--color-text, #e7eef8);
     border-color: var(--color-info-700, #1d4ed8);
   }
 
   :global(:root:not([data-theme='light']) .ds-alert--success) {
     background: var(--color-success-900, #14532d);
-    color: var(--color-success-100, #d1fae5);
+    color: var(--color-text, #e7eef8);
     border-color: var(--color-success-700, #047857);
   }
 
   :global(:root:not([data-theme='light']) .ds-alert--warning) {
     background: var(--color-warning-900, #78350f);
-    color: var(--color-warning-100, #fef3c7);
+    color: var(--color-text, #e7eef8);
     border-color: var(--color-warning-700, #b45309);
   }
 
   :global(:root:not([data-theme='light']) .ds-alert--danger) {
     background: var(--color-danger-900, #7f1d1d);
-    color: var(--color-danger-100, #fee2e2);
+    color: var(--color-text, #e7eef8);
     border-color: var(--color-danger-700, #b91c1c);
   }
 }

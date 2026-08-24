@@ -106,6 +106,8 @@ describe('RLS Integration Tests', () => {
       'cash_registers',
       'cash_movements',
       'counter_sales',
+      'counter_sale_receipts',
+      'scheduling_queue_transfers',
       'quotes',
       'alerts',
       'notifications',

@@ -212,4 +212,43 @@ describe('PatientsService coverage guard', () => {
       })
     ).toThrow(ValidationError);
   });
+
+  it('supports authorized people explicitly and rejects unknown relationship types', async () => {
+    const primaryOwner = createOwner(owners, 'Tutor Principal Autorizado');
+    const authorizedOwner = createOwner(owners, 'Pessoa Autorizada', '11999990003');
+    const patient = service.create(ACCOUNT_ID, {
+      name: 'Kira',
+      species: 'canine',
+      sex: 'female',
+      primaryOwnerId: primaryOwner.id
+    });
+
+    const authorized = service.createLink(ACCOUNT_ID, {
+      ownerId: authorizedOwner.id,
+      patientId: patient.id,
+      relationshipType: 'authorized',
+      financialResponsible: false
+    });
+
+    expect(authorized.relationshipType).toBe('authorized');
+    await service.waitForPersistence();
+    expect(linkRepository.getAll()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          ownerId: authorizedOwner.id,
+          patientId: patient.id,
+          relationshipType: 'authorized'
+        })
+      ])
+    );
+
+    expect(() =>
+      service.createLink(ACCOUNT_ID, {
+        ownerId: primaryOwner.id,
+        patientId: patient.id,
+        relationshipType: 'emergency_contact' as never,
+        financialResponsible: false
+      })
+    ).toThrow(ValidationError);
+  });
 });

@@ -146,7 +146,14 @@ END;
 $function$;
 
 REVOKE ALL ON FUNCTION app.redrive_pix_provider_event_delivery(UUID, UUID, UUID, TEXT, TEXT)
-  FROM PUBLIC, cvg_installer;
+  FROM PUBLIC;
+DO $revoke_optional_installer$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'cvg_installer') THEN
+    EXECUTE 'REVOKE ALL ON FUNCTION app.redrive_pix_provider_event_delivery(UUID, UUID, UUID, TEXT, TEXT) FROM cvg_installer';
+  END IF;
+END
+$revoke_optional_installer$;
 ALTER FUNCTION app.redrive_pix_provider_event_delivery(UUID, UUID, UUID, TEXT, TEXT)
   OWNER TO cvg_pix_dlq_operator;
 

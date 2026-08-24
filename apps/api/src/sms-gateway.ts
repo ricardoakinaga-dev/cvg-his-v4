@@ -3,6 +3,7 @@ import { nowIso } from '@cvg-his-v2/shared-utils';
 export interface SmsSendInput {
   readonly to: string;
   readonly text: string;
+  readonly idempotencyKey?: string;
 }
 
 export interface SmsSendResult {
@@ -60,7 +61,8 @@ export class TwilioSmsGatewayAdapter implements SmsGateway {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${this.#apiKey}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...(input.idempotencyKey ? { 'Idempotency-Key': input.idempotencyKey } : {})
         },
         body: JSON.stringify({
           To: input.to,

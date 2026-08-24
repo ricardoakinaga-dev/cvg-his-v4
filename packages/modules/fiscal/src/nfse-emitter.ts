@@ -22,7 +22,7 @@ export interface NfseEmitterConfig {
   readonly provider: NfseIssuerConfig;
   readonly issuer: NfseIssuer;
   readonly regime: 'simples_nacional' | 'lucro_presumido' | 'lucro_real';
-  /** Test/development-only escape hatch for the deterministic local simulator. */
+  /** Test/development-only opt-in for the deterministic local simulator. */
   readonly allowSimulation?: boolean;
 }
 
@@ -160,8 +160,8 @@ export function generateNfseId(prefix = 'nfse'): string {
  */
 export function buildNfseXml(document: NfseDocument): string {
   const lines = document.services.map(svc => `    <Servico>
-      <Descricao>${svc.description}</Descricao>
-      <CodigoServico>${svc.codigoServico}</CodigoServico>
+      <Descricao>${escapeXml(svc.description)}</Descricao>
+      <CodigoServico>${escapeXml(svc.codigoServico)}</CodigoServico>
       <Quantidade>${svc.quantity}</Quantidade>
       <ValorUnitario>${svc.unitValue.toFixed(2)}</ValorUnitario>
       <ValorServico>${svc.totalValue.toFixed(2)}</ValorServico>
@@ -175,29 +175,29 @@ export function buildNfseXml(document: NfseDocument): string {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Nfse xmlns="http://www.abrasf.org.br/nfse.xsd">
   <InfNfse>
-    <Id>${document.id}</Id>
-    <Serie>${document.serie}</Serie>
+    <Id>${escapeXml(document.id)}</Id>
+    <Serie>${escapeXml(document.serie)}</Serie>
     <Numero>${document.numero}</Numero>
-    <Competencia>${document.competencia}</Competencia>
+    <Competencia>${escapeXml(document.competencia)}</Competencia>
     <Issuer>
-      <CNPJ>${document.issuer.cnpj}</CNPJ>
-      <InscricaoMunicipal>${document.issuer.inscricaoMunicipal}</InscricaoMunicipal>
-      <RazaoSocial>${document.issuer.razaoSocial}</RazaoSocial>
+      <CNPJ>${escapeXml(document.issuer.cnpj)}</CNPJ>
+      <InscricaoMunicipal>${escapeXml(document.issuer.inscricaoMunicipal)}</InscricaoMunicipal>
+      <RazaoSocial>${escapeXml(document.issuer.razaoSocial)}</RazaoSocial>
       <Endereco>
-        <Logradouro>${document.issuer.address.street}</Logradouro>
-        <Numero>${document.issuer.address.number}</Numero>
-        <Complemento>${document.issuer.address.complement ?? ''}</Complemento>
-        <Bairro>${document.issuer.address.district}</Bairro>
-        <Cidade>${document.issuer.address.city}</Cidade>
-        <UF>${document.issuer.address.state}</UF>
-        <CEP>${document.issuer.address.zipCode}</CEP>
+        <Logradouro>${escapeXml(document.issuer.address.street)}</Logradouro>
+        <Numero>${escapeXml(document.issuer.address.number)}</Numero>
+        <Complemento>${escapeXml(document.issuer.address.complement ?? '')}</Complemento>
+        <Bairro>${escapeXml(document.issuer.address.district)}</Bairro>
+        <Cidade>${escapeXml(document.issuer.address.city)}</Cidade>
+        <UF>${escapeXml(document.issuer.address.state)}</UF>
+        <CEP>${escapeXml(document.issuer.address.zipCode)}</CEP>
       </Endereco>
     </Issuer>
     <Customer>
-      <Tipo>${document.customer.type.toUpperCase()}</Tipo>
-      <Documento>${document.customer.document}</Documento>
-      <Nome>${document.customer.name}</Nome>
-      <Email>${document.customer.email ?? ''}</Email>
+      <Tipo>${escapeXml(document.customer.type.toUpperCase())}</Tipo>
+      <Documento>${escapeXml(document.customer.document)}</Documento>
+      <Nome>${escapeXml(document.customer.name)}</Nome>
+      <Email>${escapeXml(document.customer.email ?? '')}</Email>
     </Customer>
     <Servicos>
 ${lines}
@@ -208,7 +208,7 @@ ${lines}
     <TotalCofins>${document.totalCofins.toFixed(2)}</TotalCofins>
     <TotalCsll>${document.totalCsll.toFixed(2)}</TotalCsll>
     <ValorTotal>${document.totalDocument.toFixed(2)}</ValorTotal>
-    <Observacoes>${document.observations ?? ''}</Observacoes>
+    <Observacoes>${escapeXml(document.observations ?? '')}</Observacoes>
   </InfNfse>
 </Nfse>`;
 }
@@ -269,7 +269,7 @@ export class NfseEmitter {
   /**
    * Issue (sign and send) NFS-e to the provider.
    */
-  async issue(document: NfseDocument): Promise<NfseDocument> {
+  async issue(document: NfseDocument, operationKey = document.id): Promise<NfseDocument> {
     if (document.status !== 'draft') {
       throw new Error(`Cannot issue document in status: ${document.status}`);
     }
@@ -277,7 +277,7 @@ export class NfseEmitter {
     const xml = buildNfseXml(document);
 
     try {
-      const result = await this.sendToProvider(xml, document.id);
+      const result = await this.sendToProvider(xml, operationKey);
 
       return {
         ...document,
@@ -285,10 +285,13 @@ export class NfseEmitter {
         authorizationCode: result.authorizationCode,
         verificationUrl: result.verificationUrl
       };
-    } catch (err) {
+    } catch (error) {
       return {
         ...document,
-        status: 'error'
+        status: 'error',
+        authorizationCode: undefined,
+        verificationUrl: undefined,
+        observations: appendProviderError(document.observations, toSafeProviderError(error))
       };
     }
   }
@@ -296,26 +299,40 @@ export class NfseEmitter {
   /**
    * Cancel an issued NFS-e.
    */
-  async cancel(document: NfseDocument, reason: string): Promise<NfseDocument> {
+  async cancel(
+    document: NfseDocument,
+    reason: string,
+    operationKey = `${document.id}:cancel`
+  ): Promise<NfseDocument> {
     if (document.status !== 'issued') {
       throw new Error(`Cannot cancel document in status: ${document.status}`);
     }
 
-    if (this.config.allowSimulation === false) {
+    if (!isSimulationEnabled(this.config)) {
       const cancellationXml = `<?xml version="1.0" encoding="UTF-8"?>
 <CancelarNfse xmlns="http://www.abrasf.org.br/nfse.xsd">
   <Id>${document.id}</Id>
   <Numero>${document.numero}</Numero>
   <Motivo>${escapeXml(reason)}</Motivo>
 </CancelarNfse>`;
-      const result = await this.sendToProvider(cancellationXml, `${document.id}:cancel`);
-      return {
-        ...document,
-        status: 'cancelled',
-        authorizationCode: result.authorizationCode,
-        verificationUrl: result.verificationUrl,
-        observations: `${document.observations ?? ''}\n[Cancelamento: ${reason}]`
-      };
+      try {
+        const result = await this.sendToProvider(cancellationXml, operationKey);
+        return {
+          ...document,
+          status: 'cancelled',
+          authorizationCode: result.authorizationCode,
+          verificationUrl: result.verificationUrl,
+          observations: `${document.observations ?? ''}\n[Cancelamento: ${reason}]`
+        };
+      } catch (error) {
+        return {
+          ...document,
+          status: 'error',
+          authorizationCode: undefined,
+          verificationUrl: undefined,
+          observations: appendProviderError(document.observations, toSafeProviderError(error))
+        };
+      }
     }
 
     return {
@@ -325,21 +342,54 @@ export class NfseEmitter {
     };
   }
 
-  private async sendToProvider(_xml: string, _documentId: string): Promise<{
+  private async sendToProvider(xml: string, documentId: string): Promise<{
     authorizationCode: string;
     verificationUrl: string;
   }> {
-    const { apiUrl, apiKey } = this.config.provider;
+    const { apiKey, certificate } = this.config.provider;
 
-    if (this.config.allowSimulation !== false) {
+    if (isSimulationEnabled(this.config)) {
+      const apiUrl = this.config.provider.apiUrl.trim();
       return {
         authorizationCode: `AUT${Date.now().toString().padStart(15, '0')}`,
         verificationUrl: `${apiUrl}/verificar/${generateNfseId('chk')}`
       };
     }
 
-    if (!apiUrl || apiUrl.endsWith('.invalid') || (!apiKey && !this.config.provider.certificate)) {
-      throw new Error('NFS-e provider credentials and endpoint are required outside test mode');
+    const apiUrl = this.config.provider.apiUrl.trim();
+    if (!apiUrl) {
+      throw new NfseProviderError('NFS-e provider endpoint is not configured');
+    }
+
+    let endpoint: URL;
+    try {
+      endpoint = new URL(apiUrl);
+    } catch {
+      throw new NfseProviderError('NFS-e provider endpoint is invalid');
+    }
+
+    if (endpoint.hostname.endsWith('.invalid')) {
+      throw new NfseProviderError('NFS-e provider endpoint is not configured');
+    }
+
+    if (!['http:', 'https:'].includes(endpoint.protocol) || endpoint.username || endpoint.password) {
+      throw new NfseProviderError('NFS-e provider endpoint must be a credential-free HTTP URL');
+    }
+
+    if (endpoint.protocol !== 'https:' && process.env.NODE_ENV !== 'test') {
+      throw new NfseProviderError('NFS-e provider endpoint must use HTTPS outside test mode');
+    }
+
+    const normalizedApiKey = apiKey?.trim();
+    const hasCertificate = Buffer.isBuffer(certificate) && certificate.length > 0;
+    if (!normalizedApiKey && !hasCertificate) {
+      throw new NfseProviderError('NFS-e provider credential or certificate is not configured');
+    }
+
+    if (!normalizedApiKey && hasCertificate) {
+      throw new NfseProviderError(
+        'NFS-e PFX certificate signing is unavailable; configure a supported provider credential'
+      );
     }
 
     let response: Response;
@@ -347,44 +397,106 @@ export class NfseEmitter {
       response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
-          ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+          ...(normalizedApiKey ? { Authorization: `Bearer ${normalizedApiKey}` } : {}),
+          'Idempotency-Key': documentId,
           'Content-Type': 'application/xml',
           Accept: 'application/json, application/xml, text/xml'
         },
-        body: _xml
+        body: xml
       });
-    } catch (error) {
-      throw new Error(
-        `NFS-e provider request failed: ${error instanceof Error ? error.message : String(error)}`
-      );
+    } catch {
+      throw new NfseProviderError('NFS-e provider request failed');
     }
 
     if (!response.ok) {
-      throw new Error(`NFS-e provider rejected document with status ${response.status}`);
+      throw new NfseProviderError(`NFS-e provider rejected document (HTTP ${response.status})`);
     }
 
-    const body = await response.text();
+    let body: string;
+    try {
+      body = await response.text();
+    } catch {
+      throw new NfseProviderError('NFS-e provider response could not be read');
+    }
+
     let parsed: { authorizationCode?: string; verificationUrl?: string } = {};
     try {
-      parsed = JSON.parse(body) as typeof parsed;
+      const json = JSON.parse(body) as Record<string, unknown>;
+      parsed = {
+        authorizationCode: normalizeProviderValue(json.authorizationCode),
+        verificationUrl: normalizeProviderValue(json.verificationUrl)
+      };
     } catch {
       const authorizationMatch = body.match(/<(?:AuthorizationCode|CodigoAutorizacao)>([^<]+)</i);
-      if (authorizationMatch?.[1]) parsed.authorizationCode = authorizationMatch[1];
+      if (authorizationMatch?.[1]) parsed.authorizationCode = normalizeProviderValue(authorizationMatch[1]);
       const verificationMatch = body.match(/<(?:VerificationUrl|UrlConsulta)>([^<]+)</i);
-      if (verificationMatch?.[1]) parsed.verificationUrl = verificationMatch[1];
+      if (verificationMatch?.[1]) parsed.verificationUrl = normalizeProviderValue(verificationMatch[1]);
     }
 
     const authorizationCode =
-      parsed.authorizationCode ?? response.headers.get('x-authorization-code') ?? undefined;
+      parsed.authorizationCode
+      ?? normalizeProviderValue(response.headers.get('x-authorization-code'))
+      ?? undefined;
     if (!authorizationCode) {
-      throw new Error('NFS-e provider response did not include an authorization code');
+      throw new NfseProviderError('NFS-e provider response did not include an authorization code');
     }
+
+    const verificationUrl =
+      parsed.verificationUrl
+      ?? normalizeProviderValue(response.headers.get('x-verification-url'))
+      ?? `${apiUrl}/${documentId}`;
 
     return {
       authorizationCode,
-      verificationUrl:
-        parsed.verificationUrl ?? response.headers.get('x-verification-url') ?? `${apiUrl}/${_documentId}`
+      verificationUrl: isHttpUrl(verificationUrl) ? verificationUrl : `${apiUrl}/${documentId}`
     };
+  }
+}
+
+class NfseProviderError extends Error {
+  constructor(readonly safeMessage: string) {
+    super(safeMessage);
+    this.name = 'NfseProviderError';
+  }
+}
+
+function isSimulationEnabled(config: NfseEmitterConfig): boolean {
+  const environment = process.env.NODE_ENV?.trim().toLowerCase();
+  return config.allowSimulation === true
+    && (environment === 'test' || environment === 'development' || environment === 'dev');
+}
+
+function toSafeProviderError(error: unknown): string {
+  return error instanceof NfseProviderError
+    ? error.safeMessage
+    : 'NFS-e provider request failed';
+}
+
+function appendProviderError(observations: string | undefined, message: string): string {
+  const safeMessage = message.slice(0, 180);
+  const entry = `[NFS-e provider error: ${safeMessage}]`;
+  return observations?.trim() ? `${observations.trim()}\n${entry}` : entry;
+}
+
+function normalizeProviderValue(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const normalized = value.trim();
+  if (
+    normalized.length === 0
+    || normalized.length > 255
+    || /[\u0000-\u001F\u007F]/.test(normalized)
+  ) {
+    return undefined;
+  }
+  return normalized;
+}
+
+function isHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return (url.protocol === 'http:' || url.protocol === 'https:') && !url.username && !url.password;
+  } catch {
+    return false;
   }
 }
 

@@ -39,6 +39,7 @@ import type {
   OwnerPatientLinkSummary,
   OwnerSummary,
   QueueEntrySummary,
+  QueueTransferSummary,
   SchedulingConflictSummary,
   SchedulingOperationalBlockSummary,
   SchedulingAppointmentOperationalSummary,
@@ -311,7 +312,7 @@ export interface PatientListResponse {
 export interface CreateOwnerPatientLinkRequest {
   readonly ownerId: string;
   readonly patientId: string;
-  readonly relationshipType: 'primary' | 'secondary' | 'financial';
+  readonly relationshipType: 'primary' | 'secondary' | 'financial' | 'authorized' | 'spouse';
   readonly financialResponsible: boolean;
 }
 
@@ -475,6 +476,23 @@ export interface CheckInQueueRequest {
 
 export interface QueueListResponse {
   readonly items: readonly QueueEntrySummary[];
+}
+
+export interface QueueTransferListResponse {
+  readonly items: readonly QueueTransferSummary[];
+}
+
+export interface TransferQueueEntryRequest {
+  readonly toSector: string;
+  readonly sentByUserId?: string;
+  readonly receivedByUserId?: string;
+  readonly responsibleUserId?: string;
+  readonly responsibleStaffId?: string;
+  readonly nextSector?: string;
+  readonly reason: string;
+  readonly urgency?: 'low' | 'medium' | 'high' | 'critical';
+  readonly billingRecordId?: string;
+  readonly counterSaleId?: string;
 }
 
 export type FiscalTaxRegime = 'simples_nacional' | 'lucro_presumido' | 'lucro_real';

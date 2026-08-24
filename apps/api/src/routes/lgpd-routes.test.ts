@@ -4,6 +4,7 @@ import test from 'node:test';
 
 import type { AuditService } from '@cvg-his-v2/module-audit';
 import type { LgpdService } from '@cvg-his-v2/module-lgpd';
+import { NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
 import type { AccountId, AuthenticatedPrincipal, UserId } from '@cvg-his-v2/shared-types';
 
 import { handleLgpdRoutes } from './lgpd-routes.js';
@@ -161,6 +162,37 @@ test('handleLgpdRoutes lists all DSR requests without requiring filters', async 
   assert.equal(response.bodyJson<{ requests: unknown[] }>().requests.length, 1);
 });
 
+test('handleLgpdRoutes durably audits filtered DSR reads before responding', async () => {
+  const handlers = createHandlers();
+  let waitedAction: string | undefined;
+  handlers.lgpd = {
+    async getDsrRequestsBySubject(accountId: string, subjectId: string, subjectType: string) {
+      assert.equal(accountId, ACCOUNT);
+      assert.equal(subjectId, 'owner-1');
+      assert.equal(subjectType, 'owner');
+      return [];
+    }
+  } as unknown as LgpdService;
+  handlers.audit = {
+    write() {
+      throw new Error('filtered DSR reads must use the durable audit path');
+    },
+    async writeAndWait(entry: { action: string }) {
+      waitedAction = entry.action;
+    }
+  } as unknown as AuditService;
+
+  await handleLgpdRoutes(
+    '/lgpd/requests',
+    request('GET', undefined, '/lgpd/requests?subjectId=owner-1&subjectType=owner'),
+    new MockResponse() as never,
+    'corr-lgpd-dsr-read-durable',
+    handlers
+  );
+
+  assert.equal(waitedAction, 'dsr_read');
+});
+
 test('handleLgpdRoutes audits DSR completion and personal data export', async () => {
   const handlers = createHandlers();
   const completeResponse = new MockResponse();
@@ -191,4 +223,134 @@ test('handleLgpdRoutes audits DSR completion and personal data export', async ()
       .filter((action) => action.startsWith('dsr_') || action === 'personal_data_exported'),
     ['dsr_completed', 'personal_data_exported']
   );
+});
+
+test('handleLgpdRoutes rejects invalid subject and DSR values before calling the service', async () => {
+  const handlers = createHandlers();
+
+  await assert.rejects(
+    () =>
+      handleLgpdRoutes(
+        '/lgpd/consent',
+        request(
+          'POST',
+          { subjectId: 'owner-1', subjectType: 'unknown', purpose: 'marketing' },
+          '/lgpd/consent'
+        ),
+        new MockResponse() as never,
+        'corr-lgpd-invalid-subject',
+        handlers
+      ),
+    ValidationError
+  );
+
+  await assert.rejects(
+    () =>
+      handleLgpdRoutes(
+        '/lgpd/requests',
+        request(
+          'POST',
+          { subjectId: 'owner-1', subjectType: 'owner', requestType: 'not-a-dsr' },
+          '/lgpd/requests'
+        ),
+        new MockResponse() as never,
+        'corr-lgpd-invalid-dsr',
+        handlers
+      ),
+    ValidationError
+  );
+});
+
+test('handleLgpdRoutes audits sensitive reads and does not return foreign-account provider rows', async () => {
+  const handlers = createHandlers();
+  const auditActions: string[] = [];
+  handlers.audit = {
+    write(event: { action: string }) {
+      auditActions.push(event.action);
+    }
+  } as AuditService;
+  handlers.lgpd = {
+    async getConsents() {
+      return [];
+    },
+    async buildPersonalDataExport() {
+      return {
+        accountId: ACCOUNT,
+        subjectId: 'owner-1',
+        subjectType: 'owner',
+        exportedAt: '2026-05-28T10:05:00.000Z',
+        evidence: { consentCount: 0, dsrCount: 0, providerCount: 1, collectedProviderCount: 1, failedProviderCount: 0 },
+        providerEvidence: [{ providerName: 'patients', dataType: 'patient_profile', status: 'collected' }],
+        retentionEvidence: [],
+        data: {
+          patients: {
+            source: 'PatientsService',
+            rows: [
+              { id: 'patient-a', accountId: ACCOUNT, name: 'Paciente A' },
+              { id: 'patient-b', accountId: 'acc-foreign', name: 'Paciente B' }
+            ]
+          }
+        }
+      };
+    }
+  } as unknown as LgpdService;
+
+  const consentResponse = new MockResponse();
+  await handleLgpdRoutes(
+    '/lgpd/consent',
+    request('GET', undefined, '/lgpd/consent?subjectId=owner-1&subjectType=owner'),
+    consentResponse as never,
+    'corr-lgpd-read-consent',
+    handlers
+  );
+
+  const exportResponse = new MockResponse();
+  await handleLgpdRoutes(
+    '/lgpd/export',
+    request('POST', { subjectId: 'owner-1', subjectType: 'owner' }, '/lgpd/export'),
+    exportResponse as never,
+    'corr-lgpd-safe-export',
+    handlers
+  );
+
+  const payload = exportResponse.bodyJson<{
+    data: { patients: { rows: Array<{ id: string; accountId: string; name: string }> } };
+  }>();
+  assert.deepEqual(payload.data.patients.rows, [
+    { id: 'patient-a', accountId: ACCOUNT, name: 'Paciente A' }
+  ]);
+  assert.deepEqual(auditActions, ['consent_read', 'personal_data_exported']);
+});
+
+test('handleLgpdRoutes denies a cross-account DSR mutation before completion', async () => {
+  const handlers = createHandlers();
+  let completionCalled = false;
+  handlers.lgpd = {
+    async getDsrRequest(accountId: string, requestId: string) {
+      assert.equal(accountId, ACCOUNT);
+      assert.equal(requestId, 'dsr-from-another-account');
+      return undefined;
+    },
+    async completeDsrRequest() {
+      completionCalled = true;
+      throw new Error('completion must not be called for a foreign request');
+    }
+  } as unknown as LgpdService;
+
+  await assert.rejects(
+    () =>
+      handleLgpdRoutes(
+        '/lgpd/requests/complete',
+        request(
+          'POST',
+          { requestId: 'dsr-from-another-account' },
+          '/lgpd/requests/complete'
+        ),
+        new MockResponse() as never,
+        'corr-lgpd-cross-account',
+        handlers
+      ),
+    NotFoundError
+  );
+  assert.equal(completionCalled, false);
 });

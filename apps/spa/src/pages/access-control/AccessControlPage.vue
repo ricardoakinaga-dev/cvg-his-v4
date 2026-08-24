@@ -310,14 +310,19 @@
 
     <section v-else-if="!loading && catalog && activeTab === 'teams'" class="access-control-page__section">
       <div class="creation-grid">
-        <DsCard title="Novo grupo de acesso" class="panel">
+        <DsCard :title="editingTeamId ? 'Editar grupo de acesso' : 'Novo grupo de acesso'" class="panel">
           <div class="form-grid">
             <DsInput v-model="teamForm.code" label="Código" placeholder="grupo_cirurgico" />
             <DsInput v-model="teamForm.name" label="Nome" placeholder="Grupo Cirúrgico" />
             <DsInput v-model="teamForm.description" label="Descrição" placeholder="Política coletiva de acesso" />
           </div>
           <div class="actions-row">
-            <DsButton :loading="teamSaving" @click="createTeam">Criar grupo</DsButton>
+            <DsButton :loading="teamSaving" @click="saveTeam">
+              {{ editingTeamId ? 'Salvar grupo' : 'Criar grupo' }}
+            </DsButton>
+            <DsButton v-if="editingTeamId" variant="secondary" :disabled="teamSaving" @click="resetTeamForm">
+              Cancelar
+            </DsButton>
           </div>
         </DsCard>
 
@@ -334,6 +339,24 @@
                 </DsBadge>
               </div>
               <p>{{ team.description || 'Sem descrição' }}</p>
+              <div class="actions-row entity-card__actions">
+                <DsButton
+                  variant="secondary"
+                  size="sm"
+                  :aria-label="`Editar ${team.name}`"
+                  @click="beginEditTeam(team)"
+                >
+                  Editar
+                </DsButton>
+                <DsButton
+                  variant="secondary"
+                  size="sm"
+                  :aria-label="`${team.status === 'active' ? 'Desativar' : 'Ativar'} ${team.name}`"
+                  @click="toggleTeam(team)"
+                >
+                  {{ team.status === 'active' ? 'Desativar' : 'Ativar' }}
+                </DsButton>
+              </div>
             </article>
           </div>
         </DsCard>
@@ -342,14 +365,19 @@
 
     <section v-else-if="!loading && catalog && activeTab === 'sectors'" class="access-control-page__section">
       <div class="creation-grid">
-        <DsCard title="Novo setor" class="panel">
+        <DsCard :title="editingSectorId ? 'Editar setor' : 'Novo setor'" class="panel">
           <div class="form-grid">
             <DsInput v-model="sectorForm.code" label="Código" placeholder="administrativo" />
             <DsInput v-model="sectorForm.name" label="Nome" placeholder="Administrativo" />
             <DsInput v-model="sectorForm.description" label="Descrição" placeholder="Área organizacional" />
           </div>
           <div class="actions-row">
-            <DsButton :loading="sectorSaving" @click="createSector">Criar setor</DsButton>
+            <DsButton :loading="sectorSaving" @click="saveSector">
+              {{ editingSectorId ? 'Salvar setor' : 'Criar setor' }}
+            </DsButton>
+            <DsButton v-if="editingSectorId" variant="secondary" :disabled="sectorSaving" @click="resetSectorForm">
+              Cancelar
+            </DsButton>
           </div>
         </DsCard>
 
@@ -366,6 +394,24 @@
                 </DsBadge>
               </div>
               <p>{{ sector.description || 'Sem descrição' }}</p>
+              <div class="actions-row entity-card__actions">
+                <DsButton
+                  variant="secondary"
+                  size="sm"
+                  :aria-label="`Editar ${sector.name}`"
+                  @click="beginEditSector(sector)"
+                >
+                  Editar
+                </DsButton>
+                <DsButton
+                  variant="secondary"
+                  size="sm"
+                  :aria-label="`${sector.status === 'active' ? 'Desativar' : 'Ativar'} ${sector.name}`"
+                  @click="toggleSector(sector)"
+                >
+                  {{ sector.status === 'active' ? 'Desativar' : 'Ativar' }}
+                </DsButton>
+              </div>
             </article>
           </div>
         </DsCard>
@@ -502,6 +548,8 @@ import type {
 type TabKey = 'summary' | 'users' | 'teams' | 'sectors' | 'matrix';
 type MatrixSubjectType = 'user' | 'team' | 'sector';
 type RoutineActionKey = 'consult' | 'insert' | 'update' | 'delete';
+type AccessTeam = AccessControlResponse['teams'][number];
+type AccessSector = AccessControlResponse['sectors'][number];
 
 const tabs: Array<{ value: TabKey; label: string }> = [
   { value: 'summary', label: 'Resumo' },
@@ -525,6 +573,8 @@ const effectivePermissions = ref<EffectivePermissionSummary[]>([]);
 const userSaving = ref(false);
 const teamSaving = ref(false);
 const sectorSaving = ref(false);
+const editingTeamId = ref<string | null>(null);
+const editingSectorId = ref<string | null>(null);
 
 const teamForm = reactive({ code: '', name: '', description: '' });
 const sectorForm = reactive({ code: '', name: '', description: '' });
@@ -889,41 +939,145 @@ async function saveUserMemberships() {
   }
 }
 
-async function createTeam() {
+function resetTeamForm() {
+  editingTeamId.value = null;
+  teamForm.code = '';
+  teamForm.name = '';
+  teamForm.description = '';
+}
+
+function beginEditTeam(team: AccessTeam) {
+  editingTeamId.value = team.id;
+  teamForm.code = team.code;
+  teamForm.name = team.name;
+  teamForm.description = team.description ?? '';
+}
+
+function beginEditSector(sector: AccessSector) {
+  editingSectorId.value = sector.id;
+  sectorForm.code = sector.code;
+  sectorForm.name = sector.name;
+  sectorForm.description = sector.description ?? '';
+}
+
+function validateEntityForm(code: string, name: string, label: string): boolean {
+  if (!code.trim()) {
+    showError(`Informe o código do ${label}`);
+    return false;
+  }
+  if (!name.trim()) {
+    showError(`Informe o nome do ${label}`);
+    return false;
+  }
+  return true;
+}
+
+async function saveTeam() {
+  const code = teamForm.code.trim();
+  const name = teamForm.name.trim();
+  const description = teamForm.description.trim();
+  if (!validateEntityForm(code, name, 'grupo')) return;
+
   teamSaving.value = true;
   try {
-    await accessControlService.createTeam({
-      code: teamForm.code.trim(),
-      name: teamForm.name.trim(),
-      description: teamForm.description.trim() || undefined
-    });
-    teamForm.code = '';
-    teamForm.name = '';
-    teamForm.description = '';
-    showSuccess('Equipe criada com sucesso');
+    if (editingTeamId.value) {
+      const current = catalog.value?.teams.find((team) => team.id === editingTeamId.value);
+      if (!current) {
+        showError('Grupo de acesso não encontrado no catálogo atual');
+        return;
+      }
+      await accessControlService.updateTeam(editingTeamId.value, {
+        code,
+        name,
+        description: description || null,
+        isActive: current.status === 'active'
+      });
+      resetTeamForm();
+      showSuccess('Grupo de acesso atualizado');
+    } else {
+      await accessControlService.createTeam({
+        code,
+        name,
+        description: description || undefined
+      });
+      resetTeamForm();
+      showSuccess('Equipe criada com sucesso');
+    }
     await loadCatalog();
   } catch (err: unknown) {
-    showError(err instanceof Error ? err.message : 'Falha ao criar equipe');
+    showError(err instanceof Error ? err.message : 'Falha ao salvar grupo');
   } finally {
     teamSaving.value = false;
   }
 }
 
-async function createSector() {
-  sectorSaving.value = true;
+async function toggleTeam(team: AccessTeam) {
+  teamSaving.value = true;
   try {
-    await accessControlService.createSector({
-      code: sectorForm.code.trim(),
-      name: sectorForm.name.trim(),
-      description: sectorForm.description.trim() || undefined
-    });
-    sectorForm.code = '';
-    sectorForm.name = '';
-    sectorForm.description = '';
-    showSuccess('Setor criado com sucesso');
+    await accessControlService.updateTeam(team.id, { isActive: team.status !== 'active' });
+    showSuccess(team.status === 'active' ? 'Grupo de acesso desativado' : 'Grupo de acesso ativado');
     await loadCatalog();
   } catch (err: unknown) {
-    showError(err instanceof Error ? err.message : 'Falha ao criar setor');
+    showError(err instanceof Error ? err.message : 'Falha ao alterar estado do grupo');
+  } finally {
+    teamSaving.value = false;
+  }
+}
+
+function resetSectorForm() {
+  editingSectorId.value = null;
+  sectorForm.code = '';
+  sectorForm.name = '';
+  sectorForm.description = '';
+}
+
+async function saveSector() {
+  const code = sectorForm.code.trim();
+  const name = sectorForm.name.trim();
+  const description = sectorForm.description.trim();
+  if (!validateEntityForm(code, name, 'setor')) return;
+
+  sectorSaving.value = true;
+  try {
+    if (editingSectorId.value) {
+      const current = catalog.value?.sectors.find((sector) => sector.id === editingSectorId.value);
+      if (!current) {
+        showError('Setor não encontrado no catálogo atual');
+        return;
+      }
+      await accessControlService.updateSector(editingSectorId.value, {
+        code,
+        name,
+        description: description || null,
+        isActive: current.status === 'active'
+      });
+      resetSectorForm();
+      showSuccess('Setor atualizado');
+    } else {
+      await accessControlService.createSector({
+        code,
+        name,
+        description: description || undefined
+      });
+      resetSectorForm();
+      showSuccess('Setor criado com sucesso');
+    }
+    await loadCatalog();
+  } catch (err: unknown) {
+    showError(err instanceof Error ? err.message : 'Falha ao salvar setor');
+  } finally {
+    sectorSaving.value = false;
+  }
+}
+
+async function toggleSector(sector: AccessSector) {
+  sectorSaving.value = true;
+  try {
+    await accessControlService.updateSector(sector.id, { isActive: sector.status !== 'active' });
+    showSuccess(sector.status === 'active' ? 'Setor desativado' : 'Setor ativado');
+    await loadCatalog();
+  } catch (err: unknown) {
+    showError(err instanceof Error ? err.message : 'Falha ao alterar estado do setor');
   } finally {
     sectorSaving.value = false;
   }

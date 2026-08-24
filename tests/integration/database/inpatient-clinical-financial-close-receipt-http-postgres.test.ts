@@ -24,6 +24,7 @@ const ROLLBACK_ENCOUNTER_ID = randomUUID();
 const BILLING_RECORD_ID = randomUUID();
 const BILLING_ITEM_ID = randomUUID();
 const CASH_REGISTER_ID = randomUUID();
+const COUNTER_SALE_AMOUNT = 80;
 
 const TENANT_B = randomUUID();
 const ACCOUNT_B = randomUUID();
@@ -358,6 +359,226 @@ afterAll(async () => {
 });
 
 describe('inpatient clinical-financial close → receipt HTTP PostgreSQL boundary', () => {
+  it('completes queue transfer → clinical comanda → payment → immutable comanda receipt', async () => {
+    const queueResponse = await requestJson<{ readonly id: string }>('/queue/check-in', {
+      method: 'POST',
+      headers: authHeaders(accessTokenA, TENANT_A, ACCOUNT_A),
+      body: JSON.stringify({
+        patientId: PATIENT_A,
+        ownerId: OWNER_A,
+        reason: 'Fluxo vertical de comanda',
+        priority: 'high'
+      })
+    });
+    expect(queueResponse.status).toBe(201);
+    const queueEntryId = queueResponse.body?.id;
+    expect(queueEntryId).toBeTruthy();
+
+    const called = await requestJson(`/queue/${queueEntryId}/call`, {
+      method: 'POST',
+      headers: authHeaders(accessTokenA, TENANT_A, ACCOUNT_A)
+    });
+    expect(called.status).toBe(200);
+
+    const transfer = await requestJson<{
+      readonly id: string;
+      readonly operationalStatus: string;
+    }>(`/queue/${queueEntryId}/transfer`, {
+      method: 'POST',
+      headers: authHeaders(accessTokenA, TENANT_A, ACCOUNT_A),
+      body: JSON.stringify({
+        toSector: 'consultorio',
+        reason: 'Recepcao para atendimento'
+      })
+    });
+    expect(transfer.status).toBe(200);
+    expect(transfer.body?.operationalStatus).toBe('waiting_handoff');
+
+    const transfers = await requestJson<{
+      readonly items: readonly [{ readonly id: string; readonly status: string }];
+    }>(`/queue/${queueEntryId}/transfers`, {
+      method: 'GET',
+      headers: authHeaders(accessTokenA, TENANT_A, ACCOUNT_A)
+    });
+    expect(transfers.status).toBe(200);
+    expect(transfers.body?.items[0]?.status).toBe('sent');
+
+    const received = await requestJson<{ readonly operationalStatus: string }>(
+      `/queue/${queueEntryId}/transfers/${transfers.body?.items[0]?.id}/receive`,
+      {
+        method: 'POST',
+        headers: authHeaders(accessTokenA, TENANT_A, ACCOUNT_A)
+      }
+    );
+    expect(received.status).toBe(200);
+    expect(received.body?.operationalStatus).toBe('called');
+
+    const sale = await requestJson<{
+      readonly id: string;
+      readonly patientId: string | null;
+      readonly queueEntryId: string | null;
+    }>('/counter-sales', {
+      method: 'POST',
+      headers: authHeaders(accessTokenA, TENANT_A, ACCOUNT_A),
+      body: JSON.stringify({
+        ownerId: OWNER_A,
+        patientId: PATIENT_A,
+        queueEntryId,
+        notes: 'Comanda do atendimento'
+      })
+    });
+    expect(sale.status).toBe(201);
+    expect(sale.body).toMatchObject({
+      patientId: PATIENT_A,
+      queueEntryId
+    });
+    const saleId = sale.body?.id;
+    expect(saleId).toBeTruthy();
+
+    const item = await requestJson(`/counter-sales/${saleId}/items`, {
+      method: 'POST',
+      headers: authHeaders(accessTokenA, TENANT_A, ACCOUNT_A),
+      body: JSON.stringify({
+        itemType: 'service',
+        nameSnapshot: 'Consulta vinculada a fila',
+        unitPrice: COUNTER_SALE_AMOUNT
+      })
+    });
+    expect(item.status).toBe(201);
+
+    const settlementIdempotencyKey = randomUUID();
+    const settlementHeaders = {
+      ...authHeaders(accessTokenA, TENANT_A, ACCOUNT_A),
+      'idempotency-key': settlementIdempotencyKey
+    };
+    const closed = await requestJson<{
+      readonly status: string;
+      readonly receipt: { readonly counterSaleId: string; readonly amount: number; readonly journalEntryId: string | null };
+    }>(`/counter-sales/${saleId}/settle`, {
+      method: 'POST',
+      headers: settlementHeaders,
+      body: JSON.stringify({
+        payments: [{ method: 'pix', amount: COUNTER_SALE_AMOUNT }]
+      })
+    });
+    const replayedSettlement = await requestJson(`/counter-sales/${saleId}/settle`, {
+      method: 'POST',
+      headers: settlementHeaders,
+      body: JSON.stringify({
+        payments: [{ method: 'pix', amount: COUNTER_SALE_AMOUNT }]
+      })
+    });
+    expect(closed.status).toBe(200);
+    expect(replayedSettlement.status).toBe(200);
+    expect(replayedSettlement.body).toEqual(closed.body);
+    expect(closed.body).toMatchObject({
+      status: 'closed',
+      receipt: {
+        counterSaleId: saleId,
+        amount: COUNTER_SALE_AMOUNT
+      }
+    });
+    expect(closed.body?.receipt.journalEntryId).toBeTruthy();
+
+    const state = await getTestPool().query<{
+      readonly queueTransferStatus: string;
+      readonly salePatientId: string;
+      readonly saleQueueEntryId: string;
+      readonly receipts: number;
+      readonly receiptAmount: number;
+      readonly journalEntries: number;
+    }>(
+      `SELECT
+         (SELECT status FROM scheduling_queue_transfers WHERE account_id = $1 AND queue_entry_id = $2 AND status = 'received') AS "queueTransferStatus",
+         (SELECT patient_id::text FROM counter_sales WHERE account_id = $1 AND id = $3::uuid) AS "salePatientId",
+         (SELECT queue_entry_id FROM counter_sales WHERE account_id = $1 AND id = $3::uuid) AS "saleQueueEntryId",
+         (SELECT COUNT(*)::int FROM counter_sale_receipts WHERE account_id = $1 AND counter_sale_id = $3::uuid) AS receipts,
+         (SELECT amount::float8 FROM counter_sale_receipts WHERE account_id = $1 AND counter_sale_id = $3::uuid) AS "receiptAmount",
+         (SELECT COUNT(*)::int FROM financial_journal_entries WHERE account_id = $1 AND source_type = 'counter_sale_revenue' AND source_id = $3::text) AS "journalEntries"`,
+      [ACCOUNT_A, queueEntryId, saleId]
+    );
+    expect(state.rows[0]).toEqual({
+      queueTransferStatus: 'received',
+      salePatientId: PATIENT_A,
+      saleQueueEntryId: queueEntryId,
+      receipts: 1,
+      receiptAmount: COUNTER_SALE_AMOUNT,
+      journalEntries: 1
+    });
+
+    const receipt = await getTestPool().query<{ readonly id: string }>(
+      `SELECT id
+         FROM counter_sale_receipts
+        WHERE account_id = $1
+          AND counter_sale_id = $2::uuid`,
+      [ACCOUNT_A, saleId]
+    );
+    const receiptId = receipt.rows[0]?.id;
+    expect(receiptId).toBeTruthy();
+    await expect(
+      getTestPool().query(
+        'UPDATE counter_sale_receipts SET amount = amount + 1 WHERE id = $1::uuid',
+        [receiptId]
+      )
+    ).rejects.toThrow(/immutable/i);
+    await expect(
+      getTestPool().query('DELETE FROM counter_sale_receipts WHERE id = $1::uuid', [receiptId])
+    ).rejects.toThrow(/append-only|immutable/i);
+  });
+
+  it('serializes concurrent payments and rejects the second overpayment at the database lock', async () => {
+    const sale = await requestJson<{ readonly id: string }>('/counter-sales', {
+      method: 'POST',
+      headers: authHeaders(accessTokenA, TENANT_A, ACCOUNT_A),
+      body: JSON.stringify({ ownerId: OWNER_A, patientId: PATIENT_A })
+    });
+    expect(sale.status).toBe(201);
+    const saleId = sale.body?.id;
+    expect(saleId).toBeTruthy();
+
+    const item = await requestJson(`/counter-sales/${saleId}/items`, {
+      method: 'POST',
+      headers: authHeaders(accessTokenA, TENANT_A, ACCOUNT_A),
+      body: JSON.stringify({
+        itemType: 'service',
+        nameSnapshot: 'Procedimento concorrente',
+        unitPrice: 100
+      })
+    });
+    expect(item.status).toBe(201);
+
+    const [first, second] = await Promise.all(
+      [randomUUID(), randomUUID()].map((idempotencyKey) =>
+        requestJson(`/counter-sales/${saleId}/payments`, {
+          method: 'POST',
+          headers: {
+            ...authHeaders(accessTokenA, TENANT_A, ACCOUNT_A),
+            'idempotency-key': idempotencyKey
+          },
+          body: JSON.stringify({ method: 'pix', amount: 60 })
+        })
+      )
+    );
+    expect([first.status, second.status].sort()).toEqual([201, 409]);
+
+    const state = await getTestPool().query<{
+      readonly paidAmount: number;
+      readonly balanceDue: number;
+      readonly payments: number;
+    }>(
+      `SELECT paid_amount::float8 AS "paidAmount",
+              balance_due::float8 AS "balanceDue",
+              (SELECT COUNT(*)::int FROM counter_sale_payments AS payment
+                WHERE payment.account_id = sale.account_id
+                  AND payment.counter_sale_id = sale.id) AS payments
+         FROM counter_sales AS sale
+        WHERE sale.account_id = $1
+          AND sale.id = $2::uuid`,
+      [ACCOUNT_A, saleId]
+    );
+    expect(state.rows[0]).toEqual({ paidAmount: 60, balanceDue: 40, payments: 1 });
+  });
+
   it('closes idempotently and publishes the encounter timeline/audit/outbox graph', async () => {
     const idempotencyKey = randomUUID();
     const first = await postClose(CLOSE_ENCOUNTER_ID, idempotencyKey);
@@ -477,7 +698,10 @@ describe('inpatient clinical-financial close → receipt HTTP PostgreSQL boundar
       billingStatus: 'settled',
       receipts: 1,
       payments: 1,
-      movements: 1,
+      // The preceding counter-sale settlement also uses the shared open
+      // register, so this fixture contains one counter-sale and one clinical
+      // cash movement.
+      movements: 2,
       journalEntries: 1,
       journalDebit: AMOUNT,
       journalCredit: AMOUNT,

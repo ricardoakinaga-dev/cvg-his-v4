@@ -8,6 +8,11 @@ import {
   DatabaseCardTransactionRepository,
   DatabasePixTransactionRepository
 } from '../../../packages/modules/payments/src/index.js';
+import {
+  DatabaseWebhookRepository,
+  WebhooksService
+} from '../../../packages/modules/webhooks/src/index.js';
+import { getDatabaseClient } from '../../../packages/shared/database/src/index.js';
 import { runWithTenantContext } from '../../../packages/tenant-context/src/index.js';
 import { createLogger } from '../../../packages/shared/logging/src/index.js';
 import {
@@ -239,6 +244,29 @@ async function insertOutboxEvent(
         accountId: input.accountId,
         _meta: { accountId: input.accountId }
       })
+    ]
+  );
+}
+
+async function insertWebhookDelivery(
+  pool: Pool,
+  input: {
+    readonly accountId: string;
+    readonly webhookId: string;
+    readonly id: string;
+    readonly maxAttempts?: number;
+  }
+): Promise<void> {
+  await pool.query(
+    `INSERT INTO webhook_deliveries (
+       id, account_id, webhook_id, event, payload, status, attempts, max_attempts, created_at
+     ) VALUES ($1, $2, $3, 'patient.created', $4::jsonb, 'pending', 0, $5, now())`,
+    [
+      input.id,
+      input.accountId,
+      input.webhookId,
+      JSON.stringify({ id: input.id, accountId: input.accountId, event: 'patient.created' }),
+      input.maxAttempts ?? 2
     ]
   );
 }
@@ -541,6 +569,165 @@ describe('worker event consumers with PostgreSQL and RLS', () => {
     );
     expect(foreignOutbox).toBeNull();
   });
+
+  it('claims webhook deliveries once across workers and keeps retry state durable', async () => {
+    expect(bootstrap.webhookDeliveryExecutor).toBeDefined();
+    await scratchAdmin.query(
+      `UPDATE webhook_deliveries
+          SET status = 'delivered', attempts = GREATEST(attempts, 1), response_status = 204
+        WHERE account_id = $1 AND status = 'pending'`,
+      [accountA]
+    );
+    const deliveryId = `worker-webhook-claim-${randomUUID()}`;
+    await insertWebhookDelivery(scratchAdmin, {
+      accountId: accountA,
+      webhookId: accountAFixture.webhookId,
+      id: deliveryId
+    });
+
+    const repositoryA = new DatabaseWebhookRepository(getDatabaseClient());
+    const repositoryB = new DatabaseWebhookRepository(getDatabaseClient());
+    let networkCalls = 0;
+    const makeService = (repository: DatabaseWebhookRepository) =>
+      new WebhooksService({
+        repository,
+        resolveHostname: async () => ['1.1.1.1'],
+        deliverRequest: async () => {
+          networkCalls++;
+          await new Promise((resolve) => setTimeout(resolve, 50));
+          return { success: true, statusCode: 204 };
+        }
+      });
+
+    const process = (service: WebhooksService, workerId: string) =>
+      runWithTenantContext(
+        { tenantId: accountA, accountId: accountA, correlationId: randomUUID() },
+        () => service.processPendingDeliveries(accountA as never, { workerId, limit: 1 })
+      );
+
+    const [workerA, workerB] = await Promise.all([
+      process(makeService(repositoryA), `webhook-a-${suffix}`),
+      process(makeService(repositoryB), `webhook-b-${suffix}`)
+    ]);
+
+    expect(workerA.claimed + workerB.claimed).toBe(1);
+    expect(workerA.delivered + workerB.delivered).toBe(1);
+    expect(workerA.leaseLost + workerB.leaseLost).toBe(0);
+    expect(networkCalls).toBe(1);
+
+    const persisted = await scratchAdmin.query(
+      `SELECT status, attempts, lease_owner, lease_token, lease_expires_at
+         FROM webhook_deliveries
+        WHERE account_id = $1 AND id = $2`,
+      [accountA, deliveryId]
+    );
+    expect(persisted.rows).toEqual([
+      {
+        status: 'delivered',
+        attempts: 1,
+        lease_owner: null,
+        lease_token: null,
+        lease_expires_at: null
+      }
+    ]);
+
+    const tenantAVisible = await runWithTenantContext(
+      { tenantId: accountA, accountId: accountA, correlationId: randomUUID() },
+      () => repositoryA.findDeliveriesByWebhook(accountA as never, accountAFixture.webhookId as never)
+    );
+    const tenantBHidden = await runWithTenantContext(
+      { tenantId: accountB, accountId: accountB, correlationId: randomUUID() },
+      () => repositoryA.findDeliveriesByWebhook(accountA as never, accountAFixture.webhookId as never)
+    );
+    expect(tenantAVisible.some((delivery) => delivery.id === deliveryId)).toBe(true);
+    expect(tenantBHidden.some((delivery) => delivery.id === deliveryId)).toBe(false);
+
+    const retryId = `worker-webhook-retry-${randomUUID()}`;
+    await insertWebhookDelivery(scratchAdmin, {
+      accountId: accountA,
+      webhookId: accountAFixture.webhookId,
+      id: retryId,
+      maxAttempts: 2
+    });
+    let retryCalls = 0;
+    const retryService = new WebhooksService({
+      repository: repositoryA,
+      resolveHostname: async () => ['1.1.1.1'],
+      deliverRequest: async () => {
+        retryCalls++;
+        return retryCalls === 1
+          ? { success: false, statusCode: 503, error: 'temporary upstream failure' }
+          : { success: true, statusCode: 204 };
+      }
+    });
+
+    const firstRetry = await process(retryService, `webhook-retry-${suffix}`);
+    expect(firstRetry).toMatchObject({ claimed: 1, retried: 1, delivered: 0 });
+    expect(retryCalls).toBe(1);
+    const retryState = await scratchAdmin.query(
+      `SELECT status, attempts, response_error, next_retry_at
+         FROM webhook_deliveries WHERE account_id = $1 AND id = $2`,
+      [accountA, retryId]
+    );
+    expect(retryState.rows[0]?.status).toBe('retrying');
+    expect(retryState.rows[0]?.attempts).toBe(1);
+    expect(retryState.rows[0]?.response_error).toBe('temporary upstream failure');
+    expect(retryState.rows[0]?.next_retry_at).toBeTruthy();
+
+    await scratchAdmin.query(
+      'UPDATE webhook_deliveries SET next_retry_at = now() WHERE account_id = $1 AND id = $2',
+      [accountA, retryId]
+    );
+    const secondRetry = await process(retryService, `webhook-retry-${suffix}`);
+    expect(secondRetry).toMatchObject({ claimed: 1, retried: 0, delivered: 1 });
+    expect(retryCalls).toBe(2);
+    const completedRetry = await scratchAdmin.query(
+      'SELECT status, attempts FROM webhook_deliveries WHERE account_id = $1 AND id = $2',
+      [accountA, retryId]
+    );
+    expect(completedRetry.rows).toEqual([{ status: 'delivered', attempts: 2 }]);
+  }, 60_000);
+
+  it('takes over an expired webhook lease and rejects the stale worker transition', async () => {
+    const deliveryId = `worker-webhook-takeover-${randomUUID()}`;
+    await insertWebhookDelivery(scratchAdmin, {
+      accountId: accountA,
+      webhookId: accountAFixture.webhookId,
+      id: deliveryId
+    });
+    const repositoryA = new DatabaseWebhookRepository(getDatabaseClient());
+    const repositoryB = new DatabaseWebhookRepository(getDatabaseClient());
+    const firstClaims = await repositoryA.claimPending(accountA as never, {
+      limit: 1,
+      leaseOwner: `webhook-crashed-${suffix}`,
+      leaseMs: 1_000
+    });
+    expect(firstClaims).toHaveLength(1);
+    const staleClaim = firstClaims[0]!;
+
+    await new Promise((resolve) => setTimeout(resolve, 1_200));
+    const takeoverService = new WebhooksService({
+      repository: repositoryB,
+      resolveHostname: async () => ['1.1.1.1'],
+      deliverRequest: async () => ({ success: true, statusCode: 204 })
+    });
+    const takeover = await runWithTenantContext(
+      { tenantId: accountA, accountId: accountA, correlationId: randomUUID() },
+      () =>
+        takeoverService.processPendingDeliveries(accountA as never, {
+          workerId: `webhook-takeover-${suffix}`,
+          limit: 1
+        })
+    );
+    expect(takeover).toMatchObject({ claimed: 1, delivered: 1, leaseLost: 0 });
+    expect(await repositoryA.completeClaim(staleClaim, staleClaim.delivery)).toBe(false);
+
+    const persisted = await scratchAdmin.query(
+      'SELECT status, attempts FROM webhook_deliveries WHERE account_id = $1 AND id = $2',
+      [accountA, deliveryId]
+    );
+    expect(persisted.rows).toEqual([{ status: 'delivered', attempts: 2 }]);
+  }, 30_000);
 
   it('rolls back card, billing and inbox effects when settlement fails after mutation', async () => {
     await processForAccount(accountBFixture);

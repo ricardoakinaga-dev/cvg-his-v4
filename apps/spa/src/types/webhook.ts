@@ -12,12 +12,15 @@ export interface WebhookDelivery {
   id: string;
   webhookId: string;
   event: string;
-  status: 'pending' | 'delivered' | 'failed';
+  status: 'pending' | 'processing' | 'retrying' | 'delivered' | 'failed';
   attempts: number;
-  lastAttemptAt: string;
-  responseStatus: number | null;
-  responseBody: string | null;
-  nextRetryAt: string | null;
+  maxAttempts?: number;
+  lastAttemptAt?: string | null;
+  responseStatus?: number | null;
+  responseBody?: string | null;
+  responseError?: string | null;
+  nextRetryAt?: string | null;
+  deadLetteredAt?: string | null;
   createdAt: string;
 }
 

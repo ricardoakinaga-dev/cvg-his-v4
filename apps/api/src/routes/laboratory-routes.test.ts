@@ -63,6 +63,19 @@ function createPrincipal(): AuthenticatedPrincipal {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     },
+    staff: {
+      id: 'staff-1' as never,
+      accountId: 'acc-1' as never,
+      userId: 'user-1' as never,
+      employeeCode: 'LAB-001',
+      fullName: 'Profissional do Laboratório',
+      department: 'Laboratório',
+      jobTitle: 'Técnico de Laboratório',
+      professionId: 'profession-lab' as never,
+      status: 'active',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    },
     session: {
       sessionId: 'session-1' as never,
       userId: 'user-1' as never,
@@ -81,12 +94,20 @@ function createPrincipal(): AuthenticatedPrincipal {
   };
 }
 
-function createMockRequest(method: string, url: string, body?: object): object {
+let requestSequence = 0;
+
+function createMockRequest(
+  method: string,
+  url: string,
+  body?: object,
+  idempotencyKey = `laboratory-test-${++requestSequence}`
+): object {
   const bodyStr = body ? JSON.stringify(body) : '';
   const chunks: Buffer[] = bodyStr ? [Buffer.from(bodyStr)] : [];
   return {
     method,
     url,
+    headers: { 'idempotency-key': idempotencyKey },
     [Symbol.asyncIterator]: () => ({
       next: async () => {
         if (chunks.length === 0) return { done: true, value: undefined };
@@ -105,6 +126,13 @@ function createLaboratoryService(): LaboratoryService {
           accountId: 'acc-1',
           patientId: 'pat-1'
         };
+      }
+    } as never,
+    {
+      laboratorySignerAuthority: {
+        async isEnabledLaboratorySigner(_accountId: string, userId: string) {
+          return userId === 'user-1';
+        }
       }
     } as never
   );
@@ -182,6 +210,51 @@ test('handleLaboratoryRoutes keeps /diagnostics/orders as a coherent bridge', as
   const payload = response.bodyJson<{ items: Array<{ encounterId: string }> }>();
   assert.equal(payload.items.length, 2);
   assert.equal(payload.items.every((item) => item.encounterId === 'enc-1'), true);
+});
+
+test('handleLaboratoryRoutes keeps legacy resulted status beside canonical reported status', async () => {
+  const laboratory = createLaboratoryService();
+  const legacyOrder = (await laboratory.listOrders('acc-1' as never, 'enc-1')).find(
+    (order) => order.status === 'resulted'
+  );
+  assert.ok(legacyOrder);
+
+  const legacyResponse = new MockResponse();
+  await handleLaboratoryRoutes(
+    '/diagnostics/orders',
+    { method: 'GET', url: '/diagnostics/orders?encounterId=enc-1' } as never,
+    legacyResponse as never,
+    'corr-lab-legacy-status',
+    {
+      laboratory,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  const canonicalResponse = new MockResponse();
+  await handleLaboratoryRoutes(
+    '/laboratory/orders',
+    { method: 'GET', url: '/laboratory/orders?encounterId=enc-1' } as never,
+    canonicalResponse as never,
+    'corr-lab-canonical-status',
+    {
+      laboratory,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  const legacy = legacyResponse.bodyJson<{ items: Array<{ id: string; status: string }> }>().items
+    .find((item) => item.id === legacyOrder.id);
+  const canonical = canonicalResponse.bodyJson<{
+    items: Array<{ id: string; status: string; legacyStatus?: string; workflowVersion?: number }>;
+  }>().items.find((item) => item.id === legacyOrder.id);
+
+  assert.equal(legacy?.status, 'resulted');
+  assert.equal(canonical?.status, 'reported');
+  assert.equal(canonical?.legacyStatus, 'resulted');
+  assert.equal(canonical?.workflowVersion, 2);
 });
 
 test('handleLaboratoryRoutes accepts Vetus-like laboratory exams aliases and filters', async () => {
@@ -318,8 +391,7 @@ test('handleLaboratoryRoutes releases result with authenticated user and technic
     `/laboratory/orders/${openOrder.id}/result`,
     createMockRequest('POST', `/laboratory/orders/${openOrder.id}/result`, {
       status: 'resulted',
-      resultSummary: 'Bioquimico liberado',
-      signedByUserId: 'rt-laboratorio'
+      resultSummary: 'Bioquimico liberado'
     }) as never,
     releaseResponse as never,
     'corr-lab-release-2',
@@ -341,9 +413,179 @@ test('handleLaboratoryRoutes releases result with authenticated user and technic
   }>();
   assert.equal(payload.status, 'resulted');
   assert.equal(payload.releasedByUserId, 'user-1');
-  assert.equal(payload.signedByUserId, 'rt-laboratorio');
+  assert.equal(payload.signedByUserId, 'user-1');
   assert.ok(payload.resultedAt);
   assert.ok(payload.signatureHash);
+});
+
+test('handleLaboratoryRoutes exposes the canonical analysis, report, recollection and delivery workflow', async () => {
+  const laboratory = createLaboratoryService();
+  const openOrder = (await laboratory.listOrders('acc-1' as never, 'enc-1')).find(
+    (order) => order.status === 'requested'
+  );
+  assert.ok(openOrder);
+
+  const request = (status: string, body: object) =>
+    handleLaboratoryRoutes(
+      `/laboratory/orders/${openOrder.id}/result`,
+      createMockRequest('POST', `/laboratory/orders/${openOrder.id}/result`, { status, ...body }) as never,
+      new MockResponse() as never,
+      `corr-lab-workflow-${status}`,
+      {
+        laboratory,
+        audit: { write: () => ({}) } as never,
+        requirePrincipal: () => createPrincipal()
+      }
+    );
+
+  await request('collected', { collectedByUserId: 'collector-1' });
+  await request('in_analysis', {});
+
+  const forgedSignatureResponse = new MockResponse();
+  await assert.rejects(
+    () => handleLaboratoryRoutes(
+      `/laboratory/orders/${openOrder.id}/result`,
+      createMockRequest('POST', `/laboratory/orders/${openOrder.id}/result`, {
+        status: 'reported',
+        resultSummary: 'Resultado forjado',
+        signedByUserId: 'attacker',
+        signatureHash: 'hash-forjado'
+      }, 'lab-forged-signature') as never,
+      forgedSignatureResponse as never,
+      'corr-lab-workflow-forged',
+      {
+        laboratory,
+        audit: { write: () => ({}) } as never,
+        requirePrincipal: () => createPrincipal()
+      }
+    ),
+    /server|principal|assinatura|signature/i
+  );
+
+  const reportedResponse = new MockResponse();
+  const reportedHandled = await handleLaboratoryRoutes(
+    `/laboratory/orders/${openOrder.id}/result`,
+    createMockRequest('POST', `/laboratory/orders/${openOrder.id}/result`, {
+      status: 'reported',
+      resultSummary: 'Resultado assinado'
+    }) as never,
+    reportedResponse as never,
+    'corr-lab-workflow-reported',
+    {
+      laboratory,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+  assert.equal(reportedHandled, true);
+  assert.equal(reportedResponse.statusCode, 200);
+  assert.equal(reportedResponse.bodyJson<{ status: string; reportedByUserId?: string }>().status, 'reported');
+  assert.equal(reportedResponse.bodyJson<{ reportedByUserId?: string }>().reportedByUserId, 'user-1');
+
+  const recollectResponse = new MockResponse();
+  const recollectHandled = await handleLaboratoryRoutes(
+    `/laboratory/orders/${openOrder.id}/recollect`,
+    createMockRequest('POST', `/laboratory/orders/${openOrder.id}/recollect`, {
+      reason: 'Material insuficiente'
+    }) as never,
+    recollectResponse as never,
+    'corr-lab-workflow-recollect',
+    {
+      laboratory,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+  assert.equal(recollectHandled, true);
+  assert.equal(recollectResponse.bodyJson<{ status: string; collectionAttempt: number }>().status, 'collected');
+  assert.equal(recollectResponse.bodyJson<{ collectionAttempt: number }>().collectionAttempt, 2);
+
+  await request('in_analysis', {});
+  await request('reported', { resultSummary: 'Resultado final' });
+
+  const deliveryResponse = new MockResponse();
+  const deliveryHandled = await handleLaboratoryRoutes(
+    `/laboratory/orders/${openOrder.id}/deliver`,
+    createMockRequest('POST', `/laboratory/orders/${openOrder.id}/deliver`, {
+      channel: 'portal'
+    }) as never,
+    deliveryResponse as never,
+    'corr-lab-workflow-deliver',
+    {
+      laboratory,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+  assert.equal(deliveryHandled, true);
+  const deliveryPayload = deliveryResponse.bodyJson<{
+    status: string;
+    deliveredAt?: string;
+    deliveredByUserId?: string;
+    deliveryChannel?: string;
+  }>();
+  assert.equal(deliveryPayload.status, 'delivered');
+  assert.ok(deliveryPayload.deliveredAt);
+  assert.equal(deliveryPayload.deliveredByUserId, 'user-1');
+  assert.equal(deliveryPayload.deliveryChannel, 'portal');
+
+  const listResponse = new MockResponse();
+  await handleLaboratoryRoutes(
+    '/laboratory/orders',
+    { method: 'GET', url: '/laboratory/orders' } as never,
+    listResponse as never,
+    'corr-lab-workflow-list',
+    {
+      laboratory,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+  assert.equal(listResponse.bodyJson<{ items: Array<{ id: string; status: string }> }>().items.find(
+    (item) => item.id === openOrder.id
+  )?.status, 'delivered');
+});
+
+test('handleLaboratoryRoutes requires an enabled staff principal for laboratory signatures', async () => {
+  const laboratory = createLaboratoryService();
+  const order = (await laboratory.listOrders('acc-1' as never, 'enc-1')).find(
+    (item) => item.status === 'requested'
+  );
+  assert.ok(order);
+  await laboratory.transitionOrderAndPersistForAccount('acc-1' as never, order.id, {
+    status: 'collected',
+    collectedByUserId: 'user-1'
+  });
+  await laboratory.transitionOrderAndPersistForAccount('acc-1' as never, order.id, {
+    status: 'in_analysis',
+    actorUserId: 'user-1'
+  });
+  const inactivePrincipal: AuthenticatedPrincipal = {
+    ...createPrincipal(),
+    staff: {
+      ...createPrincipal().staff!,
+      status: 'inactive'
+    }
+  };
+
+  await assert.rejects(
+    () => handleLaboratoryRoutes(
+      `/laboratory/orders/${order.id}/result`,
+      createMockRequest('POST', `/laboratory/orders/${order.id}/result`, {
+        status: 'reported',
+        resultSummary: 'Sem staff habilitado',
+        signedByUserId: 'attacker'
+      }) as never,
+      new MockResponse() as never,
+      'corr-lab-disabled-staff',
+      {
+        laboratory,
+        audit: { write: () => ({}) } as never,
+        requirePrincipal: () => inactivePrincipal
+      }
+    ),
+    /staff|professional|habilitado|active/i
+  );
 });
 
 test('handleLaboratoryRoutes generates printable signed laboratory report html', async () => {

@@ -8,7 +8,12 @@ import { createServer } from 'node:http';
 import { bootstrapWorkerServices, shutdownWorkerServices } from './bootstrap.js';
 import { startWorkerObservability, withWorkerSpan } from './observability.js';
 import { createWorkerNotifications, createWorkerEventBus, createWorkerReports } from './runner.js';
-import { runWorkerTick, runEventBusTick, runScheduledReportsTick } from './runner.js';
+import {
+  runWorkerTick,
+  runEventBusTick,
+  runWebhookDeliveriesTick,
+  runScheduledReportsTick
+} from './runner.js';
 import { createWorkerFeatureFlags } from './feature-flags.js';
 import {
   createWorkerFeatureFlagMetricsCollector,
@@ -30,6 +35,8 @@ let workerObservabilityShutdown: (() => Promise<void>) | null = null;
 const configuredWorkerAccountId = process.env.WORKER_ACCOUNT_ID?.trim();
 const ACCOUNT_REFRESH_INTERVAL_MS = 60_000;
 const PIX_SETTLEMENT_DLQ_REFRESH_INTERVAL_MS = 15_000;
+const webhookWorkerId =
+  process.env.WORKER_INSTANCE_ID?.trim() || `webhook-worker-${process.pid}`;
 
 const workerState = {
   startedAt: new Date().toISOString(),
@@ -199,15 +206,21 @@ async function main() {
           requiredEventBusConsumers: PRODUCTION_EVENT_CONSUMERS,
           registeredEventBusConsumers: eventBus.consumerNames,
           deliveryGuaranteesReady: Boolean(bootstrap.unitOfWork),
-          durableConsumerGuardReady: eventBus.deliveryGuaranteesDurable
+          durableConsumerGuardReady: eventBus.deliveryGuaranteesDurable,
+          webhookDeliveryExecutorReady: Boolean(
+            bootstrap.webhookDeliveryExecutor && bootstrap.webhookDeliverySchemaReady
+          )
         }),
-        worker: {
+          worker: {
           startedAt: workerState.startedAt,
           lastTickDurationMs: workerState.lastTickDurationMs,
           errors: workerState.errors,
           memory: process.memoryUsage(),
-          uptime: process.uptime(),
-          pixProviderSettlementEnabled: Boolean(bootstrap.pixProviderSettlement)
+            uptime: process.uptime(),
+            pixProviderSettlementEnabled: Boolean(bootstrap.pixProviderSettlement),
+            webhookDeliveryExecutorReady: Boolean(
+              bootstrap.webhookDeliveryExecutor && bootstrap.webhookDeliverySchemaReady
+            )
         }
       };
       res.writeHead(200);
@@ -235,7 +248,10 @@ async function main() {
         requiredEventBusConsumers: PRODUCTION_EVENT_CONSUMERS,
         registeredEventBusConsumers: eventBus.consumerNames,
         deliveryGuaranteesReady: Boolean(bootstrap.unitOfWork),
-        durableConsumerGuardReady: eventBus.deliveryGuaranteesDurable
+        durableConsumerGuardReady: eventBus.deliveryGuaranteesDurable,
+        webhookDeliveryExecutorReady: Boolean(
+          bootstrap.webhookDeliveryExecutor && bootstrap.webhookDeliverySchemaReady
+        )
       });
       res.writeHead(payload.readiness.ready ? 200 : 503);
       res.end(JSON.stringify(payload));
@@ -252,7 +268,10 @@ async function main() {
         requiredEventBusConsumers: PRODUCTION_EVENT_CONSUMERS,
         registeredEventBusConsumers: eventBus.consumerNames,
         deliveryGuaranteesReady: Boolean(bootstrap.unitOfWork),
-        durableConsumerGuardReady: eventBus.deliveryGuaranteesDurable
+        durableConsumerGuardReady: eventBus.deliveryGuaranteesDurable,
+        webhookDeliveryExecutorReady: Boolean(
+          bootstrap.webhookDeliveryExecutor && bootstrap.webhookDeliverySchemaReady
+        )
       });
       res.writeHead(payload.readiness.ready ? 200 : 503);
       res.end(JSON.stringify(payload));
@@ -429,8 +448,30 @@ async function main() {
           () =>
             runWithTenantContext(tenantContext, () =>
               runEventBusTick(logger, tickContext, eventBus)
-            )
+          )
         );
+
+        const webhookDeliveryExecutor = bootstrap.webhookDeliveryExecutor;
+        if (webhookDeliveryExecutor) {
+          await withWorkerSpan(
+            'worker.webhook_delivery.tick',
+            {
+              'worker.correlation_id': correlationId,
+              'worker.account_id': accountId,
+              'worker.persistence_mode': workerState.persistenceMode,
+              'worker.database_healthy': workerState.databaseHealthy
+            },
+            () =>
+              runWithTenantContext(tenantContext, () =>
+                runWebhookDeliveriesTick(
+                  logger,
+                  { ...tickContext, accountId: accountId as never },
+                  webhookDeliveryExecutor,
+                  webhookWorkerId
+                )
+              )
+          );
+        }
 
         await withWorkerSpan(
           'worker.reports.scheduled.tick',

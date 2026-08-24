@@ -189,4 +189,131 @@ test.describe('Isolamento tenant no runtime PostgreSQL', () => {
       if (ownerBId) await deleteBestEffort(accountBSession.accessToken, `/owners/${ownerBId}`);
     }
   });
+
+  test('aplica a matriz de papel/tenant para acesso sensível e trilha LGPD', async ({ authSession }) => {
+    const accountAToken = authSession.accessToken;
+    const accountAId = authSession.principal?.user?.accountId;
+    const accountBSession = await login(SECOND_ADMIN_USERNAME, SECOND_ADMIN_PASSWORD);
+    const receptionSession = await login('reception', 'seed_reception');
+
+    expect(accountAId).toBeTruthy();
+    expect(accountBSession.principal?.user?.accountId).toBeTruthy();
+    expect(accountBSession.principal?.user?.accountId).not.toBe(accountAId);
+
+    let teamAId: string | undefined;
+    let ownerAId: string | undefined;
+
+    try {
+      const receptionAccess = await requestAs(receptionSession.accessToken, '/access-control');
+      expect(receptionAccess.response.status).toBe(403);
+
+      const teamA = await requestAs(accountAToken, '/access-control/teams', {
+        method: 'POST',
+        body: JSON.stringify({
+          code: `e2e_access_${Date.now()}`,
+          name: 'E2E Grupo Tenant A',
+          description: 'Grupo criado pela matriz de autorização E2E'
+        })
+      });
+      expect(teamA.response.status, JSON.stringify(teamA.body)).toBe(201);
+      teamAId = String(teamA.body.id);
+
+      const teamsB = await requestAs(accountBSession.accessToken, '/access-control/teams');
+      expect(teamsB.response.status).toBe(200);
+      expect(
+        (teamsB.body.items as Array<{ id: string }>).some((item) => item.id === teamAId)
+      ).toBe(false);
+
+      const crossTenantPatch = await requestAs(
+        accountBSession.accessToken,
+        `/access-control/teams/${teamAId}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify({ name: 'Tentativa cross-tenant' })
+        }
+      );
+      expect(crossTenantPatch.response.status).toBe(401);
+
+      const ownerA = await requestAs(accountAToken, '/owners', {
+        method: 'POST',
+        body: JSON.stringify({
+          fullName: `LGPD Tenant A ${Date.now()}`,
+          documentId: `LGPD-TENANT-A-${Date.now()}`,
+          contacts: [{ label: 'Celular', type: 'phone', value: '11999990003', primary: true }],
+          financialResponsible: false,
+          status: 'active'
+        })
+      });
+      expect(ownerA.response.status, JSON.stringify(ownerA.body)).toBe(201);
+      ownerAId = String(ownerA.body.id);
+
+      const dsrA = await requestAs(accountAToken, '/lgpd/requests', {
+        method: 'POST',
+        body: JSON.stringify({
+          subjectId: ownerAId,
+          subjectType: 'owner',
+          requestType: 'data_export',
+          notes: 'E2E LGPD tenant audit'
+        })
+      });
+      expect(dsrA.response.status, JSON.stringify(dsrA.body)).toBe(201);
+      const dsrAId = String(dsrA.body.id);
+
+      const receptionLgpdWrite = await requestAs(receptionSession.accessToken, '/lgpd/requests', {
+        method: 'POST',
+        body: JSON.stringify({
+          subjectId: ownerAId,
+          subjectType: 'owner',
+          requestType: 'data_export'
+        })
+      });
+      expect(receptionLgpdWrite.response.status).toBe(403);
+
+      const dsrARead = await requestAs(
+        accountAToken,
+        `/lgpd/requests?subjectId=${encodeURIComponent(ownerAId)}&subjectType=owner`
+      );
+      expect(dsrARead.response.status).toBe(200);
+      expect((dsrARead.body.requests as unknown[]).length).toBe(1);
+
+      const dsrBRead = await requestAs(
+        accountBSession.accessToken,
+        `/lgpd/requests?subjectId=${encodeURIComponent(ownerAId)}&subjectType=owner`
+      );
+      expect(dsrBRead.response.status).toBe(200);
+      expect((dsrBRead.body.requests as unknown[]).length).toBe(0);
+
+      const crossTenantDsrComplete = await requestAs(accountBSession.accessToken, '/lgpd/requests/complete', {
+        method: 'POST',
+        body: JSON.stringify({ requestId: dsrAId })
+      });
+      expect(crossTenantDsrComplete.response.status).toBe(404);
+
+      const exportA = await requestAs(accountAToken, '/lgpd/export', {
+        method: 'POST',
+        body: JSON.stringify({ subjectId: ownerAId, subjectType: 'owner' })
+      });
+      expect(exportA.response.status, JSON.stringify(exportA.body)).toBe(200);
+
+      const auditA = await requestAs(accountAToken, '/audit/events?module=lgpd&limit=100');
+      expect(auditA.response.status).toBe(200);
+      const auditActionsA = (auditA.body.items as Array<{ action: string }>).map((item) => item.action);
+      expect(auditActionsA).toContain('dsr_created');
+      expect(auditActionsA).toContain('dsr_read');
+      expect(auditActionsA).toContain('personal_data_exported');
+      expect((auditA.body.items as Array<{ accountId?: string }>).every((item) => item.accountId === accountAId)).toBe(true);
+
+      const auditB = await requestAs(accountBSession.accessToken, '/audit/events?module=lgpd&limit=100');
+      expect(auditB.response.status).toBe(200);
+      expect((auditB.body.items as Array<{ entityId?: string }>).some((item) => item.entityId === dsrAId)).toBe(false);
+    } finally {
+      if (teamAId) {
+        await requestAs(accountAToken, `/access-control/teams/${teamAId}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ isActive: false })
+        });
+      }
+      if (ownerAId) await deleteBestEffort(accountAToken, `/owners/${ownerAId}`);
+    }
+  });
 });

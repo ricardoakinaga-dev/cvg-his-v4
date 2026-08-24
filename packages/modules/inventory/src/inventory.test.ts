@@ -599,6 +599,108 @@ test('ProcurementService rejects invalid purchase transitions and tenant access'
   );
 });
 
+test('ProcurementService rejects duplicate receipt lines before changing stock', async () => {
+  const inventory = createService();
+  const procurement = new ProcurementService(inventory);
+  const created = await procurement.createPurchase('acc_cvg_demo' as never, 'buyer_1' as never, {
+    supplierName: 'Fornecedor de recebimento',
+    lines: [{
+      inventoryItemId: 'inv_gauze',
+      quantity: 4,
+      unitCostAmount: 3,
+      lotNumber: 'GAZ-DUPLICATE-RECEIPT'
+    }]
+  });
+  const approved = await procurement.approvePurchase(
+    'acc_cvg_demo' as never,
+    'manager_1' as never,
+    created.id
+  );
+  const before = inventory.getItemOrThrow('inv_gauze' as never, 'acc_cvg_demo' as never).onHandQuantity;
+
+  await assert.rejects(
+    () => procurement.receivePurchase('acc_cvg_demo' as never, 'warehouse_1' as never, approved.id, {
+      lines: [
+        { lineId: approved.lines[0]!.id, quantity: 1 },
+        { lineId: approved.lines[0]!.id, quantity: 1 }
+      ]
+    }),
+    ValidationError
+  );
+
+  assert.equal(
+    inventory.getItemOrThrow('inv_gauze' as never, 'acc_cvg_demo' as never).onHandQuantity,
+    before
+  );
+  assert.equal(procurement.getPurchase('acc_cvg_demo' as never, approved.id).status, 'approved');
+});
+
+test('ProcurementService validates every receipt line before applying any inbound movement', async () => {
+  const inventory = createService();
+  const procurement = new ProcurementService(inventory);
+  const created = await procurement.createPurchase('acc_cvg_demo' as never, 'buyer_1' as never, {
+    supplierName: 'Fornecedor de recebimento',
+    lines: [{
+      inventoryItemId: 'inv_gauze',
+      quantity: 4,
+      unitCostAmount: 3,
+      lotNumber: 'GAZ-MIXED-RECEIPT'
+    }]
+  });
+  const approved = await procurement.approvePurchase(
+    'acc_cvg_demo' as never,
+    'manager_1' as never,
+    created.id
+  );
+  const before = inventory.getItemOrThrow('inv_gauze' as never, 'acc_cvg_demo' as never).onHandQuantity;
+
+  await assert.rejects(
+    () => procurement.receivePurchase('acc_cvg_demo' as never, 'warehouse_1' as never, approved.id, {
+      lines: [
+        { lineId: approved.lines[0]!.id, quantity: 1 },
+        { lineId: 'purchase-line-does-not-exist', quantity: 1 }
+      ]
+    }),
+    NotFoundError
+  );
+
+  assert.equal(
+    inventory.getItemOrThrow('inv_gauze' as never, 'acc_cvg_demo' as never).onHandQuantity,
+    before
+  );
+  assert.equal(procurement.getPurchase('acc_cvg_demo' as never, approved.id).status, 'approved');
+});
+
+test('ProcurementService requires an invoice number before receiving stock', async () => {
+  const inventory = createService();
+  const procurement = new ProcurementService(inventory);
+  const created = await procurement.createPurchase('acc_cvg_demo' as never, 'buyer_1' as never, {
+    supplierName: 'Fornecedor sem NF',
+    lines: [{
+      inventoryItemId: 'inv_gauze',
+      quantity: 2,
+      unitCostAmount: 3,
+      lotNumber: 'GAZ-NF-REQUIRED'
+    }]
+  });
+  const approved = await procurement.approvePurchase(
+    'acc_cvg_demo' as never,
+    'manager_1' as never,
+    created.id
+  );
+  const before = inventory.getItemOrThrow('inv_gauze' as never, 'acc_cvg_demo' as never).onHandQuantity;
+
+  await assert.rejects(
+    () => procurement.receivePurchase('acc_cvg_demo' as never, 'warehouse_1' as never, approved.id, {
+      lines: [{ lineId: approved.lines[0]!.id, quantity: 1 }]
+    }),
+    ValidationError
+  );
+
+  assert.equal(inventory.getItemOrThrow('inv_gauze' as never, 'acc_cvg_demo' as never).onHandQuantity, before);
+  assert.equal(procurement.getPurchase('acc_cvg_demo' as never, approved.id).status, 'approved');
+});
+
 test('ProcurementService persists and rehydrates purchases and transfers', async () => {
   const inventory = createService();
   const repository = new InMemoryProcurementRepository();

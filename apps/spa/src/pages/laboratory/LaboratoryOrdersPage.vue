@@ -93,12 +93,48 @@
             {{ collectingId === (row as LaboratoryOrderRow).id ? 'Coletando...' : 'Coletar' }}
           </DsButton>
           <DsButton
-            v-if="(row as LaboratoryOrderRow).status === 'collected'"
+            v-if="(row as LaboratoryOrderRow).status === 'collected' && !isCanonicalOrder(row as LaboratoryOrderRow)"
             size="sm"
             variant="primary"
             @click="openResultModal(row as LaboratoryOrderRow)"
           >
             Liberar resultado
+          </DsButton>
+          <DsButton
+            v-if="(row as LaboratoryOrderRow).status === 'collected' && isCanonicalOrder(row as LaboratoryOrderRow)"
+            size="sm"
+            variant="primary"
+            :loading="analysisId === (row as LaboratoryOrderRow).id"
+            :disabled="analysisId === (row as LaboratoryOrderRow).id"
+            @click="startAnalysis(row as LaboratoryOrderRow)"
+          >
+            {{ analysisId === (row as LaboratoryOrderRow).id ? 'Iniciando...' : 'Iniciar análise' }}
+          </DsButton>
+          <DsButton
+            v-if="(row as LaboratoryOrderRow).status === 'in_analysis'"
+            size="sm"
+            variant="primary"
+            @click="openResultModal(row as LaboratoryOrderRow)"
+          >
+            Reportar resultado
+          </DsButton>
+          <DsButton
+            v-if="(row as LaboratoryOrderRow).status === 'reported'"
+            size="sm"
+            variant="primary"
+            :loading="deliveringId === (row as LaboratoryOrderRow).id"
+            :disabled="deliveringId === (row as LaboratoryOrderRow).id"
+            @click="deliverOrder(row as LaboratoryOrderRow)"
+          >
+            {{ deliveringId === (row as LaboratoryOrderRow).id ? 'Entregando...' : 'Entregar' }}
+          </DsButton>
+          <DsButton
+            v-if="['in_analysis', 'reported', 'delivered'].includes((row as LaboratoryOrderRow).status)"
+            size="sm"
+            variant="secondary"
+            @click="recollectOrder(row as LaboratoryOrderRow)"
+          >
+            Recoletar
           </DsButton>
           <DsButton
             tag="a"
@@ -114,7 +150,7 @@
 
     <DsModal
       :open="Boolean(resultOrder)"
-      title="Liberar resultado"
+      :title="resultOrder?.status === 'in_analysis' ? 'Reportar resultado' : 'Liberar resultado'"
       size="sm"
       @close="closeResultModal"
     >
@@ -150,7 +186,7 @@
           :disabled="!resultSummary.trim() || !resultSignerId.trim() || resultSubmitting"
           @click="submitResult"
         >
-          {{ resultSubmitting ? 'Liberando...' : 'Liberar resultado' }}
+          {{ resultSubmitting ? 'Salvando...' : resultOrder?.status === 'in_analysis' ? 'Reportar resultado' : 'Liberar resultado' }}
         </DsButton>
       </template>
     </DsModal>
@@ -167,24 +203,55 @@ import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsModal from '@cvg-his-v2/design-system/vue/DsModal.vue';
 import type { DataTableColumn } from '@/components/DataTable.vue';
 import type { DiagnosticOrderSummary } from '@cvg-his-v2/shared-types';
+import { apiRequest } from '@/services/api';
 import { laboratoryService } from '@/services/laboratory';
 import { ownerService } from '@/services/owner';
 import { patientService } from '@/services/patient';
 import type { OwnerSummary } from '@/types/owner';
 import type { PatientSummary } from '@/types/patient';
 
-interface LaboratoryOrderRow extends DiagnosticOrderSummary {
+type LaboratoryWorkflowStatus =
+  | 'requested'
+  | 'collected'
+  | 'in_analysis'
+  | 'reported'
+  | 'delivered'
+  | 'resulted'
+  | 'cancelled';
+
+type LaboratoryWorkflowOrder = Omit<DiagnosticOrderSummary, 'status'> & {
+  status: LaboratoryWorkflowStatus;
+  legacyStatus?: 'resulted';
+  collectionAttempt?: number;
+  analysisStartedAt?: string;
+  analysisStartedByUserId?: string;
+  reportedAt?: string;
+  reportedByUserId?: string;
+  deliveredAt?: string;
+  deliveredByUserId?: string;
+  deliveryChannel?: string;
+  recollectionReason?: string;
+  history?: readonly {
+    eventType: string;
+    attempt: number;
+  }[];
+  workflowVersion?: 2;
+};
+
+interface LaboratoryOrderRow extends LaboratoryWorkflowOrder {
   clientName: string;
   animalName: string;
 }
 
-const orders = ref<DiagnosticOrderSummary[]>([]);
+const orders = ref<LaboratoryWorkflowOrder[]>([]);
 const patients = ref<PatientSummary[]>([]);
 const owners = ref<OwnerSummary[]>([]);
 const loading = ref(false);
 const error = ref('');
 const successMessage = ref('');
 const collectingId = ref<string | null>(null);
+const analysisId = ref<string | null>(null);
+const deliveringId = ref<string | null>(null);
 const resultOrder = ref<LaboratoryOrderRow | null>(null);
 const resultSummary = ref('');
 const resultSignerId = ref('lab-ui');
@@ -243,7 +310,9 @@ const filteredOrders = computed(() => {
 
 const requestedCount = computed(() => orders.value.filter((item) => item.status === 'requested').length);
 const collectedCount = computed(() => orders.value.filter((item) => item.status === 'collected').length);
-const resultedCount = computed(() => orders.value.filter((item) => item.status === 'resulted').length);
+const resultedCount = computed(() => orders.value.filter((item) =>
+  item.status === 'reported' || item.status === 'delivered' || item.status === 'resulted'
+).length);
 
 function normalizeSearch(value: string | undefined): string {
   return (value ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
@@ -267,10 +336,18 @@ function applyFilters() {
   appliedFilters.date = draftFilters.date;
 }
 
-function statusLabel(status: DiagnosticOrderSummary['status']): string {
+function isCanonicalOrder(order: LaboratoryOrderRow): boolean {
+  return order.workflowVersion === 2;
+}
+
+function statusLabel(status: LaboratoryWorkflowStatus): string {
   return {
     requested: 'Aguardando coleta',
     collected: 'Coletado',
+    in_analysis: 'Em análise',
+    reported: 'Laudo reportado',
+    delivered: 'Entregue',
+    // Kept for old API projections.
     resulted: 'Resultado liberado',
     cancelled: 'Cancelado'
   }[status];
@@ -279,7 +356,11 @@ function statusLabel(status: DiagnosticOrderSummary['status']): string {
 function stageLabel(order: LaboratoryOrderRow): string {
   return {
     requested: '1. Pedido recebido',
-    collected: '2. Aguardando resultado',
+    collected: isCanonicalOrder(order) ? '2. Material coletado' : '2. Aguardando resultado',
+    in_analysis: '3. Em análise técnica',
+    reported: '4. Laudo reportado',
+    delivered: '5. Entregue ao solicitante',
+    // Kept for old API projections.
     resulted: '3. Liberado ao prontuário',
     cancelled: 'Cancelado'
   }[order.status];
@@ -287,7 +368,30 @@ function stageLabel(order: LaboratoryOrderRow): string {
 
 function stageHint(order: LaboratoryOrderRow): string {
   if (order.status === 'requested') return 'Coleta pendente';
-  if (order.status === 'collected') return order.collectedAt ? `Coletado em ${formatDate(order.collectedAt)}` : 'Material coletado';
+  if (order.status === 'collected') {
+    const attempt = order.collectionAttempt ? ` · Tentativa ${order.collectionAttempt}` : '';
+    return order.collectedAt
+      ? `Coletado em ${formatDate(order.collectedAt)}${attempt}`
+      : `Material coletado${attempt}`;
+  }
+  if (order.status === 'in_analysis') {
+    const actor = order.analysisStartedByUserId ? ` por ${order.analysisStartedByUserId}` : '';
+    const attempt = order.collectionAttempt ? ` · Tentativa ${order.collectionAttempt}` : '';
+    return `Análise iniciada${actor}${attempt}`;
+  }
+  if (order.status === 'reported') {
+    const releaseActor = order.signedByUserId ?? order.reportedByUserId;
+    const releaseDate = order.reportedAt ?? order.updatedAt;
+    return releaseActor
+      ? `Reportado por ${releaseActor} em ${formatDate(releaseDate)}`
+      : order.resultSummary ?? 'Resultado registrado';
+  }
+  if (order.status === 'delivered') {
+    const deliveryDate = order.deliveredAt ?? order.updatedAt;
+    return order.deliveryChannel
+      ? `Entregue via ${order.deliveryChannel} em ${formatDate(deliveryDate)}`
+      : 'Laudo entregue';
+  }
   if (order.status === 'resulted') {
     const releaseActor = order.signedByUserId ?? order.releasedByUserId;
     const releaseDate = order.resultedAt ?? order.updatedAt;
@@ -298,8 +402,28 @@ function stageHint(order: LaboratoryOrderRow): string {
   return 'Fluxo encerrado';
 }
 
-function replaceOrder(updated: DiagnosticOrderSummary) {
-  orders.value = orders.value.map((order) => (order.id === updated.id ? updated : order));
+function replaceOrder(updated: DiagnosticOrderSummary | LaboratoryWorkflowOrder) {
+  orders.value = orders.value.map((order) =>
+    order.id === updated.id ? (updated as unknown as LaboratoryWorkflowOrder) : order
+  );
+}
+
+type CanonicalLaboratoryTransitionPayload =
+  | { status: 'in_analysis' }
+  | { status: 'reported'; resultSummary: string; signedByUserId: string }
+  | { status: 'delivered'; deliveryChannel: string };
+
+async function requestCanonicalTransition(
+  orderId: string,
+  payload: CanonicalLaboratoryTransitionPayload
+): Promise<LaboratoryWorkflowOrder> {
+  return apiRequest<LaboratoryWorkflowOrder>(
+    `/laboratory/orders/${encodeURIComponent(orderId)}/result`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    }
+  );
 }
 
 async function collectOrder(order: LaboratoryOrderRow) {
@@ -318,6 +442,22 @@ async function collectOrder(order: LaboratoryOrderRow) {
     error.value = err instanceof Error ? err.message : 'Erro ao registrar coleta';
   } finally {
     collectingId.value = null;
+  }
+}
+
+async function startAnalysis(order: LaboratoryOrderRow) {
+  analysisId.value = order.id;
+  error.value = '';
+  successMessage.value = '';
+
+  try {
+    const updated = await requestCanonicalTransition(order.id, { status: 'in_analysis' });
+    replaceOrder(updated);
+    successMessage.value = 'Análise iniciada com sucesso.';
+  } catch (err: unknown) {
+    error.value = err instanceof Error ? err.message : 'Erro ao iniciar análise';
+  } finally {
+    analysisId.value = null;
   }
 }
 
@@ -343,18 +483,72 @@ async function submitResult() {
   successMessage.value = '';
 
   try {
-    const updated = await laboratoryService.recordResult(resultOrder.value.id, {
-      status: 'resulted',
-      resultSummary: resultSummary.value.trim(),
-      signedByUserId: resultSignerId.value.trim()
-    });
+    const updated = resultOrder.value.status === 'in_analysis'
+      ? await requestCanonicalTransition(resultOrder.value.id, {
+        status: 'reported',
+        resultSummary: resultSummary.value.trim(),
+        signedByUserId: resultSignerId.value.trim()
+      })
+      : await laboratoryService.recordResult(resultOrder.value.id, {
+        status: 'resulted',
+        resultSummary: resultSummary.value.trim(),
+        signedByUserId: resultSignerId.value.trim()
+      });
     replaceOrder(updated);
-    successMessage.value = 'Resultado liberado com sucesso.';
+    successMessage.value = resultOrder.value.status === 'in_analysis'
+      ? 'Resultado reportado com sucesso.'
+      : 'Resultado liberado com sucesso.';
     closeResultModal();
   } catch (err: unknown) {
     error.value = err instanceof Error ? err.message : 'Erro ao liberar resultado';
   } finally {
     resultSubmitting.value = false;
+  }
+}
+
+async function deliverOrder(order: LaboratoryOrderRow) {
+  deliveringId.value = order.id;
+  error.value = '';
+  successMessage.value = '';
+
+  try {
+    const updated = await apiRequest<LaboratoryWorkflowOrder>(
+      `/laboratory/orders/${encodeURIComponent(order.id)}/deliver`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ deliveryChannel: 'portal' })
+      }
+    );
+    replaceOrder(updated);
+    successMessage.value = 'Laudo entregue com sucesso.';
+  } catch (err: unknown) {
+    error.value = err instanceof Error ? err.message : 'Erro ao entregar laudo';
+  } finally {
+    deliveringId.value = null;
+  }
+}
+
+async function recollectOrder(order: LaboratoryOrderRow) {
+  const reason = typeof window === 'undefined'
+    ? 'Nova coleta solicitada pelo laboratório'
+    : window.prompt('Informe o motivo da recoleta', 'Amostra inadequada')?.trim();
+  if (!reason) return;
+
+  error.value = '';
+  successMessage.value = '';
+
+  try {
+    const updated = await apiRequest<LaboratoryWorkflowOrder>(
+      `/laboratory/orders/${encodeURIComponent(order.id)}/recollect`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ reason })
+      }
+    );
+    replaceOrder(updated);
+    successMessage.value = 'Recoleta registrada com sucesso.';
+  } catch (err: unknown) {
+    error.value = err instanceof Error ? err.message : 'Erro ao registrar recoleta';
   }
 }
 
@@ -372,7 +566,9 @@ async function load() {
       throw ordersResult.reason;
     }
 
-    orders.value = ordersResult.value;
+    orders.value = ordersResult.value.map(
+      (order) => order as unknown as LaboratoryWorkflowOrder
+    );
     patients.value = patientsResult.status === 'fulfilled' ? patientsResult.value : [];
     owners.value = ownersResult.status === 'fulfilled' ? ownersResult.value : [];
   } catch (err: unknown) {
@@ -458,6 +654,21 @@ onMounted(load);
 .exam-status--collected {
   background: #dbeafe;
   color: #1d4ed8;
+}
+
+.exam-status--in_analysis {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+.exam-status--reported {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.exam-status--delivered {
+  background: #cffafe;
+  color: #155e75;
 }
 
 .exam-status--resulted {

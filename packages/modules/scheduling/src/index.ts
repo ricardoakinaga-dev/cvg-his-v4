@@ -17,7 +17,9 @@ import type {
   AppointmentId,
   EncounterId,
   OwnerId,
+  OwnerSummary,
   PatientId,
+  PatientSummary,
   QueueEntryId,
   QueueEntrySummary,
   QueueTransferId,
@@ -315,6 +317,24 @@ function uniqueStrings(values: readonly (string | undefined)[]): string[] {
   return [...new Set(values.filter((value): value is string => Boolean(value && value.trim())))]
     .map((value) => value.trim())
     .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+}
+
+function operationalStatusForQueueStatus(
+  status: QueueEntrySummary['status']
+): QueueEntrySummary['operationalStatus'] {
+  return status === 'waiting'
+    ? 'waiting'
+    : status === 'called'
+      ? 'called'
+      : status === 'in_triage'
+        ? 'in_triage'
+        : status === 'in_care'
+          ? 'in_care'
+          : status === 'observation'
+            ? 'observation'
+            : status === 'completed'
+              ? 'completed'
+              : 'cancelled';
 }
 
 function serializeSlot(
@@ -711,8 +731,7 @@ export class SchedulingService {
   ): Promise<SchedulingAppointmentSummary> {
     const patientId = requireNonEmptyString(payload.patientId, 'patientId') as PatientId;
     const ownerId = requireNonEmptyString(payload.ownerId, 'ownerId') as OwnerId;
-    this.#patients.getOrThrow(patientId);
-    this.#owners.getOrThrow(ownerId);
+    await this.assertActiveParticipants(accountId, patientId, ownerId);
 
     const scheduledAt = parseDate(payload.scheduledAt, 'scheduledAt');
     const visitType = payload.visitType ?? 'scheduled';
@@ -847,11 +866,23 @@ export class SchedulingService {
         ? (requireNonEmptyString(payload.appointmentId, 'appointmentId') as AppointmentId)
         : undefined;
 
-    this.#patients.getOrThrow(patientId);
-    this.#owners.getOrThrow(ownerId);
+    await this.assertActiveParticipants(accountId, patientId, ownerId);
 
     if (appointmentId) {
       const linkedAppointment = this.getAppointmentOrThrow(appointmentId);
+      if (linkedAppointment.accountId !== accountId) {
+        throw new NotFoundError('Appointment not found', { appointmentId });
+      }
+      if (
+        linkedAppointment.patientId !== patientId ||
+        linkedAppointment.ownerId !== ownerId
+      ) {
+        throw new ValidationError('Check-in participants must match the appointment participants', {
+          appointmentId,
+          appointmentPatientId: linkedAppointment.patientId,
+          appointmentOwnerId: linkedAppointment.ownerId
+        });
+      }
       if (linkedAppointment.status === 'cancelled' || linkedAppointment.status === 'completed') {
         throw new ConflictError('Appointment cannot be checked in from its current state', {
           appointmentId,
@@ -912,14 +943,18 @@ export class SchedulingService {
         status: 'checked_in',
         updatedAt: now
       };
-      if (this.#repository) {
-        await this.#repository.updateAppointment(updatedAppointment);
-      }
       checkedInAppointment = updatedAppointment;
     }
 
     if (this.#repository) {
-      await this.#repository.createQueueEntry(entry);
+      if (this.#repository.persistCheckIn) {
+        await this.#repository.persistCheckIn(entry, checkedInAppointment);
+      } else {
+        if (checkedInAppointment) {
+          await this.#repository.updateAppointment(checkedInAppointment);
+        }
+        await this.#repository.createQueueEntry(entry);
+      }
     }
     if (checkedInAppointment && previousAppointmentStatus) {
       this.#appointments.set(checkedInAppointment.id, checkedInAppointment);
@@ -955,10 +990,24 @@ export class SchedulingService {
       });
     }
 
+    const pendingTransfer = this.listQueueTransfers(queueEntryId).find(
+      (transfer) => transfer.status === 'sent'
+    );
+    if (pendingTransfer) {
+      throw new ConflictError('Queue entry already has a pending transfer', {
+        queueEntryId,
+        transferId: pendingTransfer.id,
+        toSector: pendingTransfer.toSector
+      });
+    }
+
     const now = nowIso();
     const toSector = requireNonEmptyString(payload.toSector, 'toSector');
     const sentByUserId = requireNonEmptyString(payload.sentByUserId, 'sentByUserId') as UserId;
     const reason = requireNonEmptyString(payload.reason, 'reason');
+    const receivedByUserId = payload.receivedByUserId?.trim()
+      ? (payload.receivedByUserId as UserId)
+      : undefined;
     const transfer: QueueTransferSummary = {
       id: createCorrelationId('queue-transfer') as QueueTransferId,
       accountId: current.accountId,
@@ -968,10 +1017,9 @@ export class SchedulingService {
       toSector,
       sentByUserId,
       sentAt: now,
-      receivedByUserId: payload.receivedByUserId?.trim()
-        ? (payload.receivedByUserId as UserId)
-        : undefined,
-      receivedAt: payload.receivedByUserId?.trim() ? now : undefined,
+      status: receivedByUserId ? 'received' : 'sent',
+      receivedByUserId,
+      receivedAt: receivedByUserId ? now : undefined,
       responsibleUserId: payload.responsibleUserId?.trim()
         ? (payload.responsibleUserId as UserId)
         : undefined,
@@ -992,19 +1040,63 @@ export class SchedulingService {
       currentResponsibleUserId: transfer.responsibleUserId,
       currentResponsibleStaffId: transfer.responsibleStaffId,
       nextSector: transfer.nextSector,
+      operationalStatus: receivedByUserId
+        ? operationalStatusForQueueStatus(current.status)
+        : 'waiting_handoff',
       lastTransferredAt: transfer.sentAt,
       lastTransferredByUserId: transfer.sentByUserId,
       updatedAt: now
     };
 
+    if (this.#repository) {
+      await this.#repository.persistQueueTransfer(updated, transfer);
+    }
+
     this.#queue.set(queueEntryId, updated);
     this.#queueTransfers.set(queueEntryId, [...this.listQueueTransfers(queueEntryId), transfer]);
 
-    if (this.#repository) {
-      await this.#repository.updateQueueEntry(updated);
-      await this.#repository.createQueueTransfer(transfer);
+    return updated;
+  }
+
+  public async receiveQueueTransfer(
+    queueEntryId: QueueEntryId,
+    transferId: QueueTransferId,
+    receivedByUserId: UserId
+  ): Promise<QueueEntrySummary> {
+    const current = this.getQueueEntryOrThrow(queueEntryId);
+    const transfer = this.listQueueTransfers(queueEntryId).find((item) => item.id === transferId);
+    if (!transfer) {
+      throw new NotFoundError('Queue transfer not found', { queueEntryId, transferId });
+    }
+    if (transfer.status === 'received') {
+      throw new ConflictError('Queue transfer is already received', { transferId });
     }
 
+    const normalizedReceiver = requireNonEmptyString(receivedByUserId, 'receivedByUserId') as UserId;
+    const receivedAt = nowIso();
+    const receivedTransfer: QueueTransferSummary = {
+      ...transfer,
+      status: 'received',
+      receivedByUserId: normalizedReceiver,
+      receivedAt
+    };
+    const updated: QueueEntrySummary = {
+      ...current,
+      operationalStatus: operationalStatusForQueueStatus(current.status),
+      updatedAt: receivedAt
+    };
+
+    if (this.#repository) {
+      await this.#repository.persistQueueTransferReceipt(updated, receivedTransfer);
+    }
+
+    this.#queue.set(queueEntryId, updated);
+    this.#queueTransfers.set(
+      queueEntryId,
+      this.listQueueTransfers(queueEntryId).map((item) =>
+        item.id === transferId ? receivedTransfer : item
+      )
+    );
     return updated;
   }
 
@@ -1153,6 +1245,8 @@ export class SchedulingService {
       });
     }
 
+    await this.assertActiveParticipants(accountId, current.patientId, current.ownerId);
+
     const scheduledAt = parseDate(payload.scheduledAt, 'scheduledAt');
     const visitType = payload.visitType ?? current.visitType;
     const durationMinutes = defaultDurationMinutes(
@@ -1221,7 +1315,9 @@ export class SchedulingService {
 
     if (this.#repository) {
       try {
-        await this.#repository.updateAppointment(updated);
+        await this.#repository.updateAppointment(updated, {
+          requireActiveParticipants: true
+        });
       } catch (error) {
         throw normalizeAppointmentPersistenceConflict(error);
       }
@@ -1296,6 +1392,33 @@ export class SchedulingService {
       encounterId: linkedEntry.encounterId,
       updatedAt: linkedEntry.updatedAt
     };
+  }
+
+  private async assertActiveParticipants(
+    accountId: AccountId,
+    patientId: PatientId,
+    ownerId: OwnerId
+  ): Promise<{ readonly patient: PatientSummary; readonly owner: OwnerSummary }> {
+    const [patient, owner] = await Promise.all([
+      this.#patients.getAuthoritativeOrThrow(accountId, patientId),
+      this.#owners.getAuthoritativeOrThrow(accountId, ownerId)
+    ]);
+
+    if (patient.accountId !== accountId || owner.accountId !== accountId) {
+      throw new ValidationError('Patient and owner must belong to the current account');
+    }
+    if (owner.status !== 'active') {
+      throw new ConflictError('Cannot schedule, check in, or reschedule an inactive owner', {
+        ownerId
+      });
+    }
+    if (patient.status !== 'active') {
+      throw new ConflictError('Cannot schedule, check in, or reschedule an inactive patient', {
+        patientId
+      });
+    }
+
+    return { patient, owner };
   }
 
   private async syncLinkedAppointmentForQueueEntry(entry: QueueEntrySummary): Promise<void> {

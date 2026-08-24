@@ -80,3 +80,48 @@ export interface InventoryStockMovementSummary {
 export interface InventoryStockMovementListResponse {
   items: InventoryStockMovementSummary[];
 }
+
+export type InventoryPurchaseStatus =
+  | 'draft'
+  | 'approved'
+  | 'partially_received'
+  | 'received'
+  | 'cancelled';
+
+export interface InventoryPurchaseLineSummary {
+  id: string;
+  purchaseId: string;
+  inventoryItemId: string;
+  sku: string;
+  itemName: string;
+  orderedQuantity: number;
+  receivedQuantity: number;
+  unit: string;
+  unitCostAmount: number;
+  lotNumber: string;
+  expiryDate?: string | null;
+  manufactureDate?: string | null;
+  location?: string | null;
+  supplier?: string | null;
+}
+
+export interface InventoryPurchaseSummary {
+  id: string;
+  accountId: string;
+  supplierName: string;
+  invoiceNumber?: string | null;
+  status: InventoryPurchaseStatus;
+  totalAmount: number;
+  receivedAmount: number;
+  payableId?: string | null;
+  lines: InventoryPurchaseLineSummary[];
+  createdByUserId: string;
+  approvedByUserId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  receivedAt?: string | null;
+}
+
+export interface InventoryPurchasesListResponse {
+  items: InventoryPurchaseSummary[];
+}

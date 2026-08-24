@@ -16,6 +16,7 @@ export interface WorkerHealthDeps {
   readonly registeredEventBusConsumers: readonly string[];
   readonly deliveryGuaranteesReady: boolean;
   readonly durableConsumerGuardReady: boolean;
+  readonly webhookDeliveryExecutorReady: boolean;
 }
 
 function resolveCorrelationId(request: IncomingMessage): string {
@@ -55,6 +56,7 @@ export function createWorkerHealthResponse(
     loopHealthy &&
     deps.deliveryGuaranteesReady &&
     deps.durableConsumerGuardReady &&
+    deps.webhookDeliveryExecutorReady &&
     consumersReady;
 
   return {
@@ -88,11 +90,13 @@ export function createWorkerHealthResponse(
             : 'Worker repositories running in-memory only'
       },
       worker: {
-        state: loopHealthy && consumersReady ? 'ready' : 'degraded',
+        state: loopHealthy && consumersReady && deps.webhookDeliveryExecutorReady ? 'ready' : 'degraded',
         detail: !deps.deliveryGuaranteesReady
           ? 'Worker is not ready: delivery guarantee schema is unavailable'
           : !deps.durableConsumerGuardReady
             ? 'Worker is not ready: durable consumer guard is unavailable'
+            : !deps.webhookDeliveryExecutorReady
+              ? 'Worker is not ready: durable webhook delivery executor is unavailable'
             : !consumersReady
               ? `Worker is not ready: missing event bus consumers: ${missingConsumers.join(', ') || 'manifest empty'}`
               : loopHealthy

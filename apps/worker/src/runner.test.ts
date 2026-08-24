@@ -4,6 +4,7 @@ import test from 'node:test';
 import type { Logger } from '@cvg-his-v2/shared-logging';
 import type { NotificationRepository } from '@cvg-his-v2/module-notifications';
 import type { OutboxRepository } from '@cvg-his-v2/module-event-bus';
+import type { WebhooksService } from '@cvg-his-v2/module-webhooks';
 import type { CorrelationId, ModuleName } from '@cvg-his-v2/shared-types';
 
 import {
@@ -12,6 +13,7 @@ import {
   createWorkerReports,
   runWorkerTick,
   runEventBusTick,
+  runWebhookDeliveriesTick,
   runScheduledReportsTick,
   resolveScheduledReportRows,
   type WorkerTickContext
@@ -176,6 +178,30 @@ test('runEventBusTick handles empty event queue', async () => {
   assert.equal(infoData.correlationId, 'test-correlation-123');
   assert.equal(infoData.databaseHealthy, true);
   assert.deepEqual(infoData.processedCorrelationIds, []);
+});
+
+test('runWebhookDeliveriesTick scopes the durable executor to the worker account', async () => {
+  let receivedAccountId: string | undefined;
+  let receivedWorkerId: string | undefined;
+  const webhooks = {
+    processPendingDeliveries: async (accountId: string, options: { readonly workerId: string }) => {
+      receivedAccountId = accountId;
+      receivedWorkerId = options.workerId;
+      return { claimed: 2, delivered: 1, retried: 1, failed: 0, leaseLost: 0 };
+    }
+  } as unknown as WebhooksService;
+
+  const result = await runWebhookDeliveriesTick(
+    mockLogger,
+    { ...mockContext, accountId: 'account-webhook-worker' as never },
+    webhooks,
+    'webhook-worker-test',
+    2
+  );
+
+  assert.deepEqual(result, { claimed: 2, delivered: 1, retried: 1, failed: 0, leaseLost: 0 });
+  assert.equal(receivedAccountId, 'account-webhook-worker');
+  assert.equal(receivedWorkerId, 'webhook-worker-test');
 });
 
 test('runScheduledReportsTick handles empty due report queue', async () => {

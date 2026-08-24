@@ -396,7 +396,7 @@ export class CashService {
     }
     const movements = await this.getMovements(registerId);
     const totalIn = movements
-      .filter((movement) => !['withdrawal', 'deposit'].includes(movement.movementType))
+      .filter((movement) => !['withdrawal', 'deposit', 'closing'].includes(movement.movementType))
       .reduce((sum, movement) => sum + movement.amount, 0);
     const totalOut = movements
       .filter((movement) => movement.movementType === 'withdrawal' || movement.movementType === 'deposit')

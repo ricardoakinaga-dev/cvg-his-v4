@@ -4,6 +4,7 @@ export interface EmailSendInput {
   readonly to: string;
   readonly subject: string;
   readonly text: string;
+  readonly idempotencyKey?: string;
 }
 
 export interface EmailSendResult {
@@ -61,7 +62,8 @@ export class ResendEmailGatewayAdapter implements EmailGateway {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${this.#apiKey}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...(input.idempotencyKey ? { 'Idempotency-Key': input.idempotencyKey } : {})
         },
         body: JSON.stringify({
           from: this.#from,

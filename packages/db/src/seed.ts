@@ -31,6 +31,7 @@ type SeedAdminCredentials = {
   readonly password: string;
   readonly username?: string;
   readonly fullName?: string;
+  readonly roleName?: string;
 };
 
 // Role seeds now use AccessControlService codes (not @cvg-his/rbac codes)
@@ -106,6 +107,14 @@ const permissionSeeds = [
   { key: 'discharges.manage', description: 'Permite gerenciar altas clinicas.' },
   { key: 'fiscal.read', description: 'Permite leitura de configuracoes fiscais.' },
   { key: 'fiscal.manage', description: 'Permite gerenciar configuracoes fiscais.' },
+  {
+    key: 'marketing.read',
+    description: 'Permite leitura de audiencias, campanhas e entregas de marketing.'
+  },
+  {
+    key: 'marketing.manage',
+    description: 'Permite gerenciar consentimentos, campanhas e entregas de marketing.'
+  },
   { key: 'product.read', description: 'Permite leitura do cadastro de produtos.' },
   { key: 'product.write', description: 'Permite gerenciar o cadastro de produtos.' },
   {
@@ -406,14 +415,15 @@ async function seedAdminUser(
     .where(and(eq(users.accountId, accountId), eq(users.email, adminEmail)))
     .limit(1);
 
+  const roleName = credentials?.roleName ?? 'admin';
   const [adminRole] = await db
     .select({ id: roles.id })
     .from(roles)
-    .where(eq(roles.name, 'admin'))
+    .where(eq(roles.name, roleName))
     .limit(1);
 
   if (!adminUser || !adminRole) {
-    console.warn('Nao foi possivel vincular usuario admin ao role admin.');
+    console.warn(`Nao foi possivel vincular usuario ${adminEmail} ao role ${roleName}.`);
     return;
   }
 
@@ -431,6 +441,18 @@ async function runSeed(): Promise<void> {
     const { accountId, unitId } = await ensureDefaultAccountAndUnit();
     await seedPermissionsAndRoles();
     await seedAdminUser(accountId, unitId);
+
+    const receptionEmail = process.env.RECEPTION_EMAIL?.trim();
+    const receptionPassword = process.env.RECEPTION_PASSWORD;
+    if (receptionEmail && receptionPassword) {
+      await seedAdminUser(accountId, unitId, {
+        email: receptionEmail,
+        password: receptionPassword,
+        username: process.env.RECEPTION_USERNAME?.trim() || receptionEmail.split('@')[0]!,
+        fullName: 'Recepção E2E',
+        roleName: 'reception'
+      });
+    }
 
     const secondAdminEmail = process.env.SECOND_ADMIN_EMAIL?.trim();
     const secondAdminPassword = process.env.SECOND_ADMIN_PASSWORD;

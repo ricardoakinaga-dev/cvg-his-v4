@@ -1654,7 +1654,7 @@ paths:
                   format: uuid
                 relationshipType:
                   type: string
-                  enum: [primary, secondary, emergency_contact, financial_responsible]
+                  enum: [primary, secondary, financial, authorized, spouse]
                 financialResponsible:
                   type: boolean
       responses:
@@ -1809,6 +1809,53 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Patient'
+
+  /patients/{patientId}/owner:
+    get:
+      operationId: getPatientOwner
+      summary: Get the primary owner snapshot for a patient
+      description: Returns the tenant-scoped owner fields needed by patient-facing workflows.
+      tags: [Patients]
+      parameters:
+        - name: patientId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Primary owner snapshot
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ownerId, owner]
+                properties:
+                  ownerId:
+                    type: string
+                    format: uuid
+                  owner:
+                    type: object
+                    required: [id, fullName, contacts, financialResponsible, status]
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      fullName:
+                        type: string
+                      documentId:
+                        type: string
+                        nullable: true
+                      contacts:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/OwnerContact'
+                      financialResponsible:
+                        type: boolean
+                      status:
+                        type: string
+                        enum: [active, inactive]
 
   /patients/{patientId}/summary:
     get:
@@ -2551,6 +2598,85 @@ paths:
       responses:
         '201':
           description: Patient checked in
+
+  /queue/{queueEntryId}/transfer:
+    post:
+      operationId: queueTransfer
+      summary: Send queue entry to another sector
+      description: Sends an operational handoff. The receiving sector must acknowledge it explicitly before another transfer can be opened.
+      tags: [Queue]
+      parameters:
+        - name: queueEntryId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferQueueEntryRequest'
+      responses:
+        '200':
+          description: Queue entry transferred
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueEntry'
+        '409':
+          description: A pending transfer already exists
+
+  /queue/{queueEntryId}/transfers:
+    get:
+      operationId: listQueueTransfers
+      summary: List queue transfer history
+      tags: [Queue]
+      parameters:
+        - name: queueEntryId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Transfer history
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/QueueTransfer'
+
+  /queue/{queueEntryId}/transfers/{transferId}/receive:
+    post:
+      operationId: receiveQueueTransfer
+      summary: Acknowledge receipt of a queue transfer
+      tags: [Queue]
+      parameters:
+        - name: queueEntryId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: transferId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Transfer received
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueEntry'
+        '409':
+          description: Transfer is already received
 
   /queue/{queueEntryId}/call:
     post:
@@ -7451,6 +7577,126 @@ paths:
               schema:
                 $ref: '#/components/schemas/OperationalAuditCoverageReport'
 
+  /professions:
+    get:
+      operationId: listProfessions
+      summary: List tenant profession master data
+      tags: [Staff]
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: isActive
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Profession master data
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Profession'
+    post:
+      operationId: createProfession
+      summary: Create a profession master record
+      tags: [Staff]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code, name]
+              properties:
+                code:
+                  type: string
+                name:
+                  type: string
+                description:
+                  type: string
+                  nullable: true
+      responses:
+        '201':
+          description: Profession created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profession'
+
+  /professions/{professionId}:
+    patch:
+      operationId: updateProfession
+      summary: Update a profession master record
+      tags: [Staff]
+      parameters:
+        - name: professionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+                name:
+                  type: string
+                description:
+                  type: string
+                  nullable: true
+                isActive:
+                  type: boolean
+      responses:
+        '200':
+          description: Profession updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profession'
+
+  /professions/{professionId}/toggle-active:
+    post:
+      operationId: toggleProfessionActive
+      summary: Toggle profession eligibility
+      tags: [Staff]
+      parameters:
+        - name: professionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [isActive]
+              properties:
+                isActive:
+                  type: boolean
+      responses:
+        '200':
+          description: Profession eligibility updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profession'
+
   /staff:
     get:
       operationId: listStaff
@@ -7492,6 +7738,9 @@ paths:
                   type: string
                 jobTitle:
                   type: string
+                professionId:
+                  type: string
+                  format: uuid
       responses:
         '201':
           description: Staff member created
@@ -7601,6 +7850,10 @@ paths:
                   type: string
                 jobTitle:
                   type: string
+                professionId:
+                  type: string
+                  format: uuid
+                  nullable: true
                 isActive:
                   type: boolean
       responses:
@@ -8095,7 +8348,7 @@ paths:
     post:
       operationId: openCounterSale
       summary: Open counter sale
-      description: Opens a new counter sale/comanda for an optional owner.
+      description: Opens a new counter sale/comanda linked to the optional clinical episode.
       tags: [Counter Sales]
       requestBody:
         required: false
@@ -8115,7 +8368,7 @@ paths:
     get:
       operationId: getCounterSale
       summary: Get counter sale detail
-      description: Returns a counter sale with its items and payments.
+      description: Returns a counter sale with its items, payments and immutable financial receipt.
       tags: [Counter Sales]
       parameters:
         - name: counterSaleId
@@ -8251,7 +8504,45 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CounterSale'
+                $ref: '#/components/schemas/CounterSaleCloseResponse'
+
+  /counter-sales/{counterSaleId}/settle:
+    post:
+      operationId: settleCounterSale
+      summary: Settle and close counter sale atomically
+      description: Registers the final payment set and closes the counter sale in one idempotent tenant transaction, including inventory, cash, journal, receipt, audit and outbox effects.
+      tags: [Counter Sales]
+      parameters:
+        - name: counterSaleId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: Stable key for safe replay of the settlement command.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 255
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SettleCounterSaleRequest'
+      responses:
+        '200':
+          description: Counter sale settled and closed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CounterSaleCloseResponse'
+        '400':
+          description: Invalid settlement payload
+        '409':
+          description: Settlement conflict or idempotency conflict
 
   /counter-sales/{counterSaleId}/cancel:
     post:
@@ -11912,6 +12203,7 @@ components:
           type: string
         relationshipType:
           type: string
+          enum: [primary, secondary, financial, authorized, spouse]
         financialResponsible:
           type: boolean
         createdAt:
@@ -12393,6 +12685,89 @@ components:
         calledAt:
           type: string
           format: date-time
+
+    QueueTransfer:
+      type: object
+      required: [id, accountId, queueEntryId, fromSector, toSector, sentByUserId, sentAt, status, reason, urgency, createdAt]
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+          format: uuid
+        queueEntryId:
+          type: string
+        encounterId:
+          type: string
+          format: uuid
+        fromSector:
+          type: string
+        toSector:
+          type: string
+        sentByUserId:
+          type: string
+          format: uuid
+        sentAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [sent, received]
+        receivedByUserId:
+          type: string
+          format: uuid
+        receivedAt:
+          type: string
+          format: date-time
+        responsibleUserId:
+          type: string
+          format: uuid
+        responsibleStaffId:
+          type: string
+          format: uuid
+        nextSector:
+          type: string
+        reason:
+          type: string
+        urgency:
+          type: string
+          enum: [low, medium, high, critical]
+        billingRecordId:
+          type: string
+        counterSaleId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    TransferQueueEntryRequest:
+      type: object
+      required: [toSector, reason]
+      additionalProperties: false
+      properties:
+        toSector:
+          type: string
+          minLength: 1
+        sentByUserId:
+          type: string
+        receivedByUserId:
+          type: string
+        responsibleUserId:
+          type: string
+        responsibleStaffId:
+          type: string
+        nextSector:
+          type: string
+        reason:
+          type: string
+          minLength: 1
+        urgency:
+          type: string
+          enum: [low, medium, high, critical]
+        billingRecordId:
+          type: string
+        counterSaleId:
+          type: string
 
     CheckInQueueRequest:
       type: object
@@ -15832,6 +16207,33 @@ components:
           type: string
           enum: [complete, partial, read-only]
 
+    Profession:
+      type: object
+      required: [id, accountId, code, name, status, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        accountId:
+          type: string
+          format: uuid
+        code:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [active, inactive]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
     StaffMember:
       type: object
       properties:
@@ -15846,6 +16248,10 @@ components:
           type: string
         jobTitle:
           type: string
+        professionId:
+          type: string
+          format: uuid
+          nullable: true
         isActive:
           type: boolean
 
@@ -16106,6 +16512,10 @@ components:
         - accountId
         - number
         - ownerId
+        - patientId
+        - encounterId
+        - queueEntryId
+        - billingRecordId
         - status
         - subtotal
         - discountAmount
@@ -16124,6 +16534,18 @@ components:
           type: string
           example: CS-000001
         ownerId:
+          type: string
+          nullable: true
+        patientId:
+          type: string
+          nullable: true
+        encounterId:
+          type: string
+          nullable: true
+        queueEntryId:
+          type: string
+          nullable: true
+        billingRecordId:
           type: string
           nullable: true
         status:
@@ -16159,6 +16581,49 @@ components:
           type: string
           format: date-time
         updatedAt:
+          type: string
+          format: date-time
+
+    CounterSaleReceipt:
+      type: object
+      required:
+        - id
+        - accountId
+        - counterSaleId
+        - amount
+        - currency
+        - receivedByUserId
+        - receivedAt
+        - createdAt
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        counterSaleId:
+          type: string
+        amount:
+          type: number
+          format: double
+          minimum: 0.01
+        currency:
+          type: string
+          enum: [BRL]
+        receivedByUserId:
+          type: string
+        receivedAt:
+          type: string
+          format: date-time
+        cashRegisterId:
+          type: string
+          nullable: true
+        cashMovementId:
+          type: string
+          nullable: true
+        journalEntryId:
+          type: string
+          nullable: true
+        createdAt:
           type: string
           format: date-time
 
@@ -16267,6 +16732,19 @@ components:
               type: array
               items:
                 $ref: '#/components/schemas/CounterSalePayment'
+            receipt:
+              allOf:
+                - $ref: '#/components/schemas/CounterSaleReceipt'
+              nullable: true
+
+    CounterSaleCloseResponse:
+      allOf:
+        - $ref: '#/components/schemas/CounterSale'
+        - type: object
+          required: [receipt]
+          properties:
+            receipt:
+              $ref: '#/components/schemas/CounterSaleReceipt'
 
     CounterSalesListResponse:
       type: object
@@ -16281,6 +16759,18 @@ components:
       type: object
       properties:
         ownerId:
+          type: string
+          nullable: true
+        patientId:
+          type: string
+          nullable: true
+        encounterId:
+          type: string
+          nullable: true
+        queueEntryId:
+          type: string
+          nullable: true
+        billingRecordId:
           type: string
           nullable: true
         notes:
@@ -16353,6 +16843,18 @@ components:
         notes:
           type: string
           nullable: true
+
+    SettleCounterSaleRequest:
+      type: object
+      required: [payments]
+      additionalProperties: false
+      properties:
+        payments:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/CreateCounterSalePaymentRequest'
 
     CounterSalesCommercialDashboard:
       type: object
@@ -17225,9 +17727,12 @@ components:
           type: string
         status:
           type: string
-          enum: [pending, delivered, failed]
+          enum: [pending, processing, retrying, delivered, failed]
         attempts:
           type: integer
+        maxAttempts:
+          type: integer
+          minimum: 1
         lastAttemptAt:
           type: string
           format: date-time
@@ -17235,7 +17740,12 @@ components:
           type: integer
         responseBody:
           type: string
+        responseError:
+          type: string
         nextRetryAt:
+          type: string
+          format: date-time
+        deadLetteredAt:
           type: string
           format: date-time
         createdAt:

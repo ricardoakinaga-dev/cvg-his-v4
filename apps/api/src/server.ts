@@ -5312,7 +5312,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           if (pathname === '/encounters' && request.method === 'POST') {
             const principal = requirePrincipal(request, 'encounters.manage');
             const payload = (await readJsonBody(request)) as CreateEncounterRequest;
-            const encounter = encounters.openEncounter(
+            const encounter = await encounters.openEncounterAuthoritatively(
               principal.user.accountId,
               principal.user.id,
               payload
@@ -5562,7 +5562,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                 encounterId
               );
             }
-            const encounter = encounters.reopenEncounter(
+            const encounter = await encounters.reopenEncounterAuthoritatively(
               encounterId as never,
               principal.user.id,
               payload.reason
@@ -5919,7 +5919,8 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
             await handleCounterSalesRoutes(pathname, request, response, correlationId, {
               counterSales,
               audit,
-              requirePrincipal
+              requirePrincipal,
+              runCommand: runTenantCommand
             })
           ) {
             return;

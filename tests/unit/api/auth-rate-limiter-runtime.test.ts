@@ -95,4 +95,21 @@ describe('auth-rate-limiter runtime coverage', () => {
       runtimeDistributedStateEnabled: true
     });
   });
+
+  it('fails closed when production-like distributed rate limiting is not configured', () => {
+    const logger = { info: vi.fn(), warn: vi.fn() };
+
+    expect(() =>
+      createAuthRateLimiter(logger, {
+        requireDistributed: true
+      })
+    ).toThrow(/Distributed auth rate limiting is required/);
+
+    expect(() =>
+      createAuthRateLimiter(logger, {
+        requireDistributed: true,
+        runtimeDistributedStateEnabled: true
+      })
+    ).toThrow(/Distributed auth rate limiting is required/);
+  });
 });

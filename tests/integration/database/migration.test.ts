@@ -70,6 +70,9 @@ describe('Migration — Table Existence', () => {
     'payments',
     'cash_registers',
     'cash_movements',
+    'counter_sales',
+    'counter_sale_receipts',
+    'scheduling_queue_transfers',
     'staff',
     'notifications',
     'notification_jobs',
@@ -269,7 +272,10 @@ describe('Migration 0065 — Tenant Isolation Contract', () => {
     'webhooks',
     'webhook_deliveries',
     'encounter_timeline',
-    'owner_patient_links'
+    'owner_patient_links',
+    'counter_sales',
+    'counter_sale_receipts',
+    'scheduling_queue_transfers'
   ];
 
   const UUID_REFERENCE_COLUMNS = [
@@ -277,7 +283,11 @@ describe('Migration 0065 — Tenant Isolation Contract', () => {
     { tableName: 'encounter_timeline', columnName: 'encounter_id', nullable: false },
     { tableName: 'encounter_timeline', columnName: 'actor_user_id', nullable: true },
     { tableName: 'owner_patient_links', columnName: 'owner_id', nullable: false },
-    { tableName: 'owner_patient_links', columnName: 'patient_id', nullable: false }
+    { tableName: 'owner_patient_links', columnName: 'patient_id', nullable: false },
+    { tableName: 'counter_sales', columnName: 'patient_id', nullable: true },
+    { tableName: 'counter_sales', columnName: 'encounter_id', nullable: true },
+    { tableName: 'scheduling_queue_transfers', columnName: 'encounter_id', nullable: true },
+    { tableName: 'scheduling_queue_transfers', columnName: 'counter_sale_id', nullable: true }
   ];
 
   const COMPOSITE_TENANT_FOREIGN_KEYS = [
@@ -315,6 +325,84 @@ describe('Migration 0065 — Tenant Isolation Contract', () => {
       tableName: 'owner_patient_links',
       columns: ['account_id', 'patient_id'],
       referencedTable: 'patients',
+      referencedColumns: ['account_id', 'id']
+    },
+    {
+      tableName: 'counter_sales',
+      columns: ['account_id', 'patient_id'],
+      referencedTable: 'patients',
+      referencedColumns: ['account_id', 'id']
+    },
+    {
+      tableName: 'counter_sales',
+      columns: ['account_id', 'encounter_id'],
+      referencedTable: 'encounters',
+      referencedColumns: ['account_id', 'id']
+    },
+    {
+      tableName: 'counter_sales',
+      columns: ['account_id', 'queue_entry_id'],
+      referencedTable: 'scheduling_queue_entries',
+      referencedColumns: ['account_id', 'id']
+    },
+    {
+      tableName: 'counter_sales',
+      columns: ['account_id', 'billing_record_id'],
+      referencedTable: 'billing_records',
+      referencedColumns: ['account_id', 'id']
+    },
+    {
+      tableName: 'counter_sale_receipts',
+      columns: ['account_id', 'counter_sale_id'],
+      referencedTable: 'counter_sales',
+      referencedColumns: ['account_id', 'id']
+    },
+    {
+      tableName: 'counter_sale_receipts',
+      columns: ['account_id', 'received_by_user_id'],
+      referencedTable: 'users',
+      referencedColumns: ['account_id', 'id']
+    },
+    {
+      tableName: 'counter_sale_receipts',
+      columns: ['account_id', 'cash_register_id'],
+      referencedTable: 'cash_registers',
+      referencedColumns: ['account_id', 'id']
+    },
+    {
+      tableName: 'counter_sale_receipts',
+      columns: ['account_id', 'cash_movement_id'],
+      referencedTable: 'cash_movements',
+      referencedColumns: ['account_id', 'id']
+    },
+    {
+      tableName: 'counter_sale_receipts',
+      columns: ['account_id', 'journal_entry_id'],
+      referencedTable: 'financial_journal_entries',
+      referencedColumns: ['account_id', 'id']
+    },
+    {
+      tableName: 'scheduling_queue_transfers',
+      columns: ['account_id', 'queue_entry_id'],
+      referencedTable: 'scheduling_queue_entries',
+      referencedColumns: ['account_id', 'id']
+    },
+    {
+      tableName: 'scheduling_queue_transfers',
+      columns: ['account_id', 'encounter_id'],
+      referencedTable: 'encounters',
+      referencedColumns: ['account_id', 'id']
+    },
+    {
+      tableName: 'scheduling_queue_transfers',
+      columns: ['account_id', 'billing_record_id'],
+      referencedTable: 'billing_records',
+      referencedColumns: ['account_id', 'id']
+    },
+    {
+      tableName: 'scheduling_queue_transfers',
+      columns: ['account_id', 'counter_sale_id'],
+      referencedTable: 'counter_sales',
       referencedColumns: ['account_id', 'id']
     }
   ];

@@ -4,7 +4,18 @@ export type MarketingChannel = 'sms' | 'whatsapp' | 'email';
 export type MarketingCampaignStatus = 'draft' | 'scheduled' | 'running' | 'sent' | 'cancelled';
 export type MarketingDeliveryStatus = 'queued' | 'sent' | 'failed' | 'skipped';
 export type MarketingConsentPurpose = 'marketing' | 'transactional' | 'preventive';
+export type MarketingConsentStatus = 'granted' | 'revoked';
 export type MarketingSettingKey = 'sms_automations' | 'vaccine_email';
+
+export interface MarketingConsentSummary {
+  readonly id: string;
+  readonly accountId: string;
+  readonly ownerId: string;
+  readonly purpose: 'marketing';
+  readonly status: MarketingConsentStatus;
+  readonly updatedByUserId: string;
+  readonly updatedAt: string;
+}
 
 export interface MarketingSettingSummary {
   readonly accountId: string;
@@ -82,6 +93,7 @@ export interface MarketingCampaignDeliverySummary {
   readonly id: string;
   readonly accountId: string;
   readonly campaignId: string;
+  readonly deliveryKey: string;
   readonly ownerId: string;
   readonly patientId?: string;
   readonly channel: MarketingChannel;
@@ -118,7 +130,29 @@ interface SettingResponse {
   readonly setting: MarketingSettingSummary | null;
 }
 
+interface ConsentResponse {
+  readonly consent: MarketingConsentSummary | null;
+}
+
 export const marketingService = {
+  async getConsent(ownerId: string): Promise<MarketingConsentSummary | null> {
+    const response = await apiRequest<ConsentResponse>(
+      `/marketing/consent?ownerId=${encodeURIComponent(ownerId)}`
+    );
+    return response.consent ?? null;
+  },
+
+  async setConsent(payload: {
+    readonly ownerId: string;
+    readonly status: MarketingConsentStatus;
+  }): Promise<MarketingConsentSummary> {
+    const action = payload.status === 'revoked' ? 'opt-out' : 'opt-in';
+    return apiRequest<MarketingConsentSummary>(`/marketing/consent/${action}`, {
+      method: 'POST',
+      body: JSON.stringify({ ownerId: payload.ownerId })
+    });
+  },
+
   async listSegments(): Promise<MarketingSegmentSummary[]> {
     const response = await apiRequest<ListResponse<MarketingSegmentSummary>>('/marketing/segments');
     return [...(response.items ?? [])];
@@ -193,6 +227,13 @@ export const marketingService = {
       `/marketing/campaigns/${encodeURIComponent(campaignId)}/deliveries`
     );
     return [...(response.items ?? [])];
+  },
+
+  async retryDelivery(deliveryId: string): Promise<MarketingCampaignDeliverySummary> {
+    return apiRequest<MarketingCampaignDeliverySummary>(
+      `/marketing/deliveries/${encodeURIComponent(deliveryId)}/retry`,
+      { method: 'POST' }
+    );
   },
 
   async getSetting(key: MarketingSettingKey): Promise<MarketingSettingSummary | null> {

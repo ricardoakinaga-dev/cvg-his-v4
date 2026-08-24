@@ -3,6 +3,7 @@ import { Writable } from 'node:stream';
 import test from 'node:test';
 
 import { UsersService } from '@cvg-his-v2/module-users';
+import { StaffService } from '@cvg-his-v2/module-staff';
 import { NotFoundError } from '@cvg-his-v2/shared-errors';
 import type { AccountId, AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 
@@ -149,4 +150,76 @@ test('user routes reject cross-account reads and updates', async () => {
       ),
     NotFoundError
   );
+});
+
+test('profession routes keep the master data and staff link scoped to the current account', async () => {
+  const users = new UsersService({ seedUsersEnabled: false });
+  const staff = new StaffService(undefined, []);
+  const routeHandlers = { ...handlers(users, 'acc_local' as AccountId), staff };
+
+  const createProfessionResponse = new MockResponse();
+  await handleUsersStaffQuotesRoutes(
+    '/professions',
+    request('POST', '/professions', {
+      code: 'VET-CLIN',
+      name: 'Médico Veterinário',
+      description: 'Atendimento clínico'
+    }),
+    createProfessionResponse as never,
+    'corr-profession-create',
+    routeHandlers
+  );
+  assert.equal(createProfessionResponse.statusCode, 201);
+  const profession = createProfessionResponse.bodyJson<{ id: string; status: string }>();
+  assert.equal(profession.status, 'active');
+
+  const listResponse = new MockResponse();
+  await handleUsersStaffQuotesRoutes(
+    '/professions',
+    request('GET', '/professions'),
+    listResponse as never,
+    'corr-profession-list',
+    routeHandlers
+  );
+  assert.deepEqual(listResponse.bodyJson<{ items: Array<{ id: string }> }>().items.map((item) => item.id), [
+    profession.id
+  ]);
+
+  const createStaffResponse = new MockResponse();
+  await handleUsersStaffQuotesRoutes(
+    '/staff',
+    request('POST', '/staff', {
+      employeeCode: 'VET-001',
+      fullName: 'Dra. Ana',
+      professionId: profession.id
+    }),
+    createStaffResponse as never,
+    'corr-staff-create',
+    routeHandlers
+  );
+  assert.equal(createStaffResponse.statusCode, 201);
+  assert.equal(
+    createStaffResponse.bodyJson<{ professionId: string }>().professionId,
+    profession.id
+  );
+
+  const toggleResponse = new MockResponse();
+  await handleUsersStaffQuotesRoutes(
+    `/professions/${profession.id}/toggle-active`,
+    request('POST', `/professions/${profession.id}/toggle-active`, { isActive: false }),
+    toggleResponse as never,
+    'corr-profession-toggle',
+    routeHandlers
+  );
+  assert.equal(toggleResponse.bodyJson<{ status: string }>().status, 'inactive');
+
+  const otherAccountResponse = new MockResponse();
+  await handleUsersStaffQuotesRoutes(
+    '/professions',
+    request('GET', '/professions'),
+    otherAccountResponse as never,
+    'corr-profession-other',
+    { ...handlers(users, 'acc_other' as AccountId), staff }
+  );
+  assert.deepEqual(otherAccountResponse.bodyJson<{ items: unknown[] }>().items, []);
 });

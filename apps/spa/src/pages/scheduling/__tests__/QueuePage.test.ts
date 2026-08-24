@@ -334,8 +334,10 @@ describe('QueuePage', () => {
     expect(wrapper.text()).toContain('Comanda');
     expect(wrapper.text()).toContain('Prontuário');
     const hrefs = wrapper.findAll('a').map((link) => link.attributes('href'));
-    expect(hrefs).toContain('/counter-sales?patientId=pat-1&ownerId=owner-1');
-    expect(hrefs).toContain('/counter-sales?encounterId=enc-1&patientId=pat-3&ownerId=owner-1');
+    expect(hrefs).toContain('/counter-sales?patientId=pat-1&ownerId=owner-1&queueEntryId=q-1');
+    expect(hrefs).toContain(
+      '/counter-sales?encounterId=enc-1&patientId=pat-3&ownerId=owner-1&queueEntryId=q-3'
+    );
     expect(wrapper.text()).toContain('Maria Silva');
     expect(wrapper.text()).toContain('RECEPÇÃO');
     expect(wrapper.text()).toContain('Destino provável');

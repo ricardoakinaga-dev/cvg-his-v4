@@ -1,11 +1,21 @@
 import { ConflictError, NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
-import type { AccountId, StaffId, StaffSummary, UserId } from '@cvg-his-v2/shared-types';
+import type {
+  AccountId,
+  ProfessionId,
+  ProfessionSummary,
+  StaffId,
+  StaffSummary,
+  UserId
+} from '@cvg-his-v2/shared-types';
 import { nowIso } from '@cvg-his-v2/shared-utils';
 import type {
   StaffRecord,
   StaffCreateInput,
   StaffUpdateInput,
-  StaffRepository
+  StaffRepository,
+  ProfessionRecord,
+  ProfessionCreateInput,
+  ProfessionUpdateInput
 } from './repositories/database-staff.repository.js';
 import {
   createStaffTimeOffId,
@@ -114,6 +124,7 @@ export class StaffService {
   readonly #timeOffRepository?: StaffTimeOffRepository;
   readonly #staffById = new Map<StaffId, StaffSummary>();
   readonly #staffByUserId = new Map<UserId, StaffSummary>();
+  readonly #professionById = new Map<ProfessionId, ProfessionSummary>();
   readonly #timeOffById = new Map<string, StaffTimeOffSummary>();
 
   public constructor(
@@ -136,20 +147,16 @@ export class StaffService {
 
   public async hydrateFromDatabase(accountId?: AccountId): Promise<void> {
     if (this.#repository) {
+      if (accountId && this.#repository.findProfessionsByAccountId) {
+        const professions = await this.#repository.findProfessionsByAccountId(accountId);
+        for (const record of professions) {
+          const summary = this.toProfessionSummary(record);
+          this.#professionById.set(summary.id, summary);
+        }
+      }
       const dbStaff = await this.#repository.findByAccountId(accountId);
       for (const record of dbStaff) {
-        const summary: StaffSummary = {
-          id: record.id as StaffId,
-          accountId: record.accountId,
-          userId: record.userId ?? (undefined as UserId | undefined),
-          employeeCode: record.employeeCode,
-          fullName: record.fullName,
-          department: record.department ?? '',
-          jobTitle: record.jobTitle ?? '',
-          status: record.isActive ? 'active' : 'inactive',
-          createdAt: record.createdAt,
-          updatedAt: record.updatedAt
-        };
+        const summary = this.toStaffSummary(record);
         this.#staffById.set(summary.id, summary);
         if (summary.userId) {
           this.#staffByUserId.set(summary.userId, summary);
@@ -278,9 +285,127 @@ export class StaffService {
   }
 
   public list(accountId?: AccountId): readonly StaffSummary[] {
-    return Array.from(this.#staffById.values()).filter(
-      (s) => !accountId || s.accountId === accountId
-    );
+    return Array.from(this.#staffById.values())
+      .filter((s) => !accountId || s.accountId === accountId)
+      .map((staff) => ({ ...staff }));
+  }
+
+  public listProfessions(
+    accountId: AccountId,
+    filters?: { readonly search?: string; readonly isActive?: boolean }
+  ): readonly ProfessionSummary[] {
+    const search = filters?.search?.trim().toLocaleLowerCase() ?? '';
+    return Array.from(this.#professionById.values())
+      .filter((profession) => profession.accountId === accountId)
+      .filter((profession) => filters?.isActive === undefined || profession.status === (filters.isActive ? 'active' : 'inactive'))
+      .filter(
+        (profession) =>
+          !search ||
+          profession.code.toLocaleLowerCase().includes(search) ||
+          profession.name.toLocaleLowerCase().includes(search) ||
+          (profession.description ?? '').toLocaleLowerCase().includes(search)
+      )
+      .sort((left, right) => left.name.localeCompare(right.name))
+      .map((profession) => ({ ...profession }));
+  }
+
+  public async createProfession(
+    accountId: AccountId,
+    input: { readonly code: string; readonly name: string; readonly description?: string | null }
+  ): Promise<ProfessionSummary> {
+    const code = this.requireProfessionValue(input.code, 'code');
+    const name = this.requireProfessionValue(input.name, 'name');
+    const existing = await this.loadProfessionsForAccount(accountId);
+    if (existing.some((profession) => profession.code.toLocaleLowerCase() === code.toLocaleLowerCase())) {
+      throw new ConflictError('A profession with this code already exists', { code });
+    }
+    if (existing.some((profession) => profession.name.toLocaleLowerCase() === name.toLocaleLowerCase())) {
+      throw new ConflictError('A profession with this name already exists', { name });
+    }
+
+    const createInput: ProfessionCreateInput = {
+      accountId,
+      code,
+      name,
+      description: input.description?.trim() || null
+    };
+    const record = this.#repository?.createProfession
+      ? await this.#repository.createProfession(createInput)
+      : this.createInMemoryProfession(createInput);
+    const summary = this.toProfessionSummary(record);
+    this.#professionById.set(summary.id, summary);
+    return { ...summary };
+  }
+
+  public async toggleProfession(
+    professionId: string,
+    isActive: boolean,
+    accountId: AccountId
+  ): Promise<ProfessionSummary> {
+    const current = await this.getProfessionOrThrow(professionId, accountId);
+    const update: ProfessionUpdateInput = { isActive };
+    const record = this.#repository?.updateProfession
+      ? await this.#repository.updateProfession(professionId, update)
+      : this.updateInMemoryProfession(current, update);
+    const summary = this.toProfessionSummary(record);
+    this.#professionById.set(summary.id, summary);
+    return { ...summary };
+  }
+
+  public async updateProfession(
+    professionId: string,
+    accountId: AccountId,
+    input: {
+      readonly code?: string;
+      readonly name?: string;
+      readonly description?: string | null;
+      readonly isActive?: boolean;
+    }
+  ): Promise<ProfessionSummary> {
+    const current = await this.getProfessionOrThrow(professionId, accountId);
+    const code = input.code === undefined ? current.code : this.requireProfessionValue(input.code, 'code');
+    const name = input.name === undefined ? current.name : this.requireProfessionValue(input.name, 'name');
+    const existing = await this.loadProfessionsForAccount(accountId);
+    if (existing.some((profession) => profession.id !== current.id && profession.code.toLocaleLowerCase() === code.toLocaleLowerCase())) {
+      throw new ConflictError('A profession with this code already exists', { code });
+    }
+    if (existing.some((profession) => profession.id !== current.id && profession.name.toLocaleLowerCase() === name.toLocaleLowerCase())) {
+      throw new ConflictError('A profession with this name already exists', { name });
+    }
+    const update: ProfessionUpdateInput = {
+      code,
+      name,
+      description: input.description === undefined ? current.description : input.description?.trim() || null,
+      isActive: input.isActive
+    };
+    const record = this.#repository?.updateProfession
+      ? await this.#repository.updateProfession(professionId, update)
+      : this.updateInMemoryProfession(current, update);
+    const summary = this.toProfessionSummary(record);
+    this.#professionById.set(summary.id, summary);
+    return { ...summary };
+  }
+
+  public async getProfessionOrThrow(
+    professionId: string,
+    accountId: AccountId
+  ): Promise<ProfessionSummary> {
+    const cached = this.#professionById.get(professionId as ProfessionId);
+    if (cached) {
+      if (cached.accountId !== accountId) {
+        throw new NotFoundError('Profession not found', { professionId });
+      }
+      return { ...cached };
+    }
+    const record = this.#repository?.findProfessionById
+      ? await this.#repository.findProfessionById(professionId)
+      : null;
+    if (!record || record.accountId !== accountId) {
+      throw new NotFoundError('Profession not found', { professionId });
+    }
+    const summary = this.toProfessionSummary(record);
+    this.#professionById.set(summary.id, summary);
+    return { ...summary };
   }
 
   public getOrThrow(staffId: StaffId, accountId?: AccountId): StaffSummary {
@@ -303,15 +428,18 @@ export class StaffService {
       readonly userId?: UserId | null;
       readonly department?: string | null;
       readonly jobTitle?: string | null;
+      readonly professionId?: string | null;
     }
   ): Promise<StaffSummary> {
+    const professionId = await this.validateProfessionForStaff(accountId, input.professionId);
     const createInput: StaffCreateInput = {
       accountId,
       userId: input.userId ?? null,
       employeeCode: input.employeeCode,
       fullName: input.fullName,
       department: input.department ?? null,
-      jobTitle: input.jobTitle ?? null
+      jobTitle: input.jobTitle ?? null,
+      professionId
     };
 
     let record: StaffRecord;
@@ -328,24 +456,14 @@ export class StaffService {
         fullName: input.fullName,
         department: input.department ?? null,
         jobTitle: input.jobTitle ?? null,
+        professionId,
         isActive: true,
         createdAt: now,
         updatedAt: now
       };
     }
 
-    const summary: StaffSummary = {
-      id: record.id as StaffId,
-      accountId: record.accountId,
-      userId: record.userId ?? (undefined as UserId | undefined),
-      employeeCode: record.employeeCode,
-      fullName: record.fullName,
-      department: record.department ?? '',
-      jobTitle: record.jobTitle ?? '',
-      status: record.isActive ? 'active' : 'inactive',
-      createdAt: record.createdAt,
-      updatedAt: record.updatedAt
-    };
+    const summary = this.toStaffSummary(record);
     this.#staffById.set(summary.id, summary);
     if (summary.userId) {
       this.#staffByUserId.set(summary.userId, summary);
@@ -359,14 +477,20 @@ export class StaffService {
       readonly fullName?: string;
       readonly department?: string | null;
       readonly jobTitle?: string | null;
+      readonly professionId?: string | null;
       readonly isActive?: boolean;
     }
   ): Promise<StaffSummary> {
     const existing = this.getOrThrow(staffId);
+    const professionId =
+      input.professionId === undefined
+        ? (existing.professionId ?? null)
+        : await this.validateProfessionForStaff(existing.accountId, input.professionId);
     const updateInput: StaffUpdateInput = {
       fullName: input.fullName,
       department: input.department,
       jobTitle: input.jobTitle,
+      professionId,
       isActive: input.isActive
     };
 
@@ -384,24 +508,14 @@ export class StaffService {
         department:
           input.department !== undefined ? input.department : (existing.department ?? null),
         jobTitle: input.jobTitle !== undefined ? input.jobTitle : (existing.jobTitle ?? null),
+        professionId,
         isActive: input.isActive !== undefined ? input.isActive : existing.status === 'active',
         createdAt: existing.createdAt,
         updatedAt: now
       };
     }
 
-    const summary: StaffSummary = {
-      id: record.id as StaffId,
-      accountId: record.accountId,
-      userId: record.userId ?? (undefined as UserId | undefined),
-      employeeCode: record.employeeCode,
-      fullName: record.fullName,
-      department: record.department ?? '',
-      jobTitle: record.jobTitle ?? '',
-      status: record.isActive ? 'active' : 'inactive',
-      createdAt: record.createdAt,
-      updatedAt: record.updatedAt
-    };
+    const summary = this.toStaffSummary(record);
     this.#staffById.set(summary.id, summary);
     if (summary.userId) {
       this.#staffByUserId.set(summary.userId, summary);
@@ -412,6 +526,95 @@ export class StaffService {
   async toggleActive(staffId: StaffId, isActive: boolean): Promise<StaffSummary> {
     return this.update(staffId, { isActive });
   }
+
+  private async loadProfessionsForAccount(accountId: AccountId): Promise<readonly ProfessionSummary[]> {
+    if (this.#repository?.findProfessionsByAccountId) {
+      const records = await this.#repository.findProfessionsByAccountId(accountId);
+      for (const record of records) {
+        const summary = this.toProfessionSummary(record);
+        this.#professionById.set(summary.id, summary);
+      }
+    }
+    return this.listProfessions(accountId);
+  }
+
+  private async validateProfessionForStaff(
+    accountId: AccountId,
+    professionId: string | null | undefined
+  ): Promise<string | null> {
+    if (professionId === undefined || professionId === null || professionId.trim() === '') return null;
+    const profession = await this.getProfessionOrThrow(professionId, accountId);
+    if (profession.status !== 'active') {
+      throw new ValidationError('Only an active profession can be linked to staff', { professionId });
+    }
+    return profession.id;
+  }
+
+  private requireProfessionValue(value: string, field: string): string {
+    const normalized = value.trim();
+    if (!normalized) throw new ValidationError(`${field} must be a non-empty string`);
+    return normalized;
+  }
+
+  private toProfessionSummary(record: ProfessionRecord): ProfessionSummary {
+    return {
+      id: record.id as ProfessionId,
+      accountId: record.accountId,
+      code: record.code,
+      name: record.name,
+      description: record.description,
+      status: record.isActive ? 'active' : 'inactive',
+      createdAt: record.createdAt,
+      updatedAt: record.updatedAt
+    };
+  }
+
+  private toStaffSummary(record: StaffRecord): StaffSummary {
+    return {
+      id: record.id as StaffId,
+      accountId: record.accountId,
+      userId: record.userId ?? (undefined as UserId | undefined),
+      employeeCode: record.employeeCode,
+      fullName: record.fullName,
+      department: record.department ?? '',
+      jobTitle: record.jobTitle ?? '',
+      professionId: (record.professionId as ProfessionId | null | undefined) ?? null,
+      status: record.isActive ? 'active' : 'inactive',
+      createdAt: record.createdAt,
+      updatedAt: record.updatedAt
+    };
+  }
+
+  private createInMemoryProfession(input: ProfessionCreateInput): ProfessionRecord {
+    const now = nowIso();
+    return {
+      id: `profession-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      accountId: input.accountId,
+      code: input.code,
+      name: input.name,
+      description: input.description ?? null,
+      isActive: true,
+      createdAt: now,
+      updatedAt: now
+    };
+  }
+
+  private updateInMemoryProfession(
+    current: ProfessionSummary,
+    input: ProfessionUpdateInput
+  ): ProfessionRecord {
+    const now = nowIso();
+    return {
+      id: current.id,
+      accountId: current.accountId,
+      code: input.code ?? current.code,
+      name: input.name ?? current.name,
+      description: input.description !== undefined ? input.description : current.description,
+      isActive: input.isActive ?? current.status === 'active',
+      createdAt: current.createdAt,
+      updatedAt: now
+    };
+  }
 }
 
 export { createSeedStaff };
@@ -420,7 +623,10 @@ export {
   type StaffRepository,
   type StaffRecord,
   type StaffCreateInput,
-  type StaffUpdateInput
+  type StaffUpdateInput,
+  type ProfessionRecord,
+  type ProfessionCreateInput,
+  type ProfessionUpdateInput
 } from './repositories/database-staff.repository.js';
 export {
   DatabaseStaffTimeOffRepository,

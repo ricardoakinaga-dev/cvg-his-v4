@@ -17,6 +17,10 @@ export interface CounterSaleSummary {
   readonly accountId: string;
   readonly number: string;
   readonly ownerId: string | null;
+  readonly patientId: string | null;
+  readonly encounterId: string | null;
+  readonly queueEntryId: string | null;
+  readonly billingRecordId: string | null;
   readonly status: CounterSaleStatus;
   readonly subtotal: number;
   readonly discountAmount: number;
@@ -29,6 +33,20 @@ export interface CounterSaleSummary {
   readonly closedAt: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;
+}
+
+export interface CounterSaleReceiptSummary {
+  readonly id: string;
+  readonly accountId: string;
+  readonly counterSaleId: string;
+  readonly amount: number;
+  readonly currency: 'BRL';
+  readonly receivedByUserId: string;
+  readonly receivedAt: string;
+  readonly cashRegisterId: string | null;
+  readonly cashMovementId: string | null;
+  readonly journalEntryId: string | null;
+  readonly createdAt: string;
 }
 
 export interface CounterSaleItemSummary {
@@ -63,6 +81,11 @@ export interface CounterSalePaymentSummary {
 export interface CounterSaleDetail extends CounterSaleSummary {
   readonly items: readonly CounterSaleItemSummary[];
   readonly payments: readonly CounterSalePaymentSummary[];
+  readonly receipt: CounterSaleReceiptSummary | null;
+}
+
+export interface CounterSaleCloseResponse extends CounterSaleSummary {
+  readonly receipt: CounterSaleReceiptSummary;
 }
 
 export interface CounterSalesCommercialDashboard {
@@ -109,6 +132,10 @@ export interface CounterSalesListFilters {
 
 export interface CreateCounterSalePayload {
   ownerId?: string | null;
+  patientId?: string | null;
+  encounterId?: string | null;
+  queueEntryId?: string | null;
+  billingRecordId?: string | null;
   notes?: string | null;
 }
 
@@ -212,9 +239,19 @@ export const counterSalesService = {
     });
   },
 
-  async close(id: string): Promise<CounterSaleSummary> {
-    return apiRequest<CounterSaleSummary>(`/counter-sales/${id}/close`, {
+  async close(id: string): Promise<CounterSaleCloseResponse> {
+    return apiRequest<CounterSaleCloseResponse>(`/counter-sales/${id}/close`, {
       method: 'POST'
+    });
+  },
+
+  async settle(
+    id: string,
+    payments: readonly CreateCounterSalePaymentPayload[]
+  ): Promise<CounterSaleCloseResponse> {
+    return apiRequest<CounterSaleCloseResponse>(`/counter-sales/${id}/settle`, {
+      method: 'POST',
+      body: JSON.stringify({ payments })
     });
   },
 

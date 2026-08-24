@@ -254,7 +254,79 @@ test('ReportsService retries failed schedule deliveries with an existing executi
   assert.equal(retried.recipient, 'financeiro@cvg.local');
   assert.equal(retried.status, 'sent');
   assert.equal(retried.error, null);
-  assert.equal(service.listScheduleDeliveries(ACCOUNT, schedule.id).length, 2);
+  assert.ok(retried.exportId);
+  assert.equal(service.listScheduleDeliveries(ACCOUNT, schedule.id).length, 1);
+});
+
+test('ReportsService retries the same failed delivery idempotently and reuses its artifact', async () => {
+  let shouldFail = true;
+  let providerCalls = 0;
+  const savedExports: string[] = [];
+  const service = new ReportsService({
+    repository: {
+      saveExecution: async () => {},
+      saveExport: async (exported) => {
+        savedExports.push(exported.id);
+      },
+      saveSchedule: async () => {},
+      saveDelivery: async () => {},
+      findExecutions: async () => [],
+      findExports: async () => [],
+      findSchedules: async () => [],
+      findDeliveries: async () => []
+    },
+    deliveryProvider: {
+      deliver: async () => {
+        providerCalls += 1;
+        if (shouldFail) throw new Error('transport unavailable');
+      }
+    }
+  });
+  const schedule = await service.createSchedule(ACCOUNT, USER, {
+    reportId: 'administrative-executive',
+    name: 'Executivo com retry idempotente',
+    frequency: 'daily',
+    format: 'csv',
+    recipients: ['financeiro@cvg.local']
+  });
+  const execution = await service.execute(ACCOUNT, USER, {
+    reportId: schedule.reportId,
+    rows: [{ domain: 'financial', metric: 'Receita', value: 100, status: 'tracked' }]
+  });
+  const exported = await service.exportExecution(ACCOUNT, USER, execution.id, 'csv');
+  const firstAttempt = await service.deliverExport(
+    ACCOUNT,
+    schedule.id,
+    execution.id,
+    exported,
+    schedule.recipients
+  );
+  const failedDelivery = firstAttempt.deliveries[0];
+
+  assert.ok(failedDelivery);
+  assert.equal(failedDelivery.status, 'failed');
+  assert.equal(savedExports.length, 1);
+  assert.equal(providerCalls, 1);
+
+  shouldFail = false;
+  const [retried, duplicateRetry] = await Promise.all([
+    service.retryScheduleDelivery(ACCOUNT, USER, schedule.id, failedDelivery.id),
+    service.retryScheduleDelivery(ACCOUNT, USER, schedule.id, failedDelivery.id)
+  ]);
+
+  assert.equal(retried.id, failedDelivery.id);
+  assert.equal(retried.status, 'sent');
+  assert.equal(retried.exportId, exported.id);
+  assert.equal(duplicateRetry.id, failedDelivery.id);
+  assert.equal(providerCalls, 2);
+  assert.equal(savedExports.length, 1);
+  assert.equal(service.listScheduleDeliveries(ACCOUNT, schedule.id).length, 1);
+
+  await assert.rejects(
+    () => service.retryScheduleDelivery(ACCOUNT, USER, schedule.id, failedDelivery.id),
+    /Only failed report deliveries can be retried/
+  );
+  assert.equal(providerCalls, 2);
 });
 
 test('ReportsService summarizes recurring delivery failure alerts per recipient', async () => {

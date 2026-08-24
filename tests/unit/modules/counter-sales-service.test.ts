@@ -183,6 +183,9 @@ describe('CounterSalesService coverage guard', () => {
             }
           ];
         },
+        async findReceipt() {
+          return null;
+        },
         async createItem() {},
         async updateItem() {},
         async deleteItem() {},
@@ -304,7 +307,7 @@ describe('CounterSalesService coverage guard', () => {
     expect(service.getItems(sale.id)).toHaveLength(1);
   });
 
-  it('cancels open sales and reopens closed sales', async () => {
+  it('cancels open sales and blocks reopening after an immutable receipt', async () => {
     const service = new CounterSalesService();
 
     const cancelledSale = await service.open(ACCOUNT_ID, USER_ID, { notes: 'cancelavel' });
@@ -321,10 +324,9 @@ describe('CounterSalesService coverage guard', () => {
     await service.addPayment(sale.id, { method: 'cash', amount: 10 });
     await service.close(sale.id, USER_ID);
 
-    const reopened = await service.reopen(sale.id);
-
-    expect(reopened.status).toBe('open');
-    expect(reopened.closedByUserId).toBeNull();
-    expect(reopened.closedAt).toBeNull();
+    await expect(service.reopen(sale.id)).rejects.toThrow(
+      'Cannot reopen a sale after its financial receipt was issued'
+    );
+    expect(service.getOrThrow(sale.id).status).toBe('closed');
   });
 });

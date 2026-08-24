@@ -11,7 +11,9 @@ import type { Logger } from '@cvg-his-v2/shared-logging';
 import type { OutboxRepository } from '@cvg-his-v2/module-event-bus';
 import type { AccountId, UserId } from '@cvg-his-v2/shared-types';
 import type { TenantUnitOfWork } from '@cvg-his-v2/shared-database';
+import type { WebhooksService, ProcessWebhookDeliveriesResult } from '@cvg-his-v2/module-webhooks';
 import { runScheduledReportJob } from './jobs/scheduled-report-job.js';
+import { createWorkerReportDeliveryProvider } from './report-delivery-provider.js';
 
 export interface WorkerTickContext {
   readonly service: string;
@@ -29,6 +31,7 @@ export interface WorkerOptions {
   readonly reportRepository?: ReportRepository;
   readonly unitOfWork?: TenantUnitOfWork;
   readonly workerId?: string;
+  readonly reportDeliveryProvider?: import('@cvg-his-v2/module-reports').ReportDeliveryProvider;
 }
 
 export interface AdministrativeExecutiveReportSources {
@@ -104,7 +107,8 @@ export function createWorkerEventBus(options?: WorkerOptions): EventBusService {
 
 export function createWorkerReports(options?: WorkerOptions): ReportsService {
   return new ReportsService({
-    repository: options?.reportRepository
+    repository: options?.reportRepository,
+    deliveryProvider: options?.reportDeliveryProvider ?? createWorkerReportDeliveryProvider()
   });
 }
 
@@ -344,6 +348,32 @@ export async function runEventBusTick(
     persistenceMode: context.persistenceMode,
     databaseHealthy: context.databaseHealthy
   });
+}
+
+export async function runWebhookDeliveriesTick(
+  logger: Logger,
+  context: WorkerTickContext & { readonly accountId: AccountId },
+  webhooks: WebhooksService,
+  workerId: string,
+  limit = 25
+): Promise<ProcessWebhookDeliveriesResult> {
+  const result = await webhooks.processPendingDeliveries(context.accountId, {
+    workerId,
+    limit
+  });
+
+  logger.info('worker webhook delivery tick complete', {
+    service: context.service,
+    environment: context.environment,
+    correlationId: context.correlationId,
+    workerId,
+    ...result,
+    persistenceMode: context.persistenceMode,
+    databaseHealthy: context.databaseHealthy,
+    databaseDetail: context.databaseDetail
+  });
+
+  return result;
 }
 
 export async function runScheduledReportsTick(

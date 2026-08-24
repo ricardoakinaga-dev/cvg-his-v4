@@ -29,6 +29,10 @@ const PROCESS_TESTS = [
   {
     id: 'worker-runtime-entrypoint',
     file: 'tests/integration/process/worker-runtime-entrypoint.test.ts'
+  },
+  {
+    id: 'webhook-delivery-sigkill',
+    file: 'tests/integration/process/webhook-delivery-sigkill.test.ts'
   }
 ];
 

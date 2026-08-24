@@ -698,9 +698,16 @@ export const webhookDeliveries = pgTable('webhook_deliveries', {
   payload: jsonb('payload').$type<Record<string, unknown>>().notNull(),
   status: varchar('status', { length: 50 }).notNull().default('pending'),
   attempts: integer('attempts').notNull().default(0),
+  maxAttempts: integer('max_attempts').notNull().default(4),
   lastAttemptAt: timestamp('last_attempt_at'),
   responseStatus: integer('response_status'),
   responseBody: text('response_body'),
+  responseError: text('response_error'),
   nextRetryAt: timestamp('next_retry_at'),
+  deadLetteredAt: timestamp('dead_lettered_at'),
+  leaseOwner: varchar('lease_owner', { length: 160 }),
+  leaseToken: uuid('lease_token'),
+  leaseVersion: bigint('lease_version', { mode: 'number' }).notNull().default(0),
+  leaseExpiresAt: timestamp('lease_expires_at'),
   createdAt: timestamp('created_at').notNull()
 });

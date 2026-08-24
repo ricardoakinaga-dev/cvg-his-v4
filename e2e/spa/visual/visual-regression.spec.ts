@@ -627,6 +627,9 @@ async function capturePageVisual(
   screenshotName: string
 ): Promise<void> {
   await ensureAuthToken(page);
+  if (route === '/queue') {
+    await stubEmptyCollection(page, '/queue');
+  }
   await navigateTo(page, route);
   await waitForPageSettled(page, {
     contentSelector,
@@ -641,6 +644,10 @@ async function capturePageVisual(
     ...pageProfiles.detailPage,
     forceLightTheme: false
   });
+
+  if (route === '/queue') {
+    await normalizeQueueClock(page);
+  }
 
   await expect(page).toHaveScreenshot(screenshotName, {
     maxDiffPixels: 500,
@@ -807,8 +814,10 @@ async function createVisualAppointment(
   patientId: string,
   ownerId: string
 ): Promise<{ id: string; referenceDate: string }> {
-  const scheduledAt = new Date();
-  scheduledAt.setHours(10, 0, 0, 0);
+  // Keep the visual contract independent from the day on which the suite runs.
+  // The API accepts historical appointments for this isolated fixture and the
+  // reference date is used only to select the deterministic scheduling view.
+  const scheduledAt = new Date('2026-08-08T10:00:00-03:00');
   const response = await fetch(`${API_URL}/appointments`, {
     method: 'POST',
     headers: {
@@ -967,6 +976,23 @@ async function normalizeDateTimes(page: Page): Promise<void> {
         node.textContent = node.textContent.replace(
           /\b\d{2}\/\d{2}\/\d{4},\s+\d{2}:\d{2}:\d{2}\b/g,
           '01/01/2026, 10:00:00'
+        );
+      }
+      node = walker.nextNode();
+    }
+  });
+}
+
+async function normalizeQueueClock(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    let node = walker.nextNode();
+
+    while (node) {
+      if (node.textContent) {
+        node.textContent = node.textContent.replace(
+          /\bATUALIZADO\s+\d{2}:\d{2}\b/g,
+          'ATUALIZADO 00:00'
         );
       }
       node = walker.nextNode();
@@ -1197,7 +1223,11 @@ async function stubEmptyCollection(page: Page, path: string): Promise<void> {
       return;
     }
 
-    if (route.request().method() === 'GET' && url.pathname === path) {
+    const normalizedPath = (value: string) => value.replace(/\/$/, '') || '/';
+    if (
+      route.request().method() === 'GET' &&
+      normalizedPath(url.pathname) === normalizedPath(path)
+    ) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',

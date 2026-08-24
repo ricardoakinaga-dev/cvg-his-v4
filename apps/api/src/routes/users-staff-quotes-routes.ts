@@ -168,6 +168,127 @@ export async function handleUsersStaffQuotesRoutes(
   // STAFF
   // ==========================================================
 
+  // GET /professions — list the tenant's profession master data
+  if (pathname === '/professions' && request.method === 'GET') {
+    const principal = requirePrincipal(request, 'staff.read');
+    const search = url.searchParams.get('search') ?? undefined;
+    const isActiveParam = url.searchParams.get('isActive');
+    const isActive = isActiveParam === null ? undefined : isActiveParam === 'true';
+    const items = staff.listProfessions(principal.user.accountId as never, { search, isActive });
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'staff',
+      action: 'list_professions',
+      entityType: 'profession',
+      entityId: 'all',
+      payloadSummary: 'Profession master data inspected',
+      riskLevel: 'medium',
+      correlationId
+    });
+    response.statusCode = 200;
+    response.end(JSON.stringify({ items }));
+    return true;
+  }
+
+  // POST /professions — create a profession master record
+  if (pathname === '/professions' && request.method === 'POST') {
+    const principal = requirePrincipal(request, 'staff.manage');
+    const payload = (await readJsonBody(request)) as {
+      code: string;
+      name: string;
+      description?: string | null;
+    };
+    const profession = await staff.createProfession(principal.user.accountId as never, {
+      code: requireNonEmptyString(payload.code, 'code'),
+      name: requireNonEmptyString(payload.name, 'name'),
+      description: payload.description
+    });
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'staff',
+      action: 'create_profession',
+      entityType: 'profession',
+      entityId: profession.id,
+      payloadSummary: `Profession created: ${profession.code}`,
+      riskLevel: 'medium',
+      correlationId
+    });
+    response.statusCode = 201;
+    response.end(JSON.stringify(profession));
+    return true;
+  }
+
+  // PATCH /professions/:id — update a profession master record
+  if (pathname.startsWith('/professions/') && request.method === 'PATCH') {
+    const principal = requirePrincipal(request, 'staff.manage');
+    const professionId = requireNonEmptyString(pathname.split('/')[2], 'professionId');
+    const payload = (await readJsonBody(request)) as {
+      code?: string;
+      name?: string;
+      description?: string | null;
+      isActive?: boolean;
+    };
+    const profession = await staff.updateProfession(
+      professionId,
+      principal.user.accountId as never,
+      {
+        code: payload.code,
+        name: payload.name,
+        description: payload.description,
+        isActive: payload.isActive
+      }
+    );
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'staff',
+      action: 'update_profession',
+      entityType: 'profession',
+      entityId: profession.id,
+      payloadSummary: `Profession updated: ${profession.code}`,
+      riskLevel: 'medium',
+      correlationId
+    });
+    response.statusCode = 200;
+    response.end(JSON.stringify(profession));
+    return true;
+  }
+
+  // POST /professions/:id/toggle-active — preserve history while controlling eligibility
+  if (
+    pathname.startsWith('/professions/') &&
+    pathname.endsWith('/toggle-active') &&
+    request.method === 'POST'
+  ) {
+    const principal = requirePrincipal(request, 'staff.manage');
+    const professionId = requireNonEmptyString(pathname.split('/')[2], 'professionId');
+    const payload = (await readJsonBody(request)) as { isActive: boolean };
+    if (typeof payload.isActive !== 'boolean') {
+      throw new TypeError('isActive must be a boolean');
+    }
+    const profession = await staff.toggleProfession(
+      professionId,
+      payload.isActive,
+      principal.user.accountId as never
+    );
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'staff',
+      action: payload.isActive ? 'activate_profession' : 'deactivate_profession',
+      entityType: 'profession',
+      entityId: profession.id,
+      payloadSummary: `Profession ${payload.isActive ? 'activated' : 'deactivated'}: ${profession.code}`,
+      riskLevel: 'medium',
+      correlationId
+    });
+    response.statusCode = 200;
+    response.end(JSON.stringify(profession));
+    return true;
+  }
+
   // GET /staff/time-off — list absences/leave intervals
   if (pathname === '/staff/time-off' && request.method === 'GET') {
     const principal = requirePrincipal(request, 'staff.read');
@@ -297,13 +418,18 @@ export async function handleUsersStaffQuotesRoutes(
       userId?: string | null;
       department?: string | null;
       jobTitle?: string | null;
+      professionId?: string | null;
     };
     const member = await staff.create(principal.user.accountId as never, {
       employeeCode: requireNonEmptyString(payload.employeeCode, 'employeeCode'),
       fullName: requireNonEmptyString(payload.fullName, 'fullName'),
       userId: payload.userId as never,
       department: payload.department,
-      jobTitle: payload.jobTitle
+      jobTitle: payload.jobTitle,
+      professionId:
+        payload.professionId === null || payload.professionId === undefined
+          ? payload.professionId
+          : requireNonEmptyString(payload.professionId, 'professionId')
     });
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -333,12 +459,17 @@ export async function handleUsersStaffQuotesRoutes(
       fullName?: string;
       department?: string | null;
       jobTitle?: string | null;
+      professionId?: string | null;
       isActive?: boolean;
     };
     const member = await staff.update(staffId as never, {
       fullName: payload.fullName,
       department: payload.department,
       jobTitle: payload.jobTitle,
+      professionId:
+        payload.professionId === null || payload.professionId === undefined
+          ? payload.professionId
+          : requireNonEmptyString(payload.professionId, 'professionId'),
       isActive: payload.isActive
     });
     appendAudit(audit, {

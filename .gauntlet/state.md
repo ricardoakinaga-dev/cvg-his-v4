@@ -1060,3 +1060,73 @@ o Helm não foi admitido em cluster real e o executor webhook HTTP durável
 (claim/retry/backoff/DLQ/lease fencing) continua sendo o próximo gap P0. O
 stop decision permanece ACTIVE; ERP, produção, paridade, operações e release
 seguem `IN_PROGRESS/PARTIAL`.
+
+## Latest bounded checkpoint — 2026-08-24
+
+This checkpoint records the bounded webhook, participant-lifecycle and
+concurrent-check-in waves completed after the previous process/PIX gates. It
+does not rewrite or promote the global Quality Bar statuses above.
+
+### Implemented
+
+- Migration `0125_webhook_delivery_leases` adds durable delivery attempts,
+  leases, fencing/version fields, retry/DLQ state, recovery of abandoned
+  processing rows, claim indexes and FORCE RLS for webhook tables.
+- Webhook delivery re-normalizes persisted URLs before network access, keeps
+  SSRF/DNS pinning/timeout/response-size/HMAC protections, renews leases and
+  maps retry exhaustion to a durable failure state. Retries and takeovers send
+  a stable `Idempotency-Key` equal to the delivery id.
+- Migration `0126_owner_patient_authorized_relationship` persists
+  `authorized`/`spouse` relationships and enforces the `is_primary` invariant;
+  owner routes now use account-scoped authoritative reads and audit the
+  relationship snapshot.
+- Participant lifecycle checks refresh authoritative owner/patient state and
+  enforce active/account ownership at service and PostgreSQL boundaries for
+  scheduling, check-in and encounter open/reopen.
+- Check-in persistence is one transaction (appointment state plus queue row),
+  binds queue participants to the appointment, and migration
+  `0127_scheduling_checkin_uniqueness` adds a partial unique index so one
+  appointment cannot have two active queue entries. Legacy duplicates fail
+  the migration before the index is created.
+- OpenAPI and SPA webhook delivery contracts now expose processing/retrying,
+  attempts, response errors, dead-letter timestamps and correct pending/last
+  attempt statistics.
+
+### Fresh evidence
+
+- `pnpm test:coverage`: 133 files, 1,810 tests; statements 82.67%, branches
+  80.03%, functions 88.39% (all configured 80% thresholds green).
+- `pnpm typecheck`: all 70 workspace projects passed.
+- API package tests: 332/332 passed.
+- Critical process runner: 7/7 passed in isolated ephemeral databases:
+  inpatient domain 4/4, clinical-financial restart 1/1, cash receipt SIGKILL
+  1/1, cash receipt concurrency 1/1, PIX restricted-worker matrix 8/8, worker
+  entrypoint 1/1 and webhook provider-acceptance/takeover 1/1.
+- PostgreSQL database matrix: 10/10 passed for worker consumers/RLS,
+  authorized owner links and authoritative participant lifecycle, including
+  two concurrent check-ins producing one success, one `ConflictError` and one
+  active queue row.
+- OpenAPI validation passed with 338 paths/390 schemas; RLS validation passed
+  with 154/155 tenant tables and one documented exception; static Helm
+  validation and secret scanning passed; `git diff --check` passed.
+- Independent Tesla review accepted the final concurrent-check-in wave with
+  no material blocker.
+
+### Global status remains unpromoted
+
+`pnpm vetus:parity:audit` remains 95/100 evidence, 0/11 areas verified;
+`pnpm vetus:clinical-parity` remains 0/3 verified; and
+`pnpm readiness:enterprise` remains 95/100 with the Vetus parity failure and
+environment-dependent warnings. The stable webhook idempotency key proves an
+at-least-once sender plus receiver deduplication contract, not exactly-once
+provider side effects.
+
+Remaining release blockers include real fiscal/provider homologation and
+certificates, Live Pet/Live Lab connectors, full Vetus import reconciliation,
+cash/sangria/deposit/close/refund/reconciliation journeys, commission and
+report worker delivery E2E, complete RBAC/LGPD acceptance, and the end-to-end
+transfer/receipt/close, merge/owner-switch, laboratory signature/recollect and
+inventory procurement/document journeys listed by the parity audit. CI,
+staging/production backup-restore, cluster Helm admission and real provider
+credentials remain external operational gates. The temporary PostgreSQL
+container created for this run was stopped; no commit or push was performed.

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { NfseEmitter, LC116_SERVICE_CODES, generateNfseId, buildNfseXml } from '@cvg-his-v2/module-fiscal';
 
 const mockConfig = {
@@ -16,7 +16,8 @@ const mockConfig = {
       state: 'SP',
       zipCode: '01001000'
     }
-  }
+  },
+  allowSimulation: true
 };
 
 describe('module-fiscal / nfse-emitter', () => {
@@ -128,6 +129,49 @@ describe('module-fiscal / nfse-emitter', () => {
       expect(xml).toContain('Servico B');
       expect((xml.match(/<Servico>/g) || []).length).toBe(2);
     });
+
+    it('escapes untrusted text fields instead of allowing XML injection', () => {
+      const xml = buildNfseXml({
+        id: 'nfse_test_003',
+        serie: '001',
+        numero: '12347',
+        competencia: '2026-04-01',
+        issuer: {
+          ...mockConfig.issuer,
+          razaoSocial: 'Clínica <oficial> & Cia'
+        },
+        customer: {
+          type: 'PJ',
+          document: '98765432000188',
+          name: 'Cliente <script>alert(1)</script>',
+          email: 'cliente&teste@example.com'
+        },
+        services: [{
+          description: 'Consulta <urgente> & retorno',
+          codigoServico: '0407',
+          quantity: 1,
+          unitValue: 100,
+          totalValue: 100,
+          issRate: 0.05,
+          issValue: 5,
+          pisValue: 0,
+          cofinsValue: 0,
+          csllValue: 0
+        }],
+        subtotal: 100,
+        totalIss: 5,
+        totalPis: 0,
+        totalCofins: 0,
+        totalCsll: 0,
+        totalDocument: 105,
+        observations: 'A & B'
+      });
+
+      expect(xml).toContain('Clínica &lt;oficial&gt; &amp; Cia');
+      expect(xml).toContain('Consulta &lt;urgente&gt; &amp; retorno');
+      expect(xml).toContain('Cliente &lt;script&gt;alert(1)&lt;/script&gt;');
+      expect(xml).not.toContain('<script>alert(1)</script>');
+    });
   });
 
   describe('NfseEmitter', () => {
@@ -135,6 +179,11 @@ describe('module-fiscal / nfse-emitter', () => {
 
     beforeEach(() => {
       emitter = new NfseEmitter(mockConfig);
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      vi.unstubAllEnvs();
     });
 
     describe('constructor', () => {
@@ -232,6 +281,336 @@ describe('module-fiscal / nfse-emitter', () => {
         expect(issued.authorizationCode).toBeDefined();
         expect(issued.verificationUrl).toBeDefined();
       });
+
+      it('fails closed when simulation was not explicitly enabled', async () => {
+        const { allowSimulation: _allowSimulation, ...productionConfig } = mockConfig;
+        const productionEmitter = new NfseEmitter({
+          ...productionConfig,
+          provider: {
+            ...productionConfig.provider,
+            apiUrl: '',
+            apiKey: undefined
+          }
+        });
+        const draft = productionEmitter.createDraft({
+          numero: 12351,
+          competencia: '2026-04-01',
+          customer: { type: 'cpf', document: '12345678909', name: 'Cliente' },
+          services: [{
+            description: 'Consulta',
+            codigoServico: '0407',
+            quantity: 1,
+            unitValue: 100,
+            totalValue: 100,
+            issRate: 0.05,
+            issValue: 5,
+            pisValue: 0,
+            cofinsValue: 0,
+            csllValue: 0
+          }]
+        });
+
+        const result = await productionEmitter.issue(draft);
+
+        expect(result.status).toBe('error');
+        expect(result.observations).toContain('provider endpoint');
+        expect(result.authorizationCode).toBeUndefined();
+      });
+
+      it('ignores the simulator opt-in outside test and development environments', async () => {
+        vi.stubEnv('NODE_ENV', 'production');
+        const productionEmitter = new NfseEmitter({
+          ...mockConfig,
+          allowSimulation: true,
+          provider: {
+            ...mockConfig.provider,
+            apiUrl: '',
+            apiKey: undefined
+          }
+        });
+        const draft = productionEmitter.createDraft({
+          numero: 12358,
+          competencia: '2026-04-01',
+          customer: { type: 'cpf', document: '12345678909', name: 'Cliente' },
+          services: [{
+            description: 'Consulta',
+            codigoServico: '0407',
+            quantity: 1,
+            unitValue: 100,
+            totalValue: 100,
+            issRate: 0.05,
+            issValue: 5,
+            pisValue: 0,
+            cofinsValue: 0,
+            csllValue: 0
+          }]
+        });
+
+        const result = await productionEmitter.issue(draft);
+
+        expect(result.status).toBe('error');
+        expect(result.observations).toContain('provider endpoint');
+        expect(result.authorizationCode).toBeUndefined();
+      });
+
+      it('uses the configured HTTP transport and never exposes provider secrets in failures', async () => {
+        const fetchMock = vi.fn().mockResolvedValue({
+          ok: false,
+          status: 401,
+          text: async () => 'provider-secret=do-not-persist',
+          headers: new Headers()
+        });
+        vi.stubGlobal('fetch', fetchMock);
+
+        const productionEmitter = new NfseEmitter({
+          ...mockConfig,
+          allowSimulation: false,
+          provider: {
+            ...mockConfig.provider,
+            apiUrl: 'https://municipal.example.test/nfse',
+            apiKey: 'test-only-token'
+          }
+        });
+        const draft = productionEmitter.createDraft({
+          numero: 12352,
+          competencia: '2026-04-01',
+          customer: { type: 'cpf', document: '12345678909', name: 'Cliente' },
+          services: [{
+            description: 'Consulta <urgente>',
+            codigoServico: '0407',
+            quantity: 1,
+            unitValue: 100,
+            totalValue: 100,
+            issRate: 0.05,
+            issValue: 5,
+            pisValue: 0,
+            cofinsValue: 0,
+            csllValue: 0
+          }]
+        });
+
+        const result = await productionEmitter.issue(draft);
+
+        expect(fetchMock).toHaveBeenCalledOnce();
+        const [, request] = fetchMock.mock.calls[0] as [string, RequestInit];
+        expect(request.method).toBe('POST');
+        expect(request.headers).toMatchObject({
+          Authorization: 'Bearer test-only-token',
+          'Content-Type': 'application/xml'
+        });
+        expect(String(request.body)).toContain('Consulta &lt;urgente&gt;');
+        expect(result.status).toBe('error');
+        expect(result.observations).toContain('HTTP 401');
+        expect(result.observations).not.toContain('provider-secret');
+        expect(result.observations).not.toContain('test-only-token');
+      });
+
+      it('passes the stable operation key to the provider for retry-safe delivery', async () => {
+        const fetchMock = vi.fn().mockResolvedValue({
+          ok: true,
+          status: 200,
+          text: async () => JSON.stringify({ authorizationCode: 'AUTH-IDEMPOTENT' }),
+          headers: new Headers()
+        });
+        vi.stubGlobal('fetch', fetchMock);
+
+        const productionEmitter = new NfseEmitter({
+          ...mockConfig,
+          allowSimulation: false,
+          provider: {
+            ...mockConfig.provider,
+            apiUrl: 'https://municipal.example.test/nfse',
+            apiKey: 'test-only-token'
+          }
+        });
+        const draft = productionEmitter.createDraft({
+          numero: 12359,
+          competencia: '2026-04-01',
+          customer: { type: 'cpf', document: '12345678909', name: 'Cliente' },
+          services: [{
+            description: 'Consulta',
+            codigoServico: '0407',
+            quantity: 1,
+            unitValue: 100,
+            totalValue: 100,
+            issRate: 0.05,
+            issValue: 5,
+            pisValue: 0,
+            cofinsValue: 0,
+            csllValue: 0
+          }]
+        });
+
+        await productionEmitter.issue(draft, 'nfse-operation-12359');
+
+        const [, request] = fetchMock.mock.calls[0] as [string, RequestInit];
+        expect(request.headers).toMatchObject({ 'Idempotency-Key': 'nfse-operation-12359' });
+      });
+
+      it('accepts an authorized provider response through the HTTP transport', async () => {
+        const fetchMock = vi.fn().mockResolvedValue({
+          ok: true,
+          status: 200,
+          text: async () => JSON.stringify({
+            authorizationCode: 'AUTH-HTTP-123',
+            verificationUrl: 'https://municipal.example.test/nfse/AUTH-HTTP-123'
+          }),
+          headers: new Headers()
+        });
+        vi.stubGlobal('fetch', fetchMock);
+
+        const productionEmitter = new NfseEmitter({
+          ...mockConfig,
+          allowSimulation: false,
+          provider: {
+            ...mockConfig.provider,
+            apiUrl: 'https://municipal.example.test/nfse',
+            apiKey: 'test-only-token'
+          }
+        });
+        const draft = productionEmitter.createDraft({
+          numero: 12353,
+          competencia: '2026-04-01',
+          customer: { type: 'cpf', document: '12345678909', name: 'Cliente' },
+          services: [{
+            description: 'Consulta',
+            codigoServico: '0407',
+            quantity: 1,
+            unitValue: 100,
+            totalValue: 100,
+            issRate: 0.05,
+            issValue: 5,
+            pisValue: 0,
+            cofinsValue: 0,
+            csllValue: 0
+          }]
+        });
+
+        const result = await productionEmitter.issue(draft);
+
+        expect(result.status).toBe('issued');
+        expect(result.authorizationCode).toBe('AUTH-HTTP-123');
+        expect(result.verificationUrl).toContain('AUTH-HTTP-123');
+      });
+
+      it('persists a safe error when a successful transport omits authorization', async () => {
+        const fetchMock = vi.fn().mockResolvedValue({
+          ok: true,
+          status: 200,
+          text: async () => JSON.stringify({ error: 'provider-private-diagnostic' }),
+          headers: new Headers()
+        });
+        vi.stubGlobal('fetch', fetchMock);
+
+        const productionEmitter = new NfseEmitter({
+          ...mockConfig,
+          allowSimulation: false,
+          provider: {
+            ...mockConfig.provider,
+            apiUrl: 'https://municipal.example.test/nfse',
+            apiKey: 'test-only-token'
+          }
+        });
+        const draft = productionEmitter.createDraft({
+          numero: 12354,
+          competencia: '2026-04-01',
+          customer: { type: 'cpf', document: '12345678909', name: 'Cliente' },
+          services: [{
+            description: 'Consulta',
+            codigoServico: '0407',
+            quantity: 1,
+            unitValue: 100,
+            totalValue: 100,
+            issRate: 0.05,
+            issValue: 5,
+            pisValue: 0,
+            cofinsValue: 0,
+            csllValue: 0
+          }]
+        });
+
+        const result = await productionEmitter.issue(draft);
+
+        expect(result.status).toBe('error');
+        expect(result.observations).toContain('authorization code');
+        expect(result.observations).not.toContain('provider-private-diagnostic');
+      });
+
+      it('fails closed instead of sending an unsigned PFX-only request', async () => {
+        const fetchMock = vi.fn();
+        vi.stubGlobal('fetch', fetchMock);
+        const productionEmitter = new NfseEmitter({
+          ...mockConfig,
+          allowSimulation: false,
+          provider: {
+            ...mockConfig.provider,
+            apiUrl: 'https://municipal.example.test/nfse',
+            apiKey: undefined,
+            certificate: Buffer.from('fake-pfx')
+          }
+        });
+        const draft = productionEmitter.createDraft({
+          numero: 12355,
+          competencia: '2026-04-01',
+          customer: { type: 'cpf', document: '12345678909', name: 'Cliente' },
+          services: [{
+            description: 'Consulta',
+            codigoServico: '0407',
+            quantity: 1,
+            unitValue: 100,
+            totalValue: 100,
+            issRate: 0.05,
+            issValue: 5,
+            pisValue: 0,
+            cofinsValue: 0,
+            csllValue: 0
+          }]
+        });
+
+        const result = await productionEmitter.issue(draft);
+
+        expect(fetchMock).not.toHaveBeenCalled();
+        expect(result.status).toBe('error');
+        expect(result.observations).toContain('PFX');
+      });
+
+      it('does not call a configured endpoint without a credential or certificate', async () => {
+        const fetchMock = vi.fn();
+        vi.stubGlobal('fetch', fetchMock);
+        const productionEmitter = new NfseEmitter({
+          ...mockConfig,
+          allowSimulation: false,
+          provider: {
+            ...mockConfig.provider,
+            apiUrl: 'https://municipal.example.test/nfse',
+            apiKey: undefined,
+            certificate: undefined
+          }
+        });
+        const draft = productionEmitter.createDraft({
+          numero: 12357,
+          competencia: '2026-04-01',
+          customer: { type: 'cpf', document: '12345678909', name: 'Cliente' },
+          services: [{
+            description: 'Consulta',
+            codigoServico: '0407',
+            quantity: 1,
+            unitValue: 100,
+            totalValue: 100,
+            issRate: 0.05,
+            issValue: 5,
+            pisValue: 0,
+            cofinsValue: 0,
+            csllValue: 0
+          }]
+        });
+
+        const result = await productionEmitter.issue(draft);
+
+        expect(fetchMock).not.toHaveBeenCalled();
+        expect(result.status).toBe('error');
+        expect(result.observations).toContain('credential or certificate');
+      });
     });
 
     describe('cancel', () => {
@@ -245,6 +624,58 @@ describe('module-fiscal / nfse-emitter', () => {
         const cancelled = await emitter.cancel(doc, 'Cliente solicitou');
         expect(cancelled.status).toBe('cancelled');
         expect(cancelled.observations).toContain('Cliente solicitou');
+      });
+
+      it('uses the provider transport for cancellation when simulation is disabled', async () => {
+        const fetchMock = vi.fn()
+          .mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            text: async () => JSON.stringify({ authorizationCode: 'AUTH-ISSUE' }),
+            headers: new Headers()
+          })
+          .mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            text: async () => JSON.stringify({ authorizationCode: 'AUTH-CANCEL' }),
+            headers: new Headers()
+          });
+        vi.stubGlobal('fetch', fetchMock);
+
+        const productionEmitter = new NfseEmitter({
+          ...mockConfig,
+          allowSimulation: false,
+          provider: {
+            ...mockConfig.provider,
+            apiUrl: 'https://municipal.example.test/nfse',
+            apiKey: 'test-only-token'
+          }
+        });
+        const draft = productionEmitter.createDraft({
+          numero: 12356,
+          competencia: '2026-04-01',
+          customer: { type: 'cpf', document: '12345678909', name: 'Cliente' },
+          services: [{
+            description: 'Consulta',
+            codigoServico: '0407',
+            quantity: 1,
+            unitValue: 100,
+            totalValue: 100,
+            issRate: 0.05,
+            issValue: 5,
+            pisValue: 0,
+            cofinsValue: 0,
+            csllValue: 0
+          }]
+        });
+        const issued = await productionEmitter.issue(draft);
+        const cancelled = await productionEmitter.cancel(issued, 'Motivo <cliente>');
+
+        expect(cancelled.status).toBe('cancelled');
+        expect(cancelled.authorizationCode).toBe('AUTH-CANCEL');
+        expect(String((fetchMock.mock.calls[1] as [string, RequestInit])[1].body)).toContain(
+          'Motivo &lt;cliente&gt;'
+        );
       });
     });
   });

@@ -9,13 +9,23 @@ export const vetusParityContract = Object.freeze([
     evidence: {
       ui: ['apps/spa/src/pages/scheduling/QueuePage.vue', 'apps/spa/src/pages/sales/CounterSalesPage.vue'],
       api: ['apps/api/src/routes/scheduling-routes.ts', 'apps/api/src/routes/counter-sales-routes.ts'],
-      persistence: ['packages/db/migrations/0055_scheduling_queue_operational_fields.sql'],
-      tests: ['apps/spa/src/pages/scheduling/__tests__/QueuePage.test.ts'],
-      e2e: ['e2e/spa/operational-walkthrough.spec.ts', 'e2e/tests/fluxos-criticos.spec.ts']
+      persistence: [
+        'packages/db/migrations/0055_scheduling_queue_operational_fields.sql',
+        'packages/db/migrations/0128_scheduling_queue_transfer_receipts.sql',
+        'packages/db/migrations/0129_counter_sale_clinical_context_receipts.sql',
+        'packages/db/migrations/0133_counter_sales_authority.sql'
+      ],
+      tests: [
+        'apps/spa/src/pages/scheduling/__tests__/QueuePage.test.ts',
+        'tests/integration/database/inpatient-clinical-financial-close-receipt-http-postgres.test.ts'
+      ],
+      e2e: [
+        'e2e/spa/operational-walkthrough.spec.ts',
+        'e2e/tests/fluxos-criticos.spec.ts',
+        'e2e/tests/fluxo-transferencia-comanda-recebimento.spec.ts'
+      ]
     },
-    blockers: [
-      'Ainda falta uma prova E2E autocontida do fluxo completo de transferencia entre setores ate recebimento e fechamento da comanda.'
-    ]
+    blockers: []
   },
   {
     id: 'registrations',
@@ -28,12 +38,14 @@ export const vetusParityContract = Object.freeze([
       'packages/db/migrations/0000_vengeful_pet_avengers.sql',
       'packages/db/migrations/0065_tenant_isolation_auth_webhook_clinical_links.sql'
     ],
-      tests: ['apps/api/src/routes/owners-routes.test.ts', 'apps/api/src/routes/patients-routes.test.ts'],
+      tests: [
+        'apps/api/src/routes/owners-routes.test.ts',
+        'apps/api/src/routes/patients-routes.test.ts',
+        'tests/integration/database/patient-registration-lifecycle.test.ts'
+      ],
       e2e: ['e2e/spa/login-owner-patient-ui.spec.ts']
     },
-    blockers: [
-      'Faltam provas de merge, troca de tutor, autorizados e inativacao com dependencias.'
-    ]
+    blockers: []
   },
   {
     id: 'laboratory',
@@ -45,12 +57,22 @@ export const vetusParityContract = Object.freeze([
     evidence: {
       ui: ['apps/spa/src/pages/laboratory/LaboratoryOrdersPage.vue'],
       api: ['apps/api/src/routes/laboratory-routes.ts'],
-      persistence: ['packages/db/migrations/0053_laboratory_result_release_signature.sql'],
-      tests: ['apps/api/src/routes/laboratory-routes.test.ts'],
-      e2e: ['e2e/tests/fluxo-exames.spec.ts']
+      persistence: [
+        'packages/db/migrations/0053_laboratory_result_release_signature.sql',
+        'packages/db/migrations/0132_laboratory_order_workflow.sql'
+      ],
+      tests: [
+        'apps/api/src/routes/laboratory-routes.test.ts',
+        'packages/modules/diagnostics/src/laboratory-postgres.integration.test.ts',
+        'apps/spa/src/pages/laboratory/__tests__/LaboratoryOrdersPage.test.ts'
+      ],
+      e2e: [
+        'e2e/tests/fluxo-exames.spec.ts',
+        'e2e/tests/fluxos-comissao-laboratorio-canonicos.spec.ts'
+      ]
     },
     blockers: [
-      'O E2E atual prova solicitacao, coleta, resultado e liberacao sem skips, mas ainda nao cobre Laudado/Entregue com assinatura, recoleta e provider externo.',
+      'Provider externo e homologacao laboratorial continuam pendentes.',
       'Resultado analitico especializado ainda possui superficie sem integracao de servico.'
     ]
   },
@@ -59,16 +81,23 @@ export const vetusParityContract = Object.freeze([
     name: 'Estoque, compras e movimentacoes',
     sources: ['docs/vetus/guides/14-modulo-estoque-fiscal.md'],
     evidence: {
-      ui: ['apps/spa/src/pages/inventory/InventoryMovementsPage.vue'],
+      ui: [
+        'apps/spa/src/pages/inventory/InventoryMovementsPage.vue',
+        'apps/spa/src/pages/inventory/InventoryInvoicesPage.vue'
+      ],
       api: ['apps/api/src/routes/inventory-routes.ts'],
-      persistence: ['packages/db/migrations/0052_inventory_stock_movements.sql'],
-      tests: ['apps/api/src/routes/inventory-routes.test.ts'],
+      persistence: [
+        'packages/db/migrations/0052_inventory_stock_movements.sql',
+        'packages/db/migrations/0085_inventory_procurement.sql'
+      ],
+      tests: [
+        'apps/api/src/routes/inventory-routes.test.ts',
+        'apps/spa/src/pages/inventory/__tests__/InventoryInvoicesPage.test.ts',
+        'tests/integration/database/inventory-procurement-postgres.test.ts'
+      ],
       e2e: ['e2e/tests/fluxos-criticos.spec.ts', 'e2e/spa/vetus-commercial-flow.spec.ts']
     },
-    blockers: [
-      'Compras e transferencias preparam linhas locais, sem documento transacional persistido ponta a ponta.',
-      'Entrada de NF nao possui jornada documental completa com lote, validade, saldo e auditoria.'
-    ]
+    blockers: []
   },
   {
     id: 'fiscal',
@@ -81,7 +110,12 @@ export const vetusParityContract = Object.freeze([
         'packages/db/migrations/0043_fiscal_ibs_cbs_tables.sql',
         'packages/db/migrations/0097_fiscal_nfse_tenant_persistence.sql'
       ],
-      tests: ['apps/api/src/routes/fiscal-routes.test.ts', 'packages/modules/fiscal/src/fiscal.test.ts'],
+      tests: [
+        'apps/api/src/routes/fiscal-routes.test.ts',
+        'packages/modules/fiscal/src/fiscal.test.ts',
+        'tests/integration/database/fiscal-nfse-provider-postgres.test.ts',
+        'tests/unit/fiscal/nfse-emitter.test.ts'
+      ],
       e2e: []
     },
     blockers: [
@@ -96,13 +130,20 @@ export const vetusParityContract = Object.freeze([
     evidence: {
       ui: ['apps/spa/src/pages/finance/AccountsPayablePage.vue'],
       api: ['apps/api/src/routes/financial-routes.ts'],
-      persistence: ['packages/db/migrations/0049_financial_payables.sql'],
-      tests: ['apps/api/src/routes/financial-routes-payables.test.ts'],
-      e2e: ['e2e/spa/billing-flow.spec.ts']
+      persistence: [
+        'packages/db/migrations/0049_financial_payables.sql',
+        'packages/db/migrations/0101_cash_deposit_movement.sql',
+        'packages/db/migrations/0108_encounter_cash_receipts.sql'
+      ],
+      tests: [
+        'apps/api/src/routes/financial-routes-payables.test.ts',
+        'tests/integration/database/cash-register-lifecycle-postgres.test.ts'
+      ],
+      e2e: ['e2e/spa/billing-flow.spec.ts', 'e2e/tests/fluxo-caixa-operacional.spec.ts']
     },
     blockers: [
       'Bancos, formas de pagamento, maquininhas, split e habilitacao usam dados estaticos.',
-      'Nao existe E2E de caixa, sangria, deposito, fechamento, estorno e conciliacao.',
+      'Ainda falta E2E de estorno e conciliacao de pagamentos nao-caixa.',
       'PIX opera com adapter mock e captura/repasse de cartao nao esta habilitada.'
     ]
   },
@@ -115,14 +156,21 @@ export const vetusParityContract = Object.freeze([
       api: ['apps/api/src/routes/marketing-routes.ts'],
       persistence: [
         'packages/db/migrations/0051_marketing_campaigns.sql',
-        'packages/db/migrations/0099_marketing_settings.sql'
+        'packages/db/migrations/0099_marketing_settings.sql',
+        'packages/db/migrations/0135_marketing_delivery_guarantees.sql',
+        'packages/db/migrations/0136_marketing_permission_catalog.sql'
       ],
-      tests: ['apps/spa/src/pages/marketing/__tests__/MarketingCampaignsPage.test.ts'],
-      e2e: []
+      tests: [
+        'apps/spa/src/pages/marketing/__tests__/MarketingCampaignsPage.test.ts',
+        'apps/api/src/routes/marketing-routes.test.ts',
+        'packages/modules/marketing/src/marketing.test.ts',
+        'tests/integration/database/marketing-delivery-guarantees-postgres.test.ts'
+      ],
+      e2e: ['e2e/tests/fluxo-marketing-relatorios.spec.ts']
     },
     blockers: [
-      'Ainda faltam envio sandbox homologado, opt-out operacional, retry com backoff e idempotencia ponta a ponta das entregas.',
-      'A auditoria de campanhas existe na API, mas ainda falta E2E de consentimento, bounce, retry e provider externo.'
+      'Provider externo homologado e bounce real continuam pendentes; o sandbox deterministico esta coberto.',
+      'A auditoria de campanhas existe na API, mas ainda falta prova E2E contra provider externo.'
     ]
   },
   {
@@ -133,16 +181,31 @@ export const vetusParityContract = Object.freeze([
       'docs/vetus/guides/2026-04-24-relatorio-modulo-rh-usuarios-comissoes-profissionais.md'
     ],
     evidence: {
-      ui: ['apps/spa/src/pages/rh/CommissionCalculationsPage.vue'],
-      api: ['apps/api/src/routes/commission-routes.ts'],
-      persistence: ['packages/db/migrations/0047_commissions.sql'],
-      tests: ['packages/modules/commissions/src/commissions.test.ts'],
-      e2e: []
+      ui: [
+        'apps/spa/src/pages/rh/RhProfessionsPage.vue',
+        'apps/spa/src/pages/staff/StaffFormPage.vue',
+        'apps/spa/src/pages/rh/CommissionCalculationsPage.vue'
+      ],
+      api: [
+        'apps/api/src/routes/users-staff-quotes-routes.ts',
+        'apps/api/src/routes/commission-routes.ts'
+      ],
+      persistence: [
+        'packages/db/migrations/0047_commissions.sql',
+        'packages/db/migrations/0130_staff_professions.sql',
+        'packages/db/migrations/0131_commissions_staff_authority.sql'
+      ],
+      tests: [
+        'packages/modules/staff/src/staff.test.ts',
+        'packages/modules/commissions/src/commissions.test.ts',
+        'apps/api/src/routes/users-staff-quotes-routes.test.ts',
+        'apps/spa/src/pages/rh/__tests__/RhOperationalPages.test.ts',
+        'tests/integration/database/staff-professions-postgres.test.ts',
+        'tests/integration/database/commissions-staff-authority-postgres.test.ts'
+      ],
+      e2e: ['e2e/tests/fluxos-comissao-laboratorio-canonicos.spec.ts']
     },
-    blockers: [
-      'Folgas possuem CRUD PostgreSQL com RLS, cancelamento e bloqueio de agenda; o cadastro persistente completo de profissoes ainda precisa ser fechado.',
-      'Nao ha E2E de elegibilidade, calculo, revisao, fechamento e pagamento de comissao.'
-    ]
+    blockers: []
   },
   {
     id: 'reports',
@@ -151,9 +214,15 @@ export const vetusParityContract = Object.freeze([
     evidence: {
       ui: ['apps/spa/src/pages/reports/ReportsEnginePage.vue'],
       api: ['apps/api/src/routes/reports-routes.ts'],
-      persistence: ['packages/db/migrations/0048_report_engine.sql'],
-      tests: ['packages/modules/reports/src/reports.test.ts'],
-      e2e: ['e2e/spa/enterprise-surfaces-gate.spec.ts']
+      persistence: [
+        'packages/db/migrations/0048_report_engine.sql',
+        'packages/db/migrations/0134_reports_delivery_tenant_integrity.sql'
+      ],
+      tests: [
+        'packages/modules/reports/src/reports.test.ts',
+        'tests/integration/database/reports-delivery-postgres.test.ts'
+      ],
+      e2e: ['e2e/spa/enterprise-surfaces-gate.spec.ts', 'e2e/tests/fluxo-marketing-relatorios.spec.ts']
     },
     blockers: [
       'Diversos relatorios Vetus ainda usam workbench somente leitura e sem exportacao operacional completa.',
@@ -170,14 +239,20 @@ export const vetusParityContract = Object.freeze([
     evidence: {
       ui: ['apps/spa/src/pages/access-control/AccessControlPage.vue'],
       api: ['apps/api/src/routes/access-control-routes.ts', 'apps/api/src/routes/lgpd-routes.ts'],
-      persistence: ['packages/db/migrations/0054_enterprise_rls_gap_closure.sql'],
-      tests: ['apps/api/src/routes/access-control-audit-events.test.ts', 'apps/api/src/routes/lgpd-routes.test.ts'],
+      persistence: [
+        'packages/db/migrations/0054_enterprise_rls_gap_closure.sql',
+        'packages/db/migrations/0136_marketing_permission_catalog.sql'
+      ],
+      tests: [
+        'apps/api/src/routes/access-control-audit-events.test.ts',
+        'apps/api/src/routes/lgpd-routes.test.ts',
+        'apps/spa/src/pages/access-control/__tests__/AccessControlPage.test.ts'
+      ],
       e2e: ['e2e/tests/fluxos-criticos.spec.ts', 'e2e/spa/tenant-isolation-db.spec.ts']
     },
     blockers: [
-      'Ainda falta uma matriz E2E completa de autorizacao por papel, tenant e operacoes administrativas sensiveis.',
-      'O gate em PostgreSQL real prova isolamento de tenant e os fluxos criticos cobrem login, autorizacao e auditoria, mas falta aceite operacional completo de LGPD e governanca.',
-      'Configuracoes administrativas ainda apontam para uma pagina placeholder.'
+      'Ainda falta uma matriz E2E completa de autorizacao por papel, tenant e operacoes administrativas sensiveis; o ambiente desta rodada nao tinha as credenciais admin_b exigidas pelo spec.',
+      'O gate em PostgreSQL real prova isolamento de tenant e os fluxos criticos cobrem login, autorizacao e auditoria, mas falta aceite operacional completo de LGPD e governanca.'
     ]
   },
   {

@@ -6,6 +6,10 @@ const migration = readFileSync(
   resolve(process.cwd(), 'packages/db/migrations/0113_api_key_auth_boundary.sql'),
   'utf8'
 );
+const pixDlqMigration = readFileSync(
+  resolve(process.cwd(), 'packages/db/migrations/0114_pix_settlement_dlq_operator.sql'),
+  'utf8'
+);
 
 describe('API-key pre-context projection contract', () => {
   it('does not grant or return non-authentication columns to the capability', () => {
@@ -24,6 +28,15 @@ describe('API-key pre-context projection contract', () => {
       'updated_at TIMESTAMPTZ'
     ]) {
       expect(migration).not.toContain(forbiddenColumn);
+    }
+  });
+
+  it('keeps optional installer-role revocations portable on fresh clusters', () => {
+    for (const migrationSql of [migration, pixDlqMigration]) {
+      expect(migrationSql).toMatch(
+        /IF EXISTS \(SELECT 1 FROM pg_roles WHERE rolname = 'cvg_installer'\)/
+      );
+      expect(migrationSql).not.toMatch(/FROM PUBLIC, cvg_installer/);
     }
   });
 });

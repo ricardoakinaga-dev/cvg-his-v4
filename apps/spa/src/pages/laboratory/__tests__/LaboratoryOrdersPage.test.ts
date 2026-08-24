@@ -349,4 +349,31 @@ describe('LaboratoryOrdersPage', () => {
     expect(wrapper.text()).toContain('3. Liberado ao prontuário');
     expect(wrapper.text()).toContain('Liberado por rt-lab');
   });
+
+  it('exposes report and delivery actions for the canonical laboratory lifecycle', async () => {
+    vi.mocked(laboratoryService.listOrders).mockResolvedValue([
+      {
+        id: 'diag_analysis' as never,
+        accountId: 'acc_1' as never,
+        encounterId: 'enc_1' as never,
+        patientId: 'paciente_1' as never,
+        examType: 'Hemograma',
+        examCatalogId: 'cat_001',
+        reason: 'Aguardando laudo',
+        status: 'in_analysis' as never,
+        collectionAttempt: 1,
+        analysisStartedAt: '2026-04-24T09:30:00.000Z',
+        analysisStartedByUserId: 'analyst-1',
+        createdAt: '2026-04-24T08:30:00.000Z',
+        updatedAt: '2026-04-24T09:30:00.000Z'
+      } as never
+    ]);
+
+    const wrapper = mount(LaboratoryOrdersPage);
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Em análise');
+    expect(wrapper.text()).toContain('Reportar resultado');
+    expect(wrapper.text()).toContain('Tentativa 1');
+  });
 });

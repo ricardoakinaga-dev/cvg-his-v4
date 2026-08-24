@@ -77,11 +77,15 @@ async function globalSetup(config: FullConfig) {
       const data = await loginRes.json();
       console.log('   ✅ Test user authenticated');
 
-      // Save token for tests (note: actor is nested in response)
+      // Save the token and the real principal identity for API-backed tests.
       process.env.E2E_AUTH_TOKEN = data.accessToken;
-      process.env.E2E_USER_ID = data.actor?.userId || data.user?.id || 'user_admin';
+      process.env.E2E_USER_ID =
+        data.principal?.user?.id || data.actor?.userId || data.user?.id || 'user_admin';
       process.env.E2E_ACCOUNT_ID =
-        data.actor?.accountId || data.user?.accountId || 'acc_cvg_demo';
+        data.principal?.user?.accountId ||
+        data.actor?.accountId ||
+        data.user?.accountId ||
+        'acc_cvg_demo';
       console.log(`   ℹ️  User ID: ${process.env.E2E_USER_ID}`);
       console.log(`   ℹ️  Account ID: ${process.env.E2E_ACCOUNT_ID}`);
     } else {

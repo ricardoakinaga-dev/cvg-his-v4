@@ -1,12 +1,13 @@
 import { randomUUID } from 'node:crypto';
-import { ConflictError, NotFoundError } from '@cvg-his-v2/shared-errors';
+import { AuthenticationError, ConflictError, NotFoundError } from '@cvg-his-v2/shared-errors';
 import type { AccountId, UserId } from '@cvg-his-v2/shared-types';
 import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
 import type {
   CounterSalesRepository,
   CounterSaleRecord,
   CounterSaleItemRecord,
-  CounterSalePaymentRecord
+  CounterSalePaymentRecord,
+  CounterSaleReceiptRecord
 } from './repositories/database-counter-sales.repository.js';
 
 export interface CounterSaleSummary {
@@ -14,6 +15,10 @@ export interface CounterSaleSummary {
   readonly accountId: AccountId;
   readonly number: string;
   readonly ownerId: string | null;
+  readonly patientId: string | null;
+  readonly encounterId: string | null;
+  readonly queueEntryId: string | null;
+  readonly billingRecordId: string | null;
   readonly status: 'open' | 'closed' | 'cancelled';
   readonly subtotal: number;
   readonly discountAmount: number;
@@ -26,6 +31,20 @@ export interface CounterSaleSummary {
   readonly closedAt: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;
+}
+
+export interface CounterSaleReceiptSummary {
+  readonly id: string;
+  readonly accountId: AccountId;
+  readonly counterSaleId: string;
+  readonly amount: number;
+  readonly currency: 'BRL';
+  readonly receivedByUserId: UserId;
+  readonly receivedAt: string;
+  readonly cashRegisterId: string | null;
+  readonly cashMovementId: string | null;
+  readonly journalEntryId: string | null;
+  readonly createdAt: string;
 }
 
 export interface CounterSaleItemSummary {
@@ -43,6 +62,11 @@ export interface CounterSaleItemSummary {
   readonly notes: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;
+}
+
+export interface CounterSaleItemParentContext {
+  readonly saleId: string;
+  readonly accountId: AccountId;
 }
 
 export interface CounterSalePaymentSummary {
@@ -63,6 +87,15 @@ export interface CounterSalePaymentSummary {
   readonly reference: string | null;
   readonly notes: string | null;
   readonly createdAt: string;
+}
+
+export interface CounterSalePaymentInput {
+  readonly method: CounterSalePaymentSummary['method'];
+  readonly amount: number;
+  readonly installments?: number;
+  readonly reference?: string | null;
+  readonly notes?: string | null;
+  readonly idempotencyKey?: string | null;
 }
 
 export interface InventoryConsumption {
@@ -92,8 +125,19 @@ export interface CounterSaleCloseTransactionInput {
 
 export interface CounterSaleCloseResult {
   readonly sale: CounterSaleSummary;
+  readonly receipt: CounterSaleReceiptSummary;
   readonly inventoryConsumptions?: readonly InventoryConsumption[];
   readonly cashMovements?: readonly CashMovement[];
+}
+
+export type CounterSaleClosePreview = Omit<CounterSaleCloseResult, 'receipt'>;
+
+export interface CounterSaleCloseEffects {
+  readonly journalEntryId?: string;
+}
+
+export interface CounterSaleSettlementInput {
+  readonly payments: readonly CounterSalePaymentInput[];
 }
 
 export interface CounterSalesServiceOptions {
@@ -108,8 +152,8 @@ export interface CounterSalesServiceOptions {
    */
   readonly onClose?: (
     input: CounterSaleCloseTransactionInput,
-    result: CounterSaleCloseResult
-  ) => Promise<void>;
+    result: CounterSaleClosePreview
+  ) => Promise<CounterSaleCloseEffects | void>;
   readonly inventoryService?: {
     consumeForSale: (
       accountId: AccountId,
@@ -142,8 +186,21 @@ export class CounterSalesService {
   readonly #inventoryService?: CounterSalesServiceOptions['inventoryService'];
   readonly #cashService?: CounterSalesServiceOptions['cashService'];
   readonly #sales = new Map<string, CounterSaleSummary>();
+  readonly #receipts = new Map<string, CounterSaleReceiptSummary>();
   readonly #items = new Map<string, CounterSaleItemSummary>();
   readonly #payments = new Map<string, CounterSalePaymentSummary>();
+  readonly #inMemoryPaymentIdempotency = new Map<
+    string,
+    {
+      readonly counterSaleId: string;
+      readonly paymentId: string;
+      readonly method: CounterSalePaymentSummary['method'];
+      readonly amountCents: number;
+      readonly installments: number;
+      readonly reference: string | null;
+      readonly notes: string | null;
+    }
+  >();
   readonly #closeLocks = new Map<string, Promise<CounterSaleCloseResult>>();
   #numberCounter = 0;
 
@@ -169,13 +226,17 @@ export class CounterSalesService {
     const sales = await this.#repository.findByAccountId(accountId);
     for (const sale of sales) {
       this.#sales.set(sale.id, sale);
-      const items = await this.#repository.findItemsBySaleId(sale.id);
+      const items = await this.#repository.findItemsBySaleId(accountId, sale.id);
       for (const item of items) {
         this.#items.set(item.id, item);
       }
       const payments = await this.#repository.findPaymentsBySaleId(sale.id);
       for (const payment of payments) {
         this.#payments.set(payment.id, payment);
+      }
+      const receipt = await this.#repository.findReceipt(sale.id);
+      if (receipt) {
+        this.#receipts.set(sale.id, this.#toReceiptSummary(receipt));
       }
     }
   }
@@ -229,17 +290,99 @@ export class CounterSalesService {
     }
   }
 
+  async #refreshSaleFromDatabase(saleId: string): Promise<void> {
+    const repository = this.#repository;
+    if (!repository?.lockSaleForUpdate) return;
+
+    const sale = await repository.lockSaleForUpdate(saleId);
+    if (!sale) throw new NotFoundError('Counter sale not found', { saleId });
+
+    const [items, payments, receipt] = await Promise.all([
+      repository.findItemsBySaleId(sale.accountId, saleId),
+      repository.findPaymentsBySaleId(saleId),
+      repository.findReceipt(saleId)
+    ]);
+
+    for (const [itemId, item] of this.#items) {
+      if (item.counterSaleId === saleId) this.#items.delete(itemId);
+    }
+    for (const [paymentId, payment] of this.#payments) {
+      if (payment.counterSaleId === saleId) this.#payments.delete(paymentId);
+    }
+    for (const item of items) this.#items.set(item.id, item);
+    for (const payment of payments) this.#payments.set(payment.id, payment);
+    this.#sales.set(saleId, sale);
+    if (receipt) this.#receipts.set(saleId, this.#toReceiptSummary(receipt));
+    else this.#receipts.delete(saleId);
+  }
+
+  #toReceiptSummary(receipt: CounterSaleReceiptRecord): CounterSaleReceiptSummary {
+    return {
+      id: receipt.id,
+      accountId: receipt.accountId,
+      counterSaleId: receipt.counterSaleId,
+      amount: receipt.amount,
+      currency: receipt.currency,
+      receivedByUserId: receipt.receivedByUserId,
+      receivedAt: receipt.receivedAt,
+      cashRegisterId: receipt.cashRegisterId,
+      cashMovementId: receipt.cashMovementId,
+      journalEntryId: receipt.journalEntryId,
+      createdAt: receipt.createdAt
+    };
+  }
+
+  #requireItemParent(
+    item: CounterSaleItemSummary,
+    parent?: CounterSaleItemParentContext
+  ): CounterSaleSummary {
+    const sale = this.#sales.get(item.counterSaleId);
+    if (!sale) {
+      throw new NotFoundError('Counter sale not found', { saleId: item.counterSaleId });
+    }
+
+    if (
+      sale.accountId !== item.accountId ||
+      (parent !== undefined &&
+        (parent.saleId !== item.counterSaleId || parent.accountId !== item.accountId))
+    ) {
+      throw new AuthenticationError('Counter sale item not found for current account', {
+        itemId: item.id
+      });
+    }
+
+    return sale;
+  }
+
   async open(
     accountId: AccountId,
     openedByUserId: UserId,
-    input?: { ownerId?: string | null; notes?: string | null }
+    input?: {
+      ownerId?: string | null;
+      patientId?: string | null;
+      encounterId?: string | null;
+      queueEntryId?: string | null;
+      billingRecordId?: string | null;
+      notes?: string | null;
+    }
   ): Promise<CounterSaleSummary> {
+    const normalizeContextId = (value: string | null | undefined, field: string): string | null => {
+      if (value === undefined || value === null) return null;
+      if (typeof value !== 'string' || value.trim().length === 0 || value.trim().length > 255) {
+        throw new ConflictError(`${field} must contain 1 to 255 characters`, { field });
+      }
+      return value.trim();
+    };
     const now = nowIso();
     const sale: CounterSaleSummary = {
       id: this.#nextId('cs'),
       accountId,
       number: this.#nextNumber(),
       ownerId: input?.ownerId ?? null,
+      patientId: normalizeContextId(input?.patientId, 'patientId'),
+      encounterId: normalizeContextId(input?.encounterId, 'encounterId'),
+      queueEntryId: normalizeContextId(input?.queueEntryId, 'queueEntryId'),
+      billingRecordId: normalizeContextId(input?.billingRecordId, 'billingRecordId'),
       status: 'open',
       subtotal: 0,
       discountAmount: 0,
@@ -275,10 +418,17 @@ export class CounterSalesService {
       quantity?: number;
       discountAmount?: number;
       notes?: string | null;
-    }
+    },
+    parent?: CounterSaleItemParentContext
   ): Promise<{ sale: CounterSaleSummary; item: CounterSaleItemSummary }> {
     const sale = this.#sales.get(saleId);
     if (!sale) throw new NotFoundError('Counter sale not found', { saleId });
+    if (
+      parent !== undefined &&
+      (parent.saleId !== saleId || parent.accountId !== sale.accountId)
+    ) {
+      throw new AuthenticationError('Counter sale not found for current account', { saleId });
+    }
     if (sale.status !== 'open')
       throw new ConflictError('Cannot add items to a non-open sale', { status: sale.status });
 
@@ -338,13 +488,13 @@ export class CounterSalesService {
 
   async updateItem(
     itemId: string,
-    input: { quantity?: number; discountAmount?: number; notes?: string | null }
+    input: { quantity?: number; discountAmount?: number; notes?: string | null },
+    parent?: CounterSaleItemParentContext
   ): Promise<{ sale: CounterSaleSummary; item: CounterSaleItemSummary }> {
     const item = this.#items.get(itemId);
     if (!item) throw new NotFoundError('Counter sale item not found', { itemId });
 
-    const sale = this.#sales.get(item.counterSaleId);
-    if (!sale) throw new NotFoundError('Counter sale not found', { saleId: item.counterSaleId });
+    const sale = this.#requireItemParent(item, parent);
     if (sale.status !== 'open')
       throw new ConflictError('Cannot update items in a non-open sale', { status: sale.status });
 
@@ -389,12 +539,14 @@ export class CounterSalesService {
     return { sale: updatedSale, item: finalItem };
   }
 
-  async removeItem(itemId: string): Promise<CounterSaleSummary> {
+  async removeItem(
+    itemId: string,
+    parent?: CounterSaleItemParentContext
+  ): Promise<CounterSaleSummary> {
     const item = this.#items.get(itemId);
     if (!item) throw new NotFoundError('Counter sale item not found', { itemId });
 
-    const sale = this.#sales.get(item.counterSaleId);
-    if (!sale) throw new NotFoundError('Counter sale not found', { saleId: item.counterSaleId });
+    const sale = this.#requireItemParent(item, parent);
     if (sale.status !== 'open')
       throw new ConflictError('Cannot remove items from a non-open sale', { status: sale.status });
 
@@ -408,7 +560,7 @@ export class CounterSalesService {
     }
 
     if (this.#repository) {
-      await this.#repository.deleteItem(itemId);
+      await this.#repository.deleteItem(itemId, item.accountId, item.counterSaleId);
       await this.#persistSale(updatedSale);
     }
 
@@ -417,29 +569,59 @@ export class CounterSalesService {
 
   async addPayment(
     saleId: string,
-    input: {
-      method: CounterSalePaymentSummary['method'];
-      amount: number;
-      installments?: number;
-      reference?: string | null;
-      notes?: string | null;
-    }
+    input: CounterSalePaymentInput
   ): Promise<{ sale: CounterSaleSummary; payment: CounterSalePaymentSummary }> {
     const sale = this.#sales.get(saleId);
     if (!sale) throw new NotFoundError('Counter sale not found', { saleId });
-    if (sale.status !== 'open')
+    const canRecordAtomically = Boolean(this.#repository?.recordPayment);
+    if (!canRecordAtomically && sale.status !== 'open')
       throw new ConflictError('Cannot add payments to a non-open sale', { status: sale.status });
 
     const remaining = sale.total - sale.paidAmount;
-    if (input.amount <= 0) {
+    if (!Number.isFinite(input.amount) || input.amount <= 0) {
       throw new ConflictError('Payment amount must be greater than zero', { amount: input.amount });
     }
-    if (input.installments !== undefined && input.installments < 1) {
+    if (
+      input.installments !== undefined &&
+      (!Number.isInteger(input.installments) || input.installments < 1)
+    ) {
       throw new ConflictError('Payment installments must be greater than zero', {
         installments: input.installments
       });
     }
-    if (input.amount > remaining + 0.01) {
+    const idempotencyKey = input.idempotencyKey?.trim() || null;
+    if (idempotencyKey && idempotencyKey.length > 255) {
+      throw new ConflictError('Payment idempotency key is too long', { maxLength: 255 });
+    }
+    const normalizedReference = input.reference?.trim() ?? null;
+    const normalizedNotes = input.notes?.trim() ?? null;
+    const amountCents = Math.round(input.amount * 100);
+    const idempotencyMapKey = idempotencyKey ? `${sale.accountId}:${idempotencyKey}` : null;
+
+    if (!canRecordAtomically && idempotencyMapKey) {
+      const previous = this.#inMemoryPaymentIdempotency.get(idempotencyMapKey);
+      if (previous) {
+        const matches =
+          previous.counterSaleId === saleId &&
+          previous.method === input.method &&
+          previous.amountCents === amountCents &&
+          previous.installments === (input.installments ?? 1) &&
+          previous.reference === normalizedReference &&
+          previous.notes === normalizedNotes;
+        if (!matches) {
+          throw new ConflictError(
+            'Payment idempotency key was already used with a different payload'
+          );
+        }
+        const previousPayment = this.#payments.get(previous.paymentId);
+        const previousSale = this.#sales.get(saleId);
+        if (previousPayment && previousSale) {
+          return { sale: previousSale, payment: previousPayment };
+        }
+        throw new ConflictError('Payment idempotency record is no longer available');
+      }
+    }
+    if (!canRecordAtomically && input.amount > remaining + 0.01) {
       throw new ConflictError('Payment amount exceeds balance due', {
         balanceDue: remaining,
         paymentAmount: input.amount
@@ -454,23 +636,94 @@ export class CounterSalesService {
       method: input.method,
       amount: Math.round(input.amount * 100) / 100,
       installments: input.installments ?? 1,
-      reference: input.reference?.trim() ?? null,
-      notes: input.notes?.trim() ?? null,
+      reference: normalizedReference,
+      notes: normalizedNotes,
       createdAt: now
     };
+    const paymentRecord: CounterSalePaymentRecord = {
+      ...payment,
+      idempotencyKey
+    };
+
+    if (canRecordAtomically) {
+      const result = await this.#repository!.recordPayment!(paymentRecord);
+      this.#sales.set(saleId, result.sale);
+      this.#payments.set(result.payment.id, result.payment);
+      return { sale: result.sale, payment: result.payment };
+    }
 
     this.#payments.set(payment.id, payment);
 
     if (this.#repository) {
-      const record: CounterSalePaymentRecord = payment;
-      await this.#repository.createPayment(record);
+      try {
+        await this.#repository.createPayment(paymentRecord);
+      } catch (error) {
+        this.#payments.delete(payment.id);
+        throw error;
+      }
     }
 
     const updatedSale = this.#recalculate(saleId);
     if (this.#repository) {
       await this.#persistSale(updatedSale);
     }
+    if (idempotencyMapKey) {
+      this.#inMemoryPaymentIdempotency.set(idempotencyMapKey, {
+        counterSaleId: saleId,
+        paymentId: payment.id,
+        method: payment.method,
+        amountCents,
+        installments: payment.installments,
+        reference: payment.reference,
+        notes: payment.notes
+      });
+    }
     return { sale: updatedSale, payment };
+  }
+
+  async settle(
+    saleId: string,
+    closedByUserId: UserId,
+    input: CounterSaleSettlementInput
+  ): Promise<CounterSaleCloseResult> {
+    const sale = this.#sales.get(saleId);
+    if (!sale) throw new NotFoundError('Counter sale not found', { saleId });
+    if (this.#repository && !this.#closeTransaction) {
+      throw new ConflictError('Database-backed counter sale settlement requires a transaction boundary', {
+        saleId
+      });
+    }
+    if (input.payments.length === 0) {
+      throw new ConflictError('Counter sale settlement requires at least one payment');
+    }
+
+    const previousPaymentIds = new Set(
+      Array.from(this.#payments.values())
+        .filter((payment) => payment.counterSaleId === saleId)
+        .map((payment) => payment.id)
+    );
+    try {
+      for (const payment of input.payments) {
+        await this.addPayment(saleId, payment);
+      }
+      return await this.close(saleId, closedByUserId);
+    } catch (error) {
+      const removedPaymentIds = new Set<string>();
+      for (const payment of this.#payments.values()) {
+        if (payment.counterSaleId === saleId && !previousPaymentIds.has(payment.id)) {
+          removedPaymentIds.add(payment.id);
+          this.#payments.delete(payment.id);
+        }
+      }
+      for (const [key, record] of this.#inMemoryPaymentIdempotency) {
+        if (removedPaymentIds.has(record.paymentId)) {
+          this.#inMemoryPaymentIdempotency.delete(key);
+        }
+      }
+      this.#sales.set(saleId, sale);
+      this.#receipts.delete(saleId);
+      throw error;
+    }
   }
 
   async close(saleId: string, closedByUserId: UserId): Promise<CounterSaleCloseResult> {
@@ -488,29 +741,45 @@ export class CounterSalesService {
   }
 
   async #closeInternal(saleId: string, closedByUserId: UserId): Promise<CounterSaleCloseResult> {
-    const sale = this.#sales.get(saleId);
-    if (!sale) throw new NotFoundError('Counter sale not found', { saleId });
-    if (sale.status !== 'open')
-      throw new ConflictError('Sale is not open', { status: sale.status });
-
-    const payments = Array.from(this.#payments.values()).filter((p) => p.counterSaleId === saleId);
-    const paidAmount = payments.reduce((sum, p) => sum + p.amount, 0);
-    if (Math.round(paidAmount * 100) / 100 < sale.total - 0.01) {
-      throw new ConflictError('Cannot close sale with outstanding balance', {
-        total: sale.total,
-        paid: Math.round(paidAmount * 100) / 100,
-        balanceDue: sale.balanceDue
-      });
-    }
-
     if (this.#repository && !this.#closeTransaction) {
       throw new ConflictError('Database-backed counter sale close requires a transaction boundary', {
         saleId
       });
     }
 
-    const items = Array.from(this.#items.values()).filter((item) => item.counterSaleId === saleId);
+    await this.#refreshSaleFromDatabase(saleId);
+    const initialSale = this.#sales.get(saleId);
+    if (!initialSale) throw new NotFoundError('Counter sale not found', { saleId });
+    const initialItems = Array.from(this.#items.values()).filter(
+      (item) => item.counterSaleId === saleId
+    );
+    const initialPayments = Array.from(this.#payments.values()).filter(
+      (payment) => payment.counterSaleId === saleId
+    );
+
     const executeClose = async (): Promise<CounterSaleCloseResult> => {
+      // The production closeTransaction wrapper enters the tenant UoW before
+      // invoking this callback. Reloading here keeps the row lock, items, and
+      // payments in the same transaction instead of using the pre-UoW snapshot.
+      if (this.#repository) await this.#refreshSaleFromDatabase(saleId);
+      const sale = this.#sales.get(saleId);
+      if (!sale) throw new NotFoundError('Counter sale not found', { saleId });
+      if (sale.status !== 'open')
+        throw new ConflictError('Sale is not open', { status: sale.status });
+
+      const payments = Array.from(this.#payments.values()).filter(
+        (payment) => payment.counterSaleId === saleId
+      );
+      const paidAmount = payments.reduce((sum, payment) => sum + payment.amount, 0);
+      if (Math.round(paidAmount * 100) / 100 < sale.total - 0.01) {
+        throw new ConflictError('Cannot close sale with outstanding balance', {
+          total: sale.total,
+          paid: Math.round(paidAmount * 100) / 100,
+          balanceDue: sale.balanceDue
+        });
+      }
+
+      const items = Array.from(this.#items.values()).filter((item) => item.counterSaleId === saleId);
       // Block 1: Automatic inventory consumption for product items
       const inventoryConsumptions: InventoryConsumption[] = [];
       if (this.#inventoryService) {
@@ -573,26 +842,49 @@ export class CounterSalesService {
         await this.#repository.update(record);
       }
 
-      const result: CounterSaleCloseResult = {
+      const preview: CounterSaleClosePreview = {
         sale: updated,
         inventoryConsumptions: inventoryConsumptions.length > 0 ? inventoryConsumptions : undefined,
         cashMovements: cashMovements.length > 0 ? cashMovements : undefined
       };
-      await this.#onClose?.({ sale, items, payments, closedByUserId }, result);
-      return result;
+      const effects = await this.#onClose?.({ sale, items, payments, closedByUserId }, preview);
+      const cashMovement = cashMovements.length === 1 ? cashMovements[0] : undefined;
+      const receipt: CounterSaleReceiptRecord = {
+        id: this.#nextId('csr'),
+        accountId: sale.accountId,
+        counterSaleId: sale.id,
+        amount: sale.total,
+        currency: 'BRL',
+        receivedByUserId: closedByUserId,
+        receivedAt: updated.closedAt ?? now,
+        cashRegisterId: cashMovement?.cashRegisterId ?? null,
+        cashMovementId: cashMovement?.id ?? null,
+        journalEntryId: effects?.journalEntryId ?? null,
+        createdAt: now
+      };
+      const persistedReceipt = this.#repository
+        ? await this.#repository.createReceipt(receipt)
+        : receipt;
+      return {
+        ...preview,
+        receipt: this.#toReceiptSummary(persistedReceipt)
+      };
     };
 
     try {
-      return this.#closeTransaction
+      const result = this.#closeTransaction
         ? await this.#closeTransaction(
-            { sale, items, payments, closedByUserId },
+            { sale: initialSale, items: initialItems, payments: initialPayments, closedByUserId },
             executeClose
           )
         : await executeClose();
+      this.#receipts.set(saleId, result.receipt);
+      return result;
     } catch (error) {
       // The durable transaction rolls back external effects. Restore this service's
       // in-memory projection as well so a failed close cannot be observed as closed.
-      this.#sales.set(saleId, sale);
+      this.#sales.set(saleId, initialSale);
+      this.#receipts.delete(saleId);
       throw error;
     }
   }
@@ -623,6 +915,17 @@ export class CounterSalesService {
     if (!sale) throw new NotFoundError('Counter sale not found', { saleId });
     if (sale.status !== 'closed')
       throw new ConflictError('Can only reopen closed sales', { status: sale.status });
+    const receipt = this.#receipts.get(saleId) ?? (this.#repository
+      ? await this.#repository.findReceipt(saleId).then((record) =>
+          record ? this.#toReceiptSummary(record) : undefined
+        )
+      : undefined);
+    if (receipt) {
+      throw new ConflictError('Cannot reopen a sale after its financial receipt was issued', {
+        saleId,
+        receiptId: receipt.id
+      });
+    }
 
     const now = nowIso();
     const updated: CounterSaleSummary = {
@@ -646,15 +949,21 @@ export class CounterSalesService {
     return this.#sales.get(id);
   }
 
+  getReceipt(saleId: string): CounterSaleReceiptSummary | undefined {
+    return this.#receipts.get(saleId);
+  }
+
   getOrThrow(id: string): CounterSaleSummary {
     const sale = this.#sales.get(id);
     if (!sale) throw new NotFoundError('Counter sale not found', { id });
     return sale;
   }
 
-  getItems(saleId: string): CounterSaleItemSummary[] {
+  getItems(saleId: string, accountId?: AccountId): CounterSaleItemSummary[] {
     return Array.from(this.#items.values())
-      .filter((i) => i.counterSaleId === saleId)
+      .filter(
+        (i) => i.counterSaleId === saleId && (accountId === undefined || i.accountId === accountId)
+      )
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }
 
@@ -964,5 +1273,6 @@ export {
   type CounterSalesRepository,
   type CounterSaleRecord,
   type CounterSaleItemRecord,
-  type CounterSalePaymentRecord
+  type CounterSalePaymentRecord,
+  type CounterSaleReceiptRecord
 } from './repositories/database-counter-sales.repository.js';

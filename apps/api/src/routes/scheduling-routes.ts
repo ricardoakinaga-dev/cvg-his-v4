@@ -14,6 +14,7 @@ import type {
   SmartSchedulingRecommendationRequest,
   SmartSchedulingRecommendationResponse,
   QueueListResponse,
+  TransferQueueEntryRequest,
   SchedulingAvailabilityResponse,
   SchedulingOverviewResponse
 } from '@cvg-his-v2/shared-contracts';
@@ -342,14 +343,18 @@ export async function handleSchedulingRoutes(
       return json(response, 200, existingEncounter);
     }
 
-    const encounter = encounters.openEncounter(principal.user.accountId, principal.user.id, {
+    const encounter = await encounters.openEncounterAuthoritatively(
+      principal.user.accountId,
+      principal.user.id,
+      {
       patientId: appointment.patientId,
       ownerId: appointment.ownerId,
       appointmentId: appointment.id,
       visitType: appointment.visitType,
       origin: 'schedule',
       reason: appointment.reason
-    });
+      }
+    );
 
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -516,18 +521,7 @@ export async function handleSchedulingRoutes(
     if (existing.accountId !== principal.user.accountId) {
       throw new NotFoundError('Queue entry not found', { queueEntryId });
     }
-    const payload = (await readJsonBody(request)) as {
-      readonly toSector?: string;
-      readonly sentByUserId?: string;
-      readonly receivedByUserId?: string;
-      readonly responsibleUserId?: string;
-      readonly responsibleStaffId?: string;
-      readonly nextSector?: string;
-      readonly reason?: string;
-      readonly urgency?: 'low' | 'medium' | 'high' | 'critical';
-      readonly billingRecordId?: string;
-      readonly counterSaleId?: string;
-    };
+    const payload = (await readJsonBody(request)) as Partial<TransferQueueEntryRequest>;
     const transferPayload = {
       toSector: requireNonEmptyString(payload.toSector, 'toSector'),
       sentByUserId: payload.sentByUserId?.trim() || principal.user.id,
@@ -561,6 +555,70 @@ export async function handleSchedulingRoutes(
           correlationId
         });
         return transferred;
+      }
+    });
+    return json(response, 200, entry);
+  }
+
+  const transferListMatch = pathname.match(/^\/queue\/([^/]+)\/transfers$/);
+  if (transferListMatch && method === 'GET') {
+    const principal = requirePrincipal(request, 'scheduling.read');
+    const queueEntryId = requireNonEmptyString(transferListMatch[1], 'queueEntryId');
+    const existing = scheduling.getQueueEntryOrThrow(queueEntryId as never);
+    if (existing.accountId !== principal.user.accountId) {
+      throw new NotFoundError('Queue entry not found', { queueEntryId });
+    }
+    const items = scheduling.listQueueTransfers(queueEntryId as never);
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'scheduling',
+      action: 'list_queue_transfers',
+      entityType: 'queue-entry',
+      entityId: queueEntryId,
+      payloadSummary: `Queue transfer history listed for ${queueEntryId}`,
+      riskLevel: 'medium',
+      correlationId
+    });
+    return json(response, 200, { items });
+  }
+
+  const receiveTransferMatch = pathname.match(
+    /^\/queue\/([^/]+)\/transfers\/([^/]+)\/receive$/
+  );
+  if (receiveTransferMatch && method === 'POST') {
+    const principal = requirePrincipal(request, 'scheduling.manage');
+    const queueEntryId = requireNonEmptyString(receiveTransferMatch[1], 'queueEntryId');
+    const transferId = requireNonEmptyString(receiveTransferMatch[2], 'transferId');
+    const existing = scheduling.getQueueEntryOrThrow(queueEntryId as never);
+    if (existing.accountId !== principal.user.accountId) {
+      throw new NotFoundError('Queue entry not found', { queueEntryId });
+    }
+    const entry = await runCommand({
+      request,
+      accountId: principal.user.accountId,
+      actorUserId: principal.user.id,
+      correlationId,
+      operation: 'scheduling.queue.transfer.receive',
+      payload: { queueEntryId, transferId },
+      command: async () => {
+        const received = await scheduling.receiveQueueTransfer(
+          queueEntryId as never,
+          transferId as never,
+          principal.user.id
+        );
+        await appendAuditAndWait(audit, {
+          actorId: principal.user.id,
+          accountId: principal.user.accountId,
+          module: 'scheduling',
+          action: 'receive_queue_transfer',
+          entityType: 'queue-transfer',
+          entityId: transferId,
+          payloadSummary: `Queue transfer ${transferId} received by ${principal.user.id}`,
+          riskLevel: 'high',
+          correlationId
+        });
+        return received;
       }
     });
     return json(response, 200, entry);

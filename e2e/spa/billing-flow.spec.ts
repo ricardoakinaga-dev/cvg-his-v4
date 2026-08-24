@@ -9,13 +9,13 @@ import { test, expect, loginViaToken } from './fixtures/spa-fixture';
  * 3. Navegar para Billing e validar carregamento
  * 4. Gerar estimativa (draft → estimated)
  * 5. Adicionar itens de cobrança
- * 6. Atualizar status (estimated → open → settled)
+ * 6. Abrir cobrança, fechar o atendimento e registrar recebimento no caixa
  * 7. Validar feedback visual e estado final
  *
  * Status flow:
  *   draft → estimated (Gerar Estimativa)
  *   estimated → open (Atualizar Status)
- *   open → settled (Atualizar Status)
+ *   open → settled (recebimento auditável no atendimento)
  *   settled → terminal (sem ações)
  *
  * Execução:
@@ -33,6 +33,8 @@ test.describe('Fluxo Completo de Billing (Faturamento)', () => {
   }) => {
     const mainContent = page.getByRole('main');
     const pageHeaderTitle = mainContent.locator('.app-page-header__title');
+  let cashRegisterId: string | undefined;
+  let ownsCashRegister = false;
     // ── Step 0: Prepare test data ──
     console.log('   📦 Creating test data...');
     const ownerName = `Tutor Billing E2E ${Date.now()}`;
@@ -158,55 +160,88 @@ test.describe('Fluxo Completo de Billing (Faturamento)', () => {
     await expect(page.getByText('Aberto', { exact: true }).first()).toBeVisible({ timeout: 15000 });
     console.log('   ✅ Status: Aberto (open)');
 
-    // ── Step 6: Settle the billing ──
-    console.log('   💵 Settling billing...');
-    await page.getByRole('button', { name: 'Atualizar Status' }).click();
-    await expect(page.getByRole('heading', { name: /^Atualizar Status$/ })).toBeVisible({
-      timeout: 10000
-    });
+    // ── Step 6: Close the encounter and settle through the cash receipt ──
+    console.log('   💵 Settling billing through the auditable cash receipt...');
+    try {
+      const cashDashboard = await apiCall.get('/cash-register/dashboard');
+      const existingRegister = cashDashboard.openRegister as { id?: string } | null | undefined;
+      if (existingRegister?.id) {
+        cashRegisterId = existingRegister.id;
+      } else {
+        const openedRegister = await apiCall.post('/cash-register/open', {
+          openingAmount: 0.01,
+          notes: `Abertura para billing E2E ${Date.now()}`
+        });
+        cashRegisterId = openedRegister.id as string;
+        ownsCashRegister = true;
+      }
 
-    await page.selectOption('#newStatus', 'settled');
-    await page.locator('#adminNotes').fill('Pagamento recebido via PIX');
-    await page.getByRole('button', { name: /^Atualizar$/ }).click();
+      await page.goto(`${SPA_URL}/encounters/${encounter.id}`);
+      await page.waitForLoadState('networkidle');
+      await expect(page.getByRole('button', { name: 'Fechar Atendimento' })).toBeVisible({
+        timeout: 15000
+      });
+      await page.getByRole('button', { name: 'Fechar Atendimento' }).click();
+      const closeDialog = page.getByRole('dialog', { name: 'Fechar Atendimento' });
+      await closeDialog.locator('#closeReason').fill('Atendimento concluído para recebimento E2E');
+      await closeDialog.locator('button').filter({ hasText: /^Fechar$/ }).click();
+      await expect(page.getByText('✅ Finalizado', { exact: true }).first()).toBeVisible({
+        timeout: 15000
+      });
 
-    // Wait for status to change to "Quitado"
-    await expect(page.getByText('Quitado', { exact: true }).first()).toBeVisible({ timeout: 15000 });
-    console.log('   ✅ Status: Quitado (settled)');
+      await page.locator('button.workflow-tab').filter({ hasText: 'Fechamento' }).click();
+      await page.getByRole('button', { name: 'Receber em dinheiro' }).click();
+      const receiptDialog = page.getByRole('dialog', { name: 'Receber em dinheiro' });
+      await expect(receiptDialog).toBeVisible({ timeout: 10000 });
+      await receiptDialog.getByRole('button', { name: 'Confirmar recebimento' }).click();
+      await expect(page.getByText('R$ 0,00').first()).toBeVisible({ timeout: 15000 });
+      console.log('   ✅ Cash receipt committed and balance refreshed');
 
-    // ── Step 7: Validate final state ──
-    console.log('   ✅ Validating final state...');
+      // ── Step 7: Validate final billing state ──
+      console.log('   ✅ Validating final state...');
+      await page.goto(`${SPA_URL}/billing/${encounter.id}`);
+      await page.waitForLoadState('networkidle');
+      await expect(page.getByText('Quitado', { exact: true }).first()).toBeVisible({
+        timeout: 15000
+      });
+      await expect(page.getByRole('button', { name: 'Adicionar Item' })).toBeHidden({
+        timeout: 10000
+      });
+      await expect(page.getByRole('button', { name: 'Atualizar Status' })).toBeHidden({
+        timeout: 10000
+      });
+      await expect(page.getByRole('button', { name: /Gerar estimativa/i })).toBeHidden({
+        timeout: 10000
+      });
+      await expect(page.getByText('Consulta veterinária')).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText('Hemograma completo')).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText('BRL')).toBeVisible({ timeout: 10000 });
+      console.log('   ✅ Settled billing is immutable and retains its items');
 
-    // No action buttons should be visible for settled billing
-    await expect(page.getByRole('button', { name: 'Adicionar Item' })).toBeHidden({
-      timeout: 10000
-    });
-    await expect(page.getByRole('button', { name: 'Atualizar Status' })).toBeHidden({
-      timeout: 10000
-    });
-    await expect(page.getByRole('button', { name: /Gerar estimativa/i })).toBeHidden({
-      timeout: 10000
-    });
-    console.log('   ✅ All action buttons hidden (settled is terminal)');
-
-    // Items should still be visible
-    await expect(page.getByText('Consulta veterinária')).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText('Hemograma completo')).toBeVisible({ timeout: 10000 });
-    console.log('   ✅ Billing items still visible');
-
-    // Currency should be displayed
-    await expect(page.getByText('BRL')).toBeVisible({ timeout: 10000 });
-    console.log('   ✅ Currency (BRL) visible');
-
-    // ── Step 8: Verify navigation back to billing list ──
-    console.log('   🔙 Verifying navigation...');
-    await page.goto(`${SPA_URL}/billing`);
-    await page.waitForLoadState('networkidle');
-    await expect(pageHeaderTitle).toHaveText('Contas a Receber', {
-      timeout: 15000
-    });
-    console.log('   ✅ Billing list accessible');
-
-    console.log('   🎉 Full billing flow completed successfully!');
+      // ── Step 8: Verify navigation back to billing list ──
+      console.log('   🔙 Verifying navigation...');
+      await page.goto(`${SPA_URL}/billing`);
+      await page.waitForLoadState('networkidle');
+      await expect(pageHeaderTitle).toHaveText('Contas a Receber', {
+        timeout: 15000
+      });
+      console.log('   ✅ Billing list accessible');
+      console.log('   🎉 Full billing flow completed successfully!');
+    } finally {
+      if (cashRegisterId && ownsCashRegister) {
+        try {
+          const reconciliation = await apiCall.get(
+            `/cash-register/reconciliation?registerId=${encodeURIComponent(cashRegisterId)}`
+          );
+          await apiCall.post('/cash-register/close', {
+            closingAmount: reconciliation.expectedAmount,
+            notes: 'Limpeza do fluxo E2E de billing'
+          });
+        } catch {
+          // Keep the original assertion failure while leaving cleanup best-effort.
+        }
+      }
+    }
   });
 
   test('valida elementos da página de billing e navegação', async ({ page, apiCall, cleanup }) => {

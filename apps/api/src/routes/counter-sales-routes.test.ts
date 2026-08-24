@@ -3,7 +3,11 @@ import { Writable } from 'node:stream';
 import test from 'node:test';
 
 import { CounterSalesService } from '@cvg-his-v2/module-counter-sales';
-import { ConflictError } from '@cvg-his-v2/shared-errors';
+import {
+  AuthenticationError,
+  ConflictError,
+  ValidationError
+} from '@cvg-his-v2/shared-errors';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 
 import { handleCounterSalesRoutes } from './counter-sales-routes.js';
@@ -76,6 +80,15 @@ function createPrincipal(): AuthenticatedPrincipal {
   };
 }
 
+function createPrincipalFor(accountId: string, userId: string): AuthenticatedPrincipal {
+  const principal = createPrincipal();
+  return {
+    ...principal,
+    user: { ...principal.user, id: userId as never, accountId: accountId as never },
+    session: { ...principal.session, userId: userId as never, accountId: accountId as never }
+  };
+}
+
 function createAudit() {
   return {
     write: () => {}
@@ -108,7 +121,16 @@ test('handleCounterSalesRoutes opens and lists counter sales', async () => {
     {
       method: 'POST',
       [Symbol.asyncIterator]: async function* () {
-        yield Buffer.from(JSON.stringify({ ownerId: 'owner-1', notes: 'Fluxo balcão' }));
+        yield Buffer.from(
+          JSON.stringify({
+            ownerId: 'owner-1',
+            patientId: 'patient-1',
+            encounterId: 'encounter-1',
+            queueEntryId: 'queue-1',
+            billingRecordId: 'billing-1',
+            notes: 'Fluxo balcão'
+          })
+        );
       }
     } as never,
     createResponse as never,
@@ -122,8 +144,20 @@ test('handleCounterSalesRoutes opens and lists counter sales', async () => {
 
   assert.equal(created, true);
   assert.equal(createResponse.statusCode, 201);
-  const sale = createResponse.bodyJson<{ id: string; ownerId: string; notes: string }>();
+  const sale = createResponse.bodyJson<{
+    id: string;
+    ownerId: string;
+    patientId: string;
+    encounterId: string;
+    queueEntryId: string;
+    billingRecordId: string;
+    notes: string;
+  }>();
   assert.equal(sale.ownerId, 'owner-1');
+  assert.equal(sale.patientId, 'patient-1');
+  assert.equal(sale.encounterId, 'encounter-1');
+  assert.equal(sale.queueEntryId, 'queue-1');
+  assert.equal(sale.billingRecordId, 'billing-1');
   assert.equal(sale.notes, 'Fluxo balcão');
 
   const listResponse = new MockResponse();
@@ -327,8 +361,14 @@ test('handleCounterSalesRoutes returns detail with items and payments and allows
 
   assert.equal(closed, true);
   assert.equal(closeResponse.statusCode, 200);
-  const closedSale = closeResponse.bodyJson<{ status: string }>();
+  const closedSale = closeResponse.bodyJson<{
+    status: string;
+    receipt: { counterSaleId: string; amount: number; currency: string };
+  }>();
   assert.equal(closedSale.status, 'closed');
+  assert.equal(closedSale.receipt.counterSaleId, sale.id);
+  assert.equal(closedSale.receipt.amount, 170);
+  assert.equal(closedSale.receipt.currency, 'BRL');
 });
 
 test('handleCounterSalesRoutes blocks invalid financial edits after payments and closure', async () => {
@@ -518,4 +558,240 @@ test('handleCounterSalesRoutes blocks invalid financial edits after payments and
       ),
     ConflictError
   );
+});
+
+test('handleCounterSalesRoutes settles the final payment and closes atomically', async () => {
+  const counterSales = new CounterSalesService();
+  const sale = await counterSales.open('acc-1' as never, 'user-1' as never);
+  await counterSales.addItem(sale.id, {
+    itemType: 'service',
+    nameSnapshot: 'Consulta de retorno',
+    unitPrice: 100
+  });
+
+  let commandCalls = 0;
+  const response = new MockResponse();
+  const handled = await handleCounterSalesRoutes(
+    `/counter-sales/${sale.id}/settle`,
+    {
+      method: 'POST',
+      headers: { 'idempotency-key': 'settle-cs-1' },
+      [Symbol.asyncIterator]: async function* () {
+        yield Buffer.from(
+          JSON.stringify({
+            payments: [{ method: 'pix', amount: 100, reference: 'PIX-SETTLE' }]
+          })
+        );
+      }
+    } as never,
+    response as never,
+    'corr-cs-settle-1',
+    {
+      counterSales,
+      audit: createAudit() as never,
+      requirePrincipal: () => createPrincipal(),
+      runCommand: async (input) => {
+        commandCalls += 1;
+        return input.command();
+      }
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 200);
+  assert.equal(commandCalls, 1);
+  const payload = response.bodyJson<{
+    status: string;
+    paidAmount: number;
+    receipt: { counterSaleId: string; amount: number };
+  }>();
+  assert.equal(payload.status, 'closed');
+  assert.equal(payload.paidAmount, 100);
+  assert.equal(payload.receipt.counterSaleId, sale.id);
+  assert.equal(payload.receipt.amount, 100);
+});
+
+test('handleCounterSalesRoutes rejects malformed settlement payments at the boundary', async () => {
+  const counterSales = new CounterSalesService();
+  const sale = await counterSales.open('acc-1' as never, 'user-1' as never);
+
+  await assert.rejects(
+    () =>
+      handleCounterSalesRoutes(
+        `/counter-sales/${sale.id}/settle`,
+        {
+          method: 'POST',
+          [Symbol.asyncIterator]: async function* () {
+            yield Buffer.from(JSON.stringify({ payments: [{ method: 'bitcoin', amount: 1 }] }));
+          }
+        } as never,
+        new MockResponse() as never,
+        'corr-cs-settle-invalid',
+        {
+          counterSales,
+          audit: createAudit() as never,
+          requirePrincipal: () => createPrincipal()
+        }
+      ),
+    ValidationError
+  );
+});
+
+test('handleCounterSalesRoutes forwards the payment idempotency key and validates the payload', async () => {
+  const sale = {
+    id: 'sale-payment-key',
+    accountId: 'acc-1',
+    number: 'CS-KEY-001'
+  };
+  let receivedPayload: Record<string, unknown> | undefined;
+  const counterSales = {
+    getOrThrow: () => sale,
+    addPayment: async (_saleId: string, payload: Record<string, unknown>) => {
+      receivedPayload = payload;
+      return {
+        sale: { ...sale, status: 'open' },
+        payment: { id: 'payment-key-1', ...payload }
+      };
+    }
+  } as never;
+
+  const response = new MockResponse();
+  const handled = await handleCounterSalesRoutes(
+    `/counter-sales/${sale.id}/payments`,
+    {
+      method: 'POST',
+      headers: { 'idempotency-key': 'payment-retry-001' },
+      [Symbol.asyncIterator]: async function* () {
+        yield Buffer.from(JSON.stringify({ method: 'pix', amount: 25 }));
+      }
+    } as never,
+    response as never,
+    'corr-cs-payment-key',
+    {
+      counterSales,
+      audit: createAudit() as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 201);
+  assert.equal(receivedPayload?.idempotencyKey, 'payment-retry-001');
+
+  await assert.rejects(
+    () =>
+      handleCounterSalesRoutes(
+        `/counter-sales/${sale.id}/payments`,
+        {
+          method: 'POST',
+          [Symbol.asyncIterator]: async function* () {
+            yield Buffer.from(JSON.stringify({ method: 'pix', amount: 25, unexpected: true }));
+          }
+        } as never,
+        new MockResponse() as never,
+        'corr-cs-payment-invalid',
+        {
+          counterSales,
+          audit: createAudit() as never,
+          requirePrincipal: () => createPrincipal()
+        }
+      ),
+    ValidationError
+  );
+});
+
+test('handleCounterSalesRoutes rejects an item whose parent sale or account differs from the URL', async () => {
+  const counterSales = new CounterSalesService();
+  const saleA = await counterSales.open('acc-1' as never, 'user-1' as never);
+  const saleB = await counterSales.open('acc-1' as never, 'user-1' as never);
+  const saleOtherAccount = await counterSales.open('acc-2' as never, 'user-2' as never);
+  const { item } = await counterSales.addItem(saleA.id, {
+    itemType: 'service',
+    nameSnapshot: 'Consulta',
+    unitPrice: 100
+  });
+
+  await assert.rejects(
+    () =>
+      handleCounterSalesRoutes(
+        `/counter-sales/${saleB.id}/items/${item.id}`,
+        {
+          method: 'PATCH',
+          [Symbol.asyncIterator]: async function* () {
+            yield Buffer.from(JSON.stringify({ quantity: 2 }));
+          }
+        } as never,
+        new MockResponse() as never,
+        'corr-cs-item-parent-mismatch',
+        {
+          counterSales,
+          audit: createAudit() as never,
+          requirePrincipal: () => createPrincipal()
+        }
+      ),
+    AuthenticationError
+  );
+
+  await assert.rejects(
+    () =>
+      handleCounterSalesRoutes(
+        `/counter-sales/${saleOtherAccount.id}/items/${item.id}`,
+        {
+          method: 'DELETE'
+        } as never,
+        new MockResponse() as never,
+        'corr-cs-item-account-mismatch',
+        {
+          counterSales,
+          audit: createAudit() as never,
+          requirePrincipal: () => createPrincipalFor('acc-2', 'user-2')
+        }
+      ),
+    AuthenticationError
+  );
+
+  assert.equal(counterSales.getItems(saleA.id)[0]?.quantity, 1);
+});
+
+test('handleCounterSalesRoutes binds add_item idempotency payload to the account and parent sale', async () => {
+  const counterSales = new CounterSalesService();
+  const sale = await counterSales.open('acc-1' as never, 'user-1' as never);
+  let commandPayload: unknown;
+
+  const handled = await handleCounterSalesRoutes(
+    `/counter-sales/${sale.id}/items`,
+    {
+      method: 'POST',
+      headers: { 'idempotency-key': 'add-item-retry-001' },
+      [Symbol.asyncIterator]: async function* () {
+        yield Buffer.from(
+          JSON.stringify({
+            itemType: 'service',
+            nameSnapshot: 'Consulta',
+            unitPrice: 100
+          })
+        );
+      }
+    } as never,
+    new MockResponse() as never,
+    'corr-cs-add-item-idempotency',
+    {
+      counterSales,
+      audit: createAudit() as never,
+      requirePrincipal: () => createPrincipal(),
+      runCommand: async (input) => {
+        commandPayload = input.payload;
+        return input.command();
+      }
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.deepEqual(commandPayload, {
+    itemType: 'service',
+    nameSnapshot: 'Consulta',
+    unitPrice: 100,
+    saleId: sale.id,
+    accountId: 'acc-1'
+  });
 });

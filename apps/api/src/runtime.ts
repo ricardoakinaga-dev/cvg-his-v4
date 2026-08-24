@@ -148,8 +148,10 @@ import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
 import { getTenantContext, runWithTenantContext } from '@cvg-his-v2/tenant-context';
 import { trace as otelTrace } from '@opentelemetry/api';
 import {
+  getTenantTransactionContext,
   withTenantTransaction,
   type JsonValue,
+  type TenantTransactionContext,
   type TenantUnitOfWork
 } from '@cvg-his-v2/shared-database';
 
@@ -814,7 +816,7 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
         credit: 0,
         memo: `Comanda ${sale.number} — ${payment.method}`
       }));
-      await ledger.postEntry({
+      const journalEntry = await ledger.postEntry({
         accountId: sale.accountId,
         sourceType: 'counter_sale_revenue',
         sourceId: sale.id,
@@ -857,10 +859,50 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
           ]
         });
       }
+      return { journalEntryId: journalEntry.id };
     },
     closeTransaction: closeUnitOfWork
       ? async (input, execute) => {
           try {
+            const appendCloseEffects = async (
+              transaction: TenantTransactionContext
+            ): Promise<CounterSaleCloseResult> => {
+              if (transaction.accountId !== input.sale.accountId) {
+                throw new Error('Counter sale close transaction account does not match the sale');
+              }
+
+              const result = await execute();
+              await transaction.outbox.append({
+                moduleName: 'counter-sales',
+                eventType: 'counter_sale.closed',
+                payload: {
+                  accountId: input.sale.accountId,
+                  saleId: result.sale.id,
+                  saleNumber: result.sale.number,
+                  total: result.sale.total,
+                  paidAmount: result.sale.paidAmount,
+                  closedByUserId: input.closedByUserId
+                }
+              });
+              await transaction.audit.append({
+                entityType: 'counter-sale',
+                entityId: result.sale.id,
+                action: 'closed',
+                after: { ...result.sale } as Readonly<Record<string, unknown>>,
+                metadata: {
+                  saleNumber: result.sale.number,
+                  inventoryConsumptions: result.inventoryConsumptions?.length ?? 0,
+                  cashMovements: result.cashMovements?.length ?? 0
+                }
+              });
+              return JSON.parse(JSON.stringify(result)) as CounterSaleCloseResult;
+            };
+
+            const ambientTransaction = getTenantTransactionContext();
+            if (ambientTransaction) {
+              return await appendCloseEffects(ambientTransaction);
+            }
+
             const transactionResult = await closeUnitOfWork.execute(
               {
                 accountId: input.sale.accountId,
@@ -874,33 +916,8 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
                 saleId: input.sale.id,
                 closedByUserId: input.closedByUserId
               },
-              async (transaction) => {
-                const result = await execute();
-                await transaction.outbox.append({
-                  moduleName: 'counter-sales',
-                  eventType: 'counter_sale.closed',
-                  payload: {
-                    accountId: input.sale.accountId,
-                    saleId: result.sale.id,
-                    saleNumber: result.sale.number,
-                    total: result.sale.total,
-                    paidAmount: result.sale.paidAmount,
-                    closedByUserId: input.closedByUserId
-                  }
-                });
-                await transaction.audit.append({
-                  entityType: 'counter-sale',
-                  entityId: result.sale.id,
-                  action: 'closed',
-                  after: { ...result.sale } as Readonly<Record<string, unknown>>,
-                  metadata: {
-                    saleNumber: result.sale.number,
-                    inventoryConsumptions: result.inventoryConsumptions?.length ?? 0,
-                    cashMovements: result.cashMovements?.length ?? 0
-                  }
-                });
-                return JSON.parse(JSON.stringify(result)) as JsonValue;
-              }
+              async (transaction) =>
+                JSON.parse(JSON.stringify(await appendCloseEffects(transaction))) as JsonValue
             );
             return transactionResult.value as unknown as CounterSaleCloseResult;
           } catch (error) {

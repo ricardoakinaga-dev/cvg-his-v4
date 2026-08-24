@@ -42,6 +42,17 @@ describe('AccessControlService', () => {
     expect(service.listRoles().some((role) => role.code === 'admin')).toBe(true);
   });
 
+  it('includes marketing permissions in the canonical admin role', () => {
+    expect(service.listPermissions().map((permission) => permission.code)).toEqual(
+      expect.arrayContaining(['marketing.read', 'marketing.manage'])
+    );
+
+    const admin = service.listRoles().find((role) => role.code === 'admin');
+    expect(admin?.permissionCodes).toEqual(
+      expect.arrayContaining(['marketing.read', 'marketing.manage'])
+    );
+  });
+
   it('creates legacy profile from roles', () => {
     const profile = service.createProfile({ roleCodes: ['admin'] });
     expect(profile.permissionCodes).toContain('users.manage');

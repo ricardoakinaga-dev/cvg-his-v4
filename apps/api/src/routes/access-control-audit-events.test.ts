@@ -5,7 +5,7 @@ import test from 'node:test';
 
 import { AccessControlService } from '@cvg-his-v2/module-access-control';
 import { UsersService, type UserRecord } from '@cvg-his-v2/module-users';
-import { AuthenticationError, ForbiddenError } from '@cvg-his-v2/shared-errors';
+import { AuthenticationError, ForbiddenError, ValidationError } from '@cvg-his-v2/shared-errors';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 import { handleAccessControlRoutes } from './access-control-routes.js';
 
@@ -560,4 +560,87 @@ test('access-control routes reject cross-account subjects for RH governance writ
       ),
     AuthenticationError
   );
+});
+
+test('access-control mutations validate input and leave a tenant-scoped audit trail', async () => {
+  const accessControl = new AccessControlService();
+  const auditWrites: Array<{
+    action: string;
+    entityType: string;
+    entityId: string;
+    accountId: string;
+    payloadSummary: string;
+  }> = [];
+  const users = createUsersService();
+  const principal = createPrincipal(['access.read', 'users.manage'], 'user-admin', 'acc-1');
+  const handlers = {
+    accessControl,
+    users,
+    audit: {
+      list: () => [],
+      write: (event: (typeof auditWrites)[number]) => {
+        auditWrites.push(event);
+      }
+    } as never,
+    requirePrincipal: () => principal
+  };
+
+  await assert.rejects(
+    () =>
+      handleAccessControlRoutes(
+        '/access-control/teams',
+        jsonRequest('POST', '/access-control/teams', { code: ' ', name: 'Sem código' }),
+        new MockResponse() as never,
+        'corr-access-invalid-team',
+        handlers
+      ),
+    ValidationError
+  );
+
+  const createResponse = new MockResponse();
+  await handleAccessControlRoutes(
+    '/access-control/teams',
+    jsonRequest('POST', '/access-control/teams', {
+      code: 'grupo_auditavel',
+      name: 'Grupo auditável',
+      description: 'Grupo de governança'
+    }),
+    createResponse as never,
+    'corr-access-team-created',
+    handlers
+  );
+  const team = createResponse.bodyJson<{ id: string }>();
+
+  const grantResponse = new MockResponse();
+  await handleAccessControlRoutes(
+    '/access-control/grants',
+    jsonRequest('POST', '/access-control/grants', {
+      subjectType: 'team',
+      subjectId: team.id,
+      permissionCode: 'audit.read',
+      effect: 'allow'
+    }),
+    grantResponse as never,
+    'corr-access-grant',
+    handlers
+  );
+
+  await assert.rejects(
+    () =>
+      handleAccessControlRoutes(
+        '/access-control/users/user-a/teams',
+        jsonRequest('POST', '/access-control/users/user-a/teams', { teamIds: 'not-an-array' }),
+        new MockResponse() as never,
+        'corr-access-invalid-membership',
+        handlers
+      ),
+    ValidationError
+  );
+
+  assert.deepEqual(
+    auditWrites.map((event) => event.action),
+    ['team_created', 'permission_granted']
+  );
+  assert.ok(auditWrites.every((event) => event.accountId === 'acc-1'));
+  assert.ok(auditWrites.every((event) => !event.payloadSummary.includes('Grupo auditável')));
 });

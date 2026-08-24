@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
-import { DatabaseFiscalRepository, FiscalService } from '@cvg-his-v2/module-fiscal';
+import { FiscalService } from '@cvg-his-v2/module-fiscal';
 import type { AuditService } from '@cvg-his-v2/module-audit';
 import type {
   CreateFiscalCfopRequest,
@@ -66,7 +66,11 @@ function parseOptionalBoolean(value: string | null): boolean | undefined {
 }
 
 function mapFiscalDocumentStateError(message: string): number {
-  if (message.includes('Cannot issue document in status') || message.includes('Cannot cancel document in status')) {
+  if (
+    message.includes('Cannot issue document in status')
+    || message.includes('Cannot cancel document in status')
+    || message.includes('NFS-e operation is already in progress')
+  ) {
     return 409;
   }
 
@@ -79,10 +83,30 @@ function getScopedFiscalService(
 ): FiscalService {
   try {
     getPool();
-    return new FiscalService(new DatabaseFiscalRepository(), accountId as never);
+    return fiscal.forAccount(accountId);
   } catch {
-    return fiscal;
+    // The development/test fallback is still tenant-scoped. FiscalService
+    // keeps NFS-e memory state in an account-keyed store when persistence is
+    // unavailable; returning the process-global service here would leak a
+    // document across accounts.
+    return fiscal.forAccount(accountId);
   }
+}
+
+function getNfseOperationKey(
+  request: IncomingMessage,
+  accountId: AuthenticatedPrincipal['user']['accountId'],
+  action: 'issue' | 'cancel',
+  documentId: string
+): string {
+  const rawHeader = request.headers?.['idempotency-key'];
+  const rawValue = Array.isArray(rawHeader) ? rawHeader[0] : rawHeader;
+  const clientKey = rawValue?.trim();
+  if (clientKey && (clientKey.length > 128 || /[\r\n]/.test(clientKey))) {
+    throw new Error('Idempotency-Key must be at most 128 characters and contain no line breaks');
+  }
+
+  return `nfse:${String(accountId)}:${action}:${clientKey || documentId}`;
 }
 
 async function readJsonBody<T>(request: IncomingMessage): Promise<T> {
@@ -662,11 +686,34 @@ export async function handleFiscalRoutes(
 
     try {
       if (action === 'issue') {
-        const issued = await scopedFiscal.issueNfseDocument(documentId);
+        const issued = await scopedFiscal.issueNfseDocument(
+          documentId,
+          getNfseOperationKey(request, principal.user.accountId, 'issue', documentId)
+        );
         if (!issued) {
           return json(response, 404, {
             code: 'NFSE_DOCUMENT_NOT_FOUND',
             message: 'NFS-e document not found'
+          });
+        }
+
+        if (issued.status === 'error') {
+          appendAudit(audit, {
+            actorId: principal.user.id,
+            accountId: principal.user.accountId,
+            module: 'fiscal',
+            action: 'issue_error',
+            entityType: 'nfse-document',
+            entityId: documentId,
+            payloadSummary: `NFS-e document ${documentId} provider authorization failed`,
+            riskLevel: 'high',
+            correlationId
+          });
+
+          return json(response, 502, {
+            code: 'NFSE_PROVIDER_ERROR',
+            message: 'NFS-e provider did not authorize the document',
+            document: issued
           });
         }
 
@@ -686,12 +733,36 @@ export async function handleFiscalRoutes(
       }
 
       const payload = (await readJsonBody(request)) as CancelFiscalNfseDocumentRequest;
-      const cancelled = await scopedFiscal.cancelNfseDocument(documentId, payload);
+      const cancelled = await scopedFiscal.cancelNfseDocument(
+        documentId,
+        payload,
+        getNfseOperationKey(request, principal.user.accountId, 'cancel', documentId)
+      );
 
       if (!cancelled) {
         return json(response, 404, {
           code: 'NFSE_DOCUMENT_NOT_FOUND',
           message: 'NFS-e document not found'
+        });
+      }
+
+      if (cancelled.status === 'error') {
+        appendAudit(audit, {
+          actorId: principal.user.id,
+          accountId: principal.user.accountId,
+          module: 'fiscal',
+          action: 'cancel_error',
+          entityType: 'nfse-document',
+          entityId: documentId,
+          payloadSummary: `NFS-e document ${documentId} provider cancellation failed`,
+          riskLevel: 'high',
+          correlationId
+        });
+
+        return json(response, 502, {
+          code: 'NFSE_PROVIDER_ERROR',
+          message: 'NFS-e provider did not authorize the cancellation',
+          document: cancelled
         });
       }
 

@@ -506,6 +506,68 @@ test('handleSchedulingRoutes processes the operational queue flow', async () => 
   assert.equal(transferred.nextSector, 'Exames');
   assert.equal(transferred.lastTransferredByUserId, 'user_reception');
 
+  const transferListResponse = new MockResponse();
+  const transferListHandled = await handleSchedulingRoutes(
+    `/queue/${checkedIn.id}/transfers`,
+    createJsonRequest('GET', `/queue/${checkedIn.id}/transfers`),
+    transferListResponse as never,
+    'corr-scheduling-transfer-list',
+    {
+      scheduling,
+      smartScheduling: createSmartSchedulingService(),
+      audit: createAudit() as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+  assert.equal(transferListHandled, true);
+  assert.equal(transferListResponse.statusCode, 200);
+  assert.equal(transferListResponse.bodyJson<{ items: Array<{ status: string }> }>().items[0]?.status, 'received');
+
+  const pendingEntry = await scheduling.checkIn('acc_cvg_demo' as never, {
+    patientId: 'patient_luna',
+    ownerId: 'owner_maria_silva',
+    reason: 'Recebimento explícito por rota'
+  });
+  const pendingTransferResponse = new MockResponse();
+  await handleSchedulingRoutes(
+    `/queue/${pendingEntry.id}/transfer`,
+    createJsonRequest('POST', `/queue/${pendingEntry.id}/transfer`, {
+      toSector: 'Financeiro',
+      reason: 'Enviar comanda para caixa'
+    }),
+    pendingTransferResponse as never,
+    'corr-scheduling-pending-transfer',
+    {
+      scheduling,
+      smartScheduling: createSmartSchedulingService(),
+      audit: createAudit() as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+  const pendingTransfer = scheduling.listQueueTransfers(pendingEntry.id)[0];
+  assert.equal(pendingTransfer?.status, 'sent');
+
+  const receiveResponse = new MockResponse();
+  const receiveHandled = await handleSchedulingRoutes(
+    `/queue/${pendingEntry.id}/transfers/${pendingTransfer?.id}/receive`,
+    createJsonRequest(
+      'POST',
+      `/queue/${pendingEntry.id}/transfers/${pendingTransfer?.id}/receive`
+    ),
+    receiveResponse as never,
+    'corr-scheduling-transfer-receive',
+    {
+      scheduling,
+      smartScheduling: createSmartSchedulingService(),
+      audit: createAudit() as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+  assert.equal(receiveHandled, true);
+  assert.equal(receiveResponse.statusCode, 200);
+  assert.equal(receiveResponse.bodyJson<{ id: string }>().id, pendingEntry.id);
+  assert.equal(scheduling.listQueueTransfers(pendingEntry.id)[0]?.status, 'received');
+
   await scheduling.attachEncounter(checkedIn.id as never, 'encounter-1' as never);
 
   const startCareResponse = new MockResponse();

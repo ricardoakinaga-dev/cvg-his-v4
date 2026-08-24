@@ -405,7 +405,7 @@ describe('financial and fiscal premium evidence', () => {
   });
 
   it('keeps the fiscal document lifecycle queryable after issue and cancel', async () => {
-    const fiscal = new FiscalService();
+    const fiscal = new FiscalService(undefined, undefined, { allowNfseSimulation: true });
 
     const createResponse = new MockResponse();
     await handleFiscalRoutes(

@@ -125,6 +125,8 @@ export interface WorkerBootstrapResult {
   readonly pixProviderSettlement?: WorkerPixProviderSettlementRuntime;
   readonly eventConsumers?: WorkerEventConsumerRuntime;
   readonly eventConsumerSchemaReady?: boolean;
+  readonly webhookDeliveryExecutor?: WebhooksService;
+  readonly webhookDeliverySchemaReady?: boolean;
 }
 
 function normalizedEnvironment(environment?: string): string {
@@ -371,7 +373,57 @@ export async function bootstrapWorkerServices(
       throw new Error('Worker event consumer schema is not ready');
     }
 
-    const eventConsumers = eventConsumerSchemaReady
+    const webhookDeliverySchema = await getPool().query<{ ready: boolean }>(
+      `SELECT
+         to_regclass('public.webhooks') IS NOT NULL
+         AND to_regclass('public.webhook_deliveries') IS NOT NULL
+         AND (
+           SELECT COUNT(*) = 7
+           FROM information_schema.columns
+           WHERE table_schema = 'public'
+             AND table_name = 'webhook_deliveries'
+             AND column_name = ANY(ARRAY[
+               'max_attempts', 'response_error', 'dead_lettered_at',
+               'lease_owner', 'lease_token', 'lease_version', 'lease_expires_at'
+             ])
+         )
+         AND (
+           SELECT COUNT(*) = 4
+           FROM pg_constraint
+           WHERE conname = ANY(ARRAY[
+             'webhook_deliveries_status_check',
+             'webhook_deliveries_attempts_check',
+             'webhook_deliveries_lease_version_check',
+             'webhook_deliveries_lease_state_check'
+           ])
+         )
+         AND (
+           SELECT COUNT(*) = 2 AND BOOL_AND(c.relrowsecurity AND c.relforcerowsecurity)
+           FROM pg_class AS c
+           JOIN pg_namespace AS n ON n.oid = c.relnamespace
+           WHERE n.nspname = 'public'
+             AND c.relname = ANY(ARRAY['webhooks', 'webhook_deliveries'])
+         )
+         AND (
+           SELECT COUNT(*) = 2
+           FROM pg_policies
+           WHERE schemaname = 'public'
+             AND policyname = ANY(ARRAY[
+               'webhooks_tenant_isolation',
+               'webhook_deliveries_tenant_isolation'
+             ])
+         ) AS ready`
+    );
+    const webhookDeliverySchemaReady = webhookDeliverySchema.rows[0]?.ready === true;
+    if (!webhookDeliverySchemaReady && productionLike) {
+      throw new Error('Worker webhook delivery executor schema is not ready');
+    }
+
+    const webhookDeliveryExecutor = webhookDeliverySchemaReady
+      ? new WebhooksService({ repository: new DatabaseWebhookRepository(db) })
+      : undefined;
+
+    const eventConsumers = eventConsumerSchemaReady && webhookDeliveryExecutor
       ? (() => {
           const owners = new OwnersService({
             ownerRepository: new DatabaseOwnerRepository(db),
@@ -407,7 +459,7 @@ export async function bootstrapWorkerServices(
             encounterFinancial,
             pixTransactions: new DatabasePixTransactionRepository(),
             cardTransactions: new DatabaseCardTransactionRepository(),
-            webhooks: new WebhooksService({ repository: new DatabaseWebhookRepository(db) }),
+            webhooks: webhookDeliveryExecutor,
             hydrateAccount: async (accountId) => {
               await owners.hydrateFromDatabase(accountId);
               await patients.hydrateFromDatabase(accountId);
@@ -444,7 +496,9 @@ export async function bootstrapWorkerServices(
         workerId: options.pixSettlementWorkerId
       }),
       eventConsumers,
-      eventConsumerSchemaReady
+      eventConsumerSchemaReady,
+      webhookDeliveryExecutor,
+      webhookDeliverySchemaReady
     };
   } catch (error) {
     if (productionLike) {

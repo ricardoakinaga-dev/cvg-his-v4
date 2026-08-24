@@ -582,6 +582,8 @@ function relationshipLabel(type: OwnerPatientLinkSummary['relationshipType']) {
   if (type === 'primary') return 'Principal';
   if (type === 'secondary') return 'Secundário';
   if (type === 'financial') return 'Financeiro';
+  if (type === 'authorized') return 'Autorizado';
+  if (type === 'spouse') return 'Cônjuge';
   return type;
 }
 

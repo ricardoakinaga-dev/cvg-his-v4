@@ -3,15 +3,18 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { AuditService } from '@cvg-his-v2/module-audit';
 import type { CounterSalesService } from '@cvg-his-v2/module-counter-sales';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
-import { AuthenticationError } from '@cvg-his-v2/shared-errors';
+import type { JsonValue } from '@cvg-his-v2/shared-database';
+import { AuthenticationError, ValidationError } from '@cvg-his-v2/shared-errors';
 
 import { appendAudit } from '../helpers/audit-helper.js';
 import { readJsonBody } from '../helpers/common.js';
+import type { TenantCommandInput, TenantCommandRunner } from '../helpers/tenant-command.js';
 
 export interface CounterSalesRoutesHandlers {
   counterSales: CounterSalesService;
   audit: AuditService;
   requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
+  runCommand?: TenantCommandRunner;
 }
 
 function json(response: ServerResponse, statusCode: number, payload?: unknown): true {
@@ -26,6 +29,138 @@ function json(response: ServerResponse, statusCode: number, payload?: unknown): 
   return true;
 }
 
+type CounterSalePaymentMethod =
+  | 'cash'
+  | 'credit_card'
+  | 'debit_card'
+  | 'pix'
+  | 'bank_transfer'
+  | 'check'
+  | 'insurance'
+  | 'other';
+
+interface SettlementPaymentPayload {
+  readonly method: CounterSalePaymentMethod;
+  readonly amount: number;
+  readonly installments: number;
+  readonly reference: string | null;
+  readonly notes: string | null;
+}
+
+const COUNTER_SALE_PAYMENT_METHODS = new Set<CounterSalePaymentMethod>([
+  'cash',
+  'credit_card',
+  'debit_card',
+  'pix',
+  'bank_transfer',
+  'check',
+  'insurance',
+  'other'
+]);
+
+function parseSettlementPayload(value: unknown): {
+  readonly payments: readonly SettlementPaymentPayload[];
+} {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new ValidationError('Settlement body must be a JSON object');
+  }
+
+  const payload = value as Readonly<Record<string, unknown>>;
+  const unknownField = Object.keys(payload).find((field) => field !== 'payments');
+  if (unknownField) throw new ValidationError(`Unknown field '${unknownField}'`);
+
+  if (!Array.isArray(payload.payments) || payload.payments.length === 0) {
+    throw new ValidationError('payments must be a non-empty array');
+  }
+  if (payload.payments.length > 20) {
+    throw new ValidationError('payments must contain at most 20 entries');
+  }
+
+  return {
+    payments: payload.payments.map((value, index) => {
+      if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+        throw new ValidationError(`payments[${index}] must be a JSON object`);
+      }
+      const payment = value as Readonly<Record<string, unknown>>;
+      const allowedFields = new Set([
+        'method',
+        'amount',
+        'installments',
+        'reference',
+        'notes'
+      ]);
+      const unknownPaymentField = Object.keys(payment).find(
+        (field) => !allowedFields.has(field)
+      );
+      if (unknownPaymentField) {
+        throw new ValidationError(`Unknown field 'payments[${index}].${unknownPaymentField}'`);
+      }
+
+      if (
+        typeof payment.method !== 'string' ||
+        !COUNTER_SALE_PAYMENT_METHODS.has(payment.method as CounterSalePaymentMethod)
+      ) {
+        throw new ValidationError(`payments[${index}].method is invalid`);
+      }
+      if (
+        typeof payment.amount !== 'number' ||
+        !Number.isFinite(payment.amount) ||
+        payment.amount <= 0 ||
+        payment.amount > 1_000_000_000
+      ) {
+        throw new ValidationError(`payments[${index}].amount must be a positive finite number`);
+      }
+
+      const installments = payment.installments ?? 1;
+      if (
+        typeof installments !== 'number' ||
+        !Number.isInteger(installments) ||
+        installments < 1 ||
+        installments > 120
+      ) {
+        throw new ValidationError(`payments[${index}].installments must be an integer from 1 to 120`);
+      }
+
+      const reference = payment.reference ?? null;
+      const notes = payment.notes ?? null;
+      if (
+        (reference !== null && typeof reference !== 'string') ||
+        (notes !== null && typeof notes !== 'string')
+      ) {
+        throw new ValidationError(`payments[${index}].reference and notes must be strings or null`);
+      }
+      if (typeof reference === 'string' && reference.length > 255) {
+        throw new ValidationError(`payments[${index}].reference must contain at most 255 characters`);
+      }
+      if (typeof notes === 'string' && notes.length > 2000) {
+        throw new ValidationError(`payments[${index}].notes must contain at most 2000 characters`);
+      }
+
+      return {
+        method: payment.method as CounterSalePaymentMethod,
+        amount: payment.amount,
+        installments,
+        reference,
+        notes
+      };
+    })
+  };
+}
+
+function parsePaymentIdempotencyKey(request: IncomingMessage): string | undefined {
+  const header = request.headers?.['idempotency-key'];
+  if (Array.isArray(header) && header.length > 1) {
+    throw new ValidationError('idempotency-key must contain exactly one value');
+  }
+  const value = Array.isArray(header) ? header[0] : header;
+  if (value === undefined) return undefined;
+  const normalized = value.trim();
+  if (normalized.length > 255) {
+    throw new ValidationError('idempotency-key must contain at most 255 characters');
+  }
+  return normalized || undefined;
+}
+
 export async function handleCounterSalesRoutes(
   pathname: string,
   request: IncomingMessage,
@@ -38,6 +173,7 @@ export async function handleCounterSalesRoutes(
   }
 
   const { counterSales, audit, requirePrincipal } = handlers;
+  const runCommand = handlers.runCommand ?? (async <T>(input: TenantCommandInput<T>) => input.command());
   const method = request.method ?? 'GET';
   const url = new URL(request.url ?? pathname, 'http://localhost');
 
@@ -100,11 +236,35 @@ export async function handleCounterSalesRoutes(
     const principal = requirePrincipal(request, 'counter_sale.write');
     const payload = (await readJsonBody(request).catch(() => ({}))) as {
       ownerId?: string | null;
+      patientId?: string | null;
+      encounterId?: string | null;
+      queueEntryId?: string | null;
+      billingRecordId?: string | null;
       notes?: string | null;
     };
-    const sale = await counterSales.open(principal.user.accountId, principal.user.id, {
+    const openPayload = {
+      ownerId: payload.ownerId ?? null,
+      patientId: payload.patientId ?? null,
+      encounterId: payload.encounterId ?? null,
+      queueEntryId: payload.queueEntryId ?? null,
+      billingRecordId: payload.billingRecordId ?? null,
+      notes: payload.notes ?? null
+    };
+    const sale = await runCommand({
+      request,
+      accountId: principal.user.accountId,
+      actorUserId: principal.user.id,
+      correlationId,
+      operation: 'counter_sale.open',
+      payload: openPayload as unknown as JsonValue,
+      command: () => counterSales.open(principal.user.accountId, principal.user.id, {
       ownerId: payload.ownerId,
+      patientId: payload.patientId,
+      encounterId: payload.encounterId,
+      queueEntryId: payload.queueEntryId,
+      billingRecordId: payload.billingRecordId,
       notes: payload.notes
+      })
     });
 
     appendAudit(audit, {
@@ -144,8 +304,9 @@ export async function handleCounterSalesRoutes(
 
     return json(response, 200, {
       ...sale,
-      items: counterSales.getItems(sale.id),
-      payments: counterSales.getPayments(sale.id)
+      items: counterSales.getItems(sale.id, principal.user.accountId),
+      payments: counterSales.getPayments(sale.id),
+      receipt: counterSales.getReceipt(sale.id) ?? null
     });
   }
 
@@ -168,7 +329,23 @@ export async function handleCounterSalesRoutes(
       discountAmount?: number;
       notes?: string | null;
     };
-    const result = await counterSales.addItem(saleId, payload);
+    const result = await runCommand({
+      request,
+      accountId: principal.user.accountId,
+      actorUserId: principal.user.id,
+      correlationId,
+      operation: 'counter_sale.add_item',
+      payload: {
+        ...payload,
+        saleId,
+        accountId: principal.user.accountId
+      } as unknown as JsonValue,
+      command: () =>
+        counterSales.addItem(saleId, payload, {
+          saleId,
+          accountId: principal.user.accountId
+        })
+    });
 
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -198,7 +375,19 @@ export async function handleCounterSalesRoutes(
       discountAmount?: number;
       notes?: string | null;
     };
-    const result = await counterSales.updateItem(updateItemMatch[2], payload);
+    const result = await runCommand({
+      request,
+      accountId: principal.user.accountId,
+      actorUserId: principal.user.id,
+      correlationId,
+      operation: 'counter_sale.update_item',
+      payload: { itemId: updateItemMatch[2], ...payload } as unknown as JsonValue,
+      command: () =>
+        counterSales.updateItem(updateItemMatch[2], payload, {
+          saleId: updateItemMatch[1],
+          accountId: principal.user.accountId
+        })
+    });
 
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -222,7 +411,19 @@ export async function handleCounterSalesRoutes(
       throw new AuthenticationError('Counter sale not found for current account');
     }
 
-    const updatedSale = await counterSales.removeItem(updateItemMatch[2]);
+    const updatedSale = await runCommand({
+      request,
+      accountId: principal.user.accountId,
+      actorUserId: principal.user.id,
+      correlationId,
+      operation: 'counter_sale.remove_item',
+      payload: { itemId: updateItemMatch[2] },
+      command: () =>
+        counterSales.removeItem(updateItemMatch[2], {
+          saleId: updateItemMatch[1],
+          accountId: principal.user.accountId
+        })
+    });
 
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -247,14 +448,22 @@ export async function handleCounterSalesRoutes(
       throw new AuthenticationError('Counter sale not found for current account');
     }
 
-    const payload = (await readJsonBody(request)) as {
-      method: 'cash' | 'credit_card' | 'debit_card' | 'pix' | 'bank_transfer' | 'check' | 'insurance' | 'other';
-      amount: number;
-      installments?: number;
-      reference?: string | null;
-      notes?: string | null;
-    };
-    const result = await counterSales.addPayment(paymentMatch[1], payload);
+    const payment = parseSettlementPayload({ payments: [await readJsonBody(request)] }).payments[0];
+    if (!payment) throw new ValidationError('Payment body is required');
+    const idempotencyKey = parsePaymentIdempotencyKey(request);
+    const result = await runCommand({
+      request,
+      accountId: principal.user.accountId,
+      actorUserId: principal.user.id,
+      correlationId,
+      operation: 'counter_sale.add_payment',
+      payload: { saleId: paymentMatch[1], ...payment } as unknown as JsonValue,
+      command: () =>
+        counterSales.addPayment(paymentMatch[1], {
+          ...payment,
+          idempotencyKey
+        })
+    });
 
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -272,6 +481,40 @@ export async function handleCounterSalesRoutes(
   }
 
   const transitionMatch = pathname.match(/^\/counter-sales\/([^/]+)\/(close|cancel|reopen)$/);
+
+  const settleMatch = pathname.match(/^\/counter-sales\/([^/]+)\/settle$/);
+  if (settleMatch && method === 'POST') {
+    const principal = requirePrincipal(request, 'counter_sale.write');
+    const saleId = settleMatch[1];
+    const sale = counterSales.getOrThrow(saleId);
+    if (sale.accountId !== principal.user.accountId) {
+      throw new AuthenticationError('Counter sale not found for current account');
+    }
+    const { payments } = parseSettlementPayload(await readJsonBody(request));
+    const result = await runCommand({
+      request,
+      accountId: principal.user.accountId,
+      actorUserId: principal.user.id,
+      correlationId,
+      operation: 'counter_sale.settle',
+      payload: { saleId, payments } as unknown as JsonValue,
+      command: () => counterSales.settle(saleId, principal.user.id, { payments })
+    });
+
+    appendAudit(audit, {
+      actorId: principal.user.id,
+      accountId: principal.user.accountId,
+      module: 'counter-sales',
+      action: 'settle',
+      entityType: 'counter-sale-receipt',
+      entityId: result.receipt.id,
+      payloadSummary: `Counter sale ${result.sale.number} settled with immutable receipt`,
+      riskLevel: 'high',
+      correlationId
+    });
+    return json(response, 200, { ...result.sale, receipt: result.receipt });
+  }
+
   if (transitionMatch && method === 'POST') {
     const principal = requirePrincipal(request, 'counter_sale.write');
     const sale = counterSales.getOrThrow(transitionMatch[1]);
@@ -283,7 +526,15 @@ export async function handleCounterSalesRoutes(
     const action = transitionMatch[2];
 
     if (action === 'close') {
-      const result = await counterSales.close(saleId, principal.user.id);
+      const result = await runCommand({
+        request,
+        accountId: principal.user.accountId,
+        actorUserId: principal.user.id,
+        correlationId,
+        operation: 'counter_sale.close',
+        payload: { saleId },
+        command: () => counterSales.close(saleId, principal.user.id)
+      });
       appendAudit(audit, {
         actorId: principal.user.id,
         accountId: principal.user.accountId,
@@ -295,11 +546,19 @@ export async function handleCounterSalesRoutes(
         riskLevel: 'high',
         correlationId
       });
-      return json(response, 200, result.sale);
+      return json(response, 200, { ...result.sale, receipt: result.receipt });
     }
 
     if (action === 'cancel') {
-      const updatedSale = await counterSales.cancel(saleId);
+      const updatedSale = await runCommand({
+        request,
+        accountId: principal.user.accountId,
+        actorUserId: principal.user.id,
+        correlationId,
+        operation: 'counter_sale.cancel',
+        payload: { saleId },
+        command: () => counterSales.cancel(saleId)
+      });
       appendAudit(audit, {
         actorId: principal.user.id,
         accountId: principal.user.accountId,
@@ -314,7 +573,15 @@ export async function handleCounterSalesRoutes(
       return json(response, 200, updatedSale);
     }
 
-    const updatedSale = await counterSales.reopen(saleId);
+    const updatedSale = await runCommand({
+      request,
+      accountId: principal.user.accountId,
+      actorUserId: principal.user.id,
+      correlationId,
+      operation: 'counter_sale.reopen',
+      payload: { saleId },
+      command: () => counterSales.reopen(saleId)
+    });
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,

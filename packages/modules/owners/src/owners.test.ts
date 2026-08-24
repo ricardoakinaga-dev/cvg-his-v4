@@ -238,6 +238,27 @@ describe('OwnersService', () => {
     it('throws NotFoundError for non-existent id', () => {
       expect(() => service.getOrThrow('nonexistent' as OwnerId)).toThrow(NotFoundError);
     });
+
+    it('refreshes lifecycle state from the repository instead of trusting a stale cache', async () => {
+      const cached = service.create(ACCOUNT_ID, makeOwner());
+      const persisted = { ...cached, status: 'inactive' as const };
+      const authoritative = new OwnersService({
+        seedOwners: [cached],
+        ownerRepository: {
+          create: async () => undefined,
+          update: async () => undefined,
+          findById: async () => persisted,
+          findByAccountId: async () => [persisted],
+          delete: async () => undefined
+        }
+      });
+
+      await expect(authoritative.getAuthoritativeOrThrow(ACCOUNT_ID, cached.id)).resolves.toMatchObject({
+        id: cached.id,
+        status: 'inactive'
+      });
+      expect(authoritative.getOrThrow(cached.id).status).toBe('inactive');
+    });
   });
 
   describe('update', () => {

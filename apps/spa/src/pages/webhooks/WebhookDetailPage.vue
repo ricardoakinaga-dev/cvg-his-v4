@@ -128,6 +128,10 @@ import { useRoute } from 'vue-router';
 import { webhookService } from '@/services/webhook';
 import type { WebhookSummary, WebhookDelivery } from '@/types/webhook';
 import { formatDate } from '@/utils/labels';
+import {
+  isWebhookDeliveryPending,
+  latestWebhookDeliveryAttempt
+} from './webhook-delivery-helpers';
 import StatusBadge from '@/components/StatusBadge.vue';
 import SkeletonLoader from '@/components/SkeletonLoader.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
@@ -167,18 +171,17 @@ const summaryCards = computed(() => [
 const deliveryRows = computed(() => deliveries.value as unknown as DataTableRow[]);
 const deliveredCount = computed(() => deliveries.value.filter((item) => item.status === 'delivered').length);
 const failedCount = computed(() => deliveries.value.filter((item) => item.status === 'failed').length);
-const pendingCount = computed(() => deliveries.value.filter((item) => item.status === 'pending').length);
+const pendingCount = computed(
+  () => deliveries.value.filter((item) => isWebhookDeliveryPending(item.status)).length
+);
 const successRate = computed(() => {
   if (!deliveries.value.length) return '0%';
   return `${Math.round((deliveredCount.value / deliveries.value.length) * 100)}%`;
 });
 const retryBacklog = computed(() => deliveries.value.filter((item) => item.nextRetryAt).length);
 const lastDeliveryLabel = computed(() => {
-  if (!deliveries.value.length) return '—';
-  const latest = [...deliveries.value].sort(
-    (a, b) => new Date(b.lastAttemptAt).getTime() - new Date(a.lastAttemptAt).getTime()
-  )[0];
-  return formatDate(latest.lastAttemptAt);
+  const latest = latestWebhookDeliveryAttempt(deliveries.value);
+  return latest?.lastAttemptAt ? formatDate(latest.lastAttemptAt) : '—';
 });
 const deliveryInsightCards = computed(() => [
   {
@@ -209,13 +212,20 @@ const deliveryInsightCards = computed(() => [
 ]);
 
 function deliveryStatusLabel(status: WebhookDelivery['status']): string {
-  return { pending: 'Pendente', delivered: 'Entregue', failed: 'Falhou' }[status];
+  const labels: Record<WebhookDelivery['status'], string> = {
+    pending: 'Pendente',
+    processing: 'Processando',
+    retrying: 'Aguardando retry',
+    delivered: 'Entregue',
+    failed: 'Falhou'
+  };
+  return labels[status];
 }
 
 function deliveryStatusVariant(
   status: WebhookDelivery['status']
 ): 'success' | 'warning' | 'danger' {
-  if (status === 'pending') return 'warning';
+  if (status === 'pending' || status === 'processing' || status === 'retrying') return 'warning';
   if (status === 'delivered') return 'success';
   return 'danger';
 }

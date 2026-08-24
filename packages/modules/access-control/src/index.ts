@@ -270,6 +270,18 @@ const permissionCatalog: readonly PermissionDefinition[] = [
     description: 'Manage fiscal parametrization and tax rules.'
   },
   {
+    id: 'perm_marketing_read' as PermissionId,
+    code: 'marketing.read',
+    module: 'marketing',
+    description: 'Read marketing audiences, campaigns and delivery history.'
+  },
+  {
+    id: 'perm_marketing_manage' as PermissionId,
+    code: 'marketing.manage',
+    module: 'marketing',
+    description: 'Manage consent preferences, campaigns and marketing deliveries.'
+  },
+  {
     id: 'perm_notifications_read' as PermissionId,
     code: 'notifications.read',
     module: 'notifications',

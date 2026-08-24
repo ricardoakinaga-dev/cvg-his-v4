@@ -167,6 +167,35 @@ describe('PatientsService', () => {
     it('throws NotFoundError when patient does not exist', () => {
       expect(() => service.getOrThrow('nonexistent' as PatientId)).toThrow(NotFoundError);
     });
+
+    it('refreshes lifecycle state from the repository instead of trusting a stale cache', async () => {
+      const owner = createOwner(owners);
+      const cached = service.create(ACCOUNT_ID, {
+        name: 'Authoritative patient',
+        species: 'canine',
+        sex: 'female',
+        primaryOwnerId: owner.id
+      });
+      const persisted = { ...cached, status: 'inactive' as const };
+      const authoritative = new PatientsService({
+        owners,
+        seedPatients: [cached],
+        seedLinks: [],
+        patientRepository: {
+          create: async () => undefined,
+          update: async () => undefined,
+          findById: async () => persisted,
+          findByAccountId: async () => [persisted],
+          delete: async () => undefined
+        }
+      });
+
+      await expect(authoritative.getAuthoritativeOrThrow(ACCOUNT_ID, cached.id)).resolves.toMatchObject({
+        id: cached.id,
+        status: 'inactive'
+      });
+      expect(authoritative.getOrThrow(cached.id).status).toBe('inactive');
+    });
   });
 
   describe('create()', () => {
@@ -229,6 +258,20 @@ describe('PatientsService', () => {
       expect(patient.breed).toBeUndefined();
       expect(patient.size).toBeUndefined();
       expect(patient.baseWeightKg).toBeUndefined();
+    });
+
+    it('rejects an inactive owner as a new primary responsible person', () => {
+      const inactiveOwner = createOwner(owners, 'Tutor Inativo');
+      owners.update(inactiveOwner.id, { status: 'inactive' });
+
+      expect(() =>
+        service.create(ACCOUNT_ID, {
+          name: 'Paciente sem tutor ativo',
+          species: 'canine',
+          sex: 'unknown',
+          primaryOwnerId: inactiveOwner.id
+        })
+      ).toThrow(ConflictError);
     });
 
     it('creates primary link when patient is created', () => {
@@ -456,6 +499,16 @@ describe('PatientsService', () => {
       expect(primaryLink!.ownerId).toBe(owner2.id);
     });
 
+    it('does not transfer a patient to an inactive primary owner', () => {
+      const patient = createPatient(service, owners, { name: 'Luna' });
+      const inactiveOwner = createOwner(owners, 'Tutor Inativo');
+      owners.update(inactiveOwner.id, { status: 'inactive' });
+
+      expect(() => service.update(patient.id, { primaryOwnerId: inactiveOwner.id })).toThrow(
+        ConflictError
+      );
+    });
+
     it('throws NotFoundError when patient does not exist', () => {
       expect(() => service.update('nonexistent' as PatientId, { name: 'X' })).toThrow(
         NotFoundError
@@ -590,6 +643,36 @@ describe('PatientsService', () => {
           financialResponsible: true
         })
       ).toThrow(ValidationError);
+    });
+
+    it('rejects new relationships with an inactive owner', () => {
+      const patient = createPatient(service, owners);
+      const inactiveOwner = createOwner(owners, 'Tutor Inativo');
+      owners.update(inactiveOwner.id, { status: 'inactive' });
+
+      expect(() =>
+        service.createLink(ACCOUNT_ID, {
+          ownerId: inactiveOwner.id,
+          patientId: patient.id,
+          relationshipType: 'authorized',
+          financialResponsible: false
+        })
+      ).toThrow(ConflictError);
+    });
+
+    it('rejects new relationships with an inactive patient', () => {
+      const patient = createPatient(service, owners);
+      const authorizedOwner = createOwner(owners, 'Autorizado do Paciente Inativo');
+      service.update(patient.id, { status: 'inactive' });
+
+      expect(() =>
+        service.createLink(ACCOUNT_ID, {
+          ownerId: authorizedOwner.id,
+          patientId: patient.id,
+          relationshipType: 'authorized',
+          financialResponsible: false
+        })
+      ).toThrow(ConflictError);
     });
 
     it('throws NotFoundError when owner does not exist', () => {

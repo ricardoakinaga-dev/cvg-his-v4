@@ -177,7 +177,10 @@ export async function handleCommissionRoutes(
       actorUserId: principal.user.id,
       correlationId,
       operation: 'commission-calculations.pay',
-      payload: payload as unknown as import('@cvg-his-v2/shared-database').JsonValue,
+      payload: {
+        ...payload,
+        payId
+      } as unknown as import('@cvg-his-v2/shared-database').JsonValue,
       command: async () => {
         const paid = await commissions.markPaid(
           principal.user.accountId,

@@ -339,7 +339,7 @@ test('FiscalService applies defaults and sanitization when creating draft NFS-e 
 });
 
 test('FiscalService rejects invalid draft payloads and invalid NFS-e transitions', async () => {
-  const service = new FiscalService();
+  const service = new FiscalService(undefined, undefined, { allowNfseSimulation: true });
 
   await assert.rejects(
     () =>
@@ -414,7 +414,7 @@ test('FiscalService rejects invalid draft payloads and invalid NFS-e transitions
 });
 
 test('FiscalService cria e altera ciclo documental NFS-e', async () => {
-  const service = new FiscalService();
+  const service = new FiscalService(undefined, undefined, { allowNfseSimulation: true });
 
   const created = await service.createNfseDocument({
     competencia: '2026-04-17',
@@ -518,17 +518,70 @@ test('FiscalService persists the NFS-e lifecycle through the tenant repository',
     }]
   });
 
-  const firstService = new FiscalService(repository, accountId);
+  const firstService = new FiscalService(repository, accountId, { allowNfseSimulation: true });
   const created = await createDocument(firstService);
   assert.equal(documents.length, 1);
   assert.equal((await firstService.listNfseDocuments({ status: 'draft' }))[0]?.id, created.id);
 
-  const secondService = new FiscalService(repository, accountId);
+  const secondService = new FiscalService(repository, accountId, { allowNfseSimulation: true });
   const issued = await secondService.issueNfseDocument(created.id);
   assert.equal(issued?.status, 'issued');
   assert.equal((await secondService.getNfseDocument(created.id))?.status, 'issued');
 
   const cancelled = await secondService.cancelNfseDocument(created.id, { reason: 'cancelamento de teste' });
   assert.equal(cancelled?.status, 'cancelled');
-  assert.equal((await new FiscalService(repository, accountId).getNfseDocument(created.id))?.status, 'cancelled');
+  assert.equal(
+    (await new FiscalService(repository, accountId, { allowNfseSimulation: true }).getNfseDocument(created.id))?.status,
+    'cancelled'
+  );
+});
+
+test('FiscalService keeps the non-database NFS-e fallback isolated by account', async () => {
+  const firstAccount = new FiscalService(undefined, 'account-fiscal-a' as AccountId, {
+    allowNfseSimulation: true
+  });
+  const secondAccount = new FiscalService(undefined, 'account-fiscal-b' as AccountId, {
+    allowNfseSimulation: true
+  });
+
+  const create = (name: string, numero: number) => firstAccount.createNfseDocument({
+    numero,
+    customer: { type: 'cpf', document: `${numero}`.padStart(11, '0'), name },
+    services: [{
+      description: 'Consulta tenant scoped',
+      codigoServico: '0407',
+      cnae: '7500-1/00',
+      quantity: 1,
+      unitValue: 100,
+      totalValue: 100,
+      issRate: 0.05,
+      issValue: 5,
+      pisValue: 0,
+      cofinsValue: 0,
+      csllValue: 0
+    }]
+  });
+
+  const firstDocument = await create('Cliente fiscal A', 9401);
+  await secondAccount.createNfseDocument({
+    numero: 9402,
+    customer: { type: 'cpf', document: '94020000000', name: 'Cliente fiscal B' },
+    services: [{
+      description: 'Consulta tenant scoped',
+      codigoServico: '0407',
+      cnae: '7500-1/00',
+      quantity: 1,
+      unitValue: 100,
+      totalValue: 100,
+      issRate: 0.05,
+      issValue: 5,
+      pisValue: 0,
+      cofinsValue: 0,
+      csllValue: 0
+    }]
+  });
+
+  assert.equal((await firstAccount.listNfseDocuments()).length, 1);
+  assert.equal((await secondAccount.listNfseDocuments()).length, 1);
+  assert.equal((await secondAccount.getNfseDocument(firstDocument.id)), null);
 });

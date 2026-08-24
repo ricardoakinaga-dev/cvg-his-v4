@@ -2,6 +2,7 @@ import type {
   ReportScheduleSummary,
   ReportsService
 } from '@cvg-his-v2/module-reports';
+import { createHash } from 'node:crypto';
 import type { Logger } from '@cvg-his-v2/shared-logging';
 import type { AccountId, UserId } from '@cvg-his-v2/shared-types';
 import {
@@ -15,6 +16,7 @@ export interface ScheduledReportJobContext {
   readonly asOf?: string;
   readonly correlationId: string;
   readonly environment: string;
+  readonly workerId?: string;
   readonly logger?: Logger;
   readonly resolveRows: (schedule: ReportScheduleSummary) => Promise<readonly Record<string, unknown>[]>;
 }
@@ -46,7 +48,12 @@ export async function runScheduledReportJob(
   context: ScheduledReportJobContext
 ): Promise<ScheduledReportJobResult> {
   const startedAt = Date.now();
-  const dueSchedules = reports.listDueSchedules(context.accountId, context.asOf);
+  const asOf = context.asOf ?? new Date().toISOString();
+  const dueSchedules = await reports.claimDueSchedules(
+    context.accountId,
+    asOf,
+    context.workerId ?? context.correlationId
+  );
   const executions: ScheduledReportJobExecution[] = [];
   const failures: ScheduledReportJobFailure[] = [];
   const executionMetrics: ScheduledReportExecutionMetric[] = [];
@@ -57,6 +64,7 @@ export async function runScheduledReportJob(
       const rows = await context.resolveRows(schedule);
       const execution = await reports.execute(context.accountId, context.runAsUserId, {
         reportId: schedule.reportId,
+        executionId: scheduledExecutionId(context.accountId, schedule.id, schedule.nextRunAt),
         filters: schedule.filters,
         rows
       });
@@ -72,7 +80,7 @@ export async function runScheduledReportJob(
           execution.id,
           exported,
           schedule.recipients,
-          context.asOf
+          asOf
         );
         if (delivery.failures.length > 0) {
           deliveryFailure = delivery.failures
@@ -87,7 +95,7 @@ export async function runScheduledReportJob(
       }
       await reports.recordScheduleExecution(context.accountId, schedule.id, {
         executionId: execution.id,
-        ranAt: context.asOf,
+        ranAt: asOf,
         error: deliveryFailure
       });
       executions.push({
@@ -120,12 +128,12 @@ export async function runScheduledReportJob(
           exportId,
           status: 'failed',
           format: schedule.format,
-          deliveredAt: context.asOf,
+          deliveredAt: asOf,
           error: message
         });
       }
       await reports.recordScheduleExecution(context.accountId, schedule.id, {
-        ranAt: context.asOf,
+        ranAt: asOf,
         error: message
       });
     }
@@ -158,4 +166,12 @@ export async function runScheduledReportJob(
     executions,
     failures
   };
+}
+
+function scheduledExecutionId(accountId: string, scheduleId: string, nextRunAt: string): string {
+  const digest = createHash('sha256')
+    .update(`${accountId}\u001f${scheduleId}\u001f${nextRunAt}`)
+    .digest('hex')
+    .slice(0, 40);
+  return `rep_sched_exec_${digest}`;
 }

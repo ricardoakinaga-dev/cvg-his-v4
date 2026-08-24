@@ -166,7 +166,14 @@ AS $$
    LIMIT 2;
 $$;
 
-REVOKE ALL ON FUNCTION app.resolve_active_api_key(TEXT, TEXT) FROM PUBLIC, cvg_installer;
+REVOKE ALL ON FUNCTION app.resolve_active_api_key(TEXT, TEXT) FROM PUBLIC;
+DO $revoke_optional_installer$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'cvg_installer') THEN
+    EXECUTE 'REVOKE ALL ON FUNCTION app.resolve_active_api_key(TEXT, TEXT) FROM cvg_installer';
+  END IF;
+END
+$revoke_optional_installer$;
 ALTER FUNCTION app.resolve_active_api_key(TEXT, TEXT) OWNER TO cvg_api_key_auth;
 
 CREATE OR REPLACE FUNCTION app.is_pix_transaction_owned_by(
@@ -191,5 +198,12 @@ AS $$
     ) AS pix_transaction;
 $$;
 
-REVOKE ALL ON FUNCTION app.is_pix_transaction_owned_by(TEXT, UUID) FROM PUBLIC, cvg_installer;
+REVOKE ALL ON FUNCTION app.is_pix_transaction_owned_by(TEXT, UUID) FROM PUBLIC;
+DO $revoke_optional_installer_owned_by$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'cvg_installer') THEN
+    EXECUTE 'REVOKE ALL ON FUNCTION app.is_pix_transaction_owned_by(TEXT, UUID) FROM cvg_installer';
+  END IF;
+END
+$revoke_optional_installer_owned_by$;
 ALTER FUNCTION app.is_pix_transaction_owned_by(TEXT, UUID) OWNER TO cvg_api_key_auth;

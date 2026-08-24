@@ -18,6 +18,12 @@ import type {
   UpdateLaboratoryReferenceValueRequest,
   UpdateLaboratoryReportTypeRequest
 } from '@cvg-his-v2/shared-contracts';
+import type {
+  LaboratoryLifecycleStatus,
+  LaboratoryOrderSummary,
+  LaboratoryRecollectionRequest,
+  LaboratoryWorkflowTransitionRequest
+} from './laboratory-workflow.js';
 import { randomUUID } from 'node:crypto';
 import {
   DEFAULT_LABORATORY_EQUIPMENT,
@@ -51,6 +57,21 @@ interface DiagnosticsOrdersGateway {
     orderId: DiagnosticOrderId,
     payload: RecordDiagnosticResultRequest
   ) => Promise<DiagnosticOrderSummary>;
+  listLaboratoryOrders?: (accountId: AccountId) => readonly LaboratoryOrderSummary[];
+  getLaboratoryOrderOrThrow?: (
+    accountId: AccountId,
+    orderId: DiagnosticOrderId
+  ) => LaboratoryOrderSummary;
+  transitionLaboratoryOrderAndPersistForAccount?: (
+    accountId: AccountId,
+    orderId: DiagnosticOrderId,
+    payload: LaboratoryWorkflowTransitionRequest
+  ) => Promise<LaboratoryOrderSummary>;
+  recollectLaboratoryOrderAndPersistForAccount?: (
+    accountId: AccountId,
+    orderId: DiagnosticOrderId,
+    payload: LaboratoryRecollectionRequest
+  ) => Promise<LaboratoryOrderSummary>;
 }
 
 export interface LaboratoryCatalogRepository {
@@ -99,6 +120,19 @@ export interface LaboratoryServiceOptions {
 
 function normalizeText(value: string | undefined): string {
   return (value ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toUpperCase();
+}
+
+function toCanonicalLaboratoryStatus(
+  status: DiagnosticOrderSummary['status']
+): LaboratoryLifecycleStatus {
+  switch (status) {
+    case 'requested':
+    case 'collected':
+    case 'cancelled':
+      return status;
+    case 'resulted':
+      return 'reported';
+  }
 }
 
 export class InMemoryLaboratoryCatalogRepository implements LaboratoryCatalogRepository {
@@ -330,6 +364,25 @@ export class LaboratoryService {
     return [...items].sort((left, right) => right.createdAt.localeCompare(left.createdAt));
   }
 
+  public async listWorkflowOrders(
+    accountId: AccountId,
+    encounterId?: string
+  ): Promise<readonly LaboratoryOrderSummary[]> {
+    const items = this.#diagnostics.listLaboratoryOrders
+      ? this.#diagnostics.listLaboratoryOrders(accountId)
+      : (await this.listOrders(accountId)).map((order): LaboratoryOrderSummary => ({
+        ...order,
+        status: toCanonicalLaboratoryStatus(order.status),
+        legacyStatus: order.status === 'resulted' ? 'resulted' : undefined,
+        collectionAttempt: order.status === 'requested' ? 0 : 1,
+        history: [],
+        workflowVersion: 2 as const
+      }));
+    return [...items]
+      .filter((order) => !encounterId || order.encounterId === encounterId)
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+  }
+
   public getOrder(accountId: AccountId, orderId: DiagnosticOrderId): DiagnosticOrderSummary {
     const order = this.#diagnostics.getOrThrow(orderId);
     if (order.accountId !== accountId) {
@@ -337,6 +390,21 @@ export class LaboratoryService {
     }
 
     return order;
+  }
+
+  public getWorkflowOrder(accountId: AccountId, orderId: DiagnosticOrderId): LaboratoryOrderSummary {
+    if (this.#diagnostics.getLaboratoryOrderOrThrow) {
+      return this.#diagnostics.getLaboratoryOrderOrThrow(accountId, orderId);
+    }
+    const order = this.getOrder(accountId, orderId);
+    return {
+      ...order,
+      status: toCanonicalLaboratoryStatus(order.status),
+      legacyStatus: order.status === 'resulted' ? 'resulted' : undefined,
+      collectionAttempt: order.status === 'requested' ? 0 : 1,
+      history: [],
+      workflowVersion: 2
+    };
   }
 
   public async listResults(
@@ -418,6 +486,28 @@ export class LaboratoryService {
     }
     const order = this.getOrder(accountId, orderId);
     return this.recordResultAndPersist(order.id, payload);
+  }
+
+  public async transitionOrderAndPersistForAccount(
+    accountId: AccountId,
+    orderId: DiagnosticOrderId,
+    payload: LaboratoryWorkflowTransitionRequest
+  ): Promise<LaboratoryOrderSummary> {
+    if (this.#diagnostics.transitionLaboratoryOrderAndPersistForAccount) {
+      return this.#diagnostics.transitionLaboratoryOrderAndPersistForAccount(accountId, orderId, payload);
+    }
+    throw new Error('Canonical laboratory workflow persistence is not configured');
+  }
+
+  public async recollectOrderAndPersistForAccount(
+    accountId: AccountId,
+    orderId: DiagnosticOrderId,
+    payload: LaboratoryRecollectionRequest
+  ): Promise<LaboratoryOrderSummary> {
+    if (this.#diagnostics.recollectLaboratoryOrderAndPersistForAccount) {
+      return this.#diagnostics.recollectLaboratoryOrderAndPersistForAccount(accountId, orderId, payload);
+    }
+    throw new Error('Canonical laboratory workflow persistence is not configured');
   }
 
   public async getDashboardSummary(accountId: AccountId): Promise<LaboratoryDashboardSummary> {

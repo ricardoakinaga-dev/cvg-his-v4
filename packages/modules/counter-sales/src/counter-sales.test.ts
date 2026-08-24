@@ -6,6 +6,8 @@ import type { AccountId, UserId } from '@cvg-his-v2/shared-types';
 
 import { CounterSalesService } from './index.js';
 import type {
+  CounterSaleItemRecord,
+  CounterSalePaymentRecord,
   CounterSaleRecord,
   CounterSalesRepository
 } from './repositories/database-counter-sales.repository.js';
@@ -30,6 +32,29 @@ test('CounterSalesService open creates a sale with correct fields', async () => 
   assert.ok(sale.id);
   assert.ok(sale.number);
   assert.ok(sale.number.startsWith('CS-'));
+});
+
+test('CounterSalesService open preserves the clinical context of the episode', async () => {
+  const service = createService();
+  const sale = await service.open(
+    ACCOUNT_ID,
+    USER_ID,
+    {
+      ownerId: 'owner-1',
+      patientId: 'patient-1',
+      encounterId: 'encounter-1',
+      queueEntryId: 'queue-1',
+      billingRecordId: 'billing-1'
+    } as never
+  );
+
+  assert.equal((sale as unknown as { patientId: string | null }).patientId, 'patient-1');
+  assert.equal((sale as unknown as { encounterId: string | null }).encounterId, 'encounter-1');
+  assert.equal((sale as unknown as { queueEntryId: string | null }).queueEntryId, 'queue-1');
+  assert.equal(
+    (sale as unknown as { billingRecordId: string | null }).billingRecordId,
+    'billing-1'
+  );
 });
 
 test('CounterSalesService addItem adds product item', async () => {
@@ -158,6 +183,87 @@ test('CounterSalesService addPayment registers payment', async () => {
   assert.equal(result.sale.balanceDue, 0);
 });
 
+test('CounterSalesService forwards the payment idempotency key to the atomic repository', async () => {
+  let capturedPayment: Record<string, unknown> | undefined;
+  let openedSale: CounterSaleRecord | null = null;
+  const repository: CounterSalesRepository = {
+    async create() {},
+    async update() {},
+    async findById() {
+      return null;
+    },
+    async findByAccountId() {
+      return [];
+    },
+    async createItem() {},
+    async updateItem() {},
+    async deleteItem() {},
+    async findItemsBySaleId() {
+      return [];
+    },
+    async createPayment() {},
+    async recordPayment(payment) {
+      if (!openedSale) {
+        throw new Error('sale fixture was not initialized');
+      }
+      capturedPayment = payment as unknown as Record<string, unknown>;
+      return {
+        sale: {
+          ...openedSale,
+          total: 100,
+          paidAmount: 100,
+          balanceDue: 0,
+          updatedAt: payment.createdAt
+        },
+        payment
+      };
+    },
+    async findPaymentsBySaleId() {
+      return [];
+    },
+    async createReceipt(receipt) {
+      return receipt;
+    },
+    async findReceipt() {
+      return null;
+    },
+    async getOpenSalesCount() {
+      return 0;
+    },
+    async getClosedTodayCount() {
+      return 0;
+    },
+    async getRevenueToday() {
+      return { gross: 0, net: 0 };
+    },
+    async getSalesByPaymentMethod() {
+      return [];
+    },
+    async getTopProducts() {
+      return [];
+    },
+    async getTopServices() {
+      return [];
+    },
+    async getLowStockAlerts() {
+      return [];
+    }
+  };
+
+  const service = new CounterSalesService({ repository });
+  const sale = await service.open(ACCOUNT_ID, USER_ID);
+  openedSale = sale;
+  await service.addItem(sale.id, { itemType: 'service', nameSnapshot: 'Consulta', unitPrice: 100 });
+  const paymentInput = {
+    method: 'pix',
+    amount: 100,
+    idempotencyKey: 'payment-retry-001'
+  } as const;
+  await service.addPayment(sale.id, paymentInput);
+
+  assert.equal(capturedPayment?.idempotencyKey, 'payment-retry-001');
+});
+
 test('CounterSalesService persists recalculated totals after items and payments in database mode', async () => {
   const updatedSales: CounterSaleRecord[] = [];
   const repository: CounterSalesRepository = {
@@ -180,6 +286,12 @@ test('CounterSalesService persists recalculated totals after items and payments 
     async createPayment() {},
     async findPaymentsBySaleId() {
       return [];
+    },
+    async createReceipt(receipt) {
+      return receipt;
+    },
+    async findReceipt() {
+      return null;
     },
     async getOpenSalesCount() {
       return 0;
@@ -274,6 +386,179 @@ test('CounterSalesService close requires full payment', async () => {
   assert.ok(closed.sale.closedAt);
 });
 
+test('CounterSalesService reloads the close snapshot inside the transaction boundary', async () => {
+  const sales = new Map<string, CounterSaleRecord>();
+  const items = new Map<string, CounterSaleItemRecord>();
+  const payments = new Map<string, CounterSalePaymentRecord>();
+  let inTransactionBoundary = false;
+  let refreshedInsideTransaction = false;
+
+  const repository = {
+    async create(sale: CounterSaleRecord) {
+      sales.set(sale.id, sale);
+    },
+    async update(sale: CounterSaleRecord) {
+      sales.set(sale.id, sale);
+    },
+    async lockSaleForUpdate(saleId: string) {
+      if (inTransactionBoundary) refreshedInsideTransaction = true;
+      return sales.get(saleId) ?? null;
+    },
+    async createItem(item: CounterSaleItemRecord) {
+      items.set(item.id, item);
+    },
+    async findItemsBySaleId(saleId: string) {
+      return Array.from(items.values()).filter((item) => item.counterSaleId === saleId);
+    },
+    async createPayment(payment: CounterSalePaymentRecord) {
+      payments.set(payment.id, payment);
+    },
+    async findPaymentsBySaleId(saleId: string) {
+      return Array.from(payments.values()).filter((payment) => payment.counterSaleId === saleId);
+    },
+    async findReceipt() {
+      return null;
+    },
+    async createReceipt(receipt: never) {
+      return receipt;
+    }
+  } as unknown as CounterSalesRepository;
+
+  const service = new CounterSalesService({
+    repository,
+    closeTransaction: async (_input, execute) => {
+      inTransactionBoundary = true;
+      try {
+        return await execute();
+      } finally {
+        inTransactionBoundary = false;
+      }
+    }
+  });
+  const sale = await service.open(ACCOUNT_ID, USER_ID);
+  await service.addItem(sale.id, { itemType: 'service', nameSnapshot: 'Consulta', unitPrice: 100 });
+  await service.addPayment(sale.id, { method: 'pix', amount: 100 });
+
+  await service.close(sale.id, USER_ID);
+  assert.equal(refreshedInsideTransaction, true);
+});
+
+test('CounterSalesService settle atomically applies the final payment and close', async () => {
+  const service = createService();
+  const sale = await service.open(ACCOUNT_ID, USER_ID);
+  await service.addItem(sale.id, { itemType: 'service', nameSnapshot: 'Consulta', unitPrice: 100 });
+
+  const settled = await service.settle(sale.id, USER_ID, {
+    payments: [{ method: 'pix', amount: 100 }]
+  });
+
+  assert.equal(settled.sale.status, 'closed');
+  assert.equal(settled.sale.paidAmount, 100);
+  assert.equal(settled.receipt.amount, 100);
+  assert.equal(service.getPayments(sale.id).length, 1);
+});
+
+test('CounterSalesService settle restores its projection when the close boundary rolls back', async () => {
+  const service = new CounterSalesService({
+    closeTransaction: async () => {
+      throw new Error('settlement rollback');
+    }
+  });
+  const sale = await service.open(ACCOUNT_ID, USER_ID);
+  await service.addItem(sale.id, { itemType: 'service', nameSnapshot: 'Consulta', unitPrice: 100 });
+
+  await assert.rejects(
+    () =>
+      service.settle(sale.id, USER_ID, {
+        payments: [{ method: 'pix', amount: 100, idempotencyKey: 'settle-retry-001' }]
+      }),
+    /settlement rollback/
+  );
+  assert.equal(service.findById(sale.id)?.status, 'open');
+  assert.equal(service.findById(sale.id)?.paidAmount, 0);
+  assert.equal(service.getPayments(sale.id).length, 0);
+
+  const retried = await service.addPayment(sale.id, {
+    method: 'pix',
+    amount: 100,
+    idempotencyKey: 'settle-retry-001'
+  });
+  assert.equal(retried.payment.amount, 100);
+  assert.equal(service.getPayments(sale.id).length, 1);
+});
+
+test('CounterSalesService close creates one immutable receipt in the same boundary', async () => {
+  const receipts: unknown[] = [];
+  const repository = {
+    async create() {},
+    async update() {},
+    async findById() {
+      return null;
+    },
+    async findByAccountId() {
+      return [];
+    },
+    async createItem() {},
+    async updateItem() {},
+    async deleteItem() {},
+    async findItemsBySaleId() {
+      return [];
+    },
+    async createPayment() {},
+    async findPaymentsBySaleId() {
+      return [];
+    },
+    async createReceipt(receipt: unknown) {
+      receipts.push(receipt);
+      return receipt;
+    },
+    async findReceipt() {
+      return null;
+    },
+    async getOpenSalesCount() {
+      return 0;
+    },
+    async getClosedTodayCount() {
+      return 0;
+    },
+    async getRevenueToday() {
+      return { gross: 0, net: 0 };
+    },
+    async getSalesByPaymentMethod() {
+      return [];
+    },
+    async getTopProducts() {
+      return [];
+    },
+    async getTopServices() {
+      return [];
+    },
+    async getLowStockAlerts() {
+      return [];
+    }
+  };
+  const service = new CounterSalesService({
+    repository: repository as never,
+    closeTransaction: async (_input, execute) => execute()
+  });
+  const sale = await service.open(ACCOUNT_ID, USER_ID);
+  await service.addItem(sale.id, { itemType: 'service', nameSnapshot: 'Consulta', unitPrice: 100 });
+  await service.addPayment(sale.id, { method: 'pix', amount: 100 });
+
+  const closed = await service.close(sale.id, USER_ID);
+  const receipt = (closed as unknown as { receipt?: {
+    counterSaleId: string;
+    amount: number;
+    currency: string;
+  } }).receipt;
+
+  assert.ok(receipt);
+  assert.equal(receipt.counterSaleId, sale.id);
+  assert.equal(receipt.amount, 100);
+  assert.equal(receipt.currency, 'BRL');
+  assert.equal(receipts.length, 1);
+});
+
 test('CounterSalesService invokes close effects before returning the closed sale', async () => {
   const callbacks: Array<{ saleId: string; total: number; paymentCount: number }> = [];
   const service = new CounterSalesService({
@@ -310,16 +595,13 @@ test('CounterSalesService cancel rejects closed sale', async () => {
   await assert.rejects(() => service.cancel(sale.id), ConflictError);
 });
 
-test('CounterSalesService reopen works on closed sale', async () => {
+test('CounterSalesService does not reopen a sale after its immutable receipt exists', async () => {
   const service = createService();
   const sale = await service.open(ACCOUNT_ID, USER_ID);
   await service.addItem(sale.id, { itemType: 'product', nameSnapshot: 'Item', unitPrice: 10 });
   await service.addPayment(sale.id, { method: 'cash', amount: 10 });
   await service.close(sale.id, USER_ID);
-  const reopened = await service.reopen(sale.id);
-  assert.equal(reopened.status, 'open');
-  assert.equal(reopened.closedByUserId, null);
-  assert.equal(reopened.closedAt, null);
+  await assert.rejects(() => service.reopen(sale.id), ConflictError);
 });
 
 test('CounterSalesService list filters by status', async () => {
