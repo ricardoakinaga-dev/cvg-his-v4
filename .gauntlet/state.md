@@ -860,3 +860,16 @@ Publication checkpoint: implementation/docs commit
 `7aeb81d4081e84080fc6cf83759a193dd04a27dd` was pushed and fetch confirmed
 `HEAD == origin/agent/sync-v4-full-program`. The new handoff and artifact are
 the next-session pointers; only the user-owned `tsbuildinfo` cache is dirty.
+
+## Publication checkpoint — continuation documentation — 24/08/2026
+
+The continuation surface was reconciled and published in commit `937d8ed`
+(`docs: reconcile continuation pointers`). README, source-of-truth, the short
+checkpoint, CI gates, global audit and historical backlog now lead with the
+24/08 handoffs, distinguish historical evidence from current Quality Bar state,
+and preserve `IN_PROGRESS/PARTIAL` for ERP, production, parity, operations and
+release. An active-surface audit found 81 Markdown files and zero broken local
+links; docs JSON parsing, Prettier and diff checks passed. Stop decision remains
+ACTIVE. The next session should read the cash-receipt handoff, worker handoff,
+global audit and short checkpoint before continuing Helm-rendered validation,
+receipt concurrency/takeover and PIX/RLS/webhook work.

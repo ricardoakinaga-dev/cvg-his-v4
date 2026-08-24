@@ -630,3 +630,14 @@ Publication note, 2026-08-24: o commit de implementação/documentação
 origin. O handoff de receipt SIGKILL e o artefato são os ponteiros da próxima
 sessão; o plano segue `IN_PROGRESS/PARTIAL`, com Helm renderizado, failpoints,
 concorrência, PIX/RLS, webhook, paridade, UX, operações e release abertos.
+
+Documentation continuity note, 2026-08-24: os ponteiros de retomada foram
+reconciliados e publicados em `937d8ed` (`docs: reconcile continuation
+pointers`). `docs/README.md`, `430-fonte-de-verdade-documental.md`, o checkpoint
+curto, `CI_GATES.md`, o handoff global e o backlog histórico agora apontam para
+os handoffs de 24/08, qualificam claims históricos de segurança e deixam claro
+que o resumo `release-ready` não é aprovação de produção. O active-surface
+link-check encontrou 81 Markdown e zero links locais quebrados; JSON, Prettier e
+diff-check passaram. O plano continua `IN_PROGRESS/PARTIAL`; esta publicação
+apenas torna a continuidade rastreável e não fecha ERP, produção, paridade,
+operações ou release.

@@ -770,3 +770,16 @@ Publication checkpoint: implementation/docs commit
 `7aeb81d4081e84080fc6cf83759a193dd04a27dd` foi enviado e reconciliado com
 `origin/agent/sync-v4-full-program`; apenas o cache `tsbuildinfo` do usuário
 permanece dirty. O handoff e o artefato são os ponteiros da próxima sessão.
+
+## Documentation continuity checkpoint — 24/08/2026
+
+Os seis documentos de continuidade foram reconciliados e publicados em
+`937d8ed`: README, fonte de verdade, checkpoint curto, `CI_GATES`, auditoria
+global e backlog histórico. A superfície operacional agora começa pelos
+handoffs de 24/08; claims históricos de sessão/rate-limit foram qualificados e
+`release-ready` foi explicitamente reduzido a resumo informativo. O link-check
+ativo retornou 81 Markdown e zero links quebrados; JSON, Prettier e diff-check
+passaram. O resultado é somente continuidade documental: stop decision ACTIVE,
+ERP/produção/paridade/operações/release continuam `IN_PROGRESS/PARTIAL`. O
+próximo ciclo permanece Helm renderizado em runner autorizado, seguido de
+concorrência/takeover de receipt e PIX/RLS/webhook.

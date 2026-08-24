@@ -355,9 +355,13 @@
         ".agent/artifacts/CVG-002C6-cash-receipt-sigkill-2026-08-24.md",
         "docs/2026-08-24-handoff-cash-receipt-sigkill.md",
         ".agent/verification.jsonl#VFY-CVG-002C6-CASH-RECEIPT-SIGKILL-001",
-        ".agent/verification.jsonl#VFY-CVG-002C6-CASH-RECEIPT-SIGKILL-REVIEW-001"
+        ".agent/verification.jsonl#VFY-CVG-002C6-CASH-RECEIPT-SIGKILL-REVIEW-001",
+        "docs/README.md",
+        "docs/430-fonte-de-verdade-documental.md",
+        "docs/CI_GATES.md",
+        ".agent/verification.jsonl#VFY-DOCS-CONTINUATION-068"
       ],
-      "next_action": "Worker account-scope Helm implementation and handoff are published at c93d672a47ad1bdb391c4af8a8963c012fd4219b and local HEAD equals origin. The API cash-receipt SIGKILL/restart/replay gate is now GREEN bounded and published in implementation commit 7aeb81d4081e84080fc6cf83759a193dd04a27dd, with fresh PostgreSQL evidence, explicit whole-graph rollback/replay assertions, divergent-key conflict and tenant isolation. Keep CVG-002C6 IN_PROGRESS because product acceptance still requires the complete journey with concurrency and expanded failpoints across tenants. In a Helm-enabled runner, render lint/template for dev/staging/prod and provision operator-managed WORKER_ACCOUNT_IDS Secrets only in authorized namespaces; then expand discharge/close/receipt failpoints, concurrent execution, PIX PostgreSQL/RLS and webhook HTTP retry/DLQ/lease fencing. Preserve no CI critical inclusion yet and all global RLS/FORCE RLS, DR/RPO, migration checksum, CI deploy, provider/Redis/SPA/parity/WCAG/coverage/operations/deploy/release gaps; keep the user-owned tsbuildinfo cache out of scope."
+      "next_action": "Continuation documentation was reconciled and published at 937d8ed, with README/source-of-truth/checkpoint/CI Quality Bar pointers leading to the 24/08 handoffs and historical security claims qualified. The API cash-receipt SIGKILL/restart/replay gate remains GREEN bounded in implementation commit 7aeb81d4081e84080fc6cf83759a193dd04a27dd. Keep CVG-002C6 IN_PROGRESS because product acceptance still requires the complete journey with concurrency and expanded failpoints across tenants. In a Helm-enabled runner, render lint/template for dev/staging/prod and provision operator-managed WORKER_ACCOUNT_IDS Secrets only in authorized namespaces; then expand discharge/close/receipt failpoints, concurrent execution, PIX PostgreSQL/RLS and webhook HTTP retry/DLQ/lease fencing. Preserve no CI critical inclusion yet and all global RLS/FORCE RLS, DR/RPO, migration checksum, CI deploy, provider/Redis/SPA/parity/WCAG/coverage/operations/deploy/release gaps; keep the user-owned tsbuildinfo cache out of scope."
     },
     {
       "id": "CVG-003",
