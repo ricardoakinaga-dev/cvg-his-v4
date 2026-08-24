@@ -19,13 +19,13 @@
   "latest_retest_evidence": "2026-08-24: .agent/artifacts/CVG-002C6-laboratory-bootstrap-concurrency-2026-08-24.md and docs/2026-08-24-handoff-laboratory-bootstrap-concurrency.md record RED duplicate-key evidence, the account-boundary correction, independent approval of QB-LAB-BOOT-01/02/03 and the fresh 6/6 process regression. ensureSeedData now always attempts all three batches with PK-targeted ON CONFLICT DO NOTHING; the module is rebuilt before child spawn because the API resolves dist/index.js. Helm render, production-like boot, Redis/PIX/webhook, DR/RPO, global RLS/FORCE RLS, parity, UX, operations and release evidence remain open.",
   "instruction_scope_refs": [".agent/instruction-scope.md"],
   "last_gate_record": ".agent/gates/implementation-ready-CVG-002C6.json",
-  "last_event_id": "EVT-0254",
-  "state_revision": 243,
+  "last_event_id": "EVT-0255",
+  "state_revision": 244,
   "next_gate": "VERIFIED",
   "next_action": "Read docs/2026-08-24-handoff-laboratory-bootstrap-concurrency.md and its artifact first: the real two-API bootstrap test is GREEN bounded, the independent critic approved BOOT-01/02/03, and the fresh six-file process runner regression is exit 0. Keep CVG-002C6, ERP, production, parity, operations and release IN_PROGRESS/PARTIAL. Next run Helm lint/template in an authorized runner, then continue PIX PostgreSQL/RLS and webhook HTTP retry/DLQ/lease fencing. Preserve the dedicated bootstrap test's CI-cost decision, P1 harness signal-forwarding/backoff follow-ups, WebAuthn durability, audit attribution, global RLS/FORCE RLS, DR/RPO, migration checksum, CI deploy, Redis/provider/SPA/parity/WCAG/coverage/operations/release gaps and the user-owned tsbuildinfo cache outside stage",
   "blocked_by": [],
   "human_approval_required": [
     "Production go-live, credential rotation, provider selection, fiscal homologation, and residual HIGH/CRITICAL risk acceptance remain outside repository implementation authority"
   ],
-  "updated_at": "2026-08-24T05:24:34-03:00"
+  "updated_at": "2026-08-24T05:26:00-03:00"
 }
