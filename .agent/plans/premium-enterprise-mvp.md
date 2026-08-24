@@ -608,3 +608,19 @@ scope in Helm`) was pushed and reconciled with origin. Rendered Helm checks
 remain pending in a Helm-enabled runner; the plan stays `IN_PROGRESS/PARTIAL`
 and the next behavioral gate is the real API cash-receipt SIGKILL/restart/
 replay proof.
+
+Plan revision note, 2026-08-24 (cash receipt SIGKILL/restart/replay): o novo
+launcher/teste iniciou o entrypoint real da API em processo filho, preparou a
+jornada pública de internação até fechamento e segurou a transação de receipt
+em trigger PostgreSQL antes do `SIGKILL`. O RED encontrou apenas limites do
+harness e do contrato observável (`/health` e operação HTTP de idempotência),
+sem relaxar runtime de produção. GREEN em `receipt_kill_green6` passou 1/1 em
+60,95 s; rerun independente `receipt_kill_green5` passou 1/1 em 81,96 s. A
+prova exige rollback do grafo inteiro, replay único balanceado, conflito de
+payload e isolamento cross-tenant. A revisão independente foi `APPROVE bounded`
+sem CRITICAL/HIGH; PID distinto, cleanup seguro e contagens financeiras
+explícitas foram incorporados. Evidência:
+`.agent/artifacts/CVG-002C6-cash-receipt-sigkill-2026-08-24.md`; handoff:
+`docs/2026-08-24-handoff-cash-receipt-sigkill.md`. O plano continua
+`IN_PROGRESS/PARTIAL`; Helm renderizado, failpoints completos, concorrência,
+PIX/RLS, webhook, paridade, UX, operações e release permanecem abertos.

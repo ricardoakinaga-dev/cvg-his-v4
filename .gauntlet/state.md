@@ -827,3 +827,31 @@ with `origin/agent/sync-v4-full-program`. The handoff and artifact are now
 the next-session pointers; `tsbuildinfo` remains outside stage. Stop decision
 continues ACTIVE and rendered Helm validation is the first action in a
 Helm-enabled runner, followed by the API cash-receipt SIGKILL gate.
+
+## Gauntlet iteration — API cash receipt SIGKILL/restart/replay — 24/08/2026
+
+O novo fixture inicia o entrypoint real da API em processo filho, prepara a
+jornada pública de internação até fechamento e pausa a transação de receipt
+em um trigger `AFTER INSERT` no PostgreSQL. O RED encontrou limites reais do
+harness (import path, segredo inseguro de teste, boot staging sem a role
+esperada e predicado `/health`); essas expectativas foram corrigidas sem
+alterar runtime de produção. O dispatcher também foi confirmado como dono da
+operação de idempotência HTTP `POST /encounters/{id}/cash-receipts`.
+
+GREEN: `receipt_kill_green6` passou 1/1 em 60,95 s e uma rerun independente
+`receipt_kill_green5` passou 1/1 em 81,96 s. O `SIGKILL` ocorreu enquanto o
+trigger segurava a transação; antes do restart não restou receipt/payment,
+movimento, journal, audit, outbox, idempotência, receivable ou financial
+account, e o billing permaneceu aberto. Depois do restart, o replay criou um
+único grafo balanceado em 260; payload divergente retornou 409 e o bearer do
+tenant B retornou 404. A revisão independente foi `APPROVE bounded`, sem
+CRITICAL/HIGH; PID distinto, cleanup seguro e contagens financeiras explícitas
+foram incorporados.
+
+Artefato: `.agent/artifacts/CVG-002C6-cash-receipt-sigkill-2026-08-24.md`.
+Handoff: `docs/2026-08-24-handoff-cash-receipt-sigkill.md`.
+O stop decision continua ACTIVE: esta prova é bounded em `NODE_ENV=test` e
+não promove ERP, produção, paridade, operações ou release. Próximo trabalho:
+Helm lint/template em runner autorizado, depois failpoints completos de
+discharge/close/receipt, concorrência, PIX PostgreSQL/RLS e webhook
+retry/DLQ/lease fencing.

@@ -741,3 +741,27 @@ Publication checkpoint: `c93d672a47ad1bdb391c4af8a8963c012fd4219b` is pushed
 and equals origin after fetch. The next session must run rendered Helm checks
 where Helm is available, then implement the API cash-receipt SIGKILL/restart/
 replay proof; no global gate is promoted.
+
+## Cash receipt process boundary — 24/08/2026
+
+O teste `tests/integration/process/inpatient-cash-receipt-sigkill.test.ts`
+inicia `apps/api/src/index.ts` em processo filho real, usa role PostgreSQL
+restrita e segura a transação de receipt em trigger `AFTER INSERT`/advisory
+lock antes do `SIGKILL`. O RED expôs apenas ajustes do harness e do contrato
+observável (`/health` e operação HTTP de idempotência); nenhum código de
+produção foi relaxado.
+
+GREEN fresco em `receipt_kill_green6`: **1/1 teste, exit 0, 60,95 s**. Rerun
+independente em `receipt_kill_green5`: **1/1, 81,96 s**. A reconciliação SQL
+prova rollback de todo o grafo, billing aberto sem residue, restart com PID
+distinto, replay exatamente uma vez com journal debit/credit 260, conflito
+divergente 409 e isolamento cross-tenant 404. A revisão independente retornou
+`APPROVE bounded`, sem CRITICAL/HIGH; cleanup e contagens de receivable/
+financial-account foram endurecidos.
+
+Artefato: `.agent/artifacts/CVG-002C6-cash-receipt-sigkill-2026-08-24.md`.
+Handoff: `docs/2026-08-24-handoff-cash-receipt-sigkill.md`. O resultado é
+GREEN bounded em `NODE_ENV=test`; não promover ERP, produção, paridade,
+operações ou release. Próximo ciclo começa com Helm renderizado em runner
+autorizado e segue para failpoints discharge/close/receipt, concorrência, PIX
+PostgreSQL/RLS e webhook retry/DLQ/lease fencing.
