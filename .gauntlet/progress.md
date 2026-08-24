@@ -632,3 +632,13 @@ O Gauntlet continua `ACTIVE`: sem claim de stale-owner com A vivo, A/B,
 rebootstrap/hidratação, origem de billing/hash canônico, inclusão no CI
 crítico, jornada completa, PIX PostgreSQL/RLS, webhook retry/DLQ/fence ou
 qualquer gate de ERP, produção, paridade, WCAG, operações e release.
+
+## Registro de handoff — auditoria documental global (23/08/2026, 22:34 BRT)
+
+O corpus `docs/` foi inventariado em 1.456 arquivos, com 1.200 textuais,
+256 binários, 53.957.807 bytes e manifesto SHA-256
+`5f16bfc916277a232726ea670e140c9b87c4da3e0c091e529d560b097679e546`. A
+auditoria e o handoff estão em
+`docs/2026-08-23-auditoria-documental-global-e-handoff.md`; o checkpoint curto
+passa a apontar para ele. O stop decision segue `ACTIVE` e a barra global
+segue `IN_PROGRESS/PARTIAL`.

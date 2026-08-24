@@ -1,6 +1,6 @@
 # Checkpoint de retomada — sessão atual
 
-**Data:** 23 de agosto de 2026, 22:10 BRT
+**Data:** 23 de agosto de 2026, 22:34 BRT
 **Repositório:** `/home/ricardo/cvg-his-v4`
 **Branch:** `agent/sync-v4-full-program`
 **Estado:** `BUILD/VERIFY`, `IN_PROGRESS/PARTIAL`
@@ -8,6 +8,12 @@
 Este é o índice curto para continuar o trabalho em outra sessão. Ele resume o
 que está comprovado, o que foi publicado e o que continua aberto. Não é uma
 declaração de produção, paridade, conformidade ou release.
+
+A auditoria documental integral e o handoff consolidado desta sessão estão em
+[`2026-08-23-auditoria-documental-global-e-handoff.md`](2026-08-23-auditoria-documental-global-e-handoff.md).
+Use aquele arquivo para o inventário atual de `docs/`, a Quality Bar
+reconciliada, a pesquisa oficial e a ordem de retomada; este checkpoint mantém
+o resumo executável de cinco minutos.
 
 ## Retomada em cinco minutos
 
@@ -69,8 +75,9 @@ REQUIRE_TEST_DB=1 pnpm exec vitest run tests/integration/database tests/integrat
 
 - Implementação publicada: `76d94a3` — `fix: isolate encounter cash receipt fixtures`.
 - Documentação e control plane publicados: `4f8d8d8` — `docs: record critical harness green checkpoint`.
-- Esta rodada ainda está local até o commit/push final; o SHA remoto será
-  reconciliado no último registro desta sessão.
+- A consolidação documental global desta sessão será publicada em commit
+  separado; o SHA remoto deve ser confirmado pelo comando `git fetch` da seção
+  de retomada e pelo registro de verificação correspondente.
 - `git fetch` confirmou `HEAD == origin/agent/sync-v4-full-program` em
   `4f8d8d8b806098241cd716ff12b13ac2e74d9621`.
 - `state.json`, `backlog.json`, ExecPlan, Gauntlet state/progress e os dois
@@ -198,6 +205,23 @@ reconciliado no commit final desta sessão).
 O checkpoint histórico detalhado continua em
 [`2026-08-23-checkpoint-retomada-integral.md`](2026-08-23-checkpoint-retomada-integral.md);
 esta página é o índice curto e mais recente para a próxima sessão.
+
+## Auditoria documental global — 22:34 BRT
+
+O corpus atual de `docs/` foi inventariado em **1.456 arquivos** (1.004
+Markdown, 129 JSON, 67 HTML, 255 PNG e 1 gzip), totalizando **53.957.807
+bytes**. Foram lidos/varridos os 1.200 arquivos textuais; os 129 JSON foram
+parseados sem erro e os binários foram verificados por assinatura. O manifesto
+ordenado por caminho e conteúdo é
+`5f16bfc916277a232726ea670e140c9b87c4da3e0c091e529d560b097679e546`.
+
+O documento [`2026-08-23-auditoria-documental-global-e-handoff.md`](2026-08-23-auditoria-documental-global-e-handoff.md)
+consolida as contradições históricas, a regra de precedência, os gates
+`QB-SEC-01`/`QB-DATA-01`/`QB-AUTH-01`/`QB-CORE-01` parciais, `QB-PARITY-01`
+falho, `QB-UX-01` não executado, `QB-REL-01` parcial/falho, `QB-OPS-01`
+bloqueado e `QB-MKT-01` não executado. Não houve promoção global. A próxima
+ação continua sendo stale-owner A vivo → A/B/hidratação → failpoints
+cross-domain, preservando `CVG-002C6=IN_PROGRESS/PARTIAL`.
 
 ## Publicação final desta sessão — 22:12 BRT
 

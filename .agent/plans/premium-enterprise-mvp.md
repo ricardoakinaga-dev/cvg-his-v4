@@ -508,3 +508,16 @@ independent critic returned **ACCEPT bounded**. The plan remains
 source/hash assertions, two-tenant/A-B and hydration evidence, then extend
 discharge/close/receipt failpoints and keep PIX/RLS, webhook, product and
 release gates open.
+
+Plan revision note, 2026-08-23 22:34 BRT (auditoria documental global): todos
+os 1.456 arquivos atuais sob `docs/` foram inventariados; os 1.200 arquivos
+textuais foram varridos, os 129 JSON foram parseados e o manifesto ordenado tem
+SHA-256 `5f16bfc916277a232726ea670e140c9b87c4da3e0c091e529d560b097679e546`.
+O handoff operacional vigente é
+`docs/2026-08-23-auditoria-documental-global-e-handoff.md`, seguido pelo
+checkpoint curto. A pesquisa oficial foi reconciliada com ezyVet, Shepherd,
+Digitail, Vetspire, Covetrus, Provet, Instinct, FHIR R5, DICOMweb, LGPD e
+CFMV. A barra global permanece `IN_PROGRESS/PARTIAL`: a jornada vertical e o
+child-process são evidências bounded, enquanto stale-owner A vivo, A/B,
+hidratação, failpoints completos, PIX/RLS, webhook, paridade, UX, operações e
+release permanecem abertos.

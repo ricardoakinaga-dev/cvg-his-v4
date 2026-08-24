@@ -710,3 +710,14 @@ Residuals are stale-owner A-alive fencing, two-tenant/A-B proof, API
 rebootstrap/hydration, explicit billing source/hash assertions, CI critical
 inclusion, complete failpoints, PIX/RLS, webhook retry/DLQ/fence and all product,
 operations and release gates.
+
+## Handoff documental global — 23/08/2026, 22:34 BRT
+
+Foi consolidado o inventário atual de `docs/`: 1.456 arquivos, 1.200
+textuais, 256 binários, 53.957.807 bytes e manifesto
+`5f16bfc916277a232726ea670e140c9b87c4da3e0c091e529d560b097679e546`. O novo
+documento `docs/2026-08-23-auditoria-documental-global-e-handoff.md` é o
+ponteiro operacional principal e distingue evidência atual de histórico,
+benchmark e claims de produto. O stop decision segue `ACTIVE`; nenhum gate
+global é promovido. A próxima iteração continua stale-owner/A-B/hidratação,
+failpoints cross-domain e, depois, PIX/RLS e webhook.
