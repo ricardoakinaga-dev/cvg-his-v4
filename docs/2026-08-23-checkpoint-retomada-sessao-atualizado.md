@@ -282,3 +282,8 @@ enviado ao GitHub. `git fetch` confirmou
 `d23120accb6c6f5ea1e26d6e54bbef9477bc5622`; somente o cache
 `packages/design-system/tsconfig.vue.tsbuildinfo` permanece dirty e fora do
 stage.
+
+O commit documental de ponteiro `4ee4afc` (`docs: record critical gates
+publication`) sucedeu o commit de implementação `d23120a` e foi enviado ao
+remoto. Como o branch pode avançar com novos checkpoints, a próxima sessão
+deve sempre repetir `git fetch` e comparar `HEAD` com `origin`.

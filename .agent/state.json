@@ -19,13 +19,13 @@
   "latest_retest_evidence": "2026-08-24: focused inventory charge-capture passed 3/3 in 38.07s; production-like runtime bootstrap passed 6/6 in 87.76s; test:critical base passed 28/28 files and 387/387 tests in 710.99s; process phase passed 1/1 file and 2/2 tests in 60.09s. The new .agent/artifacts/CVG-002C6-critical-gates-2026-08-24.md records commands, resolved database names and limitations. Promise.allSettled hydration now logs rejected cache refreshes with account/cache context; no unhandled rejection occurred.",
   "instruction_scope_refs": [".agent/instruction-scope.md"],
   "last_gate_record": ".agent/gates/implementation-ready-CVG-002C6.json",
-  "last_event_id": "EVT-0231",
-  "state_revision": 220,
+  "last_event_id": "EVT-0232",
+  "state_revision": 221,
   "next_gate": "VERIFIED",
   "next_action": "Critical base/process and deployment guardrails are green bounded with fresh independent review and no P0. Do not promote CVG-002C6 or the ERP: add stale-owner fencing with A alive, explicit billing sourceEntityId/hash assertions, two-tenant/A-B and cross-instance hydration evidence; expand discharge/close/receipt failpoints, then PIX PostgreSQL/RLS and webhook HTTP retry/DLQ/lease fencing. Preserve the P1 harness-concurrency/backoff follow-ups, WebAuthn durability, audit attribution, global RLS/FORCE RLS, Redis/provider/SPA/parity/WCAG/coverage/operations/deploy/release and global ERP status explicitly IN_PROGRESS/PARTIAL",
   "blocked_by": [],
   "human_approval_required": [
     "Production go-live, credential rotation, provider selection, fiscal homologation, and residual HIGH/CRITICAL risk acceptance remain outside repository implementation authority"
   ],
-  "updated_at": "2026-08-24T00:41:00-03:00"
+  "updated_at": "2026-08-24T00:43:54-03:00"
 }

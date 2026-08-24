@@ -254,3 +254,8 @@ confirmou `HEAD == origin/agent/sync-v4-full-program` em
 `d23120accb6c6f5ea1e26d6e54bbef9477bc5622`. O único caminho dirty continua
 sendo o cache user-owned `packages/design-system/tsconfig.vue.tsbuildinfo`,
 fora do stage.
+
+O commit documental de ponteiro `4ee4afc` (`docs: record critical gates
+publication`) sucedeu o commit de implementação acima e também foi enviado ao
+remoto. Como o branch pode avançar com novos checkpoints, a próxima sessão
+deve sempre repetir `git fetch` e comparar `HEAD` com `origin`.
