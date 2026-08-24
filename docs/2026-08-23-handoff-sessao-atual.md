@@ -531,3 +531,13 @@ payload divergente, CI crítico ou produção. O artefato detalhado é
 Portanto, a frase anterior sobre “usar roles NOBYPASSRLS” descrevia a revisão
 pendente; ela está corrigida nesta rodada. O gate segue bounded e
 `CVG-002C6=IN_PROGRESS/PARTIAL`.
+
+## Publicação final — 22:12 BRT
+
+O teste/fixture foi publicado em `eccdacc` (`test: prove inpatient process
+takeover`) e a documentação/control plane em `af499e3` (`docs: save session
+continuation checkpoint`). Fetch confirmou
+`HEAD=origin/agent/sync-v4-full-program=af499e3f0ff789471754684376ca70e3d6a6c740`.
+Só `packages/design-system/tsconfig.vue.tsbuildinfo` permanece dirty e fora do
+stage. A retomada deve seguir stale-owner/A-B/hidratação/failpoints; não há
+promoção de `CVG-002C6`, ERP, produção ou release.

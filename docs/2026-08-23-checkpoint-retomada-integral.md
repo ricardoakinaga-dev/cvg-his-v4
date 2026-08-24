@@ -562,3 +562,14 @@ jornada completa ou produção. Consulte
 
 A anotação anterior sobre `NOBYPASSRLS` era um requisito de revisão pendente e
 fica supersedida por este registro. O gate continua `IN_PROGRESS/PARTIAL`.
+
+## Publicação final — 22:12 BRT
+
+O fixture/test foi publicado em `eccdacc` (`test: prove inpatient process
+takeover`) e o checkpoint/control plane em `af499e3` (`docs: save session
+continuation checkpoint`). Fetch confirmou
+`HEAD=origin/agent/sync-v4-full-program=af499e3f0ff789471754684376ca70e3d6a6c740`;
+apenas o `packages/design-system/tsconfig.vue.tsbuildinfo` user-owned segue
+dirty e fora do stage. A próxima retomada é stale-owner/A-B/hidratação e
+failpoints, mantendo `CVG-002C6=IN_PROGRESS/PARTIAL` e todos os gates amplos
+abertos.

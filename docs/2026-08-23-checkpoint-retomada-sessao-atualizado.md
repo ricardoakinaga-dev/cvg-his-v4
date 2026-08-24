@@ -198,3 +198,17 @@ reconciliado no commit final desta sessão).
 O checkpoint histórico detalhado continua em
 [`2026-08-23-checkpoint-retomada-integral.md`](2026-08-23-checkpoint-retomada-integral.md);
 esta página é o índice curto e mais recente para a próxima sessão.
+
+## Publicação final desta sessão — 22:12 BRT
+
+Commits publicados no GitHub:
+
+- `eccdacc` — `test: prove inpatient process takeover`;
+- `af499e3` — `docs: save session continuation checkpoint`.
+
+`git fetch` confirmou `HEAD == origin/agent/sync-v4-full-program` em
+`af499e3f0ff789471754684376ca70e3d6a6c740`. O único caminho dirty continua
+sendo `packages/design-system/tsconfig.vue.tsbuildinfo`, preservado fora do
+stage. A próxima sessão deve começar por este arquivo, `.agent/state.json`,
+`.agent/backlog.json` e o artefato do processo; o próximo gate é stale-owner/
+A-B/hidratação/failpoints, não uma promoção global.
