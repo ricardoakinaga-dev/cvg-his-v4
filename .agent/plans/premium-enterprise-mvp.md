@@ -601,3 +601,10 @@ e typecheck 70/70 passaram. O runner não tem `helm`, portanto `helm lint` e
 `.agent/artifacts/CVG-002C6-worker-account-scope-2026-08-24.md` e handoff em
 `docs/2026-08-24-handoff-worker-account-scope.md`. O plano permanece
 `IN_PROGRESS/PARTIAL`; próximo gate é cash-receipt SIGKILL/restart/replay real.
+
+Publication note, 2026-08-24: implementation and handoff commit
+`c93d672a47ad1bdb391c4af8a8963c012fd4219b` (`fix: enforce worker account
+scope in Helm`) was pushed and reconciled with origin. Rendered Helm checks
+remain pending in a Helm-enabled runner; the plan stays `IN_PROGRESS/PARTIAL`
+and the next behavioral gate is the real API cash-receipt SIGKILL/restart/
+replay proof.

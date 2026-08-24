@@ -9,6 +9,14 @@ Este é o ponteiro executável para a próxima sessão. Ele registra o P0 de
 deploy encontrado nesta auditoria e não declara produção, paridade, ERP ou
 release prontos.
 
+## Publicação atual
+
+Implementação e handoff foram publicados no commit
+`c93d672a47ad1bdb391c4af8a8963c012fd4219b` (`fix: enforce worker account
+scope in Helm`). O fetch confirmou o mesmo SHA em
+`origin/agent/sync-v4-full-program`; apenas o cache user-owned
+`packages/design-system/tsconfig.vue.tsbuildinfo` permanece fora do stage.
+
 ## Retomada em cinco minutos
 
 ```bash

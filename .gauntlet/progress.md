@@ -736,3 +736,8 @@ lint/template checks are explicitly deferred to CI/deploy.
 
 Handoff: `docs/2026-08-24-handoff-worker-account-scope.md`. Keep all broad
 gates ACTIVE/IN_PROGRESS/PARTIAL and proceed to API cash-receipt SIGKILL.
+
+Publication checkpoint: `c93d672a47ad1bdb391c4af8a8963c012fd4219b` is pushed
+and equals origin after fetch. The next session must run rendered Helm checks
+where Helm is available, then implement the API cash-receipt SIGKILL/restart/
+replay proof; no global gate is promoted.

@@ -82,5 +82,5 @@ do Secret deve impedir startup; isso é fail-closed e esperado.
 
 Leia este artefato, `docs/2026-08-24-handoff-worker-account-scope.md`,
 `.agent/state.json` (`CVG-002C6`), `.agent/backlog.json` e o último commit
-publicado. Preserve sempre o cache user-owned
+publicado (`c93d672a47ad1bdb391c4af8a8963c012fd4219b`). Preserve sempre o cache user-owned
 `packages/design-system/tsconfig.vue.tsbuildinfo` fora do stage.

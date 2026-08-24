@@ -19,13 +19,13 @@
   "latest_retest_evidence": "2026-08-24: worker account-scope Helm contract RED/GREEN was recorded in .agent/artifacts/CVG-002C6-worker-account-scope-2026-08-24.md; static Helm validation passed without a Helm binary, schema parse passed, security:secrets passed, git diff --check passed and typecheck passed 70/70 scoped projects. The artifact documents operator-created staging/prod Secrets, fail-closed startup and the pending helm lint/template limitation. Earlier artifacts .agent/artifacts/CVG-002C6-critical-gates-2026-08-24.md, .agent/artifacts/CVG-002C6-stale-owner-a-alive-2026-08-24.md, .agent/artifacts/CVG-002C6-billing-source-hash-2026-08-24.md and .agent/artifacts/CVG-002C6-cross-instance-hydration-2026-08-24.md record the bounded journey evidence and limitations. Promise.allSettled hydration logs rejected cache refreshes with account/cache context; no unhandled rejection occurred.",
   "instruction_scope_refs": [".agent/instruction-scope.md"],
   "last_gate_record": ".agent/gates/implementation-ready-CVG-002C6.json",
-  "last_event_id": "EVT-0240",
-  "state_revision": 229,
+  "last_event_id": "EVT-0241",
+  "state_revision": 230,
   "next_gate": "VERIFIED",
-  "next_action": "Publish and reconcile the worker account-scope Helm contract, then run helm lint/template for dev/staging/prod in a runner with Helm and provision operator-managed WORKER_ACCOUNT_IDS Secrets only in authorized namespaces. Do not promote CVG-002C6 or the ERP: next implement the real API child-process cash-receipt SIGKILL/restart/replay gate, then expand discharge/close/receipt failpoints and evaluate concurrent requests during in-flight hydration (P2), PIX PostgreSQL/RLS and webhook HTTP retry/DLQ/lease fencing. Preserve the P1 harness-concurrency/backoff follow-ups, WebAuthn durability, audit attribution, global RLS/FORCE RLS, DR/RPO, migration checksum, CI deploy, Redis/provider/SPA/parity/WCAG/coverage/operations/release and global ERP status explicitly IN_PROGRESS/PARTIAL",
+  "next_action": "Worker account-scope Helm implementation and handoff are published at c93d672a47ad1bdb391c4af8a8963c012fd4219b and local HEAD equals origin after fetch. In a Helm-enabled CI/deploy runner, run helm lint/template for dev/staging/prod and provision operator-managed WORKER_ACCOUNT_IDS Secrets only in authorized namespaces. Do not promote CVG-002C6 or the ERP: next implement the real API child-process cash-receipt SIGKILL/restart/replay gate, then expand discharge/close/receipt failpoints and evaluate concurrent requests during in-flight hydration (P2), PIX PostgreSQL/RLS and webhook HTTP retry/DLQ/lease fencing. Preserve the P1 harness-concurrency/backoff follow-ups, WebAuthn durability, audit attribution, global RLS/FORCE RLS, DR/RPO, migration checksum, CI deploy, Redis/provider/SPA/parity/WCAG/coverage/operations/release and global ERP status explicitly IN_PROGRESS/PARTIAL",
   "blocked_by": [],
   "human_approval_required": [
     "Production go-live, credential rotation, provider selection, fiscal homologation, and residual HIGH/CRITICAL risk acceptance remain outside repository implementation authority"
   ],
-  "updated_at": "2026-08-24T02:17:40-03:00"
+  "updated_at": "2026-08-24T02:21:30-03:00"
 }

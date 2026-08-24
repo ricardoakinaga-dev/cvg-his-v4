@@ -819,3 +819,11 @@ Artifact: `.agent/artifacts/CVG-002C6-worker-account-scope-2026-08-24.md`.
 Stop decision remains ACTIVE; no ERP, production, parity, operations or
 release gate is promoted. Next gate is the real API child-process cash-receipt
 SIGKILL/restart/replay proof, then discharge/close/receipt failpoints.
+
+## Publication checkpoint — worker account scope — 24/08/2026
+
+Commit `c93d672a47ad1bdb391c4af8a8963c012fd4219b` was pushed and reconciled
+with `origin/agent/sync-v4-full-program`. The handoff and artifact are now
+the next-session pointers; `tsbuildinfo` remains outside stage. Stop decision
+continues ACTIVE and rendered Helm validation is the first action in a
+Helm-enabled runner, followed by the API cash-receipt SIGKILL gate.
