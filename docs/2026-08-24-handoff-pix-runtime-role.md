@@ -60,3 +60,9 @@ provider, produção ou release. Mantenha
 `packages/design-system/tsconfig.vue.tsbuildinfo` fora do stage. Ao abrir
 outra sessão, faça `git fetch` e confirme `HEAD ==
 origin/agent/sync-v4-full-program`.
+
+O patch foi publicado no commit
+`8d5e7ad8f268635ece3797c4b1b58bf0998f33a8`
+(`fix: harden helm render and pix runtime role`) e o fetch confirmou o mesmo
+SHA no remoto. O cache user-owned permanece a única alteração local fora do
+commit.

@@ -19,13 +19,13 @@
   "latest_retest_evidence": "2026-08-24: docs/2026-08-24-handoff-pix-runtime-role.md records the Helm render correction, PIX runtime-role RED/GREEN sequence, independent critic result and the fresh 6/6 process regression. The reconciler allowlist includes the deferred non-cash consistency helper and migration 0124 fixes its search_path. The full runner passed all six process files with migration 0124 applied and distinct ephemeral suffixes; the critic independently reran PIX 8/8 and approved the three P0 criteria, while noting cleanup-error assertion as P2. Webhook durable executor/claim/retry/DLQ/fencing, production-like cluster proof, Redis/provider, DR/RPO, global RLS/FORCE RLS, parity, UX, operations and release evidence remain open.",
   "instruction_scope_refs": [".agent/instruction-scope.md"],
   "last_gate_record": ".agent/gates/implementation-ready-CVG-002C6.json",
-  "last_event_id": "EVT-0260",
-  "state_revision": 249,
+  "last_event_id": "EVT-0262",
+  "state_revision": 251,
   "next_gate": "VERIFIED",
   "next_action": "Read docs/2026-08-24-handoff-pix-runtime-role.md and its artifact first: Helm lint/template passed in the pinned runner, the PIX runtime-role proof is GREEN bounded, and the fresh six-file process runner is exit 0 with PIX 8/8. Keep CVG-002C6, ERP, production, parity, operations and release IN_PROGRESS/PARTIAL. Next implement the durable webhook HTTP executor with tenant-scoped claim, retry/backoff, terminal DLQ and lease/token/version fencing. Preserve the runner signal-forwarding/cleanup P2s, dedicated bootstrap CI-cost decision, WebAuthn durability, audit attribution, global RLS/FORCE RLS, DR/RPO, migration checksum, CI deploy, Redis/provider/SPA/parity/WCAG/coverage/operations/release gaps, Helm cluster/Secret limitation and the user-owned tsbuildinfo cache outside stage",
   "blocked_by": [],
   "human_approval_required": [
     "Production go-live, credential rotation, provider selection, fiscal homologation, and residual HIGH/CRITICAL risk acceptance remain outside repository implementation authority"
   ],
-  "updated_at": "2026-08-24T06:17:37-03:00"
+  "updated_at": "2026-08-24T06:30:56-03:00"
 }
