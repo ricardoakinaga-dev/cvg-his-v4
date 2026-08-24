@@ -79,9 +79,10 @@ build antes de iniciar os filhos.
 
 ## Publicação
 
-O commit `08a9885dd6bbfd0dcbadd648d8eb330c95cfb9a6`
-(`test: harden laboratory catalog bootstrap concurrency`) foi enviado para
-`origin/agent/sync-v4-full-program`; o fetch confirmou o mesmo SHA em `HEAD` e
-no remoto. O cache `packages/design-system/tsconfig.vue.tsbuildinfo` é o único
-path dirty e permanece fora do stage. Este handoff não é declaração de
-produção ou release.
+A implementação foi publicada em `08a9885dd6bbfd0dcbadd648d8eb330c95cfb9a6`
+(`test: harden laboratory catalog bootstrap concurrency`) e a reconciliação
+final deste handoff em `91dd136ab5bb271788e128dcccba78bc1d4e8c42`
+(`docs: reconcile laboratory bootstrap handoff`). O fetch confirmou
+`HEAD == origin/agent/sync-v4-full-program` no SHA final. O cache
+`packages/design-system/tsconfig.vue.tsbuildinfo` é o único path dirty e
+permanece fora do stage. Este handoff não é declaração de produção ou release.
