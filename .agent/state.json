@@ -19,13 +19,13 @@
   "latest_retest_evidence": "2026-08-24: focused inventory charge-capture passed 3/3 in 38.07s; production-like runtime bootstrap passed 6/6 in 87.76s; test:critical base passed 28/28 files and 387/387 tests in 710.99s; process phase passed 1/1 file and 2/2 tests in 60.09s; stale-owner-A-alive regression passed 4/4 in 233.66s; billing source/hash/divergent replay passed 4/4 in 125.96s on fresh billing_hash_green PostgreSQL. The artifacts .agent/artifacts/CVG-002C6-critical-gates-2026-08-24.md, .agent/artifacts/CVG-002C6-stale-owner-a-alive-2026-08-24.md and .agent/artifacts/CVG-002C6-billing-source-hash-2026-08-24.md record commands and limitations. Promise.allSettled hydration logs rejected cache refreshes with account/cache context; no unhandled rejection occurred.",
   "instruction_scope_refs": [".agent/instruction-scope.md"],
   "last_gate_record": ".agent/gates/implementation-ready-CVG-002C6.json",
-  "last_event_id": "EVT-0235",
-  "state_revision": 224,
+  "last_event_id": "EVT-0236",
+  "state_revision": 225,
   "next_gate": "VERIFIED",
-  "next_action": "Critical base/process and deployment guardrails are green bounded; stale-owner fencing with A alive and billing source/hash/divergent replay are green in fresh 4/4 process suites, with fresh independent APPROVE bounded review and no P0/P1. Publication commit for the billing slice is pending. Do not promote CVG-002C6 or the ERP: publish/reconcile this bounded slice, then prove two-tenant/A-B spoofing and cross-instance hydration evidence; expand discharge/close/receipt failpoints, then PIX PostgreSQL/RLS and webhook HTTP retry/DLQ/lease fencing. Preserve the P1 harness-concurrency/backoff follow-ups, WebAuthn durability, audit attribution, global RLS/FORCE RLS, Redis/provider/SPA/parity/WCAG/coverage/operations/deploy/release and global ERP status explicitly IN_PROGRESS/PARTIAL",
+  "next_action": "Critical base/process and deployment guardrails are green bounded; stale-owner fencing with A alive and billing source/hash/divergent replay are green in fresh 4/4 process suites, with fresh independent APPROVE bounded review and no P0/P1. Billing publication 9bd8cd8aab0c9f7fe78f4f0b6a5355619cd827a5 is reconciled to origin. Do not promote CVG-002C6 or the ERP: next prove two-tenant/A-B spoofing and cross-instance hydration evidence; expand discharge/close/receipt failpoints, then PIX PostgreSQL/RLS and webhook HTTP retry/DLQ/lease fencing. Preserve the P1 harness-concurrency/backoff follow-ups, WebAuthn durability, audit attribution, global RLS/FORCE RLS, Redis/provider/SPA/parity/WCAG/coverage/operations/deploy/release and global ERP status explicitly IN_PROGRESS/PARTIAL",
   "blocked_by": [],
   "human_approval_required": [
     "Production go-live, credential rotation, provider selection, fiscal homologation, and residual HIGH/CRITICAL risk acceptance remain outside repository implementation authority"
   ],
-  "updated_at": "2026-08-24T01:24:12-03:00"
+  "updated_at": "2026-08-24T01:27:30-03:00"
 }

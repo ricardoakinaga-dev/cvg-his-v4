@@ -325,3 +325,15 @@ publicação desta rodada ainda precisa do commit/push e da reconciliação fina
 de SHA. Permanecem abertos dois tenants/A-B/spoofing, hidratação
 cross-instance e failpoints completos da jornada. A barra global e
 `CVG-002C6` permanecem `IN_PROGRESS/PARTIAL`.
+
+### Publicação reconciliada — billing source/hash — 24/08/2026
+
+O commit `9bd8cd8`
+(`test: assert billing provenance and canonical replay hash`) foi enviado ao
+GitHub. O `git fetch` pós-push confirmou
+`HEAD == origin/agent/sync-v4-full-program` em
+`9bd8cd8aab0c9f7fe78f4f0b6a5355619cd827a5`. O único caminho dirty continua
+sendo o cache user-owned
+`packages/design-system/tsconfig.vue.tsbuildinfo`, preservado fora do stage.
+Na próxima sessão, repetir `git fetch`/`git rev-parse`, ler este handoff e
+retomar A/B entre tenants, hydration cross-instance e failpoints.

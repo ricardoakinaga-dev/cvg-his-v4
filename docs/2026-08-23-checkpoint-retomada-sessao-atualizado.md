@@ -341,3 +341,14 @@ P0/P1. Falta apenas publicar o commit desta rodada e reconciliar o SHA remoto;
 depois, o próximo gate é A/B entre tenants, hydration cross-instance e
 failpoints admission→receipt. Não promover ERP, produção, paridade, operações
 ou release.
+
+### SHA publicado — billing source/hash
+
+O commit `9bd8cd8` (`test: assert billing provenance and canonical replay hash`)
+foi publicado no GitHub. `git fetch` confirmou
+`HEAD == origin/agent/sync-v4-full-program` em
+`9bd8cd8aab0c9f7fe78f4f0b6a5355619cd827a5`; somente o cache
+`packages/design-system/tsconfig.vue.tsbuildinfo` permanece dirty e fora do
+stage. Esta é a ponte para a próxima sessão: iniciar por este checkpoint,
+`.agent/state.json`, `.agent/backlog.json` e o artefato billing, e então atacar
+A/B, hydration cross-instance e failpoints.
