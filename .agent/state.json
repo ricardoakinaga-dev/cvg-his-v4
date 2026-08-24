@@ -19,13 +19,13 @@
   "latest_retest_evidence": "2026-08-23: after commit 76d94a3 removed session_replication_role from the encounter cash-receipt fixture cleanup, the focused cash→PIX prefix passed 30/30. The controlled full critical ran against fresh disposable PostgreSQL with --no-cache --no-file-parallelism --hookTimeout=120000 --teardownTimeout=120000, applied migrations 0000–0123, observed 172 tables/43 enums/456 FKs, completed teardown and exited 0 at 387/387 tests in 28/28 files after 669.60s. Evidence is VFY-CVG-002C6-CRITICAL-HARNESS-GREEN-001 and .agent/artifacts/CVG-002C6-critical-harness-green-2026-08-23.md. Independent review ACCEPTed the isolation fix with a residual valid-receipt-commit coverage gap; no global gate is promoted.",
   "instruction_scope_refs": [".agent/instruction-scope.md"],
   "last_gate_record": ".agent/gates/implementation-ready-CVG-002C6.json",
-  "last_event_id": "EVT-0226",
-  "state_revision": 215,
+  "last_event_id": "EVT-0227",
+  "state_revision": 216,
   "next_gate": "VERIFIED",
   "next_action": "The critical harness and PIX contamination fix are green bounded at 387/387 with fresh independent ACCEPT, and the role-hardened domain child-process SIGKILL/takeover slice is green bounded at 2/2 in 81.65s. Do not promote CVG-002C6 or the ERP: add stale-owner fencing with A alive, explicit billing sourceEntityId/hash assertions, two-tenant/A-B and cross-instance hydration evidence; expand discharge/close/receipt failpoints, then PIX PostgreSQL/RLS and webhook HTTP retry/DLQ/lease fencing. Preserve the residual valid-receipt-commit coverage gap, WebAuthn durability, audit attribution, global RLS/FORCE RLS, Redis/provider/SPA/parity/WCAG/coverage/operations/deploy/release and global ERP status explicitly IN_PROGRESS/PARTIAL",
   "blocked_by": [],
   "human_approval_required": [
     "Production go-live, credential rotation, provider selection, fiscal homologation, and residual HIGH/CRITICAL risk acceptance remain outside repository implementation authority"
   ],
-  "updated_at": "2026-08-23T22:34:10-03:00"
+  "updated_at": "2026-08-23T22:41:00-03:00"
 }

@@ -223,6 +223,15 @@ bloqueado e `QB-MKT-01` não executado. Não houve promoção global. A próxima
 ação continua sendo stale-owner A vivo → A/B/hidratação → failpoints
 cross-domain, preservando `CVG-002C6=IN_PROGRESS/PARTIAL`.
 
+## Publicação reconciliada — 22:41 BRT
+
+A auditoria global e os ponteiros de continuidade foram publicados em
+`a4b85624653314b06aa951e8046664852a7a9c56` (`docs: consolidate global audit handoff`).
+O `git fetch` confirmou `HEAD == origin/agent/sync-v4-full-program`; somente o
+cache user-owned `packages/design-system/tsconfig.vue.tsbuildinfo` permanece
+dirty e fora do stage. A próxima sessão deve começar pelo handoff global e
+seguir stale-owner A vivo, A/B/hidratação e a matriz de failpoints.
+
 ## Publicação final desta sessão — 22:12 BRT
 
 Commits publicados no GitHub:

@@ -202,3 +202,11 @@ Esta consolidação deve ser publicada junto com o ajuste dos ponteiros em
 `docs/README.md`, no checkpoint curto e nos ledgers de controle. Após o push,
 validar `HEAD == origin/agent/sync-v4-full-program`, `git diff --check` e que
 somente o `tsconfig.vue.tsbuildinfo` permanece dirty.
+
+## Publicação reconciliada
+
+Commit documental: `a4b85624653314b06aa951e8046664852a7a9c56` (`docs: consolidate global audit handoff`).
+O push para `origin/agent/sync-v4-full-program` foi concluído e o fetch
+confirmou `HEAD == origin` nesse SHA. O único caminho dirty continua sendo o
+cache user-owned `packages/design-system/tsconfig.vue.tsbuildinfo`, fora do
+commit.
