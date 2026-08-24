@@ -40,17 +40,17 @@ Não fazer stage, limpeza, revert ou commit desse arquivo.
 
 O inventário atual de `docs/` foi reexecutado por caminho e conteúdo:
 
-| Medida | Resultado |
-| --- | ---: |
-| Arquivos | 1.456 |
-| Markdown | 1.004 |
-| JSON | 129 |
-| HTML | 67 |
-| PNG | 255 |
-| Gzip | 1 |
-| Arquivos textuais | 1.200 |
-| Arquivos binários | 256 |
-| Bytes totais | 53.957.807 |
+| Medida                                             |                                                          Resultado |
+| -------------------------------------------------- | -----------------------------------------------------------------: |
+| Arquivos                                           |                                                              1.456 |
+| Markdown                                           |                                                              1.004 |
+| JSON                                               |                                                                129 |
+| HTML                                               |                                                                 67 |
+| PNG                                                |                                                                255 |
+| Gzip                                               |                                                                  1 |
+| Arquivos textuais                                  |                                                              1.200 |
+| Arquivos binários                                  |                                                                256 |
+| Bytes totais                                       |                                                         53.957.807 |
 | SHA-256 do manifesto ordenado por caminho/conteúdo | `5f16bfc916277a232726ea670e140c9b87c4da3e0c091e529d560b097679e546` |
 
 Os Markdown, JSON e HTML foram varridos como texto; os 129 JSON foram
@@ -88,7 +88,7 @@ não fecham jornada comportamental.
   `SIGKILL` em `after_claim` e
   `after_domain_command_before_cas`, expiração/takeover de lease e replay
   idempotente. API e worker usaram roles distintas `LOGIN NOSUPERUSER
-  NOBYPASSRLS`; SQL reconciliou consumo, estoque, billing, audit, outbox e
+NOBYPASSRLS`; SQL reconciliou consumo, estoque, billing, audit, outbox e
   idempotência.
 - A revisão independente aceitou a prova child-process apenas como bounded.
   Ainda faltam stale-owner com A vivo, billing `source_entity_id` explícito,
@@ -96,24 +96,24 @@ não fecham jornada comportamental.
   segunda API, inclusão no CI crítico e os demais boundaries.
 - O seam público HTTP/PostgreSQL existente já costura:
   `admissão → handoff/ack → internação → consumo de lote → diária/billing →
-  alta → close → receipt → ledger/reconciliation → audit/outbox`.
+alta → close → receipt → ledger/reconciliation → audit/outbox`.
   Isso é uma prova vertical bounded, não a matriz integral de restart/failpoint.
 
 Artefatos e testes: [`../.agent/artifacts/CVG-002C6-critical-harness-green-2026-08-23.md`](../.agent/artifacts/CVG-002C6-critical-harness-green-2026-08-23.md), [`../.agent/artifacts/CVG-002C6-process-sigkill-2026-08-23.md`](../.agent/artifacts/CVG-002C6-process-sigkill-2026-08-23.md), [`../tests/integration/database/inpatient-clinical-financial-vertical-http-postgres.test.ts`](../tests/integration/database/inpatient-clinical-financial-vertical-http-postgres.test.ts) e [`../tests/integration/process/inpatient-domain-sigkill.test.ts`](../tests/integration/process/inpatient-domain-sigkill.test.ts).
 
 ## Quality Bar global reconciliada
 
-| Gate | Situação atual | Motivo de não promoção |
-| --- | --- | --- |
-| `QB-SEC-01` | `PARTIAL` | fail-closed e controles melhorados, mas a suíte crítica e a durabilidade completa ainda não fecham todos os casos |
-| `QB-DATA-01` | `PARTIAL` | recorte documentado em 154/155 para RLS/FORCE RLS; falta prova global com roles runtime |
-| `QB-AUTH-01` | `PARTIAL` | sessão, MFA, revogação e rate-limit entre réplicas ainda incompletos |
-| `QB-CORE-01` | `PARTIAL` | seam clínico-financeiro bounded; matriz cross-domain e falhas ainda abertas |
-| `QB-PARITY-01` | `FAIL` | Vetus geral 0/11 e clínica 0/3 |
-| `QB-UX-01` | `NOT_RUN` | falta auditoria WCAG 2.2 AA, teclado, foco, mobile e recuperação |
-| `QB-REL-01` | `FAIL/PARTIAL` | cobertura e release E2E ainda não são integralmente verdes |
-| `QB-OPS-01` | `BLOCKED` | deploy, restore, failover, RPO/RTO e SLO exigem ambiente autorizado |
-| `QB-MKT-01` | `NOT_RUN` | capacidade competitiva não foi convertida em resultado comportamental do produto |
+| Gate           | Situação atual | Motivo de não promoção                                                                                            |
+| -------------- | -------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `QB-SEC-01`    | `PARTIAL`      | fail-closed e controles melhorados, mas a suíte crítica e a durabilidade completa ainda não fecham todos os casos |
+| `QB-DATA-01`   | `PARTIAL`      | recorte documentado em 154/155 para RLS/FORCE RLS; falta prova global com roles runtime                           |
+| `QB-AUTH-01`   | `PARTIAL`      | sessão, MFA, revogação e rate-limit entre réplicas ainda incompletos                                              |
+| `QB-CORE-01`   | `PARTIAL`      | seam clínico-financeiro bounded; matriz cross-domain e falhas ainda abertas                                       |
+| `QB-PARITY-01` | `FAIL`         | Vetus geral 0/11 e clínica 0/3                                                                                    |
+| `QB-UX-01`     | `NOT_RUN`      | falta auditoria WCAG 2.2 AA, teclado, foco, mobile e recuperação                                                  |
+| `QB-REL-01`    | `FAIL/PARTIAL` | cobertura e release E2E ainda não são integralmente verdes                                                        |
+| `QB-OPS-01`    | `BLOCKED`      | deploy, restore, failover, RPO/RTO e SLO exigem ambiente autorizado                                               |
+| `QB-MKT-01`    | `NOT_RUN`      | capacidade competitiva não foi convertida em resultado comportamental do produto                                  |
 
 Nenhum gate global, `CVG-002C6`, ERP ou produção foi promovido.
 
@@ -338,7 +338,6 @@ sendo o cache user-owned
 Na próxima sessão, repetir `git fetch`/`git rev-parse`, ler este handoff e
 retomar A/B entre tenants, hydration cross-instance e failpoints.
 
-
 ## Atualização de execução — hidratação cross-instance e isolamento A/B — 24/08/2026
 
 A próxima regressão P0 foi congelada em quatro critérios: HYD-01 exige que
@@ -384,7 +383,6 @@ CVG-002C6=IN_PROGRESS/PARTIAL e o próximo workstream é publicar esta
 rodada, expandir failpoints de discharge/close/receipt e depois tratar os
 gates PIX/RLS e webhook retry/DLQ/fencing.
 
-
 ### Publicação reconciliada — hidratação cross-instance — 24/08/2026
 
 O commit de implementação, teste, artefato e control plane
@@ -399,3 +397,19 @@ repetir git fetch/rev-parse, ler este handoff, o checkpoint curto, state e
 backlog, e continuar pelos failpoints de discharge/close/receipt e pela
 concorrência durante hydration in-flight (P2), sem promover ERP, produção,
 paridade ou release.
+
+## Atualização de continuidade — cash receipt SIGKILL — 24/08/2026
+
+O handoff [`2026-08-24-handoff-cash-receipt-sigkill.md`](2026-08-24-handoff-cash-receipt-sigkill.md)
+acrescenta uma prova GREEN bounded: API em processo filho, PostgreSQL efêmero,
+`SIGKILL` durante o recebimento, rollback sem grafo parcial, restart/replay,
+conflito de payload e isolamento A/B. A prova foi executada em `NODE_ENV=test`;
+ela não é boot production-like, renderização Helm, entrega de worker ou prova
+global de RLS/FORCE RLS.
+
+Portanto a Quality Bar desta página não muda de estado: `QB-CORE-01` continua
+`PARTIAL`; `QB-AUTH-01`, `QB-DATA-01`, `QB-PARITY-01`, `QB-UX-01`, `QB-REL-01`,
+`QB-OPS-01` e `QB-MKT-01` preservam os resultados da tabela reconciliada acima.
+`CVG-002C6`, ERP, produção e release permanecem `IN_PROGRESS/PARTIAL`. A próxima
+ação é expandir failpoints, concorrência e takeover em admission→receipt; depois
+PIX PostgreSQL/RLS e webhook retry/DLQ/lease fencing.

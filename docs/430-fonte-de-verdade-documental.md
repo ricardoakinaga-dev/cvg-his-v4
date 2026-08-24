@@ -1,7 +1,7 @@
 # Fonte de verdade documental
 
 **Status:** vigente
-**Validado em:** 2026-08-23
+**Validado em:** 2026-08-24
 **Owner:** engenharia e produto CVG-HIS
 
 ## Regra central
@@ -10,21 +10,27 @@ Documento nao transforma uma funcionalidade em pronta. O estado real e determina
 
 ## Fontes por tema
 
-| Tema | Fonte vigente |
-|---|---|
-| Checkpoint de continuidade atual | `2026-08-23-checkpoint-retomada-worker.md` |
-| Estado do produto e auditoria | `2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md` |
-| Plano executivo vigente | `2026-08-07-plano-executivo-resolucao-auditoria-cvg-his-v4.md` |
-| Backlog e roadmap vigentes | `2026-08-07-backlog-roadmap-resolucao-auditoria-cvg-his-v4.md` |
-| Primeiro acesso e super administrador | `2026-08-10-primeiro-acesso-super-admin.md` |
-| Baselines anteriores de produto | documentos de julho de 2026, sem prevalencia sobre o programa de agosto |
-| Paridade Vetus e lacunas de evidencia | `2026-07-10-auditoria-paridade-funcional-vetus.md` |
-| Seguranca e runtime | comportamento/testes atuais; depois `2026-08-07-*` e, como baseline, `2026-07-09-auditoria-correcao-seguranca-runtime.md` |
-| Arquitetura | `112` a `116`, mais `adr/` |
-| Deploy | `130`, `131` e `132` |
-| Navegacao | `navigation-*` e `routine-state-model.md` |
-| Evidencias do Vetus | `vetus/` |
-| Historico | `docs2/` |
+| Tema                                       | Fonte vigente                                                                                                                                 |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Checkpoint de continuidade atual           | `2026-08-24-handoff-cash-receipt-sigkill.md`                                                                                                  |
+| Handoff imediatamente anterior             | `2026-08-24-handoff-worker-account-scope.md`                                                                                                  |
+| Estado do produto, auditoria e Quality Bar | `2026-08-23-auditoria-documental-global-e-handoff.md`, atualizado pelos handoffs de 24/08 apenas no escopo bounded explicitamente registrado  |
+| Plano executivo vigente                    | `2026-08-07-plano-executivo-resolucao-auditoria-cvg-his-v4.md`                                                                                |
+| Backlog e roadmap vigentes                 | `2026-08-07-backlog-roadmap-resolucao-auditoria-cvg-his-v4.md`                                                                                |
+| Primeiro acesso e super administrador      | `2026-08-10-primeiro-acesso-super-admin.md`                                                                                                   |
+| Baselines anteriores de produto            | documentos de julho de 2026, sem prevalencia sobre o programa de agosto                                                                       |
+| Paridade Vetus e lacunas de evidencia      | Quality Bar em `2026-08-23-auditoria-documental-global-e-handoff.md`; `2026-07-10-auditoria-paridade-funcional-vetus.md` é baseline histórica |
+| Seguranca e runtime                        | comportamento/testes atuais; depois `2026-08-07-*` e, como baseline, `2026-07-09-auditoria-correcao-seguranca-runtime.md`                     |
+| Arquitetura                                | `112` a `116`, mais `adr/`                                                                                                                    |
+| Deploy                                     | `130`, `131` e `132`                                                                                                                          |
+| Navegacao                                  | `navigation-*` e `routine-state-model.md`                                                                                                     |
+| Evidencias do Vetus                        | `vetus/`                                                                                                                                      |
+| Historico                                  | `docs2/`                                                                                                                                      |
+
+Os relatórios e checkpoints de 07/08 e 23/08 preservados fora de `docs2/`
+continuam rastreáveis, mas não são ponteiros de continuidade quando um handoff
+posterior os substitui. Nenhuma prova bounded altera sozinha os estados globais
+`PARTIAL`, `FAIL`, `NOT_RUN` ou `BLOCKED` da Quality Bar.
 
 ## Estados permitidos
 

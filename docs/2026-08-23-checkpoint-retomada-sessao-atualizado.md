@@ -5,9 +5,10 @@
 **Branch:** `agent/sync-v4-full-program`
 **Estado:** `BUILD/VERIFY`, `IN_PROGRESS/PARTIAL`
 
-Este é o índice curto para continuar o trabalho em outra sessão. Ele resume o
-que está comprovado, o que foi publicado e o que continua aberto. Não é uma
-declaração de produção, paridade, conformidade ou release.
+Este é um índice histórico curto da sessão de 23/08. Ele resume o que estava
+comprovado, publicado e aberto naquela data. Para a continuidade atual, use
+primeiro os handoffs de 24/08 abaixo. Nenhum deles é declaração de produção,
+paridade, conformidade ou release.
 
 A auditoria documental integral e o handoff consolidado desta sessão estão em
 [`2026-08-23-auditoria-documental-global-e-handoff.md`](2026-08-23-auditoria-documental-global-e-handoff.md).
@@ -28,12 +29,13 @@ git diff --check
 
 Leia, nesta ordem:
 
-1. este checkpoint;
-2. [`../.agent/state.json`](../.agent/state.json);
-3. [`../.agent/backlog.json`](../.agent/backlog.json), item `CVG-002C6`;
-4. [`../.agent/plans/premium-enterprise-mvp.md`](../.agent/plans/premium-enterprise-mvp.md);
-5. [`2026-08-23-handoff-sessao-atual.md`](2026-08-23-handoff-sessao-atual.md);
-6. os últimos registros de [`../.agent/execution-log.jsonl`](../.agent/execution-log.jsonl)
+1. [`2026-08-24-handoff-cash-receipt-sigkill.md`](2026-08-24-handoff-cash-receipt-sigkill.md);
+2. [`2026-08-24-handoff-worker-account-scope.md`](2026-08-24-handoff-worker-account-scope.md);
+3. [`2026-08-23-auditoria-documental-global-e-handoff.md`](2026-08-23-auditoria-documental-global-e-handoff.md);
+4. [`../.agent/state.json`](../.agent/state.json);
+5. [`../.agent/backlog.json`](../.agent/backlog.json), item `CVG-002C6`;
+6. [`../.agent/plans/premium-enterprise-mvp.md`](../.agent/plans/premium-enterprise-mvp.md);
+7. os últimos registros de [`../.agent/execution-log.jsonl`](../.agent/execution-log.jsonl)
    e [`../.agent/verification.jsonl`](../.agent/verification.jsonl).
 
 O único caminho local que pode aparecer como dirty é o cache user-owned
@@ -204,7 +206,8 @@ O estado operacional atual está em [`../.agent/state.json`](../.agent/state.jso
 reconciliado no commit final desta sessão).
 O checkpoint histórico detalhado continua em
 [`2026-08-23-checkpoint-retomada-integral.md`](2026-08-23-checkpoint-retomada-integral.md);
-esta página é o índice curto e mais recente para a próxima sessão.
+esta página é o índice histórico curto da sessão de 23/08. Os handoffs de
+24/08 são os ponteiros mais recentes para a próxima sessão.
 
 ## Auditoria documental global — 22:34 BRT
 
@@ -353,7 +356,6 @@ stage. Esta é a ponte para a próxima sessão: iniciar por este checkpoint,
 `.agent/state.json`, `.agent/backlog.json` e o artefato billing, e então atacar
 A/B, hydration cross-instance e failpoints.
 
-
 ## Atualização de execução — hidratação cross-instance — 24/08/2026
 
 A regressão vertical adicionou uma prova real entre duas APIs prontas antes da
@@ -379,7 +381,6 @@ Limitação explícita: concorrência durante refresh em voo permanece P2; Redis
 invalidation, demais domínios cacheados, failpoints admission→receipt,
 PIX/webhook, paridade e release continuam abertos. Próxima ação: publicar a
 rodada e expandir failpoints de discharge/close/receipt sem promover o ERP.
-
 
 ### Publicação reconciliada — hidratação cross-instance — 24/08/2026
 

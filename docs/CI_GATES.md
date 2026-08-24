@@ -19,10 +19,12 @@ These jobs provide confidence for releases but do not block merging to develop:
 
 ## Release Check (Main branch only)
 
-The `release-ready` job runs only on the main branch and provides a summary:
+The `release-ready` job runs only on the main branch and provides an
+informational CI summary:
 
 - Reports status of all merge and release gates
-- Indicates whether the build is ready for release
+- Indicates only whether its configured CI jobs are green; it is not proof of
+  production readiness or of the project G5 release gate
 - Only runs on pushes to main branch
 
 ## How Gates Work
@@ -31,7 +33,10 @@ The `release-ready` job runs only on the main branch and provides a summary:
 - Merge gates failing will block the PR from being merged
 - Release gates provide feedback but don't block PR merges
 - For main branch releases, all gates (including release gates) should pass
-- The release-ready job gives a clear summary of release readiness
+- The release-ready job is an informational summary, not a release approval.
+  G5 additionally requires the full project Quality Bar: deploy and Helm
+  evidence, E2E, performance, restore/failover, parity, and the applicable
+  authorized operational evidence.
 
 ## Alignment with Project Scripts
 

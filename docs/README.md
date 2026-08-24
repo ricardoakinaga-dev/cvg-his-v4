@@ -6,9 +6,9 @@ Esta pasta separa documentacao vigente, referencia do Vetus e historico. Uma afi
 
 ## Comece aqui
 
-1. [`2026-08-23-auditoria-documental-global-e-handoff.md`](2026-08-23-auditoria-documental-global-e-handoff.md) - inventário integral atual, barra de qualidade, pesquisa oficial, evidências e próxima sequência.
-2. [`2026-08-24-handoff-worker-account-scope.md`](2026-08-24-handoff-worker-account-scope.md) - ponteiro executável desta sessão e próximo failpoint P0.
-3. [`2026-08-24-handoff-cash-receipt-sigkill.md`](2026-08-24-handoff-cash-receipt-sigkill.md) - prova GREEN do recebimento em dinheiro sob SIGKILL, replay e limites para a próxima sessão.
+1. [`2026-08-24-handoff-cash-receipt-sigkill.md`](2026-08-24-handoff-cash-receipt-sigkill.md) - ponteiro operacional mais recente: prova GREEN bounded de recebimento sob SIGKILL e a próxima sequência de failpoints; não promove ERP, produção ou release.
+2. [`2026-08-24-handoff-worker-account-scope.md`](2026-08-24-handoff-worker-account-scope.md) - handoff imediatamente anterior: escopo fail-closed do worker em Helm e limite explícito de renderização/cluster.
+3. [`2026-08-23-auditoria-documental-global-e-handoff.md`](2026-08-23-auditoria-documental-global-e-handoff.md) - inventário e Quality Bar global reconciliada; ler junto com os dois handoffs de 24/08 para o estado de continuidade.
 4. [`../.agent/artifacts/CVG-002C6-worker-account-scope-2026-08-24.md`](../.agent/artifacts/CVG-002C6-worker-account-scope-2026-08-24.md) - RED/GREEN do Secret obrigatório do worker e limites de Helm.
 5. [`2026-08-23-checkpoint-retomada-sessao-atualizado.md`](2026-08-23-checkpoint-retomada-sessao-atualizado.md) - índice curto para retomar em cinco minutos.
 6. [`../.agent/artifacts/CVG-002C6-critical-gates-2026-08-24.md`](../.agent/artifacts/CVG-002C6-critical-gates-2026-08-24.md) - evidência fresca do `test:critical`, guardrails e limites de revisão.
@@ -22,13 +22,13 @@ Esta pasta separa documentacao vigente, referencia do Vetus e historico. Uma afi
 14. [`2026-08-22-auditoria-integral-e-pesquisa-erp.md`](2026-08-22-auditoria-integral-e-pesquisa-erp.md) - auditoria consolidada, lacunas de código e pesquisa de PIMS oficiais.
 15. [`2026-08-07-plano-executivo-resolucao-auditoria-cvg-his-v4.md`](2026-08-07-plano-executivo-resolucao-auditoria-cvg-his-v4.md) - plano executivo vigente, marcos, gates, responsáveis e metas.
 16. [`2026-08-07-backlog-roadmap-resolucao-auditoria-cvg-his-v4.md`](2026-08-07-backlog-roadmap-resolucao-auditoria-cvg-his-v4.md) - backlog rastreável aos achados, dependências e critérios de aceite.
-17. [`2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md`](2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md) - baseline da auditoria técnica e funcional atual.
+17. [`2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md`](2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md) - baseline histórica da auditoria técnica e funcional; não substitui a Quality Bar nem os handoffs de 24/08.
 18. [`430-fonte-de-verdade-documental.md`](430-fonte-de-verdade-documental.md) - regras de governança e precedência.
 19. [`vetus/README.md`](vetus/README.md) - acervo factual capturado do Vetus.
 
-Os documentos 2026-08-23 são a superfície operacional atual. Os itens
-históricos preservados abaixo continuam disponíveis para contexto, mas não
-substituem o checkpoint e o handoff global acima.
+Os handoffs de 24/08 e a Quality Bar global de 23/08 compõem a superfície
+operacional atual. Evidência posterior bounded atualiza a continuidade, mas não
+promove gates globais; os documentos históricos permanecem apenas para contexto.
 
 ## Documentacao vigente
 
