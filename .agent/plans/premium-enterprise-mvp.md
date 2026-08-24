@@ -589,3 +589,15 @@ todos os domínios cacheados, failpoints admission→receipt, PIX/webhook ou
 paridade/release. Próxima iteração: publicar este slice, expandir failpoints
 de discharge/close/receipt e seguir para PIX PostgreSQL/RLS e webhook
 retry/DLQ/fencing.
+
+Plan revision note, 2026-08-24 (worker production-like account scope): o
+`apps/worker` falha fechado sem `WORKER_ACCOUNT_IDS`, mas o Deployment Helm não
+injetava a variável. O RED do validador foi reproduzido antes da mudança; o
+GREEN adicionou `worker.accountIds`, Secrets de staging/prod, schema,
+`secretKeyRef` obrigatório e asserções estáticas/renderizadas, mantendo dev sem
+escopo fixo. `pnpm validate:helm`, `security:secrets`, schema parse, diff check
+e typecheck 70/70 passaram. O runner não tem `helm`, portanto `helm lint` e
+`helm template` continuam pendentes em CI/runner autorizado. Evidência em
+`.agent/artifacts/CVG-002C6-worker-account-scope-2026-08-24.md` e handoff em
+`docs/2026-08-24-handoff-worker-account-scope.md`. O plano permanece
+`IN_PROGRESS/PARTIAL`; próximo gate é cash-receipt SIGKILL/restart/replay real.

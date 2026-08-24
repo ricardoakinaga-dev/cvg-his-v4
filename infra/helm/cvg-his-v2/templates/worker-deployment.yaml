@@ -71,6 +71,17 @@ spec:
                 secretKeyRef:
                   name: {{ include "cvg-his-v2.postgres.secretName" . }}
                   key: {{ .Values.postgresql.secretKeys.workerUrl }}
+            {{- if .Values.worker.accountIds.existingSecret }}
+            - name: WORKER_ACCOUNT_IDS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cvg-his-v2.worker.accountIdsSecretName" . }}
+                  key: {{ .Values.worker.accountIds.secretKey }}
+                  optional: false
+            {{- else if .Values.worker.env.WORKER_ACCOUNT_IDS }}
+            - name: WORKER_ACCOUNT_IDS
+              value: {{ .Values.worker.env.WORKER_ACCOUNT_IDS | quote }}
+            {{- end }}
           {{- if .Values.worker.probes.enabled }}
           livenessProbe:
             httpGet:

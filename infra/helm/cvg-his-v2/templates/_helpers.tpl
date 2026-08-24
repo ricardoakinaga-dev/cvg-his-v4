@@ -84,6 +84,10 @@ app.kubernetes.io/component: spa
 {{- printf "%s-worker-config" (include "cvg-his-v2.fullname" .) }}
 {{- end }}
 
+{{- define "cvg-his-v2.worker.accountIdsSecretName" -}}
+{{- default (printf "%s-worker-accounts" (include "cvg-his-v2.fullname" .)) .Values.worker.accountIds.existingSecret }}
+{{- end }}
+
 {{- define "cvg-his-v2.spa.configmapName" -}}
 {{- printf "%s-spa-config" (include "cvg-his-v2.fullname" .) }}
 {{- end }}

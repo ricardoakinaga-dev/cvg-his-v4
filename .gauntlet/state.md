@@ -804,3 +804,18 @@ SHA and equals origin after fetch. The artifact, handoff and verification
 ledger contain the bounded HYD/TEN/REG evidence. Stop decision remains ACTIVE;
 do not promote ERP/production/parity/release. Preserve tsbuildinfo outside
 stage and continue with failpoints plus the P2 in-flight hydration follow-up.
+
+## Gauntlet iteration — worker account scope fail-closed — 24/08/2026
+
+The production-like worker requires `WORKER_ACCOUNT_IDS`, but the Helm chart
+had not injected it. A validator RED failed before implementation; the GREEN
+static validation now requires operator-managed staging/prod Secrets, a
+required `secretKeyRef` and schema/overlay assertions, while dev keeps local
+account discovery. `pnpm security:secrets`, schema parsing, `pnpm typecheck`
+(70/70) and `git diff --check` passed. The runner has no Helm binary, so
+`helm lint`/`helm template` remain pending in a Helm-enabled CI/deploy runner.
+
+Artifact: `.agent/artifacts/CVG-002C6-worker-account-scope-2026-08-24.md`.
+Stop decision remains ACTIVE; no ERP, production, parity, operations or
+release gate is promoted. Next gate is the real API child-process cash-receipt
+SIGKILL/restart/replay proof, then discharge/close/receipt failpoints.

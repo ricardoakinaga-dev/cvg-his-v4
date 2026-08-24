@@ -55,10 +55,16 @@ function hasHelm() {
 }
 
 function readYamlFile(filePath) {
-  assert(fs.existsSync(filePath), `Required Helm file not found: ${path.relative(rootDir, filePath)}`);
+  assert(
+    fs.existsSync(filePath),
+    `Required Helm file not found: ${path.relative(rootDir, filePath)}`
+  );
   const content = fs.readFileSync(filePath, 'utf8');
   const parsed = YAML.parse(content);
-  assert(parsed && typeof parsed === 'object', `Invalid YAML file: ${path.relative(rootDir, filePath)}`);
+  assert(
+    parsed && typeof parsed === 'object',
+    `Invalid YAML file: ${path.relative(rootDir, filePath)}`
+  );
   return parsed;
 }
 
@@ -71,6 +77,10 @@ function validateStaticChart() {
   assert(base.api?.image?.repository, 'values.yaml must define api.image.repository');
   assert(base.api?.setup?.secretKey, 'values.yaml must define the setup bootstrap secret key');
   assert(base.worker?.image?.repository, 'values.yaml must define worker.image.repository');
+  assert(
+    base.worker?.accountIds?.secretKey,
+    'values.yaml must define worker.accountIds.secretKey for the production worker scope'
+  );
   assert(base.spa?.image?.repository, 'values.yaml must define spa.image.repository');
 
   const requiredTemplates = [
@@ -98,19 +108,23 @@ function validateStaticChart() {
     path.join(chartDir, 'templates', 'secrets.yaml'),
     'utf8'
   );
+  const workerDeploymentTemplate = fs.readFileSync(
+    path.join(chartDir, 'templates', 'worker-deployment.yaml'),
+    'utf8'
+  );
   const dockerCompose = fs.readFileSync(path.join(rootDir, 'docker-compose.v2.yml'), 'utf8');
   const databaseMaintenanceJobs = fs.readFileSync(
     path.join(chartDir, 'templates', 'database-maintenance-jobs.yaml'),
     'utf8'
   );
   assert(
-    apiDeploymentTemplate.includes('name: SETUP_BOOTSTRAP_TOKEN')
-      && apiDeploymentTemplate.includes('cvg-his-v2.api.setupSecretName'),
+    apiDeploymentTemplate.includes('name: SETUP_BOOTSTRAP_TOKEN') &&
+      apiDeploymentTemplate.includes('cvg-his-v2.api.setupSecretName'),
     'API deployment must load SETUP_BOOTSTRAP_TOKEN from the configured setup Secret'
   );
   assert(
-    apiSecretsTemplate.includes('.Values.api.setup.value')
-      && apiSecretsTemplate.includes('.Values.api.setup.secretKey'),
+    apiSecretsTemplate.includes('.Values.api.setup.value') &&
+      apiSecretsTemplate.includes('.Values.api.setup.secretKey'),
     'Helm must support an operator-provided setup token without hardcoding it'
   );
   assert(
@@ -118,23 +132,32 @@ function validateStaticChart() {
     'docker-compose.v2.yml must forward the operator-provided setup bootstrap token'
   );
   assert(
-    databaseMaintenanceJobs.includes('packages/db/dist/migrate.js')
-      && databaseMaintenanceJobs.includes('packages/db/dist/reconcile-runtime-roles.js')
-      && databaseMaintenanceJobs.includes('"helm.sh/hook-weight": "-10"'),
+    databaseMaintenanceJobs.includes('packages/db/dist/migrate.js') &&
+      databaseMaintenanceJobs.includes('packages/db/dist/reconcile-runtime-roles.js') &&
+      databaseMaintenanceJobs.includes('"helm.sh/hook-weight": "-10"'),
     'Helm must run canonical database migrations before runtime-role reconciliation'
   );
   const helmHelpers = fs.readFileSync(path.join(chartDir, 'templates', '_helpers.tpl'), 'utf8');
   assert(
-    helmHelpers.includes('cvg-his-v2.databaseMaintenance.initContainers')
-      && helmHelpers.includes('packages/db/dist/migrate.js')
-      && helmHelpers.includes('packages/db/dist/reconcile-runtime-roles.js'),
+    helmHelpers.includes('cvg-his-v2.databaseMaintenance.initContainers') &&
+      helmHelpers.includes('packages/db/dist/migrate.js') &&
+      helmHelpers.includes('packages/db/dist/reconcile-runtime-roles.js'),
     'Embedded PostgreSQL must migrate and reconcile roles before application containers start'
+  );
+  assert(
+    workerDeploymentTemplate.includes('name: WORKER_ACCOUNT_IDS') &&
+      workerDeploymentTemplate.includes('worker.accountIds.secretKey') &&
+      workerDeploymentTemplate.includes('optional: false'),
+    'Production-like worker must load WORKER_ACCOUNT_IDS from a required Secret key'
   );
 
   for (const environment of environments) {
     const values = readYamlFile(environment.values);
     if (environment.expectManagedSecrets) {
-      assert(values.api?.auth?.value, `${environment.name}: expected managed API auth secret value`);
+      assert(
+        values.api?.auth?.value,
+        `${environment.name}: expected managed API auth secret value`
+      );
     } else {
       assert(values.api?.auth?.existingSecret, `${environment.name}: expected API existingSecret`);
       assert(
@@ -144,13 +167,33 @@ function validateStaticChart() {
     }
 
     if (environment.expectEmbeddedDatastores) {
-      assert(values.postgresql?.enabled === true, `${environment.name}: expected embedded PostgreSQL`);
+      assert(
+        values.postgresql?.enabled === true,
+        `${environment.name}: expected embedded PostgreSQL`
+      );
       assert(values.redis?.enabled === true, `${environment.name}: expected embedded Redis`);
     } else {
-      assert(values.postgresql?.enabled === false, `${environment.name}: expected external PostgreSQL`);
+      assert(
+        values.postgresql?.enabled === false,
+        `${environment.name}: expected external PostgreSQL`
+      );
       assert(values.redis?.enabled === false, `${environment.name}: expected external Redis`);
-      assert(values.postgresql?.existingSecret, `${environment.name}: expected PostgreSQL existingSecret`);
+      assert(
+        values.postgresql?.existingSecret,
+        `${environment.name}: expected PostgreSQL existingSecret`
+      );
       assert(values.redis?.existingSecret, `${environment.name}: expected Redis existingSecret`);
+    }
+
+    if (environment.name !== 'dev') {
+      assert(
+        values.worker?.accountIds?.existingSecret,
+        `${environment.name}: worker.accountIds.existingSecret is required for production-like startup`
+      );
+      assert(
+        values.worker?.accountIds?.secretKey,
+        `${environment.name}: worker.accountIds.secretKey is required for production-like startup`
+      );
     }
   }
 }
@@ -173,7 +216,9 @@ function assert(condition, message) {
 
 if (!hasHelm()) {
   validateStaticChart();
-  console.log('Helm binary not found; static Helm chart validation passed for dev, staging, and prod.');
+  console.log(
+    'Helm binary not found; static Helm chart validation passed for dev, staging, and prod.'
+  );
   process.exit(0);
 }
 
@@ -215,9 +260,7 @@ for (const environment of environments) {
 
   const apiContainer = apiDeployment.spec.template.spec.containers[0];
   const workerContainer = workerDeployment.spec.template.spec.containers[0];
-  const setupTokenEnv = apiContainer.env?.find(
-    (entry) => entry.name === 'SETUP_BOOTSTRAP_TOKEN'
-  );
+  const setupTokenEnv = apiContainer.env?.find((entry) => entry.name === 'SETUP_BOOTSTRAP_TOKEN');
 
   if (environment.name === 'dev') {
     assert(
@@ -259,15 +302,49 @@ for (const environment of environments) {
     `${environment.name}: worker readiness probe must target /ready`
   );
   assert(
-    workerContainer.envFrom?.some((entry) => entry.configMapRef?.name === `${prefix}-worker-config`),
+    workerContainer.envFrom?.some(
+      (entry) => entry.configMapRef?.name === `${prefix}-worker-config`
+    ),
     `${environment.name}: worker must consume its ConfigMap`
   );
+  const workerAccountIdsEnv = workerContainer.env?.find(
+    (entry) => entry.name === 'WORKER_ACCOUNT_IDS'
+  );
+  if (environment.name === 'dev') {
+    assert(
+      !workerAccountIdsEnv,
+      'dev: worker account scope should remain unset so local discovery can be used'
+    );
+  } else {
+    assert(
+      workerAccountIdsEnv?.valueFrom?.secretKeyRef?.name,
+      `${environment.name}: worker must load WORKER_ACCOUNT_IDS from a Secret`
+    );
+    assert(
+      workerAccountIdsEnv.valueFrom.secretKeyRef.name === values.worker.accountIds.existingSecret,
+      `${environment.name}: worker account Secret must match values.worker.accountIds.existingSecret`
+    );
+    assert(
+      workerAccountIdsEnv.valueFrom.secretKeyRef.key === values.worker.accountIds.secretKey,
+      `${environment.name}: worker account Secret key must match values.worker.accountIds.secretKey`
+    );
+    assert(
+      workerAccountIdsEnv.valueFrom.secretKeyRef.optional === false,
+      `${environment.name}: worker account Secret reference must be required`
+    );
+  }
 
   const secretDocs = docs.filter((doc) => doc.kind === 'Secret');
   if (environment.expectManagedSecrets) {
-    assert(secretDocs.length >= 3, `${environment.name}: expected chart-managed secrets for local bootstrap`);
+    assert(
+      secretDocs.length >= 3,
+      `${environment.name}: expected chart-managed secrets for local bootstrap`
+    );
   } else {
-    assert(secretDocs.length === 0, `${environment.name}: existingSecret mode must not render managed Secret resources`);
+    assert(
+      secretDocs.length === 0,
+      `${environment.name}: existingSecret mode must not render managed Secret resources`
+    );
   }
 
   const postgresStatefulSet = findDoc(docs, 'StatefulSet', `${prefix}-postgres`);
@@ -276,8 +353,14 @@ for (const environment of environments) {
     assert(postgresStatefulSet, `${environment.name}: expected embedded PostgreSQL statefulset`);
     assert(redisStatefulSet, `${environment.name}: expected embedded Redis statefulset`);
   } else {
-    assert(!postgresStatefulSet, `${environment.name}: external PostgreSQL environment must not render statefulset`);
-    assert(!redisStatefulSet, `${environment.name}: external Redis environment must not render statefulset`);
+    assert(
+      !postgresStatefulSet,
+      `${environment.name}: external PostgreSQL environment must not render statefulset`
+    );
+    assert(
+      !redisStatefulSet,
+      `${environment.name}: external Redis environment must not render statefulset`
+    );
   }
 }
 

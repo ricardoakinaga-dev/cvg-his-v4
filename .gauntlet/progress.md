@@ -723,3 +723,16 @@ reconciled with origin/agent/sync-v4-full-program. Only the user-owned
 tsbuildinfo cache remains dirty. The bounded HYD/TEN/REG criteria remain
 verified; global stop decision stays ACTIVE/IN_PROGRESS/PARTIAL. Next iterate
 on discharge/close/receipt failpoints and the P2 in-flight hydration question.
+
+## Worker account scope — 24/08/2026
+
+RED: `pnpm validate:helm` failed because the production worker scope was not
+declared. GREEN: staging/prod values reference operator-managed Secrets,
+`worker-deployment.yaml` loads `WORKER_ACCOUNT_IDS` with `optional: false`, and
+the static validator/schema enforce the contract; dev remains discovery-based.
+`pnpm validate:helm`, `node --check`, schema parsing, `pnpm security:secrets`,
+typecheck 70/70 and diff check passed. The local runner lacks Helm, so rendered
+lint/template checks are explicitly deferred to CI/deploy.
+
+Handoff: `docs/2026-08-24-handoff-worker-account-scope.md`. Keep all broad
+gates ACTIVE/IN_PROGRESS/PARTIAL and proceed to API cash-receipt SIGKILL.

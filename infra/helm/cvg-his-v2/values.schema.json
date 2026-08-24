@@ -112,9 +112,17 @@
     },
     "worker": {
       "type": "object",
-      "required": ["service", "probes", "env"],
+      "required": ["service", "probes", "env", "accountIds"],
       "properties": {
         "replicaCount": { "type": "integer", "minimum": 1 },
+        "accountIds": {
+          "type": "object",
+          "required": ["secretKey"],
+          "properties": {
+            "existingSecret": { "type": "string" },
+            "secretKey": { "type": "string", "minLength": 1 }
+          }
+        },
         "service": {
           "type": "object",
           "required": ["type", "port"],

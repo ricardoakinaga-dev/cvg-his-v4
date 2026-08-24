@@ -143,6 +143,12 @@ worker:
     pullPolicy: IfNotPresent
     sha: ""
 
+  # Production-like workers must be scoped to explicit accounts. The Secret is
+  # operator-managed; account IDs never belong in this repository.
+  accountIds:
+    existingSecret: ""
+    secretKey: WORKER_ACCOUNT_IDS
+
   service:
     type: ClusterIP
     port: 3002

@@ -39,6 +39,9 @@ worker:
   revisionHistoryLimit: 5
   image:
     pullPolicy: Always
+  accountIds:
+    existingSecret: cvg-his-v2-prod-worker-secrets
+    secretKey: WORKER_ACCOUNT_IDS
   env:
     NODE_ENV: production
 
