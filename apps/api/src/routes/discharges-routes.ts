@@ -69,6 +69,10 @@ export async function handleDischargesRoutes(
   // GET /discharges — list all discharges for account
   if (pathname === '/discharges' && request.method === 'GET') {
     const principal = requirePrincipal(request, 'encounters.read');
+    // Discharge lists are read by any API replica. Rehydrate the account slice
+    // from committed rows so a replica started before a discharge does not
+    // serve an incomplete high-value clinical record.
+    await discharges.refreshAccount(principal.user.accountId as never);
     const items = discharges.list(principal.user.accountId as never);
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -215,6 +219,7 @@ export async function handleDischargesRoutes(
   // GET /discharges/:dischargeId — get discharge by ID
   if (pathname.startsWith('/discharges/') && request.method === 'GET' && !pathname.includes('?')) {
     const principal = requirePrincipal(request, 'encounters.read');
+    await discharges.refreshAccount(principal.user.accountId as never);
     const dischargeId = requireNonEmptyString(pathname.split('/')[2], 'dischargeId');
     const discharge = discharges.getByIdForAccount(
       principal.user.accountId as never,

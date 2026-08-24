@@ -967,6 +967,48 @@ describe('inpatient clinical-financial vertical HTTP PostgreSQL boundary', () =>
     expect(receiptRow?.financialAccountId).toBe(financialGraph.rows[0]?.financialAccountId);
     expect(receiptRow?.receivableId).toBe(financialGraph.rows[0]?.receivableId);
     expect(receiptRow?.cashRegisterId).toBe(CASH_REGISTER_A);
+
+    const secondaryInpatient = await requestJsonAt<{
+      readonly items: readonly AdmissionResponse[];
+    }>(
+      secondaryBaseUrl,
+      `/inpatient?encounterId=${encodeURIComponent(ENCOUNTER_A)}&includeDischarged=true`,
+      { headers: headersA() }
+    );
+    expect(secondaryInpatient.status).toBe(200);
+    expect(secondaryInpatient.body?.items).toHaveLength(1);
+    expect(secondaryInpatient.body?.items[0]).toMatchObject({
+      id: journeyStayId,
+      encounterId: ENCOUNTER_A,
+      accountId: ACCOUNT_A,
+      status: 'discharged'
+    });
+
+    const secondaryDischarges = await requestJsonAt<{
+      readonly items: readonly DischargeResponse[];
+    }>(secondaryBaseUrl, '/discharges', { headers: headersA() });
+    expect(secondaryDischarges.status).toBe(200);
+    expect(secondaryDischarges.body?.items).toHaveLength(1);
+    expect(secondaryDischarges.body?.items[0]).toMatchObject({
+      encounterId: ENCOUNTER_A,
+      dischargeType: 'inpatient'
+    });
+
+    const foreignSecondaryInpatient = await requestJsonAt<{
+      readonly items: readonly AdmissionResponse[];
+    }>(
+      secondaryBaseUrl,
+      `/inpatient?encounterId=${encodeURIComponent(ENCOUNTER_A)}&includeDischarged=true`,
+      { headers: headersB() }
+    );
+    expect(foreignSecondaryInpatient.status).toBe(200);
+    expect(foreignSecondaryInpatient.body?.items).toEqual([]);
+
+    const foreignSecondaryDischarges = await requestJsonAt<{
+      readonly items: readonly DischargeResponse[];
+    }>(secondaryBaseUrl, '/discharges', { headers: headersB() });
+    expect(foreignSecondaryDischarges.status).toBe(200);
+    expect(foreignSecondaryDischarges.body?.items).toEqual([]);
   });
 
   it('rejects a shadowed settlement under a runtime role with pg_temp search_path', async () => {

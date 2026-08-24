@@ -337,3 +337,49 @@ sendo o cache user-owned
 `packages/design-system/tsconfig.vue.tsbuildinfo`, preservado fora do stage.
 Na próxima sessão, repetir `git fetch`/`git rev-parse`, ler este handoff e
 retomar A/B entre tenants, hydration cross-instance e failpoints.
+
+
+## Atualização de execução — hidratação cross-instance e isolamento A/B — 24/08/2026
+
+A próxima regressão P0 foi congelada em quatro critérios: HYD-01 exige que
+uma API secundária já aquecida leia o stay de internação committed, inclusive
+com status discharged; HYD-02 exige que a mesma instância leia o discharge
+novo; TEN-01 exige que o bearer B não veja os dados de A; e REG-01 exige
+que as regressões vertical, close/receipt e discharge permaneçam verdes.
+
+O RED foi reproduzido antes da alteração:
+
+```text
+vertical_hydration_red: 1 arquivo, 4 passed, 1 failed, exit 1, 33,11 s
+```
+
+A causa foi stale cache real: a segunda API estava pronta antes da mutação da
+primeira e retornava items=[] para o stay committed. O ajuste mínimo agora
+faz refresh account-scoped a partir do PostgreSQL antes de GET /inpatient,
+GET /discharges e GET /discharges/:id; a falha do repositório não é
+silenciada como um board stale.
+
+GREEN e regressões frescas:
+
+- vertical_hydration_green2: 1 arquivo, 5/5 testes, exit 0, 36,06 s;
+- close/receipt: 1 arquivo, 5/5 testes, exit 0, 50,35 s;
+- discharge: 1 arquivo, 5/5 testes, exit 0, 44,93 s;
+- pnpm typecheck: 70/70 projetos scoped;
+- pnpm security:secrets, Prettier, ESLint focado e git diff --check:
+  exit 0.
+
+A suíte vertical comprova que a instância secundária lê o stay/discharge de A
+após a mutação na primária e que o bearer B recebe listas vazias para A. A
+crítica independente fresca retornou APPROVE bounded, sem P0/P1 ou
+regressão bloqueadora. O artefato executável é
+[CVG-002C6-cross-instance-hydration-2026-08-24.md](../.agent/artifacts/CVG-002C6-cross-instance-hydration-2026-08-24.md);
+os registros são VFY-CVG-002C6-CROSS-INSTANCE-HYDRATION-001 e
+VFY-CVG-002C6-CROSS-INSTANCE-HYDRATION-REVIEW-001.
+
+Este fechamento é deliberadamente bounded: não prova concorrência enquanto o
+refresh está em voo (P2), invalidação Redis distribuída, todos os domínios com
+cache, failpoints completos admission→receipt, composição worker de produção,
+PIX/webhook, paridade Vetus ou readiness global. O estado continua
+CVG-002C6=IN_PROGRESS/PARTIAL e o próximo workstream é publicar esta
+rodada, expandir failpoints de discharge/close/receipt e depois tratar os
+gates PIX/RLS e webhook retry/DLQ/fencing.

@@ -4873,6 +4873,11 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
             const encounterId = url.searchParams.get('encounterId') ?? undefined;
             const patientId = url.searchParams.get('patientId') ?? undefined;
             const includeDischarged = url.searchParams.get('includeDischarged') === 'true';
+            // A read boundary can be served by a different API instance than
+            // the command that changed the stay. Refresh the tenant slice from
+            // committed PostgreSQL rows before rendering the operational board
+            // so a warm process cannot return an empty or stale cache.
+            await inpatient.refreshAccount(principal.user.accountId);
             appendAudit(
               principal.user.id,
               principal.user.accountId,

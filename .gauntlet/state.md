@@ -778,3 +778,20 @@ Artefato: `.agent/artifacts/CVG-002C6-billing-source-hash-2026-08-24.md`.
 A crítica independente fresca rerodou o slice, retornou `APPROVE bounded` e
 não encontrou P0/P1; falta somente publicar e reconciliar o SHA. Stop
 decision segue `ACTIVE` e o próximo gap permanece A/B/hydration/failpoints.
+
+
+## State update — cross-instance hydration bounded — 24/08/2026
+
+A iteração atual fechou apenas o boundary de leitura clínica/discharge entre
+processos: o RED reproduziu cache stale em uma API secundária pronta antes da
+mutação; o GREEN passou 5/5 com refresh account-scoped desde PostgreSQL.
+Regressões close/receipt e discharge passaram 5/5, e a crítica independente
+retornou APPROVE bounded. O isolamento A/B foi observado no mesmo secondary:
+bearer B não vê os resultados de A.
+
+O stop decision continua ACTIVE. Nenhum gate de ERP, Vetus, produção,
+paridade, operações ou release foi promovido. A limitação de concorrência
+durante hydration in-flight permanece P2; Redis invalidation, full failpoints,
+PIX/RLS e webhook retry/DLQ/fencing continuam abertos. Próximo estado:
+publicar o código/teste/artefato e reconciliar o SHA remoto, preservando o
+cache tsbuildinfo fora do stage.

@@ -690,3 +690,27 @@ prova comportamental, não código de runtime. GREEN: **4/4 testes**, exit 0,
 A crítica independente fresca rerodou o slice com banco descartável, passou
 4/4 e retornou `APPROVE bounded`, sem P0/P1; falta publicar esta rodada e
 reconciliar o SHA remoto.
+
+
+## Gauntlet iteration — cross-instance hydration bounded — 24/08/2026
+
+GOAL/BAR: provar HYD-01/HYD-02 (read-after-commit em API secundária
+aquecida), TEN-01 (isolamento bearer B) e REG-01 (regressões adjacentes).
+
+RED real: vertical_hydration_red terminou com 4 passed e 1 failed, exit 1,
+33,11 s; a instância secundária havia sido inicializada antes da mutação e
+serviu cache inpatient vazio.
+
+BUILD: GET /inpatient, GET /discharges e GET /discharges/:id passaram a
+refrescar a fatia account-scoped desde PostgreSQL antes de renderizar. A
+mudança foi mantida mínima; o servidor gigante não foi reformatado.
+
+RUN/INSPECT: vertical_hydration_green2 passou 5/5 em 36,06 s; close/receipt e
+discharge passaram 5/5 em 50,35 s e 44,93 s. Typecheck 70/70, secrets,
+Prettier, ESLint focado e diff check passaram. A/B ficou comprovado na
+segunda API: A lê stay/discharge committed e B recebe lista vazia.
+
+CRITIQUE: revisão independente fresca retornou APPROVE bounded, sem P0/P1.
+A lacuna P2 é concorrência durante refresh em voo. DECISION: publicar esta
+iteração, manter a barra global ACTIVE/IN_PROGRESS/PARTIAL e seguir para
+failpoints discharge/close/receipt; depois PIX/RLS e webhook retry/DLQ/fence.

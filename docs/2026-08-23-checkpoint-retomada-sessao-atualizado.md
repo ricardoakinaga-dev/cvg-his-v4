@@ -352,3 +352,30 @@ foi publicado no GitHub. `git fetch` confirmou
 stage. Esta é a ponte para a próxima sessão: iniciar por este checkpoint,
 `.agent/state.json`, `.agent/backlog.json` e o artefato billing, e então atacar
 A/B, hydration cross-instance e failpoints.
+
+
+## Atualização de execução — hidratação cross-instance — 24/08/2026
+
+A regressão vertical adicionou uma prova real entre duas APIs prontas antes da
+mutação. O RED em vertical_hydration_red passou 4 testes e falhou 1 porque a
+segunda instância retornava lista vazia para o stay committed de A. O runtime
+agora refresca a fatia do account a partir do PostgreSQL antes de GET
+/inpatient e de GET /discharges (lista e detalhe).
+
+Resultado GREEN e regressões em bancos descartáveis:
+
+- vertical_hydration_green2: 5/5, exit 0, 36,06 s;
+- close/receipt: 5/5, exit 0, 50,35 s;
+- discharge: 5/5, exit 0, 44,93 s;
+- typecheck: 70/70 projetos scoped; secrets, Prettier, ESLint focado e
+  diff check: exit 0.
+
+O bearer A viu o stay discharged e o discharge na instância secundária; o
+bearer B recebeu items=[] para A. A revisão independente retornou APPROVE
+bounded, sem P0/P1. Artefato:
+[CVG-002C6-cross-instance-hydration-2026-08-24.md](../.agent/artifacts/CVG-002C6-cross-instance-hydration-2026-08-24.md).
+
+Limitação explícita: concorrência durante refresh em voo permanece P2; Redis
+invalidation, demais domínios cacheados, failpoints admission→receipt,
+PIX/webhook, paridade e release continuam abertos. Próxima ação: publicar a
+rodada e expandir failpoints de discharge/close/receipt sem promover o ERP.

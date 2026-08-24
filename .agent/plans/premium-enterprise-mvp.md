@@ -561,3 +561,21 @@ efêmero novo, com SIGKILL/stale-owner ainda verdes. Evidência:
 independente fresca foi `APPROVE bounded`, sem P0/P1; falta publicar esta
 rodada e reconciliar o SHA. A jornada global, A/B/hydration, failpoints,
 PIX/webhook e os gates de produto/release seguem `IN_PROGRESS/PARTIAL`.
+
+
+Plan revision note, 2026-08-24 (cross-instance hydration): a regressão
+vertical reproduziu cache stale real na API secundária (4 passed, 1 failed,
+exit 1, 33,11 s) quando ela foi inicializada antes da mutação primária. O
+runtime passou a refrescar a fatia do account a partir do PostgreSQL antes das
+leituras públicas inpatient/discharge; a suíte GREEN passou 5/5 em 36,06 s e
+as regressões close/receipt e discharge passaram 5/5. Typecheck 70/70,
+security:secrets, Prettier, ESLint focado e diff check passaram. A/B foi
+comprovado na segunda instância e a crítica independente retornou APPROVE
+bounded sem P0/P1.
+
+O plano continua IN_PROGRESS/PARTIAL. A prova é limitada a inpatient/discharge
+e não cobre concorrência durante hydration in-flight (P2), Redis distribuído,
+todos os domínios cacheados, failpoints admission→receipt, PIX/webhook ou
+paridade/release. Próxima iteração: publicar este slice, expandir failpoints
+de discharge/close/receipt e seguir para PIX PostgreSQL/RLS e webhook
+retry/DLQ/fencing.
