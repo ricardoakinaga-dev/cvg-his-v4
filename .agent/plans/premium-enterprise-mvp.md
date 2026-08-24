@@ -459,6 +459,15 @@ pendente; o plano mantém `CVG-002C6=IN_PROGRESS/PARTIAL` e exige 387/387 antes
 de retomar child-process domain, failpoints, PIX PostgreSQL/RLS e webhook
 retry/DLQ/fencing.
 
+
+Publication note, 2026-08-24 (cross-instance hydration): implementation
+commit 20cf9e666d20adeb5303f86cf32d0346e025898d
+(fix: hydrate clinical reads across api instances) was pushed and reconciled
+with origin/agent/sync-v4-full-program. Pointer documentation remains the
+next short operation; the plan stays IN_PROGRESS/PARTIAL and the user-owned
+tsbuildinfo cache remains outside scope.
+
+
 Publication note, 2026-08-23: implementation and continuation evidence for the
 deterministic fixture/teardown wave were published in `75a5ccd` (`fix: make
 critical integration fixtures deterministic`) and pushed with upstream to

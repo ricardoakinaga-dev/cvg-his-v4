@@ -795,3 +795,12 @@ durante hydration in-flight permanece P2; Redis invalidation, full failpoints,
 PIX/RLS e webhook retry/DLQ/fencing continuam abertos. Próximo estado:
 publicar o código/teste/artefato e reconciliar o SHA remoto, preservando o
 cache tsbuildinfo fora do stage.
+
+
+## Publication checkpoint — cross-instance hydration — 24/08/2026
+
+Commit 20cf9e666d20adeb5303f86cf32d0346e025898d is the published implementation
+SHA and equals origin after fetch. The artifact, handoff and verification
+ledger contain the bounded HYD/TEN/REG evidence. Stop decision remains ACTIVE;
+do not promote ERP/production/parity/release. Preserve tsbuildinfo outside
+stage and continue with failpoints plus the P2 in-flight hydration follow-up.

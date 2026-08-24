@@ -383,3 +383,19 @@ PIX/webhook, paridade Vetus ou readiness global. O estado continua
 CVG-002C6=IN_PROGRESS/PARTIAL e o próximo workstream é publicar esta
 rodada, expandir failpoints de discharge/close/receipt e depois tratar os
 gates PIX/RLS e webhook retry/DLQ/fencing.
+
+
+### Publicação reconciliada — hidratação cross-instance — 24/08/2026
+
+O commit de implementação, teste, artefato e control plane
+20cf9e666d20adeb5303f86cf32d0346e025898d
+(fix: hydrate clinical reads across api instances) foi enviado ao GitHub.
+O fetch pós-push confirmou HEAD == origin/agent/sync-v4-full-program no mesmo
+SHA. O único caminho dirty permanece o cache user-owned
+packages/design-system/tsconfig.vue.tsbuildinfo, preservado fora do stage.
+
+A verificação de continuidade é VFY-DOCS-CONTINUATION-064. Na próxima sessão,
+repetir git fetch/rev-parse, ler este handoff, o checkpoint curto, state e
+backlog, e continuar pelos failpoints de discharge/close/receipt e pela
+concorrência durante hydration in-flight (P2), sem promover ERP, produção,
+paridade ou release.

@@ -714,3 +714,12 @@ CRITIQUE: revisão independente fresca retornou APPROVE bounded, sem P0/P1.
 A lacuna P2 é concorrência durante refresh em voo. DECISION: publicar esta
 iteração, manter a barra global ACTIVE/IN_PROGRESS/PARTIAL e seguir para
 failpoints discharge/close/receipt; depois PIX/RLS e webhook retry/DLQ/fence.
+
+
+## Publication checkpoint — cross-instance hydration — 24/08/2026
+
+Implementation commit 20cf9e666d20adeb5303f86cf32d0346e025898d was pushed and
+reconciled with origin/agent/sync-v4-full-program. Only the user-owned
+tsbuildinfo cache remains dirty. The bounded HYD/TEN/REG criteria remain
+verified; global stop decision stays ACTIVE/IN_PROGRESS/PARTIAL. Next iterate
+on discharge/close/receipt failpoints and the P2 in-flight hydration question.

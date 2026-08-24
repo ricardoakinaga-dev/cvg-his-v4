@@ -379,3 +379,15 @@ Limitação explícita: concorrência durante refresh em voo permanece P2; Redis
 invalidation, demais domínios cacheados, failpoints admission→receipt,
 PIX/webhook, paridade e release continuam abertos. Próxima ação: publicar a
 rodada e expandir failpoints de discharge/close/receipt sem promover o ERP.
+
+
+### Publicação reconciliada — hidratação cross-instance — 24/08/2026
+
+Implementação publicada em 20cf9e6
+(fix: hydrate clinical reads across api instances); o fetch confirmou
+HEAD == origin/agent/sync-v4-full-program em
+20cf9e666d20adeb5303f86cf32d0346e025898d. Somente
+packages/design-system/tsconfig.vue.tsbuildinfo permanece dirty e fora do
+stage. O próximo passo é ler este checkpoint, state/backlog e o artefato de
+hidratação, e expandir failpoints de discharge/close/receipt; a lacuna P2 de
+concorrência durante refresh continua aberta.
