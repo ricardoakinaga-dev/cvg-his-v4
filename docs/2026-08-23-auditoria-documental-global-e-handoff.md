@@ -438,3 +438,10 @@ Assim, `QB-CORE-01` ganha evidência bounded de concorrência, mas continua
 próximo gate executável é o runner serializado da matriz processual no CI;
 startup horizontal idempotente, Helm renderizado, PIX/RLS e webhook
 retry/DLQ/fencing continuam abertos.
+
+### Publicação reconciliada — concorrência de cash receipt
+
+O teste, artefato e handoffs foram publicados em
+`5ed15310eb6fa777a679a7c30b9ba535a84bac91`; o próximo checkpoint deve confirmar
+`HEAD == origin/agent/sync-v4-full-program` e manter o cache user-owned fora do
+stage. A publicação não altera os estados globais nem promove `CVG-002C6`.

@@ -359,9 +359,14 @@
         "docs/README.md",
         "docs/430-fonte-de-verdade-documental.md",
         "docs/CI_GATES.md",
-        ".agent/verification.jsonl#VFY-DOCS-CONTINUATION-068"
+        ".agent/verification.jsonl#VFY-DOCS-CONTINUATION-068",
+        "tests/integration/process/inpatient-cash-receipt-concurrency.test.ts",
+        ".agent/artifacts/CVG-002C6-cash-receipt-concurrency-2026-08-24.md",
+        "docs/2026-08-24-handoff-cash-receipt-concurrency.md",
+        ".agent/verification.jsonl#VFY-CVG-002C6-CASH-RECEIPT-CONCURRENCY-001",
+        ".agent/verification.jsonl#VFY-CVG-002C6-CASH-RECEIPT-CONCURRENCY-REVIEW-001"
       ],
-      "next_action": "Continuation documentation was reconciled and published at 937d8ed, with README/source-of-truth/checkpoint/CI Quality Bar pointers leading to the 24/08 handoffs and historical security claims qualified. The API cash-receipt SIGKILL/restart/replay gate remains GREEN bounded in implementation commit 7aeb81d4081e84080fc6cf83759a193dd04a27dd. Keep CVG-002C6 IN_PROGRESS because product acceptance still requires the complete journey with concurrency and expanded failpoints across tenants. In a Helm-enabled runner, render lint/template for dev/staging/prod and provision operator-managed WORKER_ACCOUNT_IDS Secrets only in authorized namespaces; then expand discharge/close/receipt failpoints, concurrent execution, PIX PostgreSQL/RLS and webhook HTTP retry/DLQ/lease fencing. Preserve no CI critical inclusion yet and all global RLS/FORCE RLS, DR/RPO, migration checksum, CI deploy, provider/Redis/SPA/parity/WCAG/coverage/operations/deploy/release gaps; keep the user-owned tsbuildinfo cache out of scope."
+      "next_action": "Continuation documentation was reconciled at 937d8ed and the two-API cash-receipt concurrency proof was implemented/published at 5ed15310eb6fa777a679a7c30b9ba535a84bac91. The fresh bounded gate proves a deterministic PostgreSQL granted/waiting lock, exact 201/409, one balanced A graph and zero B residue; keep CVG-002C6 IN_PROGRESS because product acceptance still requires the complete journey, CI process promotion, simultaneous bootstrap safety and expanded failpoints across tenants. Next create a serialized critical-process runner with explicit ephemeral DB suffixes/timeouts/cleanup, then address laboratory bootstrap concurrency, Helm lint/template in an authorized runner, PIX PostgreSQL/RLS and webhook HTTP retry/DLQ/lease fencing. Preserve no CI critical inclusion yet and all global RLS/FORCE RLS, DR/RPO, migration checksum, CI deploy, provider/Redis/SPA/parity/WCAG/coverage/operations/deploy/release gaps; keep the user-owned tsbuildinfo cache out of scope."
     },
     {
       "id": "CVG-003",

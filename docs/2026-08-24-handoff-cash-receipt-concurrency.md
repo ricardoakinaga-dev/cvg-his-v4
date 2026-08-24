@@ -56,3 +56,10 @@ da concorrência (`1/1`, 40,66 s) e da regressão SIGKILL (`1/1`, 60,08 s).
 3. Reexecutar `test:critical` e a suíte processual completa antes de qualquer
    promoção de release.
 4. Manter `packages/design-system/tsconfig.vue.tsbuildinfo` fora do stage.
+
+## Publicação
+
+O teste, artefato, handoff e ponteiros documentais foram publicados no commit
+`5ed15310eb6fa777a679a7c30b9ba535a84bac91` (`test: prove cash receipt
+concurrency boundary`). O branch remoto foi reconciliado após o push; a
+reconciliação final do control plane será registrada no próximo checkpoint.
