@@ -765,3 +765,8 @@ GREEN bounded em `NODE_ENV=test`; não promover ERP, produção, paridade,
 operações ou release. Próximo ciclo começa com Helm renderizado em runner
 autorizado e segue para failpoints discharge/close/receipt, concorrência, PIX
 PostgreSQL/RLS e webhook retry/DLQ/lease fencing.
+
+Publication checkpoint: implementation/docs commit
+`7aeb81d4081e84080fc6cf83759a193dd04a27dd` foi enviado e reconciliado com
+`origin/agent/sync-v4-full-program`; apenas o cache `tsbuildinfo` do usuário
+permanece dirty. O handoff e o artefato são os ponteiros da próxima sessão.

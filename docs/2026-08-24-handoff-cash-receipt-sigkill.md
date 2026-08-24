@@ -19,6 +19,10 @@ o launcher de teste e a prova processual:
 - `.agent/artifacts/CVG-002C6-cash-receipt-sigkill-2026-08-24.md` — evidência
   RED/GREEN, limites e revisão independente.
 
+Implementação publicada no commit
+`7aeb81d4081e84080fc6cf83759a193dd04a27dd`, já reconciliado com
+`origin/agent/sync-v4-full-program`.
+
 ## Evidência reproduzida
 
 ```text

@@ -855,3 +855,8 @@ não promove ERP, produção, paridade, operações ou release. Próximo trabalh
 Helm lint/template em runner autorizado, depois failpoints completos de
 discharge/close/receipt, concorrência, PIX PostgreSQL/RLS e webhook
 retry/DLQ/lease fencing.
+
+Publication checkpoint: implementation/docs commit
+`7aeb81d4081e84080fc6cf83759a193dd04a27dd` was pushed and fetch confirmed
+`HEAD == origin/agent/sync-v4-full-program`. The new handoff and artifact are
+the next-session pointers; only the user-owned `tsbuildinfo` cache is dirty.

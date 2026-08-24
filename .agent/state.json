@@ -19,13 +19,13 @@
   "latest_retest_evidence": "2026-08-24: .agent/artifacts/CVG-002C6-cash-receipt-sigkill-2026-08-24.md and docs/2026-08-24-handoff-cash-receipt-sigkill.md record RED/GREEN, fresh reruns, rollback/replay SQL proof, tenant boundary, PID/cleanup hardening and independent review. The separate Helm artifact documents operator-created staging/prod Secrets, fail-closed startup and the pending helm lint/template limitation. Earlier critical, stale-owner, billing-source-hash and cross-instance artifacts remain linked; no production or global ERP gate is promoted.",
   "instruction_scope_refs": [".agent/instruction-scope.md"],
   "last_gate_record": ".agent/gates/implementation-ready-CVG-002C6.json",
-  "last_event_id": "EVT-0242",
-  "state_revision": 231,
+  "last_event_id": "EVT-0243",
+  "state_revision": 232,
   "next_gate": "VERIFIED",
-  "next_action": "The real API cash-receipt SIGKILL/restart/replay gate is GREEN bounded and documented in docs/2026-08-24-handoff-cash-receipt-sigkill.md and its artifact; keep CVG-002C6, ERP, production, parity, operations and release IN_PROGRESS/PARTIAL. In a Helm-enabled CI/deploy runner, first run helm lint/template for dev/staging/prod and provision operator-managed WORKER_ACCOUNT_IDS Secrets only in authorized namespaces. Then expand discharge/close/receipt failpoints, concurrent execution and takeover, PIX PostgreSQL/RLS and webhook HTTP retry/DLQ/lease fencing. Preserve the P1 harness-concurrency/backoff follow-ups, WebAuthn durability, audit attribution, global RLS/FORCE RLS, DR/RPO, migration checksum, CI deploy, Redis/provider/SPA/parity/WCAG/coverage/operations/release gaps and the user-owned tsbuildinfo cache outside stage",
+  "next_action": "The real API cash-receipt SIGKILL/restart/replay gate is GREEN bounded and published in implementation commit 7aeb81d4081e84080fc6cf83759a193dd04a27dd; fetch confirmed local HEAD equals origin/agent/sync-v4-full-program. Read docs/2026-08-24-handoff-cash-receipt-sigkill.md and its artifact on resume. Keep CVG-002C6, ERP, production, parity, operations and release IN_PROGRESS/PARTIAL. In a Helm-enabled CI/deploy runner, first run helm lint/template for dev/staging/prod and provision operator-managed WORKER_ACCOUNT_IDS Secrets only in authorized namespaces. Then expand discharge/close/receipt failpoints, concurrent execution and takeover, PIX PostgreSQL/RLS and webhook HTTP retry/DLQ/lease fencing. Preserve the P1 harness-concurrency/backoff follow-ups, WebAuthn durability, audit attribution, global RLS/FORCE RLS, DR/RPO, migration checksum, CI deploy, Redis/provider/SPA/parity/WCAG/coverage/operations/release gaps and the user-owned tsbuildinfo cache outside stage",
   "blocked_by": [],
   "human_approval_required": [
     "Production go-live, credential rotation, provider selection, fiscal homologation, and residual HIGH/CRITICAL risk acceptance remain outside repository implementation authority"
   ],
-  "updated_at": "2026-08-24T02:50:18-03:00"
+  "updated_at": "2026-08-24T02:52:00-03:00"
 }

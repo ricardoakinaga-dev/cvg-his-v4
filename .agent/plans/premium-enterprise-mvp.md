@@ -624,3 +624,9 @@ explícitas foram incorporados. Evidência:
 `docs/2026-08-24-handoff-cash-receipt-sigkill.md`. O plano continua
 `IN_PROGRESS/PARTIAL`; Helm renderizado, failpoints completos, concorrência,
 PIX/RLS, webhook, paridade, UX, operações e release permanecem abertos.
+
+Publication note, 2026-08-24: o commit de implementação/documentação
+`7aeb81d4081e84080fc6cf83759a193dd04a27dd` foi enviado e reconciliado com
+origin. O handoff de receipt SIGKILL e o artefato são os ponteiros da próxima
+sessão; o plano segue `IN_PROGRESS/PARTIAL`, com Helm renderizado, failpoints,
+concorrência, PIX/RLS, webhook, paridade, UX, operações e release abertos.

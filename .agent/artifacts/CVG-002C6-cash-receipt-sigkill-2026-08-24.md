@@ -76,3 +76,6 @@ que mata o processo antes de remover o trigger e contagens explícitas de
 - O teste ainda é focal e não foi incluído em `test:critical`; o boot
   production-like e o render Helm permanecem gates separados e não são
   promovidos por esta evidência.
+
+Implementação publicada em `7aeb81d4081e84080fc6cf83759a193dd04a27dd`, com
+`HEAD` igual a `origin/agent/sync-v4-full-program` após fetch.
