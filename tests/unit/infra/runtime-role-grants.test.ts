@@ -35,6 +35,10 @@ const settlementSearchPathMigration = readFileSync(
   resolve(root, 'packages/db/migrations/0120_cash_receipt_consistency_search_path.sql'),
   'utf8'
 );
+const pixSettlementSearchPathMigration = readFileSync(
+  resolve(root, 'packages/db/migrations/0124_pix_non_cash_receipt_consistency_search_path.sql'),
+  'utf8'
+);
 
 describe('runtime PostgreSQL role grants', () => {
   it('preserves the exact API mutations used by global repositories', () => {
@@ -267,6 +271,10 @@ describe('runtime PostgreSQL role grants', () => {
       {
         functionName: 'assert_encounter_cash_receipt_consistent',
         argumentTypes: 'uuid, boolean'
+      },
+      {
+        functionName: 'assert_encounter_non_cash_receipt_consistent',
+        argumentTypes: 'uuid'
       }
     ]);
     expect(runtimeReconciler).toContain('RUNTIME_SETTLEMENT_FUNCTIONS');
@@ -283,6 +291,12 @@ describe('runtime PostgreSQL role grants', () => {
       'ALTER FUNCTION app.assert_encounter_cash_receipt_consistent(uuid, boolean)'
     );
     expect(settlementSearchPathMigration).toContain(
+      'SET search_path = pg_catalog, public, app, pg_temp'
+    );
+    expect(pixSettlementSearchPathMigration).toContain(
+      'ALTER FUNCTION app.assert_encounter_non_cash_receipt_consistent(uuid)'
+    );
+    expect(pixSettlementSearchPathMigration).toContain(
       'SET search_path = pg_catalog, public, app, pg_temp'
     );
   });

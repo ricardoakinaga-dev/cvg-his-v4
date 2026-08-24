@@ -223,6 +223,7 @@ if (!hasHelm()) {
 }
 
 for (const environment of environments) {
+  const values = readYamlFile(environment.values);
   const lintArgs = ['lint', chartDir, '-f', baseValues, '-f', environment.values];
   const templateArgs = [
     'template',

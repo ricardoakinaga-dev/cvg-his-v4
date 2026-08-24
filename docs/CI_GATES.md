@@ -51,6 +51,8 @@ All CI jobs use the same scripts available locally:
   database suffix per file and fail-fast semantics. Its GREEN result is a
   regression gate only, not production or release evidence.
 - `REQUIRE_TEST_DB=1 TEST_DB_EPHEMERAL=1 pnpm exec vitest run tests/integration/process/laboratory-catalog-bootstrap-concurrency.test.ts --config vitest.integration.config.ts --no-file-parallelism --hookTimeout=120000 --teardownTimeout=120000` → dedicated laboratory bootstrap-concurrency evidence; it is intentionally a bounded, optional process gate until its additional ~67s CI cost is accepted.
+- `REQUIRE_TEST_DB=1 TEST_DB_EPHEMERAL=1 pnpm exec vitest run tests/integration/process/pix-provider-settlement-sigkill.test.ts --config vitest.integration.config.ts --no-cache --no-file-parallelism --hookTimeout=120000 --teardownTimeout=120000` → PIX runtime-role/RLS process gate; it creates disposable reconciled roles and proves A/B, ACL negatives, SIGKILL/takeover and stale fencing. The fresh bounded run was 8/8 in ~142s and is not a production/provider certification.
+- `docker run --rm -v "$PWD:/workspace:ro" -w /workspace alpine/helm:3.15.4 ...` (or an equivalent pinned Helm-enabled runner) → execute the real Helm lint/template path for dev, staging and prod. The host fallback remains static-only when no Helm binary is present.
 - `pnpm test:coverage` → Coverage Report job
 - `npx playwright test --config playwright-spa.config.ts --grep-invert "Visual"` → E2E Tests (SPA)
 - `npx playwright test --config playwright-spa.config.ts -g "Visual"` → Visual Regression

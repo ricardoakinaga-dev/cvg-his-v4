@@ -1,15 +1,15 @@
 # CVG-HIS V4 - Documentacao ativa
 
-**Atualizado em:** 2026-08-24 (bootstrap concorrente do catálogo laboratorial, gates críticos e handoff)
+**Atualizado em:** 2026-08-24 (PIX runtime-role/RLS, Helm render e continuidade)
 
 Esta pasta separa documentacao vigente, referencia do Vetus e historico. Uma afirmacao de funcionalidade so e considerada valida quando estiver sustentada por codigo executavel e teste comportamental.
 
 ## Comece aqui
 
-1. [`2026-08-24-handoff-laboratory-bootstrap-concurrency.md`](2026-08-24-handoff-laboratory-bootstrap-concurrency.md) - ponteiro operacional mais recente: dois PIDs reais, catálogo laboratorial idempotente, reparo parcial e isolamento A/B; não promove ERP, produção ou release.
-2. [`../.agent/artifacts/CVG-002C6-laboratory-bootstrap-concurrency-2026-08-24.md`](../.agent/artifacts/CVG-002C6-laboratory-bootstrap-concurrency-2026-08-24.md) - RED/GREEN da corrida de bootstrap, crítica independente, suíte de regressão e limitações.
-3. [`2026-08-24-handoff-critical-process-suite.md`](2026-08-24-handoff-critical-process-suite.md) - seis limites reais em runner serial, bancos efêmeros distintos e exit 0.
-4. [`../.agent/artifacts/CVG-002C6-critical-process-suite-2026-08-24.md`](../.agent/artifacts/CVG-002C6-critical-process-suite-2026-08-24.md) - RED/GREEN do runner, crítica independente, tempos e limitações.
+1. [`2026-08-24-handoff-pix-runtime-role.md`](2026-08-24-handoff-pix-runtime-role.md) - ponteiro operacional mais recente: settlement PIX sob role worker real, ACL/RLS, A/B, SIGKILL e fencing; não promove ERP, produção ou release.
+2. [`../.agent/artifacts/CVG-002C6-pix-runtime-role-2026-08-24.md`](../.agent/artifacts/CVG-002C6-pix-runtime-role-2026-08-24.md) - RED/GREEN da role runtime, migration 0124, crítica e limitações.
+3. [`2026-08-24-handoff-laboratory-bootstrap-concurrency.md`](2026-08-24-handoff-laboratory-bootstrap-concurrency.md) - dois PIDs reais, catálogo laboratorial idempotente, reparo parcial e isolamento A/B.
+4. [`../.agent/artifacts/CVG-002C6-laboratory-bootstrap-concurrency-2026-08-24.md`](../.agent/artifacts/CVG-002C6-laboratory-bootstrap-concurrency-2026-08-24.md) - RED/GREEN da corrida de bootstrap, crítica independente, suíte de regressão e limitações.
 5. [`2026-08-24-handoff-cash-receipt-concurrency.md`](2026-08-24-handoff-cash-receipt-concurrency.md) - corrida GREEN bounded entre duas APIs, isolamento A/B e barreira PostgreSQL.
 6. [`2026-08-24-handoff-cash-receipt-sigkill.md`](2026-08-24-handoff-cash-receipt-sigkill.md) - rollback/restart/replay do recebimento sob SIGKILL e limites da prova.
 7. [`2026-08-24-handoff-worker-account-scope.md`](2026-08-24-handoff-worker-account-scope.md) - escopo fail-closed do worker em Helm e limite explícito de renderização/cluster.

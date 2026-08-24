@@ -496,3 +496,35 @@ diff-check passaram. Isto não altera nenhum gate global: `CVG-002C6`, ERP,
 produção, paridade, operações e release permanecem `IN_PROGRESS/PARTIAL`; o
 próximo workstream é Helm lint/template em runner autorizado, depois PIX/RLS e
 webhook retry/DLQ/fencing.
+
+## Atualização bounded — Helm render e PIX sob role runtime — 24/08/2026
+
+O caminho real do validador Helm tinha um `ReferenceError` potencial porque o
+overlay `values` era carregado apenas no fallback estático. O escopo foi
+corrigido e o chart passou `lint/template` para dev, staging e prod usando
+Helm v3.15.4 pinado; a ausência de cluster/Secrets reais continua limitação.
+
+O teste processual PIX deixou de usar a URL administrativa e passou a criar
+roles descartáveis reconciliadas. O PID real reportou `current_user` worker e
+`rolbypassrls=false`; A/B isolation, worker/API negatives, quatro
+SIGKILL/restart/replay e stale-owner fencing passaram 8/8 em 142,33 s. O
+reconciler agora concede o helper `assert_encounter_non_cash_receipt_consistent`
+e a migration `0124` fixa seu `search_path`.
+
+A decisão global permanece `CVG-002C6=IN_PROGRESS/PARTIAL`: o próximo gap P0 é
+executor HTTP durável de webhook (claim, retry/backoff real, DLQ terminal,
+lease/token/version fencing e takeover), seguido de RLS/DR/provider/Redis,
+paridade, UX, operações e release.
+
+### Regressão pós-0124 — 24/08/2026
+
+O runner serializado foi executado novamente após o endurecimento do runtime
+PIX e passou `6/6`, exit `0`, em bancos efêmeros distintos. A fase PIX passou
+`8/8` (`137,13 s`), além de inpatient-domain `4/4`, clinical-financial `1/1`,
+cash-receipt SIGKILL `1/1`, cash-receipt concurrency `1/1` e worker entrypoint
+`1/1`. O Helm v3.15.4 pinado também passou `lint/template` nos três overlays.
+
+Esse resultado fecha apenas as barras bounded de render e regressão processual;
+o critic apontou P2 de cleanup de roles suprimido no teste e permanecem sem
+prova cluster/Secret, provider/Redis, webhook executor/retry/DLQ/fencing,
+RLS global, DR/RPO, paridade, UX, operações e release.

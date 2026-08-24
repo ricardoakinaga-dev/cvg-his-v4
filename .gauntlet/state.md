@@ -992,3 +992,71 @@ release e gates globais continuam `IN_PROGRESS/PARTIAL`. Próximo workstream:
 Helm lint/template em runner autorizado, depois PIX PostgreSQL/RLS e webhook
 retry/DLQ/lease fencing. O teste laboratorial dedicado ainda requer uma decisão
 explícita de custo antes de entrar no manifesto `test:critical:process`.
+
+## Quality Bar v1 — Helm render-path scope fix — 24/08/2026
+
+Esta rodada fecha um defeito determinístico no próximo gate de deployment: o
+fallback estático não executa o caminho `helm lint/template`, e o loop de
+renderização referencia `values` fora do escopo em que ele é carregado. A
+correção é limitada ao validador e não promove o chart sem um binário Helm
+autorizado.
+
+| ID | Required target | Evidence | Priority |
+|---|---|---|---|
+| `QB-HELM-RENDER-01` | Com Helm disponível, `pnpm validate:helm` executa lint e template para dev, staging e prod sem `ReferenceError`, e valida os manifests renderizados. | Runner Helm autorizado, saída por overlay e manifests parseados. | P0 |
+| `QB-HELM-STATIC-01` | Sem Helm, a validação estática continua cobrindo os contratos fail-closed de setup, `WORKER_ACCOUNT_IDS`, Secrets e datastores. | `pnpm validate:helm` local e inspeção do script. | P1 |
+| `QB-HELM-REG-01` | O conserto não introduz erro de sintaxe, segredo ou regressão global de tipos. | RED/GREEN, `node --check`, ESLint, Secretlint, typecheck e diff-check. | P1 |
+
+Baseline RED conhecido antes da correção: `pnpm exec eslint
+infra/scripts/validate-helm.mjs` reportava `no-undef` para `values` no bloco de
+renderização; com Helm instalado, o primeiro overlay renderizado falharia antes
+das asserções de Secret do worker. O host continua sem Helm, mas a execução
+pinada registrada no resultado desta rodada cobre o caminho real.
+
+## Quality Bar v1 — PIX settlement runtime-role process proof — 24/08/2026
+
+Esta rodada amplia a prova de settlement para o papel PostgreSQL que o worker
+realmente usa. A URL administrativa do teste anterior tornava a prova
+vacuamente permissiva, apesar de o reconciler exigir `LOGIN NOINHERIT
+NOBYPASSRLS` e separar API/worker.
+
+| ID | Required target | Evidence | Priority |
+|---|---|---|---|
+| `QB-PIX-RLS-01` | O PID real do settlement conecta como role worker reconciliada, sem `BYPASSRLS`, aplica exatamente uma liquidação e permanece account-scoped. | Processo filho, `current_user`, `has_function_privilege`, SQL administrativo e fixture A/B. | P0 |
+| `QB-PIX-RLS-02` | O worker não pode inserir/alterar recibos do provedor; a role API não pode alterar deliveries diretamente. | Negativos PostgreSQL com roles descartáveis, savepoints e grants reconciliados. | P0 |
+| `QB-PIX-RLS-03` | SIGKILL/takeover, stale-owner fencing e replay continuam exatamente uma vez sob a role worker. | Matriz real de checkpoints, dois PIDs e estado final receipt/billing/PIX/delivery. | P0 |
+| `QB-PIX-RLS-REG-01` | O endurecimento de ACL não regressa o foco de grants nem o restante runner processual crítico. | Unit ACL, focused process e `pnpm test:critical:process`. | P1 |
+
+Baseline RED conhecido: com a URL `TEST_DB_URL`, `PIX_READY.databaseUser` era
+`postgres`; com a URL worker, o settlement terminava em
+`PIX_SETTLEMENT_UNEXPECTED` porque `app.assert_encounter_non_cash_receipt_consistent(uuid)`
+não estava na allowlist de grants. A correção adiciona essa função à política
+do reconciler e fixa seu `search_path` na migration `0124`. O gate continua
+bounded a PostgreSQL descartável e não promove provider real, produção ou ERP
+global.
+
+## Round result — Helm e PIX runtime-role — 24/08/2026
+
+O validator Helm corrigido passou o caminho real `lint/template` em um runner
+pinado `alpine/helm:3.15.4` para dev, staging e prod. A crítica independente
+aprovou o conserto de escopo/fallback, mas não tinha Helm próprio para repetir
+o render; por isso a revisão permanece bounded. Não há evidência de cluster,
+Secret provisionado ou rollout.
+
+O rerun independente do PIX passou `8/8` em `136,24 s`, com a role worker real,
+`rolbypassrls=false`, A/B, ACLs negativas, quatro checkpoints de SIGKILL,
+takeover, stale fencing e replay. O unit test de grants passou `11/11`.
+
+Depois, o runner crítico completo passou `6/6`, exit `0`, em seis bancos
+efêmeros distintos: inpatient-domain `4/4` (`82,95 s`), clinical-financial
+restart `1/1` (`39,57 s`), cash-receipt SIGKILL `1/1` (`60,88 s`),
+cash-receipt concurrency `1/1` (`40,98 s`), PIX `8/8` (`137,13 s`) e worker
+entrypoint `1/1` (`62,82 s`). Assim, `QB-PIX-RLS-01/02/03` e
+`QB-PIX-RLS-REG-01` ficam verificados somente no escopo bounded.
+
+Limitações residuais explícitas: o cleanup de roles do teste ainda suprime
+erros (P2), a fixture usa TypeScript via `tsx` em vez de bundle de produção,
+o Helm não foi admitido em cluster real e o executor webhook HTTP durável
+(claim/retry/backoff/DLQ/lease fencing) continua sendo o próximo gap P0. O
+stop decision permanece ACTIVE; ERP, produção, paridade, operações e release
+seguem `IN_PROGRESS/PARTIAL`.

@@ -416,3 +416,36 @@ essas superfícies seguem `IN_PROGRESS/PARTIAL`. A próxima ação é Helm
 lint/template em runner autorizado, seguida de PIX PostgreSQL/RLS e webhook
 retry/DLQ/lease fencing. O teste dedicado de bootstrap ainda requer decisão
 explícita de custo antes de ser adicionado ao manifesto de CI.
+
+## Atualização de continuidade — Helm render e PIX runtime-role — 24/08/2026
+
+O ponteiro mais recente é
+[`2026-08-24-handoff-pix-runtime-role.md`](2026-08-24-handoff-pix-runtime-role.md),
+com artefato em
+[`../.agent/artifacts/CVG-002C6-pix-runtime-role-2026-08-24.md`](../.agent/artifacts/CVG-002C6-pix-runtime-role-2026-08-24.md).
+
+O validador Helm corrigiu o `values` fora de escopo no caminho renderizado e
+passou `lint/template` dev/staging/prod com Helm v3.15.4 pinado em container;
+sem Helm no host, o fallback continua estático e não é prova de cluster.
+
+O settlement PIX passou a executar com role worker real
+`LOGIN NOINHERIT NOBYPASSRLS`, A/B isolation, ACLs negativas, quatro
+checkpoints SIGKILL/replay e stale fencing: **8/8, exit 0, 142,33 s**. A
+allowlist do reconciler recebeu o helper non-cash e a migration `0124` fixou o
+`search_path`. `pnpm typecheck` ficou 70/70 e o contrato de grants 11/11.
+
+Isso fecha apenas gates bounded de deployment/render e runtime PIX; não promove
+ERP, produção, provider real, webhook, Redis, RLS global, DR/RPO, paridade,
+SPA/WCAG, cobertura, operações ou release. Próxima ação: executor HTTP durável
+de webhooks com claim tenant-scoped, retry/backoff, DLQ e lease fencing.
+
+### Regressão crítica reconciliada — Helm/PIX — 24/08/2026
+
+Após a migration `0124` e a expansão do teste PIX, o runner
+`pnpm test:critical:process` passou `6/6`, exit `0`, em seis bancos efêmeros
+distintos: 4/4, 1/1, 1/1, 1/1, 8/8 e 1/1, com tempos `82,95 s`, `39,57 s`,
+`60,88 s`, `40,98 s`, `137,13 s` e `62,82 s`. O handoff PIX, o estado e os
+ledgers registram a prova e mantêm o cache
+`packages/design-system/tsconfig.vue.tsbuildinfo` fora do stage. O próximo
+gate continua sendo o executor webhook durável; essa regressão não promove o
+ERP, produção, cluster, provider ou release.

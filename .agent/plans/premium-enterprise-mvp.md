@@ -680,3 +680,17 @@ está em `.agent/artifacts/CVG-002C6-laboratory-bootstrap-concurrency-2026-08-24
 e `docs/2026-08-24-handoff-laboratory-bootstrap-concurrency.md`. O plano
 continua `IN_PROGRESS/PARTIAL`; próximo passo é Helm renderizado em runner
 autorizado, seguido de PIX/RLS e webhook retry/DLQ/fencing.
+
+Plan revision note, 2026-08-24 (Helm render path + PIX runtime role): o
+validador Helm corrigiu o escopo do overlay no caminho `lint/template`; a
+validação real com Helm v3.15.4 passou dev/staging/prod, enquanto o fallback
+estático e a ausência de cluster/Secrets reais permanecem explicitamente
+limitados. O teste PIX deixou de usar `postgres`: roles descartáveis
+`LOGIN NOINHERIT NOBYPASSRLS`, A/B, negativos worker/API, quatro checkpoints de
+SIGKILL/replay e stale fencing passaram 8/8 em 142,33 s. A política incluiu o
+helper non-cash e a migration 0124 fixou seu search_path. Evidências:
+`.agent/artifacts/CVG-002C6-pix-runtime-role-2026-08-24.md` e
+`docs/2026-08-24-handoff-pix-runtime-role.md`. O plano segue
+`IN_PROGRESS/PARTIAL`; o próximo gap P0 é o executor HTTP durável de webhook
+com claim/retry/DLQ/lease fencing, enquanto provider real, Redis, RLS global,
+DR/RPO, paridade, UX, operações e release continuam abertos.

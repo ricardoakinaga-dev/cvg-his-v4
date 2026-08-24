@@ -89,6 +89,11 @@ async function main(): Promise<void> {
   }
   createDatabaseClient(config.databaseUrl);
   await getPool().query('SELECT 1');
+  const databaseIdentity = await getPool().query<{ readonly database_user: string }>(
+    'SELECT current_user AS database_user'
+  );
+  const databaseUser = databaseIdentity.rows[0]?.database_user;
+  if (!databaseUser) throw new Error('process fixture could not determine database role');
 
   const server = createServer(async (request, response) => {
     if (request.url === '/ready' || request.url === '/health/ready') {
@@ -119,7 +124,7 @@ async function main(): Promise<void> {
   });
   const address = server.address();
   const boundPort = typeof address === 'object' && address ? address.port : healthPort;
-  writeLine('PIX_READY', { pid: process.pid, port: boundPort, workerId });
+  writeLine('PIX_READY', { pid: process.pid, port: boundPort, workerId, databaseUser });
 
   const repository = new DatabasePixProviderEventDeliveryRepository(getPool());
   const consumer = new PixProviderSettlementConsumer(repository, {

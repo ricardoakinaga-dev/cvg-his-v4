@@ -3,11 +3,15 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as sleep } from 'node:timers/promises';
+import { randomUUID } from 'node:crypto';
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { Pool, type PoolClient } from 'pg';
 
-import { getTestPool } from '../../db/db-admin.js';
-import { TEST_DB_URL } from '../../setup/env.js';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+
+import { getAdminPool, getTestPool } from '../../db/db-admin.js';
+import { TEST_DB_NAME, TEST_DB_URL } from '../../setup/env.js';
+import { reconcileRuntimeRoles } from '../../../packages/db/src/reconcile-runtime-roles.js';
 import {
   createPixSettlementProcessFixture,
   makePixSettlementProcessFixtureReady,
@@ -26,6 +30,11 @@ const CHECKPOINTS = [
   'after_applied_cas'
 ] as const;
 type Checkpoint = (typeof CHECKPOINTS)[number];
+
+const suffix = randomUUID().replaceAll('-', '');
+const apiRole = `pix_settlement_process_api_${suffix}`;
+const workerRole = `pix_settlement_process_worker_${suffix}`;
+const rolePassword = `pix-settlement-process-${suffix}`;
 
 interface ProcessEvent {
   readonly event: string;
@@ -46,6 +55,17 @@ interface WorkerProcess {
 }
 
 const activeProcesses = new Set<WorkerProcess>();
+
+function quoteIdentifier(identifier: string): string {
+  return `"${identifier.replaceAll('"', '""')}"`;
+}
+
+function databaseUrlFor(role: string): string {
+  const url = new URL(TEST_DB_URL);
+  url.username = role;
+  url.password = rolePassword;
+  return url.toString();
+}
 
 function parseEvent(line: string): ProcessEvent | null {
   const separator = line.indexOf(' ');
@@ -76,7 +96,7 @@ function startWorkerProcess(options: {
       ...process.env,
       NODE_ENV: 'test',
       PIX_SETTLEMENT_SYNTHETIC_FIXTURE: '1',
-      DATABASE_URL: TEST_DB_URL,
+      DATABASE_URL: databaseUrlFor(workerRole),
       PIX_SETTLEMENT_ACCOUNT_ID: options.accountId,
       PIX_SETTLEMENT_WORKER_ID: options.workerId,
       PIX_SETTLEMENT_LEASE_MS: String(options.leaseMs),
@@ -266,9 +286,46 @@ async function readSettlementState(fixture: PixSettlementProcessFixture) {
   return result.rows[0];
 }
 
+async function assertRoleCannotMutateForbiddenPixArtifacts(
+  role: string,
+  accountId: string,
+  verify: (client: PoolClient) => Promise<void>
+): Promise<void> {
+  const pool = new Pool({ connectionString: databaseUrlFor(role), max: 1 });
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query("SELECT set_config('app.current_account_id', $1, true)", [accountId]);
+    await verify(client);
+  } finally {
+    await client.query('ROLLBACK').catch(() => undefined);
+    client.release();
+    await pool.end();
+  }
+}
+
 beforeEach(async () => {
   await getTestPool().query('TRUNCATE TABLE accounts CASCADE');
 });
+
+beforeAll(async () => {
+  const adminPool = getAdminPool();
+  await adminPool.query(
+    `CREATE ROLE ${quoteIdentifier(apiRole)} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS PASSWORD '${rolePassword}'`
+  );
+  await adminPool.query(
+    `CREATE ROLE ${quoteIdentifier(workerRole)} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS PASSWORD '${rolePassword}'`
+  );
+  await adminPool.query(
+    `GRANT CONNECT ON DATABASE ${quoteIdentifier(TEST_DB_NAME)} TO ${quoteIdentifier(apiRole)}, ${quoteIdentifier(workerRole)}`
+  );
+  const client = await getTestPool().connect();
+  try {
+    await reconcileRuntimeRoles(client, { apiRole, workerRole });
+  } finally {
+    client.release();
+  }
+}, 120_000);
 
 afterEach(async () => {
   await Promise.all(
@@ -278,7 +335,153 @@ afterEach(async () => {
   );
 });
 
+afterAll(async () => {
+  const pool = getTestPool();
+  await pool
+    .query(
+      `REASSIGN OWNED BY ${quoteIdentifier(apiRole)}, ${quoteIdentifier(workerRole)} TO CURRENT_USER`
+    )
+    .catch(() => undefined);
+  await pool
+    .query(`DROP OWNED BY ${quoteIdentifier(apiRole)}, ${quoteIdentifier(workerRole)}`)
+    .catch(() => undefined);
+  const adminPool = getAdminPool();
+  await adminPool
+    .query(`REVOKE cvg_installer FROM ${quoteIdentifier(apiRole)}, ${quoteIdentifier(workerRole)}`)
+    .catch(() => undefined);
+  await adminPool.query(`DROP ROLE IF EXISTS ${quoteIdentifier(apiRole)}`).catch(() => undefined);
+  await adminPool
+    .query(`DROP ROLE IF EXISTS ${quoteIdentifier(workerRole)}`)
+    .catch(() => undefined);
+});
+
 describe('PIX settlement independent-process SIGKILL/restart matrix', () => {
+  it('runs the real settlement PID as the reconciled worker role', async () => {
+    const fixture = await createPixSettlementProcessFixture();
+    await makePixSettlementProcessFixtureReady(fixture);
+    const worker = startWorkerProcess({
+      accountId: fixture.accountId,
+      workerId: 'runtime-role-red',
+      leaseMs: 60_000,
+      exitAfterResult: true
+    });
+    const ready = await worker.waitFor('PIX_READY');
+    expect(ready.payload.databaseUser).toBe(workerRole);
+    const result = (await worker.waitFor('PIX_RESULT')).payload.result as {
+      readonly status: string;
+      readonly deliveryId?: string;
+      readonly failureCode?: string;
+      readonly failureClass?: string;
+    };
+    expect(result.status, JSON.stringify(result)).toBe('applied');
+    expect(result).toMatchObject({
+      status: 'applied',
+      deliveryId: fixture.deliveryId
+    });
+    expect(await worker.waitForClose()).toEqual({ code: 0, signal: null });
+  }, 60_000);
+
+  it('keeps real worker settlement isolated by account under the runtime role', async () => {
+    const fixtureA = await createPixSettlementProcessFixture();
+    const fixtureB = await createPixSettlementProcessFixture();
+    await makePixSettlementProcessFixtureReady(fixtureA);
+    await makePixSettlementProcessFixtureReady(fixtureB);
+
+    const workerA = startWorkerProcess({
+      accountId: fixtureA.accountId,
+      workerId: 'runtime-role-isolation-a',
+      leaseMs: 60_000,
+      exitAfterResult: true
+    });
+    const readyA = await workerA.waitFor('PIX_READY');
+    expect(readyA.payload.databaseUser).toBe(workerRole);
+    expect((await workerA.waitFor('PIX_RESULT')).payload.result).toMatchObject({
+      status: 'applied',
+      deliveryId: fixtureA.deliveryId
+    });
+    expect(await workerA.waitForClose()).toEqual({ code: 0, signal: null });
+    expect(await readSettlementState(fixtureA)).toMatchObject({
+      delivery_state: 'applied',
+      receipt_count: '1'
+    });
+    expect(await readSettlementState(fixtureB)).toMatchObject({
+      delivery_state: 'pending',
+      receipt_count: '0'
+    });
+
+    const workerB = startWorkerProcess({
+      accountId: fixtureB.accountId,
+      workerId: 'runtime-role-isolation-b',
+      leaseMs: 60_000,
+      exitAfterResult: true
+    });
+    expect((await workerB.waitFor('PIX_READY')).payload.databaseUser).toBe(workerRole);
+    expect((await workerB.waitFor('PIX_RESULT')).payload.result).toMatchObject({
+      status: 'applied',
+      deliveryId: fixtureB.deliveryId
+    });
+    expect(await workerB.waitForClose()).toEqual({ code: 0, signal: null });
+    expect(await readSettlementState(fixtureB)).toMatchObject({
+      delivery_state: 'applied',
+      receipt_count: '1'
+    });
+  }, 60_000);
+
+  it('keeps receipt mutation worker-denied and delivery mutation API-denied', async () => {
+    const fixture = await createPixSettlementProcessFixture();
+    await assertRoleCannotMutateForbiddenPixArtifacts(
+      workerRole,
+      fixture.accountId,
+      async (pool) => {
+        const identity = await pool.query<{
+          readonly database_user: string;
+          readonly bypass_rls: boolean;
+        }>(
+          `SELECT current_user AS database_user,
+                (SELECT rolbypassrls FROM pg_roles WHERE rolname = current_user) AS bypass_rls`
+        );
+        expect(identity.rows[0]).toEqual({ database_user: workerRole, bypass_rls: false });
+        const requiredSettlementFunction = await pool.query<{ readonly allowed: boolean }>(
+          `SELECT has_function_privilege(
+                  current_user,
+                  'app.assert_encounter_non_cash_receipt_consistent(uuid)',
+                  'EXECUTE'
+                ) AS allowed`
+        );
+        expect(requiredSettlementFunction.rows[0]).toEqual({ allowed: true });
+        await pool.query('SAVEPOINT worker_receipt_update');
+        await expect(
+          pool.query('UPDATE pix_provider_events SET received_at = received_at WHERE id = $1', [
+            randomUUID()
+          ])
+        ).rejects.toThrow(/permission denied/i);
+        await pool.query('ROLLBACK TO SAVEPOINT worker_receipt_update');
+        await pool.query('SAVEPOINT worker_receipt_insert');
+        await expect(
+          pool.query(
+            `INSERT INTO pix_provider_events (
+             account_id, provider_event_id, event_type, payment_attempt_id,
+             provider_transaction_id, amount_cents, currency, confirmed_at,
+             body_fingerprint, claims_fingerprint, correlation_id
+           ) VALUES ($1, 'worker-forbidden', 'pix.payment.confirmed.v1', $2,
+             'worker-forbidden-tx', 1, 'BRL', clock_timestamp(), $3, $4, 'worker-forbidden')`,
+            [fixture.accountId, fixture.attemptId, 'a'.repeat(64), 'b'.repeat(64)]
+          )
+        ).rejects.toThrow(/permission denied/i);
+        await pool.query('ROLLBACK TO SAVEPOINT worker_receipt_insert');
+      }
+    );
+    await assertRoleCannotMutateForbiddenPixArtifacts(apiRole, fixture.accountId, async (pool) => {
+      await pool.query('SAVEPOINT api_delivery_update');
+      await expect(
+        pool.query('UPDATE pix_provider_event_deliveries SET attempts = attempts WHERE id = $1', [
+          fixture.deliveryId
+        ])
+      ).rejects.toThrow(/permission denied/i);
+      await pool.query('ROLLBACK TO SAVEPOINT api_delivery_update');
+    });
+  }, 60_000);
+
   it.each(CHECKPOINTS)(
     'recovers after SIGKILL at %s',
     async (checkpoint) => {

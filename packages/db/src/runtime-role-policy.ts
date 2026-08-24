@@ -79,5 +79,9 @@ export const RUNTIME_SETTLEMENT_FUNCTIONS = [
   {
     functionName: 'assert_encounter_cash_receipt_consistent',
     argumentTypes: 'uuid, boolean'
+  },
+  {
+    functionName: 'assert_encounter_non_cash_receipt_consistent',
+    argumentTypes: 'uuid'
   }
 ] as const;
