@@ -830,3 +830,21 @@ diff-check passaram. A fase base de `test:critical` foi preservada sem
 reexecução top-level nesta rodada; o resultado é bounded e não promove ERP,
 produção, paridade, operações ou release. Próximo gap: bootstrap laboratorial
 simultâneo, depois Helm, PIX/RLS e webhook.
+
+## Resultado — bootstrap laboratorial concorrente — 24/08/2026
+
+O RED reproduziu duplicate key em `laboratory_equipment` com duas APIs reais.
+O GREEN removeu o sentinel parcial e tornou os três lotes account-scoped
+idempotentes com `ON CONFLICT DO NOTHING`. O teste recompila o pacote
+diagnostics antes do spawn, exige contenção advisory somente na conta A e
+compara o conjunto completo de IDs canônicos.
+
+A execução final passou 1/1 em 66,64 s; a crítica independente aprovou os três
+critérios de bootstrap. A regressão `pnpm test:critical:process` passou 6/6,
+exit 0, em seis bancos efêmeros distintos. Typecheck global, Prettier, ESLint,
+Secretlint, node check e diff-check também passaram.
+
+O resultado é bounded e não promove ERP, produção, paridade, operações ou
+release. O handoff corrente é
+`docs/2026-08-24-handoff-laboratory-bootstrap-concurrency.md`; próximo passo
+é Helm renderizado em runner autorizado, seguido de PIX/RLS e webhook.

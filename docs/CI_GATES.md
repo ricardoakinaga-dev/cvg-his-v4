@@ -50,6 +50,7 @@ All CI jobs use the same scripts available locally:
   `test:critical`; it runs six real child-process files with an ephemeral
   database suffix per file and fail-fast semantics. Its GREEN result is a
   regression gate only, not production or release evidence.
+- `REQUIRE_TEST_DB=1 TEST_DB_EPHEMERAL=1 pnpm exec vitest run tests/integration/process/laboratory-catalog-bootstrap-concurrency.test.ts --config vitest.integration.config.ts --no-file-parallelism --hookTimeout=120000 --teardownTimeout=120000` → dedicated laboratory bootstrap-concurrency evidence; it is intentionally a bounded, optional process gate until its additional ~67s CI cost is accepted.
 - `pnpm test:coverage` → Coverage Report job
 - `npx playwright test --config playwright-spa.config.ts --grep-invert "Visual"` → E2E Tests (SPA)
 - `npx playwright test --config playwright-spa.config.ts -g "Visual"` → Visual Regression

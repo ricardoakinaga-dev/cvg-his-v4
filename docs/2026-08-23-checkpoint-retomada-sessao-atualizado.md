@@ -29,16 +29,17 @@ git diff --check
 
 Leia, nesta ordem:
 
-1. [`2026-08-24-handoff-critical-process-suite.md`](2026-08-24-handoff-critical-process-suite.md);
-2. [`2026-08-24-handoff-cash-receipt-concurrency.md`](2026-08-24-handoff-cash-receipt-concurrency.md);
-3. [`2026-08-24-handoff-cash-receipt-sigkill.md`](2026-08-24-handoff-cash-receipt-sigkill.md);
-4. [`2026-08-24-handoff-worker-account-scope.md`](2026-08-24-handoff-worker-account-scope.md);
-5. [`2026-08-23-auditoria-documental-global-e-handoff.md`](2026-08-23-auditoria-documental-global-e-handoff.md);
-6. [`../.agent/state.json`](../.agent/state.json);
-7. [`../.agent/backlog.json`](../.agent/backlog.json), item `CVG-002C6`;
-8. [`../.agent/plans/premium-enterprise-mvp.md`](../.agent/plans/premium-enterprise-mvp.md);
-9. os últimos registros de [`../.agent/execution-log.jsonl`](../.agent/execution-log.jsonl)
-   e [`../.agent/verification.jsonl`](../.agent/verification.jsonl).
+1. [`2026-08-24-handoff-laboratory-bootstrap-concurrency.md`](2026-08-24-handoff-laboratory-bootstrap-concurrency.md);
+2. [`2026-08-24-handoff-critical-process-suite.md`](2026-08-24-handoff-critical-process-suite.md);
+3. [`2026-08-24-handoff-cash-receipt-concurrency.md`](2026-08-24-handoff-cash-receipt-concurrency.md);
+4. [`2026-08-24-handoff-cash-receipt-sigkill.md`](2026-08-24-handoff-cash-receipt-sigkill.md);
+5. [`2026-08-24-handoff-worker-account-scope.md`](2026-08-24-handoff-worker-account-scope.md);
+6. [`2026-08-23-auditoria-documental-global-e-handoff.md`](2026-08-23-auditoria-documental-global-e-handoff.md);
+7. [`../.agent/state.json`](../.agent/state.json);
+8. [`../.agent/backlog.json`](../.agent/backlog.json), item `CVG-002C6`;
+9. [`../.agent/plans/premium-enterprise-mvp.md`](../.agent/plans/premium-enterprise-mvp.md);
+10. os últimos registros de [`../.agent/execution-log.jsonl`](../.agent/execution-log.jsonl)
+    e [`../.agent/verification.jsonl`](../.agent/verification.jsonl).
 
 O único caminho local que pode aparecer como dirty é o cache user-owned
 [`../packages/design-system/tsconfig.vue.tsbuildinfo`](../packages/design-system/tsconfig.vue.tsbuildinfo).
@@ -394,3 +395,24 @@ packages/design-system/tsconfig.vue.tsbuildinfo permanece dirty e fora do
 stage. O próximo passo é ler este checkpoint, state/backlog e o artefato de
 hidratação, e expandir failpoints de discharge/close/receipt; a lacuna P2 de
 concorrência durante refresh continua aberta.
+
+## Atualização de execução — bootstrap concorrente do catálogo laboratorial — 24/08/2026
+
+O handoff [`2026-08-24-handoff-laboratory-bootstrap-concurrency.md`](2026-08-24-handoff-laboratory-bootstrap-concurrency.md)
+registra o fechamento bounded de `QB-LAB-BOOT-01/02/03` e da regressão
+`QB-LAB-REG-01`. O RED reproduziu `duplicate key` em duas PIDs reais; o GREEN
+removeu o sentinel check-then-act e usa `ON CONFLICT DO NOTHING` nos três
+catálogos account-scoped.
+
+O teste final passou 1/1, exit 0, em 66,64 s após compilar `dist` antes do
+spawn, amarrar a barreira à conta A e comparar IDs canônicos exatos. A suíte
+`pnpm test:critical:process` fresca passou 6/6, exit 0, nos seis bancos
+efêmeros distintos. Typecheck, Prettier, ESLint, Secretlint, node check e
+diff-check passaram. A crítica independente aprovou os critérios laboratoriais
+após a correção da barreira global.
+
+Isso não promove `CVG-002C6`, ERP, produção, paridade, operações ou release;
+essas superfícies seguem `IN_PROGRESS/PARTIAL`. A próxima ação é Helm
+lint/template em runner autorizado, seguida de PIX PostgreSQL/RLS e webhook
+retry/DLQ/lease fencing. O teste dedicado de bootstrap ainda requer decisão
+explícita de custo antes de ser adicionado ao manifesto de CI.

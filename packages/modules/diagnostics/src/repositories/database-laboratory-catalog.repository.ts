@@ -40,59 +40,58 @@ export class DatabaseLaboratoryCatalogRepository implements LaboratoryCatalogRep
   }
 
   public async ensureSeedData(accountId: AccountId): Promise<void> {
-    const reportTypeRow = await this.#db
-      .select({ id: laboratoryReportTypes.id })
-      .from(laboratoryReportTypes)
-      .where(eq(laboratoryReportTypes.accountId, accountId))
-      .limit(1);
-
-    if (reportTypeRow.length > 0) {
-      return;
-    }
-
     const now = new Date(nowIso());
 
-    await this.#db.insert(laboratoryEquipment).values(
-      DEFAULT_LABORATORY_EQUIPMENT.map((item) => ({
-        id: tenantCatalogId(accountId, item.id),
-        accountId,
-        name: item.name,
-        type: item.type,
-        serialNumber: item.serialNumber,
-        status: item.status,
-        lastCalibrationAt: new Date(item.lastCalibrationAt),
-        createdAt: now,
-        updatedAt: now
-      }))
-    );
+    await this.#db
+      .insert(laboratoryEquipment)
+      .values(
+        DEFAULT_LABORATORY_EQUIPMENT.map((item) => ({
+          id: tenantCatalogId(accountId, item.id),
+          accountId,
+          name: item.name,
+          type: item.type,
+          serialNumber: item.serialNumber,
+          status: item.status,
+          lastCalibrationAt: new Date(item.lastCalibrationAt),
+          createdAt: now,
+          updatedAt: now
+        }))
+      )
+      .onConflictDoNothing({ target: laboratoryEquipment.id });
 
-    await this.#db.insert(laboratoryReportTypes).values(
-      DEFAULT_LABORATORY_REPORT_TYPES.map((item) => ({
-        id: tenantCatalogId(accountId, item.id),
-        accountId,
-        name: item.name,
-        code: item.code,
-        category: item.category,
-        description: item.description,
-        active: item.active,
-        createdAt: now,
-        updatedAt: now
-      }))
-    );
+    await this.#db
+      .insert(laboratoryReportTypes)
+      .values(
+        DEFAULT_LABORATORY_REPORT_TYPES.map((item) => ({
+          id: tenantCatalogId(accountId, item.id),
+          accountId,
+          name: item.name,
+          code: item.code,
+          category: item.category,
+          description: item.description,
+          active: item.active,
+          createdAt: now,
+          updatedAt: now
+        }))
+      )
+      .onConflictDoNothing({ target: laboratoryReportTypes.id });
 
-    await this.#db.insert(laboratoryReferenceValues).values(
-      DEFAULT_LABORATORY_REFERENCE_VALUES.map((item) => ({
-        id: tenantCatalogId(accountId, item.id),
-        accountId,
-        parameter: item.parameter,
-        examType: item.examType,
-        minValue: item.minValue.toString(),
-        maxValue: item.maxValue.toString(),
-        unit: item.unit,
-        createdAt: now,
-        updatedAt: now
-      }))
-    );
+    await this.#db
+      .insert(laboratoryReferenceValues)
+      .values(
+        DEFAULT_LABORATORY_REFERENCE_VALUES.map((item) => ({
+          id: tenantCatalogId(accountId, item.id),
+          accountId,
+          parameter: item.parameter,
+          examType: item.examType,
+          minValue: item.minValue.toString(),
+          maxValue: item.maxValue.toString(),
+          unit: item.unit,
+          createdAt: now,
+          updatedAt: now
+        }))
+      )
+      .onConflictDoNothing({ target: laboratoryReferenceValues.id });
   }
 
   public async listEquipment(accountId: AccountId): Promise<readonly LaboratoryEquipmentSummary[]> {
@@ -101,9 +100,9 @@ export class DatabaseLaboratoryCatalogRepository implements LaboratoryCatalogRep
       .from(laboratoryEquipment)
       .where(eq(laboratoryEquipment.accountId, accountId));
 
-    return result.map((row) => this.#toEquipmentSummary(row)).sort((left, right) =>
-      left.name.localeCompare(right.name)
-    );
+    return result
+      .map((row) => this.#toEquipmentSummary(row))
+      .sort((left, right) => left.name.localeCompare(right.name));
   }
 
   public async getEquipment(
@@ -113,7 +112,9 @@ export class DatabaseLaboratoryCatalogRepository implements LaboratoryCatalogRep
     const result = await this.#db
       .select()
       .from(laboratoryEquipment)
-      .where(and(eq(laboratoryEquipment.accountId, accountId), eq(laboratoryEquipment.id, equipmentId)))
+      .where(
+        and(eq(laboratoryEquipment.accountId, accountId), eq(laboratoryEquipment.id, equipmentId))
+      )
       .limit(1);
 
     return result[0] ? this.#toEquipmentSummary(result[0]) : undefined;
@@ -167,7 +168,9 @@ export class DatabaseLaboratoryCatalogRepository implements LaboratoryCatalogRep
           : new Date(existing.lastCalibrationAt),
         updatedAt: new Date(nowIso())
       })
-      .where(and(eq(laboratoryEquipment.accountId, accountId), eq(laboratoryEquipment.id, equipmentId)));
+      .where(
+        and(eq(laboratoryEquipment.accountId, accountId), eq(laboratoryEquipment.id, equipmentId))
+      );
 
     const updated = await this.getEquipment(accountId, equipmentId);
     if (!updated) {
@@ -203,7 +206,12 @@ export class DatabaseLaboratoryCatalogRepository implements LaboratoryCatalogRep
     const result = await this.#db
       .select()
       .from(laboratoryReportTypes)
-      .where(and(eq(laboratoryReportTypes.accountId, accountId), eq(laboratoryReportTypes.id, reportTypeId)))
+      .where(
+        and(
+          eq(laboratoryReportTypes.accountId, accountId),
+          eq(laboratoryReportTypes.id, reportTypeId)
+        )
+      )
       .limit(1);
 
     return result[0] ? this.#toReportTypeSummary(result[0]) : undefined;
@@ -255,7 +263,12 @@ export class DatabaseLaboratoryCatalogRepository implements LaboratoryCatalogRep
         active: payload.active ?? existing.active,
         updatedAt: new Date(nowIso())
       })
-      .where(and(eq(laboratoryReportTypes.accountId, accountId), eq(laboratoryReportTypes.id, reportTypeId)));
+      .where(
+        and(
+          eq(laboratoryReportTypes.accountId, accountId),
+          eq(laboratoryReportTypes.id, reportTypeId)
+        )
+      );
 
     const updated = await this.getReportType(accountId, reportTypeId);
     if (!updated) {
@@ -299,7 +312,12 @@ export class DatabaseLaboratoryCatalogRepository implements LaboratoryCatalogRep
     const result = await this.#db
       .select()
       .from(laboratoryReferenceValues)
-      .where(and(eq(laboratoryReferenceValues.accountId, accountId), eq(laboratoryReferenceValues.id, referenceValueId)))
+      .where(
+        and(
+          eq(laboratoryReferenceValues.accountId, accountId),
+          eq(laboratoryReferenceValues.id, referenceValueId)
+        )
+      )
       .limit(1);
 
     return result[0] ? this.#toReferenceValueSummary(result[0]) : undefined;
@@ -356,7 +374,12 @@ export class DatabaseLaboratoryCatalogRepository implements LaboratoryCatalogRep
         unit: payload.unit ?? existing.unit,
         updatedAt: new Date(nowIso())
       })
-      .where(and(eq(laboratoryReferenceValues.accountId, accountId), eq(laboratoryReferenceValues.id, referenceValueId)));
+      .where(
+        and(
+          eq(laboratoryReferenceValues.accountId, accountId),
+          eq(laboratoryReferenceValues.id, referenceValueId)
+        )
+      );
 
     const updated = await this.getReferenceValue(accountId, referenceValueId);
     if (!updated) {
@@ -376,7 +399,9 @@ export class DatabaseLaboratoryCatalogRepository implements LaboratoryCatalogRep
     };
   }
 
-  #toReportTypeSummary(row: typeof laboratoryReportTypes.$inferSelect): LaboratoryReportTypeSummary {
+  #toReportTypeSummary(
+    row: typeof laboratoryReportTypes.$inferSelect
+  ): LaboratoryReportTypeSummary {
     return {
       id: row.id,
       name: row.name,
@@ -387,7 +412,9 @@ export class DatabaseLaboratoryCatalogRepository implements LaboratoryCatalogRep
     };
   }
 
-  #toReferenceValueSummary(row: typeof laboratoryReferenceValues.$inferSelect): LaboratoryReferenceValueSummary {
+  #toReferenceValueSummary(
+    row: typeof laboratoryReferenceValues.$inferSelect
+  ): LaboratoryReferenceValueSummary {
     return {
       id: row.id,
       parameter: row.parameter,

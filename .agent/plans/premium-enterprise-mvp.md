@@ -666,3 +666,17 @@ real passou 6/6, exit 0, com 78,28 s + 39,19 s + 60,26 s + 40,67 s + 117,31 s
   processual foi executada integralmente. O plano segue `IN_PROGRESS/PARTIAL`;
   próximo gap é bootstrap laboratorial simultâneo, depois Helm renderizado,
   PIX/RLS e webhook.
+
+Plan revision note, 2026-08-24 (laboratory bootstrap concurrency): a rodada
+RED reproduziu a colisão `laboratory_equipment_pkey` entre duas APIs reais. A
+correção removeu o sentinel parcial e tornou os três lotes account-scoped
+idempotentes com `ON CONFLICT DO NOTHING`; o teste recompila o pacote
+diagnostics antes de iniciar dois filhos, amarra a barreira advisory à conta A
+e verifica IDs canônicos exatos, A/B, reparo e customização. A primeira crítica
+rejeitou a barreira global; a segunda aprovou BOOT-01/02/03 após o ajuste. A
+execução final passou 1/1 em 66,64 s e a suíte crítica fresca passou 6/6, exit
+0 (82,41 + 39,48 + 60,57 + 40,54 + 117,19 + 55,11 = 395,30 s). A evidência
+está em `.agent/artifacts/CVG-002C6-laboratory-bootstrap-concurrency-2026-08-24.md`
+e `docs/2026-08-24-handoff-laboratory-bootstrap-concurrency.md`. O plano
+continua `IN_PROGRESS/PARTIAL`; próximo passo é Helm renderizado em runner
+autorizado, seguido de PIX/RLS e webhook retry/DLQ/fencing.

@@ -473,3 +473,26 @@ O próximo maior gap local é a segurança do bootstrap simultâneo do catálogo
 laboratorial; depois seguem Helm lint/template em runner autorizado, PIX/RLS e
 webhook retry/DLQ/fencing. O runner ainda depende do teardown de cada teste e
 não encaminha sinais por conta própria, residual P2 explicitamente registrado.
+
+## Atualização bounded — bootstrap concorrente do catálogo laboratorial — 24/08/2026
+
+O maior gap local citado acima foi executado e fechado apenas no recorte
+bounded. O handoff [`2026-08-24-handoff-laboratory-bootstrap-concurrency.md`](2026-08-24-handoff-laboratory-bootstrap-concurrency.md)
+e o artefato
+[`CVG-002C6-laboratory-bootstrap-concurrency-2026-08-24.md`](../.agent/artifacts/CVG-002C6-laboratory-bootstrap-concurrency-2026-08-24.md)
+registram a implementação e a prova.
+
+O RED mostrou duas APIs reais competindo no mesmo catálogo e uma falhando com
+`laboratory_equipment_pkey`. O GREEN removeu o sentinel de report type e tornou
+os três lotes account-scoped idempotentes com `ON CONFLICT DO NOTHING`. O teste
+final passou 1/1 em 66,64 s, com readiness de dois PIDs, 4/6/6 por conta, IDs
+exatos, isolamento A/B, customização preservada e reparo de default. A crítica
+independente aprovou os três critérios laboratoriais após a barreira ser
+amarrada à conta A.
+
+Como regressão, `pnpm test:critical:process` passou 6/6, exit 0, em seis bancos
+efêmeros distintos. Typecheck, Prettier, ESLint, Secretlint, node check e
+diff-check passaram. Isto não altera nenhum gate global: `CVG-002C6`, ERP,
+produção, paridade, operações e release permanecem `IN_PROGRESS/PARTIAL`; o
+próximo workstream é Helm lint/template em runner autorizado, depois PIX/RLS e
+webhook retry/DLQ/fencing.

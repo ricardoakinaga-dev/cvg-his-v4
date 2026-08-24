@@ -942,3 +942,53 @@ Quality Bar; simultaneous laboratory bootstrap, Helm-rendered validation,
 PIX/RLS, webhook retry/DLQ/fencing and all global ERP/production/parity/
 operations/release gates remain open. P2 residual: runner cleanup is delegated
 to each test's global teardown and signals are not forwarded by the runner.
+## Quality Bar v1 — bootstrap laboratorial concorrente — 24/08/2026
+
+Esta rodada fecha o maior gap local seguinte: o seed lazy do catálogo
+laboratorial faz check-then-act durante `hydrateCatalog`, podendo derrubar uma
+réplica quando duas APIs reais iniciam para a mesma conta. A barra é um recorte
+bounded de inicialização horizontal e não altera os gates globais do ERP.
+
+| ID | Required target | Evidence | Priority |
+|---|---|---|---|
+| `QB-LAB-BOOT-01` | Duas instâncias reais da API, em PIDs/portas distintos e iniciadas simultaneamente contra o mesmo PostgreSQL/conta, alcançam readiness de banco sem `duplicate key`, crash ou timeout. | Teste de processo com `apps/api/src/index.ts`, PostgreSQL efêmero, roles restritas e observação de `/health`/saída dos dois filhos. | P0 |
+| `QB-LAB-BOOT-02` | Após o boot concorrente existe exatamente um conjunto canônico por conta: 4 equipamentos, 6 tipos de laudo e 6 valores de referência, com IDs determinísticos sem duplicação e leitura A/B isolada. | Consultas SQL administrativas e GETs autenticados em dois tenants sob o boundary HTTP real. | P0 |
+| `QB-LAB-BOOT-03` | A hidratação é idempotente e repara catálogo parcial: remover um item canônico e repetir a leitura/hidratação repõe apenas o ausente, sem duplicar ou sobrescrever dados customizados. | Cenário de recuperação no mesmo teste/fixture, com contagens e IDs antes/depois. | P1 |
+| `QB-LAB-REG-01` | A correção não regressa os seis limites da suíte crítica serial nem a concorrência/SIGKILL de receipt. | `pnpm test:critical:process` e reruns focados com suffixes efêmeros novos. | P1 |
+
+Baseline conhecido-ruim: `ensureSeedData` observa ausência apenas em
+`laboratory_report_types` e executa três INSERTs determinísticos separados sem
+`ON CONFLICT`; dois processos podem competir no mesmo
+`laboratory_equipment_pkey`, e uma falha no meio deixa o catálogo parcial. O
+baseline deve falhar o teste de boot concorrente antes do GREEN. Não promover
+CVG-002C6, ERP, produção, paridade, operações ou release nesta rodada.
+
+## Round result — bootstrap laboratorial concorrente — 24/08/2026
+
+RED real capturado em `lab_catalog_bootstrap_red2`: dois PIDs alcançaram a
+barreira e um morreu com duplicate key na PK determinística de
+`laboratory_equipment`. O Builder removeu o sentinel check-then-act e adicionou
+`onConflictDoNothing({ target: table.id })` aos três lotes. O processo API
+resolve `@cvg-his-v2/module-diagnostics` via `dist/index.js`, então o teste
+compila o pacote antes do spawn.
+
+O primeiro critic rejeitou a prova porque a barreira era global e podia
+sincronizar contas diferentes. Após a correção, o trigger pausa somente para
+`NEW.account_id = accountA` e o observador exige a chave advisory exata
+`(41673, 1)`. A crítica independente final aprovou `QB-LAB-BOOT-01`,
+`QB-LAB-BOOT-02` e `QB-LAB-BOOT-03`.
+
+GREEN final em `lab_catalog_bootstrap_final`: 1/1, exit 0, 66,64 s. O teste
+prova readiness de dois PIDs/portas, 4 equipamentos/6 tipos/6 referências por
+conta, IDs canônicos exatos, isolamento A/B, customização preservada e reparo
+de um default removido. `pnpm test:critical:process` também terminou exit 0
+com 6/6 em bancos efêmeros distintos: 4/4, 1/1, 1/1, 1/1, 5/5 e 1/1
+(395,30 s somados). Typecheck, Prettier, ESLint, Secretlint, node check e
+diff-check passaram.
+
+Isso fecha somente a barra local de bootstrap e sua regressão processual. O
+stop decision permanece ACTIVE; CVG-002C6, ERP, produção, paridade, operações,
+release e gates globais continuam `IN_PROGRESS/PARTIAL`. Próximo workstream:
+Helm lint/template em runner autorizado, depois PIX PostgreSQL/RLS e webhook
+retry/DLQ/lease fencing. O teste laboratorial dedicado ainda requer uma decisão
+explícita de custo antes de entrar no manifesto `test:critical:process`.
