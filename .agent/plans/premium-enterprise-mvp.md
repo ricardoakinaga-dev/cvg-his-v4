@@ -497,3 +497,14 @@ specific test. The plan remains `IN_PROGRESS/PARTIAL`: proceed to child-process
 domain SIGKILL/takeover, complete failpoints, PIX PostgreSQL/RLS and webhook
 HTTP retry/DLQ/lease fencing; keep the single clinical-financial journey and
 all ERP/production/release gates open.
+
+Plan revision note, 2026-08-23 22:10 BRT (child-process bounded): the new
+fixture/test are published in local implementation commit `eccdacc` and the
+role-hardened focused run passed **2/2** in 81.65 s. API and worker use distinct
+`LOGIN NOSUPERUSER NOBYPASSRLS` roles; SQL evidence covers inventory, billing,
+audit, derived outbox, idempotency response and original outbox completion. An
+independent critic returned **ACCEPT bounded**. The plan remains
+`IN_PROGRESS/PARTIAL`: next add stale-owner fencing with A alive, explicit
+source/hash assertions, two-tenant/A-B and hydration evidence, then extend
+discharge/close/receipt failpoints and keep PIX/RLS, webhook, product and
+release gates open.

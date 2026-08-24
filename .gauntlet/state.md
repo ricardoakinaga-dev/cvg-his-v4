@@ -695,3 +695,18 @@ commit-boundary coverage residual. The Gauntlet remains ACTIVE for the product
 bar: continue with child-process domain SIGKILL/takeover, full failpoints, PIX
 PostgreSQL/RLS and webhook HTTP retry/DLQ/lease fencing. Global ERP, production,
 parity, WCAG, operations and release gates remain IN_PROGRESS/PARTIAL.
+
+## Gauntlet iteration — role-hardened domain process proof (23/08/2026, 22:10 BRT)
+
+The child-process fixture/test is now a real bounded green: **2/2** in 81.65 s
+against disposable PostgreSQL. API and worker use distinct `LOGIN NOSUPERUSER
+NOBYPASSRLS` roles, SIGKILL occurs at `after_claim` and
+`after_domain_command_before_cas`, and the second PID takes over after lease
+expiry. SQL confirms inventory, billing, audit, derived outbox, idempotency and
+original outbox completion. Independent critique: **ACCEPT bounded**.
+
+Stop decision remains `ACTIVE`; this does not promote the ERP or Quality Bar.
+Residuals are stale-owner A-alive fencing, two-tenant/A-B proof, API
+rebootstrap/hydration, explicit billing source/hash assertions, CI critical
+inclusion, complete failpoints, PIX/RLS, webhook retry/DLQ/fence and all product,
+operations and release gates.

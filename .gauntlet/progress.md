@@ -618,3 +618,17 @@ global ERP/Quality Bar remains active: next iterate on child-process
 SIGKILL/takeover, full failpoints, PIX PostgreSQL/RLS and webhook HTTP
 retry/DLQ/lease fencing, then return to the single admission-to-receipt
 journey. Do not promote production, parity, WCAG, operations or release.
+
+## Checkpoint 2026-08-23 — processo filho inpatient bounded endurecido
+
+O fixture `apps/worker/test-fixtures/inpatient-domain-process.ts` e o teste
+`tests/integration/process/inpatient-domain-sigkill.test.ts` passaram **2/2** em
+81,65 s. API e worker usam roles distintas `LOGIN NOSUPERUSER NOBYPASSRLS`; a
+prova observa PIDs reais, `SIGKILL`, expiração/takeover de lease, replay
+idempotente e reconciliação SQL de consumo/estoque/billing/audit/outbox.
+Revisão independente: **ACCEPT bounded**.
+
+O Gauntlet continua `ACTIVE`: sem claim de stale-owner com A vivo, A/B,
+rebootstrap/hidratação, origem de billing/hash canônico, inclusão no CI
+crítico, jornada completa, PIX PostgreSQL/RLS, webhook retry/DLQ/fence ou
+qualquer gate de ERP, produção, paridade, WCAG, operações e release.

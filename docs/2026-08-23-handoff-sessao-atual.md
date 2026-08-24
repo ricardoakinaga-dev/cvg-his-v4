@@ -38,15 +38,15 @@ As fatias abaixo estão publicadas e não devem ser refeitas sem uma regressão 
 
 Evidência focal recente, sempre limitada ao escopo do teste:
 
-| Verificação | Resultado |
-| --- | ---: |
-| Close → receipt HTTP/PostgreSQL | 5/5 |
-| Inventory charge capture HTTP/PostgreSQL | 3/3 |
-| Event catalog / contratos | 1/1 e 43/43 |
-| RLS estrutural | 153/154 tabelas protegidas; 1 exceção documentada |
-| OpenAPI estrutural | 337 paths, 40 tags, 390 schemas |
-| Checker canônico | 11 PASS, 1 WARN histórico de ownership, 0 FAIL |
-| `git diff --check` | PASS |
+| Verificação                              |                                         Resultado |
+| ---------------------------------------- | ------------------------------------------------: |
+| Close → receipt HTTP/PostgreSQL          |                                               5/5 |
+| Inventory charge capture HTTP/PostgreSQL |                                               3/3 |
+| Event catalog / contratos                |                                       1/1 e 43/43 |
+| RLS estrutural                           | 153/154 tabelas protegidas; 1 exceção documentada |
+| OpenAPI estrutural                       |                   337 paths, 40 tags, 390 schemas |
+| Checker canônico                         |    11 PASS, 1 WARN histórico de ownership, 0 FAIL |
+| `git diff --check`                       |                                              PASS |
 
 Esses números não significam paridade, produção, certificação fiscal ou release.
 
@@ -464,3 +464,70 @@ Publicação final: `76d94a3` e `4f8d8d8` estão em
 `4f8d8d8b806098241cd716ff12b13ac2e74d9621`. Só o tsbuildinfo user-owned fica
 dirty e fora do stage. A próxima sessão começa no checkpoint/artefato verde e
 retoma SIGKILL/takeover e failpoints, não uma promoção global.
+
+## Índice curto mais recente — retomada em outra sessão (21:36 BRT)
+
+O resumo operacional foi condensado em
+[`2026-08-23-checkpoint-retomada-sessao-atualizado.md`](2026-08-23-checkpoint-retomada-sessao-atualizado.md).
+Ele aponta para os SHAs publicados, a prova crítica `387/387`, a revisão
+independente `ACCEPT`, o checker histórico `PARTIAL`, o seam público da jornada
+admissão → receipt e a ordem de implementação child-process/SIGKILL →
+failpoints → PIX PostgreSQL/RLS → webhook retry/DLQ/fencing.
+
+A inspeção read-only confirmou que o teste
+`tests/integration/database/inpatient-clinical-financial-vertical-http-postgres.test.ts`
+já reutiliza HTTP real, duas instâncias, dois tenants, replay/conflito,
+concorrência e rollback. Ainda não existe a prova cross-domain em processo filho
+com takeover entre cada boundary; handoff e auditoria/cache também têm os
+limites descritos no índice curto. A pesquisa de mercado mais recente não
+alterou o código e permanece em `docs/2026-08-23-pesquisa-mercado-erp-veterinario.md`.
+
+## Correção do ponteiro — primeiro child-process bounded (21:43 BRT)
+
+O teste novo
+`tests/integration/process/inpatient-domain-sigkill.test.ts` e o fixture
+`apps/worker/test-fixtures/inpatient-domain-process.ts` já fornecem a primeira
+prova real de processo filho: **2/2** em PostgreSQL descartável, com dois
+checkpoints (`after_claim` e `after_domain_command_before_cas`), `SIGKILL`,
+expiração de lease, novo PID, takeover, replay idempotente, completion de
+outbox e reconciliação SQL de estoque/consumo/idempotência.
+
+O texto anterior sobre “ainda não existir prova em processo filho” deve ser
+lido como “ainda não existe a matriz cross-domain completa”. O API permanece
+no processo do teste, os demais boundaries/failpoints e a crítica independente
+continuam pendentes. O índice curto atualizado registra o comando e os limites.
+
+A revisão independente retornou **ACCEPT bounded**, mas recusou qualquer leitura
+de RLS/runtime production-like ou jornada inpatient completa. Antes de ampliar
+o claim, ainda é necessário usar roles `NOBYPASSRLS`, consultar billing/audit/
+outbox derivado por SQL e adicionar isolamento A/B; stale CAS, leaseVersion,
+payload divergente e hidratação cross-instance permanecem follow-ups.
+
+## Correção final — child-process endurecido (22:10 BRT)
+
+O gate acima foi endurecido e reexecutado. API e worker agora usam roles
+distintas `LOGIN NOSUPERUSER NOBYPASSRLS`, e `DOMAIN_READY`/o teste verificam
+`current_user`, `rolsuper=false` e `rolbypassrls=false` em cada processo. A
+reconciliação SQL passou a verificar consumo/estoque, `sourceEntityId`, billing
+item e total `80`, duas auditorias, outbox derivado e sua origem, idempotência
+com operação/hash/resposta `201` decodificada e outbox original concluído.
+
+Execução fresca:
+
+```text
+REQUIRE_TEST_DB=1 pnpm exec vitest run tests/integration/process/inpatient-domain-sigkill.test.ts \
+  --config vitest.integration.config.ts --reporter=dot --no-cache \
+  --no-file-parallelism --hookTimeout=120000 --teardownTimeout=120000
+1 arquivo, 2 testes, 2 passed, exit 0, 81,65 s
+```
+
+A revisão independente final foi **ACCEPT para esta prova bounded**, sem
+vacuidade relevante ou regressão outbox/UoW. Ela não aprova jornada completa,
+cross-tenant, stale-owner fencing com A vivo, rebootstrap/hidratação de segunda
+API, `billing_items.source_entity_id` explícito, hash canônico completo,
+payload divergente, CI crítico ou produção. O artefato detalhado é
+[`CVG-002C6-process-sigkill-2026-08-23.md`](../.agent/artifacts/CVG-002C6-process-sigkill-2026-08-23.md).
+
+Portanto, a frase anterior sobre “usar roles NOBYPASSRLS” descrevia a revisão
+pendente; ela está corrigida nesta rodada. O gate segue bounded e
+`CVG-002C6=IN_PROGRESS/PARTIAL`.

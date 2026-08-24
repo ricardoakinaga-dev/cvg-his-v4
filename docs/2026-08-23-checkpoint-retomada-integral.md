@@ -41,15 +41,15 @@ de editar código.
 Estas são provas locais, revision-bound e descartáveis, cada uma limitada ao
 escopo do teste citado:
 
-| Fatia | Resultado observado |
-| --- | --- |
-| Worker `payments → billing → webhooks` em PostgreSQL/RLS | `worker-event-consumers-postgres.test.ts` 3/3; replay concorrente, rollback, inbox/outbox, settlement, enqueue e isolamento A/B |
-| Financeiro e barramento | 15/15 e 23/23 nos conjuntos focados |
-| Identidade composta de cartão | PostgreSQL 3/3, contrato unitário 3/3, handlers/gateway 17/17; `(account_id, transaction_id)` evita colisão entre tenants |
-| Jornada clínica-financeira bounded | role API `LOGIN NOSUPERUSER NOBYPASSRLS` 5/5; restart/replay controlado 1/1; não é ainda a jornada completa de release |
-| Worker process boundary | ACL/loop/readiness/SIGKILL do entrypoint real 1/1 e grants 11/11; ainda falta fixture de eventos de domínio em processo filho com takeover completo |
-| HTTP/UoW de diária, alta e recebimento | provas focadas anteriores permanecem válidas; o teste crítico completo abaixo ainda encontrou bloqueio de fixture |
-| Builds e contratos focados | builds/typechecks, OpenAPI, Prettier e scans dos slices publicados passaram nos escopos documentados |
+| Fatia                                                    | Resultado observado                                                                                                                                 |
+| -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Worker `payments → billing → webhooks` em PostgreSQL/RLS | `worker-event-consumers-postgres.test.ts` 3/3; replay concorrente, rollback, inbox/outbox, settlement, enqueue e isolamento A/B                     |
+| Financeiro e barramento                                  | 15/15 e 23/23 nos conjuntos focados                                                                                                                 |
+| Identidade composta de cartão                            | PostgreSQL 3/3, contrato unitário 3/3, handlers/gateway 17/17; `(account_id, transaction_id)` evita colisão entre tenants                           |
+| Jornada clínica-financeira bounded                       | role API `LOGIN NOSUPERUSER NOBYPASSRLS` 5/5; restart/replay controlado 1/1; não é ainda a jornada completa de release                              |
+| Worker process boundary                                  | ACL/loop/readiness/SIGKILL do entrypoint real 1/1 e grants 11/11; ainda falta fixture de eventos de domínio em processo filho com takeover completo |
+| HTTP/UoW de diária, alta e recebimento                   | provas focadas anteriores permanecem válidas; o teste crítico completo abaixo ainda encontrou bloqueio de fixture                                   |
+| Builds e contratos focados                               | builds/typechecks, OpenAPI, Prettier e scans dos slices publicados passaram nos escopos documentados                                                |
 
 Nenhuma dessas linhas autoriza afirmar que o ERP inteiro, o worker de
 produção, um provedor externo, a SPA, a paridade Vetus ou o release estão
@@ -87,15 +87,15 @@ contexto, nunca critério de promoção.
 
 ## Baseline executável desta sessão
 
-| Comando | Resultado | Leitura correta |
-| --- | --- | --- |
-| `pnpm readiness:enterprise` | exit 1; score estrutural 95/100; paridade estrita 0/11 | indicador estrutural; não é release pass |
-| `pnpm vetus:parity:audit` | exit 0 report-only; 0/11 | exit 0 não significa paridade aprovada |
-| `pnpm vetus:clinical-parity` | exit 1; 0/3 | atendimento/cadastros/laboratório continuam bloqueados |
-| `pnpm validate:rls` | exit 0; 154/155 tabelas protegidas, 1 exceção documentada | `FORCE RLS`/role global ainda não certificados |
-| `pnpm validate:openapi` | exit 0; v1.0.0, 337 paths, 40 tags, 390 schemas | valida estrutura, não comportamento de todos os endpoints |
-| `node tools/migration-consistency-report.mjs` | exit 1 | falta `docs/phase-9-migration-manifest.json` |
-| `pnpm test:critical` | exit 1; 28 arquivos, 385/387 testes passaram | há dois arquivos falhos e nenhum gate de release pode subir |
+| Comando                                       | Resultado                                                 | Leitura correta                                             |
+| --------------------------------------------- | --------------------------------------------------------- | ----------------------------------------------------------- |
+| `pnpm readiness:enterprise`                   | exit 1; score estrutural 95/100; paridade estrita 0/11    | indicador estrutural; não é release pass                    |
+| `pnpm vetus:parity:audit`                     | exit 0 report-only; 0/11                                  | exit 0 não significa paridade aprovada                      |
+| `pnpm vetus:clinical-parity`                  | exit 1; 0/3                                               | atendimento/cadastros/laboratório continuam bloqueados      |
+| `pnpm validate:rls`                           | exit 0; 154/155 tabelas protegidas, 1 exceção documentada | `FORCE RLS`/role global ainda não certificados              |
+| `pnpm validate:openapi`                       | exit 0; v1.0.0, 337 paths, 40 tags, 390 schemas           | valida estrutura, não comportamento de todos os endpoints   |
+| `node tools/migration-consistency-report.mjs` | exit 1                                                    | falta `docs/phase-9-migration-manifest.json`                |
+| `pnpm test:critical`                          | exit 1; 28 arquivos, 385/387 testes passaram              | há dois arquivos falhos e nenhum gate de release pode subir |
 
 Falhas concretas do `test:critical`:
 
@@ -117,17 +117,17 @@ de prontidão multi-réplica, não uma evidência de Redis compartilhado.
 
 ## Barra de qualidade congelada para a retomada
 
-| Gate | Alvo | Estado atual |
-| --- | --- | --- |
-| `QB-SEC-01` instalação segura | instalação one-shot, grants mínimos, search path fixo e recuperação | `PARTIAL`; regressão estática Helm falha no critical suite |
-| `QB-DATA-01` tenancy/RLS | todas as tabelas relevantes com RLS/FORCE RLS e prova sob role sem bypass | `PARTIAL`; 154/155 |
-| `QB-AUTH-01` identidade | sessão/MFA/rate-limit compartilhados, revogação e restart | `PARTIAL`; teste atual usa backend in-memory em partes |
-| `QB-CORE-01` clínica→recebimento | admissão→handoff→inventário→alta→billing→recebimento→ledger/audit/outbox em dois tenants, replay, concorrência e failpoints | `PARTIAL`; slices bounded, não uma prova única de release |
-| `QB-PARITY-01` Vetus | 11/11 domínios gerais + 3/3 clínicos, sem skip/retry | `FAIL`; 0/11 e 0/3 |
-| `QB-UX-01` acessibilidade | fluxos críticos responsivos, teclado, foco e WCAG 2.2 AA | `NOT_RUN` |
-| `QB-REL-01` qualidade | build/typecheck/lint/unit/integration/E2E/coverage ≥80% sem falha escondida | `FAIL/PARTIAL`; critical suite falha |
-| `QB-OPS-01` operação | deploy/rollback, backup/restore, failover, SLO e observabilidade em alvo autorizado | `BLOCKED` |
-| `QB-MKT-01` resultado competitivo | workspace unificado com fluxo clínico, comunicação, inventário, finanças e relatórios realmente utilizáveis | `NOT_RUN` |
+| Gate                              | Alvo                                                                                                                        | Estado atual                                               |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `QB-SEC-01` instalação segura     | instalação one-shot, grants mínimos, search path fixo e recuperação                                                         | `PARTIAL`; regressão estática Helm falha no critical suite |
+| `QB-DATA-01` tenancy/RLS          | todas as tabelas relevantes com RLS/FORCE RLS e prova sob role sem bypass                                                   | `PARTIAL`; 154/155                                         |
+| `QB-AUTH-01` identidade           | sessão/MFA/rate-limit compartilhados, revogação e restart                                                                   | `PARTIAL`; teste atual usa backend in-memory em partes     |
+| `QB-CORE-01` clínica→recebimento  | admissão→handoff→inventário→alta→billing→recebimento→ledger/audit/outbox em dois tenants, replay, concorrência e failpoints | `PARTIAL`; slices bounded, não uma prova única de release  |
+| `QB-PARITY-01` Vetus              | 11/11 domínios gerais + 3/3 clínicos, sem skip/retry                                                                        | `FAIL`; 0/11 e 0/3                                         |
+| `QB-UX-01` acessibilidade         | fluxos críticos responsivos, teclado, foco e WCAG 2.2 AA                                                                    | `NOT_RUN`                                                  |
+| `QB-REL-01` qualidade             | build/typecheck/lint/unit/integration/E2E/coverage ≥80% sem falha escondida                                                 | `FAIL/PARTIAL`; critical suite falha                       |
+| `QB-OPS-01` operação              | deploy/rollback, backup/restore, failover, SLO e observabilidade em alvo autorizado                                         | `BLOCKED`                                                  |
+| `QB-MKT-01` resultado competitivo | workspace unificado com fluxo clínico, comunicação, inventário, finanças e relatórios realmente utilizáveis                 | `NOT_RUN`                                                  |
 
 ## Pesquisa oficial e decisões de produto
 
@@ -135,16 +135,16 @@ As fontes abaixo foram consultadas em 23/08/2026. São sinais públicos ou
 documentação de fornecedor; não são prova de que o CVG-HIS ou o produto citado
 funcione em todos os cenários.
 
-| Fonte | Sinal verificável | Decisão para o CVG-HIS |
-| --- | --- | --- |
-| [Vetspire API](https://developer.vetspire.com/) | GraphQL, subscriptions, introspection e ambientes separados; API key tem escopo amplo e deve ser tratada como senha administrativa | preferir tokens/escopos por tenant, rotação/revogação e auditoria; não copiar chave global read/write |
-| [ezyVet API release notes](https://developers.ezyvet.com/release-notes.html) | `site_uid`, cursores/paginação, saldos de inventário e DICOM Study UID write-once aparecem nos contratos recentes | versionar integrações, suportar cursores, unidade e identidade imutável de estudo |
-| [Shepherd features](https://www.shepherd.vet/features/) | SOAP, alta, activity log, autosave, charge capture, whiteboard, inventário e portal são apresentados como um fluxo | o episódio clínico deve correlacionar autoria/versionamento, tarefas, cobrança e alta |
-| [Instinct Treatment Plan](https://instinct.vet/products/instinct-treatment-plan/) | boards em tempo real, tratamentos pendentes, folhas de anestesia, alertas e charge capture | flowboard 24h e tratamento devem ser estados persistidos, auditáveis e idempotentes |
-| [Covetrus Ascend stocktake](https://software.covetrus.com/emea/stocktake/) | contagem por código, correção/aprovação, localização e histórico de edição | estoque exige FEFO/lote/validade, aprovação e trilha de quem alterou |
-| [FHIR R5](https://hl7.org/fhir/R5/) | recursos clínicos, diagnósticos, medicamentos, workflow, financeiro, `Provenance` e `AuditEvent` | contratos de integração devem carregar proveniência, consentimento e reconciliação |
-| [DICOMweb](https://www.dicomstandard.org/News-dir/ftsup/docs/sups/sup248.pdf) | QIDO-RS, WADO-RS e STOW-RS | imagens precisam de UID write-once, busca/recuperação/ingestão e auditoria |
-| [LGPD](https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709compilado.htm) e [CFMV Res. 1465/2022](https://manual.cfmv.gov.br/arquivos/resolucao/1465.pdf) | dados de saúde são sensíveis; telemedicina veterinária tem regra própria | manter consentimento, minimização, retenção, autoria e revisão jurídica; não declarar conformidade sem autoridade |
+| Fonte                                                                                                                                                                    | Sinal verificável                                                                                                                  | Decisão para o CVG-HIS                                                                                            |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| [Vetspire API](https://developer.vetspire.com/)                                                                                                                          | GraphQL, subscriptions, introspection e ambientes separados; API key tem escopo amplo e deve ser tratada como senha administrativa | preferir tokens/escopos por tenant, rotação/revogação e auditoria; não copiar chave global read/write             |
+| [ezyVet API release notes](https://developers.ezyvet.com/release-notes.html)                                                                                             | `site_uid`, cursores/paginação, saldos de inventário e DICOM Study UID write-once aparecem nos contratos recentes                  | versionar integrações, suportar cursores, unidade e identidade imutável de estudo                                 |
+| [Shepherd features](https://www.shepherd.vet/features/)                                                                                                                  | SOAP, alta, activity log, autosave, charge capture, whiteboard, inventário e portal são apresentados como um fluxo                 | o episódio clínico deve correlacionar autoria/versionamento, tarefas, cobrança e alta                             |
+| [Instinct Treatment Plan](https://instinct.vet/products/instinct-treatment-plan/)                                                                                        | boards em tempo real, tratamentos pendentes, folhas de anestesia, alertas e charge capture                                         | flowboard 24h e tratamento devem ser estados persistidos, auditáveis e idempotentes                               |
+| [Covetrus Ascend stocktake](https://software.covetrus.com/emea/stocktake/)                                                                                               | contagem por código, correção/aprovação, localização e histórico de edição                                                         | estoque exige FEFO/lote/validade, aprovação e trilha de quem alterou                                              |
+| [FHIR R5](https://hl7.org/fhir/R5/)                                                                                                                                      | recursos clínicos, diagnósticos, medicamentos, workflow, financeiro, `Provenance` e `AuditEvent`                                   | contratos de integração devem carregar proveniência, consentimento e reconciliação                                |
+| [DICOMweb](https://www.dicomstandard.org/News-dir/ftsup/docs/sups/sup248.pdf)                                                                                            | QIDO-RS, WADO-RS e STOW-RS                                                                                                         | imagens precisam de UID write-once, busca/recuperação/ingestão e auditoria                                        |
+| [LGPD](https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709compilado.htm) e [CFMV Res. 1465/2022](https://manual.cfmv.gov.br/arquivos/resolucao/1465.pdf) | dados de saúde são sensíveis; telemedicina veterinária tem regra própria                                                           | manter consentimento, minimização, retenção, autoria e revisão jurídica; não declarar conformidade sem autoridade |
 
 Decisão operacional: uma “integração” só entra na barra quando houver ingress
 autenticado, escopo, outbox/inbox, idempotência, retry, lease/fence, DLQ,
@@ -260,7 +260,7 @@ As falhas restantes devem ser corrigidas sem ampliar as asserções:
 1. `fk.test.ts`: o caso de `patient_id` inválido é interceptado pelo guard de
    proprietário primário antes da FK.
 2. `fk.test.ts`: o caso de profissional inválido é interceptado pelo `NOT
-   NULL` de `appointments.reason` antes da FK.
+NULL` de `appointments.reason` antes da FK.
 3. `integrity.test.ts`: a duplicidade de e-mail é interceptada pelo `NOT NULL`
    de `users.username` antes da constraint unique.
 4. `pix-service-principals.test.ts`: o fixture de backfill cria uma conta ligada
@@ -504,3 +504,61 @@ publicados em `origin/agent/sync-v4-full-program`. O fetch final confirmou
 `packages/design-system/tsconfig.vue.tsbuildinfo` user-owned permanece dirty e
 fora do stage. A próxima sessão deve usar este checkpoint e o artefato verde,
 sem promover o ERP ou qualquer gate externo.
+
+## Índice curto mais recente — retomada em outra sessão (21:36 BRT)
+
+O resumo operacional foi condensado em
+[`2026-08-23-checkpoint-retomada-sessao-atualizado.md`](2026-08-23-checkpoint-retomada-sessao-atualizado.md).
+Ele aponta para os SHAs publicados, a prova crítica `387/387`, a revisão
+independente `ACCEPT`, o checker histórico `PARTIAL`, o seam público da jornada
+admissão → receipt e a ordem de implementação child-process/SIGKILL →
+failpoints → PIX PostgreSQL/RLS → webhook retry/DLQ/fencing.
+
+A inspeção read-only confirmou que o teste
+`tests/integration/database/inpatient-clinical-financial-vertical-http-postgres.test.ts`
+já reutiliza HTTP real, duas instâncias, dois tenants, replay/conflito,
+concorrência e rollback. Ainda não existe a prova cross-domain em processo filho
+com takeover entre cada boundary; handoff e auditoria/cache também têm os
+limites descritos no índice curto. A pesquisa de mercado mais recente não
+alterou o código e permanece em `docs/2026-08-23-pesquisa-mercado-erp-veterinario.md`.
+
+## Correção do ponteiro — primeiro child-process bounded (21:43 BRT)
+
+O teste novo
+`tests/integration/process/inpatient-domain-sigkill.test.ts` e o fixture
+`apps/worker/test-fixtures/inpatient-domain-process.ts` já fornecem a primeira
+prova real de processo filho: **2/2** em PostgreSQL descartável, com dois
+checkpoints (`after_claim` e `after_domain_command_before_cas`), `SIGKILL`,
+expiração de lease, novo PID, takeover, replay idempotente, completion de
+outbox e reconciliação SQL de estoque/consumo/idempotência.
+
+O texto anterior sobre “ainda não existir prova em processo filho” deve ser
+lido como “ainda não existe a matriz cross-domain completa”. O API permanece
+no processo do teste, os demais boundaries/failpoints e a crítica independente
+continuam pendentes. O índice curto atualizado registra o comando e os limites.
+
+A revisão independente retornou **ACCEPT bounded**, mas recusou qualquer leitura
+de RLS/runtime production-like ou jornada inpatient completa. Antes de ampliar
+o claim, ainda é necessário usar roles `NOBYPASSRLS`, consultar billing/audit/
+outbox derivado por SQL e adicionar isolamento A/B; stale CAS, leaseVersion,
+payload divergente e hidratação cross-instance permanecem follow-ups.
+
+## Correção final — child-process endurecido (22:10 BRT)
+
+O gate foi endurecido e reexecutado com roles distintas de API e worker,
+`LOGIN NOSUPERUSER NOBYPASSRLS`, verificadas no processo HTTP e nos dois PIDs
+filhos por `current_user`, `rolsuper=false` e `rolbypassrls=false`. A asserção
+SQL agora cobre consumo/estoque, `sourceEntityId`, billing item e total `80`,
+duas auditorias, outbox derivado/origem, idempotência com operação/hash/
+resposta `201` decodificada e outbox original concluído.
+
+O comando focal fresco passou **2/2**, exit `0`, em **81,65 s**. A revisão
+independente retornou **ACCEPT bounded**, sem vacuidade relevante ou regressão
+outbox/UoW. O resultado não cobre stale-owner fencing com A vivo, A/B,
+rebootstrap/hidratação de segunda API, `billing_items.source_entity_id`
+explícito, hash canônico completo, payload divergente, inclusão no CI crítico,
+jornada completa ou produção. Consulte
+[`CVG-002C6-process-sigkill-2026-08-23.md`](../.agent/artifacts/CVG-002C6-process-sigkill-2026-08-23.md).
+
+A anotação anterior sobre `NOBYPASSRLS` era um requisito de revisão pendente e
+fica supersedida por este registro. O gate continua `IN_PROGRESS/PARTIAL`.
