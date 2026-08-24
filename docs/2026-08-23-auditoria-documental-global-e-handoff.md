@@ -299,3 +299,29 @@ O `git fetch` pós-push confirmou
 `af4bf20e2c2fbbbf716bd8a0fba13a008af88c54`. O único caminho dirty continua
 sendo o cache user-owned
 `packages/design-system/tsconfig.vue.tsbuildinfo`, preservado fora do stage.
+
+## Atualização de execução — billing source/hash — 24/08/2026
+
+O follow-on do mesmo harness tornou executáveis três claims que eram apenas
+limitações da revisão: `billing_items.source_entity_type` é
+`inventory_consumption`, `source_entity_id` coincide com o ID persistido do
+consumo, e `request_hash` é comparado ao SHA-256 completo do envelope canônico
+HTTP (`path`, `query`, `body`). O replay da mesma chave com `quantity=3` é
+exercitado pela API real e precisa retornar `409 IDEMPOTENCY_CONFLICT` sem
+alterar o grafo SQL.
+
+O primeiro RED revelou a forma correta do contrato: o hash não é do body cru,
+mas de `{path, query, body}` produzido pelo dispatcher. Após alinhar a
+asserção ao canonicalizer compartilhado, a execução GREEN passou **4/4 testes
+em 1 arquivo**, exit 0, em 125,96 s; os dois SIGKILL e os dois stale-owner
+continuaram verdes. Não foi necessário alterar código de produção: a rota e o
+UoW já implementavam a regra, que agora está coberta na fronteira de processo.
+
+Artefato: [`../.agent/artifacts/CVG-002C6-billing-source-hash-2026-08-24.md`](../.agent/artifacts/CVG-002C6-billing-source-hash-2026-08-24.md).
+
+A crítica independente fresca rerodou o mesmo slice com banco descartável,
+retornou **APPROVE bounded**, encontrou 4/4 testes verdes e nenhum P0/P1. A
+publicação desta rodada ainda precisa do commit/push e da reconciliação final
+de SHA. Permanecem abertos dois tenants/A-B/spoofing, hidratação
+cross-instance e failpoints completos da jornada. A barra global e
+`CVG-002C6` permanecem `IN_PROGRESS/PARTIAL`.

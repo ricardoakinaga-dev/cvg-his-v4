@@ -318,3 +318,26 @@ publicado no GitHub. A próxima sessão deve executar `git fetch` e confirmar
 observou `af4bf20e2c2fbbbf716bd8a0fba13a008af88c54`. O cache
 `packages/design-system/tsconfig.vue.tsbuildinfo` continua dirty, user-owned e
 fora do stage.
+
+## Billing source/hash — evidência executável de 24/08/2026
+
+O harness agora verifica, no SQL, que o billing aponta para o
+`inventory_consumption.id` correto e que `request_hash` é o SHA-256 completo do
+envelope canônico `{path, query, body}`. O replay com a mesma chave e
+`quantity=3` retorna `409 IDEMPOTENCY_CONFLICT` e não cria consumo, billing,
+auditoria ou outbox adicional.
+
+O primeiro RED encontrou a diferença entre o hash do body cru e o envelope
+real do dispatcher; a asserção foi corrigida para usar o canonicalizer
+compartilhado. A rodada GREEN passou **4/4 testes em 125,96 s**, incluindo os
+casos SIGKILL e stale-owner A-alive. Nenhuma alteração de produção foi
+necessária; a lacuna era de prova comportamental.
+
+Artefato: [`../.agent/artifacts/CVG-002C6-billing-source-hash-2026-08-24.md`](../.agent/artifacts/CVG-002C6-billing-source-hash-2026-08-24.md).
+
+A crítica independente fresca deste slice já foi executada: o rerun
+`billing_hash_review_20260824` passou 4/4 e recebeu **APPROVE bounded**, sem
+P0/P1. Falta apenas publicar o commit desta rodada e reconciliar o SHA remoto;
+depois, o próximo gate é A/B entre tenants, hydration cross-instance e
+failpoints admission→receipt. Não promover ERP, produção, paridade, operações
+ou release.

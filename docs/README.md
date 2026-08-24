@@ -10,16 +10,17 @@ Esta pasta separa documentacao vigente, referencia do Vetus e historico. Uma afi
 2. [`2026-08-23-checkpoint-retomada-sessao-atualizado.md`](2026-08-23-checkpoint-retomada-sessao-atualizado.md) - índice curto para retomar em cinco minutos.
 3. [`../.agent/artifacts/CVG-002C6-critical-gates-2026-08-24.md`](../.agent/artifacts/CVG-002C6-critical-gates-2026-08-24.md) - evidência fresca do `test:critical`, guardrails e limites de revisão.
 4. [`../.agent/artifacts/CVG-002C6-stale-owner-a-alive-2026-08-24.md`](../.agent/artifacts/CVG-002C6-stale-owner-a-alive-2026-08-24.md) - RED/GREEN da fencing com A vivo e reconciliação SQL.
-5. [`phase-9-migration-manifest.json`](phase-9-migration-manifest.json) - ondas documentais de migração, explicitamente `PLAN_ONLY`.
-6. [`2026-08-23-checkpoint-retomada-integral.md`](2026-08-23-checkpoint-retomada-integral.md) - baseline executável e histórico detalhado de retomada.
-7. [`2026-08-23-handoff-sessao-atual.md`](2026-08-23-handoff-sessao-atual.md) - handoff amplo da sessão, evidências e decisões independentes.
-8. [`2026-08-23-pesquisa-mercado-erp-veterinario.md`](2026-08-23-pesquisa-mercado-erp-veterinario.md) - sinais de produto em fontes oficiais e implicações para a barra de paridade.
-9. [`2026-08-22-auditoria-integral-e-pesquisa-erp.md`](2026-08-22-auditoria-integral-e-pesquisa-erp.md) - auditoria consolidada, lacunas de código e pesquisa de PIMS oficiais.
-10. [`2026-08-07-plano-executivo-resolucao-auditoria-cvg-his-v4.md`](2026-08-07-plano-executivo-resolucao-auditoria-cvg-his-v4.md) - plano executivo vigente, marcos, gates, responsáveis e metas.
-11. [`2026-08-07-backlog-roadmap-resolucao-auditoria-cvg-his-v4.md`](2026-08-07-backlog-roadmap-resolucao-auditoria-cvg-his-v4.md) - backlog rastreável aos achados, dependências e critérios de aceite.
-12. [`2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md`](2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md) - baseline da auditoria técnica e funcional atual.
-13. [`430-fonte-de-verdade-documental.md`](430-fonte-de-verdade-documental.md) - regras de governança e precedência.
-14. [`vetus/README.md`](vetus/README.md) - acervo factual capturado do Vetus.
+5. [`../.agent/artifacts/CVG-002C6-billing-source-hash-2026-08-24.md`](../.agent/artifacts/CVG-002C6-billing-source-hash-2026-08-24.md) - vínculo billing→consumo, hash canônico e replay divergente.
+6. [`phase-9-migration-manifest.json`](phase-9-migration-manifest.json) - ondas documentais de migração, explicitamente `PLAN_ONLY`.
+7. [`2026-08-23-checkpoint-retomada-integral.md`](2026-08-23-checkpoint-retomada-integral.md) - baseline executável e histórico detalhado de retomada.
+8. [`2026-08-23-handoff-sessao-atual.md`](2026-08-23-handoff-sessao-atual.md) - handoff amplo da sessão, evidências e decisões independentes.
+9. [`2026-08-23-pesquisa-mercado-erp-veterinario.md`](2026-08-23-pesquisa-mercado-erp-veterinario.md) - sinais de produto em fontes oficiais e implicações para a barra de paridade.
+10. [`2026-08-22-auditoria-integral-e-pesquisa-erp.md`](2026-08-22-auditoria-integral-e-pesquisa-erp.md) - auditoria consolidada, lacunas de código e pesquisa de PIMS oficiais.
+11. [`2026-08-07-plano-executivo-resolucao-auditoria-cvg-his-v4.md`](2026-08-07-plano-executivo-resolucao-auditoria-cvg-his-v4.md) - plano executivo vigente, marcos, gates, responsáveis e metas.
+12. [`2026-08-07-backlog-roadmap-resolucao-auditoria-cvg-his-v4.md`](2026-08-07-backlog-roadmap-resolucao-auditoria-cvg-his-v4.md) - backlog rastreável aos achados, dependências e critérios de aceite.
+13. [`2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md`](2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md) - baseline da auditoria técnica e funcional atual.
+14. [`430-fonte-de-verdade-documental.md`](430-fonte-de-verdade-documental.md) - regras de governança e precedência.
+15. [`vetus/README.md`](vetus/README.md) - acervo factual capturado do Vetus.
 
 Os documentos 2026-08-23 são a superfície operacional atual. Os itens
 históricos preservados abaixo continuam disponíveis para contexto, mas não

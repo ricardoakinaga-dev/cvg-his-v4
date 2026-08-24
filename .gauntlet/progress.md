@@ -672,3 +672,21 @@ CAS tardio de A e uma única reconciliação de efeitos.
 Artefato: `.agent/artifacts/CVG-002C6-stale-owner-a-alive-2026-08-24.md`.
 Ainda falta crítica independente fresca e o resultado não cobre dois tenants,
 hydration cross-instance, produção ou a jornada completa.
+
+## Billing source/hash e replay divergente — 24/08/2026
+
+O teste de processo passou a verificar o vínculo explícito
+`billing_items.source_entity_id == inventory_consumptions.id`, o
+`source_entity_type` correto e o hash SHA-256 completo do envelope HTTP
+canônico. Também exercita a mesma chave com `quantity=3`, esperando
+`409 IDEMPOTENCY_CONFLICT` sem duplicação.
+
+O RED inicial revelou que o hash correto inclui `{path, query, body}`; a
+asserção foi corrigida para usar `hashIdempotencyPayload` compartilhado. Como
+a implementação de produção já obedecia ao contrato, esta rodada adicionou
+prova comportamental, não código de runtime. GREEN: **4/4 testes**, exit 0,
+125,96 s, em banco efêmero novo. Artefato:
+`.agent/artifacts/CVG-002C6-billing-source-hash-2026-08-24.md`.
+A crítica independente fresca rerodou o slice com banco descartável, passou
+4/4 e retornou `APPROVE bounded`, sem P0/P1; falta publicar esta rodada e
+reconciliar o SHA remoto.

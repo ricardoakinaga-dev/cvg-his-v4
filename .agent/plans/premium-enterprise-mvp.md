@@ -547,3 +547,17 @@ attempts 2 e `lease_version=2`; Prettier e ESLint passaram. Evidência:
 `.agent/artifacts/CVG-002C6-stale-owner-a-alive-2026-08-24.md`. A rodada ainda
 exige crítica independente fresca e não fecha a jornada completa, A/B entre
 tenants, hydration cross-instance, PIX/webhook ou os gates globais.
+
+Plan revision note, 2026-08-24 (billing source/hash and divergent replay): o
+process harness passou a verificar `billing_items.source_entity_id` contra o
+ID do consumo, o tipo `inventory_consumption`, o hash SHA-256 exato do envelope
+canônico `{path, query, body}` e o replay com payload divergente retornando
+`409 IDEMPOTENCY_CONFLICT` sem efeitos extras. O RED inicial revelou que o
+dispatcher inclui path/query no hash; a asserção foi alinhada ao
+`hashIdempotencyPayload` compartilhado. Não houve mudança de runtime: a rota e
+o UoW já estavam corretos. GREEN: **4/4 testes em 125,96 s**, exit 0, em banco
+efêmero novo, com SIGKILL/stale-owner ainda verdes. Evidência:
+`.agent/artifacts/CVG-002C6-billing-source-hash-2026-08-24.md`. A crítica
+independente fresca foi `APPROVE bounded`, sem P0/P1; falta publicar esta
+rodada e reconciliar o SHA. A jornada global, A/B/hydration, failpoints,
+PIX/webhook e os gates de produto/release seguem `IN_PROGRESS/PARTIAL`.

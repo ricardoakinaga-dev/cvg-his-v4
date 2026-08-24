@@ -15,7 +15,7 @@ import { setAppState } from '../../../apps/api/src/app-state.js';
 import { bootstrapServices, shutdownServices } from '../../../apps/api/src/bootstrap.js';
 import { createApiServer, type ApiServer } from '../../../apps/api/src/server.js';
 import { reconcileRuntimeRoles } from '../../../packages/db/src/reconcile-runtime-roles.js';
-import { getPool } from '../../../packages/shared/database/src/index.js';
+import { getPool, hashIdempotencyPayload } from '../../../packages/shared/database/src/index.js';
 import { getAdminPool, getTestPool } from '../../db/db-admin.js';
 import { TEST_DB_NAME, TEST_DB_URL } from '../../setup/env.js';
 
@@ -449,9 +449,12 @@ async function waitForLeaseExpiry(): Promise<void> {
 async function assertReconciled(attempts: number): Promise<void> {
   const result = await getTestPool().query<{
     readonly consumptions: number;
+    readonly consumptionId: string;
     readonly stock: number;
     readonly sourceEntityId: string;
     readonly billingItems: number;
+    readonly billingSourceEntityType: string;
+    readonly billingSourceEntityId: string;
     readonly billingTotal: number;
     readonly auditEvents: number;
     readonly derivedOutboxEvents: number;
@@ -459,6 +462,7 @@ async function assertReconciled(attempts: number): Promise<void> {
     readonly idempotency: number;
     readonly idempotencyOperation: string;
     readonly idempotencyRequestHashLength: number;
+    readonly idempotencyRequestHash: string;
     readonly idempotencyResponseStatus: number | null;
     readonly idempotencyResponseContainsEncounter: boolean;
     readonly outboxStatus: string;
@@ -468,11 +472,17 @@ async function assertReconciled(attempts: number): Promise<void> {
     `SELECT
        (SELECT COUNT(*)::int FROM inventory_consumptions WHERE account_id = $1 AND encounter_id = $2
           AND source_entity_type = 'inpatient_stay' AND source_entity_id = $6) AS consumptions,
+       (SELECT id::text FROM inventory_consumptions WHERE account_id = $1 AND encounter_id = $2
+          AND source_entity_type = 'inpatient_stay' AND source_entity_id = $6 LIMIT 1) AS "consumptionId",
        (SELECT source_entity_id FROM inventory_consumptions WHERE account_id = $1 AND encounter_id = $2
           AND source_entity_type = 'inpatient_stay' LIMIT 1) AS "sourceEntityId",
        (SELECT on_hand_quantity::int FROM inventory_items WHERE account_id = $1 AND id = $3) AS stock,
        (SELECT COUNT(*)::int FROM billing_items WHERE account_id = $1 AND encounter_id = $2::uuid
           AND source_entity_type = 'inventory_consumption') AS "billingItems",
+       (SELECT source_entity_type FROM billing_items WHERE account_id = $1 AND encounter_id = $2::uuid
+          AND source_entity_type = 'inventory_consumption' LIMIT 1) AS "billingSourceEntityType",
+       (SELECT source_entity_id FROM billing_items WHERE account_id = $1 AND encounter_id = $2::uuid
+          AND source_entity_type = 'inventory_consumption' LIMIT 1) AS "billingSourceEntityId",
        (SELECT COALESCE(SUM(total_amount), 0)::float8 FROM billing_items WHERE account_id = $1
           AND encounter_id = $2::uuid AND source_entity_type = 'inventory_consumption') AS "billingTotal",
        (SELECT COUNT(*)::int FROM audit_events WHERE account_id = $1
@@ -490,6 +500,8 @@ async function assertReconciled(attempts: number): Promise<void> {
           AND idempotency_key = $4 LIMIT 1) AS "idempotencyOperation",
        (SELECT length(request_hash)::int FROM idempotency_requests WHERE account_id = $1
           AND idempotency_key = $4 LIMIT 1) AS "idempotencyRequestHashLength",
+       (SELECT request_hash FROM idempotency_requests WHERE account_id = $1
+          AND idempotency_key = $4 LIMIT 1) AS "idempotencyRequestHash",
        (SELECT (response_body->>'statusCode')::int FROM idempotency_requests WHERE account_id = $1
           AND idempotency_key = $4 AND status = 'completed' LIMIT 1) AS "idempotencyResponseStatus",
        (SELECT convert_from(decode(response_body->>'bodyBase64', 'base64'), 'utf8')
@@ -507,11 +519,13 @@ async function assertReconciled(attempts: number): Promise<void> {
       fixture.stayId
     ]
   );
-  expect(result.rows[0]).toEqual({
+  const row = result.rows[0];
+  expect(row).toMatchObject({
     consumptions: 1,
     stock: 8,
     sourceEntityId: fixture.stayId,
     billingItems: 1,
+    billingSourceEntityType: 'inventory_consumption',
     billingTotal: 80,
     auditEvents: 2,
     derivedOutboxEvents: 1,
@@ -519,12 +533,24 @@ async function assertReconciled(attempts: number): Promise<void> {
     idempotency: 1,
     idempotencyOperation: 'POST /inventory/consumptions',
     idempotencyRequestHashLength: 64,
+    idempotencyRequestHash: hashIdempotencyPayload({
+      path: '/inventory/consumptions',
+      query: {},
+      body: {
+        encounterId: fixture.encounterId,
+        inventoryItemId: fixture.itemId,
+        quantity: 2,
+        sourceEntityType: 'inpatient_stay',
+        sourceEntityId: fixture.stayId
+      }
+    }),
     idempotencyResponseStatus: 201,
     idempotencyResponseContainsEncounter: true,
     outboxStatus: 'completed',
     outboxAttempts: attempts,
     outboxLeaseVersion: 2
   });
+  expect(row?.billingSourceEntityId).toBe(row?.consumptionId);
 }
 
 beforeAll(async () => {
@@ -693,6 +719,23 @@ describe('inpatient domain child-process SIGKILL/takeover boundary', () => {
       });
       expect(await workerA.waitForClose()).toEqual({ code: 0, signal: null });
       expect(workerA.stderr()).toBe('');
+
+      const divergentReplay = await requestJson<{ readonly code?: string }>(
+        '/inventory/consumptions',
+        {
+          method: 'POST',
+          headers: { ...authHeaders(), 'idempotency-key': fixture.idempotencyKey },
+          body: JSON.stringify({
+            encounterId: fixture.encounterId,
+            inventoryItemId: fixture.itemId,
+            quantity: 3,
+            sourceEntityType: 'inpatient_stay',
+            sourceEntityId: fixture.stayId
+          })
+        }
+      );
+      expect(divergentReplay.status).toBe(409);
+      expect(divergentReplay.body).toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' });
       await assertReconciled(2);
     },
     60_000

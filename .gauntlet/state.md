@@ -759,3 +759,22 @@ Crítica independente fresca continua obrigatória antes de marcar a rodada como
 VERIFIED. O stop decision segue `ACTIVE`; não há promoção do ERP, produção,
 paridade, operações ou release. Próximo gap: billing `sourceEntityId`/hash,
 dois tenants/A-B e hidratação cross-instance.
+
+## Gauntlet iteration — billing source/hash e replay divergente — 24/08/2026
+
+O harness agora exige que o billing seja ligado explicitamente ao
+`inventory_consumption.id`, compara `request_hash` ao SHA-256 completo do
+envelope canônico `{path, query, body}` e envia replay com `quantity=3` pela API
+real, esperando `409 IDEMPOTENCY_CONFLICT` sem novos efeitos.
+
+O primeiro RED encontrou o contrato correto do hash: o dispatcher inclui path e
+query; o body cru produziria um digest diferente. A asserção foi alinhada ao
+canonicalizer compartilhado. Não houve correção de produção porque a rota/UoW
+já estavam corretos; a lacuna era a ausência de prova no boundary processual.
+GREEN: **4/4 testes em 125,96 s**, exit 0, em PostgreSQL efêmero novo; SIGKILL
+e stale-owner continuam verdes e a reconciliação confirma uma cadeia única.
+
+Artefato: `.agent/artifacts/CVG-002C6-billing-source-hash-2026-08-24.md`.
+A crítica independente fresca rerodou o slice, retornou `APPROVE bounded` e
+não encontrou P0/P1; falta somente publicar e reconciliar o SHA. Stop
+decision segue `ACTIVE` e o próximo gap permanece A/B/hydration/failpoints.
