@@ -225,12 +225,14 @@ cross-domain, preservando `CVG-002C6=IN_PROGRESS/PARTIAL`.
 
 ## Publicação reconciliada — 22:41 BRT
 
-A auditoria global e os ponteiros de continuidade foram publicados em
-`a4b85624653314b06aa951e8046664852a7a9c56` (`docs: consolidate global audit handoff`).
-O `git fetch` confirmou `HEAD == origin/agent/sync-v4-full-program`; somente o
-cache user-owned `packages/design-system/tsconfig.vue.tsbuildinfo` permanece
-dirty e fora do stage. A próxima sessão deve começar pelo handoff global e
-seguir stale-owner A vivo, A/B/hidratação e a matriz de failpoints.
+A auditoria global foi publicada em
+`a4b85624653314b06aa951e8046664852a7a9c56` (`docs: consolidate global audit handoff`)
+e a reconciliação documental seguinte em `b41e938` (`docs: reconcile audit
+handoff publication`). Para o ponteiro atual, a próxima sessão deve executar
+`git fetch` e comparar `HEAD` com `origin/agent/sync-v4-full-program`. Somente
+o cache user-owned `packages/design-system/tsconfig.vue.tsbuildinfo` permanece
+dirty e fora do stage. O trabalho deve seguir pelo handoff global, stale-owner
+A vivo, A/B/hidratação e a matriz de failpoints.
 
 ## Publicação final desta sessão — 22:12 BRT
 
