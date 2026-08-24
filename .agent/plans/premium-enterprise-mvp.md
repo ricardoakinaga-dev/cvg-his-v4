@@ -641,3 +641,16 @@ link-check encontrou 81 Markdown e zero links locais quebrados; JSON, Prettier e
 diff-check passaram. O plano continua `IN_PROGRESS/PARTIAL`; esta publicação
 apenas torna a continuidade rastreável e não fecha ERP, produção, paridade,
 operações ou release.
+
+Plan revision note, 2026-08-24 (cash-receipt concurrency): a nova prova
+processual iniciou duas APIs reais em PIDs distintos, sincronizou a corrida por
+um advisory lock PostgreSQL com um backend `granted` e outro `waiting`, exigiu
+`201/409`, reconciliação financeira única e zero residue do tenant B. O primeiro
+critic encontrou a barreira insuficiente; após a correção, a crítica final foi
+`APPROVE` com confiança alta. Lead: concorrência 1/1 em 41,02 s e SIGKILL
+regressão 1/1 em 61,96 s; typecheck 70/70 e secrets passaram. Evidência em
+`.agent/artifacts/CVG-002C6-cash-receipt-concurrency-2026-08-24.md` e handoff em
+`docs/2026-08-24-handoff-cash-receipt-concurrency.md`. O plano segue
+`IN_PROGRESS/PARTIAL`; o próximo P1 é promover a matriz processual ao CI com
+execução serializada, enquanto bootstrap simultâneo, Helm, PIX/RLS, webhook,
+paridade, UX, operações e release continuam abertos.

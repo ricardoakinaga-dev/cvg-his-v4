@@ -783,3 +783,26 @@ passaram. O resultado é somente continuidade documental: stop decision ACTIVE,
 ERP/produção/paridade/operações/release continuam `IN_PROGRESS/PARTIAL`. O
 próximo ciclo permanece Helm renderizado em runner autorizado, seguido de
 concorrência/takeover de receipt e PIX/RLS/webhook.
+
+## Quality Bar v1 — cash-receipt concurrency round — 24/08/2026
+
+Antes da implementação, a rodada foi congelada contra quatro critérios:
+`QB-REC-RACE-01` exige exatamente um `201` e um `409` em duas APIs reais;
+`QB-REC-RACE-02` exige `404` cross-tenant e um único grafo financeiro/audit/
+outbox persistido; `QB-REC-RACE-03` exige harness isolado, entrypoint real,
+barreiras determinísticas e cleanup seguro; `QB-REC-REG-01` exige que o teste
+SIGKILL existente permaneça verde. O teste ausente é o baseline conhecido-ruim;
+esta rodada não promove CVG-002C6, ERP, produção, paridade, operações ou
+release. A inclusão no `test:critical` fica para uma rodada posterior, após
+medir serialização, timeout e isolamento de banco.
+
+## Round result — cash-receipt concurrency — 24/08/2026
+
+O primeiro critic rejeitou a observação de lock único; a correção passou a
+exigir um backend `granted` e outro `waiting` no mesmo advisory key. A crítica
+independente final aprovou `QB-REC-RACE-01/02/03` e `QB-REC-REG-01`. A execução
+Lead passou concorrência `1/1` em 41,02 s e a regressão SIGKILL `1/1` em 61,96 s;
+Prettier, ESLint, secrets, typecheck 70/70, link-check ativo e diff-check
+passaram. O resultado é bounded: o novo teste ainda não é gate de
+`test:critical`, o bootstrap simultâneo continua separado e as barras globais
+permanecem `IN_PROGRESS/PARTIAL`.

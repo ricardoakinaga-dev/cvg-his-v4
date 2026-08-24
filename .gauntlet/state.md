@@ -873,3 +873,35 @@ links; docs JSON parsing, Prettier and diff checks passed. Stop decision remains
 ACTIVE. The next session should read the cash-receipt handoff, worker handoff,
 global audit and short checkpoint before continuing Helm-rendered validation,
 receipt concurrency/takeover and PIX/RLS/webhook work.
+
+## Quality Bar v1 — cash-receipt concurrency round — 24/08/2026
+
+This round is frozen before implementation and is narrower than the global ERP
+bar. It targets the highest open correctness gap in `CVG-002C6`, while all
+global gates remain `IN_PROGRESS/PARTIAL`.
+
+| ID | Required target | Evidence | Priority |
+|---|---|---|---|
+| `QB-REC-RACE-01` | Two real API processes receive concurrent public requests for the same tenant-A encounter with distinct idempotency keys; responses are exactly one `201` and one domain `409`, with no `500` or duplicate success. | Fresh Vitest process test against disposable PostgreSQL, two serving PIDs and HTTP responses. | P0 |
+| `QB-REC-RACE-02` | Tenant B cannot address A's encounter/register (`404`); database has exactly one receipt/payment/cash movement/journal entry, two balanced journal lines, one audit/outbox graph and no completed losing-key effect. | SQL reconciliation after the concurrent requests under restricted `NOBYPASSRLS` roles. | P0 |
+| `QB-REC-RACE-03` | The harness is representative and safe: isolated database suffix, real entrypoint, distinct process cleanup, deterministic barriers, no production credentials or mutations. | Direct fixture/test inspection plus command output and cleanup observation. | P0 |
+| `QB-REC-REG-01` | Existing SIGKILL rollback/restart/replay proof remains green after the race test is added. | Fresh rerun of `inpatient-cash-receipt-sigkill.test.ts`. | P1 |
+
+Known-bad baseline: the new concurrency test path is absent at HEAD and must
+fail to resolve before the Builder creates it. A green test alone does not
+promote `CVG-002C6`, ERP, production, parity, operations or release. A later
+round may promote the proven process matrix into CI after serialized runtime,
+timeout and database-isolation costs are measured.
+
+## Round result — cash-receipt concurrency — 24/08/2026
+
+The Builder added only `tests/integration/process/inpatient-cash-receipt-concurrency.test.ts`.
+An independent critic first rejected the weak single-lock observation; after the
+barrier was changed to require one granted and one waiting backend on the same
+advisory key, a fresh critic approved all four criteria. Lead reruns passed the
+concurrency test in `receipt_concurrency_lead_final` (1/1, exit 0, 41.02s) and
+the SIGKILL regression in `receipt_concurrency_regression` (1/1, exit 0,
+61.96s). Prettier, ESLint, secrets, typecheck 70/70, active-doc link-check and
+diff-check passed. The stop decision remains ACTIVE; the test is not yet a
+`test:critical` gate, and simultaneous replica bootstrap remains a separate
+startup-idempotency gap.

@@ -413,3 +413,28 @@ Portanto a Quality Bar desta página não muda de estado: `QB-CORE-01` continua
 `CVG-002C6`, ERP, produção e release permanecem `IN_PROGRESS/PARTIAL`. A próxima
 ação é expandir failpoints, concorrência e takeover em admission→receipt; depois
 PIX PostgreSQL/RLS e webhook retry/DLQ/lease fencing.
+
+## Atualização de execução — concorrência de cash receipt — 24/08/2026
+
+O handoff [`2026-08-24-handoff-cash-receipt-concurrency.md`](2026-08-24-handoff-cash-receipt-concurrency.md)
+fecha uma prova adicional `GREEN bounded`: duas APIs reais com PIDs distintos,
+duas chaves de idempotência e uma barreira PostgreSQL que observa o mesmo
+advisory lock em estado `granted` e `waiting` antes de liberar a corrida. O
+resultado foi exatamente um `201` e um `409`; tenant B recebeu `404` e a
+reconciliação exige zero de todos os efeitos financeiros, de auditoria, outbox
+e idempotência no tenant B. O débito e crédito de A permanecem balanceados em
+`260`.
+
+Lead e crítica independente rerodaram a suíte de concorrência e o SIGKILL em
+bancos efêmeros distintos, ambos `1/1` com exit `0`; Prettier, ESLint,
+`pnpm security:secrets`, `pnpm typecheck` (70/70) e `git diff --check` também
+passaram. A prova ainda usa `NODE_ENV=test`, inicia os processos
+sequencialmente por uma colisão de seed laboratorial conhecida e não foi
+incluída no `test:critical`.
+
+Assim, `QB-CORE-01` ganha evidência bounded de concorrência, mas continua
+`PARTIAL`; todos os demais gates globais conservam os estados reconciliados.
+`CVG-002C6`, ERP, produção e release permanecem `IN_PROGRESS/PARTIAL`. O
+próximo gate executável é o runner serializado da matriz processual no CI;
+startup horizontal idempotente, Helm renderizado, PIX/RLS e webhook
+retry/DLQ/fencing continuam abertos.

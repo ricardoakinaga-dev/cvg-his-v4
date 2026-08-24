@@ -70,3 +70,12 @@ Na retomada:
    retry/DLQ/lease fencing.
 4. Manter o cache do usuário
    `packages/design-system/tsconfig.vue.tsbuildinfo` fora do stage.
+
+## Handoff subsequente
+
+A concorrência entre duas APIs foi posteriormente exercitada e publicada em
+[`2026-08-24-handoff-cash-receipt-concurrency.md`](2026-08-24-handoff-cash-receipt-concurrency.md),
+com barreira PostgreSQL `granted`/`waiting`, isolamento B e crítica
+independente. Para a continuidade atual, esse handoff substitui esta página
+como ponteiro mais recente; os limites globais e o status `IN_PROGRESS/PARTIAL`
+permanecem inalterados.
