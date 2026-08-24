@@ -375,9 +375,6 @@ describe('encounter cash receipt migration and constraints', () => {
       await client.query('BEGIN');
       fixture = await insertCashReceiptFixture(client);
       await client.query('SET CONSTRAINTS encounter_cash_receipts_consistency_trigger IMMEDIATE');
-      await client.query('COMMIT');
-
-      await client.query('BEGIN');
       await client.query(
         `UPDATE cash_registers
          SET status = 'closed', closed_at = clock_timestamp(),
@@ -388,9 +385,8 @@ describe('encounter cash receipt migration and constraints', () => {
       await expect(
         client.query('SET CONSTRAINTS encounter_cash_receipts_register_recheck_trigger IMMEDIATE')
       ).resolves.toBeDefined();
-      await client.query('COMMIT');
 
-      await client.query('BEGIN');
+      await client.query('SAVEPOINT immutable_receipt_update');
       await expect(
         client.query(
           `UPDATE encounter_cash_receipts
@@ -399,15 +395,14 @@ describe('encounter cash receipt migration and constraints', () => {
           [fixture.receiptId]
         )
       ).rejects.toThrow(/financial proof is immutable/);
-      await client.query('ROLLBACK');
+      await client.query('ROLLBACK TO SAVEPOINT immutable_receipt_update');
 
-      await client.query('BEGIN');
+      await client.query('SAVEPOINT append_only_receipt_delete');
       await expect(
         client.query('DELETE FROM encounter_cash_receipts WHERE id = $1', [fixture.receiptId])
       ).rejects.toThrow(/append-only/);
-      await client.query('ROLLBACK');
+      await client.query('ROLLBACK TO SAVEPOINT append_only_receipt_delete');
 
-      await client.query('BEGIN');
       await client.query(
         `UPDATE encounter_cash_receipts SET notes = 'Drawer closed after receipt' WHERE id = $1`,
         [fixture.receiptId]
@@ -415,9 +410,8 @@ describe('encounter cash receipt migration and constraints', () => {
       await expect(
         client.query('SET CONSTRAINTS encounter_cash_receipts_consistency_trigger IMMEDIATE')
       ).resolves.toBeDefined();
-      await client.query('COMMIT');
 
-      await client.query('BEGIN');
+      await client.query('SAVEPOINT payment_recheck');
       await client.query(
         `UPDATE encounter_receivable_payments SET amount_paid = amount_paid - 1 WHERE id = $1`,
         [fixture.receivablePaymentId]
@@ -425,9 +419,9 @@ describe('encounter cash receipt migration and constraints', () => {
       await expect(
         client.query('SET CONSTRAINTS encounter_cash_receipts_payment_recheck_trigger IMMEDIATE')
       ).rejects.toThrow(/Encounter cash receipt .* inconsistent/);
-      await client.query('ROLLBACK');
+      await client.query('ROLLBACK TO SAVEPOINT payment_recheck');
 
-      await client.query('BEGIN');
+      await client.query('SAVEPOINT journal_recheck');
       await client.query(
         `DELETE FROM financial_journal_lines
          WHERE id = (
@@ -443,17 +437,9 @@ describe('encounter cash receipt migration and constraints', () => {
           'SET CONSTRAINTS encounter_cash_receipts_journal_lines_recheck_trigger IMMEDIATE'
         )
       ).rejects.toThrow(/Encounter cash receipt .* inconsistent/);
-      await client.query('ROLLBACK');
+      await client.query('ROLLBACK TO SAVEPOINT journal_recheck');
     } finally {
       await client.query('ROLLBACK').catch(() => undefined);
-      if (fixture) {
-        await client.query('SET session_replication_role = replica');
-        try {
-          await client.query('DELETE FROM accounts WHERE id = $1', [fixture.accountId]);
-        } finally {
-          await client.query('SET session_replication_role = origin');
-        }
-      }
       client.release();
     }
   });
