@@ -534,3 +534,16 @@ P0; registrou como P1 futuro a prova de duas execuções críticas concorrentes 
 backoff/jitter do retry de inventário. O plano segue `IN_PROGRESS/PARTIAL`: os
 gates globais, paridade Vetus, providers, SPA/WCAG, operações e release não
 foram promovidos.
+
+Plan revision note, 2026-08-24 (stale-owner A-alive fencing): o RED novo falhou
+2/2 porque o fixture não expunha a perda da lease no `completeClaim` tardio.
+Após a implementação da barreira de teste `SIGUSR2` e do evento explícito
+`leaseLost`, a suíte do processo passou **4/4 testes em 1 arquivo**, exit 0,
+em PostgreSQL efêmero novo. Os quatro casos cobrem os dois SIGKILL anteriores e
+os dois cenários em que A permanece vivo, B assume `leaseVersion=2`, B conclui,
+e A é liberado e rejeitado pelo CAS stale. A reconciliação SQL confirma uma
+única cadeia de consumo/billing/audit/outbox, stock 8, idempotência 1,
+attempts 2 e `lease_version=2`; Prettier e ESLint passaram. Evidência:
+`.agent/artifacts/CVG-002C6-stale-owner-a-alive-2026-08-24.md`. A rodada ainda
+exige crítica independente fresca e não fecha a jornada completa, A/B entre
+tenants, hydration cross-instance, PIX/webhook ou os gates globais.

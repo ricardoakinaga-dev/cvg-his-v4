@@ -259,3 +259,33 @@ O commit documental de ponteiro `4ee4afc` (`docs: record critical gates
 publication`) sucedeu o commit de implementação acima e também foi enviado ao
 remoto. Como o branch pode avançar com novos checkpoints, a próxima sessão
 deve sempre repetir `git fetch` e comparar `HEAD` com `origin`.
+
+## Atualização de execução — stale-owner A vivo — 24/08/2026
+
+O próximo gap P0 foi fechado apenas no limite de evidência do fixture de
+processo. O RED novo falhou em **2/2** porque o child process não expunha o
+resultado da tentativa de `completeClaim` depois da perda da lease. A fixture
+agora tem uma barreira de pausa controlada por `SIGUSR2` (somente em teste) e
+publica `leaseLost` a partir do retorno real do CAS.
+
+O GREEN foi executado contra PostgreSQL efêmero novo:
+
+```text
+1 arquivo, 4/4 testes, exit 0, 233,66 s
+```
+
+Os quatro casos incluem os dois checkpoints SIGKILL já existentes e os dois
+casos em que A permanece vivo em `after_claim` e
+`after_domain_command_before_cas`. A prova confirma PIDs distintos, lease
+`1 → 2`, B concluindo, A ainda vivo até ser liberado, `outboxCompletion=false`
+e `leaseLost=true` no CAS tardio. A reconciliação SQL confirma uma única
+consumption/billing/audit/outbox, estoque `8`, idempotência `1`, attempts `2`
+e `lease_version=2`; Prettier e ESLint dos arquivos alterados passaram.
+
+Artefato: [`../.agent/artifacts/CVG-002C6-stale-owner-a-alive-2026-08-24.md`](../.agent/artifacts/CVG-002C6-stale-owner-a-alive-2026-08-24.md).
+
+Isso reduz a lacuna de fencing, mas não promove `CVG-002C6`, o ERP ou
+produção. Ainda faltam crítica independente fresca, billing
+`sourceEntityId`/hash canônico e replay divergente, dois tenants/A-B/spoofing,
+hidratação cross-instance, failpoints completos, PIX/RLS, webhook retry/DLQ e
+os gates de paridade, SPA/WCAG, providers, operações e release.

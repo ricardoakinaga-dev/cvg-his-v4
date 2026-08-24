@@ -658,3 +658,17 @@ dois P1 de endurecimento: prova de execuções críticas simultâneas/lock e
 backoff/jitter no retry de inventário. O próximo workstream permanece
 stale-owner A vivo → source/hash → A/B/hidratação → failpoints cross-domain;
 paridade, providers, SPA/WCAG, operações e release continuam abertos.
+
+## Stale-owner A-alive — 24/08/2026
+
+O RED/GREEN do próximo gap P0 foi executado. O RED falhou em 2/2 porque o
+fixture não observava o resultado de `completeClaim` stale. Após adicionar a
+barreira `SIGUSR2` somente de teste e o campo `leaseLost`, a suíte integral do
+arquivo passou **4/4** em banco efêmero novo: os cenários SIGKILL antigos e os
+cenários A-alive em `after_claim`/`after_domain_command_before_cas`. A prova
+confirma PIDs distintos, lease `1 → 2`, A vivo enquanto B completa, rejeição do
+CAS tardio de A e uma única reconciliação de efeitos.
+
+Artefato: `.agent/artifacts/CVG-002C6-stale-owner-a-alive-2026-08-24.md`.
+Ainda falta crítica independente fresca e o resultado não cobre dois tenants,
+hydration cross-instance, produção ou a jornada completa.

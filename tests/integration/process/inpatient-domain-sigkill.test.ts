@@ -58,6 +58,7 @@ interface DomainProcess {
   readonly pid: number;
   readonly events: () => readonly ProcessEvent[];
   readonly stderr: () => string;
+  resume(): void;
   waitFor(event: string, timeoutMs?: number): Promise<ProcessEvent>;
   waitForClose(): Promise<{ readonly code: number | null; readonly signal: NodeJS.Signals | null }>;
   kill(signal: NodeJS.Signals): Promise<{
@@ -119,6 +120,7 @@ function startDomainProcess(options: {
   readonly workerId: string;
   readonly checkpoint?: Checkpoint;
   readonly exitAfterResult?: boolean;
+  readonly pauseUntilSignal?: boolean;
 }): DomainProcess {
   const child = spawn(process.execPath, ['--import', 'tsx/esm', processFixturePath], {
     cwd: resolve(__dirname, '../../..'),
@@ -135,6 +137,7 @@ function startDomainProcess(options: {
       DOMAIN_WORKER_ID: options.workerId,
       DOMAIN_LEASE_MS: String(LEASE_MS),
       DOMAIN_CHECKPOINT: options.checkpoint ?? '',
+      DOMAIN_PAUSE_UNTIL_SIGNAL: options.pauseUntilSignal ? '1' : '0',
       DOMAIN_EXIT_AFTER_RESULT: options.exitAfterResult ? '1' : '0'
     },
     stdio: ['ignore', 'ignore', 'pipe', 'pipe']
@@ -206,6 +209,10 @@ function startDomainProcess(options: {
     pid: child.pid,
     events: () => Object.freeze([...events]),
     stderr: () => stderr,
+    resume() {
+      if (closeResult) throw new Error(`cannot resume closed child PID ${child.pid}`);
+      if (!child.kill('SIGUSR2')) throw new Error(`failed to send SIGUSR2 to PID ${child.pid}`);
+    },
     waitFor(event, timeoutMs = 15_000) {
       const existing = events.find((candidate) => candidate.event === event);
       if (existing) return Promise.resolve(existing);
@@ -456,6 +463,7 @@ async function assertReconciled(attempts: number): Promise<void> {
     readonly idempotencyResponseContainsEncounter: boolean;
     readonly outboxStatus: string;
     readonly outboxAttempts: number;
+    readonly outboxLeaseVersion: number;
   }>(
     `SELECT
        (SELECT COUNT(*)::int FROM inventory_consumptions WHERE account_id = $1 AND encounter_id = $2
@@ -487,7 +495,8 @@ async function assertReconciled(attempts: number): Promise<void> {
        (SELECT convert_from(decode(response_body->>'bodyBase64', 'base64'), 'utf8')
           LIKE '%' || $2::text || '%' FROM idempotency_requests WHERE account_id = $1
           AND idempotency_key = $4 AND status = 'completed' LIMIT 1) AS "idempotencyResponseContainsEncounter",
-       event.status AS "outboxStatus", event.attempts AS "outboxAttempts"
+       event.status AS "outboxStatus", event.attempts AS "outboxAttempts",
+       event.lease_version::int AS "outboxLeaseVersion"
        FROM outbox_events event WHERE event.account_id = $1 AND event.id = $5`,
     [
       fixture.accountId,
@@ -513,7 +522,8 @@ async function assertReconciled(attempts: number): Promise<void> {
     idempotencyResponseStatus: 201,
     idempotencyResponseContainsEncounter: true,
     outboxStatus: 'completed',
-    outboxAttempts: attempts
+    outboxAttempts: attempts,
+    outboxLeaseVersion: 2
   });
 }
 
@@ -582,6 +592,7 @@ describe('inpatient domain child-process SIGKILL/takeover boundary', () => {
       });
       const checkpointA = await workerA.waitFor('DOMAIN_CHECKPOINT');
       expect(checkpointA.payload.checkpoint).toBe(checkpoint);
+      expect(Number(checkpointA.payload.leaseVersion)).toBe(1);
 
       if (checkpoint === 'after_domain_command_before_cas') {
         const commandResult = await workerA.waitFor('DOMAIN_COMMAND_RESULT');
@@ -603,12 +614,12 @@ describe('inpatient domain child-process SIGKILL/takeover boundary', () => {
       });
       const readyB = await workerB.waitFor('DOMAIN_READY');
       expect(Number(readyB.payload.pid)).toBe(workerB.pid);
+      expect(workerB.pid).not.toBe(workerA.pid);
       expect(readyB.payload).toMatchObject({
         currentUser: WORKER_ROLE,
         rolsuper: false,
         rolbypassrls: false
       });
-      expect(workerB.pid).not.toBe(workerA.pid);
       const resultB = await workerB.waitFor('DOMAIN_RESULT');
       expect(resultB.payload).toMatchObject({
         httpStatus: 201,
@@ -616,6 +627,72 @@ describe('inpatient domain child-process SIGKILL/takeover boundary', () => {
       });
       expect(await workerB.waitForClose()).toEqual({ code: 0, signal: null });
       expect(workerB.stderr()).toBe('');
+      await assertReconciled(2);
+    },
+    60_000
+  );
+
+  it.each(['after_claim', 'after_domain_command_before_cas'] as const)(
+    'fences a stale owner while process A is still alive at %s',
+    async (checkpoint) => {
+      const workerA = startDomainProcess({
+        workerId: `domain-stale-a-${checkpoint}`,
+        checkpoint,
+        pauseUntilSignal: true,
+        exitAfterResult: true
+      });
+      const readyA = await workerA.waitFor('DOMAIN_READY');
+      expect(Number(readyA.payload.pid)).toBe(workerA.pid);
+      expect(readyA.payload).toMatchObject({
+        currentUser: WORKER_ROLE,
+        rolsuper: false,
+        rolbypassrls: false
+      });
+      const checkpointA = await workerA.waitFor('DOMAIN_CHECKPOINT');
+      expect(checkpointA.payload.checkpoint).toBe(checkpoint);
+      expect(Number(checkpointA.payload.leaseVersion)).toBe(1);
+
+      if (checkpoint === 'after_domain_command_before_cas') {
+        await expect(workerA.waitFor('DOMAIN_COMMAND_RESULT')).resolves.toMatchObject({
+          payload: { httpStatus: 201 }
+        });
+      }
+
+      await waitForLeaseExpiry();
+      const workerB = startDomainProcess({
+        workerId: `domain-stale-b-${checkpoint}`,
+        exitAfterResult: true
+      });
+      const readyB = await workerB.waitFor('DOMAIN_READY');
+      expect(Number(readyB.payload.pid)).toBe(workerB.pid);
+      expect(workerB.pid).not.toBe(workerA.pid);
+      expect(readyB.payload).toMatchObject({
+        currentUser: WORKER_ROLE,
+        rolsuper: false,
+        rolbypassrls: false
+      });
+      const checkpointB = await workerB.waitFor('DOMAIN_CHECKPOINT');
+      expect(Number(checkpointB.payload.leaseVersion)).toBe(2);
+      const resultB = await workerB.waitFor('DOMAIN_RESULT');
+      expect(resultB.payload).toMatchObject({
+        httpStatus: 201,
+        outboxCompletion: true,
+        leaseLost: false
+      });
+      expect(await workerB.waitForClose()).toEqual({ code: 0, signal: null });
+      expect(workerB.stderr()).toBe('');
+      expect(workerA.child.exitCode).toBeNull();
+      expect(workerA.child.signalCode).toBeNull();
+
+      workerA.resume();
+      const resultA = await workerA.waitFor('DOMAIN_RESULT');
+      expect(resultA.payload).toMatchObject({
+        httpStatus: 201,
+        outboxCompletion: false,
+        leaseLost: true
+      });
+      expect(await workerA.waitForClose()).toEqual({ code: 0, signal: null });
+      expect(workerA.stderr()).toBe('');
       await assertReconciled(2);
     },
     60_000

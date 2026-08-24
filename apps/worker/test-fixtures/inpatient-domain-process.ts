@@ -14,6 +14,7 @@ const accessToken = process.env.DOMAIN_ACCESS_TOKEN?.trim();
 const workerId = process.env.DOMAIN_WORKER_ID?.trim() || `domain-process-${process.pid}`;
 const checkpoint = process.env.DOMAIN_CHECKPOINT?.trim();
 const leaseMs = Number(process.env.DOMAIN_LEASE_MS ?? '1000');
+const pauseUntilSignal = process.env.DOMAIN_PAUSE_UNTIL_SIGNAL === '1';
 const exitAfterResult = process.env.DOMAIN_EXIT_AFTER_RESULT === '1';
 
 interface DomainPayload {
@@ -31,6 +32,20 @@ function writeEvent(event: string, payload: Record<string, unknown> = {}): void 
 
 function waitForever(): Promise<void> {
   return new Promise(() => undefined);
+}
+
+function waitForResumeSignal(): Promise<void> {
+  return new Promise((resolve) => {
+    const resume = (): void => {
+      process.off('SIGUSR2', resume);
+      resolve();
+    };
+    process.on('SIGUSR2', resume);
+  });
+}
+
+function waitAtCheckpoint(): Promise<void> {
+  return pauseUntilSignal ? waitForResumeSignal() : waitForever();
 }
 
 function validateConfig(): void {
@@ -148,7 +163,7 @@ async function main(): Promise<void> {
       eventId: claim.event.id,
       leaseVersion: claim.leaseVersion
     });
-    if (checkpoint === 'after_claim') await waitForever();
+    if (checkpoint === 'after_claim') await waitAtCheckpoint();
 
     const commandResult = await requestInventoryConsumption(claim.event.payload as DomainPayload);
     writeEvent('DOMAIN_COMMAND_RESULT', {
@@ -156,14 +171,15 @@ async function main(): Promise<void> {
       httpStatus: commandResult.status,
       body: commandResult.body
     });
-    if (checkpoint === 'after_domain_command_before_cas') await waitForever();
+    if (checkpoint === 'after_domain_command_before_cas') await waitAtCheckpoint();
 
     const outboxCompletion = await repository.completeClaim(claim, new Date().toISOString());
     writeEvent('DOMAIN_RESULT', {
       pid: process.pid,
       httpStatus: commandResult.status,
       body: commandResult.body,
-      outboxCompletion
+      outboxCompletion,
+      leaseLost: !outboxCompletion
     });
   });
 

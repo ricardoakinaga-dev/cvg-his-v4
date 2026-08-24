@@ -287,3 +287,25 @@ O commit documental de ponteiro `4ee4afc` (`docs: record critical gates
 publication`) sucedeu o commit de implementação `d23120a` e foi enviado ao
 remoto. Como o branch pode avançar com novos checkpoints, a próxima sessão
 deve sempre repetir `git fetch` e comparar `HEAD` com `origin`.
+
+## Stale-owner A vivo — evidência executável de 24/08/2026
+
+O RED de fencing com A vivo falhou **2/2** antes da alteração porque o fixture
+não publicava a perda da lease no `completeClaim` tardio. A implementação
+adicionou uma barreira de teste `SIGUSR2` e o campo `leaseLost`, sem alterar o
+contrato de produção.
+
+O GREEN atual passou **4/4 testes em 1 arquivo**, exit 0, em PostgreSQL
+efêmero novo. Em `after_claim` e
+`after_domain_command_before_cas`, A permanece vivo, a lease expira, B assume
+com `leaseVersion=2` e conclui; só então A é liberado e seu CAS retorna
+`outboxCompletion=false`/`leaseLost=true`. A SQL confirma uma única cadeia de
+efeitos, estoque 8, idempotência 1, attempts 2 e `lease_version=2`. Os dois
+casos SIGKILL preexistentes continuam verdes. Prettier e ESLint passaram.
+
+Artefato: [`../.agent/artifacts/CVG-002C6-stale-owner-a-alive-2026-08-24.md`](../.agent/artifacts/CVG-002C6-stale-owner-a-alive-2026-08-24.md).
+
+Estado permanece `CVG-002C6=IN_PROGRESS/PARTIAL` até crítica independente
+fresca e até fechar source/hash de billing, dois tenants/A-B, hydration
+cross-instance e failpoints da jornada admission→receipt. Não promover ERP,
+produção, paridade, operações ou release.

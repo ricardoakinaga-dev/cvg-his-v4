@@ -736,3 +736,26 @@ O revisor independente não encontrou P0. P1 futuro: evidenciar duas execuções
 críticas simultâneas (ou adicionar lock externo) e avaliar backoff/jitter no
 retry de inventário. Stop decision continua `ACTIVE`; CVG-002C6, ERP,
 paridade, produção, operações e release permanecem `IN_PROGRESS/PARTIAL`.
+
+## Gauntlet iteration — stale-owner A-alive fencing — 24/08/2026
+
+O novo RED de `CVG-002C6` adicionou dois cenários em que o processo A real fica
+vivo e pausado após claim ou após o comando HTTP, a lease expira, e um processo
+B assume com `leaseVersion = 2`. Antes da implementação, ambos os cenários
+falharam porque o fixture não expunha o resultado stale (`leaseLost`),
+confirmando uma lacuna real de evidência.
+
+O fixture agora tem uma barreira de teste controlada por `SIGUSR2` e publica o
+resultado do `completeClaim` efetivo. A execução GREEN em banco PostgreSQL
+efêmero novo passou **4/4 testes em 1 arquivo**, exit 0, incluindo os dois
+SIGKILL existentes e os dois stale-owner-A-alive. As asserções verificam PIDs
+distintos, lease `1 → 2`, A ainda vivo após B concluir, `outboxCompletion=false`
+para A, e reconciliação SQL de um único consumo/billing/audit/outbox, stock 8,
+idempotência 1, attempts 2 e `lease_version=2`. Prettier e ESLint dos arquivos
+alterados passaram.
+
+Artefato: `.agent/artifacts/CVG-002C6-stale-owner-a-alive-2026-08-24.md`.
+Crítica independente fresca continua obrigatória antes de marcar a rodada como
+VERIFIED. O stop decision segue `ACTIVE`; não há promoção do ERP, produção,
+paridade, operações ou release. Próximo gap: billing `sourceEntityId`/hash,
+dois tenants/A-B e hidratação cross-instance.
