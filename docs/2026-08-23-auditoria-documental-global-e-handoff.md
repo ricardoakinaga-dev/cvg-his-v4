@@ -289,3 +289,13 @@ produção. Ainda faltam crítica independente fresca, billing
 `sourceEntityId`/hash canônico e replay divergente, dois tenants/A-B/spoofing,
 hidratação cross-instance, failpoints completos, PIX/RLS, webhook retry/DLQ e
 os gates de paridade, SPA/WCAG, providers, operações e release.
+
+### Publicação reconciliada — stale-owner — 24/08/2026
+
+O commit de implementação e evidência `af4bf20`
+(`test: prove stale-owner fencing with live worker`) foi enviado ao GitHub.
+O `git fetch` pós-push confirmou
+`HEAD == origin/agent/sync-v4-full-program` em
+`af4bf20e2c2fbbbf716bd8a0fba13a008af88c54`. O único caminho dirty continua
+sendo o cache user-owned
+`packages/design-system/tsconfig.vue.tsbuildinfo`, preservado fora do stage.

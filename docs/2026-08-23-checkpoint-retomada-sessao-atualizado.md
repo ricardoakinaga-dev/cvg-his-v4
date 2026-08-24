@@ -309,3 +309,12 @@ Estado permanece `CVG-002C6=IN_PROGRESS/PARTIAL` até crítica independente
 fresca e até fechar source/hash de billing, dois tenants/A-B, hydration
 cross-instance e failpoints da jornada admission→receipt. Não promover ERP,
 produção, paridade, operações ou release.
+
+### SHA da publicação stale-owner
+
+O commit `af4bf20` (`test: prove stale-owner fencing with live worker`) foi
+publicado no GitHub. A próxima sessão deve executar `git fetch` e confirmar
+`HEAD == origin/agent/sync-v4-full-program`; a reconciliação desta rodada
+observou `af4bf20e2c2fbbbf716bd8a0fba13a008af88c54`. O cache
+`packages/design-system/tsconfig.vue.tsbuildinfo` continua dirty, user-owned e
+fora do stage.
