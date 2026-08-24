@@ -206,9 +206,10 @@ Commits publicados no GitHub:
 - `eccdacc` — `test: prove inpatient process takeover`;
 - `af499e3` — `docs: save session continuation checkpoint`.
 
-`git fetch` confirmou `HEAD == origin/agent/sync-v4-full-program` em
-`af499e3f0ff789471754684376ca70e3d6a6c740`. O único caminho dirty continua
-sendo `packages/design-system/tsconfig.vue.tsbuildinfo`, preservado fora do
-stage. A próxima sessão deve começar por este arquivo, `.agent/state.json`,
-`.agent/backlog.json` e o artefato do processo; o próximo gate é stale-owner/
-A-B/hidratação/failpoints, não uma promoção global.
+Os commits posteriores de reconciliação são apenas ponteiros de continuidade;
+o SHA exato do branch remoto deve ser confirmado pelo comando `git fetch` da
+seção de retomada e pelo último registro `VFY-DOCS-CONTINUATION`. O único
+caminho dirty continua sendo `packages/design-system/tsconfig.vue.tsbuildinfo`,
+preservado fora do stage. A próxima sessão deve começar por este arquivo,
+`.agent/state.json`, `.agent/backlog.json` e o artefato do processo; o próximo
+gate é stale-owner/A-B/hidratação/failpoints, não uma promoção global.

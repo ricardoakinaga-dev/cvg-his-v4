@@ -536,8 +536,9 @@ pendente; ela está corrigida nesta rodada. O gate segue bounded e
 
 O teste/fixture foi publicado em `eccdacc` (`test: prove inpatient process
 takeover`) e a documentação/control plane em `af499e3` (`docs: save session
-continuation checkpoint`). Fetch confirmou
-`HEAD=origin/agent/sync-v4-full-program=af499e3f0ff789471754684376ca70e3d6a6c740`.
+continuation checkpoint`). Os commits posteriores são somente reconciliações
+de ponteiro; confirme o SHA atual com `git fetch` e `git rev-parse`, conforme o
+último registro `VFY-DOCS-CONTINUATION`.
 Só `packages/design-system/tsconfig.vue.tsbuildinfo` permanece dirty e fora do
 stage. A retomada deve seguir stale-owner/A-B/hidratação/failpoints; não há
 promoção de `CVG-002C6`, ERP, produção ou release.

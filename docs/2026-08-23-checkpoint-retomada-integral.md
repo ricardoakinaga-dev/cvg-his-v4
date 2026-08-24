@@ -567,8 +567,9 @@ fica supersedida por este registro. O gate continua `IN_PROGRESS/PARTIAL`.
 
 O fixture/test foi publicado em `eccdacc` (`test: prove inpatient process
 takeover`) e o checkpoint/control plane em `af499e3` (`docs: save session
-continuation checkpoint`). Fetch confirmou
-`HEAD=origin/agent/sync-v4-full-program=af499e3f0ff789471754684376ca70e3d6a6c740`;
+continuation checkpoint`). Os commits posteriores são somente reconciliações
+de ponteiro; confirme o SHA atual com `git fetch` e `git rev-parse`, conforme o
+último registro `VFY-DOCS-CONTINUATION`;
 apenas o `packages/design-system/tsconfig.vue.tsbuildinfo` user-owned segue
 dirty e fora do stage. A próxima retomada é stale-owner/A-B/hidratação e
 failpoints, mantendo `CVG-002C6=IN_PROGRESS/PARTIAL` e todos os gates amplos
