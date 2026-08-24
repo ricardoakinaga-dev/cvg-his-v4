@@ -457,3 +457,41 @@ O controle documental final está no commit `3520c22` no branch
 iguais. A próxima sessão deve começar por este arquivo e pelo artefato do
 reteste, mantendo `CVG-002C6=IN_PROGRESS/PARTIAL`, a falha PIX no contexto
 integral e o cache user-owned fora do stage.
+
+## Harness crítico verde e retomada seguinte — 23/08/2026, 21:21 BRT
+
+O menor prefixo contaminante foi reproduzido e corrigido no commit `76d94a3`
+(`fix: isolate encounter cash receipt fixtures`). O teste de cash agora usa
+uma única transação, savepoints para erros esperados e rollback final; o
+`session_replication_role` foi removido. No mesmo banco descartável, o prefixo
+`encounter-cash-receipts` → `pix-service-principals` passou **30/30**.
+
+O full critical foi repetido com banco novo e comando serial sem cache. Resultado:
+migrations `0000–0123`, schema com 172 tabelas/43 enums/456 FKs, **28/28
+arquivos e 387/387 testes**, exit 0, 669,60 s; teardown concluído. O registro
+detalhado está em
+[`CVG-002C6-critical-harness-green-2026-08-23.md`](../.agent/artifacts/CVG-002C6-critical-harness-green-2026-08-23.md).
+
+Uma crítica independente fresca classificou a correção como **ACCEPT**:
+savepoints recuperam erros esperados, rollback remove toda a árvore do
+fixture, e FKs/constraints/RLS permanecem exercitadas. A limitação apontada é
+de cobertura: esse cenário não faz um `COMMIT` válido do receipt; adicionar uma
+prova de commit real é follow-up, sem relaxar constraints.
+
+Isto fecha apenas a validade do harness, não o ERP. `CVG-002C6`, `CVG-002`, a
+Quality Bar e as gates de produção/release continuam `IN_PROGRESS/PARTIAL`.
+Próxima retomada: fixture de domínio em child process com SIGKILL/takeover e
+failpoints completos; depois PIX PostgreSQL/RLS e webhook HTTP retry/DLQ/lease
+fencing. Hidratação cross-instance, RLS/FORCE RLS global, Redis/provider, SPA,
+paridade Vetus, WCAG, cobertura, operações, deploy/restore e release seguem
+abertos. O cache `packages/design-system/tsconfig.vue.tsbuildinfo` permanece
+fora do stage.
+
+## Validação documental desta publicação
+
+Após registrar a evidência verde, o checker canônico foi executado novamente:
+JSON/JSONL, campos de estado, backlog e reconciliação ativa passam; o resultado
+global permanece `RESULT FAIL (pass=9, warn=1, fail=43)` por vocabulário e ordem
+históricos. Essa limitação está em
+`.agent/verification.jsonl#VFY-DOCS-CONTINUATION-052`; não altera o runtime
+`387/387` nem representa promoção de `VERIFIED`.

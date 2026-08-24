@@ -684,3 +684,14 @@ causa é tratada como contaminação/isolamento do harness; não remover FK, apa
 gates globais permanecem `ACTIVE/IN_PROGRESS/PARTIAL`. Próximo passo: localizar
 o primeiro suite que deixa usuário sem account, corrigir apenas sua limpeza e
 repetir o full critical antes da crítica independente pós-fix.
+
+## State update — harness resolved, product gate remains open (23/08/2026)
+
+The smallest orphan-producing sequence was fixed in `76d94a3`. Focused cash→PIX
+passed 30/30, and the full controlled critical command passed 387/387 tests in
+28/28 files on a fresh database with complete teardown. A fresh independent
+review accepted the transaction/savepoint isolation and noted only the
+commit-boundary coverage residual. The Gauntlet remains ACTIVE for the product
+bar: continue with child-process domain SIGKILL/takeover, full failpoints, PIX
+PostgreSQL/RLS and webhook HTTP retry/DLQ/lease fencing. Global ERP, production,
+parity, WCAG, operations and release gates remain IN_PROGRESS/PARTIAL.

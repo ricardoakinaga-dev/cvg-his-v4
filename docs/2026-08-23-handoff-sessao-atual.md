@@ -432,3 +432,29 @@ confundidos com aprovação do full critical ou do ERP.
 O ponteiro final publicado desta sessão é `3520c22`, já confirmado contra
 `origin/agent/sync-v4-full-program`. A retomada deve usar o checkpoint integral
 e reproduzir primeiro o prefixo que contamina o backfill PIX.
+
+## Handoff atualizado — harness crítico 387/387 (23/08/2026, 21:21 BRT)
+
+Retomada mínima concluída: o cleanup de `encounter-cash-receipts.test.ts` não
+usa mais `session_replication_role`; o cenário permanece numa transação com
+savepoints e rollback final. Commit de implementação: `76d94a3`. Cash + PIX em
+sequência passaram **30/30**.
+
+O comando integral controlado passou **28/28 arquivos e 387/387 testes** em
+PostgreSQL descartável novo (`0000–0123`, 172 tabelas, 43 enums, 456 FKs), exit
+0 em 669,60 s, com teardown concluído. A crítica independente retornou
+**ACCEPT** para isolamento/ausência de vacuidade e registrou apenas a lacuna
+de que o cenário corrigido não comita um receipt válido.
+
+Próximo trabalho bounded: child-process domain fixture com SIGKILL/takeover,
+failpoints/restart, PIX PostgreSQL/RLS e webhook HTTP retry/DLQ/lease fencing.
+Não promover `CVG-002C6`, a Quality Bar ou o ERP para produção; a jornada única
+admissão → handoff/internação → lote → alta → billing → receipt/ledger/audit/
+outbox, paridade, WCAG, operações e release continuam abertas. Ver o artefato
+[`CVG-002C6-critical-harness-green-2026-08-23.md`](../.agent/artifacts/CVG-002C6-critical-harness-green-2026-08-23.md)
+e manter o tsbuildinfo user-owned fora do stage.
+
+Validação documental: o checker canônico continua `RESULT FAIL (pass=9,
+warn=1, fail=43)` por registros históricos não canônicos; parse/reconciliação
+ativa passam e a limitação não altera `387/387`. Consulte
+`.agent/verification.jsonl#VFY-DOCS-CONTINUATION-052`.

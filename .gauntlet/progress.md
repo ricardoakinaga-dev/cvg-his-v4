@@ -601,3 +601,20 @@ sequência anterior que introduz usuário órfão e corrigir seu isolamento sem
 relaxar constraints. Não promover nenhum gate; crítica independente pós-fix e
 novo full critical continuam obrigatórios. Artefato:
 `.agent/artifacts/CVG-002C6-critical-retest-postfix-2026-08-23.md`.
+
+## Gauntlet iteration — critical harness green (23/08/2026, 21:21 BRT)
+
+The contaminating prefix was reproduced in the cash-receipt test and fixed by
+removing `session_replication_role`, keeping one transaction, using savepoints
+for expected failures and rolling back the complete fixture graph (`76d94a3`).
+The focused cash→PIX sequence passed 30/30. The controlled serial full critical
+run passed **28/28 files and 387/387 tests**, exit 0, against a fresh disposable
+PostgreSQL database after migrations `0000–0123`; setup observed 172 tables, 43
+enums and 456 FKs and teardown completed.
+
+Independent critique: **ACCEPT** for isolation and non-vacuity, with a residual
+that the changed scenario does not commit a valid receipt. Stop decision for
+global ERP/Quality Bar remains active: next iterate on child-process
+SIGKILL/takeover, full failpoints, PIX PostgreSQL/RLS and webhook HTTP
+retry/DLQ/lease fencing, then return to the single admission-to-receipt
+journey. Do not promote production, parity, WCAG, operations or release.

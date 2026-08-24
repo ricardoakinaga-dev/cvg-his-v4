@@ -485,3 +485,15 @@ comando e o resultado. O plano continua `IN_PROGRESS/PARTIAL`: reproduzir a
 menor sequência contaminante, corrigir apenas seu isolamento, repetir o full
 critical e obter crítica independente fresca antes de retomar SIGKILL,
 failpoints, PIX PostgreSQL/RLS ou webhook retry/DLQ/fencing.
+
+Plan revision note, 2026-08-23 (critical harness green): the encounter cash
+receipt cleanup was converted to one transaction with savepoints and final
+rollback in implementation commit `76d94a3`; the minimal cash→PIX prefix passed
+30/30. The controlled serial full critical command then passed **28/28 files
+and 387/387 tests**, exit 0, on a fresh PostgreSQL database after migrations
+0000–0123, with teardown complete. An independent critic returned ACCEPT for
+the isolation fix and recorded only the missing valid-commit coverage in that
+specific test. The plan remains `IN_PROGRESS/PARTIAL`: proceed to child-process
+domain SIGKILL/takeover, complete failpoints, PIX PostgreSQL/RLS and webhook
+HTTP retry/DLQ/lease fencing; keep the single clinical-financial journey and
+all ERP/production/release gates open.
