@@ -19,13 +19,13 @@
   "latest_retest_evidence": "2026-08-24: .agent/artifacts/CVG-002C6-cash-receipt-concurrency-2026-08-24.md and docs/2026-08-24-handoff-cash-receipt-concurrency.md record the concurrency RED/GREEN, deterministic granted/waiting barrier, full tenant-B residue oracle and independent approval. Implementation/docs commit 5ed15310eb6fa777a679a7c30b9ba535a84bac91 was pushed after the fresh lead run; the prior SIGKILL, Helm, stale-owner, billing-source-hash and cross-instance artifacts remain linked. The test is not yet in test:critical; simultaneous laboratory bootstrap, production-like boot, Helm render, CI process matrix, Redis/PIX/webhook, DR/RPO, parity and release evidence remain open.",
   "instruction_scope_refs": [".agent/instruction-scope.md"],
   "last_gate_record": ".agent/gates/implementation-ready-CVG-002C6.json",
-  "last_event_id": "EVT-0246",
-  "state_revision": 235,
+  "last_event_id": "EVT-0247",
+  "state_revision": 236,
   "next_gate": "VERIFIED",
-  "next_action": "The cash-receipt SIGKILL/restart/replay and two-API concurrency gates are GREEN bounded and published in 7aeb81d4081e84080fc6cf83759a193dd04a27dd and 5ed15310eb6fa777a679a7c30b9ba535a84bac91; fetch confirmed local HEAD equals origin after the implementation push. Read docs/2026-08-24-handoff-cash-receipt-concurrency.md first, then the SIGKILL and worker handoffs, global audit and short checkpoint. Keep CVG-002C6, ERP, production, parity, operations and release IN_PROGRESS/PARTIAL. Next implement a serialized CI process runner with explicit ephemeral DB isolation and timeout/cleanup, then address simultaneous laboratory bootstrap, Helm lint/template in an authorized runner, PIX PostgreSQL/RLS and webhook HTTP retry/DLQ/lease fencing. Preserve the P1 harness-concurrency/backoff follow-ups, WebAuthn durability, audit attribution, global RLS/FORCE RLS, DR/RPO, migration checksum, CI deploy, Redis/provider/SPA/parity/WCAG/coverage/operations/release gaps and the user-owned tsbuildinfo cache outside stage",
+  "next_action": "The cash-receipt SIGKILL/restart/replay and two-API concurrency gates are GREEN bounded and published in 7aeb81d4081e84080fc6cf83759a193dd04a27dd and 5ed15310eb6fa777a679a7c30b9ba535a84bac91; control-plane publication c2026081 is pushed and local HEAD equals origin. Read docs/2026-08-24-handoff-cash-receipt-concurrency.md first, then the SIGKILL and worker handoffs, global audit and short checkpoint. Keep CVG-002C6, ERP, production, parity, operations and release IN_PROGRESS/PARTIAL. Next implement a serialized CI process runner with explicit ephemeral DB isolation and timeout/cleanup, then address simultaneous laboratory bootstrap, Helm lint/template in an authorized runner, PIX PostgreSQL/RLS and webhook HTTP retry/DLQ/lease fencing. Preserve the P1 harness-concurrency/backoff follow-ups, WebAuthn durability, audit attribution, global RLS/FORCE RLS, DR/RPO, migration checksum, CI deploy, Redis/provider/SPA/parity/WCAG/coverage/operations/release gaps and the user-owned tsbuildinfo cache outside stage",
   "blocked_by": [],
   "human_approval_required": [
     "Production go-live, credential rotation, provider selection, fiscal homologation, and residual HIGH/CRITICAL risk acceptance remain outside repository implementation authority"
   ],
-  "updated_at": "2026-08-24T04:06:00-03:00"
+  "updated_at": "2026-08-24T04:12:00-03:00"
 }
