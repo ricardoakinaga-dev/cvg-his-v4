@@ -642,3 +642,19 @@ auditoria e o handoff estão em
 `docs/2026-08-23-auditoria-documental-global-e-handoff.md`; o checkpoint curto
 passa a apontar para ele. O stop decision segue `ACTIVE` e a barra global
 segue `IN_PROGRESS/PARTIAL`.
+
+## Critical gates e guardrails — 24/08/2026
+
+Após o handoff documental, o `test:critical` foi executado com URL explícita e
+dois bancos efêmeros distintos por PID: base **387/387 em 28/28 arquivos** e
+processo inpatient/SIGKILL **2/2 em 1/1 arquivo**, ambos exit 0. As regressões
+focadas de inventory charge-capture (3/3) e production-like bootstrap (6/6)
+também passaram. Os guardrails deploy/cutover (12/12), migration consistency,
+OpenAPI, RLS e `security:secrets` ficaram verdes. Evidência detalhada:
+`.agent/artifacts/CVG-002C6-critical-gates-2026-08-24.md`.
+
+Não houve promoção global. A crítica independente encontrou zero P0 e deixou
+dois P1 de endurecimento: prova de execuções críticas simultâneas/lock e
+backoff/jitter no retry de inventário. O próximo workstream permanece
+stale-owner A vivo → source/hash → A/B/hidratação → failpoints cross-domain;
+paridade, providers, SPA/WCAG, operações e release continuam abertos.

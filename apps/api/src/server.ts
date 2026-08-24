@@ -5505,8 +5505,28 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               // the hot encounter/timeline cache only after its client is free.
               setImmediate(() => {
                 runWithoutDatabaseTransactionScope(() => {
-                  void encounters.hydrateFromDatabase(principal.user.accountId as never);
-                  void scheduling.hydrateFromDatabase(principal.user.accountId as never);
+                  void Promise.allSettled([
+                    encounters.hydrateFromDatabase(principal.user.accountId as never),
+                    scheduling.hydrateFromDatabase(principal.user.accountId as never)
+                  ]).then((results) => {
+                    for (const [cacheName, result] of [
+                      ['encounters', results[0]],
+                      ['scheduling', results[1]]
+                    ] as const) {
+                      if (result.status === 'rejected') {
+                        logger.error('Cache hydration failed after encounter rollback', {
+                          accountId: principal.user.accountId,
+                          correlationId,
+                          encounterId,
+                          cacheName,
+                          error:
+                            result.reason instanceof Error
+                              ? result.reason.message
+                              : String(result.reason)
+                        });
+                      }
+                    }
+                  });
                 });
               });
               throw error;

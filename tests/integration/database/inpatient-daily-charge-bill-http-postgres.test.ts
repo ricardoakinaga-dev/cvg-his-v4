@@ -476,7 +476,7 @@ describe('inpatient daily-charge HTTP PostgreSQL boundary', () => {
     await pool.query(
       `ALTER TABLE inpatient_daily_charges
          ADD CONSTRAINT ${ROLLBACK_CONSTRAINT}
-         CHECK (NOT (id::uuid = '${ROLLBACK_CHARGE_ID}'::uuid AND status = 'billed'))`
+         CHECK (NOT (id = '${ROLLBACK_CHARGE_ID}' AND status = 'billed'))`
     );
 
     const idempotencyKey = randomUUID();

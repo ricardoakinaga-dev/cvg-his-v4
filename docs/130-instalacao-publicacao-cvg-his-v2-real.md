@@ -62,7 +62,10 @@ Nao usar como runtime oficial:
 - `PORT=3001`
 - `CORS_ALLOWED_ORIGINS=https://app.example.com,https://admin.example.com`
 - `DATABASE_URL=postgres://USER:PASS@HOST:5432/cvg_his_v2`
-- `REDIS_URL=redis://HOST:6379`
+- `REDIS_URL=redis://HOST:6379` (no host process usando o compose canonico, o
+  exemplo `.env.v2.example` usa `localhost:6380`; dentro dos containers a URL
+  continua `redis://redis:6379`)
+- `RUNTIME_DISTRIBUTED_STATE_ENABLED=1` (obrigatorio para rate limiting e estado distribuido em production/staging)
 - `AUTH_SECRET=<segredo forte>`
 - `FILE_STORAGE_PATH=/srv/cvg-his-v2/storage`
 - `ENABLE_MFA=false`
@@ -137,6 +140,7 @@ pnpm test
 A trilha oficial de persistencia e migracao do CVG-HIS V2 e o Drizzle ORM.
 
 - **Migrations:** `packages/db/migrations/`
+- **Manifesto de fases:** `docs/phase-9-migration-manifest.json` (plano de ondas; nao substitui a execucao do runner)
 - **Schema:** `packages/db/src/schema/`
 - **Seed local sintetico:** `packages/db/src/seed.ts` (nao usar como bootstrap de staging/producao)
 - **Runner:** `tsx packages/db/src/migrate.ts`
@@ -145,6 +149,10 @@ A cadeia viva inicia em `0000_vengeful_pet_avengers.sql` e evolui por migrations
 ordenadas no mesmo diretorio. Nao congele neste runbook o numero da ultima
 migration: o runner oficial `packages/db/src/migrate.ts` aplica automaticamente
 todas as migrations `.sql` em ordem, ignorando apenas arquivos `.revert.sql`.
+O contrato de auditoria estrutural inclui
+`packages/db/migrations/0012_audit_events_alignment.sql`; a referencia serve
+para validar a trilha canonica e nao e uma declaracao de que um ambiente alvo
+ja foi migrado.
 
 ### Aplicacao em producao
 

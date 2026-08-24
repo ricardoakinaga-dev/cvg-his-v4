@@ -20,12 +20,20 @@ const files = {
   caddy: read('infra/docker/Caddyfile.v2'),
   deployDoc: read('docs/130-instalacao-publicacao-cvg-his-v2-real.md'),
   cutoverChecklist: read('docs/131-checklist-cutover-servidor.md'),
-  policy: read('docs/2026-08-07-politica-migracao-e-deploy-cvg-his-v4.md') ??
+  migrationManifest: read('docs/phase-9-migration-manifest.json'),
+  policy:
+    read('docs/2026-08-07-politica-migracao-e-deploy-cvg-his-v4.md') ??
     read('docs/470-politica-migracao-e-deploy.md')
 };
 
-const requiredBuildCommand =
-  'build --no-cache cvg-his-v2-api cvg-his-v2-worker cvg-his-v2-spa';
+let migrationManifest;
+try {
+  migrationManifest = files.migrationManifest ? JSON.parse(files.migrationManifest) : undefined;
+} catch {
+  migrationManifest = undefined;
+}
+
+const requiredBuildCommand = 'build --no-cache cvg-his-v2-api cvg-his-v2-worker cvg-his-v2-spa';
 const requiredUpCommand = 'up -d cvg-his-v2-api cvg-his-v2-worker cvg-his-v2-spa';
 const forbiddenWebBuildPattern = /build[^\n]*cvg-his-v2-web/;
 const forbiddenWebUpPattern = /up[^\n]*cvg-his-v2-web/;
@@ -102,6 +110,24 @@ const checks = [
       !files.envExample?.includes('NODE_ENV=development')
   },
   {
+    label: 'compose e env example exigem estado distribuido explicito em production-like',
+    ok:
+      files.compose?.includes('REDIS_URL: redis://redis:6379') &&
+      files.compose?.includes(
+        'RUNTIME_DISTRIBUTED_STATE_ENABLED: ${RUNTIME_DISTRIBUTED_STATE_ENABLED:-1}'
+      ) &&
+      files.envExample?.includes('REDIS_URL=redis://localhost:6380') &&
+      files.envExample?.includes('RUNTIME_DISTRIBUTED_STATE_ENABLED=1')
+  },
+  {
+    label: 'manifesto de migracao existe, e explicita plano e fonte de verdade',
+    ok:
+      migrationManifest?.status === 'PLAN_ONLY' &&
+      migrationManifest?.sourceOfTruth === 'packages/db/migrations/*.sql' &&
+      Array.isArray(migrationManifest?.waves) &&
+      migrationManifest.waves.length > 0
+  },
+  {
     label: 'doc vivo de deploy referencia o guardrail de deploy',
     ok:
       files.deployDoc?.includes('pnpm deploy:check') &&
@@ -113,12 +139,7 @@ let failures = 0;
 const results = [];
 
 for (const check of checks) {
-  if (check.ok === undefined) {
-    results.push({ label: check.label, status: 'skip' });
-    if (!emitJsonOnly) {
-      console.log(`[deploy-check] SKIP ${check.label} (documento nao existe ainda)`);
-    }
-  } else if (check.ok) {
+  if (check.ok) {
     results.push({ label: check.label, status: 'pass' });
     if (!emitJsonOnly) {
       console.log(`[deploy-check] PASS ${check.label}`);
@@ -127,7 +148,9 @@ for (const check of checks) {
     failures += 1;
     results.push({ label: check.label, status: 'fail' });
     if (!emitJsonOnly) {
-      console.error(`[deploy-check] FAIL ${check.label}`);
+      console.error(
+        `[deploy-check] FAIL ${check.label} (documento ausente ou contrato inconsistente)`
+      );
     }
   }
 }

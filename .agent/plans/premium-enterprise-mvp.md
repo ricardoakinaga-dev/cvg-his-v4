@@ -521,3 +521,16 @@ CFMV. A barra global permanece `IN_PROGRESS/PARTIAL`: a jornada vertical e o
 child-process são evidências bounded, enquanto stale-owner A vivo, A/B,
 hidratação, failpoints completos, PIX/RLS, webhook, paridade, UX, operações e
 release permanecem abertos.
+
+Plan revision note, 2026-08-24 (critical gates and deployment guardrails): o
+`test:critical` foi separado em bancos efêmeros fisicamente distintos por PID
+e passou com URL explícita: base **28/28 arquivos, 387/387 testes** e processo
+inpatient/SIGKILL **1/1 arquivo, 2/2 testes**, ambos exit 0. Inventory focado
+passou 3/3 e bootstrap production-like 6/6. `deploy:check` e o checker JSON
+de cutover passaram 12/12; migration consistency, OpenAPI, RLS e
+`security:secrets` passaram. O manifesto de migração v2 foi registrado como
+`PLAN_ONLY`, sem claim de execução/cutover. A revisão independente não encontrou
+P0; registrou como P1 futuro a prova de duas execuções críticas concorrentes e
+backoff/jitter do retry de inventário. O plano segue `IN_PROGRESS/PARTIAL`: os
+gates globais, paridade Vetus, providers, SPA/WCAG, operações e release não
+foram promovidos.

@@ -248,3 +248,28 @@ caminho dirty continua sendo `packages/design-system/tsconfig.vue.tsbuildinfo`,
 preservado fora do stage. A próxima sessão deve começar por este arquivo,
 `.agent/state.json`, `.agent/backlog.json` e o artefato do processo; o próximo
 gate é stale-owner/A-B/hidratação/failpoints, não uma promoção global.
+
+## Atualização executável — 24/08/2026
+
+O handoff mais recente está em
+[`../.agent/artifacts/CVG-002C6-critical-gates-2026-08-24.md`](../.agent/artifacts/CVG-002C6-critical-gates-2026-08-24.md).
+Antes de retomar o próximo workstream, a sessão fechou:
+
+- `test:critical` base: 28 arquivos, 387/387 testes, exit 0;
+- `test:critical` processo inpatient/SIGKILL: 1 arquivo, 2/2 testes, exit 0;
+- inventory charge-capture focado: 3/3;
+- close → receipt focado: 5/5;
+- production-like bootstrap focado: 6/6;
+- cutover/deploy: 12/12 checks;
+- migration consistency, OpenAPI, RLS e `security:secrets`: exit 0.
+
+O comando crítico aplica sufixos distintos aos bancos `critical_base_<pid>` e
+`critical_process_<pid>`, inclusive quando a URL é explícita; migrations,
+seed e pools seguem a URL resolvida. O único dirty path permitido continua
+[`../packages/design-system/tsconfig.vue.tsbuildinfo`](../packages/design-system/tsconfig.vue.tsbuildinfo),
+que não deve ser staged.
+
+A próxima sessão deve atacar stale-owner com A vivo, source/hash de billing,
+payload divergente, dois tenants/A-B, hidratação cross-instance e failpoints
+de discharge/close/receipt. O gate global segue `IN_PROGRESS/PARTIAL`; não
+interpretar o verde do harness bounded como paridade, produção ou release.

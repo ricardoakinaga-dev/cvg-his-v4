@@ -56,8 +56,11 @@ export default async function globalSetup() {
   const requireTestDb = process.env.REQUIRE_TEST_DB === '1';
 
   try {
-    process.env.DATABASE_URL_TEST = process.env.DATABASE_URL_TEST ?? TEST_DB_URL;
-    process.env.DATABASE_URL = process.env.DATABASE_URL ?? process.env.DATABASE_URL_TEST;
+    // Keep every setup path (pool, migrations and seed) on the same resolved
+    // database. This matters when test-critical adds a suffix to an explicit
+    // DATABASE_URL_TEST so its phases are physically isolated.
+    process.env.DATABASE_URL_TEST = TEST_DB_URL;
+    process.env.DATABASE_URL = TEST_DB_URL;
     console.log(
       `[test-setup] Using test database ${TEST_DB_NAME}${TEST_DB_IS_EPHEMERAL ? ' (ephemeral)' : ''}`
     );

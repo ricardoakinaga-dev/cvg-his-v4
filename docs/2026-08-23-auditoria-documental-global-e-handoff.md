@@ -213,3 +213,35 @@ fetch` e compare `git rev-parse HEAD` com
 `git rev-parse origin/agent/sync-v4-full-program`. O único caminho dirty
 continua sendo o cache user-owned
 `packages/design-system/tsconfig.vue.tsbuildinfo`, fora do commit.
+
+## Atualização de execução — 24/08/2026
+
+O slice seguinte foi executado e documentado em
+[`../.agent/artifacts/CVG-002C6-critical-gates-2026-08-24.md`](../.agent/artifacts/CVG-002C6-critical-gates-2026-08-24.md).
+O `test:critical` agora é composto por duas fases fisicamente isoladas e
+passou com URL explícita:
+
+- base: **28/28 arquivos, 387/387 testes, exit 0**;
+- processo inpatient/SIGKILL: **1/1 arquivo, 2/2 testes, exit 0**.
+
+As regressões focadas de inventário (**3/3**) e bootstrap production-like
+(**6/6**), além do fechamento → receipt (**5/5**), também passaram. O teste de bootstrap usa timeout de teardown de
+120 s; a implementação de rollback observa rejeições da hidratação de cache e
+registra `accountId`/cache afetado, mantendo o boundary assíncrono sem
+`unhandled rejection` silenciosa.
+
+Guardrails executados com exit 0: `pnpm deploy:check` (12/12), checker JSON de
+cutover (12/12), relatório de consistência de migrations (manifest v2, cinco
+ondas `PLAN_ONLY`), RLS (154/155 com uma exceção documentada), OpenAPI (337
+paths/390 schemas) e `pnpm security:secrets`. A distinção Redis host
+`localhost:6380` versus container `redis:6379` e o flag
+`RUNTIME_DISTRIBUTED_STATE_ENABLED=1` agora estão no exemplo/env/Compose e no
+runbook.
+
+A revisão independente final não encontrou P0. Permanecem P1 de
+endurecimento do harness (prova explícita de duas execuções simultâneas ou
+lock externo) e retry de inventário sem backoff/jitter; são follow-ups, não
+claims de produção. A Quality Bar global, CVG-002C6 e o ERP permanecem
+`IN_PROGRESS/PARTIAL`: Vetus geral segue 0/11, clínica 0/3, e continuam abertos
+paridade comportamental, sessão/WebAuthn, Redis/providers, SPA/WCAG, cobertura,
+backup/restore/failover, operações e release.

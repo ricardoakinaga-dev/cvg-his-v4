@@ -481,7 +481,7 @@ export class InventoryService {
     } catch (error) {
       this.#items.set(item.id, item);
       this.restoreLots(item.id, previousLots);
-      if (this.#repository && retryCount < 1 && isBalanceChangedConflict(error)) {
+      if (this.#repository && retryCount < MAX_CONSUME_RETRIES && isBalanceChangedConflict(error)) {
         await this.hydrateFromDatabase(accountId);
         return this.consume(actorUserId, payload, accountId, retryCount + 1);
       }
@@ -1299,6 +1299,8 @@ export class InventoryService {
     for (const lot of previousLots) this.#lots.set(lot.id, lot);
   }
 }
+
+const MAX_CONSUME_RETRIES = 3;
 
 function requireNonZeroNumber(value: number, field: string): number {
   const normalized = Number(value);

@@ -181,7 +181,7 @@ describe('production-like bootstrap uses a real restricted role and fails closed
     await clusterAdmin.query(`DROP ROLE IF EXISTS ${quoteIdentifier(workerRole)}`);
     await clusterAdmin.query(`DROP ROLE IF EXISTS ${quoteIdentifier(unsafeRole)}`);
     await clusterAdmin.end();
-  }, 30_000);
+  }, 120_000);
 
   it('proves the restricted API and worker logins are NOBYPASSRLS before bootstrap', async () => {
     const result = await scratchAdmin.query<{

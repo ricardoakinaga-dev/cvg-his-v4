@@ -721,3 +721,18 @@ ponteiro operacional principal e distingue evidência atual de histórico,
 benchmark e claims de produto. O stop decision segue `ACTIVE`; nenhum gate
 global é promovido. A próxima iteração continua stale-owner/A-B/hidratação,
 failpoints cross-domain e, depois, PIX/RLS e webhook.
+
+## Critical gates e guardrails — 24/08/2026
+
+O slice de endurecimento posterior ao handoff foi executado com evidência
+fresca. `test:critical` passou em bancos fisicamente distintos por PID: base
+**28/28 arquivos e 387/387 testes**, processo inpatient/SIGKILL **1/1 arquivo e
+2/2 testes**, ambos exit 0. Inventory focado passou 3/3 e bootstrap
+production-like 6/6. `deploy:check`/cutover passaram 12/12, migration
+consistency, OpenAPI, RLS e `security:secrets` passaram. O artefato completo é
+`.agent/artifacts/CVG-002C6-critical-gates-2026-08-24.md`.
+
+O revisor independente não encontrou P0. P1 futuro: evidenciar duas execuções
+críticas simultâneas (ou adicionar lock externo) e avaliar backoff/jitter no
+retry de inventário. Stop decision continua `ACTIVE`; CVG-002C6, ERP,
+paridade, produção, operações e release permanecem `IN_PROGRESS/PARTIAL`.
