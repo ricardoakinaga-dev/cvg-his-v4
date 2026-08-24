@@ -80,9 +80,10 @@ build antes de iniciar os filhos.
 ## Publicação
 
 A implementação foi publicada em `08a9885dd6bbfd0dcbadd648d8eb330c95cfb9a6`
-(`test: harden laboratory catalog bootstrap concurrency`) e a reconciliação
-final deste handoff em `91dd136ab5bb271788e128dcccba78bc1d4e8c42`
-(`docs: reconcile laboratory bootstrap handoff`). O fetch confirmou
-`HEAD == origin/agent/sync-v4-full-program` no SHA final. O cache
+(`test: harden laboratory catalog bootstrap concurrency`) e a primeira
+reconciliação deste handoff em `91dd136ab5bb271788e128dcccba78bc1d4e8c42`
+(`docs: reconcile laboratory bootstrap handoff`). Os ledgers/control-plane
+podem avançar em commits posteriores; ao abrir uma nova sessão, faça `git fetch`
+e confirme `HEAD == origin/agent/sync-v4-full-program`. O cache
 `packages/design-system/tsconfig.vue.tsbuildinfo` é o único path dirty e
 permanece fora do stage. Este handoff não é declaração de produção ou release.
