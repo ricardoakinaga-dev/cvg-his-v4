@@ -245,3 +245,12 @@ claims de produção. A Quality Bar global, CVG-002C6 e o ERP permanecem
 `IN_PROGRESS/PARTIAL`: Vetus geral segue 0/11, clínica 0/3, e continuam abertos
 paridade comportamental, sessão/WebAuthn, Redis/providers, SPA/WCAG, cobertura,
 backup/restore/failover, operações e release.
+
+### Publicação deste checkpoint
+
+O commit `d23120a` (`fix: harden critical runtime and deployment gates`) foi
+enviado para `origin/agent/sync-v4-full-program`. A reconciliação pós-push
+confirmou `HEAD == origin/agent/sync-v4-full-program` em
+`d23120accb6c6f5ea1e26d6e54bbef9477bc5622`. O único caminho dirty continua
+sendo o cache user-owned `packages/design-system/tsconfig.vue.tsbuildinfo`,
+fora do stage.

@@ -273,3 +273,12 @@ A próxima sessão deve atacar stale-owner com A vivo, source/hash de billing,
 payload divergente, dois tenants/A-B, hidratação cross-instance e failpoints
 de discharge/close/receipt. O gate global segue `IN_PROGRESS/PARTIAL`; não
 interpretar o verde do harness bounded como paridade, produção ou release.
+
+### SHA publicado
+
+O commit `d23120a` (`fix: harden critical runtime and deployment gates`) foi
+enviado ao GitHub. `git fetch` confirmou
+`HEAD == origin/agent/sync-v4-full-program` em
+`d23120accb6c6f5ea1e26d6e54bbef9477bc5622`; somente o cache
+`packages/design-system/tsconfig.vue.tsbuildinfo` permanece dirty e fora do
+stage.
