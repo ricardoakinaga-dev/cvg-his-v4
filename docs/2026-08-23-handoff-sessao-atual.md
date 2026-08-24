@@ -458,3 +458,9 @@ Validação documental: o checker canônico continua `RESULT FAIL (pass=9,
 warn=1, fail=43)` por registros históricos não canônicos; parse/reconciliação
 ativa passam e a limitação não altera `387/387`. Consulte
 `.agent/verification.jsonl#VFY-DOCS-CONTINUATION-052`.
+
+Publicação final: `76d94a3` e `4f8d8d8` estão em
+`origin/agent/sync-v4-full-program`; `HEAD` e `origin` foram confirmados em
+`4f8d8d8b806098241cd716ff12b13ac2e74d9621`. Só o tsbuildinfo user-owned fica
+dirty e fora do stage. A próxima sessão começa no checkpoint/artefato verde e
+retoma SIGKILL/takeover e failpoints, não uma promoção global.

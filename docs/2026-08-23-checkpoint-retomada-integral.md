@@ -495,3 +495,12 @@ global permanece `RESULT FAIL (pass=9, warn=1, fail=43)` por vocabulário e orde
 históricos. Essa limitação está em
 `.agent/verification.jsonl#VFY-DOCS-CONTINUATION-052`; não altera o runtime
 `387/387` nem representa promoção de `VERIFIED`.
+
+## Publicação remota reconciliada — 23/08/2026, 21:29 BRT
+
+Os commits `76d94a3` (implementação) e `4f8d8d8` (documentação/controle) estão
+publicados em `origin/agent/sync-v4-full-program`. O fetch final confirmou
+`HEAD=origin=4f8d8d8b806098241cd716ff12b13ac2e74d9621`; apenas o
+`packages/design-system/tsconfig.vue.tsbuildinfo` user-owned permanece dirty e
+fora do stage. A próxima sessão deve usar este checkpoint e o artefato verde,
+sem promover o ERP ou qualquer gate externo.
