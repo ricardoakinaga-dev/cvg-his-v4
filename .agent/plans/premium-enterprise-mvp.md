@@ -462,10 +462,11 @@ retry/DLQ/fencing.
 
 Publication note, 2026-08-24 (cross-instance hydration): implementation
 commit 20cf9e666d20adeb5303f86cf32d0346e025898d
-(fix: hydrate clinical reads across api instances) was pushed and reconciled
-with origin/agent/sync-v4-full-program. Pointer documentation remains the
-next short operation; the plan stays IN_PROGRESS/PARTIAL and the user-owned
-tsbuildinfo cache remains outside scope.
+(fix: hydrate clinical reads across api instances) and pointer reconciliation
+commit 9a0d7326704ee32dddc45fd72b52ba1efe5a550e were pushed and reconciled
+with origin/agent/sync-v4-full-program. The plan stays IN_PROGRESS/PARTIAL;
+the next short operation is failpoint expansion and the P2 in-flight
+hydration follow-up. The user-owned tsbuildinfo cache remains outside scope.
 
 
 Publication note, 2026-08-23: implementation and continuation evidence for the

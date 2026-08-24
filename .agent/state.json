@@ -19,13 +19,13 @@
   "latest_retest_evidence": "2026-08-24: focused inventory charge-capture passed 3/3 in 38.07s; production-like runtime bootstrap passed 6/6 in 87.76s; test:critical base passed 28/28 files and 387/387 tests in 710.99s; process phase passed 1/1 file and 2/2 tests in 60.09s; stale-owner-A-alive regression passed 4/4 in 233.66s; billing source/hash/divergent replay passed 4/4 in 125.96s; vertical_hydration_green2 passed 5/5 in 36.06s; adjacent close/receipt and discharge regressions passed 5/5 in 50.35s and 44.93s. The artifacts .agent/artifacts/CVG-002C6-critical-gates-2026-08-24.md, .agent/artifacts/CVG-002C6-stale-owner-a-alive-2026-08-24.md, .agent/artifacts/CVG-002C6-billing-source-hash-2026-08-24.md and .agent/artifacts/CVG-002C6-cross-instance-hydration-2026-08-24.md record commands and limitations. Promise.allSettled hydration logs rejected cache refreshes with account/cache context; no unhandled rejection occurred.",
   "instruction_scope_refs": [".agent/instruction-scope.md"],
   "last_gate_record": ".agent/gates/implementation-ready-CVG-002C6.json",
-  "last_event_id": "EVT-0238",
-  "state_revision": 227,
+  "last_event_id": "EVT-0239",
+  "state_revision": 228,
   "next_gate": "VERIFIED",
-  "next_action": "Cross-instance hydration implementation and evidence are published at 20cf9e666d20adeb5303f86cf32d0346e025898d and the remote SHA is reconciled; publish the pointer-documentation reconciliation next. Do not promote CVG-002C6 or the ERP: next expand discharge/close/receipt and cross-domain failpoints, then evaluate concurrent requests during in-flight hydration (P2), PIX PostgreSQL/RLS and webhook HTTP retry/DLQ/lease fencing. Preserve the P1 harness-concurrency/backoff follow-ups, WebAuthn durability, audit attribution, global RLS/FORCE RLS, Redis/provider/SPA/parity/WCAG/coverage/operations/deploy/release and global ERP status explicitly IN_PROGRESS/PARTIAL",
+  "next_action": "Pointer documentation reconciliation is published at 9a0d7326704ee32dddc45fd72b52ba1efe5a550e and local HEAD equals origin after fetch. Do not promote CVG-002C6 or the ERP: next expand discharge/close/receipt and cross-domain failpoints, then evaluate concurrent requests during in-flight hydration (P2), PIX PostgreSQL/RLS and webhook HTTP retry/DLQ/lease fencing. Preserve the P1 harness-concurrency/backoff follow-ups, WebAuthn durability, audit attribution, global RLS/FORCE RLS, Redis/provider/SPA/parity/WCAG/coverage/operations/deploy/release and global ERP status explicitly IN_PROGRESS/PARTIAL",
   "blocked_by": [],
   "human_approval_required": [
     "Production go-live, credential rotation, provider selection, fiscal homologation, and residual HIGH/CRITICAL risk acceptance remain outside repository implementation authority"
   ],
-  "updated_at": "2026-08-24T01:47:20-03:00"
+  "updated_at": "2026-08-24T01:49:10-03:00"
 }
