@@ -82,5 +82,8 @@ começou após o teardown do anterior. O cache
 
 ## Publicação
 
-O commit desta rodada e a reconciliação do ponteiro remoto devem ser registrados
-abaixo após o push. O handoff não é uma declaração de produção ou release.
+O commit de implementação e documentação desta rodada é
+`54f1685d023e7f0a7520cff8b716542c3c186ef5` (`test: add serialized critical
+process suite`). Ele foi enviado para `origin/agent/sync-v4-full-program`, e a
+reconciliação confirmou o mesmo SHA em `HEAD` e no remoto. O handoff não é uma
+declaração de produção ou release.
