@@ -76,6 +76,8 @@ Na retomada:
 A concorrência entre duas APIs foi posteriormente exercitada e publicada em
 [`2026-08-24-handoff-cash-receipt-concurrency.md`](2026-08-24-handoff-cash-receipt-concurrency.md),
 com barreira PostgreSQL `granted`/`waiting`, isolamento B e crítica
-independente. Para a continuidade atual, esse handoff substitui esta página
-como ponteiro mais recente; os limites globais e o status `IN_PROGRESS/PARTIAL`
-permanecem inalterados.
+independente. A matriz crítica processual foi depois executada em
+[`2026-08-24-handoff-critical-process-suite.md`](2026-08-24-handoff-critical-process-suite.md),
+com seis bancos efêmeros e exit 0. Para a continuidade atual, o handoff da
+suíte serial substitui estas páginas como ponteiro mais recente; os limites
+globais e o status `IN_PROGRESS/PARTIAL` permanecem inalterados.

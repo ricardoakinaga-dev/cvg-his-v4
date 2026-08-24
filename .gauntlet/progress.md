@@ -806,3 +806,27 @@ Prettier, ESLint, secrets, typecheck 70/70, link-check ativo e diff-check
 passaram. O resultado é bounded: o novo teste ainda não é gate de
 `test:critical`, o bootstrap simultâneo continua separado e as barras globais
 permanecem `IN_PROGRESS/PARTIAL`.
+
+## Próxima Quality Bar — suíte crítica serial de processos — 24/08/2026
+
+A próxima rodada cobre a lacuna P1 de regressão: criar `test:critical:process`
+com manifesto explícito dos seis limites reais (inpatient-domain,
+clinical-financial restart, cash-receipt SIGKILL, cash-receipt concurrency, PIX
+settlement e worker entrypoint), execução serial, banco efêmero distinto por
+arquivo, `--no-file-parallelism`, timeouts/cleanup delimitados, fail-fast e
+propagação de exit code. A fase existente de banco/setup/foundational de
+`test:critical` deve permanecer intacta. Baseline RED confirmado em
+24/08/2026: o script ainda não existe (`pnpm` exit 254).
+
+## Resultado — suíte crítica serial de processos — 24/08/2026
+
+O runner foi aprovado por critic independente e passou a matriz real `6/6`,
+exit `0`, em seis bancos efêmeros distintos: inpatient-domain `4/4` (78,28 s),
+clinical-financial restart `1/1` (39,19 s), cash receipt SIGKILL `1/1`
+(60,26 s), cash receipt concurrency `1/1` (40,67 s), PIX settlement `5/5`
+(117,31 s) e worker entrypoint `1/1` (55,20 s). O total reportado pelo Vitest
+foi 390,91 s. `--list`, `--dry-run`, JSON/node, Prettier, ESLint, secrets e
+diff-check passaram. A fase base de `test:critical` foi preservada sem
+reexecução top-level nesta rodada; o resultado é bounded e não promove ERP,
+produção, paridade, operações ou release. Próximo gap: bootstrap laboratorial
+simultâneo, depois Helm, PIX/RLS e webhook.

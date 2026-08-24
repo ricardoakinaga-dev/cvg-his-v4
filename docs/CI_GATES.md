@@ -46,6 +46,10 @@ All CI jobs use the same scripts available locally:
 - `pnpm build` → Build job
 - `pnpm test` → Unit Tests job
 - `pnpm test:critical` → Integration Tests job
+- `pnpm test:critical:process` → serial process-boundary suite used by
+  `test:critical`; it runs six real child-process files with an ephemeral
+  database suffix per file and fail-fast semantics. Its GREEN result is a
+  regression gate only, not production or release evidence.
 - `pnpm test:coverage` → Coverage Report job
 - `npx playwright test --config playwright-spa.config.ts --grep-invert "Visual"` → E2E Tests (SPA)
 - `npx playwright test --config playwright-spa.config.ts -g "Visual"` → Visual Regression

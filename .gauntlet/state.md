@@ -905,3 +905,40 @@ the SIGKILL regression in `receipt_concurrency_regression` (1/1, exit 0,
 diff-check passed. The stop decision remains ACTIVE; the test is not yet a
 `test:critical` gate, and simultaneous replica bootstrap remains a separate
 startup-idempotency gap.
+
+## Quality Bar v1 — serialized critical process suite — 24/08/2026
+
+The next round targets the P1 regression-protection gap. The global ERP bar and
+all production gates remain unchanged.
+
+| ID | Required target | Evidence | Priority |
+|---|---|---|---|
+| `QB-CI-PROC-01` | A named `test:critical:process` command runs every required real process boundary: inpatient-domain, clinical-financial restart, cash-receipt SIGKILL, cash-receipt concurrency, PIX settlement and worker entrypoint. | Manifest inspection plus fresh command output naming all six files. | P1 |
+| `QB-CI-PROC-02` | Process tests run serially with a distinct ephemeral database suffix per file, explicit no-file-parallelism and bounded hooks/timeouts. | Runner trace and database/process cleanup observations. | P1 |
+| `QB-CI-PROC-03` | Any child failure propagates nonzero and stops the suite; existing `test:critical` database/foundational phase remains unchanged. | Known-bad injected command or runner unit check plus `test:critical` script inspection. | P1 |
+| `QB-CI-REG-01` | The new runner does not regress the already-green bounded process tests or leak credentials/production mutations. | Focused process suite, secrets scan, diff/type checks and isolated DB evidence. | P1 |
+
+Known-bad baseline: `pnpm test:critical:process` is absent at the current
+commit, and `test:critical` contains only the inpatient-domain process test.
+This round must measure actual serial runtime before any release claim.
+
+## Round result — serialized critical process suite — 24/08/2026
+
+The Builder changed only `package.json` and
+`infra/scripts/run-critical-process-suite.mjs`. The independent critic
+returned `APPROVE` for all four frozen criteria. The real Lead run executed all
+six process files serially in distinct ephemeral databases and exited `0`:
+inpatient-domain `4/4` in `78.28s`, clinical-financial restart `1/1` in
+`39.19s`, cash-receipt SIGKILL `1/1` in `60.26s`, cash-receipt concurrency
+`1/1` in `40.67s`, PIX settlement `5/5` in `117.31s`, and worker entrypoint
+`1/1` in `55.20s`. The reported test durations sum to `390.91s`.
+
+`--list`, `--dry-run`, JSON/node checks, Prettier, ESLint, secrets and diff
+checks passed. The original database/setup/foundational phase of
+`test:critical` remains textually intact; its complete top-level command was
+not rerun after wiring because the process phase was executed independently.
+The stop decision remains ACTIVE. This closes only the bounded CI process
+Quality Bar; simultaneous laboratory bootstrap, Helm-rendered validation,
+PIX/RLS, webhook retry/DLQ/fencing and all global ERP/production/parity/
+operations/release gates remain open. P2 residual: runner cleanup is delegated
+to each test's global teardown and signals are not forwarded by the runner.

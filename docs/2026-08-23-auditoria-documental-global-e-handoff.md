@@ -445,3 +445,31 @@ O teste, artefato e handoffs foram publicados em
 `5ed15310eb6fa777a679a7c30b9ba535a84bac91`; o próximo checkpoint deve confirmar
 `HEAD == origin/agent/sync-v4-full-program` e manter o cache user-owned fora do
 stage. A publicação não altera os estados globais nem promove `CVG-002C6`.
+
+## Atualização de execução — suíte crítica serial de processos — 24/08/2026
+
+O handoff [`2026-08-24-handoff-critical-process-suite.md`](2026-08-24-handoff-critical-process-suite.md)
+registra o fechamento bounded da lacuna P1 de regressão processual. O novo
+`pnpm test:critical:process` tem manifesto explícito dos seis limites reais:
+inpatient-domain, clinical-financial restart, cash-receipt SIGKILL,
+cash-receipt concurrency, PIX settlement e worker entrypoint. Cada arquivo
+rodou em ordem serial, com `REQUIRE_TEST_DB=1`, `TEST_DB_EPHEMERAL=1`, suffix de
+banco distinto, `--no-file-parallelism`, hooks/teardowns de 120 s e fail-fast.
+
+A execução Lead passou `6/6`, exit `0`: 4/4, 1/1, 1/1, 1/1, 5/5 e 1/1,
+respectivamente. Os tempos Vitest foram 78,28 s, 39,19 s, 60,26 s, 40,67 s,
+117,31 s e 55,20 s (`390,91 s` somados). A crítica independente retornou
+`APPROVE`; JSON, `node --check`, Prettier, ESLint, secrets e diff-check
+passaram.
+
+Isso fecha somente `QB-CI-PROC-01`, `QB-CI-PROC-02`, `QB-CI-PROC-03` e
+`QB-CI-REG-01` no escopo bounded. A fase de banco/setup/foundational de
+`test:critical` foi preservada textualmente, mas o comando top-level completo
+não foi repetido após o wiring; a prova processual foi executada integralmente
+de forma independente. `QB-CORE-01`, demais Quality Bars globais, ERP,
+produção, paridade, operações e release continuam `IN_PROGRESS/PARTIAL`.
+
+O próximo maior gap local é a segurança do bootstrap simultâneo do catálogo
+laboratorial; depois seguem Helm lint/template em runner autorizado, PIX/RLS e
+webhook retry/DLQ/fencing. O runner ainda depende do teardown de cada teste e
+não encaminha sinais por conta própria, residual P2 explicitamente registrado.

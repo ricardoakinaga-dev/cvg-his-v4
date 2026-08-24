@@ -2,6 +2,11 @@
 
 ## Estado para a próxima sessão
 
+Este handoff foi sucedido pelo
+[`2026-08-24-handoff-critical-process-suite.md`](2026-08-24-handoff-critical-process-suite.md),
+que fechou o próximo gate P1 de CI serial. Ele permanece como evidência
+detalhada da corrida de cash receipt.
+
 O segundo gate P0 do `CVG-002C6` foi fechado como **GREEN bounded**: duas
 instâncias reais da API, PostgreSQL efêmero e duas requisições públicas
 concorrentes do tenant A para o mesmo encounter produziram exatamente um
@@ -51,10 +56,10 @@ da concorrência (`1/1`, 40,66 s) e da regressão SIGKILL (`1/1`, 60,08 s).
 
 1. Ler este handoff, o artefato, o handoff SIGKILL, `.agent/state.json`,
    `.agent/backlog.json` e os últimos ledgers.
-2. Medir e implementar um runner serializado para os testes processuais
-   críticos, com banco efêmero por arquivo, timeout e cleanup explícitos.
-3. Reexecutar `test:critical` e a suíte processual completa antes de qualquer
-   promoção de release.
+2. Ler o handoff da suíte crítica serial e o artefato correspondente; o runner
+   já passou os seis limites em seis bancos efêmeros distintos.
+3. Atacar a inicialização simultânea do catálogo laboratorial, depois executar
+   Helm lint/template em runner autorizado e seguir para PIX/RLS e webhook.
 4. Manter `packages/design-system/tsconfig.vue.tsbuildinfo` fora do stage.
 
 ## Publicação

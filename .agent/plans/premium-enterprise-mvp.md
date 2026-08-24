@@ -459,7 +459,6 @@ pendente; o plano mantém `CVG-002C6=IN_PROGRESS/PARTIAL` e exige 387/387 antes
 de retomar child-process domain, failpoints, PIX PostgreSQL/RLS e webhook
 retry/DLQ/fencing.
 
-
 Publication note, 2026-08-24 (cross-instance hydration): implementation
 commit 20cf9e666d20adeb5303f86cf32d0346e025898d
 (fix: hydrate clinical reads across api instances) and pointer reconciliation
@@ -467,7 +466,6 @@ commit 9a0d7326704ee32dddc45fd72b52ba1efe5a550e were pushed and reconciled
 with origin/agent/sync-v4-full-program. The plan stays IN_PROGRESS/PARTIAL;
 the next short operation is failpoint expansion and the P2 in-flight
 hydration follow-up. The user-owned tsbuildinfo cache remains outside scope.
-
 
 Publication note, 2026-08-23: implementation and continuation evidence for the
 deterministic fixture/teardown wave were published in `75a5ccd` (`fix: make
@@ -572,7 +570,6 @@ independente fresca foi `APPROVE bounded`, sem P0/P1; falta publicar esta
 rodada e reconciliar o SHA. A jornada global, A/B/hydration, failpoints,
 PIX/webhook e os gates de produto/release seguem `IN_PROGRESS/PARTIAL`.
 
-
 Plan revision note, 2026-08-24 (cross-instance hydration): a regressão
 vertical reproduziu cache stale real na API secundária (4 passed, 1 failed,
 exit 1, 33,11 s) quando ela foi inicializada antes da mutação primária. O
@@ -654,3 +651,18 @@ regressão 1/1 em 61,96 s; typecheck 70/70 e secrets passaram. Evidência em
 `IN_PROGRESS/PARTIAL`; o próximo P1 é promover a matriz processual ao CI com
 execução serializada, enquanto bootstrap simultâneo, Helm, PIX/RLS, webhook,
 paridade, UX, operações e release continuam abertos.
+
+Plan revision note, 2026-08-24 (serialized critical process suite): o RED
+confirmou que `pnpm test:critical:process` não existia e que `test:critical`
+continha somente o processo inpatient-domain após a fase de banco/setup.
+Builder e critic independente fecharam `QB-CI-PROC-01..03` e `QB-CI-REG-01`:
+manifesto explícito de seis arquivos, execução serial com suffix efêmero por
+arquivo, `--no-file-parallelism`, hooks/teardowns de 120 s e fail-fast. A suíte
+real passou 6/6, exit 0, com 78,28 s + 39,19 s + 60,26 s + 40,67 s + 117,31 s
+
+- 55,20 s = 390,91 s. O runner depende do teardown dos testes e não encaminha
+  sinais por conta própria; isso é residual P2. O top-level `test:critical` não
+  foi repetido após o wiring; a fase base foi preservada textualmente e a fase
+  processual foi executada integralmente. O plano segue `IN_PROGRESS/PARTIAL`;
+  próximo gap é bootstrap laboratorial simultâneo, depois Helm renderizado,
+  PIX/RLS e webhook.

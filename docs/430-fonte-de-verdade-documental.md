@@ -12,8 +12,8 @@ Documento nao transforma uma funcionalidade em pronta. O estado real e determina
 
 | Tema                                       | Fonte vigente                                                                                                                                 |
 | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| Checkpoint de continuidade atual           | `2026-08-24-handoff-cash-receipt-concurrency.md`                                                                                              |
-| Handoffs imediatamente anteriores          | `2026-08-24-handoff-cash-receipt-sigkill.md`, `2026-08-24-handoff-worker-account-scope.md`                                                    |
+| Checkpoint de continuidade atual           | `2026-08-24-handoff-critical-process-suite.md`                                                                                                |
+| Handoffs imediatamente anteriores          | `2026-08-24-handoff-cash-receipt-concurrency.md`, `2026-08-24-handoff-cash-receipt-sigkill.md`, `2026-08-24-handoff-worker-account-scope.md`  |
 | Estado do produto, auditoria e Quality Bar | `2026-08-23-auditoria-documental-global-e-handoff.md`, atualizado pelos handoffs de 24/08 apenas no escopo bounded explicitamente registrado  |
 | Plano executivo vigente                    | `2026-08-07-plano-executivo-resolucao-auditoria-cvg-his-v4.md`                                                                                |
 | Backlog e roadmap vigentes                 | `2026-08-07-backlog-roadmap-resolucao-auditoria-cvg-his-v4.md`                                                                                |

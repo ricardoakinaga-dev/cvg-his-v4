@@ -29,14 +29,15 @@ git diff --check
 
 Leia, nesta ordem:
 
-1. [`2026-08-24-handoff-cash-receipt-concurrency.md`](2026-08-24-handoff-cash-receipt-concurrency.md);
-2. [`2026-08-24-handoff-cash-receipt-sigkill.md`](2026-08-24-handoff-cash-receipt-sigkill.md);
-3. [`2026-08-24-handoff-worker-account-scope.md`](2026-08-24-handoff-worker-account-scope.md);
-4. [`2026-08-23-auditoria-documental-global-e-handoff.md`](2026-08-23-auditoria-documental-global-e-handoff.md);
-5. [`../.agent/state.json`](../.agent/state.json);
-6. [`../.agent/backlog.json`](../.agent/backlog.json), item `CVG-002C6`;
-7. [`../.agent/plans/premium-enterprise-mvp.md`](../.agent/plans/premium-enterprise-mvp.md);
-8. os últimos registros de [`../.agent/execution-log.jsonl`](../.agent/execution-log.jsonl)
+1. [`2026-08-24-handoff-critical-process-suite.md`](2026-08-24-handoff-critical-process-suite.md);
+2. [`2026-08-24-handoff-cash-receipt-concurrency.md`](2026-08-24-handoff-cash-receipt-concurrency.md);
+3. [`2026-08-24-handoff-cash-receipt-sigkill.md`](2026-08-24-handoff-cash-receipt-sigkill.md);
+4. [`2026-08-24-handoff-worker-account-scope.md`](2026-08-24-handoff-worker-account-scope.md);
+5. [`2026-08-23-auditoria-documental-global-e-handoff.md`](2026-08-23-auditoria-documental-global-e-handoff.md);
+6. [`../.agent/state.json`](../.agent/state.json);
+7. [`../.agent/backlog.json`](../.agent/backlog.json), item `CVG-002C6`;
+8. [`../.agent/plans/premium-enterprise-mvp.md`](../.agent/plans/premium-enterprise-mvp.md);
+9. os últimos registros de [`../.agent/execution-log.jsonl`](../.agent/execution-log.jsonl)
    e [`../.agent/verification.jsonl`](../.agent/verification.jsonl).
 
 O único caminho local que pode aparecer como dirty é o cache user-owned
