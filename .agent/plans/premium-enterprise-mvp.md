@@ -694,3 +694,46 @@ helper non-cash e a migration 0124 fixou seu search_path. Evidências:
 `IN_PROGRESS/PARTIAL`; o próximo gap P0 é o executor HTTP durável de webhook
 com claim/retry/DLQ/lease fencing, enquanto provider real, Redis, RLS global,
 DR/RPO, paridade, UX, operações e release continuam abertos.
+
+Plan revision note, 2026-08-24 (report retry lease/fencing): a migration
+`0143_reports_delivery_leases.sql` e o repository PostgreSQL agora fazem claim
+account-scoped com `FOR UPDATE SKIP LOCKED`, expiração e fence por token. O
+worker one-shot passou a reivindicar a delivery antes do retry; migration 2/2,
+module-reports 11/11, PostgreSQL reports 2/2 e processo real 5/5 passaram em
+bancos efêmeros. O plano continua `IN_PROGRESS/PARTIAL`: esta é evidência
+bounded do lease, não homologação do provider externo, produção, ERP, paridade,
+operações ou release. O próximo P0 deve ser escolhido entre a cobertura
+operacional/workbench de relatórios Vetus e a próxima lacuna da jornada
+clínico-financeira.
+
+Plan revision note, 2026-08-24 (reports workbench export): o workbench passou a
+exportar CSV do recorte carregado nas trilhas de auditoria, financeiro e
+atendimento com sanitização de fórmula, escape de planilha, download browser e
+mensagem de sucesso. O RED/GREEN foi coberto por 3 testes do utilitário, suíte
+do componente 30/30, build/typecheck da SPA e E2E direcionado 1/1. A paridade
+estrutural de relatórios agora tem UI do workbench, utilitário, migration de
+lease e provas unitária/componente/E2E, mas o relatório Vetus permanece
+`BLOCKED` pelas trilhas sem fonte analítica/exportação completa e pela ausência
+de contrato server-side auditável para esse snapshot. O próximo P0 continua
+entre fechar o restante do workbench e avançar a jornada clínico-financeira.
+
+Plan revision note, 2026-08-24 (reports workbench inventory export): os quatro
+recortes de estoque que já possuem fonte local carregada — estoque, movimentos,
+notas fiscais derivadas dos lotes e produtos — passaram a expor `Exportar CSV`
+no workbench. O RED/GREEN reutilizou o contrato imutável do exportador: suíte do
+componente 30/30, build da SPA exit 0 e E2E Chromium 2/2 para agenda e estoque.
+Isso é exportação do snapshot carregado no cliente; não inventa saldo, não
+transforma uma nota derivada em documento fiscal e não fecha transferências,
+ajustes, inventário físico, custo médio ou trilhas server-side auditáveis. O
+relatório Vetus segue parcial/bloqueado nas famílias financeiras e cadastrais
+restantes. Stop decision remains `ACTIVE`.
+
+Plan revision note, 2026-08-24 (reports workbench payable export): o workbench
+passou a consumir o subledger autoritativo de `/financial/payables` para
+Contas a Pagar e, com `status=paid`, Contas Pagas. O RED/GREEN foi coberto por
+30/30 testes utilitário/componente, build da SPA e E2E Chromium 3/3 para
+agenda, estoque e contas a pagar. A ação continua somente leitura; baixas,
+cancelamentos e conciliação seguem nas telas financeiras com suas permissões.
+O relatório Vetus permanece parcial/bloqueado nas famílias de cheques,
+pagamento antecipado, cadastros e personalizados, além da ausência de export
+server-side auditável. Stop decision remains `ACTIVE`.

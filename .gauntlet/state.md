@@ -590,11 +590,12 @@ failpoints completos, hidratação cross-instance, RLS/FORCE RLS global e os
 gates de produto/operação/deploy/release. Implementação final: `67d47e2`;
 o checkpoint documental/control-plane é `16797efada1747fc2a6046d4dd7842dc6e7eea42`
 e a reconciliação final publicada é `8c21e246136cd32991b6927171fe67c76d41a27a`.
+
 ## Checkpoint integral de retomada — 23/08/2026, 18:19 BRT
 
 A auditoria documental foi consolidada em docs/2026-08-23-checkpoint-retomada-integral.md e no artefato .agent/artifacts/erp-audit-2026-08-23.md. O snapshot pré-inclusão tinha 1.454 arquivos em docs/, 1.198 textuais, 256 binários, 53.895.398 bytes e manifesto SHA-256 1e66d6af2cff706ccf2ac6291680b9fd1795c18ca0e71d84c7cbbcd3a8f290cd. A precedência runtime/testes/estado > código/contratos > camada ativa de agosto > ADRs > julho > Vetus > docs2 permanece vigente.
 
-Baseline executado: readiness 95/100 estrutural e 0/11 paridade; clinical parity 0/3; RLS 154/155; OpenAPI 337 paths/390 schemas; migration consistency bloqueada pela ausência de docs/phase-9-migration-manifest.json. pnpm test:critical terminou exit 1 com 385/387 testes em 28 arquivos. Os bloqueios concretos são um fixture de diária que usa stayday_<token> em coluna uuid e uma asserção de installation-state que procura REVOKE literal enquanto o Helm usa SELECT format. O rate limiter in-memory observado no teste não prova Redis compartilhado.
+Baseline executado: readiness 95/100 estrutural e 0/11 paridade; clinical parity 0/3; RLS 154/155; OpenAPI 337 paths/390 schemas; migration consistency bloqueada pela ausência de docs/phase-9-migration-manifest.json. pnpm test:critical terminou exit 1 com 385/387 testes em 28 arquivos. Os bloqueios concretos são um fixture de diária que usa stayday\_<token> em coluna uuid e uma asserção de installation-state que procura REVOKE literal enquanto o Helm usa SELECT format. O rate limiter in-memory observado no teste não prova Redis compartilhado.
 
 Decisão: stop decision ACTIVE; CVG-002C6 e a Quality Bar global continuam IN_PROGRESS/PARTIAL. O próximo RED/GREEN deve corrigir somente os dois bloqueios do teste crítico, reexecutar a suíte completa e então continuar eventos de domínio em processo filho/SIGKILL, failpoints e webhook HTTP retry/DLQ/fence. Nenhum gate de ERP, produção, provedor, SPA, paridade, WCAG, operações ou release foi promovido.
 
@@ -779,7 +780,6 @@ A crítica independente fresca rerodou o slice, retornou `APPROVE bounded` e
 não encontrou P0/P1; falta somente publicar e reconciliar o SHA. Stop
 decision segue `ACTIVE` e o próximo gap permanece A/B/hydration/failpoints.
 
-
 ## State update — cross-instance hydration bounded — 24/08/2026
 
 A iteração atual fechou apenas o boundary de leitura clínica/discharge entre
@@ -795,7 +795,6 @@ durante hydration in-flight permanece P2; Redis invalidation, full failpoints,
 PIX/RLS e webhook retry/DLQ/fencing continuam abertos. Próximo estado:
 publicar o código/teste/artefato e reconciliar o SHA remoto, preservando o
 cache tsbuildinfo fora do stage.
-
 
 ## Publication checkpoint — cross-instance hydration — 24/08/2026
 
@@ -880,12 +879,12 @@ This round is frozen before implementation and is narrower than the global ERP
 bar. It targets the highest open correctness gap in `CVG-002C6`, while all
 global gates remain `IN_PROGRESS/PARTIAL`.
 
-| ID | Required target | Evidence | Priority |
-|---|---|---|---|
-| `QB-REC-RACE-01` | Two real API processes receive concurrent public requests for the same tenant-A encounter with distinct idempotency keys; responses are exactly one `201` and one domain `409`, with no `500` or duplicate success. | Fresh Vitest process test against disposable PostgreSQL, two serving PIDs and HTTP responses. | P0 |
-| `QB-REC-RACE-02` | Tenant B cannot address A's encounter/register (`404`); database has exactly one receipt/payment/cash movement/journal entry, two balanced journal lines, one audit/outbox graph and no completed losing-key effect. | SQL reconciliation after the concurrent requests under restricted `NOBYPASSRLS` roles. | P0 |
-| `QB-REC-RACE-03` | The harness is representative and safe: isolated database suffix, real entrypoint, distinct process cleanup, deterministic barriers, no production credentials or mutations. | Direct fixture/test inspection plus command output and cleanup observation. | P0 |
-| `QB-REC-REG-01` | Existing SIGKILL rollback/restart/replay proof remains green after the race test is added. | Fresh rerun of `inpatient-cash-receipt-sigkill.test.ts`. | P1 |
+| ID               | Required target                                                                                                                                                                                                      | Evidence                                                                                      | Priority |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | -------- |
+| `QB-REC-RACE-01` | Two real API processes receive concurrent public requests for the same tenant-A encounter with distinct idempotency keys; responses are exactly one `201` and one domain `409`, with no `500` or duplicate success.  | Fresh Vitest process test against disposable PostgreSQL, two serving PIDs and HTTP responses. | P0       |
+| `QB-REC-RACE-02` | Tenant B cannot address A's encounter/register (`404`); database has exactly one receipt/payment/cash movement/journal entry, two balanced journal lines, one audit/outbox graph and no completed losing-key effect. | SQL reconciliation after the concurrent requests under restricted `NOBYPASSRLS` roles.        | P0       |
+| `QB-REC-RACE-03` | The harness is representative and safe: isolated database suffix, real entrypoint, distinct process cleanup, deterministic barriers, no production credentials or mutations.                                         | Direct fixture/test inspection plus command output and cleanup observation.                   | P0       |
+| `QB-REC-REG-01`  | Existing SIGKILL rollback/restart/replay proof remains green after the race test is added.                                                                                                                           | Fresh rerun of `inpatient-cash-receipt-sigkill.test.ts`.                                      | P1       |
 
 Known-bad baseline: the new concurrency test path is absent at HEAD and must
 fail to resolve before the Builder creates it. A green test alone does not
@@ -911,12 +910,12 @@ startup-idempotency gap.
 The next round targets the P1 regression-protection gap. The global ERP bar and
 all production gates remain unchanged.
 
-| ID | Required target | Evidence | Priority |
-|---|---|---|---|
-| `QB-CI-PROC-01` | A named `test:critical:process` command runs every required real process boundary: inpatient-domain, clinical-financial restart, cash-receipt SIGKILL, cash-receipt concurrency, PIX settlement and worker entrypoint. | Manifest inspection plus fresh command output naming all six files. | P1 |
-| `QB-CI-PROC-02` | Process tests run serially with a distinct ephemeral database suffix per file, explicit no-file-parallelism and bounded hooks/timeouts. | Runner trace and database/process cleanup observations. | P1 |
-| `QB-CI-PROC-03` | Any child failure propagates nonzero and stops the suite; existing `test:critical` database/foundational phase remains unchanged. | Known-bad injected command or runner unit check plus `test:critical` script inspection. | P1 |
-| `QB-CI-REG-01` | The new runner does not regress the already-green bounded process tests or leak credentials/production mutations. | Focused process suite, secrets scan, diff/type checks and isolated DB evidence. | P1 |
+| ID              | Required target                                                                                                                                                                                                        | Evidence                                                                                | Priority |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | -------- |
+| `QB-CI-PROC-01` | A named `test:critical:process` command runs every required real process boundary: inpatient-domain, clinical-financial restart, cash-receipt SIGKILL, cash-receipt concurrency, PIX settlement and worker entrypoint. | Manifest inspection plus fresh command output naming all six files.                     | P1       |
+| `QB-CI-PROC-02` | Process tests run serially with a distinct ephemeral database suffix per file, explicit no-file-parallelism and bounded hooks/timeouts.                                                                                | Runner trace and database/process cleanup observations.                                 | P1       |
+| `QB-CI-PROC-03` | Any child failure propagates nonzero and stops the suite; existing `test:critical` database/foundational phase remains unchanged.                                                                                      | Known-bad injected command or runner unit check plus `test:critical` script inspection. | P1       |
+| `QB-CI-REG-01`  | The new runner does not regress the already-green bounded process tests or leak credentials/production mutations.                                                                                                      | Focused process suite, secrets scan, diff/type checks and isolated DB evidence.         | P1       |
 
 Known-bad baseline: `pnpm test:critical:process` is absent at the current
 commit, and `test:critical` contains only the inpatient-domain process test.
@@ -942,6 +941,7 @@ Quality Bar; simultaneous laboratory bootstrap, Helm-rendered validation,
 PIX/RLS, webhook retry/DLQ/fencing and all global ERP/production/parity/
 operations/release gates remain open. P2 residual: runner cleanup is delegated
 to each test's global teardown and signals are not forwarded by the runner.
+
 ## Quality Bar v1 — bootstrap laboratorial concorrente — 24/08/2026
 
 Esta rodada fecha o maior gap local seguinte: o seed lazy do catálogo
@@ -949,12 +949,12 @@ laboratorial faz check-then-act durante `hydrateCatalog`, podendo derrubar uma
 réplica quando duas APIs reais iniciam para a mesma conta. A barra é um recorte
 bounded de inicialização horizontal e não altera os gates globais do ERP.
 
-| ID | Required target | Evidence | Priority |
-|---|---|---|---|
-| `QB-LAB-BOOT-01` | Duas instâncias reais da API, em PIDs/portas distintos e iniciadas simultaneamente contra o mesmo PostgreSQL/conta, alcançam readiness de banco sem `duplicate key`, crash ou timeout. | Teste de processo com `apps/api/src/index.ts`, PostgreSQL efêmero, roles restritas e observação de `/health`/saída dos dois filhos. | P0 |
-| `QB-LAB-BOOT-02` | Após o boot concorrente existe exatamente um conjunto canônico por conta: 4 equipamentos, 6 tipos de laudo e 6 valores de referência, com IDs determinísticos sem duplicação e leitura A/B isolada. | Consultas SQL administrativas e GETs autenticados em dois tenants sob o boundary HTTP real. | P0 |
-| `QB-LAB-BOOT-03` | A hidratação é idempotente e repara catálogo parcial: remover um item canônico e repetir a leitura/hidratação repõe apenas o ausente, sem duplicar ou sobrescrever dados customizados. | Cenário de recuperação no mesmo teste/fixture, com contagens e IDs antes/depois. | P1 |
-| `QB-LAB-REG-01` | A correção não regressa os seis limites da suíte crítica serial nem a concorrência/SIGKILL de receipt. | `pnpm test:critical:process` e reruns focados com suffixes efêmeros novos. | P1 |
+| ID               | Required target                                                                                                                                                                                     | Evidence                                                                                                                            | Priority |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| `QB-LAB-BOOT-01` | Duas instâncias reais da API, em PIDs/portas distintos e iniciadas simultaneamente contra o mesmo PostgreSQL/conta, alcançam readiness de banco sem `duplicate key`, crash ou timeout.              | Teste de processo com `apps/api/src/index.ts`, PostgreSQL efêmero, roles restritas e observação de `/health`/saída dos dois filhos. | P0       |
+| `QB-LAB-BOOT-02` | Após o boot concorrente existe exatamente um conjunto canônico por conta: 4 equipamentos, 6 tipos de laudo e 6 valores de referência, com IDs determinísticos sem duplicação e leitura A/B isolada. | Consultas SQL administrativas e GETs autenticados em dois tenants sob o boundary HTTP real.                                         | P0       |
+| `QB-LAB-BOOT-03` | A hidratação é idempotente e repara catálogo parcial: remover um item canônico e repetir a leitura/hidratação repõe apenas o ausente, sem duplicar ou sobrescrever dados customizados.              | Cenário de recuperação no mesmo teste/fixture, com contagens e IDs antes/depois.                                                    | P1       |
+| `QB-LAB-REG-01`  | A correção não regressa os seis limites da suíte crítica serial nem a concorrência/SIGKILL de receipt.                                                                                              | `pnpm test:critical:process` e reruns focados com suffixes efêmeros novos.                                                          | P1       |
 
 Baseline conhecido-ruim: `ensureSeedData` observa ausência apenas em
 `laboratory_report_types` e executa três INSERTs determinísticos separados sem
@@ -1001,11 +1001,11 @@ renderização referencia `values` fora do escopo em que ele é carregado. A
 correção é limitada ao validador e não promove o chart sem um binário Helm
 autorizado.
 
-| ID | Required target | Evidence | Priority |
-|---|---|---|---|
-| `QB-HELM-RENDER-01` | Com Helm disponível, `pnpm validate:helm` executa lint e template para dev, staging e prod sem `ReferenceError`, e valida os manifests renderizados. | Runner Helm autorizado, saída por overlay e manifests parseados. | P0 |
-| `QB-HELM-STATIC-01` | Sem Helm, a validação estática continua cobrindo os contratos fail-closed de setup, `WORKER_ACCOUNT_IDS`, Secrets e datastores. | `pnpm validate:helm` local e inspeção do script. | P1 |
-| `QB-HELM-REG-01` | O conserto não introduz erro de sintaxe, segredo ou regressão global de tipos. | RED/GREEN, `node --check`, ESLint, Secretlint, typecheck e diff-check. | P1 |
+| ID                  | Required target                                                                                                                                      | Evidence                                                               | Priority |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | -------- |
+| `QB-HELM-RENDER-01` | Com Helm disponível, `pnpm validate:helm` executa lint e template para dev, staging e prod sem `ReferenceError`, e valida os manifests renderizados. | Runner Helm autorizado, saída por overlay e manifests parseados.       | P0       |
+| `QB-HELM-STATIC-01` | Sem Helm, a validação estática continua cobrindo os contratos fail-closed de setup, `WORKER_ACCOUNT_IDS`, Secrets e datastores.                      | `pnpm validate:helm` local e inspeção do script.                       | P1       |
+| `QB-HELM-REG-01`    | O conserto não introduz erro de sintaxe, segredo ou regressão global de tipos.                                                                       | RED/GREEN, `node --check`, ESLint, Secretlint, typecheck e diff-check. | P1       |
 
 Baseline RED conhecido antes da correção: `pnpm exec eslint
 infra/scripts/validate-helm.mjs` reportava `no-undef` para `values` no bloco de
@@ -1020,12 +1020,12 @@ realmente usa. A URL administrativa do teste anterior tornava a prova
 vacuamente permissiva, apesar de o reconciler exigir `LOGIN NOINHERIT
 NOBYPASSRLS` e separar API/worker.
 
-| ID | Required target | Evidence | Priority |
-|---|---|---|---|
-| `QB-PIX-RLS-01` | O PID real do settlement conecta como role worker reconciliada, sem `BYPASSRLS`, aplica exatamente uma liquidação e permanece account-scoped. | Processo filho, `current_user`, `has_function_privilege`, SQL administrativo e fixture A/B. | P0 |
-| `QB-PIX-RLS-02` | O worker não pode inserir/alterar recibos do provedor; a role API não pode alterar deliveries diretamente. | Negativos PostgreSQL com roles descartáveis, savepoints e grants reconciliados. | P0 |
-| `QB-PIX-RLS-03` | SIGKILL/takeover, stale-owner fencing e replay continuam exatamente uma vez sob a role worker. | Matriz real de checkpoints, dois PIDs e estado final receipt/billing/PIX/delivery. | P0 |
-| `QB-PIX-RLS-REG-01` | O endurecimento de ACL não regressa o foco de grants nem o restante runner processual crítico. | Unit ACL, focused process e `pnpm test:critical:process`. | P1 |
+| ID                  | Required target                                                                                                                               | Evidence                                                                                    | Priority |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | -------- |
+| `QB-PIX-RLS-01`     | O PID real do settlement conecta como role worker reconciliada, sem `BYPASSRLS`, aplica exatamente uma liquidação e permanece account-scoped. | Processo filho, `current_user`, `has_function_privilege`, SQL administrativo e fixture A/B. | P0       |
+| `QB-PIX-RLS-02`     | O worker não pode inserir/alterar recibos do provedor; a role API não pode alterar deliveries diretamente.                                    | Negativos PostgreSQL com roles descartáveis, savepoints e grants reconciliados.             | P0       |
+| `QB-PIX-RLS-03`     | SIGKILL/takeover, stale-owner fencing e replay continuam exatamente uma vez sob a role worker.                                                | Matriz real de checkpoints, dois PIDs e estado final receipt/billing/PIX/delivery.          | P0       |
+| `QB-PIX-RLS-REG-01` | O endurecimento de ACL não regressa o foco de grants nem o restante runner processual crítico.                                                | Unit ACL, focused process e `pnpm test:critical:process`.                                   | P1       |
 
 Baseline RED conhecido: com a URL `TEST_DB_URL`, `PIX_READY.databaseUser` era
 `postgres`; com a URL worker, o settlement terminava em
@@ -1130,3 +1130,162 @@ inventory procurement/document journeys listed by the parity audit. CI,
 staging/production backup-restore, cluster Helm admission and real provider
 credentials remain external operational gates. The temporary PostgreSQL
 container created for this run was stopped; no commit or push was performed.
+
+## Latest bounded checkpoint — reports in `run-once` — 2026-08-24
+
+The report worker lane was audited against the real runtime. The initial RED
+was a genuine tenant-context failure in `apps/worker/src/run-once.ts`: the
+notification tick executed outside `runWithTenantContext`. The GREEN correction
+now scopes notifications, outbox, webhooks and scheduled reports to the worker
+account and invokes `runScheduledReportsTick` with `WORKER_REPORTS_USER_ID`.
+
+The provider gained a validated `REPORT_EMAIL_ENDPOINT` override restricted to
+`test`/`development`; production-like environments reject it and keep the
+fixed Resend endpoint. Provider tests passed 4/4, the worker package test and
+module-reports test passed, and the fresh process fixture passed 3/3 against a
+disposable PostgreSQL database. The second process case delivered a real CSV
+payload to a local HTTP receiver with stable `rep_deliv_*` idempotency key,
+`cvg-delivery-id` tag and persisted `sent` execution/export links.
+
+The third process case returned HTTP 503 to the first child, persisted
+`failed`, then used the explicit `WORKER_REPORTS_RETRY_FAILED=1` flag in a
+second child to hydrate and reprocess the same delivery after HTTP 200. Both
+requests carried the same idempotency key. The runner unit suite passed 19
+tests; the retry is intentionally one-shot and does not claim a distributed
+lease for concurrent replay.
+
+This verifies only the bounded one-shot/report-delivery criteria. It does not
+promote external provider homologation, report SIGKILL retry or distributed
+retry lease, cluster/Secrets,
+Redis, DR/RPO, global ERP/Vetus parity, operations or release. The historical
+webhook storage handoff was reconciled because its “not implemented” claims are
+stale; webhook behavior is already covered by the current database/process/unit
+tests and remains at-least-once rather than provider-side exactly-once.
+
+Stop decision remains `ACTIVE`; CVG-002C6, ERP, production, parity, operations
+and release stay `IN_PROGRESS/PARTIAL`.
+
+## Follow-up bounded checkpoint — report delivery recovery after `SIGKILL` — 2026-08-24
+
+The independent report review found a concrete restart gap: a new delivery was
+only persisted after the provider returned. A worker killed while the external
+request was in flight therefore left no row for `WORKER_REPORTS_RETRY_FAILED=1`
+to discover.
+
+TDD RED reproduced the absence with a real child process and a local receiver.
+The GREEN correction in `packages/modules/reports/src/index.ts` persists the
+stable delivery identity as retryable before the provider call. The fresh
+process fixture passed 4/4: execution, controlled delivery, HTTP 503 replay and
+SIGKILL recovery. In the fourth case the receiver accepted the first request,
+the child was killed with `SIGKILL` while the response remained in flight, and
+the second child reprocessed the same `rep_deliv_*` identity to `sent`.
+
+The proof remains bounded: the receiver is local, the provider is not
+homologated externally, and the explicit replay still has no distributed
+delivery lease/fencing for concurrent retry workers. The next report-specific
+gap is that lease, unless the complete clinical-financial P0 has higher value.
+
+Stop decision remains `ACTIVE`; CVG-002C6, ERP, production, parity, operations
+and release stay `IN_PROGRESS/PARTIAL`.
+
+## Follow-up bounded checkpoint — report retry lease/fencing — 2026-08-24
+
+The report retry race was closed at the PostgreSQL boundary. Migration
+`0143_reports_delivery_leases.sql` adds `claim_token`, `claim_until` and
+`claim_worker_id`, a failed-row claim index and a constraint preventing a
+partial claim. `ReportsService` exposes account-scoped failed-delivery claims;
+the database repository uses `FOR UPDATE SKIP LOCKED`, and the final update
+requires the current token, fencing a stale worker after takeover.
+
+TDD RED first failed because the migration did not exist. GREEN evidence is:
+the migration contract unit 2/2, module-reports 11/11, PostgreSQL reports
+delivery 2/2 (claim competition, expiry takeover and stale-token rejection),
+and the real one-shot process fixture 5/5. The fifth process case launched two
+retry workers concurrently and observed one provider retry only.
+
+This is GREEN bounded to disposable PostgreSQL, `NODE_ENV=test` and the local
+controlled provider. The default lease is 120 seconds; external provider
+deduplication, cluster/Secrets, Redis, DR/RPO, Vetus parity and global ERP,
+operations and release gates remain open. Stop decision remains `ACTIVE`.
+
+## Follow-up bounded checkpoint — reports workbench export — 2026-08-24
+
+The next P0 slice made the legacy report workbench operational for the loaded
+audit, financial and attendance recortes that already have authoritative local
+sources. `ReportWorkbenchPage.vue` now offers `Exportar CSV` only for those
+specs; the builder adds UTF-8 BOM, semicolon separation, escaping, object/null
+handling and spreadsheet-formula protection. Other Vetus report families keep
+the disabled action and explicit source limitation.
+
+TDD RED was the missing `@/utils/report-export` module. GREEN is the utility
+3/3, ReportWorkbenchPage 30/30, SPA `vue-tsc` exit 0, SPA production build
+exit 0 and a real Chromium download 1/1 from `/reports/appointments`. The
+parity contract test passed 4/4; report-only parity is 98/100 with 4/11
+verified and the reports area has 100/100 structural evidence. Enterprise
+readiness remains 95/100 (42 PASS, 3 WARN, 1 FAIL from strict parity).
+
+This is a client-side snapshot, not a server-side audited export or full Excel
+legacy implementation. Accounts payable, paid accounts, cheques, advance
+payments, NFS-e, registration and inventory report families remain open, as do
+provider/cluster/Secrets, Redis, DR/RPO, global ERP/parity, operations and
+release. Stop decision remains `ACTIVE`; no global gate is promoted.
+
+## Follow-up bounded checkpoint — reports workbench inventory export — 2026-08-24
+
+The next P0 slice enabled CSV export for the four inventory recortes whose
+authoritative local data is already loaded by the existing workbench:
+`inventory-stock`, `inventory-movements`, `inventory-invoices` and
+`inventory-products`. The implementation reuses the immutable CSV builder and
+keeps the source limitations visible: inventory invoices are derived from lots,
+while transfers, adjustments, physical counts, average cost and server-side
+audited exports remain outside the evidence.
+
+The component suite remained 30/30, the SPA production build passed, and a real
+Chromium flow downloaded both agenda and inventory snapshots 2/2. No fake
+inventory rows or unverified Vetus claims were introduced. The parity and
+readiness gates were rerun after this contract update; the remaining report
+blocker is the unimplemented financial/registration/custom export families and
+the missing server-side audited export contract. Stop decision remains
+`ACTIVE`; no global gate is promoted.
+
+## Final bounded retest — payable loading fail-closed — 2026-08-24
+
+After review, the payable snapshot is cleared before the subledger request so a
+failed report switch cannot render stale rows as current. Focused utility and
+component tests passed 30/30 and the SPA production build passed with 769
+modules transformed. This is a regression hardening proof inside the payable
+slice; it does not change the global parity or release decision.
+
+## Final bounded review — reports workbench inventory export — 2026-08-24
+
+The post-handoff review reran the broad quality gates: full monorepo typecheck
+passed for 70/70 workspace projects, Secretlint passed, the high-severity
+dependency audit reported no known vulnerabilities, Prettier passed on touched
+implementation/control files, the JSON/JSONL ledgers parsed and `git diff
+--check` passed. The focused evidence remains 30/30 component tests, SPA build
+exit 0, agenda/inventory browser downloads 2/2 and parity contract 4/4.
+
+The bounded increment is approved only as GREEN for source-backed inventory
+snapshot export. Report-only parity remains 98/100 with 4/11 areas verified;
+enterprise readiness remains 95/100 (42 PASS, 3 WARN, 1 FAIL from strict
+parity). Server-side audited export, the remaining financial/registration/custom
+families, external providers, target operations and release remain open. Stop
+decision remains `ACTIVE`; no global gate is promoted.
+
+## Follow-up bounded checkpoint — reports workbench payable export — 2026-08-24
+
+The next source-backed P0 slice connected the workbench to the existing
+tenant-scoped `/financial/payables` subledger. `Contas a Pagar` exports all
+loaded payable records; `Contas Pagas` requests the authoritative `paid`
+status. Both use the protected immutable CSV builder and remain read-only;
+settlement, cancellation and reconciliation actions stay in their financial
+pages.
+
+TDD RED was the still-disabled `Solicitar Excel` action. GREEN is the combined
+utility/component suite 30/30, SPA build exit 0 and real Chromium downloads
+3/3 for agenda, inventory and accounts payable. The parity contract passed
+4/4; report-only parity remains 98/100 with 4/11 verified and the reports area
+blocked only by cheques, advance-payment, registration/custom families and the
+missing server-side audited-export contract. Enterprise readiness remains
+95/100 (42 PASS, 3 WARN, 1 FAIL from strict parity). Stop decision remains
+`ACTIVE`; no global gate is promoted.

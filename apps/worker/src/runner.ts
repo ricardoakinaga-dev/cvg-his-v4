@@ -2,11 +2,12 @@ import {
   NotificationsService,
   type NotificationRepository
 } from '@cvg-his-v2/module-notifications';
+import { EventBusService, TenantUnitOfWorkConsumerGuard } from '@cvg-his-v2/module-event-bus';
 import {
-  EventBusService,
-  TenantUnitOfWorkConsumerGuard
-} from '@cvg-his-v2/module-event-bus';
-import { ReportsService, type ReportRepository, type ReportScheduleSummary } from '@cvg-his-v2/module-reports';
+  ReportsService,
+  type ReportRepository,
+  type ReportScheduleSummary
+} from '@cvg-his-v2/module-reports';
 import type { Logger } from '@cvg-his-v2/shared-logging';
 import type { OutboxRepository } from '@cvg-his-v2/module-event-bus';
 import type { AccountId, UserId } from '@cvg-his-v2/shared-types';
@@ -93,16 +94,12 @@ export function createWorkerNotifications(options?: WorkerOptions): Notification
 }
 
 export function createWorkerEventBus(options?: WorkerOptions): EventBusService {
-  return new EventBusService(
-    options?.eventBusRepository,
-    undefined,
-    {
-      workerId: options?.workerId,
-      consumerGuard: options?.unitOfWork
-        ? new TenantUnitOfWorkConsumerGuard(options.unitOfWork)
-        : undefined
-    }
-  );
+  return new EventBusService(options?.eventBusRepository, undefined, {
+    workerId: options?.workerId,
+    consumerGuard: options?.unitOfWork
+      ? new TenantUnitOfWorkConsumerGuard(options.unitOfWork)
+      : undefined
+  });
 }
 
 export function createWorkerReports(options?: WorkerOptions): ReportsService {
@@ -118,7 +115,7 @@ export async function resolveScheduledReportRows(
 ): Promise<readonly Record<string, unknown>[]> {
   if (schedule.reportId === 'administrative-executive') {
     return [
-      ...await resolveAdministrativeExecutiveSourceRows(schedule, sources),
+      ...(await resolveAdministrativeExecutiveSourceRows(schedule, sources)),
       {
         domain: 'reports',
         metric: 'Destinatarios configurados',
@@ -148,7 +145,10 @@ export async function resolveScheduledReportRows(
       {
         number: `SCHEDULE-${schedule.id}`,
         period: `${schedule.lastRunAt ?? schedule.createdAt}..${schedule.nextRunAt}`,
-        status: typeof schedule.filters.status === 'string' && schedule.filters.status ? schedule.filters.status : 'scheduled',
+        status:
+          typeof schedule.filters.status === 'string' && schedule.filters.status
+            ? schedule.filters.status
+            : 'scheduled',
         totalBaseAmount: 0,
         totalCommissionAmount: 0,
         lineCount: schedule.recipients.length
@@ -171,9 +171,10 @@ function resolveCommissionCalculationRows(
   return sources.commissions
     .listCalculations(schedule.accountId)
     .filter((calculation) => !status || calculation.status === status)
-    .filter((calculation) =>
-      (!period.dateFrom || calculation.periodEnd >= period.dateFrom)
-      && (!period.dateTo || calculation.periodStart <= period.dateTo)
+    .filter(
+      (calculation) =>
+        (!period.dateFrom || calculation.periodEnd >= period.dateFrom) &&
+        (!period.dateTo || calculation.periodStart <= period.dateTo)
     )
     .map((calculation) => ({
       number: calculation.number,
@@ -290,9 +291,10 @@ async function resolveAdministrativeExecutiveSourceRows(
   return rows;
 }
 
-function reportPeriodFromSchedule(
-  schedule: ReportScheduleSummary
-): { readonly dateFrom?: string; readonly dateTo?: string } {
+function reportPeriodFromSchedule(schedule: ReportScheduleSummary): {
+  readonly dateFrom?: string;
+  readonly dateTo?: string;
+} {
   return {
     dateFrom: typeof schedule.filters.dateFrom === 'string' ? schedule.filters.dateFrom : undefined,
     dateTo: typeof schedule.filters.dateTo === 'string' ? schedule.filters.dateTo : undefined
@@ -318,7 +320,10 @@ export async function runWorkerTick(
   context: WorkerTickContext,
   notifications: NotificationsService = defaultNotifications
 ) {
-  const processed = await notifications.processPendingFromRepository({ limit: 25 }, context.accountId);
+  const processed = await notifications.processPendingFromRepository(
+    { limit: 25 },
+    context.accountId
+  );
 
   logger.info('worker notification tick complete', {
     service: context.service,
@@ -344,7 +349,9 @@ export async function runEventBusTick(
     correlationId: context.correlationId,
     processedEvents: processed.length,
     processedEventIds: processed.map((event) => event.id).slice(0, 10),
-    processedCorrelationIds: Array.from(new Set(processed.map((event) => event.correlationId))).slice(0, 10),
+    processedCorrelationIds: Array.from(
+      new Set(processed.map((event) => event.correlationId))
+    ).slice(0, 10),
     persistenceMode: context.persistenceMode,
     databaseHealthy: context.databaseHealthy
   });
@@ -402,4 +409,67 @@ export async function runScheduledReportsTick(
     persistenceMode: context.persistenceMode,
     databaseHealthy: context.databaseHealthy
   });
+}
+
+export interface FailedReportDeliveryRetryFailure {
+  readonly deliveryId: string;
+  readonly scheduleId: string;
+  readonly error: string;
+}
+
+export async function runFailedReportDeliveriesTick(
+  logger: Logger,
+  context: WorkerTickContext & { readonly accountId: AccountId; readonly runAsUserId: UserId },
+  reports: ReportsService,
+  limit = 25
+): Promise<{
+  readonly attempted: number;
+  readonly retried: number;
+  readonly failures: readonly FailedReportDeliveryRetryFailure[];
+}> {
+  const retryLimit = Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 25;
+  const claimedDeliveries = await reports.claimFailedScheduleDeliveries(
+    context.accountId,
+    context.correlationId,
+    undefined,
+    retryLimit
+  );
+  const failures: FailedReportDeliveryRetryFailure[] = [];
+  let retried = 0;
+
+  for (const claim of claimedDeliveries) {
+    try {
+      await reports.retryScheduleDelivery(
+        context.accountId,
+        context.runAsUserId,
+        claim.delivery.scheduleId,
+        claim.delivery.id,
+        claim.claimToken
+      );
+      retried += 1;
+    } catch (error) {
+      failures.push({
+        deliveryId: claim.delivery.id,
+        scheduleId: claim.delivery.scheduleId,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+
+  logger.info('worker failed report delivery retry complete', {
+    service: context.service,
+    environment: context.environment,
+    correlationId: context.correlationId,
+    attempted: claimedDeliveries.length,
+    retried,
+    failures: failures.length,
+    persistenceMode: context.persistenceMode,
+    databaseHealthy: context.databaseHealthy
+  });
+
+  return {
+    attempted: claimedDeliveries.length,
+    retried,
+    failures
+  };
 }

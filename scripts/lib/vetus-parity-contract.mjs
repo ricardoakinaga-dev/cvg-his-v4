@@ -7,8 +7,14 @@ export const vetusParityContract = Object.freeze([
       'docs/vetus/guides/2026-04-24-relatorio-esteira-de-atendimento.md'
     ],
     evidence: {
-      ui: ['apps/spa/src/pages/scheduling/QueuePage.vue', 'apps/spa/src/pages/sales/CounterSalesPage.vue'],
-      api: ['apps/api/src/routes/scheduling-routes.ts', 'apps/api/src/routes/counter-sales-routes.ts'],
+      ui: [
+        'apps/spa/src/pages/scheduling/QueuePage.vue',
+        'apps/spa/src/pages/sales/CounterSalesPage.vue'
+      ],
+      api: [
+        'apps/api/src/routes/scheduling-routes.ts',
+        'apps/api/src/routes/counter-sales-routes.ts'
+      ],
       persistence: [
         'packages/db/migrations/0055_scheduling_queue_operational_fields.sql',
         'packages/db/migrations/0128_scheduling_queue_transfer_receipts.sql',
@@ -32,12 +38,15 @@ export const vetusParityContract = Object.freeze([
     name: 'Cadastros de clientes, animais e auxiliares',
     sources: ['docs/vetus/guides/12-modulo-cadastros-animais-clientes.md'],
     evidence: {
-      ui: ['apps/spa/src/pages/owners/OwnersListPage.vue', 'apps/spa/src/pages/patients/PatientsListPage.vue'],
+      ui: [
+        'apps/spa/src/pages/owners/OwnersListPage.vue',
+        'apps/spa/src/pages/patients/PatientsListPage.vue'
+      ],
       api: ['apps/api/src/routes/owners-routes.ts', 'apps/api/src/routes/patients-routes.ts'],
-    persistence: [
-      'packages/db/migrations/0000_vengeful_pet_avengers.sql',
-      'packages/db/migrations/0065_tenant_isolation_auth_webhook_clinical_links.sql'
-    ],
+      persistence: [
+        'packages/db/migrations/0000_vengeful_pet_avengers.sql',
+        'packages/db/migrations/0065_tenant_isolation_auth_webhook_clinical_links.sql'
+      ],
       tests: [
         'apps/api/src/routes/owners-routes.test.ts',
         'apps/api/src/routes/patients-routes.test.ts',
@@ -212,21 +221,32 @@ export const vetusParityContract = Object.freeze([
     name: 'Relatorios operacionais e gerenciais',
     sources: ['docs/vetus/guides/2026-04-24-relatorio-consolidado-modulo-relatorios.md'],
     evidence: {
-      ui: ['apps/spa/src/pages/reports/ReportsEnginePage.vue'],
+      ui: [
+        'apps/spa/src/pages/reports/ReportsEnginePage.vue',
+        'apps/spa/src/pages/reports/ReportWorkbenchPage.vue',
+        'apps/spa/src/utils/report-export.ts'
+      ],
       api: ['apps/api/src/routes/reports-routes.ts'],
       persistence: [
         'packages/db/migrations/0048_report_engine.sql',
-        'packages/db/migrations/0134_reports_delivery_tenant_integrity.sql'
+        'packages/db/migrations/0134_reports_delivery_tenant_integrity.sql',
+        'packages/db/migrations/0143_reports_delivery_leases.sql'
       ],
       tests: [
         'packages/modules/reports/src/reports.test.ts',
-        'tests/integration/database/reports-delivery-postgres.test.ts'
+        'tests/integration/database/reports-delivery-postgres.test.ts',
+        'tests/integration/process/worker-run-once-reports.test.ts',
+        'apps/spa/src/pages/reports/__tests__/ReportWorkbenchPage.test.ts',
+        'apps/spa/src/utils/report-export.test.ts'
       ],
-      e2e: ['e2e/spa/enterprise-surfaces-gate.spec.ts', 'e2e/tests/fluxo-marketing-relatorios.spec.ts']
+      e2e: [
+        'e2e/spa/enterprise-surfaces-gate.spec.ts',
+        'e2e/tests/fluxo-marketing-relatorios.spec.ts'
+      ]
     },
     blockers: [
-      'Diversos relatorios Vetus ainda usam workbench somente leitura e sem exportacao operacional completa.',
-      'O E2E enterprise prova execucao e exportacao de superficies, mas ainda nao cobre worker, arquivo, entrega, falha e reprocessamento.'
+      'Relatorios Vetus de cheques, pagamento antecipado, cadastros e personalizados ainda nao possuem exportacao operacional completa.',
+      'O workbench exporta CSV do recorte carregado para auditoria, financeiro, atendimento e estoque, incluindo contas a pagar e contas pagas respaldadas pelo subledger; ainda falta um contrato server-side/auditavel e cobertura completa das trilhas Vetus restantes, alem do worker de entregas agendadas.'
     ]
   },
   {

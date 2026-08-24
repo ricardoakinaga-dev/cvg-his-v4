@@ -31,9 +31,8 @@ describe('reports delivery persistence on PostgreSQL', () => {
     operation: () => Promise<T> | T
   ): Promise<T> {
     const correlationId = `reports-delivery-${randomUUID()}`;
-    return runWithTenantContext(
-      { tenantId: TENANT_ID, accountId, correlationId },
-      () => runInTenantTransactionContext(
+    return runWithTenantContext({ tenantId: TENANT_ID, accountId, correlationId }, () =>
+      runInTenantTransactionContext(
         getPool(),
         { accountId, actorUserId: userId, correlationId },
         operation
@@ -102,13 +101,15 @@ describe('reports delivery persistence on PostgreSQL', () => {
     };
     const service = new ReportsService({ repository, deliveryProvider: provider });
 
-    const schedule = await command(ACCOUNT_ID, USER_ID, () => service.createSchedule(ACCOUNT_ID, USER_ID, {
-      reportId: 'administrative-executive',
-      name: 'Persisted delivery retry',
-      frequency: 'daily',
-      format: 'csv',
-      recipients: ['financeiro@cvg.local']
-    }));
+    const schedule = await command(ACCOUNT_ID, USER_ID, () =>
+      service.createSchedule(ACCOUNT_ID, USER_ID, {
+        reportId: 'administrative-executive',
+        name: 'Persisted delivery retry',
+        frequency: 'daily',
+        format: 'csv',
+        recipients: ['financeiro@cvg.local']
+      })
+    );
     const claimed = await command(ACCOUNT_ID, USER_ID, () =>
       service.claimDueSchedules(ACCOUNT_ID, schedule.nextRunAt, 'reports-worker-a')
     );
@@ -129,10 +130,12 @@ describe('reports delivery persistence on PostgreSQL', () => {
         format: 'csv'
       })
     );
-    const execution = await command(ACCOUNT_ID, USER_ID, () => service.execute(ACCOUNT_ID, USER_ID, {
-      reportId: schedule.reportId,
-      rows: [{ domain: 'financial', metric: 'Receita', value: 100, status: 'tracked' }]
-    }));
+    const execution = await command(ACCOUNT_ID, USER_ID, () =>
+      service.execute(ACCOUNT_ID, USER_ID, {
+        reportId: schedule.reportId,
+        rows: [{ domain: 'financial', metric: 'Receita', value: 100, status: 'tracked' }]
+      })
+    );
     const exported = await command(ACCOUNT_ID, USER_ID, () =>
       service.exportExecution(ACCOUNT_ID, USER_ID, execution.id, 'csv')
     );
@@ -207,12 +210,112 @@ describe('reports delivery persistence on PostgreSQL', () => {
 
     await expect(
       command(FOREIGN_ACCOUNT_ID, FOREIGN_USER_ID, () =>
-        rehydrated.retryScheduleDelivery(FOREIGN_ACCOUNT_ID, FOREIGN_USER_ID, schedule.id, failedDelivery!.id)
+        rehydrated.retryScheduleDelivery(
+          FOREIGN_ACCOUNT_ID,
+          FOREIGN_USER_ID,
+          schedule.id,
+          failedDelivery!.id
+        )
       )
     ).rejects.toThrow(/not found/i);
     const foreignDeliveries = await command(FOREIGN_ACCOUNT_ID, FOREIGN_USER_ID, () =>
       repository.findDeliveries(FOREIGN_ACCOUNT_ID)
     );
     expect(foreignDeliveries).toHaveLength(0);
+  });
+
+  it('claims failed deliveries once and fences an expired worker lease', async () => {
+    let shouldFail = true;
+    const calls: string[] = [];
+    const repository = new DatabaseReportRepository();
+    const provider = {
+      deliver: async (input: { readonly deliveryId: string }) => {
+        calls.push(input.deliveryId);
+        if (shouldFail) throw new Error('controlled retry failure');
+      }
+    };
+    const service = new ReportsService({ repository, deliveryProvider: provider });
+    const schedule = await command(ACCOUNT_ID, USER_ID, () =>
+      service.createSchedule(ACCOUNT_ID, USER_ID, {
+        reportId: 'administrative-executive',
+        name: 'Concurrent delivery lease',
+        frequency: 'daily',
+        format: 'csv',
+        recipients: ['lease@cvg.local']
+      })
+    );
+    const due = await command(ACCOUNT_ID, USER_ID, () =>
+      service.claimDueSchedules(ACCOUNT_ID, schedule.nextRunAt, 'reports-lease-seed')
+    );
+    expect(due).toHaveLength(1);
+    const execution = await command(ACCOUNT_ID, USER_ID, () =>
+      service.execute(ACCOUNT_ID, USER_ID, {
+        reportId: schedule.reportId,
+        rows: [{ domain: 'reports', metric: 'Lease', value: 1, status: 'tracked' }]
+      })
+    );
+    const exported = await command(ACCOUNT_ID, USER_ID, () =>
+      service.exportExecution(ACCOUNT_ID, USER_ID, execution.id, 'csv')
+    );
+    const firstAttempt = await command(ACCOUNT_ID, USER_ID, () =>
+      service.deliverExport(ACCOUNT_ID, schedule.id, execution.id, exported, schedule.recipients)
+    );
+    const failedDelivery = firstAttempt.deliveries[0];
+    expect(failedDelivery?.status).toBe('failed');
+    if (!failedDelivery) throw new Error('failed delivery fixture was not created');
+
+    const workerA = new ReportsService({ repository, deliveryProvider: provider });
+    const workerB = new ReportsService({ repository, deliveryProvider: provider });
+    await command(ACCOUNT_ID, USER_ID, () => workerA.hydrateFromDatabase(ACCOUNT_ID));
+    await command(ACCOUNT_ID, USER_ID, () => workerB.hydrateFromDatabase(ACCOUNT_ID));
+    const claimAsOf = new Date().toISOString();
+    const [claimsA, claimsB] = await Promise.all([
+      command(ACCOUNT_ID, USER_ID, () =>
+        workerA.claimFailedScheduleDeliveries(ACCOUNT_ID, 'reports-lease-a', claimAsOf, 1, 60_000)
+      ),
+      command(ACCOUNT_ID, USER_ID, () =>
+        workerB.claimFailedScheduleDeliveries(ACCOUNT_ID, 'reports-lease-b', claimAsOf, 1, 60_000)
+      )
+    ]);
+    expect([claimsA.length, claimsB.length].sort()).toEqual([0, 1]);
+    const firstClaim = claimsA[0] ?? claimsB[0];
+    expect(firstClaim?.delivery.id).toBe(failedDelivery.id);
+    expect(firstClaim?.claimToken).toContain(failedDelivery.id);
+
+    await pool.query(
+      `UPDATE report_schedule_deliveries
+          SET claim_until = now() - interval '1 second'
+        WHERE account_id = $1 AND id = $2`,
+      [ACCOUNT_ID, failedDelivery.id]
+    );
+    const takeover = await command(ACCOUNT_ID, USER_ID, () =>
+      workerB.claimFailedScheduleDeliveries(
+        ACCOUNT_ID,
+        'reports-lease-takeover',
+        new Date().toISOString(),
+        1,
+        60_000
+      )
+    );
+    expect(takeover).toHaveLength(1);
+    expect(takeover[0]?.claimToken).not.toBe(firstClaim?.claimToken);
+
+    const staleWrite = await command(ACCOUNT_ID, USER_ID, () =>
+      repository.saveClaimedDelivery(failedDelivery, firstClaim!.claimToken)
+    );
+    expect(staleWrite).toBe(false);
+
+    shouldFail = false;
+    const retried = await command(ACCOUNT_ID, USER_ID, () =>
+      workerB.retryScheduleDelivery(
+        ACCOUNT_ID,
+        USER_ID,
+        schedule.id,
+        failedDelivery.id,
+        takeover[0]!.claimToken
+      )
+    );
+    expect(retried.status).toBe('sent');
+    expect(calls).toEqual([failedDelivery.id, failedDelivery.id]);
   });
 });

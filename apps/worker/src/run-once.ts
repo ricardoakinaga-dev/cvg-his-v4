@@ -8,9 +8,12 @@ import { bootstrapWorkerServices, shutdownWorkerServices } from './bootstrap.js'
 import {
   createWorkerNotifications,
   createWorkerEventBus,
+  createWorkerReports,
   runWorkerTick,
   runEventBusTick,
-  runWebhookDeliveriesTick
+  runWebhookDeliveriesTick,
+  runScheduledReportsTick,
+  runFailedReportDeliveriesTick
 } from './runner.js';
 
 async function main() {
@@ -53,17 +56,22 @@ async function main() {
     () => bootstrap.eventConsumers?.hydrateAccount(accountId as never)
   );
 
-  await runWorkerTick(
-    logger,
-    {
-      service: config.appName,
-      environment: config.environment,
-      correlationId: createCorrelationId('worker'),
-      persistenceMode: bootstrap.notificationRepository ? 'database' : 'in-memory',
-      databaseHealthy: bootstrap.databaseHealthy,
-      databaseDetail: bootstrap.databaseDetail
-    },
-    notifications
+  await runWithTenantContext(
+    { tenantId: accountId, accountId, correlationId: createCorrelationId('worker') },
+    () =>
+      runWorkerTick(
+        logger,
+        {
+          service: config.appName,
+          environment: config.environment,
+          correlationId: createCorrelationId('worker'),
+          persistenceMode: bootstrap.notificationRepository ? 'database' : 'in-memory',
+          databaseHealthy: bootstrap.databaseHealthy,
+          databaseDetail: bootstrap.databaseDetail,
+          accountId: accountId as never
+        },
+        notifications
+      )
   );
 
   await runWithTenantContext(
@@ -107,6 +115,52 @@ async function main() {
         process.env.WORKER_INSTANCE_ID?.trim() || `run-once-webhook-${process.pid}`
       )
   );
+
+  const reports = createWorkerReports({
+    reportRepository: bootstrap.reportRepository
+  });
+  await runWithTenantContext(
+    { tenantId: accountId, accountId, correlationId: createCorrelationId('worker') },
+    () =>
+      runScheduledReportsTick(
+        logger,
+        {
+          service: config.appName,
+          environment: config.environment,
+          correlationId: createCorrelationId('worker'),
+          persistenceMode: 'database',
+          databaseHealthy: bootstrap.databaseHealthy,
+          databaseDetail: bootstrap.databaseDetail,
+          accountId: accountId as never,
+          runAsUserId: (process.env.WORKER_REPORTS_USER_ID?.trim() || accountId) as never
+        },
+        reports,
+        bootstrap.reportSources
+      )
+  );
+
+  if (process.env.WORKER_REPORTS_RETRY_FAILED === '1') {
+    await runWithTenantContext(
+      { tenantId: accountId, accountId, correlationId: createCorrelationId('worker') },
+      async () => {
+        await reports.hydrateFromDatabase(accountId as never);
+        await runFailedReportDeliveriesTick(
+          logger,
+          {
+            service: config.appName,
+            environment: config.environment,
+            correlationId: createCorrelationId('worker'),
+            persistenceMode: 'database',
+            databaseHealthy: bootstrap.databaseHealthy,
+            databaseDetail: bootstrap.databaseDetail,
+            accountId: accountId as never,
+            runAsUserId: (process.env.WORKER_REPORTS_USER_ID?.trim() || accountId) as never
+          },
+          reports
+        );
+      }
+    );
+  }
 
   await shutdownWorkerServices();
 }

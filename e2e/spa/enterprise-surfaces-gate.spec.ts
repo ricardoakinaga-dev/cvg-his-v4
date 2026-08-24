@@ -17,8 +17,13 @@ async function stabilizeEnterpriseSurface(page: Page): Promise<void> {
 }
 
 async function expectNoDocumentHorizontalOverflow(page: Page, context: string): Promise<void> {
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-  expect(overflow, `${context} should not create document-level horizontal overflow`).toBeLessThanOrEqual(1);
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth
+  );
+  expect(
+    overflow,
+    `${context} should not create document-level horizontal overflow`
+  ).toBeLessThanOrEqual(1);
 }
 
 async function expectVisibleInsideViewport(locator: Locator, label: string): Promise<void> {
@@ -75,9 +80,11 @@ test.describe('Gate Enterprise - Dashboard e Relatórios', () => {
     });
     await stabilizeEnterpriseSurface(page);
 
-    await expect(page.getByRole('heading', { name: 'Motor Enterprise de Relatórios' })).toBeVisible({
-      timeout: 15000
-    });
+    await expect(page.getByRole('heading', { name: 'Motor Enterprise de Relatórios' })).toBeVisible(
+      {
+        timeout: 15000
+      }
+    );
     await expect(page.getByText('Relatórios no catálogo')).toBeVisible();
     await expect(page.getByText('Execuções com dados')).toBeVisible();
     await expect(page.getByText('Agendamentos com falha')).toBeVisible();
@@ -102,5 +109,74 @@ test.describe('Gate Enterprise - Dashboard e Relatórios', () => {
 
     await expectNoDocumentHorizontalOverflow(page, 'Motor Enterprise de Relatórios');
     await captureEvidence(page, testInfo, 'enterprise-reports-engine.png');
+  });
+
+  test('exporta o recorte carregado no workbench de agenda', async ({ page }) => {
+    await loginViaToken(page);
+    await expect(page).not.toHaveURL(/\/login/, { timeout: 10000 });
+
+    await page.goto(`${SPA_URL}/reports/appointments`);
+    await waitForPageSettled(page, {
+      contentSelector: 'main, h1, h2, [role="heading"]',
+      timeout: 15000
+    });
+
+    await expect(page.getByRole('heading', { name: 'Agenda', exact: true })).toBeVisible({
+      timeout: 15000
+    });
+    const downloadPromise = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Exportar CSV' }).click();
+    const download = await downloadPromise;
+
+    expect(download.suggestedFilename()).toMatch(/^agenda-\d{4}-\d{2}-\d{2}\.csv$/);
+    await expect(page.getByText(/Exportação CSV gerada com \d+ linha\(s\)\./)).toBeVisible({
+      timeout: 15000
+    });
+  });
+
+  test('exporta o recorte carregado no workbench de estoque', async ({ page }) => {
+    await loginViaToken(page);
+    await expect(page).not.toHaveURL(/\/login/, { timeout: 10000 });
+
+    await page.goto(`${SPA_URL}/reports/inventory`);
+    await waitForPageSettled(page, {
+      contentSelector: 'main, h1, h2, [role="heading"]',
+      timeout: 15000
+    });
+
+    await expect(page.getByRole('heading', { name: 'Estoque', exact: true })).toBeVisible({
+      timeout: 15000
+    });
+    const downloadPromise = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Exportar CSV' }).click();
+    const download = await downloadPromise;
+
+    expect(download.suggestedFilename()).toMatch(/^estoque-\d{4}-\d{2}-\d{2}\.csv$/);
+    await expect(page.getByText(/Exportação CSV gerada com \d+ linha\(s\)\./)).toBeVisible({
+      timeout: 15000
+    });
+  });
+
+  test('exporta o recorte carregado no workbench de contas a pagar', async ({ page }) => {
+    await loginViaToken(page);
+    await expect(page).not.toHaveURL(/\/login/, { timeout: 10000 });
+
+    await page.goto(`${SPA_URL}/reports/accounts-payable`);
+    await waitForPageSettled(page, {
+      contentSelector: 'main, h1, h2, [role="heading"]',
+      timeout: 15000
+    });
+
+    await expect(page.getByRole('heading', { name: 'Contas a Pagar', exact: true })).toBeVisible({
+      timeout: 15000
+    });
+    const downloadPromise = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Exportar CSV' }).click();
+    const download = await downloadPromise;
+
+    expect(download.suggestedFilename()).toMatch(/^contas-a-pagar-\d{4}-\d{2}-\d{2}\.csv$/);
+    await expect(page.getByText(/Exportação CSV gerada com \d+ linha\(s\)\./)).toBeVisible({
+      timeout: 15000
+    });
   });
 });

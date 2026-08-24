@@ -96,6 +96,13 @@ export interface ReportScheduleDeliverySummary {
   readonly createdAt: string;
 }
 
+export interface ReportScheduleDeliveryClaim {
+  readonly delivery: ReportScheduleDeliverySummary;
+  readonly claimToken: string;
+  readonly claimUntil: string;
+  readonly claimWorkerId: string;
+}
+
 export interface ReportScheduleDeliveryAlertSummary {
   readonly id: string;
   readonly accountId: AccountId;
@@ -156,6 +163,17 @@ export interface ReportRepository {
     workerId: string,
     leaseMs?: number
   ) => Promise<readonly ReportScheduleSummary[]>;
+  readonly claimFailedDeliveries?: (
+    accountId: AccountId,
+    asOf: string,
+    workerId: string,
+    limit?: number,
+    leaseMs?: number
+  ) => Promise<readonly ReportScheduleDeliveryClaim[]>;
+  readonly saveClaimedDelivery?: (
+    delivery: ReportScheduleDeliverySummary,
+    claimToken: string
+  ) => Promise<boolean>;
 }
 
 export interface ReportsServiceOptions {
@@ -221,7 +239,9 @@ function seedDefinitions(): readonly ReportDefinition[] {
   ];
 }
 
-function isReportDefinitionList(value: ReportsServiceOptions | readonly ReportDefinition[] | undefined): value is readonly ReportDefinition[] {
+function isReportDefinitionList(
+  value: ReportsServiceOptions | readonly ReportDefinition[] | undefined
+): value is readonly ReportDefinition[] {
   return Array.isArray(value);
 }
 
@@ -233,8 +253,15 @@ export class ReportsService {
   readonly #exports = new Map<string, ReportExportSummary>();
   readonly #schedules = new Map<string, ReportScheduleSummary>();
   readonly #deliveries = new Map<string, ReportScheduleDeliverySummary>();
+  readonly #deliveryClaims = new Map<
+    string,
+    { readonly claimToken: string; readonly claimUntil: string; readonly claimWorkerId: string }
+  >();
   readonly #retryOperations = new Map<string, Promise<ReportScheduleDeliverySummary>>();
-  readonly #scheduleClaims = new Map<string, { readonly workerId: string; readonly claimUntil: number }>();
+  readonly #scheduleClaims = new Map<
+    string,
+    { readonly workerId: string; readonly claimUntil: number }
+  >();
 
   public constructor(options?: ReportsServiceOptions | readonly ReportDefinition[]) {
     if (isReportDefinitionList(options)) {
@@ -273,7 +300,10 @@ export class ReportsService {
   public listDefinitions(accountId: AccountId): readonly ReportDefinition[] {
     return [...this.#definitions.values()]
       .filter((definition) => definition.accountId === null || definition.accountId === accountId)
-      .sort((left, right) => left.category.localeCompare(right.category) || left.title.localeCompare(right.title));
+      .sort(
+        (left, right) =>
+          left.category.localeCompare(right.category) || left.title.localeCompare(right.title)
+      );
   }
 
   public getDefinition(accountId: AccountId, reportId: string): ReportDefinition {
@@ -284,7 +314,11 @@ export class ReportsService {
     return definition;
   }
 
-  public async execute(accountId: AccountId, requestedByUserId: UserId, input: ExecuteReportInput): Promise<ReportExecutionDetail> {
+  public async execute(
+    accountId: AccountId,
+    requestedByUserId: UserId,
+    input: ExecuteReportInput
+  ): Promise<ReportExecutionDetail> {
     const definition = this.getDefinition(accountId, input.reportId);
     const filters = normalizeFilters(input.filters ?? {});
     const rows = input.rows.map((row) => normalizeRow(definition, row));
@@ -331,7 +365,10 @@ export class ReportsService {
     const execution = this.getExecution(accountId, executionId);
     const definition = this.getDefinition(accountId, execution.reportId);
     if (!definition.supportedFormats.includes(format)) {
-      throw new ValidationError('Report format is not supported', { reportId: definition.id, format });
+      throw new ValidationError('Report format is not supported', {
+        reportId: definition.id,
+        format
+      });
     }
     const exportedAt = nowIso();
     const filename = `${definition.id}-${execution.id}.${format}`;
@@ -370,7 +407,10 @@ export class ReportsService {
     const frequency = normalizeFrequency(input.frequency);
     const format = input.format ?? 'csv';
     if (!definition.supportedFormats.includes(format)) {
-      throw new ValidationError('Report format is not supported', { reportId: definition.id, format });
+      throw new ValidationError('Report format is not supported', {
+        reportId: definition.id,
+        format
+      });
     }
     const now = nowIso();
     const schedule: ReportScheduleSummary = {
@@ -449,6 +489,67 @@ export class ReportsService {
     return claimed;
   }
 
+  public async claimFailedScheduleDeliveries(
+    accountId: AccountId,
+    workerId: string,
+    asOf = nowIso(),
+    limit = 25,
+    leaseMs = 120_000
+  ): Promise<readonly ReportScheduleDeliveryClaim[]> {
+    const asOfTime = new Date(asOf).getTime();
+    if (Number.isNaN(asOfTime)) {
+      throw new ValidationError('asOf must be a valid ISO date', { asOf });
+    }
+    if (!workerId.trim() || !Number.isFinite(limit) || limit <= 0) {
+      throw new ValidationError('workerId and limit are required for report delivery claims');
+    }
+    if (!Number.isFinite(leaseMs) || leaseMs <= 0) {
+      throw new ValidationError('leaseMs is required for report delivery claims');
+    }
+
+    const normalizedLimit = Math.floor(limit);
+    const normalizedLeaseMs = Math.floor(leaseMs);
+    if (this.#repository?.claimFailedDeliveries) {
+      const claimed = await this.#repository.claimFailedDeliveries(
+        accountId,
+        asOf,
+        workerId.trim(),
+        normalizedLimit,
+        normalizedLeaseMs
+      );
+      for (const claim of claimed) {
+        this.#deliveries.set(claim.delivery.id, claim.delivery);
+        this.#deliveryClaims.set(claim.delivery.id, {
+          claimToken: claim.claimToken,
+          claimUntil: claim.claimUntil,
+          claimWorkerId: claim.claimWorkerId
+        });
+      }
+      return claimed;
+    }
+
+    const claimUntil = new Date(asOfTime + normalizedLeaseMs).toISOString();
+    const claimed: ReportScheduleDeliveryClaim[] = [];
+    for (const delivery of this.listScheduleDeliveries(accountId)) {
+      if (delivery.status !== 'failed' || claimed.length >= normalizedLimit) continue;
+      const existing = this.#deliveryClaims.get(delivery.id);
+      if (existing && new Date(existing.claimUntil).getTime() > asOfTime) continue;
+      const claim = {
+        delivery,
+        claimToken: createCorrelationId('rep_deliv_claim'),
+        claimUntil,
+        claimWorkerId: workerId.trim()
+      };
+      this.#deliveryClaims.set(delivery.id, {
+        claimToken: claim.claimToken,
+        claimUntil: claim.claimUntil,
+        claimWorkerId: claim.claimWorkerId
+      });
+      claimed.push(claim);
+    }
+    return claimed;
+  }
+
   public async recordScheduleExecution(
     accountId: AccountId,
     scheduleId: string,
@@ -488,13 +589,7 @@ export class ReportsService {
     const recipients = normalizeRecipients(input.recipients);
     const deliveryExecutionKey = `${input.executionId ?? 'none'}:${deliveredAt}`;
     const deliveries = recipients.map((recipient) => ({
-      id: stableReportId(
-        'rep_deliv',
-        accountId,
-        schedule.id,
-        deliveryExecutionKey,
-        recipient
-      ),
+      id: stableReportId('rep_deliv', accountId, schedule.id, deliveryExecutionKey, recipient),
       accountId,
       scheduleId: schedule.id,
       executionId: input.executionId ?? null,
@@ -514,9 +609,15 @@ export class ReportsService {
     return deliveries;
   }
 
-  public listScheduleDeliveries(accountId: AccountId, scheduleId?: string): readonly ReportScheduleDeliverySummary[] {
+  public listScheduleDeliveries(
+    accountId: AccountId,
+    scheduleId?: string
+  ): readonly ReportScheduleDeliverySummary[] {
     return [...this.#deliveries.values()]
-      .filter((delivery) => delivery.accountId === accountId && (!scheduleId || delivery.scheduleId === scheduleId))
+      .filter(
+        (delivery) =>
+          delivery.accountId === accountId && (!scheduleId || delivery.scheduleId === scheduleId)
+      )
       .sort((left, right) => right.deliveredAt.localeCompare(left.deliveredAt));
   }
 
@@ -526,15 +627,18 @@ export class ReportsService {
     minimumFailures = 2
   ): readonly ReportScheduleDeliveryAlertSummary[] {
     const threshold = Math.max(2, Math.floor(minimumFailures));
-    const byRecipient = new Map<string, {
-      accountId: AccountId;
-      scheduleId: string;
-      reportId: string;
-      recipient: string;
-      failureCount: number;
-      lastFailureAt: string;
-      lastError: string;
-    }>();
+    const byRecipient = new Map<
+      string,
+      {
+        accountId: AccountId;
+        scheduleId: string;
+        reportId: string;
+        recipient: string;
+        failureCount: number;
+        lastFailureAt: string;
+        lastError: string;
+      }
+    >();
 
     for (const delivery of this.listScheduleDeliveries(accountId, scheduleId)) {
       if (delivery.status !== 'failed') continue;
@@ -561,7 +665,7 @@ export class ReportsService {
         ...current,
         failureCount: current.failureCount + 1,
         lastFailureAt: isMoreRecent ? delivery.deliveredAt : current.lastFailureAt,
-        lastError: isMoreRecent ? delivery.error ?? 'Sem erro registrado' : current.lastError
+        lastError: isMoreRecent ? (delivery.error ?? 'Sem erro registrado') : current.lastError
       });
     }
 
@@ -576,12 +680,15 @@ export class ReportsService {
         failureCount: alert.failureCount,
         lastFailureAt: alert.lastFailureAt,
         lastError: alert.lastError,
-        severity: (alert.failureCount >= 2 ? 'high' : 'medium') as ReportScheduleDeliveryAlertSummary['severity']
+        severity: (alert.failureCount >= 2
+          ? 'high'
+          : 'medium') as ReportScheduleDeliveryAlertSummary['severity']
       }))
-      .sort((left, right) =>
-        right.failureCount - left.failureCount ||
-        right.lastFailureAt.localeCompare(left.lastFailureAt) ||
-        left.recipient.localeCompare(right.recipient)
+      .sort(
+        (left, right) =>
+          right.failureCount - left.failureCount ||
+          right.lastFailureAt.localeCompare(left.lastFailureAt) ||
+          left.recipient.localeCompare(right.recipient)
       );
   }
 
@@ -592,7 +699,8 @@ export class ReportsService {
     exported: ReportExportSummary,
     recipients: readonly string[],
     deliveredAt?: string,
-    existingDeliveryId?: string
+    existingDeliveryId?: string,
+    claimToken?: string
   ): Promise<{
     readonly deliveries: readonly ReportScheduleDeliverySummary[];
     readonly failures: readonly { readonly recipient: string; readonly error: string }[];
@@ -609,16 +717,22 @@ export class ReportsService {
       });
     }
     const normalizedRecipients = normalizeRecipients(recipients);
-    const existingDelivery = existingDeliveryId ? this.#deliveries.get(existingDeliveryId) : undefined;
-    if (existingDeliveryId && (
-      !existingDelivery ||
-      existingDelivery.accountId !== accountId ||
-      existingDelivery.scheduleId !== scheduleId ||
-      normalizedRecipients.length !== 1 ||
-      existingDelivery.recipient !== normalizedRecipients[0]
-    )) {
-      throw new NotFoundError('Report schedule delivery not found', { deliveryId: existingDeliveryId });
+    const existingDelivery = existingDeliveryId
+      ? this.#deliveries.get(existingDeliveryId)
+      : undefined;
+    if (
+      existingDeliveryId &&
+      (!existingDelivery ||
+        existingDelivery.accountId !== accountId ||
+        existingDelivery.scheduleId !== scheduleId ||
+        normalizedRecipients.length !== 1 ||
+        existingDelivery.recipient !== normalizedRecipients[0])
+    ) {
+      throw new NotFoundError('Report schedule delivery not found', {
+        deliveryId: existingDeliveryId
+      });
     }
+    if (claimToken) this.assertDeliveryClaim(existingDeliveryId ?? '', claimToken);
 
     const deliveries: ReportScheduleDeliverySummary[] = [];
     const failures: Array<{ readonly recipient: string; readonly error: string }> = [];
@@ -637,6 +751,12 @@ export class ReportsService {
         error: null,
         createdAt: attemptAt
       };
+      if (!existingDelivery) {
+        // Record the stable delivery identity before leaving the database
+        // boundary. If the process dies while the provider request is in
+        // flight, the next worker can discover and retry this row safely.
+        await this.persistDelivery(delivery);
+      }
       let providerFailed = false;
       let providerError: string | null = null;
       try {
@@ -668,7 +788,7 @@ export class ReportsService {
           deliveredAt: attemptAt,
           error: failureMessage
         };
-        await this.persistDelivery(failed);
+        await this.persistDelivery(failed, claimToken);
         deliveries.push(failed);
         failures.push({ recipient, error: failureMessage });
         continue;
@@ -683,7 +803,7 @@ export class ReportsService {
         deliveredAt: attemptAt,
         error: null
       };
-      await this.persistDelivery(sent);
+      await this.persistDelivery(sent, claimToken);
       deliveries.push(sent);
     }
     return { deliveries, failures };
@@ -693,7 +813,8 @@ export class ReportsService {
     accountId: AccountId,
     retriedByUserId: UserId,
     scheduleId: string,
-    deliveryId: string
+    deliveryId: string,
+    claimToken?: string
   ): Promise<ReportScheduleDeliverySummary> {
     const operationKey = `${accountId}:${deliveryId}`;
     const inFlight = this.#retryOperations.get(operationKey);
@@ -703,7 +824,8 @@ export class ReportsService {
       accountId,
       retriedByUserId,
       scheduleId,
-      deliveryId
+      deliveryId,
+      claimToken
     );
     this.#retryOperations.set(operationKey, operation);
     try {
@@ -719,7 +841,8 @@ export class ReportsService {
     accountId: AccountId,
     retriedByUserId: UserId,
     scheduleId: string,
-    deliveryId: string
+    deliveryId: string,
+    claimToken?: string
   ): Promise<ReportScheduleDeliverySummary> {
     const schedule = this.#schedules.get(scheduleId);
     if (!schedule || schedule.accountId !== accountId) {
@@ -731,22 +854,34 @@ export class ReportsService {
       throw new NotFoundError('Report schedule delivery not found', { deliveryId });
     }
     if (delivery.status !== 'failed') {
-      throw new ValidationError('Only failed report deliveries can be retried', { deliveryId, status: delivery.status });
+      throw new ValidationError('Only failed report deliveries can be retried', {
+        deliveryId,
+        status: delivery.status
+      });
     }
+    if (claimToken) this.assertDeliveryClaim(delivery.id, claimToken);
     if (!delivery.executionId) {
       throw new ValidationError('Report delivery retry requires an execution id', { deliveryId });
     }
 
     const exported = delivery.exportId
       ? this.getExport(accountId, delivery.exportId)
-      : await this.exportExecution(accountId, retriedByUserId, delivery.executionId, delivery.format);
+      : await this.exportExecution(
+          accountId,
+          retriedByUserId,
+          delivery.executionId,
+          delivery.format
+        );
     if (exported.format !== delivery.format) {
-      throw new ValidationError('Report delivery artifact format does not match the failed delivery', {
-        deliveryId,
-        exportId: exported.id,
-        expectedFormat: delivery.format,
-        actualFormat: exported.format
-      });
+      throw new ValidationError(
+        'Report delivery artifact format does not match the failed delivery',
+        {
+          deliveryId,
+          exportId: exported.id,
+          expectedFormat: delivery.format,
+          actualFormat: exported.format
+        }
+      );
     }
     const retry = await this.deliverExport(
       accountId,
@@ -755,18 +890,49 @@ export class ReportsService {
       exported,
       [delivery.recipient],
       undefined,
-      delivery.id
+      delivery.id,
+      claimToken
     );
     const retried = retry.deliveries.at(-1);
     if (!retried || retried.status !== 'sent') {
-      throw new ValidationError('Report delivery retry did not create a delivery record', { deliveryId });
+      throw new ValidationError('Report delivery retry did not create a delivery record', {
+        deliveryId
+      });
     }
     return retried;
   }
 
-  private async persistDelivery(delivery: ReportScheduleDeliverySummary): Promise<void> {
-    await this.#repository?.saveDelivery(delivery);
+  private async persistDelivery(
+    delivery: ReportScheduleDeliverySummary,
+    claimToken?: string
+  ): Promise<void> {
+    if (claimToken) {
+      if (this.#repository?.saveClaimedDelivery) {
+        const saved = await this.#repository.saveClaimedDelivery(delivery, claimToken);
+        if (!saved) {
+          throw new ValidationError('Report delivery retry lease was lost', {
+            deliveryId: delivery.id
+          });
+        }
+      } else {
+        this.assertDeliveryClaim(delivery.id, claimToken);
+      }
+      this.#deliveryClaims.delete(delivery.id);
+    } else {
+      await this.#repository?.saveDelivery(delivery);
+    }
     this.#deliveries.set(delivery.id, delivery);
+  }
+
+  private assertDeliveryClaim(deliveryId: string, claimToken: string): void {
+    const claim = this.#deliveryClaims.get(deliveryId);
+    if (
+      !claim ||
+      claim.claimToken !== claimToken ||
+      new Date(claim.claimUntil).getTime() <= Date.now()
+    ) {
+      throw new ValidationError('Report delivery retry lease was lost', { deliveryId });
+    }
   }
 
   public async setScheduleActive(
@@ -868,6 +1034,91 @@ export class DatabaseReportRepository implements ReportRepository {
     });
   }
 
+  async saveClaimedDelivery(
+    delivery: ReportScheduleDeliverySummary,
+    claimToken: string
+  ): Promise<boolean> {
+    return withTenantQuery(getPool(), async (client) => {
+      const result = await client.query(
+        `UPDATE report_schedule_deliveries
+            SET execution_id = $3,
+                export_id = $4,
+                recipient = $5,
+                status = $6,
+                format = $7,
+                delivered_at = $8,
+                error = $9,
+                claim_token = NULL,
+                claim_until = NULL,
+                claim_worker_id = NULL
+          WHERE account_id = $1
+            AND id = $2
+            AND claim_token = $10`,
+        [
+          delivery.accountId,
+          delivery.id,
+          delivery.executionId,
+          delivery.exportId,
+          delivery.recipient,
+          delivery.status,
+          delivery.format,
+          new Date(delivery.deliveredAt),
+          delivery.error,
+          claimToken
+        ]
+      );
+      return result.rowCount === 1;
+    });
+  }
+
+  async claimFailedDeliveries(
+    accountId: AccountId,
+    asOf: string,
+    workerId: string,
+    limit = 25,
+    leaseMs = 120_000
+  ): Promise<readonly ReportScheduleDeliveryClaim[]> {
+    if (!workerId.trim() || !Number.isFinite(limit) || limit <= 0) {
+      throw new ValidationError('workerId and limit are required for report delivery claims');
+    }
+    if (!Number.isFinite(leaseMs) || leaseMs <= 0) {
+      throw new ValidationError('leaseMs is required for report delivery claims');
+    }
+    const normalizedLimit = Math.floor(limit);
+    const normalizedLeaseMs = Math.floor(leaseMs);
+    return withTenantQuery(getPool(), async (client) => {
+      const result = await client.query(
+        `WITH candidates AS (
+           SELECT id
+             FROM report_schedule_deliveries
+            WHERE account_id = $1
+              AND status = 'failed'
+              AND (claim_until IS NULL OR claim_until <= $2::timestamptz)
+            ORDER BY delivered_at ASC, id ASC
+            LIMIT $4
+            FOR UPDATE SKIP LOCKED
+         )
+         UPDATE report_schedule_deliveries AS deliveries
+            SET claim_token = $3 || ':' || deliveries.id,
+                claim_until = CURRENT_TIMESTAMP + ($5 * INTERVAL '1 millisecond'),
+                claim_worker_id = $6
+           FROM candidates
+          WHERE deliveries.account_id = $1
+            AND deliveries.id = candidates.id
+         RETURNING deliveries.*`,
+        [
+          accountId,
+          asOf,
+          createCorrelationId('rep_deliv_claim'),
+          normalizedLimit,
+          normalizedLeaseMs,
+          workerId.trim()
+        ]
+      );
+      return result.rows.map(mapDeliveryClaim);
+    });
+  }
+
   async claimDueSchedules(
     accountId: AccountId,
     asOf: string,
@@ -950,7 +1201,10 @@ function stableReportId(prefix: string, ...parts: readonly unknown[]): string {
   return `${prefix}_${digest}`;
 }
 
-function normalizeRow(definition: ReportDefinition, row: Record<string, unknown>): Record<string, unknown> {
+function normalizeRow(
+  definition: ReportDefinition,
+  row: Record<string, unknown>
+): Record<string, unknown> {
   const normalized: Record<string, unknown> = {};
   for (const column of definition.columns) {
     normalized[column.key] = row[column.key] ?? null;
@@ -960,7 +1214,9 @@ function normalizeRow(definition: ReportDefinition, row: Record<string, unknown>
 
 function normalizeFilters(filters: Record<string, unknown>): Record<string, unknown> {
   return Object.fromEntries(
-    Object.entries(filters).filter(([, value]) => value !== undefined && value !== null && value !== '')
+    Object.entries(filters).filter(
+      ([, value]) => value !== undefined && value !== null && value !== ''
+    )
   );
 }
 
@@ -969,7 +1225,9 @@ function normalizeFrequency(value: ReportScheduleFrequency): ReportScheduleFrequ
   throw new ValidationError('frequency must be daily, weekly or monthly', { value });
 }
 
-function normalizeDeliveryStatus(value: ReportScheduleDeliveryStatus): ReportScheduleDeliveryStatus {
+function normalizeDeliveryStatus(
+  value: ReportScheduleDeliveryStatus
+): ReportScheduleDeliveryStatus {
   if (value === 'sent' || value === 'failed') return value;
   throw new ValidationError('delivery status must be sent or failed', { value });
 }
@@ -1008,17 +1266,27 @@ function dateIso(value: unknown): string {
 }
 
 function jsonRecord(value: unknown): Record<string, unknown> {
-  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
 }
 
 function jsonRecordArray(value: unknown): readonly Record<string, unknown>[] {
-  return Array.isArray(value) ? value.filter((item): item is Record<string, unknown> => item !== null && typeof item === 'object' && !Array.isArray(item)) : [];
+  return Array.isArray(value)
+    ? value.filter(
+        (item): item is Record<string, unknown> =>
+          item !== null && typeof item === 'object' && !Array.isArray(item)
+      )
+    : [];
 }
 
 function jsonColumnArray(value: unknown): readonly ReportColumn[] {
   if (!Array.isArray(value)) return [];
   return value
-    .filter((item): item is Record<string, unknown> => item !== null && typeof item === 'object' && !Array.isArray(item))
+    .filter(
+      (item): item is Record<string, unknown> =>
+        item !== null && typeof item === 'object' && !Array.isArray(item)
+    )
     .map((item) => ({
       key: String(item.key ?? ''),
       label: String(item.label ?? ''),
@@ -1146,6 +1414,15 @@ function mapDelivery(row: Record<string, unknown>): ReportScheduleDeliverySummar
   };
 }
 
+function mapDeliveryClaim(row: Record<string, unknown>): ReportScheduleDeliveryClaim {
+  return {
+    delivery: mapDelivery(row),
+    claimToken: String(row.claim_token),
+    claimUntil: dateIso(row.claim_until),
+    claimWorkerId: String(row.claim_worker_id)
+  };
+}
+
 function mapSchedule(row: Record<string, unknown>): ReportScheduleSummary {
   return {
     id: row.id as string,
@@ -1157,7 +1434,9 @@ function mapSchedule(row: Record<string, unknown>): ReportScheduleSummary {
     filters: jsonRecord(row.filters),
     recipients: jsonStringArray(row.recipients),
     isActive: Boolean(row.is_active),
-    nextRunAt: row.next_run_at ? dateIso(row.next_run_at) : nextRunAt(dateIso(row.created_at), row.frequency as ReportScheduleFrequency),
+    nextRunAt: row.next_run_at
+      ? dateIso(row.next_run_at)
+      : nextRunAt(dateIso(row.created_at), row.frequency as ReportScheduleFrequency),
     lastRunAt: row.last_run_at ? dateIso(row.last_run_at) : null,
     lastExecutionId: typeof row.last_execution_id === 'string' ? row.last_execution_id : null,
     lastError: typeof row.last_error === 'string' ? row.last_error : null,
@@ -1226,10 +1505,12 @@ function createXlsx(execution: ReportExecutionDetail): Buffer {
     execution.columns.map((column) => column.label),
     ...execution.rows.map((row) => execution.columns.map((column) => row[column.key]))
   ];
-  const worksheetRows = rows.map((row, rowIndex) => {
-    const cells = row.map((value, columnIndex) => xlsxCell(value, rowIndex + 1, columnIndex + 1));
-    return `<row r="${rowIndex + 1}">${cells.join('')}</row>`;
-  }).join('');
+  const worksheetRows = rows
+    .map((row, rowIndex) => {
+      const cells = row.map((value, columnIndex) => xlsxCell(value, rowIndex + 1, columnIndex + 1));
+      return `<row r="${rowIndex + 1}">${cells.join('')}</row>`;
+    })
+    .join('');
   const worksheet = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${worksheetRows}</sheetData></worksheet>`;
   const workbook = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -1279,13 +1560,17 @@ function createPdf(execution: ReportExecutionDetail): Buffer {
     `Relatorio: ${execution.reportId}`,
     `Gerado em: ${execution.generatedAt}`,
     execution.columns.map((column) => column.label).join(' | '),
-    ...execution.rows.map((row) => execution.columns.map((column) => String(row[column.key] ?? '')).join(' | '))
+    ...execution.rows.map((row) =>
+      execution.columns.map((column) => String(row[column.key] ?? '')).join(' | ')
+    )
   ];
   const stream = [
     'BT',
     '/F1 10 Tf',
     '40 780 Td',
-    ...lines.slice(0, 48).map((line, index) => `${index === 0 ? '' : '0 -14 Td '}${pdfText(line.slice(0, 180))} Tj`),
+    ...lines
+      .slice(0, 48)
+      .map((line, index) => `${index === 0 ? '' : '0 -14 Td '}${pdfText(line.slice(0, 180))} Tj`),
     'ET'
   ].join('\n');
   const objects = [
@@ -1310,13 +1595,21 @@ function createPdf(execution: ReportExecutionDetail): Buffer {
   for (let index = 1; index < offsets.length; index += 1) {
     xref.push(`${String(offsets[index]).padStart(10, '0')} 00000 n `);
   }
-  xref.push(`trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>`, `startxref`, String(xrefOffset), '%%EOF');
+  xref.push(
+    `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>`,
+    `startxref`,
+    String(xrefOffset),
+    '%%EOF'
+  );
   buffers.push(Buffer.from(`${xref.join('\n')}\n`, 'utf8'));
   return Buffer.concat(buffers);
 }
 
 function pdfText(value: string): string {
-  return `(${value.replace(/\\/g, '\\\\').replace(/[()]/g, '\\$&').replace(/[\r\n]/g, ' ')})`;
+  return `(${value
+    .replace(/\\/g, '\\\\')
+    .replace(/[()]/g, '\\$&')
+    .replace(/[\r\n]/g, ' ')})`;
 }
 
 function xmlEscape(value: string): string {

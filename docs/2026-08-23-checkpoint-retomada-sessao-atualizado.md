@@ -449,3 +449,41 @@ ledgers registram a prova e mantêm o cache
 `packages/design-system/tsconfig.vue.tsbuildinfo` fora do stage. O próximo
 gate continua sendo o executor webhook durável; essa regressão não promove o
 ERP, produção, cluster, provider ou release.
+
+### Regressão do worker de relatórios — 24/08/2026
+
+O ponteiro corrente passou a ser
+[`2026-08-24-handoff-reports-run-once.md`](2026-08-24-handoff-reports-run-once.md).
+O RED reproduziu falta de contexto tenant no `run-once`; o GREEN envolve todos
+os ticks de banco em `runWithTenantContext` e executa relatórios agendados no
+one-shot. Provider `4/4`, worker/module tests verdes e processo PostgreSQL
+`3/3`: uma agenda foi executada, outra entregou CSV a um receptor local e uma
+terceira convergiu de `failed` para `sent` entre dois processos após HTTP 503,
+com a mesma chave idempotente e links de execução/exportação persistidos.
+
+O handoff webhook histórico também foi reconciliado com o runtime atual. Isso é
+evidência bounded de execução/entrega, não homologação de provider, retry por
+SIGKILL, cluster, Redis, DR/RPO ou promoção do ERP/paridade/release.
+
+### Recuperação do worker de relatórios após SIGKILL — 24/08/2026
+
+O critério de restart foi fechado em um processo real `4/4`: o receiver local
+aceitou a primeira requisição, o worker foi encerrado com `SIGKILL` enquanto a
+resposta estava em voo e o segundo `run-once`, com replay explícito, descobriu a
+identidade persistida antes do provider e convergiu a mesma entrega para
+`sent`. A evidência usa a mesma chave `rep_deliv_*`; provider externo e lease
+distribuído/fencing para concorrência continuam fora deste gate bounded.
+
+### Lease distribuído de retry de relatórios — 24/08/2026
+
+O gap de concorrência foi fechado bounded pela migration
+`0143_reports_delivery_leases.sql`: dois workers reivindicam deliveries falhas
+com `FOR UPDATE SKIP LOCKED`, e o write final só é aceito com o
+`claim_token` vigente. A prova PostgreSQL passou `2/2`, a migration unitária
+`2/2` e o processo one-shot passou `5/5`; no quinto caso, dois workers foram
+iniciados simultaneamente e somente um chamou o provider de retry. O cenário de
+takeover após expiração também rejeitou o token do worker stale.
+
+O lease padrão é de 120 s. Esta é uma prova bounded em PostgreSQL efêmero e
+receiver local; Resend/provider externo, cluster/Secrets, Redis, DR/RPO e a
+paridade Vetus continuam abertos.

@@ -7,22 +7,48 @@
     >
       <template #actions>
         <DsButton variant="secondary" :loading="loading" @click="loadReport">Atualizar</DsButton>
-        <DsButton v-if="spec.primaryDisabled" variant="primary" disabled>{{ spec.primaryAction }}</DsButton>
-        <DsButton v-else variant="primary" tag="a" :to="spec.primaryPath">{{ spec.primaryAction }}</DsButton>
+        <DsButton
+          v-if="spec.exportable"
+          variant="primary"
+          :loading="exporting"
+          @click="exportCurrentReport"
+        >
+          {{ spec.primaryAction }}
+        </DsButton>
+        <DsButton v-else-if="spec.primaryDisabled" variant="primary" disabled>{{
+          spec.primaryAction
+        }}</DsButton>
+        <DsButton v-else variant="primary" tag="a" :to="spec.primaryPath">{{
+          spec.primaryAction
+        }}</DsButton>
       </template>
     </AppPageHeader>
 
     <section class="report-filters">
-      <DsInput v-model="filters.dateFrom" type="date" :label="isAuditAppointments ? 'Data início' : 'De'" />
-      <DsInput v-model="filters.dateTo" type="date" :label="isAuditAppointments ? 'Data fim' : 'Até'" />
+      <DsInput
+        v-model="filters.dateFrom"
+        type="date"
+        :label="isAuditAppointments ? 'Data início' : 'De'"
+      />
+      <DsInput
+        v-model="filters.dateTo"
+        type="date"
+        :label="isAuditAppointments ? 'Data fim' : 'Até'"
+      />
       <template v-if="isAuditAppointments">
-        <DsInput v-model="filters.client" label="Cliente" placeholder="Nome, animal ou id do agendamento" />
+        <DsInput
+          v-model="filters.client"
+          label="Cliente"
+          placeholder="Nome, animal ou id do agendamento"
+        />
         <DsInput v-model="filters.user" label="Usuário" placeholder="Usuário ou ator auditado" />
         <label class="report-field">
           <span>Ação</span>
           <select v-model="filters.action">
             <option value="">Selecione a ação</option>
-            <option v-for="action in auditActionOptions" :key="action" :value="action">{{ action }}</option>
+            <option v-for="action in auditActionOptions" :key="action" :value="action">
+              {{ action }}
+            </option>
           </select>
         </label>
         <label class="report-field">
@@ -43,12 +69,22 @@
       {{ error }}
     </DsAlert>
 
+    <DsAlert v-if="success" variant="success" dismissible @dismiss="success = ''">
+      {{ success }}
+    </DsAlert>
+
     <DsAlert v-if="spec.note" variant="info">
       {{ spec.note }}
     </DsAlert>
 
     <section class="report-kpis">
-      <DsStatCard v-for="card in cards" :key="card.label" :label="card.label" :value="card.value" :icon="card.icon" />
+      <DsStatCard
+        v-for="card in cards"
+        :key="card.label"
+        :label="card.label"
+        :value="card.value"
+        :icon="card.icon"
+      />
     </section>
 
     <DsCard :title="spec.tableTitle">
@@ -90,6 +126,15 @@
         </template>
         <template #cell-paidAmount="{ row }">
           {{ formatCurrency(numberValue(row, 'paidAmount')) }}
+        </template>
+        <template #cell-totalAmount="{ row }">
+          {{ formatCurrency(numberValue(row, 'totalAmount')) }}
+        </template>
+        <template #cell-outstandingAmount="{ row }">
+          {{ formatCurrency(numberValue(row, 'outstandingAmount')) }}
+        </template>
+        <template #cell-issuedAt="{ row }">
+          {{ formatDate(stringValue(row, 'issuedAt')) }}
         </template>
         <template #cell-dueAt="{ row }">
           {{ formatDate(stringValue(row, 'dueAt')) }}
@@ -144,23 +189,26 @@ import {
 } from '@/services/administrativeReports';
 import { appointmentService } from '@/services/appointment';
 import { auditService } from '@/services/audit';
+import { counterSalesService, type CounterSaleSummary } from '@/services/counterSales';
+import { expensesCatalogService, type ExpenseCatalogItem } from '@/services/expensesCatalog';
 import {
-  counterSalesService,
-  type CounterSaleSummary
-} from '@/services/counterSales';
-import {
-  expensesCatalogService,
-  type ExpenseCatalogItem
-} from '@/services/expensesCatalog';
+  financialPayablesService,
+  type FinancialPayableRecord
+} from '@/services/financialPayables';
 import { inventoryService } from '@/services/inventory';
 import { ownerService } from '@/services/owner';
 import { patientService } from '@/services/patient';
 import { servicesService, type ServiceSummary } from '@/services/services';
 import type { AppointmentSummary } from '@/types/appointment';
-import type { InventoryConsumptionSummary, InventoryItemSummary, InventoryLotSummary } from '@/types/inventory';
+import type {
+  InventoryConsumptionSummary,
+  InventoryItemSummary,
+  InventoryLotSummary
+} from '@/types/inventory';
 import type { OwnerSummary } from '@/types/owner';
 import type { PatientSummary } from '@/types/patient';
 import { patientStatusLabel, sexLabel, speciesLabel } from '@/utils/labels';
+import { buildReportCsv } from '@/utils/report-export';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
@@ -204,6 +252,7 @@ interface ReportSpec {
   primaryPath: string;
   primaryAction: string;
   primaryDisabled?: boolean;
+  exportable?: boolean;
   tableTitle: string;
   emptyTitle: string;
   emptyDescription: string;
@@ -224,7 +273,9 @@ const props = defineProps<{
 }>();
 
 const loading = ref(false);
+const exporting = ref(false);
 const error = ref('');
+const success = ref('');
 const report = ref<AdministrativeReportsResponse | null>(null);
 const auditEvents = ref<AuditEventSummary[]>([]);
 const appointments = ref<AppointmentSummary[]>([]);
@@ -233,15 +284,34 @@ const owners = ref<OwnerSummary[]>([]);
 const patients = ref<PatientSummary[]>([]);
 const suppliers = ref<ExpenseCatalogItem[]>([]);
 const counterSales = ref<CounterSaleSummary[]>([]);
+const financialPayables = ref<FinancialPayableRecord[]>([]);
 const inventoryItems = ref<InventoryItemSummary[]>([]);
 const inventoryLots = ref<InventoryLotSummary[]>([]);
 const inventoryConsumptions = ref<InventoryConsumptionSummary[]>([]);
 const filters = ref({ dateFrom: '', dateTo: '', client: '', user: '', action: '', type: '' });
 
-const APPOINTMENT_AUDIT_ENTITY_TYPES = ['appointment', 'appointment-recommendation', 'appointment-sync'];
+const APPOINTMENT_AUDIT_ENTITY_TYPES = [
+  'appointment',
+  'appointment-recommendation',
+  'appointment-sync'
+];
 
 const money = (value: number | undefined | null) => formatCurrency(value ?? 0);
 const count = (value: number | undefined | null) => String(value ?? 0);
+
+const financialPayableColumns: DataTableColumn[] = [
+  { key: 'supplierName', label: 'Fornecedor' },
+  { key: 'description', label: 'Descrição' },
+  { key: 'category', label: 'Categoria' },
+  { key: 'issuedAt', label: 'Emissão' },
+  { key: 'dueAt', label: 'Vencimento' },
+  { key: 'totalAmount', label: 'Total' },
+  { key: 'paidAmount', label: 'Pago' },
+  { key: 'outstandingAmount', label: 'A Pagar' },
+  { key: 'status', label: 'Status' },
+  { key: 'paymentMethod', label: 'Método' },
+  { key: 'reconciliationStatus', label: 'Reconciliação' }
+];
 
 const specs: Record<ReportKey, ReportSpec> = {
   'audit-appointments': {
@@ -250,12 +320,13 @@ const specs: Record<ReportKey, ReportSpec> = {
     subtitle: 'Relatório Vetus-like de alterações, usuários e tipos ligados aos agendamentos',
     icon: '🧾',
     primaryPath: '/audit',
-    primaryAction: 'Solicitar Excel',
-    primaryDisabled: true,
+    primaryAction: 'Exportar CSV',
+    exportable: true,
     tableTitle: 'Eventos de agenda auditados',
     emptyTitle: 'Nenhum agendamento auditado encontrado',
-    emptyDescription: 'Ajuste Data início, Data fim, Cliente, Usuário, Ação ou Tipo para localizar eventos de agenda.',
-    note: 'A rota Vetus observada expõe filtros Data início, Data fim, Cliente, Usuário, Ação e Tipo, com ação Solicitar Excel. A exportação permanece bloqueada até existir contrato local auditável.',
+    emptyDescription:
+      'Ajuste Data início, Data fim, Cliente, Usuário, Ação ou Tipo para localizar eventos de agenda.',
+    note: 'A rota Vetus observada expõe filtros Data início, Data fim, Cliente, Usuário, Ação e Tipo. Exporta CSV dos eventos carregados; a exportação integral Vetus permanece pendente.',
     columns: [
       { key: 'occurredAt', label: 'Data' },
       { key: 'actorId', label: 'Usuário' },
@@ -273,12 +344,13 @@ const specs: Record<ReportKey, ReportSpec> = {
     subtitle: 'Relatório financeiro legacy de gavetas, saldos e conferência de caixa',
     icon: '🧾',
     primaryPath: '/cash',
-    primaryAction: 'Solicitar Excel',
-    primaryDisabled: true,
+    primaryAction: 'Exportar CSV',
+    exportable: true,
     tableTitle: 'Gavetas no período',
     emptyTitle: 'Sem gavetas no período',
-    emptyDescription: 'Gavetas abertas ou fechadas aparecem aqui quando houver movimento de caixa no período.',
-    note: 'A rota Vetus legacy observada e Sistema/Relatorio/GavetaRelatorio.htm. Esta visão é somente leitura e não abre, fecha ou movimenta caixa.',
+    emptyDescription:
+      'Gavetas abertas ou fechadas aparecem aqui quando houver movimento de caixa no período.',
+    note: 'A rota Vetus legacy observada e Sistema/Relatorio/GavetaRelatorio.htm. Exporta CSV das gavetas carregadas; esta visão é somente leitura e não abre, fecha ou movimenta caixa.',
     columns: [
       { key: 'status', label: 'Status' },
       { key: 'openedAt', label: 'Abertura' },
@@ -289,27 +361,37 @@ const specs: Record<ReportKey, ReportSpec> = {
       { key: 'difference', label: 'Diferença' }
     ],
     cards: (current) => [
-      { label: 'Gavetas no período', value: count(current?.domains.cash.registerCount), icon: '🧾' },
-      { label: 'Gaveta aberta', value: current?.domains.cash.hasOpenRegister ? 'Sim' : 'Não', icon: '🏦' },
+      {
+        label: 'Gavetas no período',
+        value: count(current?.domains.cash.registerCount),
+        icon: '🧾'
+      },
+      {
+        label: 'Gaveta aberta',
+        value: current?.domains.cash.hasOpenRegister ? 'Sim' : 'Não',
+        icon: '🏦'
+      },
       { label: 'Saldo aberto', value: money(current?.executive.openCashBalance), icon: '💰' }
     ],
-    rows: (current) => (current?.domains.cash.recentRegisters ?? []).map((row) => ({
-      ...row,
-      id: row.id
-    })) as unknown as DataTableRow[]
+    rows: (current) =>
+      (current?.domains.cash.recentRegisters ?? []).map((row) => ({
+        ...row,
+        id: row.id
+      })) as unknown as DataTableRow[]
   },
   'cash-flow': {
     title: 'Fluxo de Caixa',
     group: 'Relatórios Financeiros',
-    subtitle: 'Relatório financeiro legacy de comportamento temporal de entradas, recebíveis e caixa',
+    subtitle:
+      'Relatório financeiro legacy de comportamento temporal de entradas, recebíveis e caixa',
     icon: '📈',
     primaryPath: '/finance/cash-flow',
-    primaryAction: 'Solicitar Excel',
-    primaryDisabled: true,
+    primaryAction: 'Exportar CSV',
+    exportable: true,
     tableTitle: 'Indicadores do fluxo',
     emptyTitle: 'Sem fluxo consolidado',
     emptyDescription: 'Entradas, recebíveis e caixa aparecem aqui conforme o período selecionado.',
-    note: 'A rota Vetus legacy observada e Sistema/Relatorio/FluxoDeCaixaRelatorio.htm. Esta visão é somente leitura e não baixa, concilia ou exporta fluxo real.',
+    note: 'A rota Vetus legacy observada e Sistema/Relatorio/FluxoDeCaixaRelatorio.htm. Exporta CSV dos indicadores carregados; esta visão é somente leitura e não baixa nem concilia fluxo.',
     columns: [
       { key: 'nature', label: 'Natureza' },
       { key: 'label', label: 'Indicador' },
@@ -317,16 +399,49 @@ const specs: Record<ReportKey, ReportSpec> = {
       { key: 'scope', label: 'Origem' }
     ],
     cards: (current) => [
-      { label: 'Receita comercial', value: money(current?.executive.commercialRevenue), icon: '📈' },
-      { label: 'Recebíveis abertos', value: money(current?.executive.outstandingReceivables), icon: '💵' },
+      {
+        label: 'Receita comercial',
+        value: money(current?.executive.commercialRevenue),
+        icon: '📈'
+      },
+      {
+        label: 'Recebíveis abertos',
+        value: money(current?.executive.outstandingReceivables),
+        icon: '💵'
+      },
       { label: 'Saldo aberto', value: money(current?.executive.openCashBalance), icon: '🏦' }
     ],
-    rows: (current) => [
-      { id: 'commercial-revenue', nature: 'Entrada', label: 'Receita comercial consolidada', amount: current?.executive.commercialRevenue ?? 0, scope: 'Comercial' },
-      { id: 'pix-completed', nature: 'Entrada', label: 'PIX concluídos', amount: current?.domains.financial.pix.completedAmount ?? 0, scope: 'PIX' },
-      { id: 'receivables-open', nature: 'Previsto', label: 'Recebíveis em aberto', amount: current?.executive.outstandingReceivables ?? 0, scope: 'Contas a Receber' },
-      { id: 'open-cash', nature: 'Saldo', label: 'Saldo da gaveta aberta', amount: current?.executive.openCashBalance ?? 0, scope: 'Gaveta' }
-    ] as DataTableRow[]
+    rows: (current) =>
+      [
+        {
+          id: 'commercial-revenue',
+          nature: 'Entrada',
+          label: 'Receita comercial consolidada',
+          amount: current?.executive.commercialRevenue ?? 0,
+          scope: 'Comercial'
+        },
+        {
+          id: 'pix-completed',
+          nature: 'Entrada',
+          label: 'PIX concluídos',
+          amount: current?.domains.financial.pix.completedAmount ?? 0,
+          scope: 'PIX'
+        },
+        {
+          id: 'receivables-open',
+          nature: 'Previsto',
+          label: 'Recebíveis em aberto',
+          amount: current?.executive.outstandingReceivables ?? 0,
+          scope: 'Contas a Receber'
+        },
+        {
+          id: 'open-cash',
+          nature: 'Saldo',
+          label: 'Saldo da gaveta aberta',
+          amount: current?.executive.openCashBalance ?? 0,
+          scope: 'Gaveta'
+        }
+      ] as DataTableRow[]
   },
   dre: {
     title: 'DRE - Demonstrativo de Resultados',
@@ -334,12 +449,12 @@ const specs: Record<ReportKey, ReportSpec> = {
     subtitle: 'Relatório financeiro legacy de resultado econômico consolidado',
     icon: '💰',
     primaryPath: '/dashboards/financial',
-    primaryAction: 'Solicitar Excel',
-    primaryDisabled: true,
+    primaryAction: 'Exportar CSV',
+    exportable: true,
     tableTitle: 'Resultado consolidado',
     emptyTitle: 'Sem resultado consolidado',
     emptyDescription: 'Receitas, recebíveis e caixa aparecem aqui conforme o período selecionado.',
-    note: 'A rota Vetus legacy observada e Sistema/Relatorio/DRE.htm. Esta visão é somente leitura e não fecha contabilidade, baixa títulos ou exporta DRE real. Despesas e resultado contábil completo dependem de fonte específica ainda não exposta pelo hub atual.',
+    note: 'A rota Vetus legacy observada e Sistema/Relatorio/DRE.htm. Exporta CSV do recorte consolidado carregado, sem simular uma DRE contábil completa. Despesas e resultado contábil completo dependem de fonte específica ainda não exposta pelo hub atual.',
     columns: [
       { key: 'group', label: 'Grupo' },
       { key: 'label', label: 'Indicador' },
@@ -347,47 +462,123 @@ const specs: Record<ReportKey, ReportSpec> = {
       { key: 'scope', label: 'Origem' }
     ],
     cards: (current) => [
-      { label: 'Receita comercial', value: money(current?.executive.commercialRevenue), icon: '📈' },
-      { label: 'Faturamento bruto', value: money(current?.domains.financial.billing.grossAmount), icon: '🧾' },
-      { label: 'Pipeline comercial', value: money(current?.executive.quotePipelineAmount), icon: '📋' }
+      {
+        label: 'Receita comercial',
+        value: money(current?.executive.commercialRevenue),
+        icon: '📈'
+      },
+      {
+        label: 'Faturamento bruto',
+        value: money(current?.domains.financial.billing.grossAmount),
+        icon: '🧾'
+      },
+      {
+        label: 'Pipeline comercial',
+        value: money(current?.executive.quotePipelineAmount),
+        icon: '📋'
+      }
     ],
-    rows: (current) => [
-      { id: 'commercial-revenue', group: 'Receita', label: 'Receita comercial consolidada', amount: current?.executive.commercialRevenue ?? 0, scope: 'Comercial' },
-      { id: 'billing-gross', group: 'Receita', label: 'Faturamento bruto registrado', amount: current?.domains.financial.billing.grossAmount ?? 0, scope: 'Faturamento' },
-      { id: 'open-receivables', group: 'Ativo/Previsto', label: 'Recebíveis em aberto', amount: current?.executive.outstandingReceivables ?? 0, scope: 'Contas a Receber' },
-      { id: 'quote-pipeline', group: 'Previsto', label: 'Pipeline comercial', amount: current?.executive.quotePipelineAmount ?? 0, scope: 'Orçamentos' },
-      { id: 'open-cash', group: 'Caixa', label: 'Saldo da gaveta aberta', amount: current?.executive.openCashBalance ?? 0, scope: 'Gaveta' }
-    ] as DataTableRow[]
+    rows: (current) =>
+      [
+        {
+          id: 'commercial-revenue',
+          group: 'Receita',
+          label: 'Receita comercial consolidada',
+          amount: current?.executive.commercialRevenue ?? 0,
+          scope: 'Comercial'
+        },
+        {
+          id: 'billing-gross',
+          group: 'Receita',
+          label: 'Faturamento bruto registrado',
+          amount: current?.domains.financial.billing.grossAmount ?? 0,
+          scope: 'Faturamento'
+        },
+        {
+          id: 'open-receivables',
+          group: 'Ativo/Previsto',
+          label: 'Recebíveis em aberto',
+          amount: current?.executive.outstandingReceivables ?? 0,
+          scope: 'Contas a Receber'
+        },
+        {
+          id: 'quote-pipeline',
+          group: 'Previsto',
+          label: 'Pipeline comercial',
+          amount: current?.executive.quotePipelineAmount ?? 0,
+          scope: 'Orçamentos'
+        },
+        {
+          id: 'open-cash',
+          group: 'Caixa',
+          label: 'Saldo da gaveta aberta',
+          amount: current?.executive.openCashBalance ?? 0,
+          scope: 'Gaveta'
+        }
+      ] as DataTableRow[]
   },
   packages: {
     title: 'Pacotes',
     group: 'Relatórios Financeiros',
-    subtitle: 'Relatório financeiro legacy de pacotes, receita relacionada e uso comercial disponível',
+    subtitle:
+      'Relatório financeiro legacy de pacotes, receita relacionada e uso comercial disponível',
     icon: '📦',
     primaryPath: '/packages',
-    primaryAction: 'Solicitar Excel',
-    primaryDisabled: true,
+    primaryAction: 'Exportar CSV',
+    exportable: true,
     tableTitle: 'Indicadores de pacotes',
     emptyTitle: 'Sem pacote consolidado',
-    emptyDescription: 'Indicadores relacionados a pacotes aparecem aqui conforme o período selecionado.',
-    note: 'A rota Vetus legacy observada e Sistema/Relatorio/PacoteRelatorio.htm. Esta visão é somente leitura, não cria pacotes, não baixa títulos e não exporta relatório real. O hub financeiro ainda não expõe fonte exclusiva de pacotes, então a tela mostra apenas indicadores comerciais relacionados sem simular registros.',
+    emptyDescription:
+      'Indicadores relacionados a pacotes aparecem aqui conforme o período selecionado.',
+    note: 'A rota Vetus legacy observada e Sistema/Relatorio/PacoteRelatorio.htm. Exporta CSV dos indicadores comerciais carregados; não cria pacotes nem baixa títulos. O hub financeiro ainda não expõe fonte exclusiva de pacotes, então a tela não simula registros.',
     columns: [
       { key: 'label', label: 'Indicador' },
       { key: 'value', label: 'Valor' },
       { key: 'scope', label: 'Origem' }
     ],
     cards: (current) => [
-      { label: 'Receita comercial', value: money(current?.executive.commercialRevenue), icon: '📈' },
-      { label: 'Pipeline comercial', value: money(current?.executive.quotePipelineAmount), icon: '🧾' },
-      { label: 'Vendas fechadas', value: count(current?.domains.commercial.counterSales.closedCount), icon: '✅' }
+      {
+        label: 'Receita comercial',
+        value: money(current?.executive.commercialRevenue),
+        icon: '📈'
+      },
+      {
+        label: 'Pipeline comercial',
+        value: money(current?.executive.quotePipelineAmount),
+        icon: '🧾'
+      },
+      {
+        label: 'Vendas fechadas',
+        value: count(current?.domains.commercial.counterSales.closedCount),
+        icon: '✅'
+      }
     ],
     rows: (current) => [
-      { id: 'revenue', label: 'Receita comercial relacionada', value: money(current?.executive.commercialRevenue), scope: 'Comercial' },
-      { id: 'pipeline', label: 'Pipeline comercial relacionado', value: money(current?.executive.quotePipelineAmount), scope: 'Orçamentos' },
-      { id: 'sales', label: 'Vendas fechadas relacionadas', value: count(current?.domains.commercial.counterSales.closedCount), scope: 'Comandas/Vendas' }
+      {
+        id: 'revenue',
+        label: 'Receita comercial relacionada',
+        value: money(current?.executive.commercialRevenue),
+        scope: 'Comercial'
+      },
+      {
+        id: 'pipeline',
+        label: 'Pipeline comercial relacionado',
+        value: money(current?.executive.quotePipelineAmount),
+        scope: 'Orçamentos'
+      },
+      {
+        id: 'sales',
+        label: 'Vendas fechadas relacionadas',
+        value: count(current?.domains.commercial.counterSales.closedCount),
+        scope: 'Comandas/Vendas'
+      }
     ]
   },
-  'accounts-receivable': receivableSpec('Contas a Receber', 'Recebíveis em aberto por tutor e paciente', 'open'),
+  'accounts-receivable': receivableSpec(
+    'Contas a Receber',
+    'Recebíveis em aberto por tutor e paciente',
+    'open'
+  ),
   'received-accounts': receivedAccountsSpec(),
   'accounts-payable': accountsPayableReportSpec(),
   'paid-accounts': paidAccountsReportSpec(),
@@ -414,22 +605,73 @@ const spec = computed(() => specs[props.reportKey]);
 const isAuditAppointments = computed(() => props.reportKey === 'audit-appointments');
 const isAppointmentsReport = computed(() => props.reportKey === 'appointments');
 const isProfessionalCareReport = computed(() => props.reportKey === 'professional-care');
+const isAccountsPayableReport = computed(() => props.reportKey === 'accounts-payable');
+const isPaidAccountsReport = computed(() => props.reportKey === 'paid-accounts');
 const isRegisterServicesReport = computed(() => props.reportKey === 'register-services');
 const isRegisterOwnersReport = computed(() => props.reportKey === 'register-owners');
 const isRegisterPatientsReport = computed(() => props.reportKey === 'register-patients');
 const isRegisterSuppliersReport = computed(() => props.reportKey === 'register-suppliers');
-const isDeletedSalesCounterSalesReport = computed(() => props.reportKey === 'deleted-sales-counter-sales');
+const isDeletedSalesCounterSalesReport = computed(
+  () => props.reportKey === 'deleted-sales-counter-sales'
+);
 const isInventoryStockReport = computed(() => props.reportKey === 'inventory-stock');
 const isInventoryMovementsReport = computed(() => props.reportKey === 'inventory-movements');
 const isInventoryInvoicesReport = computed(() => props.reportKey === 'inventory-invoices');
 const isInventoryProductsReport = computed(() => props.reportKey === 'inventory-products');
-const filteredAuditEvents = computed(() => auditEvents.value.filter((event) => matchesAuditFilters(event)));
-const auditActionOptions = computed(() => uniqueSorted(auditEvents.value.map((event) => event.action)));
-const auditTypeOptions = computed(() => uniqueSorted(auditEvents.value.map((event) => event.entityType)));
+const isFinancialPayablesReport = computed(
+  () => isAccountsPayableReport.value || isPaidAccountsReport.value
+);
+const filteredAuditEvents = computed(() =>
+  auditEvents.value.filter((event) => matchesAuditFilters(event))
+);
+const auditActionOptions = computed(() =>
+  uniqueSorted(auditEvents.value.map((event) => event.action))
+);
+const auditTypeOptions = computed(() =>
+  uniqueSorted(auditEvents.value.map((event) => event.entityType))
+);
+const filteredFinancialPayables = computed(() =>
+  financialPayables.value.filter((payable) => {
+    if (isPaidAccountsReport.value && payable.status !== 'paid') return false;
+    const dueAt = payable.dueAt.slice(0, 10);
+    if (filters.value.dateFrom && dueAt < filters.value.dateFrom) return false;
+    if (filters.value.dateTo && dueAt > filters.value.dateTo) return false;
+    return true;
+  })
+);
+const financialPayableReportCards = computed<ReportCard[]>(() => {
+  const source = filteredFinancialPayables.value;
+  return [
+    {
+      label: isPaidAccountsReport.value ? 'Contas pagas carregadas' : 'Títulos carregados',
+      value: count(source.length),
+      icon: isPaidAccountsReport.value ? '✅' : '💸'
+    },
+    {
+      label: 'Total',
+      value: money(source.reduce((total, payable) => total + payable.totalAmount, 0)),
+      icon: '💰'
+    },
+    {
+      label: 'Pago',
+      value: money(source.reduce((total, payable) => total + payable.paidAmount, 0)),
+      icon: '✅'
+    },
+    {
+      label: 'A pagar',
+      value: money(source.reduce((total, payable) => total + payable.outstandingAmount, 0)),
+      icon: '⏳'
+    }
+  ];
+});
+const financialPayableReportRows = computed<DataTableRow[]>(() =>
+  filteredFinancialPayables.value.map((payable) => ({ ...payable, id: payable.id }))
+);
 const cards = computed(() => {
   if (isAuditAppointments.value) return auditAppointmentCards.value;
   if (isAppointmentsReport.value) return appointmentReportCards.value;
   if (isProfessionalCareReport.value) return professionalCareReportCards.value;
+  if (isFinancialPayablesReport.value) return financialPayableReportCards.value;
   if (isRegisterServicesReport.value) return registerServicesReportCards.value;
   if (isRegisterOwnersReport.value) return registerOwnersReportCards.value;
   if (isRegisterPatientsReport.value) return registerPatientsReportCards.value;
@@ -445,6 +687,7 @@ const rows = computed(() => {
   if (isAuditAppointments.value) return auditAppointmentRows.value;
   if (isAppointmentsReport.value) return appointmentReportRows.value;
   if (isProfessionalCareReport.value) return professionalCareReportRows.value;
+  if (isFinancialPayablesReport.value) return financialPayableReportRows.value;
   if (isRegisterServicesReport.value) return registerServicesReportRows.value;
   if (isRegisterOwnersReport.value) return registerOwnersReportRows.value;
   if (isRegisterPatientsReport.value) return registerPatientsReportRows.value;
@@ -458,60 +701,82 @@ const rows = computed(() => {
 });
 const auditAppointmentCards = computed<ReportCard[]>(() => [
   { label: 'Eventos de agenda', value: count(filteredAuditEvents.value.length), icon: '📅' },
-  { label: 'Ações distintas', value: count(new Set(filteredAuditEvents.value.map((event) => event.action)).size), icon: '🧾' },
-  { label: 'Usuários envolvidos', value: count(new Set(filteredAuditEvents.value.map((event) => event.actorId)).size), icon: '👤' }
+  {
+    label: 'Ações distintas',
+    value: count(new Set(filteredAuditEvents.value.map((event) => event.action)).size),
+    icon: '🧾'
+  },
+  {
+    label: 'Usuários envolvidos',
+    value: count(new Set(filteredAuditEvents.value.map((event) => event.actorId)).size),
+    icon: '👤'
+  }
 ]);
-const auditAppointmentRows = computed<DataTableRow[]>(() =>
-  filteredAuditEvents.value.map((event) => ({
-    ...event,
-    id: event.eventId
-  })) as unknown as DataTableRow[]
+const auditAppointmentRows = computed<DataTableRow[]>(
+  () =>
+    filteredAuditEvents.value.map((event) => ({
+      ...event,
+      id: event.eventId
+    })) as unknown as DataTableRow[]
 );
 const appointmentReportCards = computed<ReportCard[]>(() => [
   { label: 'Agendamentos', value: count(appointments.value.length), icon: '📅' },
   {
     label: 'Comparecimentos',
-    value: count(appointments.value.filter((appointment) => ['checked_in', 'completed'].includes(appointment.status)).length),
+    value: count(
+      appointments.value.filter((appointment) =>
+        ['checked_in', 'completed'].includes(appointment.status)
+      ).length
+    ),
     icon: '✅'
   },
   {
     label: 'Cancelamentos',
-    value: count(appointments.value.filter((appointment) => appointment.status === 'cancelled').length),
+    value: count(
+      appointments.value.filter((appointment) => appointment.status === 'cancelled').length
+    ),
     icon: '🚫'
   }
 ]);
-const appointmentReportRows = computed<DataTableRow[]>(() =>
-  appointments.value.map((appointment) => ({
-    ...appointment,
-    status: appointmentStatusLabel(appointment.status),
-    practitioner: appointment.practitionerStaffId || 'Sem profissional',
-    service: appointment.serviceId || 'Sem serviço',
-    unit: appointment.unit || 'Sem unidade'
-  })) as DataTableRow[]
+const appointmentReportRows = computed<DataTableRow[]>(
+  () =>
+    appointments.value.map((appointment) => ({
+      ...appointment,
+      status: appointmentStatusLabel(appointment.status),
+      practitioner: appointment.practitionerStaffId || 'Sem profissional',
+      service: appointment.serviceId || 'Sem serviço',
+      unit: appointment.unit || 'Sem unidade'
+    })) as DataTableRow[]
 );
-const professionalCareReportRows = computed<DataTableRow[]>(() => professionalCareRows(appointments.value));
+const professionalCareReportRows = computed<DataTableRow[]>(() =>
+  professionalCareRows(appointments.value)
+);
 const professionalCareReportCards = computed<ReportCard[]>(() => {
   const rows = professionalCareReportRows.value;
-  const completedCount = appointments.value.filter((appointment) => appointment.status === 'completed').length;
+  const completedCount = appointments.value.filter(
+    (appointment) => appointment.status === 'completed'
+  ).length;
   return [
     { label: 'Profissionais atendendo', value: count(rows.length), icon: '🩺' },
     { label: 'Atendimentos executados', value: count(completedCount), icon: '✅' },
     { label: 'Agendamentos no período', value: count(appointments.value.length), icon: '📅' }
   ];
 });
-const registerServicesReportRows = computed<DataTableRow[]>(() =>
-  services.value.map((service) => ({
-    ...service,
-    code: service.code || 'Sem código',
-    description: service.description || 'Sem descrição',
-    status: service.active ? 'Ativo' : 'Inativo'
-  })) as DataTableRow[]
+const registerServicesReportRows = computed<DataTableRow[]>(
+  () =>
+    services.value.map((service) => ({
+      ...service,
+      code: service.code || 'Sem código',
+      description: service.description || 'Sem descrição',
+      status: service.active ? 'Ativo' : 'Inativo'
+    })) as DataTableRow[]
 );
 const registerServicesReportCards = computed<ReportCard[]>(() => {
   const activeCount = services.value.filter((service) => service.active).length;
   const inactiveCount = services.value.length - activeCount;
   const averagePrice = services.value.length
-    ? services.value.reduce((total, service) => total + service.basePrice, 0) / services.value.length
+    ? services.value.reduce((total, service) => total + service.basePrice, 0) /
+      services.value.length
     : 0;
   return [
     { label: 'Serviços cadastrados', value: count(services.value.length), icon: '🛠️' },
@@ -520,21 +785,24 @@ const registerServicesReportCards = computed<ReportCard[]>(() => {
     { label: 'Inativos', value: count(inactiveCount), icon: '📋' }
   ];
 });
-const registerOwnersReportRows = computed<DataTableRow[]>(() =>
-  owners.value.map((owner) => ({
-    id: owner.id,
-    documentId: owner.documentId || 'Sem documento',
-    fullName: owner.fullName,
-    primaryContact: ownerPrimaryContact(owner),
-    city: owner.address?.city || 'Sem cidade',
-    financialResponsible: owner.financialResponsible ? 'Sim' : 'Não',
-    status: owner.status === 'active' ? 'Ativo' : 'Inativo',
-    createdAt: owner.createdAt
-  })) as DataTableRow[]
+const registerOwnersReportRows = computed<DataTableRow[]>(
+  () =>
+    owners.value.map((owner) => ({
+      id: owner.id,
+      documentId: owner.documentId || 'Sem documento',
+      fullName: owner.fullName,
+      primaryContact: ownerPrimaryContact(owner),
+      city: owner.address?.city || 'Sem cidade',
+      financialResponsible: owner.financialResponsible ? 'Sim' : 'Não',
+      status: owner.status === 'active' ? 'Ativo' : 'Inativo',
+      createdAt: owner.createdAt
+    })) as DataTableRow[]
 );
 const registerOwnersReportCards = computed<ReportCard[]>(() => {
   const activeCount = owners.value.filter((owner) => owner.status === 'active').length;
-  const financialResponsibleCount = owners.value.filter((owner) => owner.financialResponsible).length;
+  const financialResponsibleCount = owners.value.filter(
+    (owner) => owner.financialResponsible
+  ).length;
   const withContactCount = owners.value.filter((owner) => owner.contacts.length > 0).length;
   return [
     { label: 'Clientes cadastrados', value: count(owners.value.length), icon: '👤' },
@@ -543,18 +811,19 @@ const registerOwnersReportCards = computed<ReportCard[]>(() => {
     { label: 'Com contato', value: count(withContactCount), icon: '📞' }
   ];
 });
-const registerPatientsReportRows = computed<DataTableRow[]>(() =>
-  patients.value.map((patient) => ({
-    id: patient.id,
-    code: patient.legacyVetusId || patient.id,
-    name: patient.name,
-    species: speciesLabel(patient.species),
-    breed: patient.breed || 'Sem raça',
-    sex: sexLabel(patient.sex),
-    microchip: patient.microchip || 'Sem chip',
-    status: patientStatusLabel(patient.status),
-    createdAt: patient.createdAt
-  })) as DataTableRow[]
+const registerPatientsReportRows = computed<DataTableRow[]>(
+  () =>
+    patients.value.map((patient) => ({
+      id: patient.id,
+      code: patient.legacyVetusId || patient.id,
+      name: patient.name,
+      species: speciesLabel(patient.species),
+      breed: patient.breed || 'Sem raça',
+      sex: sexLabel(patient.sex),
+      microchip: patient.microchip || 'Sem chip',
+      status: patientStatusLabel(patient.status),
+      createdAt: patient.createdAt
+    })) as DataTableRow[]
 );
 const registerPatientsReportCards = computed<ReportCard[]>(() => {
   const activeCount = patients.value.filter((patient) => patient.status === 'active').length;
@@ -567,22 +836,27 @@ const registerPatientsReportCards = computed<ReportCard[]>(() => {
     { label: 'Com microchip', value: count(withMicrochipCount), icon: '🏷️' }
   ];
 });
-const registerSuppliersReportRows = computed<DataTableRow[]>(() =>
-  suppliers.value.map((supplier) => ({
-    id: supplier.id,
-    code: supplier.id,
-    name: supplier.name,
-    category: supplier.category || 'Sem categoria',
-    kind: supplier.kind || 'Sem tipo',
-    costCenter: supplier.costCenterName
-      ? `${supplier.costCenterName} · ${supplier.costCenterCode}`
-      : supplier.costCenterCode || 'Sem centro de custo',
-    contact: supplierContactLabel(supplier)
-  })) as DataTableRow[]
+const registerSuppliersReportRows = computed<DataTableRow[]>(
+  () =>
+    suppliers.value.map((supplier) => ({
+      id: supplier.id,
+      code: supplier.id,
+      name: supplier.name,
+      category: supplier.category || 'Sem categoria',
+      kind: supplier.kind || 'Sem tipo',
+      costCenter: supplier.costCenterName
+        ? `${supplier.costCenterName} · ${supplier.costCenterCode}`
+        : supplier.costCenterCode || 'Sem centro de custo',
+      contact: supplierContactLabel(supplier)
+    })) as DataTableRow[]
 );
 const registerSuppliersReportCards = computed<ReportCard[]>(() => {
-  const supplierCount = suppliers.value.filter((supplier) => normalizeText(supplier.category).includes('fornecedor')).length;
-  const expenseCount = suppliers.value.filter((supplier) => normalizeText(supplier.category).includes('despesa')).length;
+  const supplierCount = suppliers.value.filter((supplier) =>
+    normalizeText(supplier.category).includes('fornecedor')
+  ).length;
+  const expenseCount = suppliers.value.filter((supplier) =>
+    normalizeText(supplier.category).includes('despesa')
+  ).length;
   const withContactCount = suppliers.value.filter((supplier) => supplier.description.trim()).length;
   return [
     { label: 'Registros cadastrados', value: count(suppliers.value.length), icon: '📦' },
@@ -591,22 +865,23 @@ const registerSuppliersReportCards = computed<ReportCard[]>(() => {
     { label: 'Com contato', value: count(withContactCount), icon: '☎️' }
   ];
 });
-const deletedSalesCounterSalesReportRows = computed<DataTableRow[]>(() =>
-  counterSales.value
-    .filter((sale) => sale.status === 'cancelled')
-    .map((sale) => ({
-      id: sale.id,
-      number: sale.number,
-      owner: sale.ownerId || 'Sem tutor vinculado',
-      openedBy: sale.openedByUserId,
-      createdAt: sale.createdAt,
-      cancelledAt: sale.updatedAt,
-      total: sale.total,
-      discountAmount: sale.discountAmount,
-      paidAmount: sale.paidAmount,
-      balanceDue: sale.balanceDue,
-      notes: sale.notes || 'Sem observação'
-    })) as DataTableRow[]
+const deletedSalesCounterSalesReportRows = computed<DataTableRow[]>(
+  () =>
+    counterSales.value
+      .filter((sale) => sale.status === 'cancelled')
+      .map((sale) => ({
+        id: sale.id,
+        number: sale.number,
+        owner: sale.ownerId || 'Sem tutor vinculado',
+        openedBy: sale.openedByUserId,
+        createdAt: sale.createdAt,
+        cancelledAt: sale.updatedAt,
+        total: sale.total,
+        discountAmount: sale.discountAmount,
+        paidAmount: sale.paidAmount,
+        balanceDue: sale.balanceDue,
+        notes: sale.notes || 'Sem observação'
+      })) as DataTableRow[]
 );
 const deletedSalesCounterSalesReportCards = computed<ReportCard[]>(() => {
   const cancelledSales = counterSales.value.filter((sale) => sale.status === 'cancelled');
@@ -620,30 +895,33 @@ const deletedSalesCounterSalesReportCards = computed<ReportCard[]>(() => {
     { label: 'Com saldo aberto', value: count(withBalanceCount), icon: '⚠️' }
   ];
 });
-const inventoryStockReportRows = computed<DataTableRow[]>(() =>
-  inventoryItems.value.map((item) => {
-    const lots = inventoryLots.value.filter((lot) => lot.inventoryItemId === item.id);
-    return {
-      id: item.id,
-      sku: item.sku || item.id,
-      name: item.name,
-      onHandQuantity: item.onHandQuantity,
-      unit: item.unit,
-      reorderLevel: item.reorderLevel,
-      unitCostAmount: item.unitCostAmount,
-      stockValue: item.onHandQuantity * item.unitCostAmount,
-      lotCount: lots.length,
-      lotStatus: inventoryLotStatusSummary(lots),
-      updatedAt: item.updatedAt
-    };
-  }) as DataTableRow[]
+const inventoryStockReportRows = computed<DataTableRow[]>(
+  () =>
+    inventoryItems.value.map((item) => {
+      const lots = inventoryLots.value.filter((lot) => lot.inventoryItemId === item.id);
+      return {
+        id: item.id,
+        sku: item.sku || item.id,
+        name: item.name,
+        onHandQuantity: item.onHandQuantity,
+        unit: item.unit,
+        reorderLevel: item.reorderLevel,
+        unitCostAmount: item.unitCostAmount,
+        stockValue: item.onHandQuantity * item.unitCostAmount,
+        lotCount: lots.length,
+        lotStatus: inventoryLotStatusSummary(lots),
+        updatedAt: item.updatedAt
+      };
+    }) as DataTableRow[]
 );
 const inventoryStockReportCards = computed<ReportCard[]>(() => {
   const stockValue = inventoryItems.value.reduce(
     (total, item) => total + item.onHandQuantity * item.unitCostAmount,
     0
   );
-  const belowReorderCount = inventoryItems.value.filter((item) => item.onHandQuantity <= item.reorderLevel).length;
+  const belowReorderCount = inventoryItems.value.filter(
+    (item) => item.onHandQuantity <= item.reorderLevel
+  ).length;
   const criticalLotCount = inventoryLots.value.filter((lot) =>
     ['expiring', 'expired', 'depleted'].includes(lot.status)
   ).length;
@@ -691,7 +969,9 @@ const inventoryMovementsReportRows = computed<DataTableRow[]>(() => {
 
   return [...consumptionRows, ...lotRows]
     .filter((row) => matchesReportPeriod(row.occurredAt))
-    .sort((left, right) => new Date(right.occurredAt).getTime() - new Date(left.occurredAt).getTime()) as DataTableRow[];
+    .sort(
+      (left, right) => new Date(right.occurredAt).getTime() - new Date(left.occurredAt).getTime()
+    ) as DataTableRow[];
 });
 const inventoryMovementsReportCards = computed<ReportCard[]>(() => {
   const movementRows = inventoryMovementsReportRows.value;
@@ -749,14 +1029,18 @@ const inventoryInvoicesReportRows = computed<DataTableRow[]>(() => {
 
   return [...lotRows, ...pendingRows]
     .filter((row) => matchesReportPeriod(row.createdAt))
-    .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()) as DataTableRow[];
+    .sort(
+      (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
+    ) as DataTableRow[];
 });
 const inventoryInvoicesReportCards = computed<ReportCard[]>(() => {
   const invoiceRows = inventoryInvoicesReportRows.value;
   const suppliers = new Set(
     invoiceRows
       .map((row) => stringValue(row, 'supplier'))
-      .filter((supplier): supplier is string => Boolean(supplier && supplier !== 'Fornecedor não informado'))
+      .filter((supplier): supplier is string =>
+        Boolean(supplier && supplier !== 'Fornecedor não informado')
+      )
   );
   const checkedCount = invoiceRows.filter((row) => row.status === 'Conferida').length;
   const attentionCount = invoiceRows.filter((row) => row.status === 'Atenção').length;
@@ -798,7 +1082,9 @@ const inventoryProductsReportRows = computed<DataTableRow[]>(() => {
       };
     })
     .filter((row) => matchesReportPeriod(row.updatedAt || row.createdAt))
-    .sort((left, right) => String(left.name).localeCompare(String(right.name), 'pt-BR')) as DataTableRow[];
+    .sort((left, right) =>
+      String(left.name).localeCompare(String(right.name), 'pt-BR')
+    ) as DataTableRow[];
 });
 const inventoryProductsReportCards = computed<ReportCard[]>(() => {
   const productRows = inventoryProductsReportRows.value;
@@ -833,6 +1119,15 @@ async function loadReport() {
         endAt: filters.value.dateTo ? `${filters.value.dateTo}T23:59:59.999Z` : undefined
       });
       report.value = null;
+    } else if (isFinancialPayablesReport.value) {
+      financialPayables.value = [];
+      const response = await financialPayablesService.list({
+        status: isPaidAccountsReport.value ? 'paid' : '',
+        page: 1,
+        pageSize: 500
+      });
+      financialPayables.value = [...response.data];
+      report.value = null;
     } else if (isRegisterServicesReport.value) {
       services.value = await servicesService.list();
       report.value = null;
@@ -843,7 +1138,11 @@ async function loadReport() {
       patients.value = await patientService.list({ pageSize: 500, status: 'all' });
       report.value = null;
     } else if (isRegisterSuppliersReport.value) {
-      const response = await expensesCatalogService.list({ pageSize: 500, sort: 'name', order: 'asc' });
+      const response = await expensesCatalogService.list({
+        pageSize: 500,
+        sort: 'name',
+        order: 'asc'
+      });
       suppliers.value = response.items;
       report.value = null;
     } else if (isDeletedSalesCounterSalesReport.value) {
@@ -881,6 +1180,51 @@ async function loadReport() {
   }
 }
 
+function exportCurrentReport(): void {
+  if (!spec.value.exportable || exporting.value) return;
+
+  exporting.value = true;
+  error.value = '';
+  success.value = '';
+
+  try {
+    const csv = buildReportCsv(spec.value.columns, rows.value);
+    downloadCsv(csv, buildReportFilename(spec.value.title));
+    success.value = `Exportação CSV gerada com ${rows.value.length} linha(s).`;
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Não foi possível exportar o relatório';
+  } finally {
+    exporting.value = false;
+  }
+}
+
+function downloadCsv(content: string, filename: string): void {
+  const blob = new Blob([content], { type: 'text/csv;charset=utf-8' });
+  const objectUrl = typeof URL.createObjectURL === 'function' ? URL.createObjectURL(blob) : null;
+  const anchor = document.createElement('a');
+  anchor.href = objectUrl ?? `data:text/csv;charset=utf-8,${encodeURIComponent(content)}`;
+  anchor.download = filename;
+  anchor.rel = 'noopener';
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+
+  if (objectUrl) {
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
+  }
+}
+
+function buildReportFilename(title: string): string {
+  const slug = title
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+  const date = new Date().toISOString().slice(0, 10);
+  return `${slug || 'relatorio'}-${date}.csv`;
+}
+
 function resetFilters() {
   filters.value = { dateFrom: '', dateTo: '', client: '', user: '', action: '', type: '' };
   void loadReport();
@@ -896,11 +1240,17 @@ function matchesAuditFilters(event: AuditEventSummary): boolean {
   const matchesDateTo = !toDate || occurredAt <= toDate;
   const matchesClient =
     !clientNeedle ||
-    [event.entityId, event.payloadSummary].some((value) => String(value ?? '').toLowerCase().includes(clientNeedle));
+    [event.entityId, event.payloadSummary].some((value) =>
+      String(value ?? '')
+        .toLowerCase()
+        .includes(clientNeedle)
+    );
   const matchesUser = !userNeedle || event.actorId.toLowerCase().includes(userNeedle);
   const matchesAction = !filters.value.action || event.action === filters.value.action;
   const matchesType = !filters.value.type || event.entityType === filters.value.type;
-  return matchesDateFrom && matchesDateTo && matchesClient && matchesUser && matchesAction && matchesType;
+  return (
+    matchesDateFrom && matchesDateTo && matchesClient && matchesUser && matchesAction && matchesType
+  );
 }
 
 function uniqueSorted(values: string[]): string[] {
@@ -918,15 +1268,18 @@ function appointmentStatusLabel(status: AppointmentSummary['status']): string {
 }
 
 function professionalCareRows(source: AppointmentSummary[]): DataTableRow[] {
-  const professionals = new Map<string, {
-    id: string;
-    professional: string;
-    scheduled: number;
-    completed: number;
-    checkedIn: number;
-    cancelled: number;
-    services: Set<string>;
-  }>();
+  const professionals = new Map<
+    string,
+    {
+      id: string;
+      professional: string;
+      scheduled: number;
+      completed: number;
+      checkedIn: number;
+      cancelled: number;
+      services: Set<string>;
+    }
+  >();
 
   for (const appointment of source) {
     const id = appointment.practitionerStaffId || 'unassigned';
@@ -968,13 +1321,13 @@ function receivableSpec(title: string, subtitle: string, mode: 'open' | 'receive
     subtitle,
     icon: isOpenReport ? '💵' : '✅',
     primaryPath: '/finance/accounts-receivable',
-    primaryAction: isOpenReport ? 'Solicitar Excel' : 'Abrir financeiro',
-    primaryDisabled: isOpenReport,
+    primaryAction: 'Exportar CSV',
+    exportable: true,
     tableTitle: isOpenReport ? 'Maiores recebíveis em aberto' : 'Indicadores de recebimento',
     emptyTitle: isOpenReport ? 'Sem recebíveis em aberto' : 'Sem recebimento consolidado',
     emptyDescription: 'A movimentação financeira aparece aqui conforme o período selecionado.',
     note: isOpenReport
-      ? 'A rota Vetus legacy observada e Sistema/Relatorio/ContasAReceberRelatorio.htm. Esta visão é somente leitura, não baixa títulos, não concilia recebíveis e não exporta relatório real.'
+      ? 'A rota Vetus legacy observada e Sistema/Relatorio/ContasAReceberRelatorio.htm. Exporta CSV dos recebíveis carregados; esta visão é somente leitura, não baixa títulos nem concilia recebíveis.'
       : undefined,
     columns: isOpenReport
       ? [
@@ -990,9 +1343,21 @@ function receivableSpec(title: string, subtitle: string, mode: 'open' | 'receive
           { key: 'scope', label: 'Origem' }
         ],
     cards: (current) => [
-      { label: 'Em aberto', value: money(current?.domains.financial.receivables.totalOutstanding), icon: '💵' },
-      { label: 'Vencidos', value: money(current?.domains.financial.receivables.overdueAmount), icon: '⚠️' },
-      { label: 'PIX concluídos', value: money(current?.domains.financial.pix.completedAmount), icon: '💸' }
+      {
+        label: 'Em aberto',
+        value: money(current?.domains.financial.receivables.totalOutstanding),
+        icon: '💵'
+      },
+      {
+        label: 'Vencidos',
+        value: money(current?.domains.financial.receivables.overdueAmount),
+        icon: '⚠️'
+      },
+      {
+        label: 'PIX concluídos',
+        value: money(current?.domains.financial.pix.completedAmount),
+        icon: '💸'
+      }
     ],
     rows: (current) => {
       if (isOpenReport) {
@@ -1003,9 +1368,24 @@ function receivableSpec(title: string, subtitle: string, mode: 'open' | 'receive
         })) as DataTableRow[];
       }
       return [
-        { id: 'settled', label: 'Faturamentos quitados', value: count(current?.domains.financial.billing.settledCount), scope: 'Faturamento' },
-        { id: 'pix', label: 'PIX concluídos', value: count(current?.domains.financial.pix.completedCount), scope: 'PIX' },
-        { id: 'reconciled', label: 'PIX conciliados', value: count(current?.domains.financial.pix.reconciledCount), scope: 'Conciliação' }
+        {
+          id: 'settled',
+          label: 'Faturamentos quitados',
+          value: count(current?.domains.financial.billing.settledCount),
+          scope: 'Faturamento'
+        },
+        {
+          id: 'pix',
+          label: 'PIX concluídos',
+          value: count(current?.domains.financial.pix.completedCount),
+          scope: 'PIX'
+        },
+        {
+          id: 'reconciled',
+          label: 'PIX conciliados',
+          value: count(current?.domains.financial.pix.reconciledCount),
+          scope: 'Conciliação'
+        }
       ];
     }
   };
@@ -1015,15 +1395,17 @@ function receivedAccountsSpec(): ReportSpec {
   return {
     title: 'Contas Recebidas',
     group: 'Relatórios Financeiros',
-    subtitle: 'Relatório financeiro legacy de títulos liquidados, recebimentos efetivos e origem do recebimento',
+    subtitle:
+      'Relatório financeiro legacy de títulos liquidados, recebimentos efetivos e origem do recebimento',
     icon: '✅',
     primaryPath: '/finance/accounts-receivable',
-    primaryAction: 'Solicitar Excel',
-    primaryDisabled: true,
+    primaryAction: 'Exportar CSV',
+    exportable: true,
     tableTitle: 'Recebimentos no período',
     emptyTitle: 'Sem conta recebida no período',
-    emptyDescription: 'Títulos quitados e recebimentos confirmados aparecem aqui conforme o período selecionado.',
-    note: 'A rota Vetus legacy observada e Sistema/Relatorio/ContasRecebidasRelatorio.htm. Esta visão é somente leitura, não baixa títulos, não concilia recebimentos e não exporta relatório real.',
+    emptyDescription:
+      'Títulos quitados e recebimentos confirmados aparecem aqui conforme o período selecionado.',
+    note: 'A rota Vetus legacy observada e Sistema/Relatorio/ContasRecebidasRelatorio.htm. Exporta CSV dos indicadores de recebimento carregados; esta visão é somente leitura, não baixa títulos nem concilia recebimentos.',
     columns: [
       { key: 'label', label: 'Indicador' },
       { key: 'receivedAmount', label: 'Recebido' },
@@ -1031,33 +1413,46 @@ function receivedAccountsSpec(): ReportSpec {
       { key: 'scope', label: 'Origem' }
     ],
     cards: (current) => [
-      { label: 'Recebido confirmado', value: money(current?.domains.financial.pix.completedAmount), icon: '💸' },
-      { label: 'Títulos quitados', value: count(current?.domains.financial.billing.settledCount), icon: '✅' },
-      { label: 'PIX conciliados', value: count(current?.domains.financial.pix.reconciledCount), icon: '🏦' }
-    ],
-    rows: (current) => [
       {
-        id: 'settled-billing',
-        label: 'Faturamentos quitados',
-        receivedAmount: 0,
-        records: count(current?.domains.financial.billing.settledCount),
-        scope: 'Faturamento'
+        label: 'Recebido confirmado',
+        value: money(current?.domains.financial.pix.completedAmount),
+        icon: '💸'
       },
       {
-        id: 'pix-completed',
-        label: 'PIX concluídos',
-        receivedAmount: current?.domains.financial.pix.completedAmount ?? 0,
-        records: count(current?.domains.financial.pix.completedCount),
-        scope: 'PIX'
+        label: 'Títulos quitados',
+        value: count(current?.domains.financial.billing.settledCount),
+        icon: '✅'
       },
       {
-        id: 'pix-reconciled',
         label: 'PIX conciliados',
-        receivedAmount: current?.domains.financial.pix.completedAmount ?? 0,
-        records: count(current?.domains.financial.pix.reconciledCount),
-        scope: 'Conciliação'
+        value: count(current?.domains.financial.pix.reconciledCount),
+        icon: '🏦'
       }
-    ] as DataTableRow[]
+    ],
+    rows: (current) =>
+      [
+        {
+          id: 'settled-billing',
+          label: 'Faturamentos quitados',
+          receivedAmount: 0,
+          records: count(current?.domains.financial.billing.settledCount),
+          scope: 'Faturamento'
+        },
+        {
+          id: 'pix-completed',
+          label: 'PIX concluídos',
+          receivedAmount: current?.domains.financial.pix.completedAmount ?? 0,
+          records: count(current?.domains.financial.pix.completedCount),
+          scope: 'PIX'
+        },
+        {
+          id: 'pix-reconciled',
+          label: 'PIX conciliados',
+          receivedAmount: current?.domains.financial.pix.completedAmount ?? 0,
+          records: count(current?.domains.financial.pix.reconciledCount),
+          scope: 'Conciliação'
+        }
+      ] as DataTableRow[]
   };
 }
 
@@ -1068,46 +1463,16 @@ function accountsPayableReportSpec(): ReportSpec {
     subtitle: 'Relatório financeiro legacy de obrigações, vencimentos e origem de despesas a pagar',
     icon: '💸',
     primaryPath: '/finance/accounts-payable',
-    primaryAction: 'Solicitar Excel',
-    primaryDisabled: true,
+    primaryAction: 'Exportar CSV',
+    exportable: true,
     tableTitle: 'Obrigações a pagar',
     emptyTitle: 'Sem obrigação a pagar no período',
-    emptyDescription: 'Obrigações por fornecedor aparecem aqui quando existir fonte analítica específica de contas a pagar.',
-    note: 'O item Vetus de Relatórios Financeiros > Contas a Pagar foi revalidado no navbar; a estrutura operacional documentada é Financeiro/ContasAPagar.htm, com fornecedor, emissão, vencimento, total, pago, a pagar, origem e status. Esta visão é somente leitura, não baixa títulos, não gera conta avulsa e não exporta relatório real.',
-    columns: [
-      { key: 'label', label: 'Indicador' },
-      { key: 'payableAmount', label: 'A Pagar' },
-      { key: 'records', label: 'Registros' },
-      { key: 'scope', label: 'Origem' }
-    ],
-    cards: () => [
-      { label: 'Fonte de títulos a pagar', value: 'Pendente', icon: '💸' },
-      { label: 'Catálogo operacional', value: 'Mapeado', icon: '📋' },
-      { label: 'Exportação legacy', value: 'Bloqueada', icon: '✅' }
-    ],
-    rows: () => [
-      {
-        id: 'operational-structure',
-        label: 'Estrutura operacional mapeada',
-        payableAmount: 0,
-        records: 'Sem fonte analítica',
-        scope: 'Financeiro/ContasAPagar.htm'
-      },
-      {
-        id: 'report-source',
-        label: 'Endpoint específico do relatório',
-        payableAmount: 0,
-        records: 'Pendente',
-        scope: 'Relatórios Financeiros'
-      },
-      {
-        id: 'write-guard',
-        label: 'Baixa, conta avulsa e exportação',
-        payableAmount: 0,
-        records: 'Bloqueadas',
-        scope: 'Somente leitura'
-      }
-    ] as DataTableRow[]
+    emptyDescription:
+      'Obrigações por fornecedor aparecem aqui a partir do subledger persistido de contas a pagar.',
+    note: 'O item Vetus de Relatórios Financeiros > Contas a Pagar foi revalidado no navbar e corresponde à estrutura Financeiro/ContasAPagar.htm. Exporta CSV do subledger carregado por /financial/payables; esta visão é somente leitura e não baixa títulos nem gera conta avulsa.',
+    columns: financialPayableColumns,
+    cards: () => [],
+    rows: () => []
   };
 }
 
@@ -1115,49 +1480,20 @@ function paidAccountsReportSpec(): ReportSpec {
   return {
     title: 'Contas Pagas',
     group: 'Relatórios Financeiros',
-    subtitle: 'Relatório financeiro legacy de despesas liquidadas, desembolso efetivo e origem do pagamento',
+    subtitle:
+      'Relatório financeiro legacy de despesas liquidadas, desembolso efetivo e origem do pagamento',
     icon: '✅',
     primaryPath: '/finance/accounts-payable',
-    primaryAction: 'Solicitar Excel',
-    primaryDisabled: true,
+    primaryAction: 'Exportar CSV',
+    exportable: true,
     tableTitle: 'Pagamentos no período',
     emptyTitle: 'Sem conta paga no período',
-    emptyDescription: 'Pagamentos quitados aparecem aqui quando existir fonte analítica específica de contas pagas.',
-    note: 'A rota Vetus legacy observada e Sistema/Relatorio/ContasPagasRelatorio.htm. Esta visão é somente leitura, não baixa títulos, não altera fornecedores e não exporta relatório real.',
-    columns: [
-      { key: 'label', label: 'Indicador' },
-      { key: 'paidAmount', label: 'Pago' },
-      { key: 'records', label: 'Registros' },
-      { key: 'scope', label: 'Origem' }
-    ],
-    cards: () => [
-      { label: 'Fonte de contas pagas', value: 'Pendente', icon: '✅' },
-      { label: 'Desembolso realizado', value: 'Sem fonte', icon: '💸' },
-      { label: 'Exportação legacy', value: 'Bloqueada', icon: '📄' }
-    ],
-    rows: () => [
-      {
-        id: 'paid-subset',
-        label: 'Subconjunto quitado de contas a pagar',
-        paidAmount: 0,
-        records: 'Sem fonte analítica',
-        scope: 'Contas Pagas'
-      },
-      {
-        id: 'legacy-route',
-        label: 'Rota legacy documentada',
-        paidAmount: 0,
-        records: 'Pendente',
-        scope: 'Sistema/Relatorio/ContasPagasRelatorio.htm'
-      },
-      {
-        id: 'write-guard',
-        label: 'Baixa, fornecedor e exportação',
-        paidAmount: 0,
-        records: 'Bloqueadas',
-        scope: 'Somente leitura'
-      }
-    ] as DataTableRow[]
+    emptyDescription:
+      'Pagamentos quitados aparecem aqui a partir dos registros pagos do subledger de contas a pagar.',
+    note: 'A rota Vetus legacy observada e Sistema/Relatorio/ContasPagasRelatorio.htm. Exporta CSV dos títulos pagos carregados por /financial/payables; esta visão é somente leitura e não baixa títulos nem altera fornecedores.',
+    columns: financialPayableColumns,
+    cards: () => [],
+    rows: () => []
   };
 }
 
@@ -1165,14 +1501,16 @@ function chequesReportSpec(): ReportSpec {
   return {
     title: 'Cheques',
     group: 'Relatórios Financeiros',
-    subtitle: 'Relatório financeiro legacy de cheques recebidos, emitidos, vencimentos e situação operacional',
+    subtitle:
+      'Relatório financeiro legacy de cheques recebidos, emitidos, vencimentos e situação operacional',
     icon: '📄',
     primaryPath: '/finance/cheques',
     primaryAction: 'Solicitar Excel',
     primaryDisabled: true,
     tableTitle: 'Cheques no período',
     emptyTitle: 'Sem cheque no período',
-    emptyDescription: 'Cheques aparecem aqui quando existir fonte analítica específica para o relatório financeiro.',
+    emptyDescription:
+      'Cheques aparecem aqui quando existir fonte analítica específica para o relatório financeiro.',
     note: 'O item Vetus de Relatórios Financeiros > Cheques foi revalidado no navbar; a estrutura operacional documentada é Financeiro/Cheques.htm, com cheques recebidos/emitidos, vencimento, baixa e devolução. Esta visão é somente leitura, não cadastra cheques, não baixa títulos, não registra devolução e não exporta relatório real.',
     columns: [
       { key: 'label', label: 'Indicador' },
@@ -1185,29 +1523,30 @@ function chequesReportSpec(): ReportSpec {
       { label: 'Fonte analítica', value: 'Pendente', icon: '🧾' },
       { label: 'Exportação legacy', value: 'Bloqueada', icon: '✅' }
     ],
-    rows: () => [
-      {
-        id: 'operational-structure',
-        label: 'Estrutura operacional mapeada',
-        amount: 0,
-        records: 'Sem fonte analítica',
-        scope: 'Financeiro/Cheques.htm'
-      },
-      {
-        id: 'report-source',
-        label: 'Endpoint específico do relatório',
-        amount: 0,
-        records: 'Pendente',
-        scope: 'Relatórios Financeiros'
-      },
-      {
-        id: 'write-guard',
-        label: 'Cadastro, baixa, devolução e exportação',
-        amount: 0,
-        records: 'Bloqueados',
-        scope: 'Somente leitura'
-      }
-    ] as DataTableRow[]
+    rows: () =>
+      [
+        {
+          id: 'operational-structure',
+          label: 'Estrutura operacional mapeada',
+          amount: 0,
+          records: 'Sem fonte analítica',
+          scope: 'Financeiro/Cheques.htm'
+        },
+        {
+          id: 'report-source',
+          label: 'Endpoint específico do relatório',
+          amount: 0,
+          records: 'Pendente',
+          scope: 'Relatórios Financeiros'
+        },
+        {
+          id: 'write-guard',
+          label: 'Cadastro, baixa, devolução e exportação',
+          amount: 0,
+          records: 'Bloqueados',
+          scope: 'Somente leitura'
+        }
+      ] as DataTableRow[]
   };
 }
 
@@ -1215,14 +1554,16 @@ function advancePaymentsReportSpec(): ReportSpec {
   return {
     title: 'Pagamento Antecipado',
     group: 'Relatórios Financeiros',
-    subtitle: 'Relatório financeiro legacy de créditos antecipados, saldo de cliente e compensação futura',
+    subtitle:
+      'Relatório financeiro legacy de créditos antecipados, saldo de cliente e compensação futura',
     icon: '⏩',
     primaryPath: '/finance/advance-payments',
     primaryAction: 'Solicitar Excel',
     primaryDisabled: true,
     tableTitle: 'Pagamentos antecipados no período',
     emptyTitle: 'Sem pagamento antecipado no período',
-    emptyDescription: 'Pagamentos antecipados aparecem aqui quando existir fonte analítica específica para o relatório financeiro.',
+    emptyDescription:
+      'Pagamentos antecipados aparecem aqui quando existir fonte analítica específica para o relatório financeiro.',
     note: 'O item Vetus de Relatórios Financeiros > Pagamento Antecipado foi revalidado no navbar; a estrutura operacional documentada é Financeiro/PagamentoAntecipado.htm, com recebimentos antecipados, saldo de crédito do cliente e compensação futura. Esta visão é somente leitura, não gera pagamento antecipado, não compensa crédito e não exporta relatório real.',
     columns: [
       { key: 'label', label: 'Indicador' },
@@ -1235,29 +1576,30 @@ function advancePaymentsReportSpec(): ReportSpec {
       { label: 'Fonte analítica', value: 'Pendente', icon: '🧾' },
       { label: 'Exportação legacy', value: 'Bloqueada', icon: '✅' }
     ],
-    rows: () => [
-      {
-        id: 'operational-structure',
-        label: 'Estrutura operacional mapeada',
-        amount: 0,
-        records: 'Sem fonte analítica',
-        scope: 'Financeiro/PagamentoAntecipado.htm'
-      },
-      {
-        id: 'report-source',
-        label: 'Endpoint específico do relatório',
-        amount: 0,
-        records: 'Pendente',
-        scope: 'Relatórios Financeiros'
-      },
-      {
-        id: 'write-guard',
-        label: 'Geração, compensação e exportação',
-        amount: 0,
-        records: 'Bloqueadas',
-        scope: 'Somente leitura'
-      }
-    ] as DataTableRow[]
+    rows: () =>
+      [
+        {
+          id: 'operational-structure',
+          label: 'Estrutura operacional mapeada',
+          amount: 0,
+          records: 'Sem fonte analítica',
+          scope: 'Financeiro/PagamentoAntecipado.htm'
+        },
+        {
+          id: 'report-source',
+          label: 'Endpoint específico do relatório',
+          amount: 0,
+          records: 'Pendente',
+          scope: 'Relatórios Financeiros'
+        },
+        {
+          id: 'write-guard',
+          label: 'Geração, compensação e exportação',
+          amount: 0,
+          records: 'Bloqueadas',
+          scope: 'Somente leitura'
+        }
+      ] as DataTableRow[]
   };
 }
 
@@ -1265,15 +1607,17 @@ function salesCounterSalesReportSpec(): ReportSpec {
   return {
     title: 'Comandas/Vendas',
     group: 'Relatórios de Atendimentos',
-    subtitle: 'Relatório legacy de consolidação comercial-operacional de comandas, vendas e fechamento econômico',
+    subtitle:
+      'Relatório legacy de consolidação comercial-operacional de comandas, vendas e fechamento econômico',
     icon: '💸',
     primaryPath: '/counter-sales',
-    primaryAction: 'Solicitar Excel',
-    primaryDisabled: true,
+    primaryAction: 'Exportar CSV',
+    exportable: true,
     tableTitle: 'Comandas e vendas no período',
     emptyTitle: 'Sem comanda ou venda no período',
-    emptyDescription: 'Comandas e vendas aparecem aqui conforme a consolidação comercial do período selecionado.',
-    note: 'A rota Vetus legacy observada e Sistema/Relatorio/ComandasVendasRelatorio.htm. Esta visão é somente leitura, não abre comanda, não cria venda, não finaliza cobrança e não exporta relatório real.',
+    emptyDescription:
+      'Comandas e vendas aparecem aqui conforme a consolidação comercial do período selecionado.',
+    note: 'A rota Vetus legacy observada e Sistema/Relatorio/ComandasVendasRelatorio.htm. Exporta CSV dos indicadores comerciais carregados; esta visão é somente leitura, não abre comanda, não cria venda nem finaliza cobrança.',
     columns: [
       { key: 'label', label: 'Indicador' },
       { key: 'amount', label: 'Valor' },
@@ -1281,47 +1625,60 @@ function salesCounterSalesReportSpec(): ReportSpec {
       { key: 'scope', label: 'Origem' }
     ],
     cards: (current) => [
-      { label: 'Comandas/Vendas', value: count(current?.domains.commercial.counterSales.totalSales), icon: '💸' },
-      { label: 'Receita bruta', value: money(current?.domains.commercial.counterSales.grossRevenue), icon: '📈' },
-      { label: 'Ticket médio', value: money(current?.domains.commercial.counterSales.avgTicket), icon: '🧾' }
-    ],
-    rows: (current) => [
       {
-        id: 'total-sales',
-        label: 'Volume transacional consolidado',
-        amount: current?.domains.commercial.counterSales.grossRevenue ?? 0,
-        records: count(current?.domains.commercial.counterSales.totalSales),
-        scope: 'Comandas/Vendas'
+        label: 'Comandas/Vendas',
+        value: count(current?.domains.commercial.counterSales.totalSales),
+        icon: '💸'
       },
       {
-        id: 'closed-sales',
-        label: 'Comandas e vendas fechadas',
-        amount: current?.domains.commercial.counterSales.netRevenue ?? 0,
-        records: count(current?.domains.commercial.counterSales.closedCount),
-        scope: 'Fechamento comercial'
+        label: 'Receita bruta',
+        value: money(current?.domains.commercial.counterSales.grossRevenue),
+        icon: '📈'
       },
       {
-        id: 'open-sales',
-        label: 'Comandas em aberto',
-        amount: 0,
-        records: count(current?.domains.commercial.counterSales.openCount),
-        scope: 'Operação de atendimento'
-      },
-      {
-        id: 'cancelled-sales',
-        label: 'Vendas canceladas',
-        amount: 0,
-        records: count(current?.domains.commercial.counterSales.cancelledCount),
-        scope: 'Controle interno'
-      },
-      {
-        id: 'avg-ticket',
-        label: 'Ticket médio fechado',
-        amount: current?.domains.commercial.counterSales.avgTicket ?? 0,
-        records: count(current?.domains.commercial.counterSales.closedCount),
-        scope: 'Vendas'
+        label: 'Ticket médio',
+        value: money(current?.domains.commercial.counterSales.avgTicket),
+        icon: '🧾'
       }
-    ] as DataTableRow[]
+    ],
+    rows: (current) =>
+      [
+        {
+          id: 'total-sales',
+          label: 'Volume transacional consolidado',
+          amount: current?.domains.commercial.counterSales.grossRevenue ?? 0,
+          records: count(current?.domains.commercial.counterSales.totalSales),
+          scope: 'Comandas/Vendas'
+        },
+        {
+          id: 'closed-sales',
+          label: 'Comandas e vendas fechadas',
+          amount: current?.domains.commercial.counterSales.netRevenue ?? 0,
+          records: count(current?.domains.commercial.counterSales.closedCount),
+          scope: 'Fechamento comercial'
+        },
+        {
+          id: 'open-sales',
+          label: 'Comandas em aberto',
+          amount: 0,
+          records: count(current?.domains.commercial.counterSales.openCount),
+          scope: 'Operação de atendimento'
+        },
+        {
+          id: 'cancelled-sales',
+          label: 'Vendas canceladas',
+          amount: 0,
+          records: count(current?.domains.commercial.counterSales.cancelledCount),
+          scope: 'Controle interno'
+        },
+        {
+          id: 'avg-ticket',
+          label: 'Ticket médio fechado',
+          amount: current?.domains.commercial.counterSales.avgTicket ?? 0,
+          records: count(current?.domains.commercial.counterSales.closedCount),
+          scope: 'Vendas'
+        }
+      ] as DataTableRow[]
   };
 }
 
@@ -1329,15 +1686,17 @@ function producedItemsReportSpec(): ReportSpec {
   return {
     title: 'Produtos/Serviços Produzidos',
     group: 'Relatórios de Atendimentos',
-    subtitle: 'Relatório legacy de mix operacional produzido por produtos, serviços, quantidade e receita',
+    subtitle:
+      'Relatório legacy de mix operacional produzido por produtos, serviços, quantidade e receita',
     icon: '🛠️',
     primaryPath: '/sales',
-    primaryAction: 'Solicitar Excel',
-    primaryDisabled: true,
+    primaryAction: 'Exportar CSV',
+    exportable: true,
     tableTitle: 'Produtos e serviços produzidos',
     emptyTitle: 'Sem produto ou serviço produzido no período',
-    emptyDescription: 'Produtos e serviços produzidos aparecem aqui quando houver venda fechada no período.',
-    note: 'A rota Vetus legacy observada e Sistema/Relatorio/ProdutosEServicosProduzidos.htm. Esta visão é somente leitura, não cria venda, não altera catálogo, não baixa estoque e não exporta relatório real.',
+    emptyDescription:
+      'Produtos e serviços produzidos aparecem aqui quando houver venda fechada no período.',
+    note: 'A rota Vetus legacy observada e Sistema/Relatorio/ProdutosEServicosProduzidos.htm. Exporta CSV dos itens produzidos carregados; esta visão é somente leitura, não cria venda, não altera catálogo nem baixa estoque.',
     columns: [
       { key: 'name', label: 'Item' },
       { key: 'kind', label: 'Tipo' },
@@ -1345,8 +1704,16 @@ function producedItemsReportSpec(): ReportSpec {
       { key: 'revenue', label: 'Receita' }
     ],
     cards: (current) => [
-      { label: 'Vendas fechadas', value: count(current?.domains.commercial.counterSales.closedCount), icon: '✅' },
-      { label: 'Receita comercial', value: money(current?.executive.commercialRevenue), icon: '📈' },
+      {
+        label: 'Vendas fechadas',
+        value: count(current?.domains.commercial.counterSales.closedCount),
+        icon: '✅'
+      },
+      {
+        label: 'Receita comercial',
+        value: money(current?.executive.commercialRevenue),
+        icon: '📈'
+      },
       { label: 'Itens produzidos', value: count(producedItemRows(current).length), icon: '🛠️' }
     ],
     rows: (current) => producedItemRows(current)
@@ -1366,15 +1733,17 @@ function productionReportSpec(): ReportSpec {
   return {
     title: 'Produção',
     group: 'Relatórios de Atendimentos',
-    subtitle: 'Relatório legacy sintético de produtividade operacional, volume realizado e receita produzida',
+    subtitle:
+      'Relatório legacy sintético de produtividade operacional, volume realizado e receita produzida',
     icon: '🏭',
     primaryPath: '/sales',
-    primaryAction: 'Solicitar Excel',
-    primaryDisabled: true,
+    primaryAction: 'Exportar CSV',
+    exportable: true,
     tableTitle: 'Produção no período',
     emptyTitle: 'Sem produção no período',
-    emptyDescription: 'A produção consolidada aparece aqui quando houver comanda ou venda fechada no período.',
-    note: 'A rota Vetus legacy observada e Sistema/Relatorio/ProducaoRelatorio.htm. Esta visão é somente leitura, não abre atendimento, não cria venda, não altera produção e não exporta relatório real.',
+    emptyDescription:
+      'A produção consolidada aparece aqui quando houver comanda ou venda fechada no período.',
+    note: 'A rota Vetus legacy observada e Sistema/Relatorio/ProducaoRelatorio.htm. Exporta CSV da produção consolidada carregada; esta visão é somente leitura, não abre atendimento, não cria venda nem altera produção.',
     columns: [
       { key: 'label', label: 'Indicador' },
       { key: 'amount', label: 'Valor' },
@@ -1382,9 +1751,21 @@ function productionReportSpec(): ReportSpec {
       { key: 'scope', label: 'Origem' }
     ],
     cards: (current) => [
-      { label: 'Produção fechada', value: count(current?.domains.commercial.counterSales.closedCount), icon: '✅' },
-      { label: 'Receita produzida', value: money(current?.domains.commercial.counterSales.netRevenue), icon: '📈' },
-      { label: 'Ticket médio', value: money(current?.domains.commercial.counterSales.avgTicket), icon: '🧾' }
+      {
+        label: 'Produção fechada',
+        value: count(current?.domains.commercial.counterSales.closedCount),
+        icon: '✅'
+      },
+      {
+        label: 'Receita produzida',
+        value: money(current?.domains.commercial.counterSales.netRevenue),
+        icon: '📈'
+      },
+      {
+        label: 'Ticket médio',
+        value: money(current?.domains.commercial.counterSales.avgTicket),
+        icon: '🧾'
+      }
     ],
     rows: (current) => {
       const dashboard = current?.domains.commercial.counterSales;
@@ -1438,15 +1819,17 @@ function appointmentsReportSpec(): ReportSpec {
   return {
     title: 'Agenda',
     group: 'Relatórios de Atendimentos',
-    subtitle: 'Relatório legacy de agendamentos, comparecimentos, cancelamentos e ocupação operacional',
+    subtitle:
+      'Relatório legacy de agendamentos, comparecimentos, cancelamentos e ocupação operacional',
     icon: '📅',
     primaryPath: '/appointments',
-    primaryAction: 'Solicitar Excel',
-    primaryDisabled: true,
+    primaryAction: 'Exportar CSV',
+    exportable: true,
     tableTitle: 'Agendamentos no período',
     emptyTitle: 'Sem agendamento no período',
-    emptyDescription: 'Agendamentos aparecem aqui quando houver eventos na agenda para o período selecionado.',
-    note: 'A rota Vetus legacy observada e Sistema/Relatorio/AgendaRelatorio.htm. Esta visão é somente leitura, consulta a agenda operacional existente, não cria agendamento, não altera status, não abre atendimento e não exporta relatório real.',
+    emptyDescription:
+      'Agendamentos aparecem aqui quando houver eventos na agenda para o período selecionado.',
+    note: 'A rota Vetus legacy observada e Sistema/Relatorio/AgendaRelatorio.htm. Exporta CSV dos agendamentos carregados; esta visão é somente leitura, não cria agendamento, não altera status nem abre atendimento.',
     columns: [
       { key: 'scheduledAt', label: 'Data' },
       { key: 'status', label: 'Status' },
@@ -1464,15 +1847,17 @@ function professionalCareReportSpec(): ReportSpec {
   return {
     title: 'Atendimento por Profissional',
     group: 'Relatórios de Atendimentos',
-    subtitle: 'Relatório legacy de produtividade humana, volume assistencial e distribuição por profissional',
+    subtitle:
+      'Relatório legacy de produtividade humana, volume assistencial e distribuição por profissional',
     icon: '🩺',
     primaryPath: '/staff',
-    primaryAction: 'Solicitar Excel',
-    primaryDisabled: true,
+    primaryAction: 'Exportar CSV',
+    exportable: true,
     tableTitle: 'Atendimentos por profissional',
     emptyTitle: 'Sem atendimento por profissional no período',
-    emptyDescription: 'Atendimentos por profissional aparecem aqui quando houver agenda vinculada a profissional no período.',
-    note: 'A rota Vetus legacy observada e Sistema/Relatorio/AtendimentoPorProfissional.htm. Esta visão é somente leitura, consulta a agenda operacional existente, não altera profissionais, não abre atendimento, não calcula comissão e não exporta relatório real.',
+    emptyDescription:
+      'Atendimentos por profissional aparecem aqui quando houver agenda vinculada a profissional no período.',
+    note: 'A rota Vetus legacy observada e Sistema/Relatorio/AtendimentoPorProfissional.htm. Exporta CSV dos atendimentos agrupados carregados; esta visão é somente leitura, não altera profissionais, não abre atendimento nem calcula comissão.',
     columns: [
       { key: 'professional', label: 'Profissional' },
       { key: 'scheduled', label: 'Agendamentos' },
@@ -1490,14 +1875,16 @@ function serviceInvoicesReportSpec(): ReportSpec {
   return {
     title: 'Relatório de NF de Serviços Prestados',
     group: 'Relatórios Personalizados',
-    subtitle: 'Relatório legacy personalizado de NFS-e, serviços prestados e faturamento relacionado',
+    subtitle:
+      'Relatório legacy personalizado de NFS-e, serviços prestados e faturamento relacionado',
     icon: '🧾',
     primaryPath: '/fiscal/nfse',
     primaryAction: 'Solicitar Excel',
     primaryDisabled: true,
     tableTitle: 'NF de serviços prestados',
     emptyTitle: 'Sem NF de serviço consolidada',
-    emptyDescription: 'Serviços prestados e configurações de NFS-e aparecem aqui conforme as fontes fiscais e comerciais disponíveis.',
+    emptyDescription:
+      'Serviços prestados e configurações de NFS-e aparecem aqui conforme as fontes fiscais e comerciais disponíveis.',
     note: 'A rota Vetus legacy observada e Sistema/Relatorio/RelatorioNFServicosPrestados.htm. Esta visão é somente leitura, cruza indicadores fiscais e comerciais existentes, não emite NFS-e, não consulta prefeitura, não altera faturamento e não exporta relatório real.',
     columns: [
       { key: 'label', label: 'Indicador' },
@@ -1507,8 +1894,16 @@ function serviceInvoicesReportSpec(): ReportSpec {
     ],
     cards: (current) => [
       { label: 'Layouts NFS-e', value: count(current?.domains.fiscal.nfseLayouts), icon: '📄' },
-      { label: 'Serviços prestados', value: count(serviceInvoiceMetrics(current).serviceQuantity), icon: '🛠️' },
-      { label: 'Faturamento bruto', value: money(current?.domains.financial.billing.grossAmount), icon: '💰' }
+      {
+        label: 'Serviços prestados',
+        value: count(serviceInvoiceMetrics(current).serviceQuantity),
+        icon: '🛠️'
+      },
+      {
+        label: 'Faturamento bruto',
+        value: money(current?.domains.financial.billing.grossAmount),
+        icon: '💰'
+      }
     ],
     rows: (current) => {
       const metrics = serviceInvoiceMetrics(current);
@@ -1546,7 +1941,10 @@ function serviceInvoicesReportSpec(): ReportSpec {
   };
 }
 
-function serviceInvoiceMetrics(current: AdministrativeReportsResponse | null): { serviceQuantity: number; serviceRevenue: number } {
+function serviceInvoiceMetrics(current: AdministrativeReportsResponse | null): {
+  serviceQuantity: number;
+  serviceRevenue: number;
+} {
   const services = current?.domains.commercial.counterSales.topServices ?? [];
   return {
     serviceQuantity: services.reduce((total, row) => total + row.quantity, 0),
@@ -1558,14 +1956,16 @@ function registerServicesReportSpec(): ReportSpec {
   return {
     title: 'Serviços',
     group: 'Relatórios de Cadastros',
-    subtitle: 'Relatório legacy do cadastro de serviços, preços e situação do catálogo assistencial',
+    subtitle:
+      'Relatório legacy do cadastro de serviços, preços e situação do catálogo assistencial',
     icon: '🛠️',
     primaryPath: '/services',
     primaryAction: 'Solicitar Excel',
     primaryDisabled: true,
     tableTitle: 'Serviços cadastrados',
     emptyTitle: 'Sem serviço cadastrado',
-    emptyDescription: 'Serviços aparecem aqui quando houver registros no cadastro operacional de serviços.',
+    emptyDescription:
+      'Serviços aparecem aqui quando houver registros no cadastro operacional de serviços.',
     note: 'A rota Vetus legacy observada e Sistema/Relatorio/ServicosRelatorio.htm. Esta visão é somente leitura, consulta o cadastro operacional existente, não cria serviço, não altera preço, não muda situação e não exporta relatório real.',
     columns: [
       { key: 'code', label: 'Código' },
@@ -1584,14 +1984,16 @@ function registerOwnersReportSpec(): ReportSpec {
   return {
     title: 'Clientes',
     group: 'Relatórios de Cadastros',
-    subtitle: 'Relatório legacy do cadastro de clientes, contatos, responsabilidade financeira e situação',
+    subtitle:
+      'Relatório legacy do cadastro de clientes, contatos, responsabilidade financeira e situação',
     icon: '👤',
     primaryPath: '/owners',
     primaryAction: 'Solicitar Excel',
     primaryDisabled: true,
     tableTitle: 'Clientes cadastrados',
     emptyTitle: 'Sem cliente cadastrado',
-    emptyDescription: 'Clientes aparecem aqui quando houver registros no cadastro operacional de tutores.',
+    emptyDescription:
+      'Clientes aparecem aqui quando houver registros no cadastro operacional de tutores.',
     note: 'A rota Vetus legacy observada e Sistema/Relatorio/ClientesRelatorio.htm. Esta visão é somente leitura, consulta o cadastro operacional existente, não cria cliente, não altera contato, não muda situação financeira e não exporta relatório real.',
     columns: [
       { key: 'documentId', label: 'Documento' },
@@ -1627,7 +2029,9 @@ function inventoryLotStatusSummary(lots: InventoryLotSummary[]): string {
   return 'Regular';
 }
 
-function inventoryConsumptionSourceLabel(source: InventoryConsumptionSummary['sourceEntityType']): string {
+function inventoryConsumptionSourceLabel(
+  source: InventoryConsumptionSummary['sourceEntityType']
+): string {
   const labels: Record<InventoryConsumptionSummary['sourceEntityType'], string> = {
     encounter: 'Atendimento',
     diagnostic_order: 'Pedido diagnóstico',
@@ -1651,7 +2055,8 @@ function inventoryInvoiceStatus(status: InventoryLotSummary['status']): string {
 
 function inventoryProductStatus(item: InventoryItemSummary, lots: InventoryLotSummary[]): string {
   if (item.onHandQuantity <= item.reorderLevel) return 'Abaixo do mínimo';
-  if (lots.some((lot) => lot.status === 'expired' || lot.status === 'expiring')) return 'Lote em atenção';
+  if (lots.some((lot) => lot.status === 'expired' || lot.status === 'expiring'))
+    return 'Lote em atenção';
   if (item.onHandQuantity > 0) return 'Com saldo';
   return 'Sem saldo';
 }
@@ -1682,7 +2087,8 @@ function registerPatientsReportSpec(): ReportSpec {
     primaryDisabled: true,
     tableTitle: 'Animais cadastrados',
     emptyTitle: 'Sem animal cadastrado',
-    emptyDescription: 'Animais aparecem aqui quando houver registros no cadastro operacional de pacientes.',
+    emptyDescription:
+      'Animais aparecem aqui quando houver registros no cadastro operacional de pacientes.',
     note: 'A rota Vetus legacy observada e Sistema/Relatorio/AnimaisRelatorio.htm. Esta visão é somente leitura, consulta o cadastro operacional existente, não cria animal, não altera identificação, não muda situação clínica/cadastral e não exporta relatório real.',
     columns: [
       { key: 'code', label: 'Código' },
@@ -1710,7 +2116,8 @@ function registerSuppliersReportSpec(): ReportSpec {
     primaryDisabled: true,
     tableTitle: 'Fornecedores cadastrados',
     emptyTitle: 'Sem fornecedor cadastrado',
-    emptyDescription: 'Fornecedores e despesas aparecem aqui quando houver registros no cadastro operacional.',
+    emptyDescription:
+      'Fornecedores e despesas aparecem aqui quando houver registros no cadastro operacional.',
     note: 'A rota Vetus legacy observada e Sistema/Relatorio/FornecedoresRelatorio.htm. Esta visão é somente leitura, consulta o cadastro operacional existente, não cria fornecedor, não altera despesa, não muda centro de custo e não exporta relatório real.',
     columns: [
       { key: 'code', label: 'Código' },
@@ -1736,7 +2143,8 @@ function deletedSalesCounterSalesReportSpec(): ReportSpec {
     primaryDisabled: true,
     tableTitle: 'Vendas e comandas excluídas',
     emptyTitle: 'Sem venda ou comanda excluída',
-    emptyDescription: 'Exclusões aparecem aqui quando houver comandas ou vendas canceladas no período.',
+    emptyDescription:
+      'Exclusões aparecem aqui quando houver comandas ou vendas canceladas no período.',
     note: 'A rota Vetus legacy observada e Sistema/Relatorio/ExclusaoVendasComandasRelatorio.htm. Esta visão é somente leitura, consulta comandas canceladas existentes, não cancela venda, não reabre comanda, não altera pagamento e não exporta relatório real.',
     columns: [
       { key: 'number', label: 'Número' },
@@ -1762,12 +2170,12 @@ function inventoryStockReportSpec(): ReportSpec {
     subtitle: 'Relatório legacy da posição atual de estoque, saldo, custo e situação de lotes',
     icon: '📦',
     primaryPath: '/inventory',
-    primaryAction: 'Solicitar Excel',
-    primaryDisabled: true,
+    primaryAction: 'Exportar CSV',
+    exportable: true,
     tableTitle: 'Posição atual de estoque',
     emptyTitle: 'Sem item em estoque',
     emptyDescription: 'Itens aparecem aqui quando houver registros no estoque operacional.',
-    note: 'A rota Vetus legacy documentada e Sistema/Relatorio/EstoqueRelatorio.htm. Esta visão é somente leitura, consulta o estoque operacional existente, não lança transação, não transfere saldo, não altera custo e não exporta relatório real.',
+    note: 'A rota Vetus legacy documentada e Sistema/Relatorio/EstoqueRelatorio.htm. Exporta CSV da posição de estoque carregada; esta visão é somente leitura, não lança transação, não transfere saldo nem altera custo.',
     columns: [
       { key: 'sku', label: 'Código' },
       { key: 'name', label: 'Produto' },
@@ -1792,12 +2200,13 @@ function inventoryMovementsReportSpec(): ReportSpec {
     subtitle: 'Relatório legacy de entradas, saídas e referências operacionais de movimentação',
     icon: '📥',
     primaryPath: '/inventory/movements',
-    primaryAction: 'Solicitar Excel',
-    primaryDisabled: true,
+    primaryAction: 'Exportar CSV',
+    exportable: true,
     tableTitle: 'Movimentações de estoque',
     emptyTitle: 'Sem movimentação de estoque',
-    emptyDescription: 'Movimentações aparecem aqui quando houver consumos ou lotes registrados no período.',
-    note: 'A rota Vetus legacy documentada e Sistema/Relatorio/MovimentacaoEstoqueRelatorio.htm. Esta visão é somente leitura, consulta consumos e lotes operacionais existentes, não lança transação, não transfere saldo, não ajusta lote e não exporta relatório real. Transferências e ajustes ainda dependem de fonte analítica específica.',
+    emptyDescription:
+      'Movimentações aparecem aqui quando houver consumos ou lotes registrados no período.',
+    note: 'A rota Vetus legacy documentada e Sistema/Relatorio/MovimentacaoEstoqueRelatorio.htm. Exporta CSV das movimentações carregadas; esta visão é somente leitura, não lança transação, não transfere saldo nem ajusta lote. Transferências e ajustes ainda dependem de fonte analítica específica.',
     columns: [
       { key: 'occurredAt', label: 'Data' },
       { key: 'movement', label: 'Movimento' },
@@ -1822,12 +2231,13 @@ function inventoryInvoicesReportSpec(): ReportSpec {
     subtitle: 'Relatório legacy de entradas documentais, fornecedores, lotes e valores de estoque',
     icon: '🧾',
     primaryPath: '/inventory/invoices',
-    primaryAction: 'Solicitar Excel',
-    primaryDisabled: true,
+    primaryAction: 'Exportar CSV',
+    exportable: true,
     tableTitle: 'Entradas de NF',
     emptyTitle: 'Sem entrada de NF',
-    emptyDescription: 'Entradas aparecem aqui quando houver lotes ou itens de estoque conferíveis no período.',
-    note: 'A rota Vetus legacy documentada e Sistema/Relatorio/EntradaNotaFiscalRelatorio.htm. Esta visão é somente leitura, consulta lotes e itens operacionais existentes, não lança nota fiscal, não altera fornecedor, não altera custo, não baixa estoque e não exporta relatório real. O número de NF é derivado do lote enquanto não existir fonte fiscal analítica específica de entrada documental.',
+    emptyDescription:
+      'Entradas aparecem aqui quando houver lotes ou itens de estoque conferíveis no período.',
+    note: 'A rota Vetus legacy documentada e Sistema/Relatorio/EntradaNotaFiscalRelatorio.htm. Exporta CSV das entradas derivadas de lotes carregados; esta visão é somente leitura, não lança nota fiscal, não altera fornecedor/custo nem baixa estoque. O número de NF é derivado do lote enquanto não existir fonte fiscal analítica específica de entrada documental.',
     columns: [
       { key: 'invoiceNumber', label: 'Nota Fiscal' },
       { key: 'supplier', label: 'Fornecedor' },
@@ -1855,12 +2265,13 @@ function inventoryProductsReportSpec(): ReportSpec {
     subtitle: 'Relatório legacy do catálogo de produtos, saldo, custo e vínculos de lote',
     icon: '🏷️',
     primaryPath: '/products',
-    primaryAction: 'Solicitar Excel',
-    primaryDisabled: true,
+    primaryAction: 'Exportar CSV',
+    exportable: true,
     tableTitle: 'Produtos do estoque',
     emptyTitle: 'Sem produto cadastrado',
-    emptyDescription: 'Produtos aparecem aqui quando houver registros no catálogo operacional de estoque.',
-    note: 'O acervo Vetus confirma o item Relatório de Produtos em Relatórios de Estoque, mas não traz URL legacy funcional explícita para esta trilha. Esta visão é somente leitura, consulta produtos, saldos e lotes operacionais existentes, não cria produto, não altera preço, não ajusta saldo, não baixa estoque e não exporta relatório real.',
+    emptyDescription:
+      'Produtos aparecem aqui quando houver registros no catálogo operacional de estoque.',
+    note: 'O acervo Vetus confirma o item Relatório de Produtos em Relatórios de Estoque, mas não traz URL legacy funcional explícita para esta trilha. Exporta CSV dos produtos, saldos e lotes carregados; esta visão é somente leitura, não cria produto, não altera preço, não ajusta saldo nem baixa estoque.',
     columns: [
       { key: 'sku', label: 'Código' },
       { key: 'name', label: 'Produto' },
@@ -1890,7 +2301,8 @@ function registerSpec(title: string, primaryPath: string, primaryAction: string)
     primaryAction,
     tableTitle: 'Indicadores de cadastro',
     emptyTitle: 'Sem indicador específico conectado',
-    emptyDescription: 'A rota já está materializada e pronta para acoplar métricas específicas do cadastro.',
+    emptyDescription:
+      'A rota já está materializada e pronta para acoplar métricas específicas do cadastro.',
     note: 'Sem endpoint analítico específico no backend atual. A navegação Vetus foi preservada sem exibir dados simulados.',
     columns: [
       { key: 'label', label: 'Indicador' },
@@ -1898,13 +2310,35 @@ function registerSpec(title: string, primaryPath: string, primaryAction: string)
       { key: 'scope', label: 'Origem' }
     ],
     cards: (current) => [
-      { label: 'Faturamentos', value: count(current?.domains.financial.billing.totalRecords), icon: '🧾' },
-      { label: 'Vendas', value: count(current?.domains.commercial.counterSales.totalSales), icon: '💸' },
-      { label: 'Orçamentos', value: count(current?.domains.commercial.quotes.issuedCount), icon: '📋' }
+      {
+        label: 'Faturamentos',
+        value: count(current?.domains.financial.billing.totalRecords),
+        icon: '🧾'
+      },
+      {
+        label: 'Vendas',
+        value: count(current?.domains.commercial.counterSales.totalSales),
+        icon: '💸'
+      },
+      {
+        label: 'Orçamentos',
+        value: count(current?.domains.commercial.quotes.issuedCount),
+        icon: '📋'
+      }
     ],
     rows: (current) => [
-      { id: 'billing', label: 'Registros de faturamento relacionados', value: count(current?.domains.financial.billing.totalRecords), scope: 'Faturamento' },
-      { id: 'sales', label: 'Vendas relacionadas', value: count(current?.domains.commercial.counterSales.totalSales), scope: 'Comercial' }
+      {
+        id: 'billing',
+        label: 'Registros de faturamento relacionados',
+        value: count(current?.domains.financial.billing.totalRecords),
+        scope: 'Faturamento'
+      },
+      {
+        id: 'sales',
+        label: 'Vendas relacionadas',
+        value: count(current?.domains.commercial.counterSales.totalSales),
+        scope: 'Comercial'
+      }
     ]
   };
 }
@@ -1939,7 +2373,9 @@ function formatDateTime(value: string | null): string {
   if (!value) return '—';
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
-  return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(parsed);
+  return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(
+    parsed
+  );
 }
 
 onMounted(loadReport);

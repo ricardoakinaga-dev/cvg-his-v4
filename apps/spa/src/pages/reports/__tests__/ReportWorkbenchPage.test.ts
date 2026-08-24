@@ -5,22 +5,27 @@ import ReportWorkbenchPage from '../ReportWorkbenchPage.vue';
 import { auditService } from '@/services/audit';
 import { administrativeReportsService } from '@/services/administrativeReports';
 import { appointmentService } from '@/services/appointment';
-import {
-  counterSalesService,
-  type CounterSaleSummary
-} from '@/services/counterSales';
+import { counterSalesService, type CounterSaleSummary } from '@/services/counterSales';
 import {
   expensesCatalogService,
   type ExpenseCatalogItem,
   type ExpenseCostCenterItem
 } from '@/services/expensesCatalog';
+import {
+  financialPayablesService,
+  type FinancialPayableRecord
+} from '@/services/financialPayables';
 import { inventoryService } from '@/services/inventory';
 import { ownerService } from '@/services/owner';
 import { patientService } from '@/services/patient';
 import { servicesService, type ServiceSummary } from '@/services/services';
 import type { AdministrativeReportsResponse } from '@/services/administrativeReports';
 import type { AppointmentSummary } from '@/types/appointment';
-import type { InventoryConsumptionSummary, InventoryItemSummary, InventoryLotSummary } from '@/types/inventory';
+import type {
+  InventoryConsumptionSummary,
+  InventoryItemSummary,
+  InventoryLotSummary
+} from '@/types/inventory';
 import type { OwnerSummary } from '@/types/owner';
 import type { PatientSummary } from '@/types/patient';
 import type { AuditEventSummary } from '@cvg-his-v2/shared-types';
@@ -51,6 +56,12 @@ vi.mock('@/services/counterSales', () => ({
 
 vi.mock('@/services/expensesCatalog', () => ({
   expensesCatalogService: {
+    list: vi.fn()
+  }
+}));
+
+vi.mock('@/services/financialPayables', () => ({
+  financialPayablesService: {
     list: vi.fn()
   }
 }));
@@ -299,9 +310,7 @@ const owners = [
     accountId: 'acc-1',
     fullName: 'Maria Cliente',
     documentId: '123.456.789-00',
-    contacts: [
-      { label: 'Celular', value: '(11) 99999-0000', type: 'whatsapp', primary: true }
-    ],
+    contacts: [{ label: 'Celular', value: '(11) 99999-0000', type: 'whatsapp', primary: true }],
     address: { city: 'Campinas', state: 'SP' },
     financialResponsible: true,
     status: 'active',
@@ -519,6 +528,69 @@ const inventoryConsumptions = [
   }
 ] as InventoryConsumptionSummary[];
 
+const financialPayables = [
+  {
+    id: 'payable-1',
+    accountId: 'acc-1',
+    supplierName: 'Fornecedor de medicamentos',
+    description: 'NF 123',
+    category: 'Compras',
+    costCenterCode: 'EST',
+    costCenterName: 'Estoque',
+    issuedAt: '2026-05-01',
+    dueAt: '2026-05-20',
+    totalAmount: 600,
+    paidAmount: 0,
+    outstandingAmount: 600,
+    status: 'open',
+    sourceExpenseId: 'expense-1',
+    notes: null,
+    paymentMethod: null,
+    paymentReference: null,
+    reconciliationStatus: 'not_required',
+    reconciliationReference: null,
+    createdByUserId: 'user-1',
+    paidByUserId: null,
+    cancelledByUserId: null,
+    reconciledByUserId: null,
+    createdAt: '2026-05-01T10:00:00.000Z',
+    updatedAt: '2026-05-01T10:00:00.000Z',
+    paidAt: null,
+    cancelledAt: null,
+    reconciledAt: null
+  },
+  {
+    id: 'payable-2',
+    accountId: 'acc-1',
+    supplierName: 'Laboratório parceiro',
+    description: 'Serviços de análise',
+    category: 'Serviços',
+    costCenterCode: 'LAB',
+    costCenterName: 'Laboratório',
+    issuedAt: '2026-05-02',
+    dueAt: '2026-05-10',
+    totalAmount: 400,
+    paidAmount: 400,
+    outstandingAmount: 0,
+    status: 'paid',
+    sourceExpenseId: null,
+    notes: null,
+    paymentMethod: 'bank_transfer',
+    paymentReference: 'extrato-400',
+    reconciliationStatus: 'pending',
+    reconciliationReference: null,
+    createdByUserId: 'user-1',
+    paidByUserId: 'user-1',
+    cancelledByUserId: null,
+    reconciledByUserId: null,
+    createdAt: '2026-05-02T10:00:00.000Z',
+    updatedAt: '2026-05-10T10:00:00.000Z',
+    paidAt: '2026-05-10T10:00:00.000Z',
+    cancelledAt: null,
+    reconciledAt: null
+  }
+] as FinancialPayableRecord[];
+
 describe('ReportWorkbenchPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -543,6 +615,18 @@ describe('ReportWorkbenchPage', () => {
       sort: 'name',
       order: 'asc'
     });
+    vi.mocked(financialPayablesService.list).mockResolvedValue({
+      data: financialPayables,
+      page: 1,
+      pageSize: 500,
+      total: financialPayables.length,
+      openCount: 1,
+      paidCount: 1,
+      cancelledCount: 0,
+      totalAmount: 1000,
+      totalPaid: 400,
+      totalOutstanding: 600
+    });
   });
 
   it('renders accounts receivable financial report as a read-only legacy report', async () => {
@@ -553,7 +637,7 @@ describe('ReportWorkbenchPage', () => {
 
     expect(wrapper.text()).toContain('Contas a Receber');
     expect(wrapper.text()).toContain('Relatórios Financeiros');
-    expect(wrapper.text()).toContain('Solicitar Excel');
+    expect(wrapper.text()).toContain('Exportar CSV');
     expect(wrapper.text()).toContain('Sistema/Relatorio/ContasAReceberRelatorio.htm');
     expect(wrapper.text()).toContain('Maiores recebíveis em aberto');
     expect(wrapper.text()).toContain('Paciente Teste');
@@ -571,7 +655,7 @@ describe('ReportWorkbenchPage', () => {
 
     expect(wrapper.text()).toContain('Contas Recebidas');
     expect(wrapper.text()).toContain('Relatórios Financeiros');
-    expect(wrapper.text()).toContain('Solicitar Excel');
+    expect(wrapper.text()).toContain('Exportar CSV');
     expect(wrapper.text()).toContain('Sistema/Relatorio/ContasRecebidasRelatorio.htm');
     expect(wrapper.text()).toContain('Recebimentos no período');
     expect(wrapper.text()).toContain('Recebido confirmado');
@@ -582,7 +666,7 @@ describe('ReportWorkbenchPage', () => {
     expect(administrativeReportsService.getHubs).toHaveBeenCalled();
   });
 
-  it('renders accounts payable financial report as a read-only legacy report', async () => {
+  it('renders accounts payable financial report from the authoritative payables subledger', async () => {
     const wrapper = mount(ReportWorkbenchPage, {
       props: { reportKey: 'accounts-payable' }
     });
@@ -590,18 +674,22 @@ describe('ReportWorkbenchPage', () => {
 
     expect(wrapper.text()).toContain('Contas a Pagar');
     expect(wrapper.text()).toContain('Relatórios Financeiros');
-    expect(wrapper.text()).toContain('Solicitar Excel');
+    expect(wrapper.text()).toContain('Exportar CSV');
     expect(wrapper.text()).toContain('Financeiro/ContasAPagar.htm');
     expect(wrapper.text()).toContain('Obrigações a pagar');
-    expect(wrapper.text()).toContain('Fonte de títulos a pagar');
-    expect(wrapper.text()).toContain('Catálogo operacional');
-    expect(wrapper.text()).toContain('Estrutura operacional mapeada');
-    expect(wrapper.text()).toContain('Baixa, conta avulsa e exportação');
+    expect(wrapper.text()).toContain('Fornecedor de medicamentos');
+    expect(wrapper.text()).toContain('Laboratório parceiro');
+    expect(wrapper.text()).toContain('NF 123');
+    expect(wrapper.text()).toContain('A Pagar');
     expect(wrapper.text()).not.toContain('Abrir financeiro');
-    expect(administrativeReportsService.getHubs).toHaveBeenCalled();
+    expect(financialPayablesService.list).toHaveBeenCalledWith({
+      status: '',
+      page: 1,
+      pageSize: 500
+    });
   });
 
-  it('renders paid accounts financial report as a read-only legacy report', async () => {
+  it('renders paid accounts financial report from the paid payables subledger', async () => {
     const wrapper = mount(ReportWorkbenchPage, {
       props: { reportKey: 'paid-accounts' }
     });
@@ -609,15 +697,18 @@ describe('ReportWorkbenchPage', () => {
 
     expect(wrapper.text()).toContain('Contas Pagas');
     expect(wrapper.text()).toContain('Relatórios Financeiros');
-    expect(wrapper.text()).toContain('Solicitar Excel');
+    expect(wrapper.text()).toContain('Exportar CSV');
     expect(wrapper.text()).toContain('Sistema/Relatorio/ContasPagasRelatorio.htm');
     expect(wrapper.text()).toContain('Pagamentos no período');
-    expect(wrapper.text()).toContain('Fonte de contas pagas');
-    expect(wrapper.text()).toContain('Desembolso realizado');
-    expect(wrapper.text()).toContain('Subconjunto quitado de contas a pagar');
-    expect(wrapper.text()).toContain('Baixa, fornecedor e exportação');
+    expect(wrapper.text()).toContain('Laboratório parceiro');
+    expect(wrapper.text()).not.toContain('Fornecedor de medicamentos');
+    expect(wrapper.text()).toContain('Pago');
     expect(wrapper.text()).not.toContain('Abrir financeiro');
-    expect(administrativeReportsService.getHubs).toHaveBeenCalled();
+    expect(financialPayablesService.list).toHaveBeenCalledWith({
+      status: 'paid',
+      page: 1,
+      pageSize: 500
+    });
   });
 
   it('renders cheques financial report as a read-only legacy report', async () => {
@@ -666,7 +757,7 @@ describe('ReportWorkbenchPage', () => {
 
     expect(wrapper.text()).toContain('Comandas/Vendas');
     expect(wrapper.text()).toContain('Relatórios de Atendimentos');
-    expect(wrapper.text()).toContain('Solicitar Excel');
+    expect(wrapper.text()).toContain('Exportar CSV');
     expect(wrapper.text()).toContain('Sistema/Relatorio/ComandasVendasRelatorio.htm');
     expect(wrapper.text()).toContain('Comandas e vendas no período');
     expect(wrapper.text()).toContain('Receita bruta');
@@ -685,7 +776,7 @@ describe('ReportWorkbenchPage', () => {
 
     expect(wrapper.text()).toContain('Produtos/Serviços Produzidos');
     expect(wrapper.text()).toContain('Relatórios de Atendimentos');
-    expect(wrapper.text()).toContain('Solicitar Excel');
+    expect(wrapper.text()).toContain('Exportar CSV');
     expect(wrapper.text()).toContain('Sistema/Relatorio/ProdutosEServicosProduzidos.htm');
     expect(wrapper.text()).toContain('Produtos e serviços produzidos');
     expect(wrapper.text()).toContain('Vendas fechadas');
@@ -705,7 +796,7 @@ describe('ReportWorkbenchPage', () => {
 
     expect(wrapper.text()).toContain('Produção');
     expect(wrapper.text()).toContain('Relatórios de Atendimentos');
-    expect(wrapper.text()).toContain('Solicitar Excel');
+    expect(wrapper.text()).toContain('Exportar CSV');
     expect(wrapper.text()).toContain('Sistema/Relatorio/ProducaoRelatorio.htm');
     expect(wrapper.text()).toContain('Produção no período');
     expect(wrapper.text()).toContain('Produção fechada');
@@ -725,7 +816,7 @@ describe('ReportWorkbenchPage', () => {
 
     expect(wrapper.text()).toContain('Agenda');
     expect(wrapper.text()).toContain('Relatórios de Atendimentos');
-    expect(wrapper.text()).toContain('Solicitar Excel');
+    expect(wrapper.text()).toContain('Exportar CSV');
     expect(wrapper.text()).toContain('Sistema/Relatorio/AgendaRelatorio.htm');
     expect(wrapper.text()).toContain('Agendamentos no período');
     expect(wrapper.text()).toContain('Agendamentos');
@@ -751,7 +842,7 @@ describe('ReportWorkbenchPage', () => {
 
     expect(wrapper.text()).toContain('Atendimento por Profissional');
     expect(wrapper.text()).toContain('Relatórios de Atendimentos');
-    expect(wrapper.text()).toContain('Solicitar Excel');
+    expect(wrapper.text()).toContain('Exportar CSV');
     expect(wrapper.text()).toContain('Sistema/Relatorio/AtendimentoPorProfissional.htm');
     expect(wrapper.text()).toContain('Atendimentos por profissional');
     expect(wrapper.text()).toContain('Profissionais atendendo');
@@ -891,7 +982,11 @@ describe('ReportWorkbenchPage', () => {
     expect(wrapper.text()).toContain('Sem Contato - Cadastrado pela NFE');
     expect(wrapper.text()).not.toContain('Abrir fornecedores');
     expect(administrativeReportsService.getHubs).not.toHaveBeenCalled();
-    expect(expensesCatalogService.list).toHaveBeenCalledWith({ pageSize: 500, sort: 'name', order: 'asc' });
+    expect(expensesCatalogService.list).toHaveBeenCalledWith({
+      pageSize: 500,
+      sort: 'name',
+      order: 'asc'
+    });
   });
 
   it('renders deleted sales and counter sales register report as a read-only legacy report', async () => {
@@ -930,7 +1025,7 @@ describe('ReportWorkbenchPage', () => {
 
     expect(wrapper.text()).toContain('Estoque');
     expect(wrapper.text()).toContain('Relatórios de Estoque');
-    expect(wrapper.text()).toContain('Solicitar Excel');
+    expect(wrapper.text()).toContain('Exportar CSV');
     expect(wrapper.text()).toContain('Sistema/Relatorio/EstoqueRelatorio.htm');
     expect(wrapper.text()).toContain('Itens em estoque');
     expect(wrapper.text()).toContain('Valor em estoque');
@@ -956,7 +1051,7 @@ describe('ReportWorkbenchPage', () => {
 
     expect(wrapper.text()).toContain('Movimentações no Estoque');
     expect(wrapper.text()).toContain('Relatórios de Estoque');
-    expect(wrapper.text()).toContain('Solicitar Excel');
+    expect(wrapper.text()).toContain('Exportar CSV');
     expect(wrapper.text()).toContain('Sistema/Relatorio/MovimentacaoEstoqueRelatorio.htm');
     expect(wrapper.text()).toContain('Movimentações registradas');
     expect(wrapper.text()).toContain('Entradas em lotes');
@@ -984,7 +1079,7 @@ describe('ReportWorkbenchPage', () => {
 
     expect(wrapper.text()).toContain('Entrada de NF');
     expect(wrapper.text()).toContain('Relatórios de Estoque');
-    expect(wrapper.text()).toContain('Solicitar Excel');
+    expect(wrapper.text()).toContain('Exportar CSV');
     expect(wrapper.text()).toContain('Sistema/Relatorio/EntradaNotaFiscalRelatorio.htm');
     expect(wrapper.text()).toContain('Entradas registradas');
     expect(wrapper.text()).toContain('Fornecedores');
@@ -1014,7 +1109,7 @@ describe('ReportWorkbenchPage', () => {
 
     expect(wrapper.text()).toContain('Relatório de Produtos');
     expect(wrapper.text()).toContain('Relatórios de Estoque');
-    expect(wrapper.text()).toContain('Solicitar Excel');
+    expect(wrapper.text()).toContain('Exportar CSV');
     expect(wrapper.text()).toContain('não traz URL legacy funcional explícita');
     expect(wrapper.text()).toContain('Produtos cadastrados');
     expect(wrapper.text()).toContain('Com saldo');
@@ -1043,7 +1138,7 @@ describe('ReportWorkbenchPage', () => {
 
     expect(wrapper.text()).toContain('Gaveta');
     expect(wrapper.text()).toContain('Relatórios Financeiros');
-    expect(wrapper.text()).toContain('Solicitar Excel');
+    expect(wrapper.text()).toContain('Exportar CSV');
     expect(wrapper.text()).toContain('Sistema/Relatorio/GavetaRelatorio.htm');
     expect(wrapper.text()).toContain('Gavetas no período');
     expect(wrapper.text()).toContain('Saldo aberto');
@@ -1060,7 +1155,7 @@ describe('ReportWorkbenchPage', () => {
 
     expect(wrapper.text()).toContain('Fluxo de Caixa');
     expect(wrapper.text()).toContain('Relatórios Financeiros');
-    expect(wrapper.text()).toContain('Solicitar Excel');
+    expect(wrapper.text()).toContain('Exportar CSV');
     expect(wrapper.text()).toContain('Sistema/Relatorio/FluxoDeCaixaRelatorio.htm');
     expect(wrapper.text()).toContain('Receita comercial');
     expect(wrapper.text()).toContain('Recebíveis abertos');
@@ -1078,7 +1173,7 @@ describe('ReportWorkbenchPage', () => {
 
     expect(wrapper.text()).toContain('DRE - Demonstrativo de Resultados');
     expect(wrapper.text()).toContain('Relatórios Financeiros');
-    expect(wrapper.text()).toContain('Solicitar Excel');
+    expect(wrapper.text()).toContain('Exportar CSV');
     expect(wrapper.text()).toContain('Sistema/Relatorio/DRE.htm');
     expect(wrapper.text()).toContain('Receita comercial');
     expect(wrapper.text()).toContain('Faturamento bruto');
@@ -1097,7 +1192,7 @@ describe('ReportWorkbenchPage', () => {
 
     expect(wrapper.text()).toContain('Pacotes');
     expect(wrapper.text()).toContain('Relatórios Financeiros');
-    expect(wrapper.text()).toContain('Solicitar Excel');
+    expect(wrapper.text()).toContain('Exportar CSV');
     expect(wrapper.text()).toContain('Sistema/Relatorio/PacoteRelatorio.htm');
     expect(wrapper.text()).toContain('Indicadores de pacotes');
     expect(wrapper.text()).toContain('Receita comercial relacionada');
@@ -1120,7 +1215,7 @@ describe('ReportWorkbenchPage', () => {
     expect(wrapper.text()).toContain('Usuário');
     expect(wrapper.text()).toContain('Ação');
     expect(wrapper.text()).toContain('Tipo');
-    expect(wrapper.text()).toContain('Solicitar Excel');
+    expect(wrapper.text()).toContain('Exportar CSV');
     expect(wrapper.text()).toContain('Cliente Maria teve horário do agendamento alterado');
     expect(wrapper.text()).toContain('appointment.updated');
     expect(wrapper.text()).not.toContain('PIX auditáveis');
@@ -1130,5 +1225,31 @@ describe('ReportWorkbenchPage', () => {
       entityTypes: ['appointment', 'appointment-recommendation', 'appointment-sync'],
       limit: 200
     });
+  });
+
+  it('exports the loaded attendance report as a CSV snapshot', async () => {
+    const createObjectURL = vi.fn((_blob: Blob) => 'blob:report');
+    const revokeObjectURL = vi.fn();
+    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL });
+
+    try {
+      const wrapper = mount(ReportWorkbenchPage, {
+        props: { reportKey: 'appointments' }
+      });
+      await flushPromises();
+
+      const exportButton = wrapper
+        .findAll('button')
+        .find((button) => button.text() === 'Exportar CSV');
+      expect(exportButton).toBeDefined();
+
+      await exportButton?.trigger('click');
+
+      expect(createObjectURL).toHaveBeenCalledOnce();
+      expect(createObjectURL.mock.calls[0]?.[0]).toBeInstanceOf(Blob);
+      expect(wrapper.text()).toContain('Exportação CSV gerada com 3 linha(s).');
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
