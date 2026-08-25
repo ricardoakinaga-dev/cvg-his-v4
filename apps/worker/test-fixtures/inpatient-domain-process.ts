@@ -19,9 +19,18 @@ const exitAfterResult = process.env.DOMAIN_EXIT_AFTER_RESULT === '1';
 
 interface DomainPayload {
   readonly accountId?: string;
+  readonly operation?:
+    | 'inventory.consume'
+    | 'inpatient.status.update'
+    | 'inpatient.beds.assign'
+    | 'inpatient.beds.transfer';
   readonly encounterId?: string;
   readonly inventoryItemId?: string;
   readonly sourceEntityId?: string;
+  readonly stayId?: string;
+  readonly bedId?: string;
+  readonly sectorId?: string;
+  readonly status?: 'admitted' | 'stable' | 'transferred' | 'discharged';
   readonly quantity?: number;
   readonly idempotencyKey?: string;
 }
@@ -116,6 +125,106 @@ async function requestInventoryConsumption(payload: DomainPayload): Promise<{
   return { status: response.status, body };
 }
 
+async function requestInpatientStatus(payload: DomainPayload): Promise<{
+  readonly status: number;
+  readonly body: unknown;
+}> {
+  if (
+    payload.accountId !== accountId ||
+    !payload.stayId ||
+    !payload.status ||
+    !payload.idempotencyKey
+  ) {
+    throw new Error('inpatient status event payload is incomplete or cross-account');
+  }
+  const response = await fetch(`${apiUrl}/inpatient/${payload.stayId}/update-status`, {
+    method: 'PATCH',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'x-tenant-id': tenantId as string,
+      'x-account-id': accountId as string,
+      'content-type': 'application/json',
+      'idempotency-key': payload.idempotencyKey
+    },
+    body: JSON.stringify({ status: payload.status })
+  });
+  const text = await response.text();
+  let body: unknown = null;
+  if (text) {
+    try {
+      body = JSON.parse(text) as unknown;
+    } catch {
+      body = text;
+    }
+  }
+  if (response.status !== 200) {
+    throw new Error(`inpatient status command failed with HTTP ${response.status}: ${text}`);
+  }
+  return { status: response.status, body };
+}
+
+async function requestInpatientBedCommand(
+  payload: DomainPayload,
+  operation: 'inpatient.beds.assign' | 'inpatient.beds.transfer'
+): Promise<{
+  readonly status: number;
+  readonly body: unknown;
+}> {
+  if (
+    payload.accountId !== accountId ||
+    !payload.stayId ||
+    !payload.bedId ||
+    !payload.sectorId ||
+    !payload.idempotencyKey
+  ) {
+    throw new Error(`inpatient ${operation} event payload is incomplete or cross-account`);
+  }
+  const endpoint = operation === 'inpatient.beds.assign' ? 'assign-bed' : 'transfer-bed';
+  const response = await fetch(`${apiUrl}/inpatient/${payload.stayId}/${endpoint}`, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'x-tenant-id': tenantId as string,
+      'x-account-id': accountId as string,
+      'content-type': 'application/json',
+      'idempotency-key': payload.idempotencyKey
+    },
+    body: JSON.stringify({ bedId: payload.bedId, sectorId: payload.sectorId })
+  });
+  const text = await response.text();
+  let body: unknown = null;
+  if (text) {
+    try {
+      body = JSON.parse(text) as unknown;
+    } catch {
+      body = text;
+    }
+  }
+  if (response.status !== 200) {
+    throw new Error(`inpatient ${operation} command failed with HTTP ${response.status}: ${text}`);
+  }
+  return { status: response.status, body };
+}
+
+async function requestDomainCommand(payload: DomainPayload): Promise<{
+  readonly status: number;
+  readonly body: unknown;
+}> {
+  if (payload.operation === 'inpatient.status.update') {
+    return requestInpatientStatus(payload);
+  }
+  if (payload.operation === 'inventory.consume') {
+    return requestInventoryConsumption(payload);
+  }
+  if (payload.operation === 'inpatient.beds.assign') {
+    return requestInpatientBedCommand(payload, payload.operation);
+  }
+  if (payload.operation === 'inpatient.beds.transfer') {
+    return requestInpatientBedCommand(payload, payload.operation);
+  }
+  throw new Error(`unsupported inpatient domain operation: ${String(payload.operation)}`);
+}
+
 async function main(): Promise<void> {
   validateConfig();
   createDatabaseClient(databaseUrl as string);
@@ -165,7 +274,7 @@ async function main(): Promise<void> {
     });
     if (checkpoint === 'after_claim') await waitAtCheckpoint();
 
-    const commandResult = await requestInventoryConsumption(claim.event.payload as DomainPayload);
+    const commandResult = await requestDomainCommand(claim.event.payload as DomainPayload);
     writeEvent('DOMAIN_COMMAND_RESULT', {
       pid: process.pid,
       httpStatus: commandResult.status,

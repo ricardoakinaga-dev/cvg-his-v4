@@ -246,7 +246,7 @@ export const vetusParityContract = Object.freeze([
     },
     blockers: [
       'Relatorios Vetus de cheques, pagamento antecipado, cadastros e personalizados ainda nao possuem exportacao operacional completa.',
-      'O workbench exporta CSV do recorte carregado para auditoria, financeiro, atendimento e estoque, incluindo contas a pagar e contas pagas respaldadas pelo subledger; ainda falta um contrato server-side/auditavel e cobertura completa das trilhas Vetus restantes, alem do worker de entregas agendadas.'
+      'O workbench exporta CSV do recorte carregado para auditoria, financeiro, atendimento e estoque, incluindo contas a pagar, contas pagas, contas a receber e contas recebidas respaldadas pelos subledgers; ainda falta cobertura completa das trilhas Vetus restantes e do worker de entregas agendadas.'
     ]
   },
   {

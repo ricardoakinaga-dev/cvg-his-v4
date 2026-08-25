@@ -75,6 +75,26 @@ test('ReportsService exports execution as CSV, JSON, XLSX and PDF', async () => 
   assert.throws(() => service.getExport(OTHER_ACCOUNT, xlsx.id), Error);
 });
 
+test('ReportsService neutralizes spreadsheet formulas in server-side CSV exports', async () => {
+  const service = new ReportsService();
+  const execution = await service.execute(ACCOUNT, USER, {
+    reportId: 'administrative-executive',
+    rows: [
+      {
+        domain: 'financial',
+        metric: '=HYPERLINK("https://attacker.invalid")',
+        value: 10,
+        status: 'tracked'
+      }
+    ]
+  });
+
+  const exported = await service.exportExecution(ACCOUNT, USER, execution.id, 'csv');
+
+  assert.match(exported.content, /'=HYPERLINK\(""https:\/\/attacker\.invalid""\)/);
+  assert.doesNotMatch(exported.content, /\n=HYPERLINK/);
+});
+
 test('ReportsService records delivery failures when the provider is absent or rejects', async () => {
   const scheduleInput = {
     reportId: 'administrative-executive',

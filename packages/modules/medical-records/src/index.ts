@@ -28,8 +28,7 @@ import {
 import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function isDatabaseAccountId(value: string): boolean {
   return UUID_PATTERN.test(value);
@@ -110,6 +109,60 @@ export class MedicalRecordsService {
     } finally {
       this.#pendingPersist = this.#pendingPersist.catch(() => {});
       this.#lastPersist = this.#pendingPersist;
+    }
+  }
+
+  /**
+   * Rebuilds one tenant's hot medical-record cache from committed rows.
+   *
+   * Cross-domain commands can persist their source aggregate before a
+   * clinical timeline projection fails. The surrounding tenant transaction
+   * rolls the database back, but the projection queue may already have
+   * created a record in memory. Rehydrating after rollback prevents the next
+   * retry from treating that uncommitted record as canonical.
+   */
+  public async refreshAccount(accountId: AccountId): Promise<void> {
+    if (!this.#medicalRecordRepository) return;
+
+    await this.#pendingPersist.catch(() => undefined);
+    const records = await this.#medicalRecordRepository.findAll(accountId);
+    const nextRecordIds = new Set(records.map((record) => record.id));
+    const nextEntries = new Map<MedicalRecordId, ClinicalEntrySummary[]>();
+    const nextTimeline = new Map<MedicalRecordId, ClinicalTimelineEventSummary[]>();
+
+    await Promise.all(
+      records.map(async (record) => {
+        const [entries, timeline] = await Promise.all([
+          this.#clinicalEntryRepository?.findByMedicalRecordId(record.id) ?? Promise.resolve([]),
+          this.#clinicalTimelineRepository?.findByMedicalRecordId(record.id) ?? Promise.resolve([])
+        ]);
+        nextEntries.set(record.id, [...entries]);
+        nextTimeline.set(record.id, [...timeline]);
+      })
+    );
+
+    const staleRecordIds = new Set<MedicalRecordId>();
+    for (const [recordId, cached] of this.#records) {
+      if (cached.accountId === accountId && !nextRecordIds.has(recordId)) {
+        staleRecordIds.add(recordId);
+      }
+    }
+    for (const [encounterId, recordId] of this.#recordByEncounterId) {
+      if (staleRecordIds.has(recordId)) {
+        this.#recordByEncounterId.delete(encounterId);
+      }
+    }
+    for (const recordId of staleRecordIds) {
+      this.#records.delete(recordId);
+      this.#entries.delete(recordId);
+      this.#timeline.delete(recordId);
+    }
+
+    for (const record of records) {
+      this.#records.set(record.id, record);
+      this.#recordByEncounterId.set(record.encounterId, record.id);
+      this.#entries.set(record.id, nextEntries.get(record.id) ?? []);
+      this.#timeline.set(record.id, nextTimeline.get(record.id) ?? []);
     }
   }
 
@@ -277,9 +330,9 @@ export class MedicalRecordsService {
 
     const hasCanonicalRepositories = Boolean(
       this.#medicalRecordRepository &&
-        this.#clinicalEntryRepository &&
-        this.#clinicalTimelineRepository &&
-        isDatabaseAccountId(record.accountId)
+      this.#clinicalEntryRepository &&
+      this.#clinicalTimelineRepository &&
+      isDatabaseAccountId(record.accountId)
     );
     if (!hasCanonicalRepositories) {
       const fallbackEntry = this.addEntry(actorUserId, payload);
@@ -352,10 +405,7 @@ export class MedicalRecordsService {
     const updatedRecord: MedicalRecordSummary = { ...record, updatedAt: now };
     this.#records.set(updatedRecord.id, updatedRecord);
     this.#recordByEncounterId.set(encounterId, updatedRecord.id);
-    this.#entries.set(updatedRecord.id, [
-      entry,
-      ...(this.#entries.get(updatedRecord.id) ?? [])
-    ]);
+    this.#entries.set(updatedRecord.id, [entry, ...(this.#entries.get(updatedRecord.id) ?? [])]);
     this.#timeline.set(updatedRecord.id, [
       entryEvent,
       ...(recordWasCreated ? [recordCreatedEvent] : []),
@@ -498,14 +548,18 @@ export class MedicalRecordsService {
       updatedAt: now
     });
 
-    const entryEvent = this.appendTimeline(record.id, {
-      accountId: record.accountId,
-      encounterId,
-      clinicalEntryId: entry.id,
-      eventType: 'entry_added',
-      summary: `${entry.entryType} added: ${entry.title}`,
-      actorUserId
-    }, false);
+    const entryEvent = this.appendTimeline(
+      record.id,
+      {
+        accountId: record.accountId,
+        encounterId,
+        clinicalEntryId: entry.id,
+        eventType: 'entry_added',
+        summary: `${entry.entryType} added: ${entry.title}`,
+        actorUserId
+      },
+      false
+    );
 
     if (this.#clinicalEntryRepository) {
       this.#enqueuePersist(
@@ -604,7 +658,10 @@ export class MedicalRecordsService {
           await this.#entryRevisionRepository!.create(revision);
         },
         () => {
-          this.#revisions.set(entryId, entryRevisions.filter((item) => item.id !== revision.id));
+          this.#revisions.set(
+            entryId,
+            entryRevisions.filter((item) => item.id !== revision.id)
+          );
         }
       );
     }
@@ -712,7 +769,10 @@ export class MedicalRecordsService {
           await this.#entryRevisionRepository!.create(revision);
         },
         () => {
-          this.#revisions.set(entryId, entryRevisions.filter((item) => item.id !== revision.id));
+          this.#revisions.set(
+            entryId,
+            entryRevisions.filter((item) => item.id !== revision.id)
+          );
         }
       );
     }

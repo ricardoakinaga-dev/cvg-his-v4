@@ -15,9 +15,11 @@ import {
   financialPayablesService,
   type FinancialPayableRecord
 } from '@/services/financialPayables';
+import { financialReceivablesService } from '@/services/financialReceivables';
 import { inventoryService } from '@/services/inventory';
 import { ownerService } from '@/services/owner';
 import { patientService } from '@/services/patient';
+import { reportsService } from '@/services/reports';
 import { servicesService, type ServiceSummary } from '@/services/services';
 import type { AdministrativeReportsResponse } from '@/services/administrativeReports';
 import type { AppointmentSummary } from '@/types/appointment';
@@ -28,6 +30,7 @@ import type {
 } from '@/types/inventory';
 import type { OwnerSummary } from '@/types/owner';
 import type { PatientSummary } from '@/types/patient';
+import type { FinancialReceivableListItem } from '@/types/financialReceivables';
 import type { AuditEventSummary } from '@cvg-his-v2/shared-types';
 
 vi.mock('@/services/administrativeReports', () => ({
@@ -66,6 +69,12 @@ vi.mock('@/services/financialPayables', () => ({
   }
 }));
 
+vi.mock('@/services/financialReceivables', () => ({
+  financialReceivablesService: {
+    list: vi.fn()
+  }
+}));
+
 vi.mock('@/services/inventory', () => ({
   inventoryService: {
     list: vi.fn(),
@@ -89,6 +98,13 @@ vi.mock('@/services/owner', () => ({
 vi.mock('@/services/patient', () => ({
   patientService: {
     list: vi.fn()
+  }
+}));
+
+vi.mock('@/services/reports', () => ({
+  reportsService: {
+    execute: vi.fn(),
+    exportExecution: vi.fn()
   }
 }));
 
@@ -591,6 +607,61 @@ const financialPayables = [
   }
 ] as FinancialPayableRecord[];
 
+const financialReceivables = [
+  {
+    id: 'receivable-open-1',
+    encounterId: 'encounter-open-1',
+    financialAccountId: 'financial-account-open-1',
+    installmentNumber: 1,
+    installmentLabel: 'Parcela 1/1',
+    dueAt: '2026-05-20',
+    status: 'open',
+    amountOriginal: 300,
+    amountPaid: 0,
+    amountOutstanding: 300,
+    issuedAt: '2026-05-01',
+    settledAt: null,
+    notes: null,
+    payments: [],
+    encounterStatus: 'open',
+    patientId: 'patient-1',
+    patientName: 'Paciente Teste',
+    patientSpecies: 'Canino',
+    ownerId: 'owner-1',
+    ownerName: 'Tutor Teste',
+    ownerPhoneMain: null,
+    financialStatus: 'pending',
+    totalAmount: 300,
+    lastClosedAt: null
+  },
+  {
+    id: 'receivable-settled-1',
+    encounterId: 'encounter-settled-1',
+    financialAccountId: 'financial-account-settled-1',
+    installmentNumber: 1,
+    installmentLabel: 'Parcela 1/1',
+    dueAt: '2026-05-15',
+    status: 'settled',
+    amountOriginal: 420,
+    amountPaid: 420,
+    amountOutstanding: 0,
+    issuedAt: '2026-05-01',
+    settledAt: '2026-05-20T14:30:00.000Z',
+    notes: null,
+    payments: [],
+    encounterStatus: 'closed',
+    patientId: 'patient-received-1',
+    patientName: 'Paciente Recebido',
+    patientSpecies: 'Canino',
+    ownerId: 'owner-received-1',
+    ownerName: 'Tutor Recebido',
+    ownerPhoneMain: null,
+    financialStatus: 'paid',
+    totalAmount: 420,
+    lastClosedAt: '2026-05-20T14:00:00.000Z'
+  }
+] as FinancialReceivableListItem[];
+
 describe('ReportWorkbenchPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -618,7 +689,7 @@ describe('ReportWorkbenchPage', () => {
     vi.mocked(financialPayablesService.list).mockResolvedValue({
       data: financialPayables,
       page: 1,
-      pageSize: 500,
+      pageSize: 100,
       total: financialPayables.length,
       openCount: 1,
       paidCount: 1,
@@ -626,6 +697,37 @@ describe('ReportWorkbenchPage', () => {
       totalAmount: 1000,
       totalPaid: 400,
       totalOutstanding: 600
+    });
+    vi.mocked(financialReceivablesService.list).mockImplementation(async (filters = {}) => {
+      const data = financialReceivables.filter((item) =>
+        filters.status ? item.status === filters.status : true
+      );
+      return {
+        data,
+        page: filters.page ?? 1,
+        pageSize: filters.pageSize ?? 100,
+        total: data.length,
+        openCount: data.filter((item) => item.status === 'open').length,
+        settledCount: data.filter((item) => item.status === 'settled').length,
+        totalOutstanding: data.reduce((total, item) => total + item.amountOutstanding, 0),
+        totalSettled: data.reduce((total, item) => total + item.amountPaid, 0)
+      };
+    });
+    vi.mocked(reportsService.execute).mockResolvedValue({
+      id: 'rep-exec-payables',
+      rowCount: 1
+    } as never);
+    vi.mocked(reportsService.exportExecution).mockResolvedValue({
+      id: 'rep-export-payables',
+      accountId: 'account-1',
+      executionId: 'rep-exec-payables',
+      format: 'csv',
+      filename: 'financial-payables-rep-exec-payables.csv',
+      contentType: 'text/csv;charset=utf-8',
+      contentEncoding: 'utf8',
+      content: 'Fornecedor;Descrição\nLaboratório parceiro;NF 123',
+      exportedByUserId: 'user-1',
+      exportedAt: '2026-05-20T00:00:00.000Z'
     });
   });
 
@@ -644,7 +746,11 @@ describe('ReportWorkbenchPage', () => {
     expect(wrapper.text()).toContain('Tutor Teste');
     expect(wrapper.text()).toContain('1/1');
     expect(wrapper.text()).not.toContain('Abrir financeiro');
-    expect(administrativeReportsService.getHubs).toHaveBeenCalled();
+    expect(financialReceivablesService.list).toHaveBeenCalledWith({
+      status: 'open',
+      page: 1,
+      pageSize: 100
+    });
   });
 
   it('renders received accounts financial report as a read-only legacy report', async () => {
@@ -658,12 +764,35 @@ describe('ReportWorkbenchPage', () => {
     expect(wrapper.text()).toContain('Exportar CSV');
     expect(wrapper.text()).toContain('Sistema/Relatorio/ContasRecebidasRelatorio.htm');
     expect(wrapper.text()).toContain('Recebimentos no período');
-    expect(wrapper.text()).toContain('Recebido confirmado');
-    expect(wrapper.text()).toContain('Títulos quitados');
-    expect(wrapper.text()).toContain('PIX concluídos');
-    expect(wrapper.text()).toContain('Faturamentos quitados');
+    expect(wrapper.text()).toContain('Paciente Recebido');
+    expect(wrapper.text()).toContain('Tutor Recebido');
+    expect(wrapper.text()).toContain('Parcela 1/1');
+    expect(wrapper.text()).toContain('Recebido');
     expect(wrapper.text()).not.toContain('Abrir financeiro');
-    expect(administrativeReportsService.getHubs).toHaveBeenCalled();
+    expect(financialReceivablesService.list).toHaveBeenCalledWith({
+      status: 'settled',
+      page: 1,
+      pageSize: 100
+    });
+  });
+
+  it('exports received accounts through the persisted server-side report artifact', async () => {
+    const wrapper = mount(ReportWorkbenchPage, {
+      props: { reportKey: 'received-accounts' }
+    });
+    await flushPromises();
+
+    const exportButton = wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Exportar CSV');
+    await exportButton?.trigger('click');
+    await flushPromises();
+
+    expect(reportsService.execute).toHaveBeenCalledWith({
+      reportId: 'financial-receivables',
+      filters: { status: 'settled' }
+    });
+    expect(reportsService.exportExecution).toHaveBeenCalledWith('rep-exec-payables', 'csv');
   });
 
   it('renders accounts payable financial report from the authoritative payables subledger', async () => {
@@ -685,7 +814,7 @@ describe('ReportWorkbenchPage', () => {
     expect(financialPayablesService.list).toHaveBeenCalledWith({
       status: '',
       page: 1,
-      pageSize: 500
+      pageSize: 100
     });
   });
 
@@ -707,8 +836,62 @@ describe('ReportWorkbenchPage', () => {
     expect(financialPayablesService.list).toHaveBeenCalledWith({
       status: 'paid',
       page: 1,
-      pageSize: 500
+      pageSize: 100
     });
+  });
+
+  it('exports accounts payable through the persisted server-side report artifact', async () => {
+    const createObjectURL = vi.fn((_blob: Blob) => 'blob:server-report');
+    const revokeObjectURL = vi.fn();
+    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL });
+
+    try {
+      const wrapper = mount(ReportWorkbenchPage, {
+        props: { reportKey: 'accounts-payable' }
+      });
+      await flushPromises();
+
+      const exportButton = wrapper
+        .findAll('button')
+        .find((button) => button.text() === 'Exportar CSV');
+      await exportButton?.trigger('click');
+      await flushPromises();
+
+      expect(reportsService.execute).toHaveBeenCalledWith({
+        reportId: 'financial-payables',
+        filters: {}
+      });
+      expect(reportsService.exportExecution).toHaveBeenCalledWith('rep-exec-payables', 'csv');
+      expect(createObjectURL).toHaveBeenCalledOnce();
+      expect(wrapper.text()).toContain('Exportação server-side auditada gerada com 1 linha(s).');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('exports paid accounts with the authoritative paid filter', async () => {
+    const createObjectURL = vi.fn((_blob: Blob) => 'blob:paid-report');
+    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL: vi.fn() });
+
+    try {
+      const wrapper = mount(ReportWorkbenchPage, {
+        props: { reportKey: 'paid-accounts' }
+      });
+      await flushPromises();
+
+      const exportButton = wrapper
+        .findAll('button')
+        .find((button) => button.text() === 'Exportar CSV');
+      await exportButton?.trigger('click');
+      await flushPromises();
+
+      expect(reportsService.execute).toHaveBeenCalledWith({
+        reportId: 'financial-payables',
+        filters: { status: 'paid' }
+      });
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('renders cheques financial report as a read-only legacy report', async () => {

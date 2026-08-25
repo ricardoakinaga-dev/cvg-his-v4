@@ -235,6 +235,73 @@ function seedDefinitions(): readonly ReportDefinition[] {
       ],
       createdAt,
       updatedAt: createdAt
+    },
+    {
+      id: 'financial-payables',
+      accountId: null,
+      title: 'Contas a Pagar e Contas Pagas',
+      description:
+        'Títulos do subledger financeiro com situação, vencimento, pagamento e reconciliação.',
+      category: 'financial',
+      requiredPermission: 'billing.read',
+      supportedFormats: ['json', 'csv', 'xlsx', 'pdf'],
+      filterSchema: {
+        status: 'string',
+        search: 'string',
+        dateFrom: 'date',
+        dateTo: 'date'
+      },
+      columns: [
+        { key: 'supplierName', label: 'Fornecedor', type: 'string' },
+        { key: 'description', label: 'Descrição', type: 'string' },
+        { key: 'category', label: 'Categoria', type: 'string' },
+        { key: 'issuedAt', label: 'Emissão', type: 'date' },
+        { key: 'dueAt', label: 'Vencimento', type: 'date' },
+        { key: 'totalAmount', label: 'Total', type: 'currency' },
+        { key: 'paidAmount', label: 'Pago', type: 'currency' },
+        { key: 'outstandingAmount', label: 'A pagar', type: 'currency' },
+        { key: 'status', label: 'Status', type: 'status' },
+        { key: 'paymentMethod', label: 'Método', type: 'string' },
+        { key: 'reconciliationStatus', label: 'Reconciliação', type: 'status' }
+      ],
+      createdAt,
+      updatedAt: createdAt
+    },
+    {
+      id: 'financial-receivables',
+      accountId: null,
+      title: 'Contas a Receber e Contas Recebidas',
+      description:
+        'Recebíveis do subledger financeiro com vencimento, liquidação, paciente e tutor.',
+      category: 'financial',
+      requiredPermission: 'billing.read',
+      supportedFormats: ['json', 'csv', 'xlsx', 'pdf'],
+      filterSchema: {
+        status: 'string',
+        search: 'string',
+        dateFrom: 'date',
+        dateTo: 'date'
+      },
+      columns: [
+        { key: 'patientName', label: 'Paciente', type: 'string' },
+        { key: 'ownerName', label: 'Nome do tutor', type: 'string' },
+        { key: 'patientSpecies', label: 'Espécie', type: 'string' },
+        { key: 'encounterId', label: 'Atendimento', type: 'string' },
+        { key: 'installmentNumber', label: 'Parcela', type: 'number' },
+        { key: 'installmentLabel', label: 'Descrição da parcela', type: 'string' },
+        { key: 'issuedAt', label: 'Emissão', type: 'date' },
+        { key: 'dueAt', label: 'Vencimento', type: 'date' },
+        { key: 'settledAt', label: 'Liquidação', type: 'date' },
+        { key: 'amountOriginal', label: 'Original', type: 'currency' },
+        { key: 'amountPaid', label: 'Recebido', type: 'currency' },
+        { key: 'amountOutstanding', label: 'Saldo', type: 'currency' },
+        { key: 'status', label: 'Status', type: 'status' },
+        { key: 'financialStatus', label: 'Status financeiro', type: 'status' },
+        { key: 'encounterStatus', label: 'Atendimento', type: 'status' },
+        { key: 'paymentCount', label: 'Pagamentos', type: 'number' }
+      ],
+      createdAt,
+      updatedAt: createdAt
     }
   ];
 }
@@ -1455,7 +1522,8 @@ function toCsv(columns: readonly ReportColumn[], rows: readonly Record<string, u
 
 function csvCell(value: unknown): string {
   if (value === null || value === undefined) return '';
-  const text = String(value);
+  const rawText = String(value);
+  const text = typeof value === 'string' && /^[=+\-@]/.test(rawText) ? `'${rawText}` : rawText;
   return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 

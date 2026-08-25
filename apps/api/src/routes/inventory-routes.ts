@@ -41,6 +41,8 @@ export interface InventoryRoutesHandlers {
   inventory: InventoryService;
   billing?: BillingService;
   inpatient?: InpatientService;
+  /** Refresh authoritative tenant state before a cross-instance mutation. */
+  refreshAccount?: (accountId: string) => Promise<void>;
   procurement: ProcurementService;
   audit: AuditService;
   requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
@@ -64,7 +66,15 @@ export async function handleInventoryRoutes(
   correlationId: string,
   handlers: InventoryRoutesHandlers
 ): Promise<boolean> {
-  const { inventory, billing, inpatient, audit, requirePrincipal: rp, enforceAbac } = handlers;
+  const {
+    inventory,
+    billing,
+    inpatient,
+    audit,
+    requirePrincipal: rp,
+    enforceAbac,
+    refreshAccount
+  } = handlers;
   const runCommand =
     handlers.runCommand ?? (async <T>(input: TenantCommandInput<T>) => input.command());
 
@@ -398,6 +408,10 @@ export async function handleInventoryRoutes(
   if (pathname === '/inventory/consumptions' && request.method === 'POST') {
     const principal = rp(request, 'inventory.manage');
     const payload = (await readJsonBody(request)) as CreateInventoryConsumptionRequest;
+    // Inventory charge capture can be retried on a different API replica than
+    // the admission command. Hydrate committed tenant state before resolving
+    // the stay, encounter, item and lot from process-local caches.
+    await refreshAccount?.(principal.user.accountId);
     let consumption: Awaited<ReturnType<InventoryService['consume']>>;
     try {
       consumption = await runCommand({

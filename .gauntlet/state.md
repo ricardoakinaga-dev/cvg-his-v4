@@ -1289,3 +1289,155 @@ blocked only by cheques, advance-payment, registration/custom families and the
 missing server-side audited-export contract. Enterprise readiness remains
 95/100 (42 PASS, 3 WARN, 1 FAIL from strict parity). Stop decision remains
 `ACTIVE`; no global gate is promoted.
+
+## Final bounded verification — server-side audited payable export — 2026-08-24
+
+The server-side payable increment completed its executable quality bar. API
+route tests passed 7/7, the reports module passed 12/12, the workbench passed
+29/29, the Enterprise browser gate passed 5/5, monorepo typecheck passed
+70/70, security:enterprise passed with zero high/critical/moderate
+dependency findings, vetus:parity:test passed 4/4, the SPA production build
+passed with 769 modules, and the clinical-financial HTTP/PostgreSQL regression
+passed 5/5. git diff --check and the control-ledger JSON parse also passed.
+
+Temporal self-review checked the authenticated billing.read boundary,
+principal-derived account scope, source pagination, status/search/date
+validation, persisted execution/export, audit events, opaque foreign-account
+errors, CSV formula neutralization and the persisted browser artifact. No
+critical gap was found inside this bounded slice. The independent reviewer
+could not start in this account, so this is CONDITIONAL_PASS based on fresh
+executable gates and local review, not independent approval.
+
+The E2E run used the explicit controlled test configuration with in-memory
+runtime repositories despite a healthy disposable database; it is not
+production persistence proof. The full API package still has the pre-existing
+laboratory expectation mismatch (202 observed versus 201 expected). Global ERP,
+complete Vetus parity, provider, production, Redis, RLS/FORCE RLS, DR/RPO,
+operations, WCAG, coverage and release gates remain IN_PROGRESS/PARTIAL.
+Stop decision remains ACTIVE; no global gate is promoted.
+
+## Final bounded verification — server-side audited receivables export — 2026-08-24
+
+The second server-side report slice now reads the authoritative
+`EncounterFinancialService.listReceivables` source. `Contas a Receber` is
+`open` and date-filtered by due date; `Contas Recebidas` is `settled` and
+date-filtered by settlement date, with explicit issued-date fallback. The
+route derives account scope from the authenticated principal, validates
+status/search/date, drains every source page, persists the ReportsService
+execution/export and appends audit events. The workbench drains the same source
+for display and downloads only the persisted server artifact.
+
+Fresh gates: API reports route 10/10, module-reports 12/12,
+ReportWorkbenchPage 30/30, SPA build with 769 modules, Chromium 11/11
+(Enterprise 6/6), clinical-financial HTTP/PostgreSQL 7/7, monorepo typecheck
+70/70, security:enterprise with zero critical/high/moderate dependency
+findings, and Vetus parity contract 4/4. Temporal local review found no
+critical gap in this bounded slice. The independent reviewer role was
+unavailable in this account, so the verdict is CONDITIONAL_PASS, not
+independent approval. The controlled E2E uses in-memory runtime repositories
+despite a healthy disposable database; this is not production persistence
+proof. Global ERP, full Vetus parity, providers, production, Redis,
+RLS/FORCE RLS, DR/RPO, operations, WCAG, coverage and release remain open.
+Stop decision remains ACTIVE; no global gate is promoted.
+
+## Final bounded verification — inpatient command idempotency — 2026-08-24
+
+The next clinical-financial seam now protects admission and inpatient
+daily-charge creation with the tenant command boundary. TDD RED exposed both
+missing route seams; GREEN passed 16/16. Fresh PostgreSQL HTTP evidence passed
+5/5 with two API instances, A/B tenant fixtures and real API/worker roles
+created as `LOGIN NOSUPERUSER NOBYPASSRLS`; admission and daily replay/conflict,
+durable HTTP idempotency rows, transaction/audit ordering and cross-instance
+daily billing hydration are reconciled by SQL. Controlled clinical-financial
+restart passed 1/1 and the inpatient child-process SIGKILL/takeover matrix
+passed 4/4.
+
+The bounded result is `CONDITIONAL_PASS`, not independent approval: no
+independent reviewer was available in this account. Handoffs,
+progress/occurrence idempotency, cross-domain failpoints, providers, Redis,
+cluster/Secrets, global RLS/FORCE RLS, full Vetus parity, DR/RPO, operations,
+WCAG, coverage and release remain open. Stop decision remains ACTIVE; no
+global gate is promoted.
+
+## Final bounded verification — clinical handoff/progress/occurrence idempotency — 2026-08-24
+
+The clinical-notes increment moved inpatient progress and occurrence creation
+inside the tenant command seam, added failure-time inpatient/audit cache
+recovery, and made the progress-to-medical-record callback awaitable. The API
+now waits for the `inpatient_progressed` clinical timeline projection before
+the command completes. Fresh route tests passed 19/19. The HTTP/PostgreSQL
+vertical passed 5/5 with two API instances, two tenants and real
+`LOGIN NOSUPERUSER NOBYPASSRLS` roles; SQL reconciled handoff send/ack,
+progress and occurrence replay/conflict, one durable idempotency row per
+command and one clinical timeline projection. Controlled restart passed 1/1
+and inpatient child-process SIGKILL/takeover passed 4/4.
+
+The bounded result is `CONDITIONAL_PASS`, not independent approval: no
+independent reviewer was available in this account. Assignment/transfer/status
+bed transitions, remaining cross-domain failpoints, providers, Redis,
+cluster/Secrets, global RLS/FORCE RLS, full Vetus parity, DR/RPO, operations,
+WCAG, coverage and release remain open. Stop decision remains ACTIVE; no
+global gate is promoted.
+
+## Final bounded verification — inpatient bed/status command seams — 2026-08-24
+
+The next clinical-financial increment moved inpatient bed assignment, bed
+transfer and status update into explicit tenant command seams. Each mutation
+validates the tenant-owned stay/bed, waits for inpatient persistence and audit,
+and returns only after the transfer/status clinical callback completes. The
+route recovery path refreshes inpatient/audit caches after an injected
+post-command failure; the public vertical now binds the sector/bed service to
+the durable database client.
+
+Fresh evidence: API build and inpatient route tests passed 22/22; the
+HTTP/PostgreSQL vertical passed 5/5 with two APIs, two tenants and real
+`LOGIN NOSUPERUSER NOBYPASSRLS` roles. SQL reconciled assignment/status/transfer
+replay and divergent conflict, one durable idempotency row per command, one
+`inpatient_transferred` timeline row, three `inpatient_progressed` rows from
+the journey and all three catalog beds available after discharge. Focused
+Prettier passed. The independent reviewer role remains unavailable, so the
+verdict is local `CONDITIONAL_PASS`; no global gate is promoted.
+
+The next P0 is real cross-domain failure injection for bed persistence,
+medical-record projection and audit, followed by endpoint-specific restart or
+SIGKILL evidence. Production/provider/cluster/Secrets, Redis, global
+RLS/FORCE RLS, DR/RPO, complete Vetus parity, WCAG, coverage, operations and
+release remain open. Stop decision remains ACTIVE.
+
+## Final bounded verification — inpatient cross-domain failpoint and recovery — 2026-08-24
+
+A real PostgreSQL constraint failpoint on `clinical_timeline` caused the
+status command to return 500 and rolled back the inpatient stay, clinical
+timeline, audit and idempotency together. The hot medical-record cache was
+then rehydrated from committed rows, and the same idempotency key succeeded
+after the failpoint was removed with exactly one timeline, audit and completed
+idempotency row. The process fixture now dispatches the public status command;
+SIGKILL/replay passed 2/2 at `after_claim` and
+`after_domain_command_before_cas`. Fresh regression evidence: route 22/22,
+medical-records 17/17, failpoint 1/1, status process 2/2 and full clinical
+vertical 6/6; API and module builds passed.
+
+The verdict is bounded `CONDITIONAL_PASS`, not independent approval: no
+independent reviewer was available. Bed/transfer/audit-specific database
+failpoints, process restart for assignment/transfer, production/provider,
+Redis, global RLS/FORCE RLS, DR/RPO, complete Vetus parity, WCAG, coverage,
+operations and release remain open. No global gate is promoted; stop decision
+remains ACTIVE.
+
+## Final bounded verification — inpatient bed/transfer/audit recovery — 2026-08-24
+
+The recovery boundary is now exercised with real temporary PostgreSQL
+constraints for clinical-timeline projection, assignment bed occupation,
+transfer destination occupation and audit persistence. The failpoint matrix
+passed 5/5: failed commands returned 500 without committed state, and same-key
+retries converged to one durable timeline/audit/idempotency result. The child
+process fixture binds the sector/bed service to PostgreSQL and passed
+assignment/transfer SIGKILL replay 4/4 at claim and post-command checkpoints;
+the complete inpatient process regression passed 10/10. The current public
+clinical-financial HTTP/PostgreSQL vertical passed 9/9.
+
+The verdict remains bounded `CONDITIONAL_PASS`, not independent approval: no
+independent reviewer was available. Temporary SQL constraints are not a
+production fault-injection platform. Provider/production/Redis, global
+RLS/FORCE RLS, DR/RPO, complete Vetus parity, WCAG, coverage, operations and
+release remain open. No global gate is promoted; stop decision remains ACTIVE.

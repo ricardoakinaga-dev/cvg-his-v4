@@ -9,7 +9,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { setAppState } from '../../../apps/api/src/app-state.js';
 import { bootstrapServices, shutdownServices } from '../../../apps/api/src/bootstrap.js';
 import { createApiServer, type ApiServer } from '../../../apps/api/src/server.js';
-import { getPool } from '../../../packages/shared/database/src/index.js';
+import { getDatabaseClient, getPool } from '../../../packages/shared/database/src/index.js';
 import { getAdminPool, getTestPool } from '../../db/db-admin.js';
 import { TEST_DB_NAME, TEST_DB_URL } from '../../setup/env.js';
 
@@ -20,9 +20,18 @@ const OWNER_A = randomUUID();
 const PATIENT_A = randomUUID();
 const ENCOUNTER_A = randomUUID();
 const RACE_ENCOUNTER_A = randomUUID();
+const AUDIT_ENCOUNTER_A = randomUUID();
+const SECTOR_A = randomUUID();
+const BED_A_1 = randomUUID();
+const BED_A_2 = randomUUID();
+const BED_A_3 = randomUUID();
 const ITEM_A = `vertical-item-${randomUUID()}`;
 const LOT_A = `vertical-lot-${randomUUID()}`;
 const CASH_REGISTER_A = randomUUID();
+const CLINICAL_TIMELINE_FAILPOINT_CONSTRAINT = `vertical_timeline_failpoint_${randomUUID().replaceAll('-', '')}`;
+const BED_FAILPOINT_CONSTRAINT = `vertical_bed_failpoint_${randomUUID().replaceAll('-', '')}`;
+const TRANSFER_BED_FAILPOINT_CONSTRAINT = `vertical_transfer_bed_failpoint_${randomUUID().replaceAll('-', '')}`;
+const AUDIT_FAILPOINT_CONSTRAINT = `vertical_audit_failpoint_${randomUUID().replaceAll('-', '')}`;
 
 const TENANT_B = randomUUID();
 const ACCOUNT_B = randomUUID();
@@ -50,6 +59,8 @@ let apiDatabaseRole = '';
 let workerDatabaseRole = '';
 let runtimeRolePassword = '';
 let journeyReceiptId = '';
+let raceStayId = '';
+let auditStayId = '';
 
 interface LoginResponse {
   readonly accessToken: string;
@@ -66,12 +77,27 @@ interface AdmissionResponse {
   readonly encounterId: string;
   readonly accountId: string;
   readonly status: string;
+  readonly sectorId?: string;
+  readonly bedId?: string;
 }
 
 interface HandoffResponse {
   readonly id: string;
   readonly encounterId: string;
   readonly handoffStatus: string;
+}
+
+interface ProgressResponse {
+  readonly id: string;
+  readonly stayId: string;
+  readonly note: string;
+}
+
+interface OccurrenceResponse {
+  readonly id: string;
+  readonly stayId: string;
+  readonly title: string;
+  readonly severity: string;
 }
 
 interface ConsumptionResponse {
@@ -240,6 +266,29 @@ async function seedCashRegister(): Promise<void> {
   );
 }
 
+async function seedInpatientCatalog(
+  accountId: string,
+  sectorId: string,
+  bedIds: readonly string[]
+): Promise<void> {
+  const pool = getTestPool();
+  await pool.query(
+    `INSERT INTO sectors (id, account_id, code, name, kind, active, created_at, updated_at)
+     VALUES ($1, $2, 'VERT-A', 'Ala vertical A', 'observation', true, now(), now())`,
+    [sectorId, accountId]
+  );
+  for (const [index, bedId] of bedIds.entries()) {
+    const code = `VERT-${String(index + 1).padStart(2, '0')}`;
+    await pool.query(
+      `INSERT INTO beds (
+         id, account_id, sector_id, code, name, status, supports_species, active,
+         created_at, updated_at
+       ) VALUES ($1, $2, $3, $4, $5, 'available', 'canine', true, now(), now())`,
+      [bedId, accountId, sectorId, code, `Leito vertical ${code}`]
+    );
+  }
+}
+
 async function login(username: string): Promise<string> {
   const response = await requestJson<LoginResponse>('/auth/login', {
     method: 'POST',
@@ -258,7 +307,8 @@ async function admit(
   accountId: string,
   encounterId: string,
   patientId: string,
-  idempotencyKey: string
+  idempotencyKey: string,
+  bed = 'A-01'
 ): Promise<JsonResponse<AdmissionResponse>> {
   return requestJson<AdmissionResponse>('/inpatient', {
     method: 'POST',
@@ -271,49 +321,175 @@ async function admit(
       patientId,
       unit: 'Internacao clinica',
       ward: 'Ala A',
-      bed: 'A-01'
+      bed
     })
   });
 }
 
-async function sendHandoff(): Promise<JsonResponse<HandoffResponse>> {
-  return requestJson<HandoffResponse>('/clinical-handoffs/send-to-reception', {
+async function assignInpatientBed(
+  stayId: string,
+  idempotencyKey: string,
+  bedId: string,
+  sectorId: string,
+  origin = baseUrl
+): Promise<JsonResponse<AdmissionResponse>> {
+  return requestJsonAt<AdmissionResponse>(origin, `/inpatient/${stayId}/assign-bed`, {
     method: 'POST',
-    headers: headersA(),
+    headers: { ...headersA(), 'idempotency-key': idempotencyKey },
+    body: JSON.stringify({ bedId, sectorId })
+  });
+}
+
+async function transferInpatientBed(
+  stayId: string,
+  idempotencyKey: string,
+  bedId: string,
+  sectorId: string,
+  origin = baseUrl
+): Promise<JsonResponse<AdmissionResponse>> {
+  return requestJsonAt<AdmissionResponse>(origin, `/inpatient/${stayId}/transfer-bed`, {
+    method: 'POST',
+    headers: { ...headersA(), 'idempotency-key': idempotencyKey },
+    body: JSON.stringify({ bedId, sectorId })
+  });
+}
+
+async function updateInpatientStatus(
+  stayId: string,
+  idempotencyKey: string,
+  status: 'admitted' | 'stable' | 'transferred' | 'discharged',
+  origin = baseUrl
+): Promise<JsonResponse<AdmissionResponse>> {
+  return requestJsonAt<AdmissionResponse>(origin, `/inpatient/${stayId}/update-status`, {
+    method: 'PATCH',
+    headers: { ...headersA(), 'idempotency-key': idempotencyKey },
+    body: JSON.stringify({
+      status,
+      ...(status === 'discharged' && { dischargeReason: 'Alta clínica vertical' })
+    })
+  });
+}
+
+async function ensureRaceStay(): Promise<void> {
+  if (raceStayId) return;
+  const admission = await admit(
+    accessTokenA,
+    TENANT_A,
+    ACCOUNT_A,
+    RACE_ENCOUNTER_A,
+    PATIENT_A,
+    randomUUID()
+  );
+  expect(admission.status).toBe(201);
+  raceStayId = admission.body?.id ?? '';
+}
+
+async function ensureAuditStay(): Promise<void> {
+  if (auditStayId) return;
+  const admission = await admit(
+    accessTokenA,
+    TENANT_A,
+    ACCOUNT_A,
+    AUDIT_ENCOUNTER_A,
+    PATIENT_A,
+    randomUUID()
+  );
+  expect(admission.status).toBe(201);
+  auditStayId = admission.body?.id ?? '';
+}
+
+async function sendHandoff(
+  idempotencyKey: string,
+  priority = 'medium',
+  origin = baseUrl
+): Promise<JsonResponse<HandoffResponse>> {
+  return requestJsonAt<HandoffResponse>(origin, '/clinical-handoffs/send-to-reception', {
+    method: 'POST',
+    headers: { ...headersA(), 'idempotency-key': idempotencyKey },
     body: JSON.stringify({
       encounterId: ENCOUNTER_A,
       clinicalSummary: 'Paciente internado, estável e em observação.',
       receptionInstructions: 'Confirmar itens e valores na alta.',
-      priority: 'medium'
+      priority
+    })
+  });
+}
+
+async function acknowledgeHandoff(
+  handoffId: string,
+  idempotencyKey: string,
+  note = 'Recepção confirmou a vaga.',
+  origin = baseUrl
+): Promise<JsonResponse<HandoffResponse>> {
+  return requestJsonAt<HandoffResponse>(origin, `/clinical-handoffs/${handoffId}/acknowledge`, {
+    method: 'POST',
+    headers: { ...headersA(), 'idempotency-key': idempotencyKey },
+    body: JSON.stringify({ note })
+  });
+}
+
+async function addProgress(
+  idempotencyKey: string,
+  note: string,
+  origin = baseUrl
+): Promise<JsonResponse<ProgressResponse>> {
+  return requestJsonAt<ProgressResponse>(origin, `/inpatient/${journeyStayId}/progress`, {
+    method: 'POST',
+    headers: { ...headersA(), 'idempotency-key': idempotencyKey },
+    body: JSON.stringify({ note })
+  });
+}
+
+async function addOccurrence(
+  idempotencyKey: string,
+  title: string,
+  origin = baseUrl
+): Promise<JsonResponse<OccurrenceResponse>> {
+  return requestJsonAt<OccurrenceResponse>(origin, `/inpatient/${journeyStayId}/occurrences`, {
+    method: 'POST',
+    headers: { ...headersA(), 'idempotency-key': idempotencyKey },
+    body: JSON.stringify({
+      type: 'clinical',
+      severity: 'attention',
+      title,
+      description: 'Ocorrencia clínica registrada durante a internação.'
     })
   });
 }
 
 async function consume(
   idempotencyKey: string,
-  quantity = 2
+  quantity = 2,
+  origin = baseUrl
 ): Promise<JsonResponse<ConsumptionResponse & { readonly code?: string }>> {
-  return requestJson<ConsumptionResponse & { readonly code?: string }>('/inventory/consumptions', {
+  return requestJsonAt<ConsumptionResponse & { readonly code?: string }>(
+    origin,
+    '/inventory/consumptions',
+    {
+      method: 'POST',
+      headers: { ...headersA(), 'idempotency-key': idempotencyKey },
+      body: JSON.stringify({
+        encounterId: ENCOUNTER_A,
+        inventoryItemId: ITEM_A,
+        quantity,
+        sourceEntityType: 'inpatient_stay',
+        sourceEntityId: journeyStayId
+      })
+    }
+  );
+}
+
+async function createDailyCharge(
+  idempotencyKey: string,
+  unitAmount = AMOUNT_DAILY
+): Promise<JsonResponse<DailyChargeResponse & { readonly code?: string }>> {
+  return requestJson<DailyChargeResponse>(`/inpatient/${journeyStayId}/daily-charges`, {
     method: 'POST',
     headers: { ...headersA(), 'idempotency-key': idempotencyKey },
     body: JSON.stringify({
-      encounterId: ENCOUNTER_A,
-      inventoryItemId: ITEM_A,
-      quantity,
-      sourceEntityType: 'inpatient_stay',
-      sourceEntityId: journeyStayId
-    })
-  });
-}
-
-async function createDailyCharge(): Promise<JsonResponse<DailyChargeResponse>> {
-  return requestJson<DailyChargeResponse>(`/inpatient/${journeyStayId}/daily-charges`, {
-    method: 'POST',
-    headers: headersA(),
-    body: JSON.stringify({
       description: 'Diária da internação vertical',
       quantity: 1,
-      unitAmount: AMOUNT_DAILY
+      unitAmount
     })
   });
 }
@@ -391,13 +567,14 @@ beforeAll(async () => {
     userId: USER_A,
     ownerId: OWNER_A,
     patientId: PATIENT_A,
-    encounterIds: [ENCOUNTER_A, RACE_ENCOUNTER_A],
+    encounterIds: [ENCOUNTER_A, RACE_ENCOUNTER_A, AUDIT_ENCOUNTER_A],
     itemId: ITEM_A,
     lotId: LOT_A,
     username: USERNAME_A,
     label: 'Vertical A',
     chargeUnitPriceAmount: 40
   });
+  await seedInpatientCatalog(ACCOUNT_A, SECTOR_A, [BED_A_1, BED_A_2, BED_A_3]);
   await seedTenant({
     tenantId: TENANT_B,
     accountId: ACCOUNT_B,
@@ -504,6 +681,7 @@ beforeAll(async () => {
     refreshTokenTtlSeconds: 604800,
     repositories: bootstrap.repositories,
     fileStorage: bootstrap.fileStorage,
+    sectorBedOptions: { databaseClient: getDatabaseClient() },
     unitOfWork: bootstrap.unitOfWork,
     preserveSeedUsersWithRepository: false,
     preserveSeedMasterDataWithRepository: false
@@ -569,49 +747,201 @@ describe('inpatient clinical-financial vertical HTTP PostgreSQL boundary', () =>
     );
     expect(baseline.rows[0]).toEqual({ billing: 0, receivables: 0 });
 
+    const admissionKey = randomUUID();
     const admission = await admit(
       accessTokenA,
       TENANT_A,
       ACCOUNT_A,
       ENCOUNTER_A,
       PATIENT_A,
-      randomUUID()
+      admissionKey
+    );
+    const admissionReplay = await admit(
+      accessTokenA,
+      TENANT_A,
+      ACCOUNT_A,
+      ENCOUNTER_A,
+      PATIENT_A,
+      admissionKey
+    );
+    const admissionConflict = await admit(
+      accessTokenA,
+      TENANT_A,
+      ACCOUNT_A,
+      ENCOUNTER_A,
+      PATIENT_A,
+      admissionKey,
+      'A-02'
     );
     expect(admission.status).toBe(201);
     expect(admission.body).toMatchObject({ encounterId: ENCOUNTER_A, accountId: ACCOUNT_A });
+    expect(admissionReplay.status).toBe(201);
+    expect(admissionReplay.body).toEqual(admission.body);
+    expect(admissionConflict.status).toBe(409);
     journeyStayId = admission.body?.id ?? '';
     expect(journeyStayId).toMatch(/^[0-9a-f-]{36}$/i);
 
-    const handoff = await sendHandoff();
+    const assignmentKey = randomUUID();
+    const assigned = await assignInpatientBed(journeyStayId, assignmentKey, BED_A_1, SECTOR_A);
+    const assignedReplay = await assignInpatientBed(
+      journeyStayId,
+      assignmentKey,
+      BED_A_1,
+      SECTOR_A,
+      secondaryBaseUrl
+    );
+    const assignedConflict = await assignInpatientBed(
+      journeyStayId,
+      assignmentKey,
+      BED_A_2,
+      SECTOR_A,
+      secondaryBaseUrl
+    );
+    expect(assigned.status).toBe(200);
+    expect(assigned.body).toMatchObject({
+      id: journeyStayId,
+      sectorId: SECTOR_A,
+      bedId: BED_A_1
+    });
+    expect(assignedReplay.status).toBe(200);
+    expect(assignedReplay.body).toEqual(assigned.body);
+    expect(assignedConflict.status).toBe(409);
+
+    const statusKey = randomUUID();
+    const stabilized = await updateInpatientStatus(journeyStayId, statusKey, 'stable');
+    const stabilizedReplay = await updateInpatientStatus(
+      journeyStayId,
+      statusKey,
+      'stable',
+      secondaryBaseUrl
+    );
+    const stabilizedConflict = await updateInpatientStatus(
+      journeyStayId,
+      statusKey,
+      'admitted',
+      secondaryBaseUrl
+    );
+    expect(stabilized.status).toBe(200);
+    expect(stabilized.body).toMatchObject({ id: journeyStayId, status: 'stable' });
+    expect(stabilizedReplay.status).toBe(200);
+    expect(stabilizedReplay.body).toEqual(stabilized.body);
+    expect(stabilizedConflict.status).toBe(409);
+
+    const transferKey = randomUUID();
+    const transferred = await transferInpatientBed(journeyStayId, transferKey, BED_A_2, SECTOR_A);
+    const transferredReplay = await transferInpatientBed(
+      journeyStayId,
+      transferKey,
+      BED_A_2,
+      SECTOR_A,
+      secondaryBaseUrl
+    );
+    const transferredConflict = await transferInpatientBed(
+      journeyStayId,
+      transferKey,
+      BED_A_3,
+      SECTOR_A,
+      secondaryBaseUrl
+    );
+    expect(transferred.status).toBe(200);
+    expect(transferred.body).toMatchObject({
+      id: journeyStayId,
+      status: 'transferred',
+      sectorId: SECTOR_A,
+      bedId: BED_A_2
+    });
+    expect(transferredReplay.status).toBe(200);
+    expect(transferredReplay.body).toEqual(transferred.body);
+    expect(transferredConflict.status).toBe(409);
+
+    const returnToAdmitted = await updateInpatientStatus(journeyStayId, randomUUID(), 'admitted');
+    expect(returnToAdmitted.status).toBe(200);
+    expect(returnToAdmitted.body).toMatchObject({ id: journeyStayId, status: 'admitted' });
+
+    const handoffKey = randomUUID();
+    const handoff = await sendHandoff(handoffKey);
+    const handoffReplay = await sendHandoff(handoffKey, 'medium', secondaryBaseUrl);
+    const handoffConflict = await sendHandoff(handoffKey, 'high', secondaryBaseUrl);
     expect(handoff.status).toBe(201);
     expect(handoff.body).toMatchObject({
       encounterId: ENCOUNTER_A,
       handoffStatus: 'sent_to_reception'
     });
-    const acknowledged = await requestJson<HandoffResponse>(
-      `/clinical-handoffs/${handoff.body?.id}/acknowledge`,
-      {
-        method: 'POST',
-        headers: headersA(),
-        body: JSON.stringify({ note: 'Recepção confirmou a vaga.' })
-      }
+    expect(handoffReplay.status).toBe(201);
+    expect(handoffReplay.body).toEqual(handoff.body);
+    expect(handoffConflict.status).toBe(409);
+    const acknowledgeKey = randomUUID();
+    const acknowledged = await acknowledgeHandoff(handoff.body?.id ?? '', acknowledgeKey);
+    const acknowledgedReplay = await acknowledgeHandoff(
+      handoff.body?.id ?? '',
+      acknowledgeKey,
+      'Recepção confirmou a vaga.',
+      secondaryBaseUrl
+    );
+    const acknowledgedConflict = await acknowledgeHandoff(
+      handoff.body?.id ?? '',
+      acknowledgeKey,
+      'Nota divergente de replay',
+      secondaryBaseUrl
     );
     expect(acknowledged.status).toBe(200);
     expect(acknowledged.body?.handoffStatus).toBe('acknowledged_by_reception');
+    expect(acknowledgedReplay.status).toBe(200);
+    expect(acknowledgedReplay.body).toEqual(acknowledged.body);
+    expect(acknowledgedConflict.status).toBe(409);
+
+    const progressKey = randomUUID();
+    const progress = await addProgress(
+      progressKey,
+      'Paciente aceitou dieta e manteve parâmetros estáveis.'
+    );
+    const progressReplay = await addProgress(
+      progressKey,
+      'Paciente aceitou dieta e manteve parâmetros estáveis.',
+      secondaryBaseUrl
+    );
+    const progressConflict = await addProgress(
+      progressKey,
+      'Nota divergente de progresso.',
+      secondaryBaseUrl
+    );
+    expect(progress.status).toBe(201);
+    expect(progressReplay.status).toBe(201);
+    expect(progressReplay.body).toEqual(progress.body);
+    expect(progressConflict.status).toBe(409);
+
+    const occurrenceKey = randomUUID();
+    const occurrence = await addOccurrence(occurrenceKey, 'Hiporexia');
+    const occurrenceReplay = await addOccurrence(occurrenceKey, 'Hiporexia', secondaryBaseUrl);
+    const occurrenceConflict = await addOccurrence(
+      occurrenceKey,
+      'Título divergente',
+      secondaryBaseUrl
+    );
+    expect(occurrence.status).toBe(201);
+    expect(occurrenceReplay.status).toBe(201);
+    expect(occurrenceReplay.body).toEqual(occurrence.body);
+    expect(occurrenceConflict.status).toBe(409);
 
     const consumptionKey = randomUUID();
-    const consumed = await consume(consumptionKey);
-    const consumptionReplay = await consume(consumptionKey);
-    const consumptionConflict = await consume(consumptionKey, 3);
+    const consumed = await consume(consumptionKey, 2, secondaryBaseUrl);
+    const consumptionReplay = await consume(consumptionKey, 2, baseUrl);
+    const consumptionConflict = await consume(consumptionKey, 3, secondaryBaseUrl);
     expect(consumed.status).toBe(201);
     expect(consumed.body).toMatchObject({ encounterId: ENCOUNTER_A, quantity: 2 });
     expect(consumptionReplay.status).toBe(201);
     expect(consumptionReplay.body).toEqual(consumed.body);
     expect(consumptionConflict.status).toBe(409);
 
-    const daily = await createDailyCharge();
+    const dailyKey = randomUUID();
+    const daily = await createDailyCharge(dailyKey);
+    const dailyReplay = await createDailyCharge(dailyKey);
+    const dailyConflict = await createDailyCharge(dailyKey, AMOUNT_DAILY + 1);
     expect(daily.status).toBe(201);
     expect(daily.body).toMatchObject({ stayId: journeyStayId, status: 'pending' });
+    expect(dailyReplay.status).toBe(201);
+    expect(dailyReplay.body).toEqual(daily.body);
+    expect(dailyConflict.status).toBe(409);
     const billKey = randomUUID();
     const billed = await billDailyCharge(daily.body?.id ?? '', billKey);
     const billedReplay = await billDailyCharge(daily.body?.id ?? '', billKey);
@@ -693,9 +1023,23 @@ describe('inpatient clinical-financial vertical HTTP PostgreSQL boundary', () =>
       readonly journalDebit: number;
       readonly journalCredit: number;
       readonly handoffs: number;
+      readonly handoffSendIdempotency: number;
+      readonly handoffAckIdempotency: number;
+      readonly progressIdempotency: number;
+      readonly occurrenceIdempotency: number;
+      readonly clinicalProgressTimeline: number;
       readonly inventoryOutbox: number;
       readonly closeOutbox: number;
       readonly receiptOutbox: number;
+      readonly admissionIdempotency: number;
+      readonly dailyIdempotency: number;
+      readonly assignmentIdempotency: number;
+      readonly statusIdempotency: number;
+      readonly transferIdempotency: number;
+      readonly clinicalTransferTimeline: number;
+      readonly firstBedStatus: string;
+      readonly secondBedStatus: string;
+      readonly thirdBedStatus: string;
     }>(
       `SELECT
          (SELECT status FROM inpatient_stays WHERE account_id = $1 AND id = $2) AS "stayStatus",
@@ -711,10 +1055,48 @@ describe('inpatient clinical-financial vertical HTTP PostgreSQL boundary', () =>
          (SELECT COALESCE(SUM(debit), 0)::float8 FROM financial_journal_lines WHERE account_id = $1 AND entry_id IN (SELECT id FROM financial_journal_entries WHERE account_id = $1 AND source_type = 'encounter_cash_receipt')) AS "journalDebit",
          (SELECT COALESCE(SUM(credit), 0)::float8 FROM financial_journal_lines WHERE account_id = $1 AND entry_id IN (SELECT id FROM financial_journal_entries WHERE account_id = $1 AND source_type = 'encounter_cash_receipt')) AS "journalCredit",
          (SELECT COUNT(*)::int FROM clinical_handoffs WHERE account_id = $1 AND encounter_id = $3) AS handoffs,
+         (SELECT COUNT(*)::int FROM idempotency_requests WHERE account_id = $1 AND operation = 'POST /clinical-handoffs/send-to-reception' AND idempotency_key = $8 AND status = 'completed') AS "handoffSendIdempotency",
+         (SELECT COUNT(*)::int FROM idempotency_requests WHERE account_id = $1 AND operation = $9 AND idempotency_key = $10 AND status = 'completed') AS "handoffAckIdempotency",
+         (SELECT COUNT(*)::int FROM idempotency_requests WHERE account_id = $1 AND operation = $11 AND idempotency_key = $12 AND status = 'completed') AS "progressIdempotency",
+         (SELECT COUNT(*)::int FROM idempotency_requests WHERE account_id = $1 AND operation = $13 AND idempotency_key = $14 AND status = 'completed') AS "occurrenceIdempotency",
+         (SELECT COUNT(*)::int FROM clinical_timeline WHERE account_id = $1 AND encounter_id = $3 AND event_type = 'inpatient_progressed') AS "clinicalProgressTimeline",
+         (SELECT COUNT(*)::int FROM clinical_timeline WHERE account_id = $1 AND encounter_id = $3 AND event_type = 'inpatient_transferred') AS "clinicalTransferTimeline",
          (SELECT COUNT(*)::int FROM outbox_events WHERE account_id = $1 AND event_type = 'inventory.consumption.created' AND payload->>'encounterId' = $3::text) AS "inventoryOutbox",
          (SELECT COUNT(*)::int FROM outbox_events WHERE account_id = $1 AND event_type = 'encounter.closed' AND payload->>'encounterId' = $3::text) AS "closeOutbox",
-         (SELECT COUNT(*)::int FROM outbox_events WHERE account_id = $1 AND event_type = 'encounter.cash-receipt.created' AND payload->>'encounterId' = $3::text) AS "receiptOutbox"`,
-      [ACCOUNT_A, journeyStayId, ENCOUNTER_A, CASH_REGISTER_A]
+         (SELECT COUNT(*)::int FROM outbox_events WHERE account_id = $1 AND event_type = 'encounter.cash-receipt.created' AND payload->>'encounterId' = $3::text) AS "receiptOutbox",
+         (SELECT COUNT(*)::int FROM idempotency_requests WHERE account_id = $1 AND operation = 'POST /inpatient' AND idempotency_key = $5 AND status = 'completed') AS "admissionIdempotency",
+         (SELECT COUNT(*)::int FROM idempotency_requests WHERE account_id = $1 AND operation = $7 AND idempotency_key = $6 AND status = 'completed') AS "dailyIdempotency",
+         (SELECT COUNT(*)::int FROM idempotency_requests WHERE account_id = $1 AND operation = $15 AND idempotency_key = $16 AND status = 'completed') AS "assignmentIdempotency",
+         (SELECT COUNT(*)::int FROM idempotency_requests WHERE account_id = $1 AND operation = $17 AND idempotency_key = $18 AND status = 'completed') AS "transferIdempotency",
+         (SELECT COUNT(*)::int FROM idempotency_requests WHERE account_id = $1 AND operation = $19 AND idempotency_key = $20 AND status = 'completed') AS "statusIdempotency",
+         (SELECT status FROM beds WHERE account_id = $1 AND id = $21) AS "firstBedStatus",
+         (SELECT status FROM beds WHERE account_id = $1 AND id = $22) AS "secondBedStatus",
+         (SELECT status FROM beds WHERE account_id = $1 AND id = $23) AS "thirdBedStatus"`,
+      [
+        ACCOUNT_A,
+        journeyStayId,
+        ENCOUNTER_A,
+        CASH_REGISTER_A,
+        admissionKey,
+        dailyKey,
+        `POST /inpatient/${journeyStayId}/daily-charges`,
+        handoffKey,
+        `POST /clinical-handoffs/${handoff.body?.id}/acknowledge`,
+        acknowledgeKey,
+        `POST /inpatient/${journeyStayId}/progress`,
+        progressKey,
+        `POST /inpatient/${journeyStayId}/occurrences`,
+        occurrenceKey,
+        `POST /inpatient/${journeyStayId}/assign-bed`,
+        assignmentKey,
+        `POST /inpatient/${journeyStayId}/transfer-bed`,
+        transferKey,
+        `PATCH /inpatient/${journeyStayId}/update-status`,
+        statusKey,
+        BED_A_1,
+        BED_A_2,
+        BED_A_3
+      ]
     );
     expect(state.rows[0]).toEqual({
       stayStatus: 'discharged',
@@ -730,9 +1112,23 @@ describe('inpatient clinical-financial vertical HTTP PostgreSQL boundary', () =>
       journalDebit: AMOUNT_TOTAL,
       journalCredit: AMOUNT_TOTAL,
       handoffs: 1,
+      handoffSendIdempotency: 1,
+      handoffAckIdempotency: 1,
+      progressIdempotency: 1,
+      occurrenceIdempotency: 1,
+      clinicalProgressTimeline: 3,
       inventoryOutbox: 1,
       closeOutbox: 1,
-      receiptOutbox: 1
+      receiptOutbox: 1,
+      admissionIdempotency: 1,
+      dailyIdempotency: 1,
+      assignmentIdempotency: 1,
+      statusIdempotency: 1,
+      transferIdempotency: 1,
+      clinicalTransferTimeline: 1,
+      firstBedStatus: 'available',
+      secondBedStatus: 'available',
+      thirdBedStatus: 'available'
     });
 
     const inventoryLinks = await getTestPool().query<{
@@ -1083,7 +1479,7 @@ describe('inpatient clinical-financial vertical HTTP PostgreSQL boundary', () =>
       randomUUID()
     );
     expect(admission.status).toBe(201);
-    const raceStayId = admission.body?.id;
+    raceStayId = admission.body?.id ?? '';
     expect(raceStayId).toBeTruthy();
     const daily = await requestJson<DailyChargeResponse>(`/inpatient/${raceStayId}/daily-charges`, {
       method: 'POST',
@@ -1142,6 +1538,365 @@ describe('inpatient clinical-financial vertical HTTP PostgreSQL boundary', () =>
       [ACCOUNT_B, ENCOUNTER_B, `POST /encounters/${ENCOUNTER_B}/close`, key]
     );
     expect(state.rows[0]).toEqual({ status: 'open', audits: 0, outbox: 0, idempotency: 0 });
+  });
+
+  it('rolls back a clinical timeline projection failpoint and retries the status command cleanly', async () => {
+    await ensureRaceStay();
+    expect(raceStayId).toMatch(/^[0-9a-f-]{36}$/i);
+    const key = randomUUID();
+    await getTestPool().query(
+      `ALTER TABLE clinical_timeline ADD CONSTRAINT ${CLINICAL_TIMELINE_FAILPOINT_CONSTRAINT}
+       CHECK (NOT (
+         encounter_id = '${RACE_ENCOUNTER_A}'::uuid
+         AND event_type = 'inpatient_progressed'
+       ))`
+    );
+
+    try {
+      const failed = await updateInpatientStatus(raceStayId, key, 'stable');
+      expect(failed.status).toBe(500);
+    } finally {
+      await getTestPool().query(
+        `ALTER TABLE clinical_timeline DROP CONSTRAINT IF EXISTS ${CLINICAL_TIMELINE_FAILPOINT_CONSTRAINT}`
+      );
+    }
+
+    const rolledBack = await getTestPool().query<{
+      readonly stayStatus: string;
+      readonly timelineEvents: number;
+      readonly auditEvents: number;
+      readonly idempotencyRows: number;
+    }>(
+      `SELECT
+         (SELECT status FROM inpatient_stays WHERE account_id = $1 AND id = $2) AS "stayStatus",
+         (SELECT COUNT(*)::int FROM clinical_timeline
+           WHERE account_id = $1 AND encounter_id = $3
+             AND event_type = 'inpatient_progressed') AS "timelineEvents",
+         (SELECT COUNT(*)::int FROM audit_events
+           WHERE account_id = $1 AND action = 'update_status'
+             AND entity_type = 'inpatient-stay' AND entity_id = $2::text) AS "auditEvents",
+         (SELECT COUNT(*)::int FROM idempotency_requests
+           WHERE account_id = $1 AND operation = $4 AND idempotency_key = $5) AS "idempotencyRows"`,
+      [ACCOUNT_A, raceStayId, RACE_ENCOUNTER_A, `PATCH /inpatient/${raceStayId}/update-status`, key]
+    );
+    expect(rolledBack.rows[0]).toEqual({
+      stayStatus: 'admitted',
+      timelineEvents: 0,
+      auditEvents: 0,
+      idempotencyRows: 0
+    });
+
+    const retry = await updateInpatientStatus(raceStayId, key, 'stable');
+    expect(retry.status).toBe(200);
+    expect(retry.body).toMatchObject({ id: raceStayId, status: 'stable' });
+
+    const recovered = await getTestPool().query<{
+      readonly stayStatus: string;
+      readonly timelineEvents: number;
+      readonly auditEvents: number;
+      readonly idempotencyRows: number;
+    }>(
+      `SELECT
+         (SELECT status FROM inpatient_stays WHERE account_id = $1 AND id = $2) AS "stayStatus",
+         (SELECT COUNT(*)::int FROM clinical_timeline
+           WHERE account_id = $1 AND encounter_id = $3
+             AND event_type = 'inpatient_progressed') AS "timelineEvents",
+         (SELECT COUNT(*)::int FROM audit_events
+           WHERE account_id = $1 AND action = 'update_status'
+             AND entity_type = 'inpatient-stay' AND entity_id = $2::text) AS "auditEvents",
+         (SELECT COUNT(*)::int FROM idempotency_requests
+           WHERE account_id = $1 AND operation = $4 AND idempotency_key = $5
+             AND status = 'completed') AS "idempotencyRows"`,
+      [ACCOUNT_A, raceStayId, RACE_ENCOUNTER_A, `PATCH /inpatient/${raceStayId}/update-status`, key]
+    );
+    expect(recovered.rows[0]).toEqual({
+      stayStatus: 'stable',
+      timelineEvents: 1,
+      auditEvents: 1,
+      idempotencyRows: 1
+    });
+  });
+
+  it('rolls back a bed persistence failpoint and retries assignment without occupying a stale bed', async () => {
+    await ensureRaceStay();
+    const key = randomUUID();
+    await getTestPool().query(
+      `ALTER TABLE beds ADD CONSTRAINT ${BED_FAILPOINT_CONSTRAINT}
+       CHECK (NOT (id = '${BED_A_1}'::uuid AND status = 'occupied'))`
+    );
+
+    try {
+      const failed = await assignInpatientBed(raceStayId, key, BED_A_1, SECTOR_A);
+      expect(failed.status).toBe(500);
+    } finally {
+      await getTestPool().query(
+        `ALTER TABLE beds DROP CONSTRAINT IF EXISTS ${BED_FAILPOINT_CONSTRAINT}`
+      );
+    }
+    await new Promise<void>((resolve) => setImmediate(resolve));
+
+    const rolledBack = await getTestPool().query<{
+      readonly stayBedId: string | null;
+      readonly bedStatus: string;
+      readonly auditEvents: number;
+      readonly idempotencyRows: number;
+    }>(
+      `SELECT
+         (SELECT bed_id::text FROM inpatient_stays WHERE account_id = $1 AND id = $2) AS "stayBedId",
+         (SELECT status FROM beds WHERE account_id = $1 AND id = $3) AS "bedStatus",
+         (SELECT COUNT(*)::int FROM audit_events
+           WHERE account_id = $1 AND action = 'assign_bed'
+             AND entity_type = 'inpatient-stay' AND entity_id = $2::text) AS "auditEvents",
+         (SELECT COUNT(*)::int FROM idempotency_requests
+           WHERE account_id = $1 AND operation = $4 AND idempotency_key = $5) AS "idempotencyRows"`,
+      [ACCOUNT_A, raceStayId, BED_A_1, `POST /inpatient/${raceStayId}/assign-bed`, key]
+    );
+    expect(rolledBack.rows[0]).toEqual({
+      stayBedId: null,
+      bedStatus: 'available',
+      auditEvents: 0,
+      idempotencyRows: 0
+    });
+
+    const retry = await assignInpatientBed(raceStayId, key, BED_A_1, SECTOR_A);
+    expect(retry.status).toBe(200);
+    expect(retry.body).toMatchObject({ id: raceStayId, bedId: BED_A_1 });
+
+    const recovered = await getTestPool().query<{
+      readonly stayBedId: string | null;
+      readonly bedStatus: string;
+      readonly auditEvents: number;
+      readonly idempotencyRows: number;
+    }>(
+      `SELECT
+         (SELECT bed_id::text FROM inpatient_stays WHERE account_id = $1 AND id = $2) AS "stayBedId",
+         (SELECT status FROM beds WHERE account_id = $1 AND id = $3) AS "bedStatus",
+         (SELECT COUNT(*)::int FROM audit_events
+           WHERE account_id = $1 AND action = 'assign_bed'
+             AND entity_type = 'inpatient-stay' AND entity_id = $2::text) AS "auditEvents",
+         (SELECT COUNT(*)::int FROM idempotency_requests
+           WHERE account_id = $1 AND operation = $4 AND idempotency_key = $5
+             AND status = 'completed') AS "idempotencyRows"`,
+      [ACCOUNT_A, raceStayId, BED_A_1, `POST /inpatient/${raceStayId}/assign-bed`, key]
+    );
+    expect(recovered.rows[0]).toEqual({
+      stayBedId: BED_A_1,
+      bedStatus: 'occupied',
+      auditEvents: 1,
+      idempotencyRows: 1
+    });
+  });
+
+  it('rolls back a transfer bed failpoint and retries the transition cleanly', async () => {
+    await ensureRaceStay();
+    const key = randomUUID();
+    await getTestPool().query(
+      `ALTER TABLE beds ADD CONSTRAINT ${TRANSFER_BED_FAILPOINT_CONSTRAINT}
+       CHECK (NOT (id = '${BED_A_2}'::uuid AND status = 'occupied'))`
+    );
+
+    try {
+      const failed = await transferInpatientBed(raceStayId, key, BED_A_2, SECTOR_A);
+      expect(failed.status).toBe(500);
+    } finally {
+      await getTestPool().query(
+        `ALTER TABLE beds DROP CONSTRAINT IF EXISTS ${TRANSFER_BED_FAILPOINT_CONSTRAINT}`
+      );
+    }
+    await new Promise<void>((resolve) => setImmediate(resolve));
+
+    const rolledBack = await getTestPool().query<{
+      readonly stayStatus: string;
+      readonly stayBedId: string | null;
+      readonly previousBedStatus: string;
+      readonly targetBedStatus: string;
+      readonly timelineEvents: number;
+      readonly auditEvents: number;
+      readonly idempotencyRows: number;
+    }>(
+      `SELECT
+         (SELECT status FROM inpatient_stays WHERE account_id = $1 AND id = $2) AS "stayStatus",
+         (SELECT bed_id::text FROM inpatient_stays WHERE account_id = $1 AND id = $2) AS "stayBedId",
+         (SELECT status FROM beds WHERE account_id = $1 AND id = $3) AS "previousBedStatus",
+         (SELECT status FROM beds WHERE account_id = $1 AND id = $4) AS "targetBedStatus",
+         (SELECT COUNT(*)::int FROM clinical_timeline
+           WHERE account_id = $1 AND encounter_id = $5
+             AND event_type = 'inpatient_transferred') AS "timelineEvents",
+         (SELECT COUNT(*)::int FROM audit_events
+           WHERE account_id = $1 AND action = 'transfer_bed'
+             AND entity_type = 'inpatient-stay' AND entity_id = $2::text) AS "auditEvents",
+         (SELECT COUNT(*)::int FROM idempotency_requests
+           WHERE account_id = $1 AND operation = $6 AND idempotency_key = $7) AS "idempotencyRows"`,
+      [
+        ACCOUNT_A,
+        raceStayId,
+        BED_A_1,
+        BED_A_2,
+        RACE_ENCOUNTER_A,
+        `POST /inpatient/${raceStayId}/transfer-bed`,
+        key
+      ]
+    );
+    expect(rolledBack.rows[0]).toEqual({
+      stayStatus: 'stable',
+      stayBedId: BED_A_1,
+      previousBedStatus: 'occupied',
+      targetBedStatus: 'available',
+      timelineEvents: 0,
+      auditEvents: 0,
+      idempotencyRows: 0
+    });
+
+    const retry = await transferInpatientBed(raceStayId, key, BED_A_2, SECTOR_A);
+    expect(retry.status).toBe(200);
+    expect(retry.body).toMatchObject({ id: raceStayId, status: 'transferred', bedId: BED_A_2 });
+
+    const recovered = await getTestPool().query<{
+      readonly stayStatus: string;
+      readonly stayBedId: string | null;
+      readonly previousBedStatus: string;
+      readonly targetBedStatus: string;
+      readonly timelineEvents: number;
+      readonly auditEvents: number;
+      readonly idempotencyRows: number;
+    }>(
+      `SELECT
+         (SELECT status FROM inpatient_stays WHERE account_id = $1 AND id = $2) AS "stayStatus",
+         (SELECT bed_id::text FROM inpatient_stays WHERE account_id = $1 AND id = $2) AS "stayBedId",
+         (SELECT status FROM beds WHERE account_id = $1 AND id = $3) AS "previousBedStatus",
+         (SELECT status FROM beds WHERE account_id = $1 AND id = $4) AS "targetBedStatus",
+         (SELECT COUNT(*)::int FROM clinical_timeline
+           WHERE account_id = $1 AND encounter_id = $5
+             AND event_type = 'inpatient_transferred') AS "timelineEvents",
+         (SELECT COUNT(*)::int FROM audit_events
+           WHERE account_id = $1 AND action = 'transfer_bed'
+             AND entity_type = 'inpatient-stay' AND entity_id = $2::text) AS "auditEvents",
+         (SELECT COUNT(*)::int FROM idempotency_requests
+           WHERE account_id = $1 AND operation = $6 AND idempotency_key = $7
+             AND status = 'completed') AS "idempotencyRows"`,
+      [
+        ACCOUNT_A,
+        raceStayId,
+        BED_A_1,
+        BED_A_2,
+        RACE_ENCOUNTER_A,
+        `POST /inpatient/${raceStayId}/transfer-bed`,
+        key
+      ]
+    );
+    expect(recovered.rows[0]).toEqual({
+      stayStatus: 'transferred',
+      stayBedId: BED_A_2,
+      previousBedStatus: 'available',
+      targetBedStatus: 'occupied',
+      timelineEvents: 1,
+      auditEvents: 1,
+      idempotencyRows: 1
+    });
+  });
+
+  it('rolls back an audit persistence failpoint and retries the status projection cleanly', async () => {
+    await ensureAuditStay();
+    const key = randomUUID();
+    const before = await getTestPool().query<{
+      readonly timelineEvents: number;
+      readonly auditEvents: number;
+    }>(
+      `SELECT
+         (SELECT COUNT(*)::int FROM clinical_timeline
+           WHERE account_id = $1 AND encounter_id = $2
+             AND event_type = 'inpatient_progressed') AS "timelineEvents",
+         (SELECT COUNT(*)::int FROM audit_events
+           WHERE account_id = $1 AND action = 'update_status'
+             AND entity_type = 'inpatient-stay' AND entity_id = $3::text) AS "auditEvents"`,
+      [ACCOUNT_A, AUDIT_ENCOUNTER_A, auditStayId]
+    );
+    await getTestPool().query(
+      `ALTER TABLE audit_events ADD CONSTRAINT ${AUDIT_FAILPOINT_CONSTRAINT}
+       CHECK (NOT (
+         account_id = '${ACCOUNT_A}'::uuid
+         AND action = 'update_status'
+         AND entity_type = 'inpatient-stay'
+         AND entity_id = '${auditStayId}'
+       ))`
+    );
+
+    try {
+      const failed = await updateInpatientStatus(auditStayId, key, 'stable');
+      expect(failed.status).toBe(500);
+    } finally {
+      await getTestPool().query(
+        `ALTER TABLE audit_events DROP CONSTRAINT IF EXISTS ${AUDIT_FAILPOINT_CONSTRAINT}`
+      );
+    }
+    await new Promise<void>((resolve) => setImmediate(resolve));
+
+    const rolledBack = await getTestPool().query<{
+      readonly stayStatus: string;
+      readonly timelineEvents: number;
+      readonly auditEvents: number;
+      readonly idempotencyRows: number;
+    }>(
+      `SELECT
+         (SELECT status FROM inpatient_stays WHERE account_id = $1 AND id = $2) AS "stayStatus",
+         (SELECT COUNT(*)::int FROM clinical_timeline
+           WHERE account_id = $1 AND encounter_id = $3
+             AND event_type = 'inpatient_progressed') AS "timelineEvents",
+         (SELECT COUNT(*)::int FROM audit_events
+           WHERE account_id = $1 AND action = 'update_status'
+             AND entity_type = 'inpatient-stay' AND entity_id = $2::text) AS "auditEvents",
+         (SELECT COUNT(*)::int FROM idempotency_requests
+           WHERE account_id = $1 AND operation = $4 AND idempotency_key = $5) AS "idempotencyRows"`,
+      [
+        ACCOUNT_A,
+        auditStayId,
+        AUDIT_ENCOUNTER_A,
+        `PATCH /inpatient/${auditStayId}/update-status`,
+        key
+      ]
+    );
+    expect(rolledBack.rows[0]).toEqual({
+      stayStatus: 'admitted',
+      timelineEvents: before.rows[0]?.timelineEvents ?? 0,
+      auditEvents: before.rows[0]?.auditEvents ?? 0,
+      idempotencyRows: 0
+    });
+
+    const retry = await updateInpatientStatus(auditStayId, key, 'stable');
+    expect(retry.status).toBe(200);
+    expect(retry.body).toMatchObject({ id: auditStayId, status: 'stable' });
+
+    const recovered = await getTestPool().query<{
+      readonly stayStatus: string;
+      readonly timelineEvents: number;
+      readonly auditEvents: number;
+      readonly idempotencyRows: number;
+    }>(
+      `SELECT
+         (SELECT status FROM inpatient_stays WHERE account_id = $1 AND id = $2) AS "stayStatus",
+         (SELECT COUNT(*)::int FROM clinical_timeline
+           WHERE account_id = $1 AND encounter_id = $3
+             AND event_type = 'inpatient_progressed') AS "timelineEvents",
+         (SELECT COUNT(*)::int FROM audit_events
+           WHERE account_id = $1 AND action = 'update_status'
+             AND entity_type = 'inpatient-stay' AND entity_id = $2::text) AS "auditEvents",
+         (SELECT COUNT(*)::int FROM idempotency_requests
+           WHERE account_id = $1 AND operation = $4 AND idempotency_key = $5
+             AND status = 'completed') AS "idempotencyRows"`,
+      [
+        ACCOUNT_A,
+        auditStayId,
+        AUDIT_ENCOUNTER_A,
+        `PATCH /inpatient/${auditStayId}/update-status`,
+        key
+      ]
+    );
+    expect(recovered.rows[0]).toEqual({
+      stayStatus: 'stable',
+      timelineEvents: (before.rows[0]?.timelineEvents ?? 0) + 1,
+      auditEvents: (before.rows[0]?.auditEvents ?? 0) + 1,
+      idempotencyRows: 1
+    });
   });
 
   it('does not cross tenant boundaries when bearer A targets tenant B', async () => {

@@ -130,6 +130,9 @@
         <template #cell-totalAmount="{ row }">
           {{ formatCurrency(numberValue(row, 'totalAmount')) }}
         </template>
+        <template #cell-amountOriginal="{ row }">
+          {{ formatCurrency(numberValue(row, 'amountOriginal')) }}
+        </template>
         <template #cell-outstandingAmount="{ row }">
           {{ formatCurrency(numberValue(row, 'outstandingAmount')) }}
         </template>
@@ -138,6 +141,9 @@
         </template>
         <template #cell-dueAt="{ row }">
           {{ formatDate(stringValue(row, 'dueAt')) }}
+        </template>
+        <template #cell-settledAt="{ row }">
+          {{ formatDateTime(stringValue(row, 'settledAt')) }}
         </template>
         <template #cell-createdAt="{ row }">
           {{ formatDate(stringValue(row, 'createdAt')) }}
@@ -195,9 +201,11 @@ import {
   financialPayablesService,
   type FinancialPayableRecord
 } from '@/services/financialPayables';
+import { financialReceivablesService } from '@/services/financialReceivables';
 import { inventoryService } from '@/services/inventory';
 import { ownerService } from '@/services/owner';
 import { patientService } from '@/services/patient';
+import { reportsService, type ReportExportSummary } from '@/services/reports';
 import { servicesService, type ServiceSummary } from '@/services/services';
 import type { AppointmentSummary } from '@/types/appointment';
 import type {
@@ -207,6 +215,7 @@ import type {
 } from '@/types/inventory';
 import type { OwnerSummary } from '@/types/owner';
 import type { PatientSummary } from '@/types/patient';
+import type { FinancialReceivableListItem } from '@/types/financialReceivables';
 import { patientStatusLabel, sexLabel, speciesLabel } from '@/utils/labels';
 import { buildReportCsv } from '@/utils/report-export';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
@@ -253,6 +262,7 @@ interface ReportSpec {
   primaryAction: string;
   primaryDisabled?: boolean;
   exportable?: boolean;
+  serverReportId?: string;
   tableTitle: string;
   emptyTitle: string;
   emptyDescription: string;
@@ -285,6 +295,7 @@ const patients = ref<PatientSummary[]>([]);
 const suppliers = ref<ExpenseCatalogItem[]>([]);
 const counterSales = ref<CounterSaleSummary[]>([]);
 const financialPayables = ref<FinancialPayableRecord[]>([]);
+const financialReceivables = ref<FinancialReceivableListItem[]>([]);
 const inventoryItems = ref<InventoryItemSummary[]>([]);
 const inventoryLots = ref<InventoryLotSummary[]>([]);
 const inventoryConsumptions = ref<InventoryConsumptionSummary[]>([]);
@@ -311,6 +322,25 @@ const financialPayableColumns: DataTableColumn[] = [
   { key: 'status', label: 'Status' },
   { key: 'paymentMethod', label: 'Método' },
   { key: 'reconciliationStatus', label: 'Reconciliação' }
+];
+
+const financialReceivableColumns: DataTableColumn[] = [
+  { key: 'patientName', label: 'Paciente' },
+  { key: 'ownerName', label: 'Nome do tutor' },
+  { key: 'patientSpecies', label: 'Espécie' },
+  { key: 'encounterId', label: 'Atendimento' },
+  { key: 'installmentNumber', label: 'Parcela' },
+  { key: 'installmentLabel', label: 'Descrição da parcela' },
+  { key: 'issuedAt', label: 'Emissão' },
+  { key: 'dueAt', label: 'Vencimento' },
+  { key: 'settledAt', label: 'Liquidação' },
+  { key: 'amountOriginal', label: 'Original' },
+  { key: 'amountPaid', label: 'Recebido' },
+  { key: 'amountOutstanding', label: 'Saldo' },
+  { key: 'status', label: 'Status' },
+  { key: 'financialStatus', label: 'Status financeiro' },
+  { key: 'encounterStatus', label: 'Atendimento' },
+  { key: 'paymentCount', label: 'Pagamentos' }
 ];
 
 const specs: Record<ReportKey, ReportSpec> = {
@@ -579,7 +609,11 @@ const specs: Record<ReportKey, ReportSpec> = {
     'Recebíveis em aberto por tutor e paciente',
     'open'
   ),
-  'received-accounts': receivedAccountsSpec(),
+  'received-accounts': receivableSpec(
+    'Contas Recebidas',
+    'Recebíveis liquidados por tutor e paciente',
+    'received'
+  ),
   'accounts-payable': accountsPayableReportSpec(),
   'paid-accounts': paidAccountsReportSpec(),
   cheques: chequesReportSpec(),
@@ -605,6 +639,8 @@ const spec = computed(() => specs[props.reportKey]);
 const isAuditAppointments = computed(() => props.reportKey === 'audit-appointments');
 const isAppointmentsReport = computed(() => props.reportKey === 'appointments');
 const isProfessionalCareReport = computed(() => props.reportKey === 'professional-care');
+const isAccountsReceivableReport = computed(() => props.reportKey === 'accounts-receivable');
+const isReceivedAccountsReport = computed(() => props.reportKey === 'received-accounts');
 const isAccountsPayableReport = computed(() => props.reportKey === 'accounts-payable');
 const isPaidAccountsReport = computed(() => props.reportKey === 'paid-accounts');
 const isRegisterServicesReport = computed(() => props.reportKey === 'register-services');
@@ -621,6 +657,9 @@ const isInventoryProductsReport = computed(() => props.reportKey === 'inventory-
 const isFinancialPayablesReport = computed(
   () => isAccountsPayableReport.value || isPaidAccountsReport.value
 );
+const isFinancialReceivablesReport = computed(
+  () => isAccountsReceivableReport.value || isReceivedAccountsReport.value
+);
 const filteredAuditEvents = computed(() =>
   auditEvents.value.filter((event) => matchesAuditFilters(event))
 );
@@ -636,6 +675,20 @@ const filteredFinancialPayables = computed(() =>
     const dueAt = payable.dueAt.slice(0, 10);
     if (filters.value.dateFrom && dueAt < filters.value.dateFrom) return false;
     if (filters.value.dateTo && dueAt > filters.value.dateTo) return false;
+    return true;
+  })
+);
+const filteredFinancialReceivables = computed(() =>
+  financialReceivables.value.filter((receivable) => {
+    const expectedStatus = isReceivedAccountsReport.value ? 'settled' : 'open';
+    if (receivable.status !== expectedStatus) return false;
+    const reportDate = (
+      expectedStatus === 'settled'
+        ? (receivable.settledAt ?? receivable.issuedAt)
+        : (receivable.dueAt ?? receivable.issuedAt)
+    ).slice(0, 10);
+    if (filters.value.dateFrom && reportDate < filters.value.dateFrom) return false;
+    if (filters.value.dateTo && reportDate > filters.value.dateTo) return false;
     return true;
   })
 );
@@ -667,10 +720,39 @@ const financialPayableReportCards = computed<ReportCard[]>(() => {
 const financialPayableReportRows = computed<DataTableRow[]>(() =>
   filteredFinancialPayables.value.map((payable) => ({ ...payable, id: payable.id }))
 );
+const financialReceivableReportCards = computed<ReportCard[]>(() => {
+  const source = filteredFinancialReceivables.value;
+  return [
+    {
+      label: isReceivedAccountsReport.value ? 'Contas recebidas' : 'Recebíveis em aberto',
+      value: count(source.length),
+      icon: isReceivedAccountsReport.value ? '✅' : '💵'
+    },
+    {
+      label: 'Original',
+      value: money(source.reduce((total, receivable) => total + receivable.amountOriginal, 0)),
+      icon: '🧾'
+    },
+    {
+      label: 'Recebido',
+      value: money(source.reduce((total, receivable) => total + receivable.amountPaid, 0)),
+      icon: '💸'
+    },
+    {
+      label: 'Saldo',
+      value: money(source.reduce((total, receivable) => total + receivable.amountOutstanding, 0)),
+      icon: '⏳'
+    }
+  ];
+});
+const financialReceivableReportRows = computed<DataTableRow[]>(() =>
+  filteredFinancialReceivables.value.map((receivable) => ({ ...receivable, id: receivable.id }))
+);
 const cards = computed(() => {
   if (isAuditAppointments.value) return auditAppointmentCards.value;
   if (isAppointmentsReport.value) return appointmentReportCards.value;
   if (isProfessionalCareReport.value) return professionalCareReportCards.value;
+  if (isFinancialReceivablesReport.value) return financialReceivableReportCards.value;
   if (isFinancialPayablesReport.value) return financialPayableReportCards.value;
   if (isRegisterServicesReport.value) return registerServicesReportCards.value;
   if (isRegisterOwnersReport.value) return registerOwnersReportCards.value;
@@ -687,6 +769,7 @@ const rows = computed(() => {
   if (isAuditAppointments.value) return auditAppointmentRows.value;
   if (isAppointmentsReport.value) return appointmentReportRows.value;
   if (isProfessionalCareReport.value) return professionalCareReportRows.value;
+  if (isFinancialReceivablesReport.value) return financialReceivableReportRows.value;
   if (isFinancialPayablesReport.value) return financialPayableReportRows.value;
   if (isRegisterServicesReport.value) return registerServicesReportRows.value;
   if (isRegisterOwnersReport.value) return registerOwnersReportRows.value;
@@ -1119,14 +1202,17 @@ async function loadReport() {
         endAt: filters.value.dateTo ? `${filters.value.dateTo}T23:59:59.999Z` : undefined
       });
       report.value = null;
+    } else if (isFinancialReceivablesReport.value) {
+      financialReceivables.value = [];
+      financialReceivables.value = await listAllFinancialReceivables(
+        isReceivedAccountsReport.value ? 'settled' : 'open'
+      );
+      report.value = null;
     } else if (isFinancialPayablesReport.value) {
       financialPayables.value = [];
-      const response = await financialPayablesService.list({
-        status: isPaidAccountsReport.value ? 'paid' : '',
-        page: 1,
-        pageSize: 500
-      });
-      financialPayables.value = [...response.data];
+      financialPayables.value = await listAllFinancialPayables(
+        isPaidAccountsReport.value ? 'paid' : ''
+      );
       report.value = null;
     } else if (isRegisterServicesReport.value) {
       services.value = await servicesService.list();
@@ -1180,7 +1266,35 @@ async function loadReport() {
   }
 }
 
-function exportCurrentReport(): void {
+async function listAllFinancialPayables(status: '' | 'paid'): Promise<FinancialPayableRecord[]> {
+  const pageSize = 100;
+  const all: FinancialPayableRecord[] = [];
+  let page = 1;
+
+  while (true) {
+    const response = await financialPayablesService.list({ status, page, pageSize });
+    all.push(...response.data);
+    if (response.data.length === 0 || all.length >= response.total) return all;
+    page += 1;
+  }
+}
+
+async function listAllFinancialReceivables(
+  status: '' | 'open' | 'settled'
+): Promise<FinancialReceivableListItem[]> {
+  const pageSize = 100;
+  const all: FinancialReceivableListItem[] = [];
+  let page = 1;
+
+  while (true) {
+    const response = await financialReceivablesService.list({ status, page, pageSize });
+    all.push(...response.data);
+    if (response.data.length === 0 || all.length >= response.total) return all;
+    page += 1;
+  }
+}
+
+async function exportCurrentReport(): Promise<void> {
   if (!spec.value.exportable || exporting.value) return;
 
   exporting.value = true;
@@ -1188,6 +1302,17 @@ function exportCurrentReport(): void {
   success.value = '';
 
   try {
+    if (spec.value.serverReportId) {
+      const execution = await reportsService.execute({
+        reportId: spec.value.serverReportId,
+        filters: buildServerReportFilters()
+      });
+      const exported = await reportsService.exportExecution(execution.id, 'csv');
+      downloadReportExport(exported);
+      success.value = `Exportação server-side auditada gerada com ${execution.rowCount} linha(s).`;
+      return;
+    }
+
     const csv = buildReportCsv(spec.value.columns, rows.value);
     downloadCsv(csv, buildReportFilename(spec.value.title));
     success.value = `Exportação CSV gerada com ${rows.value.length} linha(s).`;
@@ -1195,6 +1320,36 @@ function exportCurrentReport(): void {
     error.value = err instanceof Error ? err.message : 'Não foi possível exportar o relatório';
   } finally {
     exporting.value = false;
+  }
+}
+
+function buildServerReportFilters(): Record<string, unknown> {
+  return {
+    ...(isAccountsReceivableReport.value ? { status: 'open' } : {}),
+    ...(isReceivedAccountsReport.value ? { status: 'settled' } : {}),
+    ...(isPaidAccountsReport.value ? { status: 'paid' } : {}),
+    ...(filters.value.dateFrom ? { dateFrom: filters.value.dateFrom } : {}),
+    ...(filters.value.dateTo ? { dateTo: filters.value.dateTo } : {})
+  };
+}
+
+function downloadReportExport(exported: ReportExportSummary): void {
+  const content =
+    exported.contentEncoding === 'base64'
+      ? Uint8Array.from(window.atob(exported.content), (character) => character.charCodeAt(0))
+      : exported.content;
+  const blob = new Blob([content], { type: exported.contentType });
+  const objectUrl = typeof URL.createObjectURL === 'function' ? URL.createObjectURL(blob) : null;
+  const anchor = document.createElement('a');
+  anchor.href = objectUrl ?? `data:${exported.contentType},${encodeURIComponent(exported.content)}`;
+  anchor.download = exported.filename;
+  anchor.rel = 'noopener';
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+
+  if (objectUrl) {
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
   }
 }
 
@@ -1323,136 +1478,16 @@ function receivableSpec(title: string, subtitle: string, mode: 'open' | 'receive
     primaryPath: '/finance/accounts-receivable',
     primaryAction: 'Exportar CSV',
     exportable: true,
-    tableTitle: isOpenReport ? 'Maiores recebíveis em aberto' : 'Indicadores de recebimento',
-    emptyTitle: isOpenReport ? 'Sem recebíveis em aberto' : 'Sem recebimento consolidado',
+    serverReportId: 'financial-receivables',
+    tableTitle: isOpenReport ? 'Maiores recebíveis em aberto' : 'Recebimentos no período',
+    emptyTitle: isOpenReport ? 'Sem recebíveis em aberto' : 'Sem conta recebida no período',
     emptyDescription: 'A movimentação financeira aparece aqui conforme o período selecionado.',
     note: isOpenReport
       ? 'A rota Vetus legacy observada e Sistema/Relatorio/ContasAReceberRelatorio.htm. Exporta CSV dos recebíveis carregados; esta visão é somente leitura, não baixa títulos nem concilia recebíveis.'
-      : undefined,
-    columns: isOpenReport
-      ? [
-          { key: 'patientName', label: 'Paciente' },
-          { key: 'ownerName', label: 'Tutor' },
-          { key: 'installmentLabel', label: 'Parcela' },
-          { key: 'dueAt', label: 'Vencimento' },
-          { key: 'amount', label: 'Saldo' }
-        ]
-      : [
-          { key: 'label', label: 'Indicador' },
-          { key: 'value', label: 'Total' },
-          { key: 'scope', label: 'Origem' }
-        ],
-    cards: (current) => [
-      {
-        label: 'Em aberto',
-        value: money(current?.domains.financial.receivables.totalOutstanding),
-        icon: '💵'
-      },
-      {
-        label: 'Vencidos',
-        value: money(current?.domains.financial.receivables.overdueAmount),
-        icon: '⚠️'
-      },
-      {
-        label: 'PIX concluídos',
-        value: money(current?.domains.financial.pix.completedAmount),
-        icon: '💸'
-      }
-    ],
-    rows: (current) => {
-      if (isOpenReport) {
-        return (current?.domains.financial.receivables.topOpenReceivables ?? []).map((row) => ({
-          ...row,
-          id: row.receivableId,
-          amount: row.amountOutstanding
-        })) as DataTableRow[];
-      }
-      return [
-        {
-          id: 'settled',
-          label: 'Faturamentos quitados',
-          value: count(current?.domains.financial.billing.settledCount),
-          scope: 'Faturamento'
-        },
-        {
-          id: 'pix',
-          label: 'PIX concluídos',
-          value: count(current?.domains.financial.pix.completedCount),
-          scope: 'PIX'
-        },
-        {
-          id: 'reconciled',
-          label: 'PIX conciliados',
-          value: count(current?.domains.financial.pix.reconciledCount),
-          scope: 'Conciliação'
-        }
-      ];
-    }
-  };
-}
-
-function receivedAccountsSpec(): ReportSpec {
-  return {
-    title: 'Contas Recebidas',
-    group: 'Relatórios Financeiros',
-    subtitle:
-      'Relatório financeiro legacy de títulos liquidados, recebimentos efetivos e origem do recebimento',
-    icon: '✅',
-    primaryPath: '/finance/accounts-receivable',
-    primaryAction: 'Exportar CSV',
-    exportable: true,
-    tableTitle: 'Recebimentos no período',
-    emptyTitle: 'Sem conta recebida no período',
-    emptyDescription:
-      'Títulos quitados e recebimentos confirmados aparecem aqui conforme o período selecionado.',
-    note: 'A rota Vetus legacy observada e Sistema/Relatorio/ContasRecebidasRelatorio.htm. Exporta CSV dos indicadores de recebimento carregados; esta visão é somente leitura, não baixa títulos nem concilia recebimentos.',
-    columns: [
-      { key: 'label', label: 'Indicador' },
-      { key: 'receivedAmount', label: 'Recebido' },
-      { key: 'records', label: 'Registros' },
-      { key: 'scope', label: 'Origem' }
-    ],
-    cards: (current) => [
-      {
-        label: 'Recebido confirmado',
-        value: money(current?.domains.financial.pix.completedAmount),
-        icon: '💸'
-      },
-      {
-        label: 'Títulos quitados',
-        value: count(current?.domains.financial.billing.settledCount),
-        icon: '✅'
-      },
-      {
-        label: 'PIX conciliados',
-        value: count(current?.domains.financial.pix.reconciledCount),
-        icon: '🏦'
-      }
-    ],
-    rows: (current) =>
-      [
-        {
-          id: 'settled-billing',
-          label: 'Faturamentos quitados',
-          receivedAmount: 0,
-          records: count(current?.domains.financial.billing.settledCount),
-          scope: 'Faturamento'
-        },
-        {
-          id: 'pix-completed',
-          label: 'PIX concluídos',
-          receivedAmount: current?.domains.financial.pix.completedAmount ?? 0,
-          records: count(current?.domains.financial.pix.completedCount),
-          scope: 'PIX'
-        },
-        {
-          id: 'pix-reconciled',
-          label: 'PIX conciliados',
-          receivedAmount: current?.domains.financial.pix.completedAmount ?? 0,
-          records: count(current?.domains.financial.pix.reconciledCount),
-          scope: 'Conciliação'
-        }
-      ] as DataTableRow[]
+      : 'A rota Vetus legacy observada e Sistema/Relatorio/ContasRecebidasRelatorio.htm. Exporta CSV do subledger de recebíveis liquidados; esta visão é somente leitura, não baixa títulos nem concilia recebimentos.',
+    columns: financialReceivableColumns,
+    cards: () => [],
+    rows: () => []
   };
 }
 
@@ -1465,6 +1500,7 @@ function accountsPayableReportSpec(): ReportSpec {
     primaryPath: '/finance/accounts-payable',
     primaryAction: 'Exportar CSV',
     exportable: true,
+    serverReportId: 'financial-payables',
     tableTitle: 'Obrigações a pagar',
     emptyTitle: 'Sem obrigação a pagar no período',
     emptyDescription:
@@ -1486,6 +1522,7 @@ function paidAccountsReportSpec(): ReportSpec {
     primaryPath: '/finance/accounts-payable',
     primaryAction: 'Exportar CSV',
     exportable: true,
+    serverReportId: 'financial-payables',
     tableTitle: 'Pagamentos no período',
     emptyTitle: 'Sem conta paga no período',
     emptyDescription:

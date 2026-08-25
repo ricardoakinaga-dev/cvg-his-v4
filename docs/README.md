@@ -1,41 +1,46 @@
 # CVG-HIS V4 - Documentacao ativa
 
-**Atualizado em:** 2026-08-24 (exportação CSV do workbench financeiro e continuidade)
+**Atualizado em:** 2026-08-24 (failpoint cross-domain e recuperação inpatient)
 
 Esta pasta separa documentacao vigente, referencia do Vetus e historico. Uma afirmacao de funcionalidade so e considerada valida quando estiver sustentada por codigo executavel e teste comportamental.
 
 ## Comece aqui
 
-1. [`2026-08-24-handoff-reports-workbench-payables-export.md`](2026-08-24-handoff-reports-workbench-payables-export.md) - ponteiro operacional mais recente: exportação CSV bounded de Contas a Pagar e Contas Pagas a partir do subledger persistido.
-2. [`2026-08-24-handoff-reports-workbench-inventory-export.md`](2026-08-24-handoff-reports-workbench-inventory-export.md) - exportação CSV bounded dos recortes de estoque já carregados no workbench Vetus.
-3. [`2026-08-24-handoff-reports-workbench-export.md`](2026-08-24-handoff-reports-workbench-export.md) - exportação CSV bounded do workbench Vetus para auditoria, financeiro e atendimento, com teste unitário, componente e E2E.
-4. [`2026-08-24-handoff-pix-runtime-role.md`](2026-08-24-handoff-pix-runtime-role.md) - settlement PIX sob role worker real, ACL/RLS, A/B, SIGKILL e fencing; não promove ERP, produção ou release.
-5. [`../.agent/artifacts/CVG-002C6-pix-runtime-role-2026-08-24.md`](../.agent/artifacts/CVG-002C6-pix-runtime-role-2026-08-24.md) - RED/GREEN da role runtime, migration 0124, crítica e limitações.
-6. [`2026-08-24-handoff-reports-run-once.md`](2026-08-24-handoff-reports-run-once.md) - execução one-shot de relatórios agendados, entrega controlada, recovery após SIGKILL e lease distribuído de retry no PostgreSQL.
-7. [`2026-08-24-handoff-webhook-storage-audit.md`](2026-08-24-handoff-webhook-storage-audit.md) - reconciliação do diagnóstico histórico com o executor webhook durável já implementado e seus limites honestos.
-8. [`2026-08-24-handoff-laboratory-bootstrap-concurrency.md`](2026-08-24-handoff-laboratory-bootstrap-concurrency.md) - dois PIDs reais, catálogo laboratorial idempotente, reparo parcial e isolamento A/B.
-9. [`../.agent/artifacts/CVG-002C6-laboratory-bootstrap-concurrency-2026-08-24.md`](../.agent/artifacts/CVG-002C6-laboratory-bootstrap-concurrency-2026-08-24.md) - RED/GREEN da corrida de bootstrap, crítica independente, suíte de regressão e limitações.
-10. [`2026-08-24-handoff-cash-receipt-concurrency.md`](2026-08-24-handoff-cash-receipt-concurrency.md) - corrida GREEN bounded entre duas APIs, isolamento A/B e barreira PostgreSQL.
-11. [`2026-08-24-handoff-cash-receipt-sigkill.md`](2026-08-24-handoff-cash-receipt-sigkill.md) - rollback/restart/replay do recebimento sob SIGKILL e limites da prova.
-12. [`2026-08-24-handoff-worker-account-scope.md`](2026-08-24-handoff-worker-account-scope.md) - escopo fail-closed do worker em Helm e limite explícito de renderização/cluster.
-13. [`2026-08-23-auditoria-documental-global-e-handoff.md`](2026-08-23-auditoria-documental-global-e-handoff.md) - inventário e Quality Bar global reconciliada; ler junto com os handoffs de 24/08.
-14. [`../.agent/artifacts/CVG-002C6-cash-receipt-concurrency-2026-08-24.md`](../.agent/artifacts/CVG-002C6-cash-receipt-concurrency-2026-08-24.md) - RED/GREEN da corrida, barreira PostgreSQL e crítica independente.
-15. [`../.agent/artifacts/CVG-002C6-worker-account-scope-2026-08-24.md`](../.agent/artifacts/CVG-002C6-worker-account-scope-2026-08-24.md) - RED/GREEN do Secret obrigatório do worker e limites de Helm.
-16. [`2026-08-23-checkpoint-retomada-sessao-atualizado.md`](2026-08-23-checkpoint-retomada-sessao-atualizado.md) - índice curto para retomar em cinco minutos.
-17. [`../.agent/artifacts/CVG-002C6-critical-gates-2026-08-24.md`](../.agent/artifacts/CVG-002C6-critical-gates-2026-08-24.md) - evidência fresca do `test:critical`, guardrails e limites de revisão.
-18. [`../.agent/artifacts/CVG-002C6-stale-owner-a-alive-2026-08-24.md`](../.agent/artifacts/CVG-002C6-stale-owner-a-alive-2026-08-24.md) - RED/GREEN da fencing com A vivo e reconciliação SQL.
-19. [`../.agent/artifacts/CVG-002C6-billing-source-hash-2026-08-24.md`](../.agent/artifacts/CVG-002C6-billing-source-hash-2026-08-24.md) - vínculo billing→consumo, hash canônico e replay divergente.
-20. [`../.agent/artifacts/CVG-002C6-cross-instance-hydration-2026-08-24.md`](../.agent/artifacts/CVG-002C6-cross-instance-hydration-2026-08-24.md) - RED/GREEN de leitura authoritative na API secundária e isolamento A/B.
-21. [`phase-9-migration-manifest.json`](phase-9-migration-manifest.json) - ondas documentais de migração, explicitamente `PLAN_ONLY`.
-22. [`2026-08-23-checkpoint-retomada-integral.md`](2026-08-23-checkpoint-retomada-integral.md) - baseline executável e histórico detalhado de retomada.
-23. [`2026-08-23-handoff-sessao-atual.md`](2026-08-23-handoff-sessao-atual.md) - handoff amplo da sessão, evidências e decisões independentes.
-24. [`2026-08-23-pesquisa-mercado-erp-veterinario.md`](2026-08-23-pesquisa-mercado-erp-veterinario.md) - sinais de produto em fontes oficiais e implicações para a barra de paridade.
-25. [`2026-08-22-auditoria-integral-e-pesquisa-erp.md`](2026-08-22-auditoria-integral-e-pesquisa-erp.md) - auditoria consolidada, lacunas de código e pesquisa de PIMS oficiais.
-26. [`2026-08-07-plano-executivo-resolucao-auditoria-cvg-his-v4.md`](2026-08-07-plano-executivo-resolucao-auditoria-cvg-his-v4.md) - plano executivo vigente, marcos, gates, responsáveis e metas.
-27. [`2026-08-07-backlog-roadmap-resolucao-auditoria-cvg-his-v4.md`](2026-08-07-backlog-roadmap-resolucao-auditoria-cvg-his-v4.md) - backlog rastreável aos achados, dependências e critérios de aceite.
-28. [`2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md`](2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md) - baseline histórica da auditoria técnica e funcional; não substitui a Quality Bar nem os handoffs de 24/08.
-29. [`430-fonte-de-verdade-documental.md`](430-fonte-de-verdade-documental.md) - regras de governança e precedência.
-30. [`vetus/README.md`](vetus/README.md) - acervo factual capturado do Vetus.
+1. [`2026-08-24-handoff-inpatient-bed-status-idempotency.md`](2026-08-24-handoff-inpatient-bed-status-idempotency.md) - assignment, transferência e status com replay/conflict cross-instance, failpoints PostgreSQL de timeline/leito/auditoria, callback clínico aguardado, restart/SIGKILL e liberação durável de leitos.
+2. [`2026-08-24-handoff-inpatient-clinical-notes-idempotency.md`](2026-08-24-handoff-inpatient-clinical-notes-idempotency.md) - handoff, evolução e ocorrência com replay/conflict cross-instance, recuperação de cache e timeline clínica persistida.
+3. [`2026-08-24-handoff-inpatient-command-idempotency.md`](2026-08-24-handoff-inpatient-command-idempotency.md) - admissão e criação de diária com unidade de trabalho tenant-scoped, replay/conflict, auditoria transacional e hidratação cross-instance.
+4. [`2026-08-24-handoff-reports-server-audited-receivables-export.md`](2026-08-24-handoff-reports-server-audited-receivables-export.md) - export server-side auditável de Contas a Receber e Contas Recebidas a partir do subledger tenant-scoped.
+5. [`2026-08-24-handoff-reports-server-audited-payables-export.md`](2026-08-24-handoff-reports-server-audited-payables-export.md) - export server-side auditável de Contas a Pagar e Contas Pagas a partir do subledger persistido.
+4. [`2026-08-24-handoff-reports-workbench-payables-export.md`](2026-08-24-handoff-reports-workbench-payables-export.md) - exportação CSV bounded anterior do workbench financeiro.
+5. [`2026-08-24-handoff-reports-workbench-inventory-export.md`](2026-08-24-handoff-reports-workbench-inventory-export.md) - exportação CSV bounded dos recortes de estoque já carregados no workbench Vetus.
+6. [`2026-08-24-handoff-reports-workbench-export.md`](2026-08-24-handoff-reports-workbench-export.md) - exportação CSV bounded do workbench Vetus para auditoria, financeiro e atendimento, com teste unitário, componente e E2E.
+7. [`2026-08-24-handoff-pix-runtime-role.md`](2026-08-24-handoff-pix-runtime-role.md) - settlement PIX sob role worker real, ACL/RLS, A/B, SIGKILL e fencing; não promove ERP, produção ou release.
+8. [`../.agent/artifacts/CVG-002C6-pix-runtime-role-2026-08-24.md`](../.agent/artifacts/CVG-002C6-pix-runtime-role-2026-08-24.md) - RED/GREEN da role runtime, migration 0124, crítica e limitações.
+9. [`2026-08-24-handoff-reports-run-once.md`](2026-08-24-handoff-reports-run-once.md) - execução one-shot de relatórios agendados, entrega controlada, recovery após SIGKILL e lease distribuído de retry no PostgreSQL.
+10. [`2026-08-24-handoff-webhook-storage-audit.md`](2026-08-24-handoff-webhook-storage-audit.md) - reconciliação do diagnóstico histórico com o executor webhook durável já implementado e seus limites honestos.
+11. [`2026-08-24-handoff-laboratory-bootstrap-concurrency.md`](2026-08-24-handoff-laboratory-bootstrap-concurrency.md) - dois PIDs reais, catálogo laboratorial idempotente, reparo parcial e isolamento A/B.
+12. [`../.agent/artifacts/CVG-002C6-laboratory-bootstrap-concurrency-2026-08-24.md`](../.agent/artifacts/CVG-002C6-laboratory-bootstrap-concurrency-2026-08-24.md) - RED/GREEN da corrida de bootstrap, crítica independente, suíte de regressão e limitações.
+13. [`2026-08-24-handoff-cash-receipt-concurrency.md`](2026-08-24-handoff-cash-receipt-concurrency.md) - corrida GREEN bounded entre duas APIs, isolamento A/B e barreira PostgreSQL.
+14. [`2026-08-24-handoff-cash-receipt-sigkill.md`](2026-08-24-handoff-cash-receipt-sigkill.md) - rollback/restart/replay do recebimento sob SIGKILL e limites da prova.
+15. [`2026-08-24-handoff-worker-account-scope.md`](2026-08-24-handoff-worker-account-scope.md) - escopo fail-closed do worker em Helm e limite explícito de renderização/cluster.
+16. [`2026-08-23-auditoria-documental-global-e-handoff.md`](2026-08-23-auditoria-documental-global-e-handoff.md) - inventário e Quality Bar global reconciliada; ler junto com os handoffs de 24/08.
+17. [`../.agent/artifacts/CVG-002C6-cash-receipt-concurrency-2026-08-24.md`](../.agent/artifacts/CVG-002C6-cash-receipt-concurrency-2026-08-24.md) - RED/GREEN da corrida, barreira PostgreSQL e crítica independente.
+18. [`../.agent/artifacts/CVG-002C6-worker-account-scope-2026-08-24.md`](../.agent/artifacts/CVG-002C6-worker-account-scope-2026-08-24.md) - RED/GREEN do Secret obrigatório do worker e limites de Helm.
+18. [`2026-08-23-checkpoint-retomada-sessao-atualizado.md`](2026-08-23-checkpoint-retomada-sessao-atualizado.md) - índice curto para retomar em cinco minutos.
+19. [`../.agent/artifacts/CVG-002C6-critical-gates-2026-08-24.md`](../.agent/artifacts/CVG-002C6-critical-gates-2026-08-24.md) - evidência fresca do `test:critical`, guardrails e limites de revisão.
+20. [`../.agent/artifacts/CVG-002C6-stale-owner-a-alive-2026-08-24.md`](../.agent/artifacts/CVG-002C6-stale-owner-a-alive-2026-08-24.md) - RED/GREEN da fencing com A vivo e reconciliação SQL.
+21. [`../.agent/artifacts/CVG-002C6-billing-source-hash-2026-08-24.md`](../.agent/artifacts/CVG-002C6-billing-source-hash-2026-08-24.md) - vínculo billing→consumo, hash canônico e replay divergente.
+22. [`../.agent/artifacts/CVG-002C6-cross-instance-hydration-2026-08-24.md`](../.agent/artifacts/CVG-002C6-cross-instance-hydration-2026-08-24.md) - RED/GREEN de leitura authoritative na API secundária e isolamento A/B.
+23. [`phase-9-migration-manifest.json`](phase-9-migration-manifest.json) - ondas documentais de migração, explicitamente `PLAN_ONLY`.
+24. [`2026-08-23-checkpoint-retomada-integral.md`](2026-08-23-checkpoint-retomada-integral.md) - baseline executável e histórico detalhado de retomada.
+25. [`2026-08-23-handoff-sessao-atual.md`](2026-08-23-handoff-sessao-atual.md) - handoff amplo da sessão, evidências e decisões independentes.
+26. [`2026-08-23-pesquisa-mercado-erp-veterinario.md`](2026-08-23-pesquisa-mercado-erp-veterinario.md) - sinais de produto em fontes oficiais e implicações para a barra de paridade.
+27. [`2026-08-22-auditoria-integral-e-pesquisa-erp.md`](2026-08-22-auditoria-integral-e-pesquisa-erp.md) - auditoria consolidada, lacunas de código e pesquisa de PIMS oficiais.
+28. [`2026-08-07-plano-executivo-resolucao-auditoria-cvg-his-v4.md`](2026-08-07-plano-executivo-resolucao-auditoria-cvg-his-v4.md) - plano executivo vigente, marcos, gates, responsáveis e metas.
+29. [`2026-08-07-backlog-roadmap-resolucao-auditoria-cvg-his-v4.md`](2026-08-07-backlog-roadmap-resolucao-auditoria-cvg-his-v4.md) - backlog rastreável aos achados, dependências e critérios de aceite.
+30. [`2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md`](2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md) - baseline histórica da auditoria técnica e funcional; não substitui a Quality Bar nem os handoffs de 24/08.
+31. [`430-fonte-de-verdade-documental.md`](430-fonte-de-verdade-documental.md) - regras de governança e precedência.
+32. [`vetus/README.md`](vetus/README.md) - acervo factual capturado do Vetus.
 
 Os handoffs de 24/08 e a Quality Bar global de 23/08 compõem a superfície
 operacional atual. Evidência posterior bounded atualiza a continuidade, mas não

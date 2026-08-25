@@ -7,7 +7,11 @@ import { EncountersService } from '@cvg-his-v2/module-encounters';
 import { InpatientService } from '@cvg-his-v2/module-inpatient';
 import { OwnersService } from '@cvg-his-v2/module-owners';
 import { PatientsService } from '@cvg-his-v2/module-patients';
-import type { AuthenticatedPrincipal, InpatientStaySummary } from '@cvg-his-v2/shared-types';
+import type {
+  AuthenticatedPrincipal,
+  InpatientProgressSummary,
+  InpatientStaySummary
+} from '@cvg-his-v2/shared-types';
 
 import { handleInpatientRoutes } from './inpatient-routes.js';
 
@@ -19,11 +23,16 @@ class MockRequest extends Readable {
   readonly #body: Buffer;
   #sent = false;
 
-  constructor(input: { method: string; url: string; body?: Record<string, unknown> }) {
+  constructor(input: {
+    method: string;
+    url: string;
+    body?: Record<string, unknown>;
+    headers?: Record<string, string>;
+  }) {
     super();
     this.method = input.method;
     this.url = input.url;
-    this.headers = {};
+    this.headers = { ...(input.headers ?? {}) };
     this.socket = { remoteAddress: '127.0.0.1' };
     this.#body = Buffer.from(input.body ? JSON.stringify(input.body) : '', 'utf8');
   }
@@ -235,11 +244,72 @@ test('handleInpatientRoutes admits the patient from an existing encounter', asyn
   assert.equal(admitted.status, 'admitted');
 });
 
+test('handleInpatientRoutes executes admission through the tenant command seam', async () => {
+  const inpatient = createInpatientService();
+  const existingStay = inpatient.list()[0];
+  assert.ok(existingStay);
+  inpatient.updateStatus(existingStay.id, {
+    status: 'discharged',
+    dischargeReason: 'Alta antes da admissao idempotente'
+  });
+
+  let commandCalls = 0;
+  let operation = '';
+  const runCommand = async <T>(input: {
+    readonly operation: string;
+    readonly command: () => Promise<T>;
+  }): Promise<T> => {
+    commandCalls += 1;
+    operation = input.operation;
+    return input.command();
+  };
+  const response = new MockResponse();
+
+  await handleInpatientRoutes(
+    '/inpatient',
+    new MockRequest({
+      method: 'POST',
+      url: '/inpatient',
+      headers: { 'idempotency-key': 'admission-idempotency-key' },
+      body: {
+        encounterId: existingStay.encounterId,
+        patientId: existingStay.patientId,
+        unit: 'Internacao clinica',
+        ward: 'Ala B',
+        bed: 'B-02'
+      }
+    }) as never,
+    response as never,
+    'corr-inpatient-admission-command',
+    {
+      inpatient,
+      sectorBedService: {} as never,
+      audit: { write: () => {} } as never,
+      requirePrincipal: () => createPrincipal(),
+      runCommand: runCommand as never
+    }
+  );
+
+  assert.equal(response.statusCode, 201);
+  assert.equal(commandCalls, 1);
+  assert.equal(operation, 'inpatient.admissions.create');
+});
+
 test('handleInpatientRoutes appends inpatient progress to clinical record timeline', async () => {
   const response = new MockResponse();
   const inpatient = createInpatientService();
   const stay = inpatient.list()[0];
-  const onProgressAdded = test.mock.fn();
+  let callbackCompleted = false;
+  const onProgressAdded = test.mock.fn(
+    async (_event: {
+      readonly stay: InpatientStaySummary;
+      readonly progress: InpatientProgressSummary;
+      readonly principal: AuthenticatedPrincipal;
+    }) => {
+      await Promise.resolve();
+      callbackCompleted = true;
+    }
+  );
 
   const handled = await handleInpatientRoutes(
     `/inpatient/${stay.id}/progress`,
@@ -262,6 +332,7 @@ test('handleInpatientRoutes appends inpatient progress to clinical record timeli
   assert.equal(handled, true);
   assert.equal(response.statusCode, 201);
   assert.equal(onProgressAdded.mock.callCount(), 1);
+  assert.equal(callbackCompleted, true);
   const callbackPayload = onProgressAdded.mock.calls[0]?.arguments[0];
   assert.equal(callbackPayload.stay.id, stay.id);
   assert.equal(
@@ -269,6 +340,166 @@ test('handleInpatientRoutes appends inpatient progress to clinical record timeli
     'Paciente aceitou dieta e manteve parametros estaveis'
   );
   assert.equal(callbackPayload.principal.user.id, 'user-1');
+});
+
+test('handleInpatientRoutes executes inpatient progress through the tenant command seam', async () => {
+  const response = new MockResponse();
+  const inpatient = createInpatientService();
+  const stay = inpatient.list()[0];
+  assert.ok(stay);
+  let commandCalls = 0;
+  let operation = '';
+  const runCommand = async <T>(input: {
+    readonly operation: string;
+    readonly command: () => Promise<T>;
+  }): Promise<T> => {
+    commandCalls += 1;
+    operation = input.operation;
+    return input.command();
+  };
+
+  await handleInpatientRoutes(
+    `/inpatient/${stay.id}/progress`,
+    new MockRequest({
+      method: 'POST',
+      url: `/inpatient/${stay.id}/progress`,
+      headers: { 'idempotency-key': 'progress-idempotency-key' },
+      body: { note: 'Progress protegida por comando tenant-scoped' }
+    }) as never,
+    response as never,
+    'corr-inpatient-progress-command',
+    {
+      inpatient,
+      sectorBedService: {} as never,
+      audit: { write: () => {} } as never,
+      requirePrincipal: () => createPrincipal(),
+      runCommand: runCommand as never
+    }
+  );
+
+  assert.equal(response.statusCode, 201);
+  assert.equal(commandCalls, 1);
+  assert.equal(operation, 'inpatient.progress.create');
+});
+
+test('handleInpatientRoutes executes inpatient bed assignment through the tenant command seam', async () => {
+  const response = new MockResponse();
+  const inpatient = createInpatientService();
+  const stay = inpatient.list()[0];
+  assert.ok(stay);
+  let commandCalls = 0;
+  let operation = '';
+  const runCommand = async <T>(input: {
+    readonly operation: string;
+    readonly command: () => Promise<T>;
+  }): Promise<T> => {
+    commandCalls += 1;
+    operation = input.operation;
+    return input.command();
+  };
+  const sectorBedService = {
+    getBedForAccountOrThrow: test.mock.fn(async () => ({
+      id: 'bed-assignment-1',
+      accountId: 'acc_cvg_demo',
+      sectorId: 'sector-assignment-1',
+      code: 'A-02',
+      name: 'Leito A-02',
+      status: 'available',
+      active: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }))
+  };
+
+  await handleInpatientRoutes(
+    `/inpatient/${stay.id}/assign-bed`,
+    new MockRequest({
+      method: 'POST',
+      url: `/inpatient/${stay.id}/assign-bed`,
+      headers: { 'idempotency-key': 'inpatient-bed-assignment-key' },
+      body: { bedId: 'bed-assignment-1', sectorId: 'sector-assignment-1' }
+    }) as never,
+    response as never,
+    'corr-inpatient-bed-assignment-command',
+    {
+      inpatient,
+      sectorBedService: sectorBedService as never,
+      audit: { write: () => {} } as never,
+      requirePrincipal: () => createPrincipal(),
+      runCommand: runCommand as never
+    }
+  );
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(commandCalls, 1);
+  assert.equal(operation, 'inpatient.beds.assign');
+});
+
+test('handleInpatientRoutes executes inpatient bed transfer through the tenant command seam', async () => {
+  const response = new MockResponse();
+  const inpatient = createInpatientService();
+  const stay = inpatient.list()[0];
+  assert.ok(stay);
+  let callbackCompleted = false;
+  let commandCalls = 0;
+  let operation = '';
+  const runCommand = async <T>(input: {
+    readonly operation: string;
+    readonly command: () => Promise<T>;
+  }): Promise<T> => {
+    commandCalls += 1;
+    operation = input.operation;
+    return input.command();
+  };
+  const sectorBedService = {
+    getBedForAccountOrThrow: test.mock.fn(async () => ({
+      id: 'bed-transfer-1',
+      accountId: 'acc_cvg_demo',
+      sectorId: 'sector-transfer-1',
+      code: 'B-04',
+      name: 'Leito B-04',
+      status: 'available',
+      active: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }))
+  };
+  const onStatusUpdated = test.mock.fn(
+    async (_event: {
+      readonly stay: InpatientStaySummary;
+      readonly previousStatus: InpatientStaySummary['status'];
+      readonly principal: AuthenticatedPrincipal;
+    }) => {
+      await Promise.resolve();
+      callbackCompleted = true;
+    }
+  );
+
+  await handleInpatientRoutes(
+    `/inpatient/${stay.id}/transfer-bed`,
+    new MockRequest({
+      method: 'POST',
+      url: `/inpatient/${stay.id}/transfer-bed`,
+      headers: { 'idempotency-key': 'inpatient-bed-transfer-key' },
+      body: { bedId: 'bed-transfer-1', sectorId: 'sector-transfer-1' }
+    }) as never,
+    response as never,
+    'corr-inpatient-bed-transfer-command',
+    {
+      inpatient,
+      sectorBedService: sectorBedService as never,
+      audit: { write: () => {} } as never,
+      requirePrincipal: () => createPrincipal(),
+      runCommand: runCommand as never,
+      onStatusUpdated
+    }
+  );
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(commandCalls, 1);
+  assert.equal(operation, 'inpatient.beds.transfer');
+  assert.equal(onStatusUpdated.mock.callCount(), 1);
+  assert.equal(callbackCompleted, true);
 });
 
 test('handleInpatientRoutes creates and lists inpatient occurrences', async () => {
@@ -325,6 +556,202 @@ test('handleInpatientRoutes creates and lists inpatient occurrences', async () =
     listResponse.bodyJson<{ items: Array<{ title: string }> }>().items[0]?.title,
     'Hiporexia'
   );
+});
+
+test('handleInpatientRoutes executes inpatient occurrence through the tenant command seam', async () => {
+  const inpatient = createInpatientService();
+  const stay = inpatient.list()[0];
+  assert.ok(stay);
+  let commandCalls = 0;
+  let operation = '';
+  const runCommand = async <T>(input: {
+    readonly operation: string;
+    readonly command: () => Promise<T>;
+  }): Promise<T> => {
+    commandCalls += 1;
+    operation = input.operation;
+    return input.command();
+  };
+  const response = new MockResponse();
+
+  await handleInpatientRoutes(
+    `/inpatient/${stay.id}/occurrences`,
+    new MockRequest({
+      method: 'POST',
+      url: `/inpatient/${stay.id}/occurrences`,
+      headers: { 'idempotency-key': 'occurrence-idempotency-key' },
+      body: {
+        type: 'clinical',
+        severity: 'attention',
+        title: 'Hiporexia protegida',
+        description: 'Ocorrencia criada dentro do comando tenant-scoped.'
+      }
+    }) as never,
+    response as never,
+    'corr-inpatient-occurrence-command',
+    {
+      inpatient,
+      sectorBedService: {} as never,
+      audit: { write: () => {} } as never,
+      requirePrincipal: () => createPrincipal(),
+      runCommand: runCommand as never
+    }
+  );
+
+  assert.equal(response.statusCode, 201);
+  assert.equal(commandCalls, 1);
+  assert.equal(operation, 'inpatient.occurrences.create');
+});
+
+test('handleInpatientRoutes refreshes inpatient caches after progress and occurrence rollback', async () => {
+  const inpatient = createInpatientService();
+  const stay = inpatient.list()[0];
+  assert.ok(stay);
+  const refreshInpatient = test.mock.fn(async () => {});
+  inpatient.refreshAccount = refreshInpatient as never;
+  const runCommand = async <T>(input: { readonly command: () => Promise<T> }): Promise<T> => {
+    await input.command();
+    throw new Error('injected failure after inpatient command');
+  };
+
+  await assert.rejects(
+    handleInpatientRoutes(
+      `/inpatient/${stay.id}/progress`,
+      new MockRequest({
+        method: 'POST',
+        url: `/inpatient/${stay.id}/progress`,
+        body: { note: 'Progress que deve ser reidratada após rollback' }
+      }) as never,
+      new MockResponse() as never,
+      'corr-inpatient-progress-rollback',
+      {
+        inpatient,
+        sectorBedService: {} as never,
+        audit: { write: () => {} } as never,
+        requirePrincipal: () => createPrincipal(),
+        runCommand: runCommand as never
+      }
+    ),
+    /injected failure after inpatient command/
+  );
+
+  await assert.rejects(
+    handleInpatientRoutes(
+      `/inpatient/${stay.id}/occurrences`,
+      new MockRequest({
+        method: 'POST',
+        url: `/inpatient/${stay.id}/occurrences`,
+        body: {
+          type: 'clinical',
+          severity: 'attention',
+          title: 'Ocorrencia rollback',
+          description: 'Ocorrencia que deve ser reidratada após rollback.'
+        }
+      }) as never,
+      new MockResponse() as never,
+      'corr-inpatient-occurrence-rollback',
+      {
+        inpatient,
+        sectorBedService: {} as never,
+        audit: { write: () => {} } as never,
+        requirePrincipal: () => createPrincipal(),
+        runCommand: runCommand as never
+      }
+    ),
+    /injected failure after inpatient command/
+  );
+
+  assert.equal(refreshInpatient.mock.callCount(), 2);
+});
+
+test('handleInpatientRoutes refreshes inpatient caches after bed and status rollback', async () => {
+  const inpatient = createInpatientService();
+  const stay = inpatient.list()[0];
+  assert.ok(stay);
+  const refreshInpatient = test.mock.fn(async () => {});
+  inpatient.refreshAccount = refreshInpatient as never;
+  const runCommand = async <T>(input: { readonly command: () => Promise<T> }): Promise<T> => {
+    await input.command();
+    throw new Error('injected failure after inpatient bed/status command');
+  };
+  const sectorBedService = {
+    getBedForAccountOrThrow: test.mock.fn(async (accountId: string, bedId: string) => ({
+      id: bedId,
+      accountId,
+      sectorId: 'sector-rollback',
+      code: 'R-01',
+      name: 'Leito rollback',
+      status: 'available',
+      active: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }))
+  };
+
+  await assert.rejects(
+    handleInpatientRoutes(
+      `/inpatient/${stay.id}/assign-bed`,
+      new MockRequest({
+        method: 'POST',
+        url: `/inpatient/${stay.id}/assign-bed`,
+        body: { bedId: 'bed-rollback-assign', sectorId: 'sector-rollback' }
+      }) as never,
+      new MockResponse() as never,
+      'corr-inpatient-bed-assignment-rollback',
+      {
+        inpatient,
+        sectorBedService: sectorBedService as never,
+        audit: { write: () => {} } as never,
+        requirePrincipal: () => createPrincipal(),
+        runCommand: runCommand as never
+      }
+    ),
+    /injected failure after inpatient bed\/status command/
+  );
+
+  await assert.rejects(
+    handleInpatientRoutes(
+      `/inpatient/${stay.id}/update-status`,
+      new MockRequest({
+        method: 'PATCH',
+        url: `/inpatient/${stay.id}/update-status`,
+        body: { status: 'stable' }
+      }) as never,
+      new MockResponse() as never,
+      'corr-inpatient-status-rollback',
+      {
+        inpatient,
+        sectorBedService: sectorBedService as never,
+        audit: { write: () => {} } as never,
+        requirePrincipal: () => createPrincipal(),
+        runCommand: runCommand as never
+      }
+    ),
+    /injected failure after inpatient bed\/status command/
+  );
+
+  await assert.rejects(
+    handleInpatientRoutes(
+      `/inpatient/${stay.id}/transfer-bed`,
+      new MockRequest({
+        method: 'POST',
+        url: `/inpatient/${stay.id}/transfer-bed`,
+        body: { bedId: 'bed-rollback-transfer', sectorId: 'sector-rollback' }
+      }) as never,
+      new MockResponse() as never,
+      'corr-inpatient-bed-transfer-rollback',
+      {
+        inpatient,
+        sectorBedService: sectorBedService as never,
+        audit: { write: () => {} } as never,
+        requirePrincipal: () => createPrincipal(),
+        runCommand: runCommand as never
+      }
+    ),
+    /injected failure after inpatient bed\/status command/
+  );
+
+  assert.equal(refreshInpatient.mock.callCount(), 3);
 });
 
 test('handleInpatientRoutes creates and bills daily inpatient charges', async () => {
@@ -418,6 +845,51 @@ test('handleInpatientRoutes creates and bills daily inpatient charges', async ()
     billResponse.bodyJson<{ status: string; billingRecordId: string }>().billingRecordId,
     'bill_inpatient_1'
   );
+});
+
+test('handleInpatientRoutes executes daily-charge creation through the tenant command seam', async () => {
+  const inpatient = createInpatientService();
+  const stay = inpatient.list()[0];
+  assert.ok(stay);
+  let commandCalls = 0;
+  let operation = '';
+  const runCommand = async <T>(input: {
+    readonly operation: string;
+    readonly command: () => Promise<T>;
+  }): Promise<T> => {
+    commandCalls += 1;
+    operation = input.operation;
+    return input.command();
+  };
+  const response = new MockResponse();
+
+  await handleInpatientRoutes(
+    `/inpatient/${stay.id}/daily-charges`,
+    new MockRequest({
+      method: 'POST',
+      url: `/inpatient/${stay.id}/daily-charges`,
+      headers: { 'idempotency-key': 'daily-charge-idempotency-key' },
+      body: {
+        description: 'Diaria protegida',
+        chargeDate: '2026-05-28',
+        quantity: 1,
+        unitAmount: 180
+      }
+    }) as never,
+    response as never,
+    'corr-inpatient-daily-charge-command',
+    {
+      inpatient,
+      sectorBedService: {} as never,
+      audit: { write: () => {} } as never,
+      requirePrincipal: () => createPrincipal(),
+      runCommand: runCommand as never
+    }
+  );
+
+  assert.equal(response.statusCode, 201);
+  assert.equal(commandCalls, 1);
+  assert.equal(operation, 'inpatient.daily-charges.create');
 });
 
 test('handleInpatientRoutes executes daily-charge billing through the tenant command seam', async () => {
@@ -665,7 +1137,9 @@ test('handleInpatientRoutes refreshes hot caches after a rolled-back daily-charg
   );
 
   assert.equal(refreshBilling.mock.callCount(), 1);
-  assert.equal(refreshInpatient.mock.callCount(), 1);
+  // The command refreshes before resolving a cross-instance retry and again
+  // after the injected failure to remove speculative cache state.
+  assert.equal(refreshInpatient.mock.callCount(), 2);
   assert.equal(refreshAudit.mock.callCount(), 1);
 });
 
@@ -882,7 +1356,27 @@ test('handleInpatientRoutes appends inpatient discharge to clinical record timel
   const response = new MockResponse();
   const inpatient = createInpatientService();
   const stay = inpatient.list()[0];
-  const onStatusUpdated = test.mock.fn();
+  let callbackCompleted = false;
+  const onStatusUpdated = test.mock.fn(
+    async (_event: {
+      readonly stay: InpatientStaySummary;
+      readonly previousStatus: InpatientStaySummary['status'];
+      readonly principal: AuthenticatedPrincipal;
+    }) => {
+      await Promise.resolve();
+      callbackCompleted = true;
+    }
+  );
+  let commandCalls = 0;
+  let operation = '';
+  const runCommand = async <T>(input: {
+    readonly operation: string;
+    readonly command: () => Promise<T>;
+  }): Promise<T> => {
+    commandCalls += 1;
+    operation = input.operation;
+    return input.command();
+  };
 
   const handled = await handleInpatientRoutes(
     `/inpatient/${stay.id}/update-status`,
@@ -898,13 +1392,17 @@ test('handleInpatientRoutes appends inpatient discharge to clinical record timel
       sectorBedService: {} as never,
       audit: { write: () => {} } as never,
       requirePrincipal: () => createPrincipal(),
-      onStatusUpdated
+      onStatusUpdated,
+      runCommand: runCommand as never
     }
   );
 
   assert.equal(handled, true);
   assert.equal(response.statusCode, 200);
+  assert.equal(commandCalls, 1);
+  assert.equal(operation, 'inpatient.status.update');
   assert.equal(onStatusUpdated.mock.callCount(), 1);
+  assert.equal(callbackCompleted, true);
   assert.equal(onStatusUpdated.mock.calls[0]?.arguments[0].previousStatus, 'admitted');
   assert.equal(onStatusUpdated.mock.calls[0]?.arguments[0].stay.status, 'discharged');
 });

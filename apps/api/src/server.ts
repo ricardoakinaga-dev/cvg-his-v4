@@ -5662,6 +5662,8 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               billing,
               cash,
               commissions,
+              encounterFinancial,
+              financialPayables,
               counterSales,
               quotes,
               audit,
@@ -7079,19 +7081,21 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
             await handleInpatientRoutes(pathname, request, response, correlationId, {
               inpatient,
               billing,
+              medicalRecords,
               sectorBedService,
               audit,
               requirePrincipal,
               runCommand: runTenantCommand,
-              onProgressAdded: ({ stay, progress, principal }) => {
+              onProgressAdded: async ({ stay, progress, principal }) => {
                 medicalRecords.appendAdvancedCareEvent(
                   stay.encounterId as never,
                   principal.user.id,
                   'inpatient_progressed',
                   `Evolucao de internacao registrada: ${progress.note}`
                 );
+                await medicalRecords.waitForPersistence();
               },
-              onStatusUpdated: ({ stay, previousStatus, principal }) => {
+              onStatusUpdated: async ({ stay, previousStatus, principal }) => {
                 if (stay.status === previousStatus) {
                   return;
                 }
@@ -7113,6 +7117,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                   eventType,
                   summary
                 );
+                await medicalRecords.waitForPersistence();
               }
             })
           ) {
@@ -7238,6 +7243,13 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               inventory,
               billing,
               inpatient,
+              refreshAccount: async (accountId) => {
+                await Promise.all([
+                  encounters.hydrateFromDatabase(accountId as never),
+                  inventory.hydrateFromDatabase(accountId as never),
+                  inpatient.refreshAccount(accountId)
+                ]);
+              },
               procurement,
               audit,
               requirePrincipal,

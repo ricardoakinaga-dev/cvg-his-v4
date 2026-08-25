@@ -174,8 +174,35 @@ test.describe('Gate Enterprise - Dashboard e Relatórios', () => {
     await page.getByRole('button', { name: 'Exportar CSV' }).click();
     const download = await downloadPromise;
 
-    expect(download.suggestedFilename()).toMatch(/^contas-a-pagar-\d{4}-\d{2}-\d{2}\.csv$/);
-    await expect(page.getByText(/Exportação CSV gerada com \d+ linha\(s\)\./)).toBeVisible({
+    expect(download.suggestedFilename()).toMatch(/^financial-payables-rep_exec_.+\.csv$/);
+    await expect(
+      page.getByText(/Exportação server-side auditada gerada com \d+ linha\(s\)\./)
+    ).toBeVisible({
+      timeout: 15000
+    });
+  });
+
+  test('exporta o recorte carregado no workbench de contas recebidas', async ({ page }) => {
+    await loginViaToken(page);
+    await expect(page).not.toHaveURL(/\/login/, { timeout: 10000 });
+
+    await page.goto(`${SPA_URL}/reports/received-accounts`);
+    await waitForPageSettled(page, {
+      contentSelector: 'main, h1, h2, [role="heading"]',
+      timeout: 15000
+    });
+
+    await expect(page.getByRole('heading', { name: 'Contas Recebidas', exact: true })).toBeVisible({
+      timeout: 15000
+    });
+    const downloadPromise = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Exportar CSV' }).click();
+    const download = await downloadPromise;
+
+    expect(download.suggestedFilename()).toMatch(/^financial-receivables-rep_exec_.+\.csv$/);
+    await expect(
+      page.getByText(/Exportação server-side auditada gerada com \d+ linha\(s\)\./)
+    ).toBeVisible({
       timeout: 15000
     });
   });

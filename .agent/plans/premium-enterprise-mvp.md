@@ -737,3 +737,116 @@ cancelamentos e conciliação seguem nas telas financeiras com suas permissões.
 O relatório Vetus permanece parcial/bloqueado nas famílias de cheques,
 pagamento antecipado, cadastros e personalizados, além da ausência de export
 server-side auditável. Stop decision remains `ACTIVE`.
+
+Plan revision note, 2026-08-24 (server-side audited payable export): o motor
+de reports agora conhece `financial-payables`, lê todas as páginas do
+`FinancialPayablesService`, valida status/busca/período, persiste execução e
+artefato pelo repository e registra auditoria na rota. O workbench de Contas a
+Pagar e Contas Pagas baixa o artefato server-side; a suíte direcionada da API
+passou 7/7, o módulo de reports 12/12, a página SPA 29/29, o build SPA e o
+download Chromium 1/1. O CSV server-side também neutraliza fórmulas de
+planilha. O incremento é `GREEN bounded` sob
+`.agent/artifacts/CVG-002C6-server-audited-payables-export-quality-bar-2026-08-24.md`;
+cheques, adiantamentos, cadastros/customizados, provider, produção, paridade,
+operações e release continuam abertos. A auditoria independente não pôde ser
+executada nesta conta; o veredito permanece condicional aos gates locais.
+
+Final verification note, 2026-08-24: a rota server-side passou 7/7, o módulo
+de reports 12/12, a página SPA 29/29, o gate Enterprise Chromium 5/5, o
+typecheck monorepo 70/70, security:enterprise e o contrato de paridade 4/4.
+O vertical clínico-financeiro PostgreSQL segue 5/5. A revisão temporal local
+não encontrou gap crítico nesta fatia; sem revisor independente disponível, o
+resultado permanece CONDITIONAL_PASS. O próximo P0 continua entre a jornada
+clínico-financeira completa e uma fonte autoritativa para cheques,
+adiantamentos, cadastros e relatórios customizados.
+
+Plan revision note, 2026-08-24 (server-side audited receivables export): o
+motor de reports passou a conhecer `financial-receivables`, lendo todas as
+páginas de `EncounterFinancialService.listReceivables`, validando
+`open|settled`, busca e período com datas semânticas de vencimento/liquidação,
+e persistindo execução/artefato com auditoria. O workbench de Contas a Receber
+e Contas Recebidas usa o artefato server-side, sem inventar cheques ou
+adiantamentos. A nova barra passou API 10/10, reports 12/12, SPA 30/30,
+Chromium 11/11 (Enterprise 6/6), typecheck 70/70, security sem advisories
+critical/high/moderate, parity 4/4 e PostgreSQL clínico-financeiro 7/7.
+O incremento é `GREEN bounded` sob
+`.agent/artifacts/CVG-002C6-server-audited-receivables-quality-bar-2026-08-24.md`;
+produção, providers, Redis, paridade completa, operações, WCAG e release
+continuam abertos. Sem revisor independente disponível, o resultado é
+`CONDITIONAL_PASS` baseado nos gates executáveis e revisão temporal local.
+
+Plan revision note, 2026-08-24 (inpatient command idempotency): a admissão e a
+criação de diária passaram a executar no `TenantUnitOfWork`, incluindo espera
+de persistência e auditoria antes da conclusão. O RED de rota falhou nos dois
+seams novos; o GREEN passou 16/16. O vertical HTTP/PostgreSQL com duas APIs e
+roles `NOBYPASSRLS` passou 5/5, comprovando replay/conflict da admissão e da
+diária, uma linha idempotente por comando e hidratação da API secundária para
+o billing concorrente. O restart controlado passou 1/1 e o child-process
+SIGKILL/takeover passou 4/4. Evidência: `.agent/artifacts/CVG-002C6-inpatient-command-idempotency-2026-08-24.md`
+e `docs/2026-08-24-handoff-inpatient-command-idempotency.md`. O plano segue
+`IN_PROGRESS/PARTIAL`: handoffs/progress/occurrences, failpoints cross-domain,
+provider/Redis/produção, RLS/FORCE RLS global, paridade, WCAG, operações,
+cobertura e release permanecem abertos; não há aprovação independente nesta
+conta.
+
+Plan revision note, 2026-08-24 (clinical handoff/progress/occurrence
+idempotency): progress e occurrence passaram a usar explicitamente o
+`TenantUnitOfWork`, com persistência, auditoria e recuperação de cache em caso
+de falha. O callback de progress agora é awaitable e aguarda a projeção
+`inpatient_progressed` no `clinical_timeline`. A vertical HTTP/PostgreSQL com
+duas APIs passou 5/5, comprovando replay/conflict de handoff send/ack,
+progress e occurrence, uma linha durável por comando e timeline clínica
+persistida; a rota passou 19/19, restart 1/1 e child-process SIGKILL/takeover
+4/4. Evidência: `.agent/artifacts/CVG-002C6-inpatient-clinical-notes-idempotency-2026-08-24.md`
+e `docs/2026-08-24-handoff-inpatient-clinical-notes-idempotency.md`. O plano
+segue `IN_PROGRESS/PARTIAL`: assignment/transfer/status inpatient, failpoints
+cross-domain restantes, provider/Redis/produção, RLS/FORCE RLS global,
+paridade, WCAG, operações, cobertura e release continuam abertos; não há
+aprovação independente nesta conta.
+
+Plan revision note, 2026-08-24 (inpatient bed/status idempotency): assignment,
+transfer e update-status passaram a usar explicitamente o command seam
+tenant-scoped, aguardando persistência, auditoria e a projeção clínica de
+transferência antes da resposta. A vertical HTTP/PostgreSQL com duas APIs
+passou 5/5, comprovando replay/conflict dos três comandos, uma linha durável
+por chave, timeline `inpatient_transferred` e liberação dos três leitos após a
+alta; a rota passou 22/22 e o failpoint unitário cobriu a recuperação de cache.
+Evidência: `.agent/artifacts/CVG-002C6-inpatient-bed-status-idempotency-2026-08-24.md`
+e `docs/2026-08-24-handoff-inpatient-bed-status-idempotency.md`. O plano segue
+`IN_PROGRESS/PARTIAL`: failpoints cross-domain reais, restart/SIGKILL dos
+endpoints, provider/Redis/produção, RLS/FORCE RLS global, paridade, WCAG,
+operações, cobertura e release permanecem abertos; não há aprovação
+independente nesta conta.
+
+Plan revision note, 2026-08-24 (inpatient cross-domain failpoint/recovery): um
+failpoint PostgreSQL real na projeção `clinical_timeline` confirmou rollback
+conjunto de status, prontuário, auditoria e idempotência; a primeira tentativa
+retornou 500 sem resíduo e o retry com a mesma chave retornou 200 com uma única
+timeline/auditoria/idempotência. A correção adicionou
+`MedicalRecordsService.refreshAccount(accountId)` e a recuperação tenant-scoped
+do cache médico após rollback. O harness de processo também passou a exercitar
+`inpatient.status.update`: SIGKILL/replay passou 2/2 nos checkpoints de claim e
+pós-comando; a regressão vertical completa passou 6/6. Builds, medical-records
+17/17 e inpatient routes 22/22 permanecem verdes. Evidência:
+`.agent/artifacts/CVG-002C6-inpatient-cross-domain-failpoint-recovery-2026-08-24.md`
+e `docs/2026-08-24-handoff-inpatient-bed-status-idempotency.md`. O plano segue
+`IN_PROGRESS/PARTIAL`: failpoints específicos de leito/transfer/auditoria,
+restart desses endpoints, provider/Redis/produção, RLS/FORCE RLS global,
+paridade, WCAG, operações, cobertura e release permanecem abertos; não há
+aprovação independente nesta conta.
+
+Plan revision note, 2026-08-24 (inpatient bed/transfer/audit recovery): a
+Quality Bar foi ampliada com failpoints PostgreSQL temporários para ocupação de
+leito em assignment, ocupação do destino em transfer e persistência de
+auditoria. Os cenários confirmaram rollback sem resíduo e retry same-key
+idempotente; a matriz child-process passou a semear leitos no PostgreSQL,
+usar `SectorBedService` com `DatabaseClient` e provar SIGKILL/replay de
+assignment/transfer em 4/4. A regressão completa de processo passou 10/10 e a
+matriz de failpoints passou 5/5. Evidência:
+`.agent/artifacts/CVG-002C6-inpatient-cross-domain-failpoint-recovery-2026-08-24.md`,
+`docs/2026-08-24-handoff-inpatient-bed-status-idempotency.md`,
+`apps/worker/test-fixtures/inpatient-domain-process.ts` e
+`tests/integration/process/inpatient-domain-sigkill.test.ts`. O plano segue
+`IN_PROGRESS/PARTIAL`: produção/providers/Redis, RLS/FORCE RLS global, DR/RPO,
+paridade Vetus, WCAG, operações, cobertura e release continuam abertos; sem
+revisor independente e sem promoção do gate global.

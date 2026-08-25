@@ -5,6 +5,12 @@ import type { BillingService } from '@cvg-his-v2/module-billing';
 import type { CashService } from '@cvg-his-v2/module-cash';
 import type { CommissionsService } from '@cvg-his-v2/module-commissions';
 import type { CounterSalesService } from '@cvg-his-v2/module-counter-sales';
+import type {
+  EncounterFinancialService,
+  EncounterReceivableStatus,
+  FinancialPayableStatus,
+  FinancialPayablesService
+} from '@cvg-his-v2/module-financial';
 import type { QuotesService } from '@cvg-his-v2/module-quotes';
 import type {
   CreateReportScheduleInput,
@@ -22,6 +28,8 @@ export interface ReportsRoutesHandlers {
   billing: BillingService;
   cash: CashService;
   commissions: CommissionsService;
+  encounterFinancial: EncounterFinancialService;
+  financialPayables: FinancialPayablesService;
   counterSales: CounterSalesService;
   quotes: QuotesService;
   audit: AuditService;
@@ -289,6 +297,77 @@ async function buildReportRows(
   reportId: string,
   filters: Record<string, unknown>
 ): Promise<readonly Record<string, unknown>[]> {
+  if (reportId === 'financial-receivables') {
+    const status = parseEncounterReceivableStatus(filters.status);
+    const search = parseReportSearch(filters.search);
+    const dateFrom = parseReportDate(filters.dateFrom, 'dateFrom');
+    const dateTo = parseReportDate(filters.dateTo, 'dateTo');
+    if (dateFrom && dateTo && dateFrom > dateTo) {
+      throw new ValidationError('dateFrom must be before or equal to dateTo', { dateFrom, dateTo });
+    }
+
+    const receivables = await listAllFinancialReceivables(handlers.encounterFinancial, principal.user.accountId, {
+      status,
+      search
+    });
+    return receivables
+      .filter((receivable) => {
+        const reportDate = receivableReportDate(receivable, status);
+        return (!dateFrom || reportDate >= dateFrom) && (!dateTo || reportDate <= dateTo);
+      })
+      .map((receivable) => ({
+        patientName: receivable.patientName,
+        ownerName: receivable.ownerName,
+        patientSpecies: receivable.patientSpecies,
+        encounterId: receivable.encounterId,
+        installmentNumber: receivable.installmentNumber,
+        installmentLabel: receivable.installmentLabel,
+        issuedAt: receivable.issuedAt,
+        dueAt: receivable.dueAt,
+        settledAt: receivable.settledAt,
+        amountOriginal: receivable.amountOriginal,
+        amountPaid: receivable.amountPaid,
+        amountOutstanding: receivable.amountOutstanding,
+        status: receivable.status,
+        financialStatus: receivable.financialStatus,
+        encounterStatus: receivable.encounterStatus,
+        paymentCount: receivable.payments.length
+      }));
+  }
+
+  if (reportId === 'financial-payables') {
+    const status = parseFinancialPayableStatus(filters.status);
+    const search = parseReportSearch(filters.search);
+    const dateFrom = parseReportDate(filters.dateFrom, 'dateFrom');
+    const dateTo = parseReportDate(filters.dateTo, 'dateTo');
+    if (dateFrom && dateTo && dateFrom > dateTo) {
+      throw new ValidationError('dateFrom must be before or equal to dateTo', { dateFrom, dateTo });
+    }
+
+    const payables = await listAllFinancialPayables(handlers.financialPayables, principal.user.accountId, {
+      status,
+      search
+    });
+    return payables
+      .filter((payable) => {
+        const dueAt = payable.dueAt.slice(0, 10);
+        return (!dateFrom || dueAt >= dateFrom) && (!dateTo || dueAt <= dateTo);
+      })
+      .map((payable) => ({
+        supplierName: payable.supplierName,
+        description: payable.description,
+        category: payable.category,
+        issuedAt: payable.issuedAt,
+        dueAt: payable.dueAt,
+        totalAmount: payable.totalAmount,
+        paidAmount: payable.paidAmount,
+        outstandingAmount: payable.outstandingAmount,
+        status: payable.status,
+        paymentMethod: payable.paymentMethod,
+        reconciliationStatus: payable.reconciliationStatus
+      }));
+  }
+
   if (reportId === 'commission-calculations') {
     const status = typeof filters.status === 'string' ? filters.status : '';
     return handlers.commissions
@@ -349,4 +428,113 @@ async function buildReportRows(
       status: openRegister ? 'open' : 'closed'
     }
   ];
+}
+
+const financialPayableStatuses: readonly FinancialPayableStatus[] = [
+  'open',
+  'partial',
+  'paid',
+  'cancelled'
+];
+
+const encounterReceivableStatuses: readonly EncounterReceivableStatus[] = ['open', 'settled'];
+
+function parseEncounterReceivableStatus(value: unknown): EncounterReceivableStatus | undefined {
+  if (value === undefined || value === null || value === '') return undefined;
+  if (typeof value === 'string' && encounterReceivableStatuses.includes(value as EncounterReceivableStatus)) {
+    return value as EncounterReceivableStatus;
+  }
+  throw new ValidationError('status must be open or settled', { value });
+}
+
+function parseFinancialPayableStatus(value: unknown): FinancialPayableStatus | undefined {
+  if (value === undefined || value === null || value === '') return undefined;
+  if (typeof value === 'string' && financialPayableStatuses.includes(value as FinancialPayableStatus)) {
+    return value as FinancialPayableStatus;
+  }
+  throw new ValidationError('status must be open, partial, paid or cancelled', { value });
+}
+
+function parseReportSearch(value: unknown): string | undefined {
+  if (value === undefined || value === null || value === '') return undefined;
+  if (typeof value !== 'string' || value.trim().length > 200) {
+    throw new ValidationError('search must be a string with at most 200 characters', { value });
+  }
+  return value.trim() || undefined;
+}
+
+function parseReportDate(value: unknown, field: string): string | undefined {
+  if (value === undefined || value === null || value === '') return undefined;
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    throw new ValidationError(`${field} must be an ISO calendar date`, { value });
+  }
+  const date = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) {
+    throw new ValidationError(`${field} must be an ISO calendar date`, { value });
+  }
+  return value;
+}
+
+function receivableReportDate(
+  receivable: Awaited<ReturnType<EncounterFinancialService['listReceivables']>>['data'][number],
+  status: EncounterReceivableStatus | undefined
+): string {
+  const sourceDate =
+    status === 'settled'
+      ? receivable.settledAt ?? receivable.issuedAt
+      : status === 'open'
+        ? receivable.dueAt ?? receivable.issuedAt
+        : receivable.settledAt ?? receivable.dueAt ?? receivable.issuedAt;
+  return sourceDate.slice(0, 10);
+}
+
+async function listAllFinancialPayables(
+  service: FinancialPayablesService,
+  accountId: AuthenticatedPrincipal['user']['accountId'],
+  filters: {
+    readonly status?: FinancialPayableStatus;
+    readonly search?: string;
+  }
+) {
+  const pageSize = 100;
+  const rows = [] as Array<Awaited<ReturnType<FinancialPayablesService['listPayables']>>['data'][number]>;
+  let page = 1;
+  while (true) {
+    const result = await service.listPayables(accountId as never, {
+      status: filters.status,
+      search: filters.search,
+      page,
+      pageSize
+    });
+    rows.push(...result.data);
+    if (result.data.length === 0 || rows.length >= result.total) break;
+    page += 1;
+  }
+  return rows;
+}
+
+async function listAllFinancialReceivables(
+  service: EncounterFinancialService,
+  accountId: AuthenticatedPrincipal['user']['accountId'],
+  filters: {
+    readonly status?: EncounterReceivableStatus;
+    readonly search?: string;
+  }
+) {
+  const pageSize = 100;
+  const rows = [] as Array<Awaited<ReturnType<EncounterFinancialService['listReceivables']>>['data'][number]>;
+  let page = 1;
+  while (true) {
+    const result = await service.listReceivables({
+      accountId: accountId as never,
+      status: filters.status,
+      search: filters.search,
+      page,
+      pageSize
+    });
+    rows.push(...result.data);
+    if (result.data.length === 0 || rows.length >= result.total) break;
+    page += 1;
+  }
+  return rows;
 }
