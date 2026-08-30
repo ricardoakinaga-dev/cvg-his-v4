@@ -57,3 +57,13 @@ de linhas em evidência anterior, sem alteração de comportamento.
 Este artifact não certifica semântica fiscal/NF-e, schedules históricos,
 backfill, outros reports, delivery providers, worker distribuído, target,
 produção, deployment, parity, release ou prontidão global do ERP.
+
+## Reconciliação pós-commit
+
+O slice foi gravado no commit local `f14bf7a4` (`fix: reject malformed
+persisted report statuses`). O commit contém somente o parser/teste do worker e
+os registros explícitos de tarefa, gates, plano, artefato e control plane. O
+cache pré-existente `packages/design-system/tsconfig.vue.tsbuildinfo` ficou
+fora do commit e permanece como única alteração unstaged conhecida. O próximo
+passo é novo scouting sob autoridade nova; nenhuma aprovação independente ou
+promoção global é inferida.

@@ -3263,9 +3263,9 @@
       ],
       "limitations": [
         "Worker-local persisted filter boundary only; no schema, backfill, fiscal, provider, target, production, deployment, release or global ERP scope.",
-        "The parent inventory-invoices gate remains subject to the separately recorded Medium sidecar finding until this task is closed."
+      "The parent inventory-invoices gate retains broader separate claims and a historical Low citation debt; this bounded slice does not promote it."
       ],
-      "next_action": "Closed as PASS_BOUNDED with explicit independent-review limitation. Commit the bounded worker correction, then return to fresh residual scouting under a new authority; keep global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
+    "next_action": "Closed as PASS_BOUNDED with explicit independent-review limitation and committed as f14bf7a4. Return to fresh residual scouting under a new authority; keep global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
     }
   ]
 }

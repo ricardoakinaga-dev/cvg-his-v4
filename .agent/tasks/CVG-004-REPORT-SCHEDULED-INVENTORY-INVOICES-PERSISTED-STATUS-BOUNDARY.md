@@ -92,3 +92,12 @@ continua `IN_PROGRESS/PARTIAL` e a promoção continua `BLOCKED`.
 - `.agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-PERSISTED-STATUS-BOUNDARY-FINAL-001`
 - `.agent/gates/verified-CVG-004-report-scheduled-inventory-invoices-persisted-status-boundary.json`
 - `.agent/artifacts/CVG-004-report-scheduled-inventory-invoices-persisted-status-boundary-2026-08-30.md`
+
+## Reconciliação pós-commit — 2026-08-30
+
+Implementação e evidências foram commitadas localmente como `f14bf7a4`
+(`fix: reject malformed persisted report statuses`). O commit exclui
+explicitamente o cache pré-existente
+`packages/design-system/tsconfig.vue.tsbuildinfo`; o próximo passo é fresh
+scouting sob nova autoridade, mantendo o ERP global `IN_PROGRESS/PARTIAL` e a
+promoção `BLOCKED`.

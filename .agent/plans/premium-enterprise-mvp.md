@@ -2651,3 +2651,8 @@ Evidence: `.agent/gates/verified-CVG-004-report-scheduled-inventory-invoices-per
 `.agent/artifacts/CVG-004-report-scheduled-inventory-invoices-persisted-status-boundary-2026-08-30.md`,
 `.agent/tasks/CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-PERSISTED-STATUS-BOUNDARY.md`,
 `.agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-PERSISTED-STATUS-BOUNDARY-FINAL-001`.
+
+The bounded worker correction was committed locally as `f14bf7a4`; the
+pre-existing design-system `tsbuildinfo` cache remained outside the commit.
+Resume fresh residual scouting under a new authority while global ERP remains
+`IN_PROGRESS/PARTIAL` and promotion remains `BLOCKED`.
