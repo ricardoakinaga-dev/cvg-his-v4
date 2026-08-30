@@ -422,6 +422,182 @@ test('handleAuthRoutes POST /auth/login returns a session on success', async () 
   assert.match(String(response.getHeader('set-cookie')), /SameSite=Strict/);
 });
 
+test('handleAuthRoutes rejects malformed and oversized login payloads before authentication', async () => {
+  const cases: readonly { label: string; payload: unknown }[] = [
+    { label: 'null body', payload: null },
+    { label: 'array body', payload: [] },
+    { label: 'primitive body', payload: 'not-an-object' },
+    { label: 'missing username', payload: { password: 'secret' } },
+    { label: 'missing password', payload: { username: 'admin' } },
+    { label: 'empty username', payload: { username: ' ', password: 'secret' } },
+    { label: 'empty password', payload: { username: 'admin', password: ' ' } },
+    { label: 'null username', payload: { username: null, password: 'secret' } },
+    { label: 'null password', payload: { username: 'admin', password: null } },
+    {
+      label: 'null account id',
+      payload: { username: 'admin', password: 'secret', accountId: null }
+    },
+    { label: 'numeric username', payload: { username: 123456, password: 'secret' } },
+    { label: 'numeric password', payload: { username: 'admin', password: 123456 } },
+    {
+      label: 'numeric account id',
+      payload: { username: 'admin', password: 'secret', accountId: 123456 }
+    },
+    { label: 'array username', payload: { username: [], password: 'secret' } },
+    { label: 'array password', payload: { username: 'admin', password: [] } },
+    {
+      label: 'array account id',
+      payload: { username: 'admin', password: 'secret', accountId: [] }
+    },
+    {
+      label: 'object password',
+      payload: { username: 'admin', password: { value: 'password-not-for-output' } }
+    },
+    {
+      label: 'oversized username',
+      payload: { username: 'u'.repeat(129), password: 'secret' }
+    },
+    {
+      label: 'oversized password',
+      payload: { username: 'admin', password: 'p'.repeat(129) }
+    },
+    {
+      label: 'oversized account id',
+      payload: { username: 'admin', password: 'secret', accountId: 'a'.repeat(256) }
+    }
+  ];
+
+  for (const { label, payload } of cases) {
+    const response = new MockResponse();
+    const events: string[] = [];
+    const loggedContexts: unknown[] = [];
+    let loginCalls = 0;
+
+    const handled = await handleAuthRoutes(
+      '/auth/login',
+      {
+        method: 'POST',
+        url: '/auth/login',
+        headers: {},
+        socket: { remoteAddress: '127.0.0.1' },
+        [Symbol.asyncIterator]: async function* () {
+          yield Buffer.from(JSON.stringify(payload));
+        }
+      } as never,
+      response as never,
+      `corr-auth-input-${label.replace(/\s+/g, '-')}`,
+      {
+        auth: {
+          login: async () => {
+            events.push('auth.login');
+            loginCalls += 1;
+            return { accessToken: 'token-1', refreshToken: 'refresh-1' };
+          }
+        } as never,
+        authRateLimiter: {
+          check: async () => {
+            events.push('rate-limit');
+            return {
+              limit: 5,
+              remaining: 4,
+              reset: 123,
+              blocked: false,
+              retryAfterMs: 0
+            };
+          }
+        },
+        logger: { error: (_message: string, context?: unknown) => loggedContexts.push(context) },
+        appName: 'test-app',
+        featureFlags: { authOidcEnabled: false, authWebauthnEnabled: false },
+        webauthnChallenges: new Map(),
+        webauthnChallengeTtlMs: DEFAULT_WEBAUTHN_CHALLENGE_TTL_MS,
+        oidcConfig: null,
+        oidcStateStore: createInMemoryOidcStateStore(),
+        oidcStateTtlMs: 60_000,
+        requirePrincipal: () => createPrincipal(),
+        appendAudit: () => {}
+      }
+    );
+
+    assert.equal(handled, true, label);
+    assert.equal(response.statusCode, 400, label);
+    assert.equal(response.bodyJson<{ code: string }>().code, 'VALIDATION_ERROR', label);
+    assert.equal(loginCalls, 0, label);
+    assert.equal(events.at(-1), 'rate-limit', label);
+    assert.ok(
+      events.every((event) => event === 'rate-limit'),
+      label
+    );
+    assert.ok(!JSON.stringify(loggedContexts).includes('password-not-for-output'), label);
+    assert.ok(!response.bodyText().includes('password-not-for-output'), label);
+    assert.ok(!response.bodyText().includes('u'.repeat(129)), label);
+    assert.ok(!response.bodyText().includes('p'.repeat(129)), label);
+    assert.ok(!response.bodyText().includes('a'.repeat(256)), label);
+  }
+});
+
+test('handleAuthRoutes accepts login fields at the inclusive upper bounds', async () => {
+  const response = new MockResponse();
+  const payload = {
+    username: 'u'.repeat(128),
+    password: 'p'.repeat(128),
+    accountId: 'a'.repeat(255)
+  };
+  const events: string[] = [];
+  let receivedPayload: unknown;
+
+  const handled = await handleAuthRoutes(
+    '/auth/login',
+    {
+      method: 'POST',
+      url: '/auth/login',
+      headers: {},
+      socket: { remoteAddress: '127.0.0.1' },
+      [Symbol.asyncIterator]: async function* () {
+        yield Buffer.from(JSON.stringify(payload));
+      }
+    } as never,
+    response as never,
+    'corr-auth-input-boundary-inclusive',
+    {
+      auth: {
+        login: async (input: unknown) => {
+          events.push('auth.login');
+          receivedPayload = input;
+          return { accessToken: 'token-1', refreshToken: 'refresh-1' };
+        }
+      } as never,
+      authRateLimiter: {
+        check: async () => {
+          events.push('rate-limit');
+          return {
+            limit: 5,
+            remaining: 4,
+            reset: 123,
+            blocked: false,
+            retryAfterMs: 0
+          };
+        }
+      },
+      logger: { error: () => {} },
+      appName: 'test-app',
+      featureFlags: { authOidcEnabled: false, authWebauthnEnabled: false },
+      webauthnChallenges: new Map(),
+      webauthnChallengeTtlMs: DEFAULT_WEBAUTHN_CHALLENGE_TTL_MS,
+      oidcConfig: null,
+      oidcStateStore: createInMemoryOidcStateStore(),
+      oidcStateTtlMs: 60_000,
+      requirePrincipal: () => createPrincipal(),
+      appendAudit: () => {}
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(receivedPayload, payload);
+  assert.deepEqual(events, ['rate-limit', 'rate-limit', 'auth.login']);
+});
+
 test('login rate limiting normalizes the username and cannot be bypassed by changing IP', async () => {
   const authRateLimiter = createSingleAttemptRateLimiter();
   const handlers = {

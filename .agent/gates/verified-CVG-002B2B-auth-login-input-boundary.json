@@ -1,0 +1,121 @@
+{
+  "record_id": "GATE-CVG-002B2B-AUTH-LOGIN-INPUT-BOUNDARY-VFY-001",
+  "timestamp": "2026-08-30T15:09:00-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "Repository-local JSON shape and credential length validation for POST /auth/login",
+  "scope_ref": "CVG-002B2B-AUTH-LOGIN-INPUT-BOUNDARY",
+  "version": 1,
+  "confidence": "HIGH",
+  "residual_risk": "HIGH",
+  "decision": "PASS_BOUNDED",
+  "criteria": [
+    {
+      "id": "VFY-001",
+      "description": "The route accepts only a JSON object and never dereferences null, arrays or primitives as a LoginRequest.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002B2B-AUTH-LOGIN-INPUT-BOUNDARY-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-AUTH-LOGIN-INPUT-BOUNDARY-REGRESSION-001",
+        "apps/api/src/routes/auth-routes.ts",
+        "apps/api/src/routes/auth-routes.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Repository-local route proof only."
+    },
+    {
+      "id": "VFY-002",
+      "description": "Username and password are non-empty strings at most 128 characters; optional accountId is a non-empty string at most 255 characters.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002B2B-AUTH-LOGIN-INPUT-BOUNDARY-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-AUTH-LOGIN-INPUT-BOUNDARY-REGRESSION-001",
+        "apps/api/src/routes/auth-routes.ts",
+        "apps/api/src/routes/auth-routes.test.ts",
+        "packages/db/src/schema/users.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The selected boundary does not change account UUID or email-login policy."
+    },
+    {
+      "id": "VFY-003",
+      "description": "Invalid payloads return the existing sanitized 400 envelope without invoking AuthService.login or creating a session; rate limiting remains first.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002B2B-AUTH-LOGIN-INPUT-BOUNDARY-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-AUTH-LOGIN-INPUT-BOUNDARY-REVIEW-002",
+        "apps/api/src/routes/auth-routes.ts",
+        "apps/api/src/routes/auth-routes.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The existing distributed rate-limit backend is outside this slice."
+    },
+    {
+      "id": "VFY-004",
+      "description": "Successful login, cookies, refresh/session behavior, MFA and WebAuthn route behavior remain regression-compatible.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002B2B-AUTH-LOGIN-INPUT-BOUNDARY-REGRESSION-001",
+        "apps/api/src/routes/auth-routes.test.ts",
+        "apps/api/dist/routes/auth-routes.test.js"
+      ],
+      "confidence": "HIGH",
+      "limitations": "No browser authenticator or production identity-provider certification is inferred."
+    },
+    {
+      "id": "VFY-005",
+      "description": "Affected API/auth regressions, build/typecheck, static checks and security checks pass within the bounded worktree.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002B2B-AUTH-LOGIN-INPUT-BOUNDARY-REGRESSION-001",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-AUTH-LOGIN-INPUT-BOUNDARY-QUALITY-001",
+        ".agent/artifacts/CVG-002B2B-auth-login-input-boundary-2026-08-30.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Full workspace lint retains two unrelated pre-existing counterSales errors."
+    },
+    {
+      "id": "VFY-006",
+      "description": "A fresh independent read-only review reports no remaining Critical, High or Medium finding against this bounded contract.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002B2B-AUTH-LOGIN-INPUT-BOUNDARY-REVIEW-002",
+        "apps/api/src/routes/auth-routes.ts",
+        "apps/api/src/routes/auth-routes.test.ts",
+        "apps/api/package.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Approval is only for the login input boundary, not the ERP or production state."
+    }
+  ],
+  "evidence": [
+    ".agent/artifacts/CVG-002B2B-auth-login-input-boundary-2026-08-30.md",
+    ".agent/verification.jsonl#VFY-CVG-002B2B-AUTH-LOGIN-INPUT-BOUNDARY-REGRESSION-001",
+    ".agent/verification.jsonl#VFY-CVG-002B2B-AUTH-LOGIN-INPUT-BOUNDARY-QUALITY-001",
+    ".agent/verification.jsonl#VFY-CVG-002B2B-AUTH-LOGIN-INPUT-BOUNDARY-REVIEW-002"
+  ],
+  "gaps": [
+    "No external provider, target, production, deployment, remote CI, release or global ERP readiness claim is made.",
+    "The unrelated full-workspace counterSales lint baseline remains open."
+  ],
+  "conditions": [
+    "Keep validation after IP/identity rate limiting and before AuthService.login.",
+    "Do not expand this child gate into email login, account UUID policy, password hashing, MFA/session policy or external operations without revalidation.",
+    "Preserve global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via fresh residual scouting and implementation-ready gate",
+    "scope": "CVG-002B2B bounded POST /auth/login input boundary",
+    "decision": "Close only the repository-local object/type/length validation slice after TDD, regression, security and independent review evidence.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-002B2B-AUTH-LOGIN-INPUT-BOUNDARY-IR-001",
+    "expires_or_revalidates": "Revalidate before changing login identity semantics, hashing/MFA/session policy, rate-limit backend/order, account ID format or any target/production behavior."
+  },
+  "next_action": "Return to fresh residual scouting after committing this bounded slice; keep global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
+}

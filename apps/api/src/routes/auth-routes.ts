@@ -24,11 +24,11 @@ import type {
   RefreshSessionRequest,
   SessionListResponse
 } from '@cvg-his-v2/shared-contracts';
-import { AppError, toErrorResponse } from '@cvg-his-v2/shared-errors';
+import { AppError, toErrorResponse, ValidationError } from '@cvg-his-v2/shared-errors';
 import type { AuthenticatedPrincipal, SessionSummary } from '@cvg-his-v2/shared-types';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 
-import { readJsonBody } from '../helpers/common.js';
+import { readJsonBody, validateRequestBody } from '../helpers/common.js';
 
 type AuditAppender = (
   actorId: string,
@@ -65,6 +65,56 @@ interface AuthLogger {
 }
 
 const MAX_RATE_LIMIT_DIMENSION_LENGTH = 256;
+const MAX_LOGIN_USERNAME_LENGTH = 128;
+const MAX_LOGIN_PASSWORD_LENGTH = 128;
+const MAX_LOGIN_ACCOUNT_ID_LENGTH = 255;
+
+function isJsonObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function parseLoginRequest(payload: unknown, correlationId: string): LoginRequest {
+  if (!isJsonObject(payload)) {
+    throw new ValidationError('Request body must be a JSON object', { correlationId });
+  }
+
+  validateRequestBody(
+    payload,
+    {
+      username: {
+        type: 'string',
+        required: true,
+        minLength: 1,
+        maxLength: MAX_LOGIN_USERNAME_LENGTH
+      },
+      password: {
+        type: 'string',
+        required: true,
+        minLength: 1,
+        maxLength: MAX_LOGIN_PASSWORD_LENGTH
+      },
+      accountId: {
+        type: 'string',
+        minLength: 1,
+        maxLength: MAX_LOGIN_ACCOUNT_ID_LENGTH
+      }
+    },
+    correlationId
+  );
+
+  const username = requireNonEmptyString(payload.username, 'username');
+  const password = requireNonEmptyString(payload.password, 'password');
+  const accountId =
+    payload.accountId === undefined
+      ? undefined
+      : requireNonEmptyString(payload.accountId, 'accountId');
+
+  return {
+    username,
+    password,
+    ...(accountId === undefined ? {} : { accountId })
+  };
+}
 
 interface OidcStateValue {
   codeChallenge: string;
@@ -622,18 +672,20 @@ export async function handleAuthRoutes(
   }
 
   if (pathname === '/auth/login' && request.method === 'POST') {
-    const payload = (await readJsonBody(request).catch(() => ({}))) as LoginRequest;
+    const rawPayload = await readJsonBody(request).catch(() => ({}));
+    const rateLimitPayload = isJsonObject(rawPayload) ? rawPayload : {};
     const rateLimitInfo = await checkAuthAttemptRateLimit(authRateLimiter, {
       ip: getClientIp(request, trustedProxyCidrs),
       route: '/auth/login',
-      accountId: payload.accountId,
-      userId: payload.username
+      accountId: rateLimitPayload.accountId,
+      userId: rateLimitPayload.username
     });
     if (sendRateLimited(response, rateLimitInfo)) {
       return true;
     }
 
     try {
+      const payload = parseLoginRequest(rawPayload, correlationId);
       const session = await auth.login(payload, correlationId);
       if ('refreshToken' in session && 'accessToken' in session) {
         return sendAuthSession(response, session, handlers);

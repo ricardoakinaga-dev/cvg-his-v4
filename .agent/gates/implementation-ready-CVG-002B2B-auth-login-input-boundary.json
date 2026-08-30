@@ -1,0 +1,82 @@
+{
+  "record_id": "GATE-CVG-002B2B-AUTH-LOGIN-INPUT-BOUNDARY-IR-001",
+  "timestamp": "2026-08-30T15:00:00-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "Bounded JSON shape and input-size validation for POST /auth/login",
+  "scope_ref": "CVG-002B2B-AUTH-LOGIN-INPUT-BOUNDARY",
+  "version": 1,
+  "confidence": "MEDIUM",
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The authentication route casts arbitrary parsed JSON to LoginRequest and reads payload.username before establishing an object boundary; username/password are not bounded at the HTTP boundary.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-002B2B-AUTH-LOGIN-INPUT-BOUNDARY.md",
+        "apps/api/src/routes/auth-routes.ts",
+        "apps/api/src/helpers/request-body.ts",
+        "packages/db/src/schema/users.ts",
+        "apps/spa/src/services/setup.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Source-level selection evidence; dedicated RED remains required."
+    },
+    {
+      "id": "IR-002",
+      "description": "The smallest safe correction is a route-local LoginRequest validator after the existing rate-limit check and before AuthService.login, preserving response/cookie behavior and excluding MFA/session redesign.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-002B2B-AUTH-LOGIN-INPUT-BOUNDARY.md",
+        "apps/api/src/routes/auth-routes.ts",
+        "apps/api/src/helpers/common.ts",
+        "apps/api/src/routes/auth-routes.test.ts"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "No account UUID policy or email-login behavior is authorized by this gate."
+    },
+    {
+      "id": "IR-003",
+      "description": "Focused route tests can prove non-object JSON and oversized credential fields return sanitized 400 responses without invoking authentication, while existing success and rate-limit tests remain compatible.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-002B2B-AUTH-LOGIN-INPUT-BOUNDARY.md",
+        "apps/api/src/routes/auth-routes.test.ts"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "Fresh RED/GREEN and affected regression remain pending."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-002B2B-AUTH-LOGIN-INPUT-BOUNDARY.md",
+    "apps/api/src/routes/auth-routes.ts",
+    "packages/db/src/schema/users.ts"
+  ],
+  "gaps": [
+    "The intentional route RED, implementation, regression, quality and review are not complete at gate creation."
+  ],
+  "conditions": [
+    "Validate before AuthService.login without moving rate limiting after credential validation.",
+    "Do not echo invalid fields or alter the global ERP non-promotion state."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via fresh local residual scouting after the bounded semantic PIX replay closure",
+    "scope": "CVG-002B2B bounded POST /auth/login input boundary",
+    "decision": "Authorize reversible route/helper/test changes for JSON object validation and maximum lengths only. Exclude email-login expansion, MFA/session/WebAuthn changes, providers, credentials, target, production, deployment, release and global ERP promotion.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-002B2B-AUTH-LOGIN-INPUT-BOUNDARY-IR-001",
+    "expires_or_revalidates": "Revalidate before changing login identity semantics, MFA/session policy, account ID format, rate-limit policy or any target/production behavior."
+  },
+  "revalidation_triggers": [
+    "Adding email login or changing username canonicalization",
+    "Changing password hashing or MFA challenge semantics",
+    "Changing the auth rate-limit ordering or distributed backend",
+    "Any provider, target, production, deployment or release operation"
+  ],
+  "next_action": "Write and run the intentional RED before changing auth-routes implementation."
+}
