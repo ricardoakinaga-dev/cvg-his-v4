@@ -181,3 +181,17 @@ review limitation explicitly and never infer global promotion.
 
 The result must keep CVG-003/global ERP 'IN_PROGRESS/PARTIAL' and promotion
 'BLOCKED'.
+
+## Reconciliação pós-commit — 2026-08-30
+
+The bounded correction was committed locally as `c7eb4a00` (`fix: enforce
+billing tenant boundary`) with the explicit 38-path source, test and
+control-plane set. The exact commit file list was verified and the only
+remaining worktree change is the pre-existing
+`packages/design-system/tsconfig.vue.tsbuildinfo` cache, intentionally
+unstaged. This task is complete as `COMPLETE_BOUNDED` / `PASS_BOUNDED`; resume
+fresh residual scouting under a new authority while global ERP remains
+`IN_PROGRESS/PARTIAL` and promotion remains `BLOCKED`.
+
+Evidence:
+`.agent/verification.jsonl#VFY-CVG-003-BILLING-TENANT-BOUNDARY-COMMIT-001`.

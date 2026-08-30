@@ -107,3 +107,18 @@ The bounded child gate is verified as `PASS_BOUNDED` with a fresh independent
 Billing source, test and evidence paths, verify the exact commit file list and
 preserve global non-promotion before starting a new residual scout under a
 fresh authority.
+
+## Reconciliação pós-commit
+
+The bounded correction was committed locally as `c7eb4a00`
+(`fix: enforce billing tenant boundary`) with the explicit 38-path source,
+test and control-plane set. The exact committed file list was verified. The
+only remaining worktree change is the pre-existing
+`packages/design-system/tsconfig.vue.tsbuildinfo` cache, intentionally
+unstaged and uncommitted. The next lifecycle state is fresh `SCOUT` under a
+new authority; global ERP remains `IN_PROGRESS/PARTIAL` and promotion remains
+`BLOCKED`.
+
+Evidence:
+`.agent/verification.jsonl#VFY-CVG-003-BILLING-TENANT-BOUNDARY-COMMIT-001`
+and `.agent/execution-log.jsonl#EVT-1308`.

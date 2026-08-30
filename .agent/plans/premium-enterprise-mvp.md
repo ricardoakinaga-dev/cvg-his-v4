@@ -2781,3 +2781,9 @@ Evidence: `.agent/gates/verified-CVG-003-billing-tenant-boundary.json`,
 Global ERP remains `IN_PROGRESS/PARTIAL`, Vetus functional verification
 remains `4/11`, clinical parity remains `2/3`, readiness remains `95/100`
 (`42 PASS`, `3 WARN`, `1 FAIL`) and promotion remains `BLOCKED`.
+
+The bounded Billing correction was committed locally as `c7eb4a00` with the
+explicit 38-path source, test and control-plane set. The exact commit and
+worktree were reconciled; only the pre-existing design-system `tsbuildinfo`
+cache remains unstaged. Resume fresh residual scouting under a new authority;
+do not infer global ERP promotion from this child checkpoint.
