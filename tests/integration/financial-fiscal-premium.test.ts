@@ -74,15 +74,15 @@ function createFinancialService(repository = new InMemoryEncounterFinancialRepos
       }
     } as never,
     {
-      async getByEncounterOrThrow(encounterId: string) {
+      async getByEncounterOrThrow(_accountId: string, encounterId: string) {
         expect(encounterId).toBe(encounter.id);
         return billingRecord;
       },
-      async listItems(encounterId: string) {
+      async listItems(_accountId: string, encounterId: string) {
         expect(encounterId).toBe(encounter.id);
         return billingItems;
       },
-      getOrThrow(recordId: string) {
+      getOrThrow(_accountId: string, recordId: string) {
         expect(recordId).toBe(billingRecord.id);
         return billingRecord;
       }
@@ -180,7 +180,12 @@ function createFiscalRequest(method: string, url: string, body?: unknown): Reada
   });
 }
 
-function createApiKeyRequest(method: string, url: string, rawKey: string, body?: unknown): Readable {
+function createApiKeyRequest(
+  method: string,
+  url: string,
+  rawKey: string,
+  body?: unknown
+): Readable {
   return Object.assign(Readable.from(body === undefined ? [] : [JSON.stringify(body)]), {
     method,
     url,
@@ -196,14 +201,18 @@ describe('financial and fiscal premium evidence', () => {
   it('keeps financial close, receivable aging and billing settlement coherent', async () => {
     const { service, encounter, billingRecord } = createFinancialService();
 
-    const partiallyPaid = await service.closeEncounterFinancial(encounter.id, 'user_finance' as never, {
-      paidAmount: 120,
-      notes: 'Fechamento premium',
-      installments: [
-        { label: 'Entrada', amount: 100, dueAt: '2026-04-14T00:00:00.000Z' },
-        { label: 'Saldo', amount: 90, dueAt: '2026-04-20T00:00:00.000Z' }
-      ]
-    });
+    const partiallyPaid = await service.closeEncounterFinancial(
+      encounter.id,
+      'user_finance' as never,
+      {
+        paidAmount: 120,
+        notes: 'Fechamento premium',
+        installments: [
+          { label: 'Entrada', amount: 100, dueAt: '2026-04-14T00:00:00.000Z' },
+          { label: 'Saldo', amount: 90, dueAt: '2026-04-20T00:00:00.000Z' }
+        ]
+      }
+    );
 
     expect(partiallyPaid.financialClosed).toBe(true);
     expect(partiallyPaid.financialStatus).toBe('partial');
@@ -221,12 +230,16 @@ describe('financial and fiscal premium evidence', () => {
     expect(aging.totalOutstanding).toBe(70);
     expect(aging.openCount).toBe(1);
 
-    const settled = await service.recordPaymentForBillingRecord(billingRecord.id, {
-      amountPaid: 70,
-      paidByUserId: 'user_finance' as never,
-      externalReferenceType: 'billing_record',
-      externalReferenceId: billingRecord.id
-    });
+    const settled = await service.recordPaymentForBillingRecord(
+      encounter.accountId,
+      billingRecord.id,
+      {
+        amountPaid: 70,
+        paidByUserId: 'user_finance' as never,
+        externalReferenceType: 'billing_record',
+        externalReferenceId: billingRecord.id
+      }
+    );
 
     expect(settled.financialStatus).toBe('paid');
     expect(settled.balanceDue).toBe(0);
@@ -253,18 +266,22 @@ describe('financial and fiscal premium evidence', () => {
     });
     const paymentGateway = new LocalPixPaymentGateway();
 
-    const encounter = runtime.encounters.openEncounter(principal.user.accountId, principal.user.id, {
-      patientId: 'patient_luna',
-      ownerId: 'owner_maria_silva',
-      visitType: 'walk_in',
-      origin: 'reception',
-      reason: 'Card premium'
-    });
-    const billingRecord = await runtime.billing.createEstimate({
+    const encounter = runtime.encounters.openEncounter(
+      principal.user.accountId,
+      principal.user.id,
+      {
+        patientId: 'patient_luna',
+        ownerId: 'owner_maria_silva',
+        visitType: 'walk_in',
+        origin: 'reception',
+        reason: 'Card premium'
+      }
+    );
+    const billingRecord = await runtime.billing.createEstimate(principal.user.accountId, {
       encounterId: encounter.id,
       administrativeNotes: 'Cartao premium'
     });
-    await runtime.billing.addItem(principal.user.id, {
+    await runtime.billing.addItem(principal.user.accountId, principal.user.id, {
       encounterId: encounter.id,
       itemType: 'service',
       description: 'Procedimento premium',
@@ -294,6 +311,7 @@ describe('financial and fiscal premium evidence', () => {
         paymentGateway,
         apiKeys,
         audit: runtime.audit,
+        billing: runtime.billing,
         cardTransactions: runtime.cardTransactions
       }
     );
@@ -317,11 +335,26 @@ describe('financial and fiscal premium evidence', () => {
         paymentGateway,
         apiKeys,
         audit: runtime.audit,
+        billing: runtime.billing,
         cardTransactions: runtime.cardTransactions
       }
     );
     expect(captureResponse.statusCode).toBe(200);
     await runtime.eventBus.processPending(10);
+
+    await runtime.cardTransactions.create({
+      transactionId: 'card_missing',
+      provider: 'local-card',
+      accountId: principal.user.accountId,
+      amount: 25,
+      currency: 'BRL',
+      description: 'Intent persistido sem estado no gateway',
+      installments: 1,
+      status: 'authorized_pending_capture',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      billingSettlementStatus: 'not_applicable'
+    });
 
     const failedCaptureResponse = new MockResponse();
     await handlePaymentsRoutes(
@@ -338,6 +371,7 @@ describe('financial and fiscal premium evidence', () => {
         paymentGateway,
         apiKeys,
         audit: runtime.audit,
+        billing: runtime.billing,
         cardTransactions: runtime.cardTransactions
       }
     );
@@ -384,7 +418,11 @@ describe('financial and fiscal premium evidence', () => {
       total: number;
       reconciledCount: number;
       pendingCount: number;
-      data: Array<{ transactionId: string; reconciliationState: string; financialStatus: string | null }>;
+      data: Array<{
+        transactionId: string;
+        reconciliationState: string;
+        financialStatus: string | null;
+      }>;
     }>();
     expect(reconciliation.total).toBe(2);
     expect(reconciliation.reconciledCount).toBe(1);
@@ -394,11 +432,11 @@ describe('financial and fiscal premium evidence', () => {
         (row) => row.transactionId === createdIntent.id && row.reconciliationState === 'reconciled'
       )
     ).toBe(true);
-    expect(runtime.billing.getOrThrow(billingRecord.id).status).toBe('settled');
-    expect(runtime.audit.list().some((entry) => entry.action === 'card_capture')).toBe(true);
-    expect(runtime.audit.list().some((entry) => entry.action === 'card_capture_failed')).toBe(
-      true
+    expect(runtime.billing.getOrThrow(principal.user.accountId, billingRecord.id).status).toBe(
+      'settled'
     );
+    expect(runtime.audit.list().some((entry) => entry.action === 'card_capture')).toBe(true);
+    expect(runtime.audit.list().some((entry) => entry.action === 'card_capture_failed')).toBe(true);
     expect(runtime.audit.list().some((entry) => entry.action === 'list_card_reconciliation')).toBe(
       true
     );
@@ -553,7 +591,11 @@ describe('financial and fiscal premium evidence', () => {
       }
     );
     expect(createLayoutResponse.statusCode).toBe(201);
-    const createdLayout = createLayoutResponse.bodyJson<{ id: string; city: string; active: boolean }>();
+    const createdLayout = createLayoutResponse.bodyJson<{
+      id: string;
+      city: string;
+      active: boolean;
+    }>();
     expect(createdLayout.city).toBe('Santo Andre');
     expect(createdLayout.active).toBe(true);
 
@@ -591,7 +633,9 @@ describe('financial and fiscal premium evidence', () => {
         fiscalBackofficeEnabled: true
       }
     );
-    const layouts = listLayoutsResponse.bodyJson<{ items: Array<{ id: string; state: string; active: boolean }> }>();
+    const layouts = listLayoutsResponse.bodyJson<{
+      items: Array<{ id: string; state: string; active: boolean }>;
+    }>();
     expect(layouts.items.some((item) => item.id === createdLayout.id && item.state === 'SP')).toBe(
       true
     );

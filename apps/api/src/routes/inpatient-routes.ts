@@ -106,7 +106,10 @@ export interface InpatientRoutesHandlers {
   medicalRecords?: MedicalRecordsService;
   sectorBedService: SectorBedService;
   audit: AuditService;
-  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
+  requirePrincipal: (
+    request: IncomingMessage,
+    permissionCode: string
+  ) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
   runCommand?: TenantCommandRunner;
   onProgressAdded?: (event: {
     stay: InpatientStaySummary;
@@ -970,15 +973,19 @@ export async function handleInpatientRoutes(
           let billingRecordId = payload.billingRecordId;
 
           if (billing && pendingCharge && pendingCharge.status === 'pending') {
-            const billingItem = await billing.addItem(principal.user.id as never, {
-              encounterId: pendingCharge.encounterId,
-              itemType: 'daily_rate',
-              description: pendingCharge.description,
-              quantity: pendingCharge.quantity,
-              unitPriceAmount: pendingCharge.unitAmount,
-              sourceEntityType: 'inpatient_daily_charge',
-              sourceEntityId: pendingCharge.id
-            });
+            const billingItem = await billing.addItem(
+              principal.user.accountId,
+              principal.user.id as never,
+              {
+                encounterId: pendingCharge.encounterId,
+                itemType: 'daily_rate',
+                description: pendingCharge.description,
+                quantity: pendingCharge.quantity,
+                unitPriceAmount: pendingCharge.unitAmount,
+                sourceEntityType: 'inpatient_daily_charge',
+                sourceEntityId: pendingCharge.id
+              }
+            );
             billingRecordId = billingItem.billingRecordId;
           }
 

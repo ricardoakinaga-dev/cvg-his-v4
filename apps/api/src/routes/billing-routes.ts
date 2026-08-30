@@ -22,7 +22,8 @@ import { readJsonBody } from '../helpers/common.js';
 function manualSettlementDisabledResponse(correlationId: string) {
   return {
     code: 'MANUAL_SETTLEMENT_DISABLED',
-    message: 'Manual settlement is disabled. Record the receipt through the cash-receipts endpoint.',
+    message:
+      'Manual settlement is disabled. Record the receipt through the cash-receipts endpoint.',
     details: { receiptPath: '/encounters/:id/cash-receipts' },
     correlationId
   } as const;
@@ -40,7 +41,10 @@ function settlementIrreversibleResponse(correlationId: string, receiptPath: stri
 export interface BillingRoutesHandlers {
   billing: BillingService;
   audit: AuditService;
-  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
+  requirePrincipal: (
+    request: IncomingMessage,
+    permissionCode: string
+  ) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
   enforceAbac: (
     actionCode: string,
     principal: AuthenticatedPrincipal,
@@ -92,14 +96,10 @@ export async function handleBillingRoutes(
   }
 
   // GET /billing/:encounterId/items — list billing items for an encounter
-  if (
-    pathname.startsWith('/billing/') &&
-    pathname.endsWith('/items') &&
-    request.method === 'GET'
-  ) {
+  if (pathname.startsWith('/billing/') && pathname.endsWith('/items') && request.method === 'GET') {
     const principal = await requirePrincipal(request, 'billing.read');
     const encounterId = pathname.split('/')[2];
-    const items = await billing.listItems(encounterId as never);
+    const items = await billing.listItems(principal.user.accountId, encounterId as never);
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
@@ -125,14 +125,16 @@ export async function handleBillingRoutes(
   ) {
     const principal = await requirePrincipal(request, 'billing.read');
     const encounterId = pathname.split('/')[2];
-    const record = await billing.findByEncounter(encounterId as never);
+    const record = await billing.findByEncounter(principal.user.accountId, encounterId as never);
     if (!record) {
       response.statusCode = 404;
-      response.end(JSON.stringify({
-        error: 'Billing record not found',
-        code: 'BILLING_RECORD_NOT_FOUND',
-        encounterId
-      }));
+      response.end(
+        JSON.stringify({
+          error: 'Billing record not found',
+          code: 'BILLING_RECORD_NOT_FOUND',
+          encounterId
+        })
+      );
       return true;
     }
     appendAudit(audit, {
@@ -167,7 +169,7 @@ export async function handleBillingRoutes(
       },
       request
     );
-    const record = await billing.createEstimate(payload);
+    const record = await billing.createEstimate(principal.user.accountId, payload);
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
@@ -201,7 +203,11 @@ export async function handleBillingRoutes(
       },
       request
     );
-    const item = await billing.addItem(principal.user.id as never, payload);
+    const item = await billing.addItem(
+      principal.user.accountId,
+      principal.user.id as never,
+      payload
+    );
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
@@ -260,25 +266,35 @@ export async function handleBillingRoutes(
       },
       request
     );
-    const existingRecord = await billing.findByEncounter(encounterId as never);
+    const existingRecord = await billing.findByEncounter(
+      principal.user.accountId,
+      encounterId as never
+    );
     if (!existingRecord) {
       response.statusCode = 404;
-      response.end(JSON.stringify({
-        error: 'Billing record not found',
-        code: 'BILLING_RECORD_NOT_FOUND',
-        encounterId
-      }));
+      response.end(
+        JSON.stringify({
+          error: 'Billing record not found',
+          code: 'BILLING_RECORD_NOT_FOUND',
+          encounterId
+        })
+      );
       return true;
     }
     if (existingRecord.status === 'settled') {
       response.statusCode = 409;
-      response.end(JSON.stringify(settlementIrreversibleResponse(
-        correlationId,
-        `/encounters/${encounterId}/cash-receipts`
-      )));
+      response.end(
+        JSON.stringify(
+          settlementIrreversibleResponse(correlationId, `/encounters/${encounterId}/cash-receipts`)
+        )
+      );
       return true;
     }
-    const record = await billing.updateStatus(encounterId as never, payload);
+    const record = await billing.updateStatus(
+      principal.user.accountId,
+      encounterId as never,
+      payload
+    );
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,

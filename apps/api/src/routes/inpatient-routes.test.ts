@@ -938,7 +938,7 @@ test('handleInpatientRoutes creates and bills daily inpatient charges', async ()
   assert.equal(addBillingItem.mock.callCount(), 1);
   const addBillingItemPayload = (
     addBillingItem.mock.calls[0]?.arguments as unknown[] | undefined
-  )?.[1];
+  )?.[2];
   assert.deepEqual(addBillingItemPayload, {
     encounterId: stay.encounterId,
     itemType: 'daily_rate',

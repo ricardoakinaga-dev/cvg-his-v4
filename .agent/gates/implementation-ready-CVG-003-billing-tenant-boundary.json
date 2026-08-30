@@ -1,0 +1,89 @@
+{
+  "record_id": "GATE-CVG-003-BILLING-TENANT-BOUNDARY-IR-001",
+  "timestamp": "2026-08-30T18:02:44-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "Repository-local account-aware BillingService boundary, authenticated billing HTTP routes and first-party financial/payment/event callers",
+  "scope_ref": "CVG-003-BILLING-TENANT-BOUNDARY",
+  "version": 1,
+  "active_plan": ".agent/plans/premium-enterprise-mvp.md",
+  "active_task": ".agent/tasks/CVG-003-BILLING-TENANT-BOUNDARY.md",
+  "verification_state": "AUTHORIZED",
+  "next_gate": "RED",
+  "criteria": [
+    {
+      "id": "IR-001-SCOPE",
+      "description": "The billing tenant finding, bounded contract, owner and exclusions are recorded without promoting global ERP or financial settlement readiness.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-003-BILLING-TENANT-BOUNDARY.md",
+        ".agent/backlog.json",
+        ".agent/authority.jsonl#AUTH-CVG-003-BILLING-TENANT-BOUNDARY-IR-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The gate authorizes only the repository-local billing service/HTTP/caller account boundary."
+    },
+    {
+      "id": "IR-002-BASELINE",
+      "description": "BillingService exposes encounter/record reads and mutations without explicit account scope, while the durable repository already accepts account scope and authenticated routes omit it on several paths.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/billing/src/index.ts",
+        "packages/modules/billing/src/repositories/database-billing.repository.ts",
+        "apps/api/src/routes/billing-routes.ts",
+        "packages/modules/financial/src/index.ts",
+        "packages/modules/event-consumers/src/payments.consumer.ts",
+        "packages/modules/event-consumers/src/billing.consumer.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The finding is source evidence; implementation and fresh tests are required before a bounded result."
+    },
+    {
+      "id": "IR-003-TDD",
+      "description": "Focused RED contracts can prove two-account billing record/item isolation and authenticated route forwarding before implementation.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-003-BILLING-TENANT-BOUNDARY.md",
+        "packages/modules/billing/src/billing.test.ts",
+        "apps/api/src/routes/billing-routes.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The RED contracts and implementation have not yet run."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-003-BILLING-TENANT-BOUNDARY.md",
+    "packages/modules/billing/src/index.ts",
+    "packages/modules/billing/src/repositories/database-billing.repository.ts",
+    "apps/api/src/routes/billing-routes.ts",
+    "packages/modules/financial/src/index.ts",
+    "packages/modules/event-consumers/src/payments.consumer.ts",
+    "packages/modules/event-consumers/src/billing.consumer.ts"
+  ],
+  "confidence": "MEDIUM",
+  "gaps": [
+    "The RED/GREEN implementation, caller migration, regression, quality and review evidence remain outstanding."
+  ],
+  "conditions": [],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via fresh local residual scouting and completed delegated source scout",
+    "scope": "Repository-local account-aware BillingService boundary, authenticated billing HTTP routes and first-party financial/payment/event callers",
+    "decision": "Authorize only reversible BillingService account-scope changes, authenticated billing route forwarding, first-party caller updates and focused tests. Exclude schema, migrations, repository SQL redesign, settlement/cash redesign, providers, credentials, target, production, deployment, release and global ERP promotion.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-003-BILLING-TENANT-BOUNDARY-IR-001",
+    "expires_or_revalidates": "Revalidate before any schema, migration, repository SQL, settlement/cash redesign, provider, credential, target, production, deployment, release or global ERP behavior change."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "implementation_status": "AUTHORIZED",
+  "next_action": "Write and run the focused two-account BillingService and authenticated billing-route RED contracts, then implement only the explicit account boundary and first-party caller updates.",
+  "revalidation_triggers": [
+    "Changing billing schema, migrations or repository SQL",
+    "Expanding into cash/settlement redesign or another financial aggregate",
+    "Changing providers, credentials, target, production, deployment, release or global ERP promotion"
+  ],
+  "supersedes": null
+}

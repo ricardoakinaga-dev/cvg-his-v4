@@ -14,7 +14,11 @@ import type { Logger } from '@cvg-his-v2/shared-logging';
 import type { BillingService } from '@cvg-his-v2/module-billing';
 import type { StaffService } from '@cvg-his-v2/module-staff';
 import type { EncountersService } from '@cvg-his-v2/module-encounters';
-import type { BillingRecordSummary, BillingItemSummary, StaffSummary } from '@cvg-his-v2/shared-types';
+import type {
+  BillingRecordSummary,
+  BillingItemSummary,
+  StaffSummary
+} from '@cvg-his-v2/shared-types';
 
 export interface CommissionJobContext {
   readonly correlationId: string;
@@ -134,12 +138,9 @@ export function getCommissionRate(staffType: StaffType, billingCategory: string)
 /**
  * Calculate commission for a single billing item.
  */
-export function calculateItemCommission(
-  item: BillingItemSummary,
-  staffType: StaffType
-): number {
+export function calculateItemCommission(item: BillingItemSummary, staffType: StaffType): number {
   const rate = getCommissionRate(staffType, item.itemType);
-  return Number((item.totalAmount * rate / 100).toFixed(2));
+  return Number(((item.totalAmount * rate) / 100).toFixed(2));
 }
 
 /**
@@ -162,23 +163,28 @@ export async function runCommissionJob(
 ): Promise<CommissionResult> {
   const { logger } = context;
   const errors: string[] = [];
-  const staffAccumulator = new Map<string, {
-    staffId: string;
-    staffName: string;
-    staffType: StaffType;
-    commissionAmount: number;
-    servicesCount: number;
-    itemsCount: number;
-  }>();
+  const staffAccumulator = new Map<
+    string,
+    {
+      staffId: string;
+      staffName: string;
+      staffType: StaffType;
+      commissionAmount: number;
+      servicesCount: number;
+      itemsCount: number;
+    }
+  >();
 
   let totalCalculated = 0;
 
   try {
     // Get all encounters in the period
-    const encounters = encountersService.listAll().filter((enc: { openedAt?: string; status: string }) => {
-      const encDate = enc.openedAt ?? '';
-      return encDate >= periodStart && encDate <= periodEnd && enc.status !== 'reception';
-    });
+    const encounters = encountersService
+      .listAll()
+      .filter((enc: { openedAt?: string; status: string }) => {
+        const encDate = enc.openedAt ?? '';
+        return encDate >= periodStart && encDate <= periodEnd && enc.status !== 'reception';
+      });
 
     if (encounters.length === 0) {
       logger?.info('Commission job: no encounters in period', { periodStart, periodEnd });
@@ -193,13 +199,13 @@ export async function runCommissionJob(
 
     // Process each encounter's billing records
     for (const encounter of encounters) {
-      const billingRecords = billingService.list(encounter.id);
+      const billingRecords = billingService.list(encounter.accountId, encounter.id);
       const settledRecords = billingRecords.filter(
         (r: { status: string }) => r.status === 'settled' || r.status === 'estimated'
       );
 
       for (const record of settledRecords) {
-        const items = await billingService.listItems(encounter.id);
+        const items = await billingService.listItems(encounter.accountId, encounter.id);
 
         for (const item of items) {
           if (item.totalAmount <= 0) continue;
@@ -251,8 +257,9 @@ export async function runCommissionJob(
     logger?.error('Commission job failed', { periodStart, periodEnd, error: message });
   }
 
-  const staffCommissions = Array.from(staffAccumulator.values())
-    .sort((a, b) => b.commissionAmount - a.commissionAmount);
+  const staffCommissions = Array.from(staffAccumulator.values()).sort(
+    (a, b) => b.commissionAmount - a.commissionAmount
+  );
 
   return {
     periodStart,
@@ -262,4 +269,3 @@ export async function runCommissionJob(
     errors: []
   };
 }
-

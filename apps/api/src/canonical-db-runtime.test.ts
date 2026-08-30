@@ -129,7 +129,7 @@ test('canonical PostgreSQL runtime survives connection close and rehydrates crit
         );
         await runtimeA.medicalRecords.waitForPersistence();
 
-        const billing = await runtimeA.billing.createEstimate({
+        const billing = await runtimeA.billing.createEstimate(accountId, {
           encounterId: encounter.id,
           administrativeNotes: 'Billing persistido antes do reinicio'
         });
@@ -429,6 +429,7 @@ test('canonical PostgreSQL runtime survives connection close and rehydrates crit
         assert.ok(attachments.some((attachment) => attachment.id === identifiers.attachmentId));
 
         const billing = await runtimeB!.billing.getByEncounterOrThrow(
+          accountId,
           identifiers.encounterId as never
         );
         assert.equal(billing.id, identifiers.billingId);

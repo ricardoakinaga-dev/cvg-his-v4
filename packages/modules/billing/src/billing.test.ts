@@ -101,7 +101,7 @@ function createRepository(overrides?: Partial<BillingRepository>): BillingReposi
 test('BillingService createEstimate moves billing record to estimated', async () => {
   const service = createService();
 
-  const record = await service.createEstimate({
+  const record = await service.createEstimate('acc_test' as never, {
     encounterId: 'encounter_1',
     administrativeNotes: 'Estimativa inicial'
   });
@@ -136,11 +136,14 @@ test('BillingService replays a source-linked item without creating a duplicate',
     sourceEntityType: 'inpatient_daily_charge' as const,
     sourceEntityId: 'stayday_123'
   };
-  const first = await service.addItem('user_1' as never, payload);
-  const replay = await service.addItem('user_1' as never, payload);
+  const first = await service.addItem('acc_test' as never, 'user_1' as never, payload);
+  const replay = await service.addItem('acc_test' as never, 'user_1' as never, payload);
 
   assert.equal(replay.id, first.id);
-  assert.equal((await service.listItems(payload.encounterId as never)).length, 1);
+  assert.equal(
+    (await service.listItems('acc_test' as never, payload.encounterId as never)).length,
+    1
+  );
 });
 
 test('BillingService does not trust an uncommitted source item in the hot cache', async () => {
@@ -178,8 +181,8 @@ test('BillingService does not trust an uncommitted source item in the hot cache'
     sourceEntityType: 'inpatient_daily_charge' as const,
     sourceEntityId: 'stayday_uncommitted'
   };
-  const first = await service.addItem('user_1' as never, payload);
-  const retry = await service.addItem('user_1' as never, payload);
+  const first = await service.addItem('acc_test' as never, 'user_1' as never, payload);
+  const retry = await service.addItem('acc_test' as never, 'user_1' as never, payload);
 
   assert.notEqual(retry.id, first.id);
   assert.equal(itemWrites, 2);
@@ -207,8 +210,8 @@ test('BillingService read methods do not create billing records', async () => {
     }
   );
 
-  assert.equal(await service.findByEncounter('encounter_1' as never), null);
-  assert.deepEqual(await service.listItems('encounter_1' as never), []);
+  assert.equal(await service.findByEncounter('acc_test' as never, 'encounter_1' as never), null);
+  assert.deepEqual(await service.listItems('acc_test' as never, 'encounter_1' as never), []);
   assert.equal(created, 0);
 });
 
@@ -236,7 +239,7 @@ test('BillingService createEstimate explicitly creates repository record', async
     }
   );
 
-  const record = await service.createEstimate({
+  const record = await service.createEstimate('acc_test' as never, {
     encounterId: 'encounter_1',
     administrativeNotes: 'Estimativa explicita'
   });
@@ -248,19 +251,19 @@ test('BillingService createEstimate explicitly creates repository record', async
 test('BillingService addItem recalculates subtotal', async () => {
   const service = createService();
 
-  await service.createEstimate({
+  await service.createEstimate('acc_test' as never, {
     encounterId: 'encounter_1',
     administrativeNotes: 'Estimativa inicial'
   });
 
-  const itemA = await service.addItem('finance_1' as never, {
+  const itemA = await service.addItem('acc_test' as never, 'finance_1' as never, {
     encounterId: 'encounter_1',
     itemType: 'service',
     description: 'Consulta',
     quantity: 1,
     unitPriceAmount: 120
   });
-  const itemB = await service.addItem('finance_1' as never, {
+  const itemB = await service.addItem('acc_test' as never, 'finance_1' as never, {
     encounterId: 'encounter_1',
     itemType: 'exam',
     description: 'Hemograma',
@@ -268,11 +271,11 @@ test('BillingService addItem recalculates subtotal', async () => {
     unitPriceAmount: 35
   });
 
-  const record = await service.getByEncounterOrThrow('encounter_1' as never);
+  const record = await service.getByEncounterOrThrow('acc_test' as never, 'encounter_1' as never);
   assert.equal(itemA.totalAmount, 120);
   assert.equal(itemB.totalAmount, 70);
   assert.equal(record.subtotalAmount, 190);
-  assert.equal((await service.listItems('encounter_1' as never)).length, 2);
+  assert.equal((await service.listItems('acc_test' as never, 'encounter_1' as never)).length, 2);
 });
 
 test('BillingService addItem explicitly creates record when missing and persists subtotal in memory', async () => {
@@ -303,7 +306,7 @@ test('BillingService addItem explicitly creates record when missing and persists
     }
   );
 
-  await service.addItem('finance_1' as never, {
+  await service.addItem('acc_test' as never, 'finance_1' as never, {
     encounterId: 'encounter_1',
     itemType: 'service',
     description: 'Consulta',
@@ -311,7 +314,7 @@ test('BillingService addItem explicitly creates record when missing and persists
     unitPriceAmount: 100
   });
 
-  const record = await service.getByEncounterOrThrow('encounter_1' as never);
+  const record = await service.getByEncounterOrThrow('acc_test' as never, 'encounter_1' as never);
   assert.equal(createdRecords.length, 1);
   assert.equal(createdItems.length, 1);
   assert.equal(record.subtotalAmount, 200);
@@ -341,7 +344,7 @@ test('BillingService updateStatus does not create a missing persistent record', 
 
   await assert.rejects(
     async () =>
-      service.updateStatus('encounter_missing' as never, {
+      service.updateStatus('acc_test' as never, 'encounter_missing' as never, {
         status: 'open',
         administrativeNotes: 'Tentativa sem estimativa'
       }),
@@ -353,14 +356,14 @@ test('BillingService updateStatus does not create a missing persistent record', 
 test('BillingService settleByRecordId moves record to settled', async () => {
   const service = createService();
 
-  const record = await service.createEstimate({
+  const record = await service.createEstimate('acc_test' as never, {
     encounterId: 'encounter_1',
     administrativeNotes: 'Estimativa para liquidacao PIX'
   });
 
   assert.equal(record.status, 'estimated');
 
-  const settled = await service.settleByRecordId(record.id);
+  const settled = await service.settleByRecordId('acc_test' as never, record.id);
 
   assert.equal(settled.status, 'settled');
 });
@@ -368,17 +371,17 @@ test('BillingService settleByRecordId moves record to settled', async () => {
 test('BillingService blocks adding items to settled record', async () => {
   const service = createService();
 
-  await service.createEstimate({
+  await service.createEstimate('acc_test' as never, {
     encounterId: 'encounter_1',
     administrativeNotes: 'Estimativa inicial'
   });
-  await service.updateStatus('encounter_1' as never, {
+  await service.updateStatus('acc_test' as never, 'encounter_1' as never, {
     status: 'settled'
   });
 
   await assert.rejects(
     async () =>
-      service.addItem('finance_1' as never, {
+      service.addItem('acc_test' as never, 'finance_1' as never, {
         encounterId: 'encounter_1',
         itemType: 'service',
         description: 'Consulta',
@@ -391,18 +394,20 @@ test('BillingService blocks adding items to settled record', async () => {
 
 test('BillingService rejects backwards status transitions', async () => {
   const service = createService();
-  await service.createEstimate({ encounterId: 'encounter_1' });
+  await service.createEstimate('acc_test' as never, { encounterId: 'encounter_1' });
 
   await assert.rejects(
-    () => service.updateStatus('encounter_1' as never, { status: 'draft' }),
+    () => service.updateStatus('acc_test' as never, 'encounter_1' as never, { status: 'draft' }),
     ConflictError
   );
   assert.equal(
-    (await service.updateStatus('encounter_1' as never, { status: 'open' })).status,
+    (await service.updateStatus('acc_test' as never, 'encounter_1' as never, { status: 'open' }))
+      .status,
     'open'
   );
   assert.equal(
-    (await service.updateStatus('encounter_1' as never, { status: 'settled' })).status,
+    (await service.updateStatus('acc_test' as never, 'encounter_1' as never, { status: 'settled' }))
+      .status,
     'settled'
   );
 });
@@ -410,18 +415,18 @@ test('BillingService rejects backwards status transitions', async () => {
 test('BillingService list filters by encounter', async () => {
   const service = createService();
 
-  await service.createEstimate({
+  await service.createEstimate('acc_test' as never, {
     encounterId: 'encounter_1',
     administrativeNotes: 'Estimativa inicial'
   });
-  await service.createEstimate({
+  await service.createEstimate('acc_test' as never, {
     encounterId: 'encounter_2',
     administrativeNotes: 'Estimativa 2'
   });
 
-  assert.equal(service.list().length, 2);
-  assert.equal(service.list('encounter_1').length, 1);
-  assert.equal(service.list('encounter_1')[0].encounterId, 'encounter_1');
+  assert.equal(service.list('acc_test' as never).length, 2);
+  assert.equal(service.list('acc_test' as never, 'encounter_1').length, 1);
+  assert.equal(service.list('acc_test' as never, 'encounter_1')[0].encounterId, 'encounter_1');
 });
 
 test('BillingService list filters by patient and owner without losing encounter filter compatibility', async () => {
@@ -437,21 +442,28 @@ test('BillingService list filters by patient and owner without losing encounter 
     }
   } as never);
 
-  await service.createEstimate({
+  await service.createEstimate('acc_test' as never, {
     encounterId: 'encounter_1',
     administrativeNotes: 'Comanda do paciente 1'
   });
-  await service.createEstimate({
+  await service.createEstimate('acc_test' as never, {
     encounterId: 'encounter_2',
     administrativeNotes: 'Comanda do paciente 2'
   });
 
-  assert.equal(service.list({ patientId: 'patient_1' }).length, 1);
-  assert.equal(service.list({ patientId: 'patient_1' })[0].encounterId, 'encounter_1');
-  assert.equal(service.list({ ownerId: 'owner_2' }).length, 1);
-  assert.equal(service.list({ ownerId: 'owner_2' })[0].patientId, 'patient_2');
-  assert.equal(service.list({ encounterId: 'encounter_2', patientId: 'patient_2' }).length, 1);
-  assert.equal(service.list('encounter_1').length, 1);
+  assert.equal(service.list('acc_test' as never, { patientId: 'patient_1' }).length, 1);
+  assert.equal(
+    service.list('acc_test' as never, { patientId: 'patient_1' })[0].encounterId,
+    'encounter_1'
+  );
+  assert.equal(service.list('acc_test' as never, { ownerId: 'owner_2' }).length, 1);
+  assert.equal(service.list('acc_test' as never, { ownerId: 'owner_2' })[0].patientId, 'patient_2');
+  assert.equal(
+    service.list('acc_test' as never, { encounterId: 'encounter_2', patientId: 'patient_2' })
+      .length,
+    1
+  );
+  assert.equal(service.list('acc_test' as never, 'encounter_1').length, 1);
 });
 
 test('BillingService hydrates records and items from repository', async () => {
@@ -509,9 +521,134 @@ test('BillingService hydrates records and items from repository', async () => {
 
   await service.hydrateFromDatabase('acc_test' as never);
 
-  assert.equal(service.list().length, 1);
-  assert.equal(service.getOrThrow('bill_repo_1' as never).status, 'open');
-  assert.equal((await service.listItems('encounter_repo' as never)).length, 1);
+  assert.equal(service.list('acc_test' as never).length, 1);
+  assert.equal(service.getOrThrow('acc_test' as never, 'bill_repo_1' as never).status, 'open');
+  assert.equal((await service.listItems('acc_test' as never, 'encounter_repo' as never)).length, 1);
+});
+
+test('BillingService filters foreign and malformed repository data during hydration', async () => {
+  const record = {
+    id: 'bill_repo_scoped' as never,
+    accountId: 'acc_test' as never,
+    encounterId: 'encounter_scoped' as never,
+    patientId: 'patient_1' as never,
+    ownerId: 'owner_1' as never,
+    status: 'open' as const,
+    subtotalAmount: 90,
+    currency: 'BRL' as const,
+    createdAt: '2026-04-13T00:00:00.000Z',
+    updatedAt: '2026-04-13T00:00:00.000Z'
+  };
+  const item = {
+    id: 'bill_item_scoped' as never,
+    billingRecordId: record.id,
+    accountId: record.accountId,
+    encounterId: record.encounterId,
+    itemType: 'service' as const,
+    description: 'Consulta valida',
+    quantity: 1,
+    unitPriceAmount: 90,
+    totalAmount: 90,
+    createdByUserId: 'finance_1' as never,
+    createdAt: record.createdAt
+  };
+  const repository = createRepository({
+    async findRecordsByAccountId() {
+      return [
+        record,
+        { ...record, id: 'bill_repo_foreign' as never, accountId: 'acc_other' as never }
+      ];
+    },
+    async findItemsByRecord() {
+      return [
+        item,
+        { ...item, id: 'bill_item_foreign' as never, accountId: 'acc_other' as never },
+        { ...item, id: 'bill_item_wrong_record' as never, billingRecordId: 'bill_other' as never },
+        {
+          ...item,
+          id: 'bill_item_wrong_encounter' as never,
+          encounterId: 'encounter_other' as never
+        }
+      ];
+    }
+  });
+  const service = new BillingService(
+    {
+      getOrThrow(encounterId: string) {
+        return {
+          id: encounterId,
+          accountId: 'acc_test',
+          patientId: 'patient_1',
+          ownerId: 'owner_1'
+        };
+      }
+    } as never,
+    { repository }
+  );
+
+  await service.hydrateFromDatabase('acc_test' as never);
+
+  assert.deepEqual(service.list('acc_test' as never), [record]);
+  assert.deepEqual(await service.listItems('acc_test' as never, 'encounter_scoped' as never), [
+    item
+  ]);
+  assert.throws(
+    () => service.getOrThrow('acc_test' as never, 'bill_repo_foreign' as never),
+    NotFoundError
+  );
+});
+
+test('BillingService never resurrects cached items after the repository becomes empty', async () => {
+  const record = {
+    id: 'bill_repo_rollback' as never,
+    accountId: 'acc_test' as never,
+    encounterId: 'encounter_rollback' as never,
+    patientId: 'patient_1' as never,
+    ownerId: 'owner_1' as never,
+    status: 'open' as const,
+    subtotalAmount: 90,
+    currency: 'BRL' as const,
+    createdAt: '2026-04-13T00:00:00.000Z',
+    updatedAt: '2026-04-13T00:00:00.000Z'
+  };
+  const item = {
+    id: 'bill_item_rollback' as never,
+    billingRecordId: record.id,
+    accountId: record.accountId,
+    encounterId: record.encounterId,
+    itemType: 'service' as const,
+    description: 'Item revertido',
+    quantity: 1,
+    unitPriceAmount: 90,
+    totalAmount: 90,
+    createdByUserId: 'finance_1' as never,
+    createdAt: record.createdAt
+  };
+  let itemReads = 0;
+  const repository = createRepository({
+    async findRecordByEncounter() {
+      return record;
+    },
+    async findItemsByRecord() {
+      itemReads += 1;
+      return itemReads === 1 ? [item] : [];
+    }
+  });
+  const service = new BillingService(
+    {
+      getOrThrow(encounterId: string) {
+        return {
+          id: encounterId,
+          accountId: 'acc_test',
+          patientId: 'patient_1',
+          ownerId: 'owner_1'
+        };
+      }
+    } as never,
+    { repository }
+  );
+
+  assert.deepEqual(await service.listItems('acc_test' as never, 'encounter_rollback' as never), []);
 });
 
 test('BillingService refreshes cached records from the authoritative repository', async () => {
@@ -551,14 +688,20 @@ test('BillingService refreshes cached records from the authoritative repository'
   );
 
   await service.hydrateFromDatabase('acc_test' as never);
-  assert.equal((await service.findByEncounter('encounter_repo' as never))?.status, 'open');
+  assert.equal(
+    (await service.findByEncounter('acc_test' as never, 'encounter_repo' as never))?.status,
+    'open'
+  );
 
   persistedStatus = 'settled';
 
-  assert.equal((await service.findByEncounter('encounter_repo' as never))?.status, 'settled');
+  assert.equal(
+    (await service.findByEncounter('acc_test' as never, 'encounter_repo' as never))?.status,
+    'settled'
+  );
   await assert.rejects(
     () =>
-      service.addItem('finance_1' as never, {
+      service.addItem('acc_test' as never, 'finance_1' as never, {
         encounterId: 'encounter_repo',
         itemType: 'service',
         description: 'Item tardio',
@@ -591,7 +734,7 @@ test('BillingService lists repository state authoritatively for a tenant', async
   });
   const service = new BillingService({ getOrThrow() {} } as never, { repository });
 
-  const records = await service.listAuthoritative({ accountId: 'acc_test' });
+  const records = await service.listAuthoritative({ accountId: 'acc_test' as never });
 
   assert.equal(records.length, 1);
   assert.equal(records[0]?.status, 'settled');
@@ -644,13 +787,101 @@ test('BillingService reuses repository record and triggers callbacks only on rea
     }
   );
 
-  const reused = await service.ensureRecord('encounter_repo' as never);
-  const unchanged = await service.updateStatus('encounter_repo' as never, { status: 'draft' });
-  const changed = await service.updateStatus('encounter_repo' as never, { status: 'open' });
+  const reused = await service.ensureRecord('acc_test' as never, 'encounter_repo' as never);
+  const unchanged = await service.updateStatus('acc_test' as never, 'encounter_repo' as never, {
+    status: 'draft'
+  });
+  const changed = await service.updateStatus('acc_test' as never, 'encounter_repo' as never, {
+    status: 'open'
+  });
 
   assert.equal(reused.id, 'bill_repo_2');
   assert.equal(unchanged.status, 'draft');
   assert.equal(changed.status, 'open');
   assert.equal(created.length, 0);
   assert.deepEqual(changes, ['draft->open']);
+});
+
+test('BillingService requires account scope for every record and command boundary', async () => {
+  const encounters = new Map([
+    [
+      'encounter_a',
+      {
+        id: 'encounter_a',
+        accountId: 'account_a',
+        patientId: 'patient_a',
+        ownerId: 'owner_a'
+      }
+    ],
+    [
+      'encounter_b',
+      {
+        id: 'encounter_b',
+        accountId: 'account_b',
+        patientId: 'patient_b',
+        ownerId: 'owner_b'
+      }
+    ]
+  ]);
+  const service = new BillingService({
+    getOrThrow(encounterId: string) {
+      const encounter = encounters.get(encounterId);
+      if (!encounter) throw new NotFoundError('Encounter not found', { encounterId });
+      return encounter;
+    }
+  } as never);
+  const scoped = service as unknown as {
+    createEstimate: (
+      ...args: unknown[]
+    ) => Promise<{ id: string; encounterId: string; status: string }>;
+    addItem: (...args: unknown[]) => Promise<{ id: string }>;
+    findByEncounter: (...args: unknown[]) => Promise<{ id: string; status: string } | null>;
+    getByEncounterOrThrow: (...args: unknown[]) => Promise<{ id: string; status: string }>;
+    getOrThrow: (...args: unknown[]) => { id: string; status: string };
+    list: (...args: unknown[]) => readonly { id: string }[];
+    listItems: (...args: unknown[]) => Promise<readonly { id: string }[]>;
+    updateStatus: (...args: unknown[]) => Promise<{ id: string; status: string }>;
+    settleByRecordId: (...args: unknown[]) => Promise<{ id: string; status: string }>;
+  };
+  const estimatePayload = { encounterId: 'encounter_a', administrativeNotes: 'Tenant A' };
+  const itemPayload = {
+    encounterId: 'encounter_a',
+    itemType: 'service' as const,
+    description: 'Consulta A',
+    quantity: 1,
+    unitPriceAmount: 120
+  };
+
+  const record = await scoped.createEstimate('account_a', estimatePayload);
+  await scoped.addItem('account_a', 'user_a', itemPayload);
+
+  assert.equal((await scoped.findByEncounter('account_a', 'encounter_a'))?.id, record.id);
+  assert.equal((await scoped.getByEncounterOrThrow('account_a', 'encounter_a')).id, record.id);
+  assert.equal(scoped.getOrThrow('account_a', record.id).id, record.id);
+  assert.equal(scoped.list('account_a').length, 1);
+  assert.equal((await scoped.listItems('account_a', 'encounter_a')).length, 1);
+
+  await assert.rejects(() => scoped.findByEncounter('account_b', 'encounter_a'), NotFoundError);
+  await assert.rejects(
+    () => scoped.getByEncounterOrThrow('account_b', 'encounter_a'),
+    NotFoundError
+  );
+  assert.throws(() => scoped.getOrThrow('account_b', record.id), NotFoundError);
+  assert.equal(scoped.list('account_b').length, 0);
+  await assert.rejects(() => scoped.listItems('account_b', 'encounter_a'), NotFoundError);
+  await assert.rejects(() => scoped.createEstimate('account_b', estimatePayload), NotFoundError);
+  await assert.rejects(() => scoped.addItem('account_b', 'user_b', itemPayload), NotFoundError);
+  await assert.rejects(
+    () => scoped.updateStatus('account_b', 'encounter_a', { status: 'open' }),
+    NotFoundError
+  );
+  await assert.rejects(() => scoped.settleByRecordId('account_b', record.id), NotFoundError);
+
+  assert.equal((await scoped.findByEncounter('account_a', 'encounter_a'))?.status, 'estimated');
+  assert.equal((await scoped.listItems('account_a', 'encounter_a')).length, 1);
+  assert.equal(
+    (await scoped.updateStatus('account_a', 'encounter_a', { status: 'open' })).status,
+    'open'
+  );
+  assert.equal((await scoped.settleByRecordId('account_a', record.id)).status, 'settled');
 });

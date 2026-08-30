@@ -355,10 +355,10 @@ describe('ICT-010 — Billable/Consumption → Module Reflex', () => {
     });
 
     // Create billing estimate + item
-    const estimate = await billing.createEstimate({ encounterId: encounter.id });
+    const estimate = await billing.createEstimate(TEST_ACCOUNT_ID, { encounterId: encounter.id });
     expect(estimate.encounterId).toBe(encounter.id);
 
-    await billing.addItem(TEST_USER_ID, {
+    await billing.addItem(TEST_ACCOUNT_ID, TEST_USER_ID, {
       encounterId: encounter.id,
       itemType: 'service',
       description: 'Consulta',
@@ -367,10 +367,10 @@ describe('ICT-010 — Billable/Consumption → Module Reflex', () => {
     });
 
     // Verify reflex: billing record exists with item
-    const record = await billing.getByEncounterOrThrow(encounter.id);
+    const record = await billing.getByEncounterOrThrow(TEST_ACCOUNT_ID, encounter.id);
     expect(record).toBeDefined();
 
-    const items = await billing.listItems(encounter.id);
+    const items = await billing.listItems(TEST_ACCOUNT_ID, encounter.id);
     expect(items.length).toBe(1);
     expect(items[0].description).toBe('Consulta');
     expect(items[0].quantity).toBe(1);
@@ -409,12 +409,16 @@ describe('ICT-010 — Billable/Consumption → Module Reflex', () => {
     const initialQty = initialItem.onHandQuantity;
 
     // Consume (real API: consume(actorUserId, payload with sourceEntityType))
-    await inventory.consume(TEST_USER_ID, {
-      encounterId: encounter.id,
-      inventoryItemId: initialItem.id,
-      quantity: 2,
-      sourceEntityType: 'encounter'
-    }, TEST_ACCOUNT_ID);
+    await inventory.consume(
+      TEST_USER_ID,
+      {
+        encounterId: encounter.id,
+        inventoryItemId: initialItem.id,
+        quantity: 2,
+        sourceEntityType: 'encounter'
+      },
+      TEST_ACCOUNT_ID
+    );
 
     // Verify reflex: stock reduced
     const updatedItem = inventory.getItemOrThrow(initialItem.id, TEST_ACCOUNT_ID);

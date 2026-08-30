@@ -16,7 +16,7 @@
  */
 import type { BillingService } from '@cvg-his-v2/module-billing';
 import type { EncounterFinancialService } from '@cvg-his-v2/module-financial';
-import type { BillingRecordId } from '@cvg-his-v2/shared-types';
+import type { AccountId, BillingRecordId } from '@cvg-his-v2/shared-types';
 import { nowIso } from '@cvg-his-v2/shared-utils';
 import type { EventHandler, OutboxEvent } from '@cvg-his-v2/module-event-bus';
 import type {
@@ -235,7 +235,10 @@ export class PaymentsEventHandlers {
     }
 
     const billingRecord = payload.billingRecordId
-      ? this.#billing.getOrThrow(payload.billingRecordId as BillingRecordId)
+      ? this.#billing.getOrThrow(
+          payload.accountId as AccountId,
+          payload.billingRecordId as BillingRecordId
+        )
       : undefined;
     if (billingRecord) {
       if (billingRecord.accountId !== payload.accountId) {
@@ -290,14 +293,19 @@ export class PaymentsEventHandlers {
     }
 
     try {
-      await this.#billing.settleByRecordId(payload.billingRecordId as BillingRecordId);
+      await this.#billing.settleByRecordId(
+        payload.accountId as AccountId,
+        payload.billingRecordId as BillingRecordId
+      );
 
       const hasReceivablePayment = await this.#hasReceivablePaymentLink(
+        payload.accountId as AccountId,
         payload.billingRecordId,
         payload.intentId
       );
       if (!hasReceivablePayment && effectiveTransaction.amount > 0) {
         await this.#encounterFinancial.recordPaymentForBillingRecord(
+          payload.accountId as AccountId,
           payload.billingRecordId as BillingRecordId,
           {
             amountPaid: effectiveTransaction.amount,
@@ -406,7 +414,10 @@ export class PaymentsEventHandlers {
     let billingRecord: ReturnType<BillingService['getOrThrow']> | undefined;
     try {
       billingRecord = effectiveBillingRecordId
-        ? this.#billing.getOrThrow(effectiveBillingRecordId as BillingRecordId)
+        ? this.#billing.getOrThrow(
+            payload.accountId as AccountId,
+            effectiveBillingRecordId as BillingRecordId
+          )
         : undefined;
     } catch (error) {
       throw new Error(
@@ -474,14 +485,19 @@ export class PaymentsEventHandlers {
     }
 
     try {
-      await this.#billing.settleByRecordId(effectiveBillingRecordId as BillingRecordId);
+      await this.#billing.settleByRecordId(
+        payload.accountId as AccountId,
+        effectiveBillingRecordId as BillingRecordId
+      );
       const hasReceivablePayment = await this.#hasReceivablePaymentLink(
+        payload.accountId as AccountId,
         effectiveBillingRecordId,
         payload.intentId,
         'other'
       );
       if (!hasReceivablePayment && effectiveTransaction.amount > 0) {
         await this.#encounterFinancial.recordPaymentForBillingRecord(
+          payload.accountId as AccountId,
           effectiveBillingRecordId as BillingRecordId,
           {
             amountPaid: effectiveTransaction.amount,
@@ -584,11 +600,12 @@ export class PaymentsEventHandlers {
   }
 
   async #hasReceivablePaymentLink(
+    accountId: AccountId,
     billingRecordId: string,
     transactionId: string,
     externalReferenceType: 'pix_transaction' | 'other' = 'pix_transaction'
   ): Promise<boolean> {
-    const billingRecord = this.#billing.getOrThrow(billingRecordId as BillingRecordId);
+    const billingRecord = this.#billing.getOrThrow(accountId, billingRecordId as BillingRecordId);
     const summary = await this.#encounterFinancial.getSummary(billingRecord.encounterId);
     return summary.payments.some(
       (payment) =>

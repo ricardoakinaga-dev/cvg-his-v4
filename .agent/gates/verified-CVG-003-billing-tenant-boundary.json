@@ -1,0 +1,152 @@
+{
+  "record_id": "GATE-CVG-003-BILLING-TENANT-BOUNDARY-VFY-001",
+  "timestamp": "2026-08-30T19:20:00-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-003 account-aware BillingService, authenticated billing HTTP routes and first-party financial/payment/event/inpatient/inventory/worker callers",
+  "scope_ref": "CVG-003-BILLING-TENANT-BOUNDARY",
+  "version": 1,
+  "active_plan": ".agent/plans/premium-enterprise-mvp.md",
+  "active_task": ".agent/tasks/CVG-003-BILLING-TENANT-BOUNDARY.md",
+  "verification_state": "VERIFIED_BOUNDED",
+  "next_gate": "COMMIT",
+  "criteria": [
+    {
+      "id": "V-001-SERVICE-ACCOUNT-SCOPE",
+      "description": "BillingService encounter/record reads, lazy creation, item operations, status updates and settlement require account scope and fail closed before disclosure, cache publication or mutation.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-BILLING-TENANT-BOUNDARY-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-003-BILLING-TENANT-BOUNDARY-GREEN-001",
+        "packages/modules/billing/src/index.ts",
+        "packages/modules/billing/src/billing.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The proof is repository-local and bounded to the explicit service contract; arbitrary future in-process callers must use the account-aware surface."
+    },
+    {
+      "id": "V-002-CACHE-AND-REPOSITORY-INTEGRITY",
+      "description": "Hydration, authoritative listing and item reads filter account and record/encounter linkage, and an authoritative empty repository result clears stale hot-cache items.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/billing/src/index.ts",
+        "packages/modules/billing/src/billing.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-003-BILLING-TENANT-BOUNDARY-REVIEW-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The polymorphic source entity itself is not independently resolved by BillingService; the bounded residual is recorded below."
+    },
+    {
+      "id": "V-003-HTTP-AND-FIRST-PARTY-PROPAGATION",
+      "description": "Authenticated billing routes and first-party financial, payment, event-consumer, inpatient, inventory and worker callers forward the authoritative account scope, while foreign route access remains non-disclosing.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/api/src/routes/billing-routes.ts",
+        "apps/api/src/routes/billing-routes.test.ts",
+        "packages/modules/financial/src/index.ts",
+        "packages/modules/event-consumers/src/payments.consumer.ts",
+        "packages/modules/event-consumers/src/billing.consumer.ts",
+        "apps/api/src/routes/financial-routes.ts",
+        "apps/api/src/routes/inpatient-routes.ts",
+        "apps/api/src/routes/inventory-routes.ts",
+        "apps/api/src/routes/payments-routes.ts",
+        "apps/worker/src/jobs/commission-job.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Only reviewed first-party callers in this authority are covered; no claim is made for future external consumers."
+    },
+    {
+      "id": "V-004-REGRESSION-COVERAGE",
+      "description": "Focused service tests, bounded database integrations, complete API regression, worker rail, workspace typecheck/build and official coverage pass after the contract migration.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-BILLING-TENANT-BOUNDARY-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-003-BILLING-TENANT-BOUNDARY-REGRESSION-001",
+        ".agent/artifacts/CVG-003-billing-tenant-boundary-2026-08-30.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Local verification does not certify remote CI, target, production, release or distributed operation."
+    },
+    {
+      "id": "V-005-QUALITY-SECURITY",
+      "description": "Dependency and secret security, OpenAPI, namespace, migration-source, RLS, deploy-surface, Helm static validation, targeted lint, formatting and diff hygiene pass.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-BILLING-TENANT-BOUNDARY-QUALITY-001",
+        ".agent/artifacts/CVG-003-billing-tenant-boundary-2026-08-30.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Workspace lint retains the unrelated pre-existing counterSales no-control-regex baseline; remote CI and release gates remain open."
+    },
+    {
+      "id": "V-006-INDEPENDENT-REVIEW",
+      "description": "The first independent review findings are remediated and a fresh independent review approves the bounded implementation without actionable correctness or security findings.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-BILLING-TENANT-BOUNDARY-REVIEW-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The approval is bounded and explicitly accepts the polymorphic source-entity residual under the first-party caller and out-of-scope constraints."
+    },
+    {
+      "id": "V-007-GLOBAL-NON-PROMOTION",
+      "description": "The child result is reconciled without promoting CVG-003/global ERP readiness, Vetus parity, clinical parity, providers, target operations, production, deployment, release or other modules.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-BILLING-TENANT-BOUNDARY-GLOBAL-NON-PROMOTION-001",
+        ".agent/state.json",
+        ".agent/backlog.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Global ERP remains IN_PROGRESS/PARTIAL and promotion remains BLOCKED."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-003-BILLING-TENANT-BOUNDARY.md",
+    ".agent/artifacts/CVG-003-billing-tenant-boundary-2026-08-30.md",
+    ".agent/gates/implementation-ready-CVG-003-billing-tenant-boundary.json",
+    ".agent/authority.jsonl#AUTH-CVG-003-BILLING-TENANT-BOUNDARY-IR-001",
+    "packages/modules/billing/src/index.ts",
+    "packages/modules/billing/src/billing.test.ts",
+    "apps/api/src/routes/billing-routes.ts",
+    "apps/api/src/routes/billing-routes.test.ts",
+    ".agent/verification.jsonl#VFY-CVG-003-BILLING-TENANT-BOUNDARY-FINAL-001",
+    ".agent/verification.jsonl#VFY-CVG-003-BILLING-TENANT-BOUNDARY-CONTROL-PLANE-001"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "No independent source-entity resolver was added for polymorphic BillingItem source references; first-party callers are scoped and resolver/schema redesign is outside this authority.",
+    "No claim is made for schema/migration changes, settlement/cash redesign, providers, target, production, deployment, release, remote CI or global ERP readiness."
+  ],
+  "conditions": [
+    "Keep all BillingService and first-party financial callers on the explicit account-aware contract.",
+    "Treat sourceEntityType/sourceEntityId ownership as a future resolver/schema hardening item if arbitrary direct source references become supported.",
+    "Keep CVG-003/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via fresh local residual scouting and delegated source scout",
+    "scope": "Repository-local account-aware BillingService boundary, authenticated billing HTTP routes and first-party financial/payment/event callers",
+    "decision": "Authorize only reversible BillingService account-scope changes, authenticated billing route forwarding, first-party caller updates and focused tests. Exclude schema, migrations, repository SQL redesign, settlement/cash redesign, providers, credentials, target, production, deployment, release and global ERP promotion.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-003-BILLING-TENANT-BOUNDARY-IR-001",
+    "expires_or_revalidates": "Revalidate before any schema, migration, repository SQL, settlement/cash redesign, provider, credential, target, production, deployment, release or global ERP behavior change."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_BOUNDED",
+  "implementation_status": "COMPLETE_BOUNDED",
+  "next_action": "Commit the explicit Billing source, test and control-plane paths, verify the post-commit file list and then resume fresh residual scouting under a new authority.",
+  "revalidation_triggers": [
+    "Changing billing schema, migrations or repository SQL",
+    "Adding a source-entity resolver or expanding settlement/cash semantics",
+    "Adding arbitrary external/in-process BillingService consumers",
+    "Changing providers, credentials, target, production, deployment, release or global ERP promotion"
+  ],
+  "supersedes": ".agent/gates/implementation-ready-CVG-003-billing-tenant-boundary.json"
+}

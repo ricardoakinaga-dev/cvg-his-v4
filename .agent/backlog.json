@@ -3353,6 +3353,40 @@
         "The pre-existing packages/design-system/tsconfig.vue.tsbuildinfo cache remains outside scope."
       ],
       "next_action": "Committed locally as 8ffafa9b with only the bounded diagnostics/laboratory/attachment source, caller, test and control-plane paths; the pre-existing tsbuildinfo cache remains unstaged. Post-commit file list is reconciled. Resume fresh residual scouting under a new authority while global ERP remains IN_PROGRESS/PARTIAL and promotion remains BLOCKED."
-    }
+    },
+    {
+      "id": "CVG-003-BILLING-TENANT-BOUNDARY",
+      "title": "Require account scope at the billing service and HTTP boundary",
+  "stage": "CLOSE",
+      "priority": "P0",
+  "status": "COMPLETE_BOUNDED",
+  "selection_status": "CLOSED_BOUNDED",
+      "origin": "Fresh residual scouting after the committed Diagnostics tenant-boundary checkpoint found encounter/record billing methods without explicit AccountId; a delegated read-only scout independently ranked this as the next P0.",
+      "dependencies": ["CVG-003"],
+      "owner": "root integrator",
+      "acceptance_summary": "BillingService requires explicit AccountId for encounter/record reads, lazy creation, item/status commands and record settlement; authenticated billing routes and first-party financial/payment/event/inpatient callers forward account scope; foreign access fails closed before disclosure or mutation and same-account billing behavior remains compatible.",
+      "evidence_refs": [
+        ".agent/tasks/CVG-003-BILLING-TENANT-BOUNDARY.md",
+        ".agent/gates/implementation-ready-CVG-003-billing-tenant-boundary.json",
+        ".agent/authority.jsonl#AUTH-CVG-003-BILLING-TENANT-BOUNDARY-IR-001",
+        ".agent/verification.jsonl#VFY-SCOUT-CVG-003-BILLING-TENANT-BOUNDARY-001",
+        "packages/modules/billing/src/index.ts",
+        "packages/modules/billing/src/repositories/database-billing.repository.ts",
+        "apps/api/src/routes/billing-routes.ts",
+        "packages/modules/financial/src/index.ts",
+    "packages/modules/event-consumers/src/payments.consumer.ts",
+    "packages/modules/event-consumers/src/billing.consumer.ts",
+    ".agent/gates/verified-CVG-003-billing-tenant-boundary.json",
+    ".agent/artifacts/CVG-003-billing-tenant-boundary-2026-08-30.md",
+    ".agent/verification.jsonl#VFY-CVG-003-BILLING-TENANT-BOUNDARY-FINAL-001"
+      ],
+      "limitations": [
+        "Service/HTTP/first-party caller boundary only; no schema, migration, repository SQL redesign, settlement/cash redesign, provider, credential, target, production, deployment, release or global ERP scope.",
+        "A completed delegated scout ranked BillingService P0; a second parallel scout could not start because the environment thread limit was occupied. This is candidate evidence, not independent implementation approval.",
+    "The pre-existing packages/design-system/tsconfig.vue.tsbuildinfo cache remains outside scope.",
+    "BillingItem sourceEntityType/sourceEntityId is polymorphic and is not independently resolved by BillingService; first-party callers are scoped and resolver/schema redesign is outside this gate."
+  ],
+  "next_action": "Reconcile the bounded evidence, commit explicit Billing paths, verify the post-commit worktree and resume fresh residual scouting under a new authority."
+}
   ]
 }

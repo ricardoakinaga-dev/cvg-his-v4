@@ -165,8 +165,8 @@ describe('inpatient daily charge -> billing idempotency', () => {
       },
       () =>
         Promise.all([
-          firstRuntime.addItem(userId as never, payload),
-          secondRuntime.addItem(userId as never, payload)
+          firstRuntime.addItem(accountId as never, userId as never, payload),
+          secondRuntime.addItem(accountId as never, userId as never, payload)
         ])
     );
 
@@ -242,7 +242,12 @@ describe('inpatient daily charge -> billing idempotency', () => {
           idempotencyKey
         },
         payload as JsonValue,
-        async () => (await service.addItem(userId as never, payload)) as unknown as JsonValue
+        async () =>
+          (await service.addItem(
+            accountId as never,
+            userId as never,
+            payload
+          )) as unknown as JsonValue
       );
 
     try {
@@ -374,7 +379,12 @@ describe('inpatient daily charge -> billing idempotency', () => {
           idempotencyKey
         },
         payload as JsonValue,
-        async () => (await service.addItem(userId as never, payload)) as unknown as JsonValue
+        async () =>
+          (await service.addItem(
+            accountId as never,
+            userId as never,
+            payload
+          )) as unknown as JsonValue
       );
 
     try {

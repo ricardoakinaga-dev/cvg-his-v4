@@ -300,12 +300,16 @@ describe('module-financial / repository', () => {
     expect(closed.receivables[1]?.amountOutstanding).toBe(70);
     expect(paid).toHaveLength(2);
 
-    const settled = await service.recordPaymentForBillingRecord(billingRecord.id, {
-      amountPaid: 70,
-      paidByUserId: 'user_finance' as never,
-      externalReferenceType: 'billing_record',
-      externalReferenceId: billingRecord.id
-    });
+    const settled = await service.recordPaymentForBillingRecord(
+      encounter.accountId,
+      billingRecord.id,
+      {
+        amountPaid: 70,
+        paidByUserId: 'user_finance' as never,
+        externalReferenceType: 'billing_record',
+        externalReferenceId: billingRecord.id
+      }
+    );
     expect(settled.financialStatus).toBe('paid');
     expect(settled.receivables.every((item) => item.status === 'settled')).toBe(true);
   });

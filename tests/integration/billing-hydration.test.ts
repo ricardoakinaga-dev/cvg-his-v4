@@ -46,11 +46,16 @@ async function seedEncounterFixture(): Promise<void> {
 
   await pool.query(
     `
-      INSERT INTO users (id, account_id, email, password_hash, full_name)
-      VALUES ($1, $2, $3, 'hash', 'Billing Hydration User')
+      INSERT INTO users (id, account_id, username, email, password_hash, full_name)
+      VALUES ($1, $2, $3, $4, 'hash', 'Billing Hydration User')
       ON CONFLICT (id) DO NOTHING
     `,
-    [USER_ID, ACCOUNT_ID, `billing-hydration-${USER_ID}@example.com`]
+    [
+      USER_ID,
+      ACCOUNT_ID,
+      `billing_hydration_${USER_ID.slice(0, 8)}`,
+      `billing-hydration-${USER_ID}@example.com`
+    ]
   );
 
   await pool.query(
@@ -157,10 +162,10 @@ describe('EP-BILL-1 billing restart hydration', () => {
         const firstRuntime = createBillingRuntime();
         await hydrateRuntime(firstRuntime);
 
-        const estimate = await firstRuntime.billing.createEstimate({
+        const estimate = await firstRuntime.billing.createEstimate(ACCOUNT_ID, {
           encounterId: ENCOUNTER_ID
         });
-        const item = await firstRuntime.billing.addItem(USER_ID as UserId, {
+        const item = await firstRuntime.billing.addItem(ACCOUNT_ID, USER_ID as UserId, {
           encounterId: ENCOUNTER_ID,
           itemType: 'service',
           description: 'Consulta persistida antes do restart',
@@ -187,9 +192,13 @@ describe('EP-BILL-1 billing restart hydration', () => {
         await hydrateRuntime(restartedRuntime);
 
         const hydratedRecord = await restartedRuntime.billing.findByEncounter(
+          ACCOUNT_ID,
           ENCOUNTER_ID as EncounterId
         );
-        const hydratedItems = await restartedRuntime.billing.listItems(ENCOUNTER_ID as EncounterId);
+        const hydratedItems = await restartedRuntime.billing.listItems(
+          ACCOUNT_ID,
+          ENCOUNTER_ID as EncounterId
+        );
 
         expect(hydratedRecord?.encounterId).toBe(ENCOUNTER_ID);
         expect(hydratedRecord?.status).toBe('estimated');

@@ -117,11 +117,11 @@ describe('runtime operational coverage', () => {
       reason: 'Card settlement runtime'
     });
 
-    const billingRecord = await runtime.billing.createEstimate({
+    const billingRecord = await runtime.billing.createEstimate(ACCOUNT_ID as never, {
       encounterId: encounter.id,
       administrativeNotes: 'Card settlement'
     });
-    await runtime.billing.addItem(USER_ID, {
+    await runtime.billing.addItem(ACCOUNT_ID as never, USER_ID, {
       encounterId: encounter.id,
       itemType: 'service',
       description: 'Consulta',
@@ -144,6 +144,7 @@ describe('runtime operational coverage', () => {
     });
 
     const summary = await runtime.encounterFinancial.recordPaymentForBillingRecord(
+      ACCOUNT_ID,
       billingRecord.id,
       {
         amountPaid: 80,
@@ -178,11 +179,11 @@ describe('runtime operational coverage', () => {
       reason: 'Unsupported reference'
     });
 
-    const billingRecord = await runtime.billing.createEstimate({
+    const billingRecord = await runtime.billing.createEstimate(ACCOUNT_ID as never, {
       encounterId: encounter.id,
       administrativeNotes: 'Unsupported reference'
     });
-    await runtime.billing.addItem(USER_ID, {
+    await runtime.billing.addItem(ACCOUNT_ID as never, USER_ID, {
       encounterId: encounter.id,
       itemType: 'service',
       description: 'Consulta',
@@ -204,7 +205,7 @@ describe('runtime operational coverage', () => {
       billingSettlementStatus: 'pending_billing'
     });
 
-    await runtime.encounterFinancial.recordPaymentForBillingRecord(billingRecord.id, {
+    await runtime.encounterFinancial.recordPaymentForBillingRecord(ACCOUNT_ID, billingRecord.id, {
       amountPaid: 40,
       method: 'cash',
       paidAt: '2026-04-18T13:00:00.000Z',
@@ -236,11 +237,11 @@ describe('runtime operational coverage', () => {
       reason: 'Missing external reference id'
     });
 
-    const billingRecord = await runtime.billing.createEstimate({
+    const billingRecord = await runtime.billing.createEstimate(ACCOUNT_ID as never, {
       encounterId: encounter.id,
       administrativeNotes: 'Missing external reference id'
     });
-    await runtime.billing.addItem(USER_ID, {
+    await runtime.billing.addItem(ACCOUNT_ID as never, USER_ID, {
       encounterId: encounter.id,
       itemType: 'service',
       description: 'Consulta',
@@ -263,6 +264,7 @@ describe('runtime operational coverage', () => {
     });
 
     const summary = await runtime.encounterFinancial.recordPaymentForBillingRecord(
+      ACCOUNT_ID,
       billingRecord.id,
       {
         amountPaid: 55,

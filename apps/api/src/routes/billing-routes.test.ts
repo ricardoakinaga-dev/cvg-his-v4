@@ -74,9 +74,7 @@ function createPrincipal(): AuthenticatedPrincipal {
 
 function createMockBilling() {
   return {
-    list: async (_filters?: unknown) => [
-      { id: 'br-1', encounterId: 'enc-1', status: 'estimated' }
-    ],
+    list: async (_filters?: unknown) => [{ id: 'br-1', encounterId: 'enc-1', status: 'estimated' }],
     listAuthoritative: async (_filters?: unknown) => [
       { id: 'br-1', encounterId: 'enc-1', status: 'estimated' }
     ],
@@ -276,12 +274,48 @@ test('handleBillingRoutes GET /billing/:encounterId does not create missing reco
   assert.equal(body.code, 'BILLING_RECORD_NOT_FOUND');
 });
 
+test('handleBillingRoutes returns a non-disclosing 404 for a foreign encounter', async () => {
+  const response = new MockResponse();
+  let receivedAccountId: string | undefined;
+  const mockBilling = {
+    ...createMockBilling(),
+    findByEncounter: async (accountId: string, encounterId: string) => {
+      receivedAccountId = accountId;
+      assert.equal(encounterId, 'enc-foreign');
+      return null;
+    }
+  };
+
+  const handled = await handleBillingRoutes(
+    '/billing/enc-foreign',
+    { method: 'GET', url: '/billing/enc-foreign' } as never,
+    response as never,
+    'corr-billing-foreign',
+    {
+      billing: mockBilling as never,
+      audit: createMockAudit() as never,
+      requirePrincipal: () => createPrincipal(),
+      enforceAbac: () => {}
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(receivedAccountId, 'acc-1');
+  assert.equal(response.statusCode, 404);
+  assert.deepEqual(response.bodyJson(), {
+    error: 'Billing record not found',
+    code: 'BILLING_RECORD_NOT_FOUND',
+    encounterId: 'enc-foreign'
+  });
+  assert.equal(response.bodyJson<{ accountId?: string }>().accountId, undefined);
+});
+
 test('handleBillingRoutes POST /billing/estimate creates estimate explicitly', async () => {
   const response = new MockResponse();
   let receivedPayload: unknown;
   const mockBilling = {
     ...createMockBilling(),
-    createEstimate: async (payload: never) => {
+    createEstimate: async (_accountId: string, payload: never) => {
       receivedPayload = payload;
       return { id: 'br-est-1', encounterId: 'enc-1', status: 'estimated' };
     }
@@ -316,7 +350,7 @@ test('handleBillingRoutes POST /billing/items creates item explicitly', async ()
   let receivedPayload: unknown;
   const mockBilling = {
     ...createMockBilling(),
-    addItem: async (userId: string, payload: never) => {
+    addItem: async (_accountId: string, userId: string, payload: never) => {
       assert.equal(userId, 'user-1');
       receivedPayload = payload;
       return { id: 'bi-new-1', totalAmount: 120 };
@@ -358,7 +392,7 @@ test('handleBillingRoutes PATCH /billing/:encounterId/status updates status expl
   let receivedPayload: unknown;
   const mockBilling = {
     ...createMockBilling(),
-    updateStatus: async (encounterId: string, payload: never) => {
+    updateStatus: async (_accountId: string, encounterId: string, payload: never) => {
       assert.equal(encounterId, 'enc-1');
       receivedPayload = payload;
       return { id: 'br-1', encounterId, status: 'open' };
@@ -387,6 +421,102 @@ test('handleBillingRoutes PATCH /billing/:encounterId/status updates status expl
     status: 'open',
     administrativeNotes: 'Aberto para cobrança'
   });
+});
+
+test('handleBillingRoutes forwards the authenticated account to every billing boundary', async () => {
+  const calls: Array<readonly unknown[]> = [];
+  const record = { id: 'br-1', encounterId: 'enc-1', status: 'draft', accountId: 'acc-1' };
+  const mockBilling = {
+    listAuthoritative: async () => [],
+    listItems: async (...args: unknown[]) => {
+      calls.push(['items', ...args]);
+      return [];
+    },
+    findByEncounter: async (...args: unknown[]) => {
+      calls.push(['detail', ...args]);
+      return record;
+    },
+    createEstimate: async (...args: unknown[]) => {
+      calls.push(['estimate', ...args]);
+      return record;
+    },
+    addItem: async (...args: unknown[]) => {
+      calls.push(['add_item', ...args]);
+      return { id: 'bi-1' };
+    },
+    updateStatus: async (...args: unknown[]) => {
+      calls.push(['status', ...args]);
+      return { ...record, status: 'open' };
+    }
+  };
+  const routeOptions = {
+    billing: mockBilling as never,
+    audit: createMockAudit() as never,
+    requirePrincipal: () => createPrincipal(),
+    enforceAbac: () => {}
+  };
+
+  await handleBillingRoutes(
+    '/billing/enc-1/items',
+    { method: 'GET' } as never,
+    new MockResponse() as never,
+    'corr-account-items',
+    routeOptions
+  );
+  await handleBillingRoutes(
+    '/billing/enc-1',
+    { method: 'GET' } as never,
+    new MockResponse() as never,
+    'corr-account-detail',
+    routeOptions
+  );
+  await handleBillingRoutes(
+    '/billing/estimate',
+    createJsonRequest('POST', '/billing/estimate', { encounterId: 'enc-1' }) as never,
+    new MockResponse() as never,
+    'corr-account-estimate',
+    routeOptions
+  );
+  await handleBillingRoutes(
+    '/billing/items',
+    createJsonRequest('POST', '/billing/items', {
+      encounterId: 'enc-1',
+      itemType: 'service',
+      description: 'Consulta',
+      quantity: 1,
+      unitPriceAmount: 120
+    }) as never,
+    new MockResponse() as never,
+    'corr-account-item-create',
+    routeOptions
+  );
+  await handleBillingRoutes(
+    '/billing/enc-1/status',
+    createJsonRequest('PATCH', '/billing/enc-1/status', { status: 'open' }) as never,
+    new MockResponse() as never,
+    'corr-account-status',
+    routeOptions
+  );
+
+  assert.deepEqual(calls, [
+    ['items', 'acc-1', 'enc-1'],
+    ['detail', 'acc-1', 'enc-1'],
+    ['estimate', 'acc-1', { encounterId: 'enc-1' }],
+    [
+      'add_item',
+      'acc-1',
+      'user-1',
+      {
+        encounterId: 'enc-1',
+        itemType: 'service',
+        description: 'Consulta',
+        quantity: 1,
+        unitPriceAmount: 120
+      }
+    ],
+    ['detail', 'acc-1', 'enc-1'],
+    ['status', 'acc-1', 'enc-1', { status: 'open', administrativeNotes: undefined }]
+  ]);
 });
 
 test('handleBillingRoutes rejects public manual settlement without tenant disclosure', async () => {
@@ -421,7 +551,8 @@ test('handleBillingRoutes rejects public manual settlement without tenant disclo
   assert.equal(response.statusCode, 409);
   assert.deepEqual(response.bodyJson(), {
     code: 'MANUAL_SETTLEMENT_DISABLED',
-    message: 'Manual settlement is disabled. Record the receipt through the cash-receipts endpoint.',
+    message:
+      'Manual settlement is disabled. Record the receipt through the cash-receipts endpoint.',
     details: { receiptPath: '/encounters/:id/cash-receipts' },
     correlationId: 'corr-billing-manual-settlement'
   });

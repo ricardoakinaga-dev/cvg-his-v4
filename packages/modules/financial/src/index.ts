@@ -945,8 +945,11 @@ export class EncounterFinancialService {
 
   public async syncEncounter(encounterId: EncounterId): Promise<void> {
     const encounter = this.#encounters.getOrThrow(encounterId);
-    const billingRecord = await this.#billing.getByEncounterOrThrow(encounterId);
-    const items = await this.#billing.listItems(encounterId);
+    const billingRecord = await this.#billing.getByEncounterOrThrow(
+      encounter.accountId,
+      encounterId
+    );
+    const items = await this.#billing.listItems(encounter.accountId, encounterId);
     const total = roundCurrency(items.reduce((sum, item) => sum + item.totalAmount, 0));
     const existingAccount = await this.#repository.findFinancialAccountByEncounter(encounterId);
     const existingReceivables = existingAccount
@@ -1209,10 +1212,11 @@ export class EncounterFinancialService {
   }
 
   public async recordPaymentForBillingRecord(
+    accountId: AccountId,
     billingRecordId: BillingRecordId,
     input: SettleEncounterReceivableInput
   ) {
-    const billingRecord = this.#billing.getOrThrow(billingRecordId);
+    const billingRecord = this.#billing.getOrThrow(accountId, billingRecordId);
     return this.recordPaymentForEncounter(billingRecord.encounterId, input);
   }
 

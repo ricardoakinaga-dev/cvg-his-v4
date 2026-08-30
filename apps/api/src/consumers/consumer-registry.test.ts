@@ -28,8 +28,8 @@ function makeMockEventBus() {
 
 function createMockBillingService() {
   return {
-    async settleByRecordId(_recordId: never): Promise<never> {
-      return { id: _recordId, status: 'settled' } as never;
+    async settleByRecordId(_accountId: never, recordId: never): Promise<never> {
+      return { id: recordId, status: 'settled' } as never;
     }
   } as unknown as import('@cvg-his-v2/module-billing').BillingService;
 }
@@ -104,9 +104,24 @@ test('ConsumerRegistry.registerAll() respects add() call order', () => {
   const registry = new ConsumerRegistry();
   const order: string[] = [];
 
-  registry.add('first', makeConsumer('first', async () => { order.push('first'); }));
-  registry.add('second', makeConsumer('second', async () => { order.push('second'); }));
-  registry.add('third', makeConsumer('third', async () => { order.push('third'); }));
+  registry.add(
+    'first',
+    makeConsumer('first', async () => {
+      order.push('first');
+    })
+  );
+  registry.add(
+    'second',
+    makeConsumer('second', async () => {
+      order.push('second');
+    })
+  );
+  registry.add(
+    'third',
+    makeConsumer('third', async () => {
+      order.push('third');
+    })
+  );
 
   registry.registerAll(mockEventBus);
 

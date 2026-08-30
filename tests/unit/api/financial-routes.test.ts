@@ -233,7 +233,8 @@ describe('financial-routes', () => {
       expect(response.statusCode).toBe(409);
       expect(response.bodyJson()).toEqual({
         code: 'MANUAL_SETTLEMENT_DISABLED',
-        message: 'Manual settlement is disabled. Record the receipt through the cash-receipts endpoint.',
+        message:
+          'Manual settlement is disabled. Record the receipt through the cash-receipts endpoint.',
         details: { receiptPath: '/encounters/:id/cash-receipts' },
         correlationId: 'corr-financial-close-manual-payment'
       });
@@ -416,14 +417,18 @@ describe('financial-routes', () => {
       status: 'completed',
       provider: 'pagarme'
     });
-    expect(getOrThrow).toHaveBeenCalledWith('bill-1');
+    expect(getOrThrow).toHaveBeenCalledWith('acc-1', 'bill-1');
     expect(getSummary).toHaveBeenCalledWith('enc-1');
     expect(response.statusCode).toBe(200);
     expect(
       response.bodyJson<{
         total: number;
         reconciledCount: number;
-        data: Array<{ transactionId: string; reconciliationState: string; receivableIds: string[] }>;
+        data: Array<{
+          transactionId: string;
+          reconciliationState: string;
+          receivableIds: string[];
+        }>;
       }>()
     ).toEqual({
       total: 1,
@@ -473,7 +478,8 @@ describe('financial-routes', () => {
     expect(response.statusCode).toBe(409);
     expect(response.bodyJson()).toEqual({
       code: 'MANUAL_SETTLEMENT_DISABLED',
-      message: 'Manual settlement is disabled. Record the receipt through the cash-receipts endpoint.',
+      message:
+        'Manual settlement is disabled. Record the receipt through the cash-receipts endpoint.',
       details: { receiptPath: '/encounters/:id/cash-receipts' },
       correlationId: 'corr-financial-5'
     });

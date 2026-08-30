@@ -96,10 +96,12 @@ export class BillingService {
     const nextItems = new Map<BillingRecordId, BillingItemSummary[]>();
     const records = await this.#repository.findRecordsByAccountId(accountId);
     for (const record of records) {
+      if (record.accountId !== accountId) continue;
       const items = await this.#repository.findItemsByRecord(record.accountId, record.id);
+      const scopedItems = this.filterItemsForRecord(record, items);
       nextRecords.set(record.id, record);
       nextRecordByEncounterId.set(record.encounterId, record.id);
-      nextItems.set(record.id, [...items]);
+      nextItems.set(record.id, scopedItems);
     }
 
     this.clearAccountCache(accountId);
@@ -133,16 +135,38 @@ export class BillingService {
     }
   }
 
-  public async findByEncounter(encounterId: EncounterId): Promise<BillingRecordSummary | null> {
+  private getEncounterForAccount(accountId: AccountId, encounterId: EncounterId) {
     const encounter = this.#encounters.getOrThrow(encounterId);
+    if (encounter.accountId !== accountId) {
+      throw new NotFoundError('Encounter not found', { encounterId });
+    }
+    return encounter;
+  }
+
+  private getRecordForAccount(accountId: AccountId, recordId: BillingRecordId) {
+    const record = this.#records.get(recordId);
+    if (!record || record.accountId !== accountId) {
+      throw new NotFoundError('Billing record not found', { recordId });
+    }
+    return record;
+  }
+
+  public async findByEncounter(
+    accountId: AccountId,
+    encounterId: EncounterId
+  ): Promise<BillingRecordSummary | null> {
+    const encounter = this.getEncounterForAccount(accountId, encounterId);
 
     if (this.#repository) {
       const record = await this.#repository.findRecordByEncounter(encounter.accountId, encounterId);
       if (record) {
+        if (record.accountId !== accountId) {
+          throw new NotFoundError('Billing record not found', { encounterId });
+        }
         this.#records.set(record.id, record);
         this.#recordByEncounterId.set(encounterId, record.id);
         const items = await this.#repository.findItemsByRecord(record.accountId, record.id);
-        this.#items.set(record.id, [...items]);
+        this.#items.set(record.id, this.filterItemsForRecord(record, items));
         return record;
       }
       const staleId = this.#recordByEncounterId.get(encounterId);
@@ -156,19 +180,22 @@ export class BillingService {
 
     const existingId = this.#recordByEncounterId.get(encounterId);
     if (existingId) {
-      return this.getOrThrow(existingId);
+      return this.getRecordForAccount(accountId, existingId);
     }
 
     return null;
   }
 
-  public async ensureRecord(encounterId: EncounterId): Promise<BillingRecordSummary> {
-    const existing = await this.findByEncounter(encounterId);
+  public async ensureRecord(
+    accountId: AccountId,
+    encounterId: EncounterId
+  ): Promise<BillingRecordSummary> {
+    const encounter = this.getEncounterForAccount(accountId, encounterId);
+    const existing = await this.findByEncounter(accountId, encounterId);
     if (existing) {
       return existing;
     }
 
-    const encounter = this.#encounters.getOrThrow(encounterId);
     const now = nowIso();
     const record: BillingRecordSummary = {
       id: createCorrelationId('bill') as BillingRecordId,
@@ -205,7 +232,7 @@ export class BillingService {
           record.accountId,
           encounterId
         );
-        if (!concurrent) {
+        if (!concurrent || concurrent.accountId !== accountId) {
           this.#records.delete(record.id);
           this.#recordByEncounterId.delete(encounterId);
           this.#items.delete(record.id);
@@ -215,7 +242,7 @@ export class BillingService {
         this.#records.set(concurrent.id, concurrent);
         this.#recordByEncounterId.set(encounterId, concurrent.id);
         const items = await this.#repository.findItemsByRecord(concurrent.accountId, concurrent.id);
-        this.#items.set(concurrent.id, [...items]);
+        this.#items.set(concurrent.id, this.filterItemsForRecord(concurrent, items));
         this.#records.delete(record.id);
         this.#items.delete(record.id);
         return concurrent;
@@ -227,10 +254,13 @@ export class BillingService {
     return record;
   }
 
-  public list(filters?: string | BillingRecordFilters): readonly BillingRecordSummary[] {
+  public list(
+    accountId: AccountId,
+    filters?: string | Omit<BillingRecordFilters, 'accountId'>
+  ): readonly BillingRecordSummary[] {
     const normalized = typeof filters === 'string' ? { encounterId: filters } : (filters ?? {});
     return Array.from(this.#records.values())
-      .filter((record) => (normalized.accountId ? record.accountId === normalized.accountId : true))
+      .filter((record) => record.accountId === accountId)
       .filter((record) =>
         normalized.encounterId ? record.encounterId === normalized.encounterId : true
       )
@@ -241,52 +271,63 @@ export class BillingService {
   public async listAuthoritative(
     filters: BillingRecordFilters & { readonly accountId: string }
   ): Promise<readonly BillingRecordSummary[]> {
-    if (!this.#repository) return this.list(filters);
+    const { accountId, ...recordFilters } = filters;
+    const scopedAccountId = accountId as AccountId;
+    if (!this.#repository) return this.list(scopedAccountId, recordFilters);
 
-    const records = await this.#repository.findRecordsByAccountId(filters.accountId as AccountId);
+    const records = (await this.#repository.findRecordsByAccountId(scopedAccountId)).filter(
+      (record) => record.accountId === scopedAccountId
+    );
     for (const record of records) {
       this.#records.set(record.id, record);
       this.#recordByEncounterId.set(record.encounterId, record.id);
     }
     return records
-      .filter((record) => (filters.encounterId ? record.encounterId === filters.encounterId : true))
-      .filter((record) => (filters.patientId ? record.patientId === filters.patientId : true))
-      .filter((record) => (filters.ownerId ? record.ownerId === filters.ownerId : true));
+      .filter((record) =>
+        recordFilters.encounterId ? record.encounterId === recordFilters.encounterId : true
+      )
+      .filter((record) =>
+        recordFilters.patientId ? record.patientId === recordFilters.patientId : true
+      )
+      .filter((record) =>
+        recordFilters.ownerId ? record.ownerId === recordFilters.ownerId : true
+      );
   }
 
-  public async getByEncounterOrThrow(encounterId: EncounterId): Promise<BillingRecordSummary> {
-    const record = await this.findByEncounter(encounterId);
+  public async getByEncounterOrThrow(
+    accountId: AccountId,
+    encounterId: EncounterId
+  ): Promise<BillingRecordSummary> {
+    const record = await this.findByEncounter(accountId, encounterId);
     if (!record) {
       throw new NotFoundError('Billing record not found', { encounterId });
     }
     return record;
   }
 
-  public getOrThrow(recordId: BillingRecordId): BillingRecordSummary {
-    const record = this.#records.get(recordId);
-    if (!record) {
-      throw new ConflictError('Billing record not found', { recordId });
-    }
-    return record;
+  public getOrThrow(accountId: AccountId, recordId: BillingRecordId): BillingRecordSummary {
+    return this.getRecordForAccount(accountId, recordId);
   }
 
   public async createEstimate(
+    accountId: AccountId,
     payload: CreateBillingEstimateRequest
   ): Promise<BillingRecordSummary> {
     const encounterId = requireNonEmptyString(payload.encounterId, 'encounterId') as EncounterId;
-    await this.ensureRecord(encounterId);
-    return this.updateStatus(encounterId, {
+    await this.ensureRecord(accountId, encounterId);
+    return this.updateStatus(accountId, encounterId, {
       status: 'estimated',
       administrativeNotes: payload.administrativeNotes
     });
   }
 
   public async addItem(
+    accountId: AccountId,
     actorUserId: UserId,
     payload: CreateBillingItemRequest
   ): Promise<BillingItemSummary> {
     const encounterId = requireNonEmptyString(payload.encounterId, 'encounterId') as EncounterId;
-    const record = await this.ensureRecord(encounterId);
+    const record = await this.ensureRecord(accountId, encounterId);
     if (record.status === 'settled') {
       throw new ConflictError('Settled billing records cannot receive new items', {
         encounterId
@@ -414,6 +455,16 @@ export class BillingService {
       : cached;
     if (!persisted) return null;
 
+    if (persisted.accountId !== record.accountId) {
+      throw new NotFoundError('Billing item not found', { sourceEntityId });
+    }
+    if (persisted.billingRecordId !== record.id || persisted.encounterId !== encounterId) {
+      throw new ConflictError('Billing source item has inconsistent billing ownership', {
+        sourceEntityType: payload.sourceEntityType,
+        sourceEntityId
+      });
+    }
+
     if (
       !matchesSourceItem(
         persisted,
@@ -438,31 +489,49 @@ export class BillingService {
     return persisted;
   }
 
-  public async listItems(encounterId: EncounterId): Promise<readonly BillingItemSummary[]> {
-    const record = await this.findByEncounter(encounterId);
+  public async listItems(
+    accountId: AccountId,
+    encounterId: EncounterId
+  ): Promise<readonly BillingItemSummary[]> {
+    const record = await this.findByEncounter(accountId, encounterId);
     if (!record) return [];
 
     if (this.#repository) {
       const dbItems = await this.#repository.findItemsByRecord(record.accountId, record.id);
-      if (dbItems.length > 0) {
-        this.#items.set(record.id, [...dbItems]);
-        return dbItems;
-      }
+      const scopedItems = this.filterItemsForRecord(record, dbItems);
+      this.#items.set(record.id, scopedItems);
+      return scopedItems;
     }
 
     return [...(this.#items.get(record.id) ?? [])];
   }
 
-  public async settleByRecordId(recordId: BillingRecordId): Promise<BillingRecordSummary> {
-    const record = this.getOrThrow(recordId);
-    return this.updateStatus(record.encounterId, { status: 'settled' });
+  private filterItemsForRecord(
+    record: BillingRecordSummary,
+    items: readonly BillingItemSummary[]
+  ): BillingItemSummary[] {
+    return items.filter(
+      (item) =>
+        item.accountId === record.accountId &&
+        item.billingRecordId === record.id &&
+        item.encounterId === record.encounterId
+    );
+  }
+
+  public async settleByRecordId(
+    accountId: AccountId,
+    recordId: BillingRecordId
+  ): Promise<BillingRecordSummary> {
+    const record = this.getOrThrow(accountId, recordId);
+    return this.updateStatus(accountId, record.encounterId, { status: 'settled' });
   }
 
   public async updateStatus(
+    accountId: AccountId,
     encounterId: EncounterId,
     payload: UpdateBillingStatusRequest
   ): Promise<BillingRecordSummary> {
-    const record = await this.findByEncounter(encounterId);
+    const record = await this.findByEncounter(accountId, encounterId);
     if (!record) {
       throw new NotFoundError('Billing record not found', { encounterId });
     }

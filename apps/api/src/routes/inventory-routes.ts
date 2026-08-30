@@ -45,7 +45,10 @@ export interface InventoryRoutesHandlers {
   refreshAccount?: (accountId: string) => Promise<void>;
   procurement: ProcurementService;
   audit: AuditService;
-  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
+  requirePrincipal: (
+    request: IncomingMessage,
+    permissionCode: string
+  ) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
   enforceAbac: (
     actionCode: string,
     principal: AuthenticatedPrincipal,
@@ -477,15 +480,19 @@ export async function handleInventoryRoutes(
           let billingItemId: string | undefined;
 
           if (inpatientCharge) {
-            const billingItem = await billing!.addItem(principal.user.id as never, {
-              encounterId: created.encounterId,
-              itemType: 'supply',
-              description: `Consumo de ${item.name} na internacao`,
-              quantity: created.quantity,
-              unitPriceAmount: item.chargeUnitPriceAmount!,
-              sourceEntityType: 'inventory_consumption',
-              sourceEntityId: created.id
-            });
+            const billingItem = await billing!.addItem(
+              principal.user.accountId,
+              principal.user.id as never,
+              {
+                encounterId: created.encounterId,
+                itemType: 'supply',
+                description: `Consumo de ${item.name} na internacao`,
+                quantity: created.quantity,
+                unitPriceAmount: item.chargeUnitPriceAmount!,
+                sourceEntityType: 'inventory_consumption',
+                sourceEntityId: created.id
+              }
+            );
             billingItemId = billingItem.id;
             await appendAuditAndWait(audit, {
               actorId: principal.user.id,

@@ -141,7 +141,7 @@ describe('atomic inpatient daily-charge billing', () => {
             },
             payload as unknown as JsonValue,
             async () => {
-              await billing.addItem(userId as never, {
+              await billing.addItem(accountId as never, userId as never, {
                 encounterId: encounterId as never,
                 itemType: 'daily_rate',
                 description: 'Diaria UTI',
@@ -181,5 +181,19 @@ describe('atomic inpatient daily-charge billing', () => {
       billing_record_id: null,
       daily_charge_status: 'pending'
     });
+    await runWithTenantContext(
+      {
+        tenantId,
+        accountId,
+        userId,
+        correlationId: 'inpatient-daily-charge-rollback-read'
+      },
+      async () => {
+        await expect(billing.listItems(accountId as never, encounterId as never)).resolves.toEqual(
+          []
+        );
+        await expect(billing.listAuthoritative({ accountId })).resolves.toEqual([]);
+      }
+    );
   });
 });

@@ -34,7 +34,10 @@ export interface FinancialRoutesHandlers {
   audit: AuditService;
   pixTransactions: PixTransactionRepository;
   cardTransactions: CardTransactionRepository;
-  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
+  requirePrincipal: (
+    request: IncomingMessage,
+    permissionCode: string
+  ) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
 }
 
 function json(response: ServerResponse, statusCode: number, payload: unknown): true {
@@ -47,7 +50,8 @@ function json(response: ServerResponse, statusCode: number, payload: unknown): t
 function manualSettlementDisabledResponse(correlationId: string) {
   return {
     code: 'MANUAL_SETTLEMENT_DISABLED',
-    message: 'Manual settlement is disabled. Record the receipt through the cash-receipts endpoint.',
+    message:
+      'Manual settlement is disabled. Record the receipt through the cash-receipts endpoint.',
     details: { receiptPath: '/encounters/:id/cash-receipts' },
     correlationId
   } as const;
@@ -67,19 +71,21 @@ function parsePayableStatus(value: string | null): FinancialPayableStatus | unde
 
 function parsePayablePaymentMethod(value: unknown): FinancialPayablePaymentMethod | null {
   if (
-    value === 'cash'
-    || value === 'bank_transfer'
-    || value === 'pix'
-    || value === 'card'
-    || value === 'cheque'
-    || value === 'other'
+    value === 'cash' ||
+    value === 'bank_transfer' ||
+    value === 'pix' ||
+    value === 'card' ||
+    value === 'cheque' ||
+    value === 'other'
   ) {
     return value;
   }
   return null;
 }
 
-function parsePayableReconciliationStatus(value: string | null): FinancialPayableReconciliationStatus | undefined {
+function parsePayableReconciliationStatus(
+  value: string | null
+): FinancialPayableReconciliationStatus | undefined {
   if (value === 'not_required' || value === 'pending' || value === 'reconciled') {
     return value;
   }
@@ -99,11 +105,7 @@ function deriveAgingBucket(dueAt: string | null, now: Date): AgingBucketId {
   }
 
   const utcNow = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-  const utcDue = Date.UTC(
-    dueDate.getUTCFullYear(),
-    dueDate.getUTCMonth(),
-    dueDate.getUTCDate()
-  );
+  const utcDue = Date.UTC(dueDate.getUTCFullYear(), dueDate.getUTCMonth(), dueDate.getUTCDate());
   const daysPastDue = Math.floor((utcNow - utcDue) / (24 * 60 * 60 * 1000));
 
   if (daysPastDue <= 0) {
@@ -228,14 +230,11 @@ export function derivePixReconciliationState(
   }
 
   const billingApplied =
-    transaction.billingSettlementStatus === 'applied'
-    || transaction.billingSettlementStatus === 'not_applicable';
+    transaction.billingSettlementStatus === 'applied' ||
+    transaction.billingSettlementStatus === 'not_applicable';
   const cashApplied =
-    transaction.cashReconciliationStatus === 'applied'
-    || (
-      transaction.cashReconciliationStatus === 'not_applicable'
-      && hasReceivableLink
-    );
+    transaction.cashReconciliationStatus === 'applied' ||
+    (transaction.cashReconciliationStatus === 'not_applicable' && hasReceivableLink);
   const receivableApplied = !transaction.billingRecordId || hasReceivableLink;
 
   if (billingApplied && cashApplied && receivableApplied) {
@@ -266,12 +265,18 @@ async function listReconciliationRows(
   });
 
   const billingCache = new Map<string, ReturnType<BillingService['getOrThrow']> | null>();
-  const summaryCache = new Map<string, Awaited<ReturnType<EncounterFinancialService['getSummary']>> | null>();
+  const summaryCache = new Map<
+    string,
+    Awaited<ReturnType<EncounterFinancialService['getSummary']>> | null
+  >();
 
   async function getBillingRecord(recordId: string) {
     if (!billingCache.has(recordId)) {
-        try {
-        billingCache.set(recordId, handlers.billing.getOrThrow(recordId as never));
+      try {
+        billingCache.set(
+          recordId,
+          handlers.billing.getOrThrow(params.accountId as never, recordId as never)
+        );
       } catch {
         billingCache.set(recordId, null);
       }
@@ -282,7 +287,10 @@ async function listReconciliationRows(
   async function getFinancialSummary(encounterId: string) {
     if (!summaryCache.has(encounterId)) {
       try {
-        summaryCache.set(encounterId, await handlers.encounterFinancial.getSummary(encounterId as never));
+        summaryCache.set(
+          encounterId,
+          await handlers.encounterFinancial.getSummary(encounterId as never)
+        );
       } catch {
         summaryCache.set(encounterId, null);
       }
@@ -304,8 +312,8 @@ async function listReconciliationRows(
     const matchedPayments = financialSummary
       ? financialSummary.payments.filter(
           (payment) =>
-            payment.externalReferenceType === 'pix_transaction'
-            && payment.externalReferenceId === transaction.transactionId
+            payment.externalReferenceType === 'pix_transaction' &&
+            payment.externalReferenceId === transaction.transactionId
         )
       : [];
     const fallbackPayments =
@@ -315,7 +323,9 @@ async function listReconciliationRows(
           )
         : [];
     const effectivePayments = matchedPayments.length > 0 ? matchedPayments : fallbackPayments;
-    const receivableIds = Array.from(new Set(effectivePayments.map((payment) => payment.receivableId)));
+    const receivableIds = Array.from(
+      new Set(effectivePayments.map((payment) => payment.receivableId))
+    );
     const matchedReceivables = financialSummary
       ? financialSummary.receivables.filter((receivable) => receivableIds.includes(receivable.id))
       : [];
@@ -425,12 +435,18 @@ async function listCardReconciliationRows(
   });
 
   const billingCache = new Map<string, ReturnType<BillingService['getOrThrow']> | null>();
-  const summaryCache = new Map<string, Awaited<ReturnType<EncounterFinancialService['getSummary']>> | null>();
+  const summaryCache = new Map<
+    string,
+    Awaited<ReturnType<EncounterFinancialService['getSummary']>> | null
+  >();
 
   async function getBillingRecord(recordId: string) {
     if (!billingCache.has(recordId)) {
       try {
-        billingCache.set(recordId, handlers.billing.getOrThrow(recordId as never));
+        billingCache.set(
+          recordId,
+          handlers.billing.getOrThrow(params.accountId as never, recordId as never)
+        );
       } catch {
         billingCache.set(recordId, null);
       }
@@ -463,18 +479,20 @@ async function listCardReconciliationRows(
     const matchedPayments = financialSummary
       ? financialSummary.payments.filter(
           (payment) =>
-            payment.externalReferenceType === 'other'
-            && payment.externalReferenceId === transaction.transactionId
+            payment.externalReferenceType === 'other' &&
+            payment.externalReferenceId === transaction.transactionId
         )
       : [];
-    const receivableIds = Array.from(new Set(matchedPayments.map((payment) => payment.receivableId)));
+    const receivableIds = Array.from(
+      new Set(matchedPayments.map((payment) => payment.receivableId))
+    );
     const matchedReceivables = financialSummary
       ? financialSummary.receivables.filter((receivable) => receivableIds.includes(receivable.id))
       : [];
     const reconciliationState =
-      transaction.status === 'captured'
-      && (transaction.billingSettlementStatus === 'applied'
-        || transaction.billingSettlementStatus === 'not_applicable')
+      transaction.status === 'captured' &&
+      (transaction.billingSettlementStatus === 'applied' ||
+        transaction.billingSettlementStatus === 'not_applicable')
         ? 'reconciled'
         : transaction.status === 'captured'
           ? 'attention_required'
@@ -546,7 +564,8 @@ async function listCardReconciliationRows(
     pageSize,
     total,
     capturedCount: data.filter((item) => item.status === 'captured').length,
-    awaitingCaptureCount: data.filter((item) => item.status === 'authorized_pending_capture').length,
+    awaitingCaptureCount: data.filter((item) => item.status === 'authorized_pending_capture')
+      .length,
     attentionCount: data.filter((item) => item.reconciliationState === 'attention_required').length,
     pendingCount: data.filter((item) => item.reconciliationState === 'pending').length,
     reconciledCount: data.filter((item) => item.reconciliationState === 'reconciled').length
@@ -561,23 +580,30 @@ export async function handleFinancialRoutes(
   handlers: FinancialRoutesHandlers
 ): Promise<boolean> {
   const isFinancialPath =
-    pathname === '/financial/receivables'
-    || pathname === '/financial/payables'
-    || pathname === '/financial/income-statement'
-    || pathname === '/financial/ledger'
-    || pathname === '/financial/ledger/reconciliation'
-    || pathname === '/financial/aging'
-    || pathname === '/financial/reconciliation'
-    || pathname === '/financial/reconciliation/cards'
-    || pathname === '/financial/reconciliation/payables'
-    || pathname.startsWith('/encounters/')
-    || pathname.startsWith('/financial/payables/')
-    || pathname.startsWith('/financial/receivables/');
+    pathname === '/financial/receivables' ||
+    pathname === '/financial/payables' ||
+    pathname === '/financial/income-statement' ||
+    pathname === '/financial/ledger' ||
+    pathname === '/financial/ledger/reconciliation' ||
+    pathname === '/financial/aging' ||
+    pathname === '/financial/reconciliation' ||
+    pathname === '/financial/reconciliation/cards' ||
+    pathname === '/financial/reconciliation/payables' ||
+    pathname.startsWith('/encounters/') ||
+    pathname.startsWith('/financial/payables/') ||
+    pathname.startsWith('/financial/receivables/');
   if (!isFinancialPath) {
     return false;
   }
 
-  const { encounterFinancial, ledger, financialPayables, financialStatements, audit, requirePrincipal } = handlers;
+  const {
+    encounterFinancial,
+    ledger,
+    financialPayables,
+    financialStatements,
+    audit,
+    requirePrincipal
+  } = handlers;
   const url = new URL(request.url ?? pathname, 'http://localhost');
 
   if (pathname === '/financial/payables' && request.method === 'GET') {
@@ -628,8 +654,8 @@ export async function handleFinancialRoutes(
   }
 
   if (
-    (pathname === '/financial/ledger' || pathname === '/financial/ledger/reconciliation')
-    && request.method === 'GET'
+    (pathname === '/financial/ledger' || pathname === '/financial/ledger/reconciliation') &&
+    request.method === 'GET'
   ) {
     const principal = await requirePrincipal(request, 'billing.read');
     if (!ledger) {
@@ -641,11 +667,7 @@ export async function handleFinancialRoutes(
 
     const dateFrom = url.searchParams.get('dateFrom') ?? undefined;
     const dateTo = url.searchParams.get('dateTo') ?? undefined;
-    const entries = await ledger.listByAccount(
-      principal.user.accountId as never,
-      dateFrom,
-      dateTo
-    );
+    const entries = await ledger.listByAccount(principal.user.accountId as never, dateFrom, dateTo);
 
     if (pathname === '/financial/ledger') {
       appendAudit(audit, {
@@ -711,12 +733,15 @@ export async function handleFinancialRoutes(
 
   if (pathname === '/financial/reconciliation/payables' && request.method === 'GET') {
     const principal = await requirePrincipal(request, 'billing.read');
-    const result = await financialPayables.listPayableReconciliation(principal.user.accountId as never, {
-      status: parsePayableReconciliationStatus(url.searchParams.get('status')),
-      search: url.searchParams.get('search') ?? undefined,
-      page: normalizePage(url.searchParams.get('page'), 1),
-      pageSize: normalizePage(url.searchParams.get('pageSize'), 20)
-    });
+    const result = await financialPayables.listPayableReconciliation(
+      principal.user.accountId as never,
+      {
+        status: parsePayableReconciliationStatus(url.searchParams.get('status')),
+        search: url.searchParams.get('search') ?? undefined,
+        page: normalizePage(url.searchParams.get('page'), 1),
+        pageSize: normalizePage(url.searchParams.get('pageSize'), 20)
+      }
+    );
 
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -735,19 +760,24 @@ export async function handleFinancialRoutes(
 
   if (pathname === '/financial/payables' && request.method === 'POST') {
     const principal = await requirePrincipal(request, 'billing.manage');
-    const payload = await readJsonBody(request) as Record<string, unknown>;
-    const payable = await financialPayables.createPayable(principal.user.accountId as never, principal.user.id as never, {
-      supplierName: requireNonEmptyString(payload.supplierName, 'supplierName'),
-      description: requireNonEmptyString(payload.description, 'description'),
-      category: requireNonEmptyString(payload.category, 'category'),
-      costCenterCode: requireNonEmptyString(payload.costCenterCode, 'costCenterCode'),
-      costCenterName: requireNonEmptyString(payload.costCenterName, 'costCenterName'),
-      issuedAt: typeof payload.issuedAt === 'string' ? payload.issuedAt : undefined,
-      dueAt: requireNonEmptyString(payload.dueAt, 'dueAt'),
-      totalAmount: Number(payload.totalAmount),
-      sourceExpenseId: typeof payload.sourceExpenseId === 'string' ? payload.sourceExpenseId : null,
-      notes: typeof payload.notes === 'string' ? payload.notes : null
-    });
+    const payload = (await readJsonBody(request)) as Record<string, unknown>;
+    const payable = await financialPayables.createPayable(
+      principal.user.accountId as never,
+      principal.user.id as never,
+      {
+        supplierName: requireNonEmptyString(payload.supplierName, 'supplierName'),
+        description: requireNonEmptyString(payload.description, 'description'),
+        category: requireNonEmptyString(payload.category, 'category'),
+        costCenterCode: requireNonEmptyString(payload.costCenterCode, 'costCenterCode'),
+        costCenterName: requireNonEmptyString(payload.costCenterName, 'costCenterName'),
+        issuedAt: typeof payload.issuedAt === 'string' ? payload.issuedAt : undefined,
+        dueAt: requireNonEmptyString(payload.dueAt, 'dueAt'),
+        totalAmount: Number(payload.totalAmount),
+        sourceExpenseId:
+          typeof payload.sourceExpenseId === 'string' ? payload.sourceExpenseId : null,
+        notes: typeof payload.notes === 'string' ? payload.notes : null
+      }
+    );
 
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -764,16 +794,26 @@ export async function handleFinancialRoutes(
     return json(response, 201, payable);
   }
 
-  if (pathname.startsWith('/financial/payables/') && pathname.endsWith('/pay') && request.method === 'POST') {
+  if (
+    pathname.startsWith('/financial/payables/') &&
+    pathname.endsWith('/pay') &&
+    request.method === 'POST'
+  ) {
     const principal = await requirePrincipal(request, 'billing.manage');
     const payableId = requireNonEmptyString(pathname.split('/')[3], 'payableId');
-    const payload = await readJsonBody(request) as Record<string, unknown>;
-    const payable = await financialPayables.payPayable(principal.user.accountId as never, principal.user.id as never, payableId, {
-      amountPaid: Number(payload.amountPaid),
-      paymentMethod: parsePayablePaymentMethod(payload.paymentMethod),
-      paymentReference: typeof payload.paymentReference === 'string' ? payload.paymentReference : null,
-      notes: typeof payload.notes === 'string' ? payload.notes : null
-    });
+    const payload = (await readJsonBody(request)) as Record<string, unknown>;
+    const payable = await financialPayables.payPayable(
+      principal.user.accountId as never,
+      principal.user.id as never,
+      payableId,
+      {
+        amountPaid: Number(payload.amountPaid),
+        paymentMethod: parsePayablePaymentMethod(payload.paymentMethod),
+        paymentReference:
+          typeof payload.paymentReference === 'string' ? payload.paymentReference : null,
+        notes: typeof payload.notes === 'string' ? payload.notes : null
+      }
+    );
 
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -790,10 +830,14 @@ export async function handleFinancialRoutes(
     return json(response, 200, payable);
   }
 
-  if (pathname.startsWith('/financial/payables/') && pathname.endsWith('/cancel') && request.method === 'POST') {
+  if (
+    pathname.startsWith('/financial/payables/') &&
+    pathname.endsWith('/cancel') &&
+    request.method === 'POST'
+  ) {
     const principal = await requirePrincipal(request, 'billing.manage');
     const payableId = requireNonEmptyString(pathname.split('/')[3], 'payableId');
-    const payload = await readJsonBody(request) as Record<string, unknown>;
+    const payload = (await readJsonBody(request)) as Record<string, unknown>;
     const payable = await financialPayables.cancelPayable(
       principal.user.accountId as never,
       principal.user.id as never,
@@ -816,16 +860,23 @@ export async function handleFinancialRoutes(
     return json(response, 200, payable);
   }
 
-  if (pathname.startsWith('/financial/payables/') && pathname.endsWith('/reconcile') && request.method === 'POST') {
+  if (
+    pathname.startsWith('/financial/payables/') &&
+    pathname.endsWith('/reconcile') &&
+    request.method === 'POST'
+  ) {
     const principal = await requirePrincipal(request, 'billing.manage');
     const payableId = requireNonEmptyString(pathname.split('/')[3], 'payableId');
-    const payload = await readJsonBody(request) as Record<string, unknown>;
+    const payload = (await readJsonBody(request)) as Record<string, unknown>;
     const payable = await financialPayables.reconcilePayablePayment(
       principal.user.accountId as never,
       principal.user.id as never,
       payableId,
       {
-        reconciliationReference: typeof payload.reconciliationReference === 'string' ? payload.reconciliationReference : null,
+        reconciliationReference:
+          typeof payload.reconciliationReference === 'string'
+            ? payload.reconciliationReference
+            : null,
         notes: typeof payload.notes === 'string' ? payload.notes : null
       }
     );
@@ -846,9 +897,9 @@ export async function handleFinancialRoutes(
   }
 
   if (
-    pathname.startsWith('/encounters/')
-    && pathname.endsWith('/financial-summary')
-    && request.method === 'GET'
+    pathname.startsWith('/encounters/') &&
+    pathname.endsWith('/financial-summary') &&
+    request.method === 'GET'
   ) {
     const principal = await requirePrincipal(request, 'billing.read');
     const encounterId = requireNonEmptyString(pathname.split('/')[2], 'encounterId');
@@ -870,16 +921,16 @@ export async function handleFinancialRoutes(
   }
 
   if (
-    pathname.startsWith('/encounters/')
-    && pathname.endsWith('/financial-close')
-    && request.method === 'POST'
+    pathname.startsWith('/encounters/') &&
+    pathname.endsWith('/financial-close') &&
+    request.method === 'POST'
   ) {
     const principal = await requirePrincipal(request, 'billing.manage');
     const encounterId = requireNonEmptyString(pathname.split('/')[2], 'encounterId');
     const rawPayload = await readJsonBody(request);
     const payload =
       typeof rawPayload === 'object' && rawPayload !== null && !Array.isArray(rawPayload)
-        ? rawPayload as Record<string, unknown>
+        ? (rawPayload as Record<string, unknown>)
         : {};
     if (Object.prototype.hasOwnProperty.call(payload, 'paidAmount')) {
       return json(response, 409, manualSettlementDisabledResponse(correlationId));
@@ -979,10 +1030,10 @@ export async function handleFinancialRoutes(
     const result = await listReconciliationRows(handlers, {
       accountId: principal.user.accountId,
       status:
-        status === 'pending'
-        || status === 'completed'
-        || status === 'expired'
-        || status === 'cancelled'
+        status === 'pending' ||
+        status === 'completed' ||
+        status === 'expired' ||
+        status === 'cancelled'
           ? status
           : undefined,
       provider:
@@ -1017,18 +1068,15 @@ export async function handleFinancialRoutes(
     const result = await listCardReconciliationRows(handlers, {
       accountId: principal.user.accountId,
       status:
-        status === 'pending'
-        || status === 'authorized_pending_capture'
-        || status === 'captured'
-        || status === 'not_authorized'
-        || status === 'failed'
-        || status === 'voided'
+        status === 'pending' ||
+        status === 'authorized_pending_capture' ||
+        status === 'captured' ||
+        status === 'not_authorized' ||
+        status === 'failed' ||
+        status === 'voided'
           ? status
           : undefined,
-      provider:
-        provider === 'local-card' || provider === 'pagarme-card'
-          ? provider
-          : undefined,
+      provider: provider === 'local-card' || provider === 'pagarme-card' ? provider : undefined,
       search: search ?? undefined,
       page: normalizePage(url.searchParams.get('page'), 1),
       pageSize: normalizePage(url.searchParams.get('pageSize'), 20)
@@ -1050,9 +1098,9 @@ export async function handleFinancialRoutes(
   }
 
   if (
-    pathname.startsWith('/financial/receivables/')
-    && pathname.endsWith('/settle')
-    && request.method === 'POST'
+    pathname.startsWith('/financial/receivables/') &&
+    pathname.endsWith('/settle') &&
+    request.method === 'POST'
   ) {
     await requirePrincipal(request, 'billing.manage');
     requireNonEmptyString(pathname.split('/')[3], 'receivableId');

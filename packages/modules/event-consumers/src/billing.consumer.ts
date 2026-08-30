@@ -89,7 +89,10 @@ export class BillingEventHandlers {
       throw new Error(`Billing event ${event.eventType} is missing record id`);
     }
     await this.#billing.hydrateFromDatabase(event.accountId as AccountId);
-    const record = this.#billing.getOrThrow(recordId as BillingRecordId);
+    const record = this.#billing.getOrThrow(
+      event.accountId as AccountId,
+      recordId as BillingRecordId
+    );
     if (record.accountId !== event.accountId) {
       throw new Error('Billing event account does not match the authoritative record');
     }

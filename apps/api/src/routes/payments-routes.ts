@@ -259,7 +259,7 @@ async function handleCardIntentCreate(
   const billingRecordId =
     typeof body.billingRecordId === 'string' ? body.billingRecordId : undefined;
   if (billingRecordId) {
-    const record = billing.getOrThrow(billingRecordId as never);
+    const record = billing.getOrThrow(apiKeyPrincipal.apiKey.accountId, billingRecordId as never);
     if (record.accountId !== apiKeyPrincipal.apiKey.accountId) {
       throw new ValidationError('billingRecordId does not belong to the API key account');
     }
@@ -435,7 +435,7 @@ async function handleCardIntentCapture(
 
   const billingRecordId = gatewayIntent?.billingRecordId ?? persistedTransaction?.billingRecordId;
   if (billingRecordId) {
-    const record = billing.getOrThrow(billingRecordId as never);
+    const record = billing.getOrThrow(apiKeyPrincipal.apiKey.accountId, billingRecordId as never);
     if (record.accountId !== apiKeyPrincipal.apiKey.accountId) {
       response.statusCode = 404;
       response.setHeader('content-type', 'application/json');

@@ -8,14 +8,14 @@ function createMockBillingService(): BillingService {
   return Object.assign(
     {
       async hydrateFromDatabase(): Promise<void> {},
-      getOrThrow() {
+      getOrThrow(_accountId: never, _recordId: never) {
         return {
           id: 'br_test',
           accountId: 'acc_test',
           currency: 'BRL'
         };
       },
-      async settleByRecordId(_recordId: never): Promise<never> {
+      async settleByRecordId(_accountId: never, _recordId: never): Promise<never> {
         throw new Error('should not be called');
       }
     },

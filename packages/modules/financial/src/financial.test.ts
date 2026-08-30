@@ -258,15 +258,18 @@ function createFinancialService(
       }
     } as never,
     {
-      async getByEncounterOrThrow(encounterId: string) {
+      async getByEncounterOrThrow(accountId: string, encounterId: string) {
+        assert.equal(accountId, encounter.accountId);
         assert.equal(encounterId, encounter.id);
         return billingRecord;
       },
-      async listItems(encounterId: string) {
+      async listItems(accountId: string, encounterId: string) {
+        assert.equal(accountId, encounter.accountId);
         assert.equal(encounterId, encounter.id);
         return billingItems;
       },
-      getOrThrow(recordId: string) {
+      getOrThrow(accountId: string, recordId: string) {
+        assert.equal(accountId, encounter.accountId);
         assert.equal(recordId, billingRecord.id);
         return billingRecord;
       }
@@ -592,12 +595,16 @@ test('EncounterFinancialService records payment by billing record and settles re
     ]
   });
 
-  const summary = await service.recordPaymentForBillingRecord(billingRecord.id, {
-    amountPaid: 190,
-    paidByUserId: 'user_finance' as never,
-    externalReferenceType: 'billing_record',
-    externalReferenceId: billingRecord.id
-  });
+  const summary = await service.recordPaymentForBillingRecord(
+    encounter.accountId,
+    billingRecord.id,
+    {
+      amountPaid: 190,
+      paidByUserId: 'user_finance' as never,
+      externalReferenceType: 'billing_record',
+      externalReferenceId: billingRecord.id
+    }
+  );
 
   assert.equal(summary.financialStatus, 'paid');
   assert.equal(summary.balanceDue, 0);

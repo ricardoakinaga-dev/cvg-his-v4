@@ -471,11 +471,11 @@ test('runtime reconciles PIX confirmation into administrative financial state', 
     reason: 'Fluxo financeiro administrativo com PIX'
   });
 
-  const billingRecord = await runtime.billing.createEstimate({
+  const billingRecord = await runtime.billing.createEstimate(reception.user.accountId, {
     encounterId: encounter.id,
     administrativeNotes: 'Fechamento administrativo via PIX'
   });
-  await runtime.billing.addItem(reception.user.id, {
+  await runtime.billing.addItem(reception.user.accountId, reception.user.id, {
     encounterId: encounter.id,
     itemType: 'service',
     description: 'Consulta veterinaria',
@@ -525,7 +525,7 @@ test('runtime reconciles PIX confirmation into administrative financial state', 
   });
   await runtime.eventBus.processPending(10);
 
-  const settledBilling = runtime.billing.getOrThrow(billingRecord.id);
+  const settledBilling = runtime.billing.getOrThrow(reception.user.accountId, billingRecord.id);
   assert.equal(settledBilling.status, 'settled');
 
   const summary = await runtime.encounterFinancial.getSummary(encounter.id);
@@ -566,11 +566,11 @@ test('runtime reconciles card capture into administrative financial state', asyn
     reason: 'Fluxo financeiro administrativo com cartao'
   });
 
-  const billingRecord = await runtime.billing.createEstimate({
+  const billingRecord = await runtime.billing.createEstimate(reception.user.accountId, {
     encounterId: encounter.id,
     administrativeNotes: 'Fechamento administrativo via cartao'
   });
-  await runtime.billing.addItem(reception.user.id, {
+  await runtime.billing.addItem(reception.user.accountId, reception.user.id, {
     encounterId: encounter.id,
     itemType: 'service',
     description: 'Procedimento cirurgico',
@@ -628,7 +628,7 @@ test('runtime reconciles card capture into administrative financial state', asyn
   });
   await runtime.eventBus.processPending(10);
 
-  const settledBilling = runtime.billing.getOrThrow(billingRecord.id);
+  const settledBilling = runtime.billing.getOrThrow(reception.user.accountId, billingRecord.id);
   assert.equal(settledBilling.status, 'settled');
 
   const summary = await runtime.encounterFinancial.getSummary(encounter.id);
@@ -1348,11 +1348,11 @@ test('administrative modules keep billing, inventory and notifications linked wi
   )) as AuthSessionResponse;
   const inventoryUser = runtime.auth.authenticateAccessToken(inventoryLogin.accessToken);
 
-  const estimate = await runtime.billing.createEstimate({
+  const estimate = await runtime.billing.createEstimate(finance.user.accountId, {
     encounterId: encounter.id,
     administrativeNotes: 'Orcamento inicial emitido para tutor.'
   });
-  const item = await runtime.billing.addItem(finance.user.id, {
+  const item = await runtime.billing.addItem(finance.user.accountId, finance.user.id, {
     encounterId: encounter.id,
     itemType: 'exam',
     description: 'Ultrassonografia abdominal',
@@ -1361,7 +1361,9 @@ test('administrative modules keep billing, inventory and notifications linked wi
     sourceEntityType: 'encounter',
     sourceEntityId: encounter.id
   });
-  const openedBilling = await runtime.billing.updateStatus(encounter.id, { status: 'open' });
+  const openedBilling = await runtime.billing.updateStatus(finance.user.accountId, encounter.id, {
+    status: 'open'
+  });
 
   const consumption = await runtime.inventory.consume(
     inventoryUser.user.id,
@@ -1935,13 +1937,13 @@ test('AUD-010-03: cross-aggregate flow - encounter to billing to notifications',
   });
 
   // Create billing estimate
-  const estimate = await runtime.billing.createEstimate({
+  const estimate = await runtime.billing.createEstimate(reception.user.accountId, {
     encounterId: encounter.id,
     administrativeNotes: 'Orcamento inicial'
   });
 
   // Add billing item
-  const item = await runtime.billing.addItem(reception.user.id, {
+  const item = await runtime.billing.addItem(reception.user.accountId, reception.user.id, {
     encounterId: encounter.id,
     itemType: 'service',
     description: 'Consulta veterinaria',

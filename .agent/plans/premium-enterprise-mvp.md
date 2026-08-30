@@ -2735,3 +2735,49 @@ The bounded correction was committed locally as `8ffafa9b` and reconciled with
 only the pre-existing design-system `tsbuildinfo` cache outside the commit.
 Resume fresh residual scouting under a new authority; do not infer global ERP
 promotion from this child checkpoint.
+
+## 2026-08-30 — billing tenant-boundary checkpoint before commit
+
+Fresh residual scouting after `8ffafa9b` selected
+`CVG-003-BILLING-TENANT-BOUNDARY` as the next P0 behavioral security slice.
+The bounded implementation now requires explicit account scope across
+BillingService encounter/record reads, lazy creation, item creation/listing,
+status updates and settlement. Authenticated billing routes and first-party
+financial, payment, event-consumer, inpatient, inventory and worker callers
+forward the principal/account authority. Foreign resources fail closed before
+disclosure, cache publication, repository mutation or callbacks; authoritative
+empty item reads clear stale cache state. No migration, schema, repository SQL,
+settlement/cash redesign, provider, credential, target, production, deployment,
+release or external mutation was performed.
+
+TDD RED recorded the expected legacy-signature failures (`17/18` direct
+BillingService tests and `13/14` compiled billing-route tests). GREEN passed
+BillingService `20/20` and compiled billing routes `15/15`. The bounded
+database/integration rail passed `5` files / `21/21` tests, complete API passed
+`530/530`, focused BillingService V8 coverage passed `83.68%` statements,
+`81.48%` branches and `87.50%` functions, official workspace V8 coverage
+passed `80.63%` statements, `81.14%` branches and `87.18%` functions, and
+workspace typecheck/build plus the worker rail passed. Security, secret scan,
+OpenAPI (`354` paths, `40` tags, `413` schemas), RLS (`165/166` with one
+documented exception), namespaces, migration-source, deploy-surface, static
+Helm validation, targeted lint, Prettier and diff checks passed. Workspace
+lint retains only the unrelated pre-existing
+`packages/contracts/src/counterSales.ts:38,77` `no-control-regex` baseline.
+
+The first independent review was `CONDITIONAL` with no Critical or High issue;
+its High cache-resurrection, Medium ownership-filtering and Low route-test
+findings were remediated. A fresh independent review returned `APPROVE` with
+no actionable correctness or security finding in the bounded scope. It
+explicitly accepted the remaining polymorphic
+`sourceEntityType/sourceEntityId` source-entity resolver limitation because
+first-party callers are account-scoped and resolver/schema redesign is outside
+the authority.
+
+Evidence: `.agent/gates/verified-CVG-003-billing-tenant-boundary.json`,
+`.agent/artifacts/CVG-003-billing-tenant-boundary-2026-08-30.md`,
+`.agent/tasks/CVG-003-BILLING-TENANT-BOUNDARY.md` and the related
+`.agent/verification.jsonl` records. The child result is
+`COMPLETE_BOUNDED` / `PASS_BOUNDED` pending explicit commit reconciliation.
+Global ERP remains `IN_PROGRESS/PARTIAL`, Vetus functional verification
+remains `4/11`, clinical parity remains `2/3`, readiness remains `95/100`
+(`42 PASS`, `3 WARN`, `1 FAIL`) and promotion remains `BLOCKED`.

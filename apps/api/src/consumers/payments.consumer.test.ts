@@ -16,11 +16,11 @@ function createMockBillingService() {
   const settles: string[] = [];
   return Object.assign(
     {
-      async settleByRecordId(recordId: never): Promise<never> {
+      async settleByRecordId(_accountId: never, recordId: never): Promise<never> {
         settles.push(recordId as string);
         return { id: recordId, status: 'settled' } as never;
       },
-      getOrThrow(recordId: never): never {
+      getOrThrow(_accountId: never, recordId: never): never {
         return {
           id: recordId,
           accountId: 'acc_test',
@@ -44,6 +44,7 @@ function createMockEncounterFinancialService() {
   return Object.assign(
     {
       async recordPaymentForBillingRecord(
+        _accountId: never,
         billingRecordId: never,
         input: {
           amountPaid: number;

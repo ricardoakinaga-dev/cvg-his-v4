@@ -103,19 +103,23 @@ describe('runtime', () => {
       (login as AuthSessionResponse).accessToken
     );
 
-    const encounter = runtime.encounters.openEncounter(principal.user.accountId, principal.user.id, {
-      patientId: 'patient_luna',
-      ownerId: 'owner_maria_silva',
-      visitType: 'walk_in',
-      origin: 'reception',
-      reason: 'Fluxo financeiro administrativo com PIX'
-    });
+    const encounter = runtime.encounters.openEncounter(
+      principal.user.accountId,
+      principal.user.id,
+      {
+        patientId: 'patient_luna',
+        ownerId: 'owner_maria_silva',
+        visitType: 'walk_in',
+        origin: 'reception',
+        reason: 'Fluxo financeiro administrativo com PIX'
+      }
+    );
 
-    const billingRecord = await runtime.billing.createEstimate({
+    const billingRecord = await runtime.billing.createEstimate(principal.user.accountId, {
       encounterId: encounter.id,
       administrativeNotes: 'Fechamento administrativo via PIX'
     });
-    await runtime.billing.addItem(principal.user.id, {
+    await runtime.billing.addItem(principal.user.accountId, principal.user.id, {
       encounterId: encounter.id,
       itemType: 'service',
       description: 'Consulta veterinaria',
