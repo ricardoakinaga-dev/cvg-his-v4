@@ -2,7 +2,8 @@ import {
   ConfirmedPixSettlementCommand,
   DatabaseConfirmedPixSettlementRepository,
   type ApplyConfirmedPixSettlementInput,
-  type ConfirmedPixSettlementCheckpoint
+  type ConfirmedPixSettlementCheckpoint,
+  type ConfirmedPixSettlementRecord
 } from '@cvg-his-v2/module-pix';
 import type { TenantTransactionContext } from '@cvg-his-v2/shared-database';
 
@@ -221,6 +222,23 @@ function failureFor(
   return Object.freeze({ code, errorClass: 'terminal', retryDelaySeconds: 0 });
 }
 
+function isCanonicalReplay(
+  value: unknown,
+  input: ApplyConfirmedPixSettlementInput
+): boolean {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const record = value as Partial<ConfirmedPixSettlementRecord>;
+  return record.accountId === input.accountId
+    && record.provider === input.provider
+    && record.providerEventId !== undefined
+    && record.providerEventId !== input.providerEventId
+    && record.transactionId === input.transactionId
+    && record.billingRecordId === input.billingRecordId
+    && record.amountCents === input.amountCents
+    && record.currency === input.currency
+    && record.confirmedAt === input.confirmedAt;
+}
+
 export class PixProviderSettlementConsumer {
   readonly #repository: PixProviderEventDeliveryRepository;
   readonly #options: PixProviderSettlementConsumerOptions;
@@ -273,8 +291,9 @@ export class PixProviderSettlementConsumer {
                 () => transaction
               );
           await this.#checkpoint('before_b1', claim);
-          await executor.execute(input);
+          const settlement = await executor.execute(input);
           await this.#checkpoint('after_b1_before_cas', claim);
+          return isCanonicalReplay(settlement, input) ? 'canonical_replay' : undefined;
         }
       );
       if (execution === 'applied') await this.#checkpoint('after_applied_cas', claim);

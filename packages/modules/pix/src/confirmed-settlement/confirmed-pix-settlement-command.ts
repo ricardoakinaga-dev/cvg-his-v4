@@ -14,6 +14,7 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 const MAX_AMOUNT_CENTS = 999_999_999_999;
 const PIX_PROVIDERS = new Set(['local-pix', 'mock', 'pagarme']);
 const SYNTHETIC_PIX_PROVIDERS = new Set(['local-pix', 'mock']);
+const CLAIMS_FINGERPRINT_PATTERN = /^[a-f0-9]{64}$/;
 
 export interface ConfirmedPixSettlementCommandOptions {
   readonly allowSyntheticProviders?: boolean;
@@ -37,6 +38,12 @@ function validate(input: ApplyConfirmedPixSettlementInput): ApplyConfirmedPixSet
   if (input.attemptId !== undefined) requireUuid(input.attemptId, 'attemptId');
   if (!PIX_PROVIDERS.has(input.provider)) {
     throw new ValidationError('provider is not supported for PIX settlement');
+  }
+  if (
+    input.claimsFingerprint !== undefined
+    && !CLAIMS_FINGERPRINT_PATTERN.test(input.claimsFingerprint)
+  ) {
+    throw new ValidationError('claimsFingerprint must be a lowercase SHA-256 hex digest');
   }
   if (input.currency !== 'BRL') {
     throw new ValidationError('currency must be BRL');

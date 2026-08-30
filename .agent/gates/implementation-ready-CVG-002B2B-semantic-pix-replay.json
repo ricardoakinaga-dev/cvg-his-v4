@@ -1,0 +1,83 @@
+{
+  "record_id": "GATE-CVG-002B2B-SEMANTIC-PIX-REPLAY-IR-001",
+  "timestamp": "2026-08-30T13:30:00-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "Bounded semantic replay convergence for dedicated signed PIX settlement",
+  "scope_ref": "CVG-002B2B-SEMANTIC-PIX-REPLAY",
+  "version": 1,
+  "confidence": "MEDIUM",
+  "residual_risk": "CRITICAL",
+  "decision": "PASS",
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The persisted provider receipt already contains claims_fingerprint, but the worker/B1 path keys semantic idempotency only by provider event ID; distinct equivalent events can therefore reach a terminal attempt conflict after the first settlement.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-002B2B-SEMANTIC-PIX-REPLAY.md",
+        ".agent/tasks/CVG-002B2B.md",
+        "packages/db/migrations/0111_pix_provider_event_ingress.sql",
+        "apps/worker/src/jobs/pix-provider-event-delivery-repository.ts",
+        "packages/modules/pix/src/confirmed-settlement/confirmed-pix-settlement-repository.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This is source-level selection evidence; the intentional PostgreSQL RED is still required."
+    },
+    {
+      "id": "IR-002",
+      "description": "The smallest safe boundary is the dedicated worker-to-B1 settlement seam: transport the stored claims fingerprint, converge only after the billing lock, and mark only the duplicate delivery applied with a sanitized canonical-replay code.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/worker/src/jobs/pix-provider-event-delivery-repository.ts",
+        "apps/worker/src/jobs/pix-provider-settlement-consumer.ts",
+        "packages/modules/pix/src/confirmed-settlement/confirmed-pix-settlement-repository.ts",
+        "packages/db/src/schema/encounter_non_cash_receipts.ts"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "No schema change is expected; if implementation evidence proves otherwise, authority must be revalidated before expanding scope."
+    },
+    {
+      "id": "IR-003",
+      "description": "A disposable PostgreSQL test can create two authenticated receipts with distinct event IDs and equal claims, process them sequentially/concurrently, and assert one financial effect, two applied deliveries and no cross-tenant leakage.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-002B2B-SEMANTIC-PIX-REPLAY.md",
+        "tests/integration/database/pix-provider-settlement-consumer.test.ts",
+        "tests/integration/process/pix-provider-settlement-sigkill.test.ts"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "Fresh RED/GREEN, regression, quality, independent review attempt and bounded reconciliation remain pending."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-002B2B-SEMANTIC-PIX-REPLAY.md",
+    "apps/worker/src/jobs/pix-provider-event-delivery-repository.ts",
+    "packages/modules/pix/src/confirmed-settlement/confirmed-pix-settlement-repository.ts"
+  ],
+  "gaps": [
+    "The distinct-event semantic replay RED, implementation, concurrency proof, full regression, quality and independent review are not complete at gate creation."
+  ],
+  "conditions": [
+    "Preserve the dedicated signed protocol, append-only receipts, B1 single-writer financial effects and explicit global IN_PROGRESS/PARTIAL with promotion BLOCKED.",
+    "Do not turn claims equivalence into a cross-tenant or provider identity shortcut; all account/attempt/billing/transaction claims remain authoritative."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via fresh local residual scouting after unavailable auxiliary scouts",
+    "scope": "CVG-002B2B semantic PIX replay convergence",
+    "decision": "Authorize reversible repository implementation, focused module/worker tests and disposable PostgreSQL proof for equivalent distinct-event convergence. Exclude provider, credentials, target, production, deployment, schema expansion unless proven necessary, release and global ERP promotion.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-002B2B-SEMANTIC-PIX-REPLAY-IR-001",
+    "expires_or_revalidates": "Revalidate before changing the signed protocol, the legacy consumer, provider identity, financial schema, target/production behavior or global readiness."
+  },
+  "revalidation_triggers": [
+    "Changes to pix_provider_events.claims_fingerprint or the 0111 ingress contract",
+    "Changes to the shared B1 confirmed PIX settlement primitive",
+    "Changes to encounter_non_cash_receipts uniqueness or settlement proof semantics",
+    "Any provider, target, production, deployment or release operation"
+  ],
+  "next_action": "Write and run the intentional RED with two distinct event IDs and equal claims before changing implementation."
+}

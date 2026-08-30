@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { DatabasePixProviderEventDeliveryRepository } from '../../../apps/worker/src/jobs/pix-provider-event-delivery-repository.js';
 import { PixProviderSettlementConsumer } from '../../../apps/worker/src/jobs/pix-provider-settlement-consumer.js';
+import { DatabasePixProviderEventIngressRepository } from '../../../apps/api/src/pix-provider-event-ingress-repository.js';
 import {
   ConfirmedPixSettlementCommand,
   DatabaseConfirmedPixSettlementRepository
@@ -112,8 +113,99 @@ async function createPendingDelivery() {
     attemptId,
     billingRecordId,
     deliveryId,
+    eventId,
+    providerEventId,
     providerTransactionId
   };
+}
+
+async function createEquivalentProviderEvent(
+  fixture: Pick<
+    Awaited<ReturnType<typeof createPendingDelivery>>,
+    'accountId' | 'attemptId' | 'eventId'
+  >
+) {
+  const pool = getTestPool();
+  const source = await pool.query<{
+    readonly amount_cents: string;
+    readonly claims_fingerprint: string;
+    readonly confirmed_at: Date;
+    readonly provider_transaction_id: string;
+  }>(
+    `SELECT amount_cents::text, claims_fingerprint, confirmed_at, provider_transaction_id
+       FROM pix_provider_events
+      WHERE account_id = $1 AND id = $2`,
+    [fixture.accountId, fixture.eventId]
+  );
+  const sourceEvent = source.rows[0];
+  if (!sourceEvent) throw new Error('source PIX provider event was not found');
+  const eventId = randomUUID();
+  const providerEventId = `event-equivalent-${randomUUID()}`;
+  const deliveryId = randomUUID();
+  await pool.query(
+    `INSERT INTO pix_provider_events (
+       id, account_id, provider, provider_event_id, event_type, payment_attempt_id,
+       provider_transaction_id, amount_cents, currency, confirmed_at,
+       body_fingerprint, claims_fingerprint, correlation_id
+     ) VALUES ($1, $2, 'local-pix', $3, 'pix.payment.confirmed.v1', $4, $5, $6,
+               'BRL', $7, $8, $9, $10)`,
+    [
+      eventId,
+      fixture.accountId,
+      providerEventId,
+      fixture.attemptId,
+      sourceEvent.provider_transaction_id,
+      sourceEvent.amount_cents,
+      sourceEvent.confirmed_at,
+      createHash('sha256').update(randomUUID()).digest('hex'),
+      sourceEvent.claims_fingerprint,
+      `equivalent-correlation-${randomUUID()}`
+    ]
+  );
+  await pool.query(
+    `INSERT INTO pix_provider_event_deliveries (id, account_id, event_id)
+     VALUES ($1, $2, $3)`,
+    [deliveryId, fixture.accountId, eventId]
+  );
+  return Object.freeze({ deliveryId, eventId, providerEventId });
+}
+
+async function createDivergentProviderEvent(
+  fixture: Pick<
+    Awaited<ReturnType<typeof createPendingDelivery>>,
+    'accountId' | 'attemptId' | 'eventId'
+  >
+) {
+  const pool = getTestPool();
+  const source = await pool.query<{
+    readonly amount_cents: string;
+    readonly confirmed_at: Date;
+    readonly provider_transaction_id: string;
+  }>(
+    `SELECT amount_cents::text, confirmed_at, provider_transaction_id
+       FROM pix_provider_events
+      WHERE account_id = $1 AND id = $2`,
+    [fixture.accountId, fixture.eventId]
+  );
+  const sourceEvent = source.rows[0];
+  if (!sourceEvent) throw new Error('source PIX provider event was not found');
+  const providerEventId = `event-divergent-${randomUUID()}`;
+  const claims = Object.freeze({
+    type: 'pix.payment.confirmed.v1' as const,
+    accountId: fixture.accountId,
+    attemptId: fixture.attemptId,
+    providerTransactionId: sourceEvent.provider_transaction_id,
+    amountCents: Number(sourceEvent.amount_cents),
+    currency: 'BRL' as const,
+    confirmedAt: new Date(new Date(sourceEvent.confirmed_at).getTime() + 1_000).toISOString()
+  });
+  const result = await new DatabasePixProviderEventIngressRepository(pool).persist({
+    rawBody: Buffer.from(JSON.stringify(claims), 'utf8'),
+    claims,
+    providerEventId,
+    correlationId: `divergent-correlation-${randomUUID()}`
+  });
+  return Object.freeze({ ...result, providerEventId });
 }
 
 async function makeDeliverySettlementReady(
@@ -242,6 +334,231 @@ describe.skipIf(!TEST_DB_IS_EPHEMERAL)(
         [fixture.accountId]
       );
       expect(after.rows[0]?.count).toBe(before.rows[0]?.count);
+    });
+
+    it('converges an equivalent distinct provider event to the canonical settlement', async () => {
+      const fixture = await createPendingDelivery();
+      await makeDeliverySettlementReady(fixture);
+      const equivalent = await createEquivalentProviderEvent(fixture);
+      const consumer = new PixProviderSettlementConsumer(
+        new DatabasePixProviderEventDeliveryRepository(getTestPool()),
+        {
+          workerId: 'worker-semantic-replay',
+          leaseMs: 60_000,
+          allowSyntheticProviders: true
+        }
+      );
+
+      const first = await consumer.processNext(fixture.accountId);
+      const replay = await consumer.processNext(fixture.accountId);
+
+      expect(first.status).toBe('applied');
+      expect(replay.status).toBe('applied');
+      const deliveries = await getTestPool().query<{
+        readonly last_error_code: string | null;
+        readonly provider_event_id: string;
+        readonly state: string;
+      }>(
+        `SELECT event.provider_event_id, delivery.state, delivery.last_error_code
+           FROM pix_provider_event_deliveries AS delivery
+           JOIN pix_provider_events AS event
+             ON event.account_id = delivery.account_id AND event.id = delivery.event_id
+          WHERE delivery.account_id = $1
+          ORDER BY delivery.created_at ASC, delivery.id ASC`,
+        [fixture.accountId]
+      );
+      expect(deliveries.rows).toEqual([
+        {
+          provider_event_id: fixture.providerEventId,
+          state: 'applied',
+          last_error_code: null
+        },
+        {
+          provider_event_id: equivalent.providerEventId,
+          state: 'applied',
+          last_error_code: 'PIX_SETTLEMENT_CANONICAL_REPLAY'
+        }
+      ]);
+      const effects = await getTestPool().query<{
+        readonly audits: number;
+        readonly inbox_events: number;
+        readonly journal_entries: number;
+        readonly outbox_events: number;
+        readonly payments: number;
+        readonly proofs: number;
+      }>(
+        `SELECT
+           (SELECT COUNT(*)::int FROM encounter_non_cash_receipts
+             WHERE account_id = $1 AND transaction_id = $2) AS proofs,
+           (SELECT COUNT(*)::int FROM encounter_receivable_payments
+             WHERE account_id = $1 AND external_reference_type = 'pix_transaction'
+               AND external_reference_id = $2) AS payments,
+           (SELECT COUNT(*)::int FROM financial_journal_entries
+             WHERE account_id = $1 AND source_type = 'encounter_non_cash_receipt') AS journal_entries,
+           (SELECT COUNT(*)::int FROM audit_events
+             WHERE account_id = $1 AND entity_type = 'encounter_non_cash_receipt') AS audits,
+           (SELECT COUNT(*)::int FROM outbox_events
+             WHERE account_id = $1 AND event_type = 'encounter.non-cash-receipt.created') AS outbox_events,
+           (SELECT COUNT(*)::int FROM inbox_events
+             WHERE account_id = $1 AND consumer_name = 'confirmed-pix-settlement') AS inbox_events`,
+        [fixture.accountId, fixture.attemptId]
+      );
+      expect(effects.rows[0]).toEqual({
+        proofs: 1,
+        payments: 1,
+        journal_entries: 1,
+        audits: 1,
+        outbox_events: 1,
+        inbox_events: 2
+      });
+    });
+
+    it('fails closed when a distinct provider event has divergent claims', async () => {
+      const fixture = await createPendingDelivery();
+      await makeDeliverySettlementReady(fixture);
+      const divergent = await createDivergentProviderEvent(fixture);
+      const consumer = new PixProviderSettlementConsumer(
+        new DatabasePixProviderEventDeliveryRepository(getTestPool()),
+        {
+          workerId: 'worker-semantic-divergent',
+          leaseMs: 60_000,
+          allowSyntheticProviders: true
+        }
+      );
+
+      expect((await consumer.processNext(fixture.accountId)).status).toBe('applied');
+      const result = await consumer.processNext(fixture.accountId);
+
+      expect(result).toMatchObject({
+        status: 'reconciliation_required',
+        failureCode: 'PIX_SETTLEMENT_CLAIMS_DIVERGENT',
+        failureClass: 'terminal'
+      });
+      const delivery = await getTestPool().query<{
+        readonly last_error_code: string | null;
+        readonly provider_event_id: string;
+        readonly state: string;
+      }>(
+        `SELECT event.provider_event_id, delivery.state, delivery.last_error_code
+           FROM pix_provider_event_deliveries AS delivery
+           JOIN pix_provider_events AS event
+             ON event.account_id = delivery.account_id AND event.id = delivery.event_id
+          WHERE delivery.account_id = $1 AND event.provider_event_id = $2`,
+        [fixture.accountId, divergent.providerEventId]
+      );
+      expect(delivery.rows[0]).toEqual({
+        provider_event_id: divergent.providerEventId,
+        state: 'reconciliation_required',
+        last_error_code: 'PIX_SETTLEMENT_CLAIMS_DIVERGENT'
+      });
+      const effects = await getTestPool().query<{
+        readonly inbox_events: number;
+        readonly proofs: number;
+      }>(
+        `SELECT
+           (SELECT COUNT(*)::int FROM encounter_non_cash_receipts
+             WHERE account_id = $1 AND transaction_id = $2) AS proofs,
+           (SELECT COUNT(*)::int FROM inbox_events
+             WHERE account_id = $1 AND consumer_name = 'confirmed-pix-settlement') AS inbox_events`,
+        [fixture.accountId, fixture.attemptId]
+      );
+      // The divergent B1 transaction rolls back its inbox claim together with
+      // the rejected attempt; the append-only provider event and DLQ delivery
+      // remain the forensic record.
+      expect(effects.rows[0]).toEqual({ proofs: 1, inbox_events: 1 });
+    });
+
+    it('converges equivalent events under two concurrent consumers', async () => {
+      const fixture = await createPendingDelivery();
+      await makeDeliverySettlementReady(fixture);
+      await createEquivalentProviderEvent(fixture);
+      const poolA = new Pool({ connectionString: TEST_DB_URL, max: 1 });
+      const poolB = new Pool({ connectionString: TEST_DB_URL, max: 1 });
+      let afterClaimArrivals = 0;
+      let releaseAfterClaim: (() => void) | undefined;
+      const afterClaimBarrier = new Promise<void>((resolve) => {
+        releaseAfterClaim = resolve;
+      });
+      const synchronizeAfterClaim = async (checkpoint: string): Promise<void> => {
+        if (checkpoint !== 'after_claim_commit') return;
+        afterClaimArrivals += 1;
+        if (afterClaimArrivals === 2) releaseAfterClaim?.();
+        await afterClaimBarrier;
+      };
+      try {
+        const [first, second] = await Promise.all([
+          new PixProviderSettlementConsumer(
+            new DatabasePixProviderEventDeliveryRepository(poolA),
+            {
+              workerId: 'worker-semantic-concurrent-a',
+              leaseMs: 60_000,
+              allowSyntheticProviders: true,
+              onCheckpoint: synchronizeAfterClaim
+            }
+          ).processNext(fixture.accountId),
+          new PixProviderSettlementConsumer(
+            new DatabasePixProviderEventDeliveryRepository(poolB),
+            {
+              workerId: 'worker-semantic-concurrent-b',
+              leaseMs: 60_000,
+              allowSyntheticProviders: true,
+              onCheckpoint: synchronizeAfterClaim
+            }
+          ).processNext(fixture.accountId)
+        ]);
+
+        expect([first.status, second.status].sort()).toEqual(['applied', 'applied']);
+        const effects = await getTestPool().query<{
+          readonly audits: number;
+          readonly canonical_replays: number;
+          readonly financial_accounts: number;
+          readonly inbox_events: number;
+          readonly journal_entries: number;
+          readonly journal_lines: number;
+          readonly outbox_events: number;
+          readonly payments: number;
+          readonly proofs: number;
+          readonly receivables: number;
+        }>(
+          `SELECT
+             (SELECT COUNT(*)::int FROM encounter_non_cash_receipts
+               WHERE account_id = $1 AND transaction_id = $2) AS proofs,
+             (SELECT COUNT(*)::int FROM encounter_receivable_payments
+               WHERE account_id = $1 AND external_reference_type = 'pix_transaction'
+                 AND external_reference_id = $2) AS payments,
+             (SELECT COUNT(*)::int FROM encounter_financial_accounts
+               WHERE account_id = $1) AS financial_accounts,
+             (SELECT COUNT(*)::int FROM encounter_receivables
+               WHERE account_id = $1) AS receivables,
+             (SELECT COUNT(*)::int FROM financial_journal_entries
+               WHERE account_id = $1 AND source_type = 'encounter_non_cash_receipt') AS journal_entries,
+             (SELECT COUNT(*)::int FROM financial_journal_lines
+               WHERE account_id = $1) AS journal_lines,
+             (SELECT COUNT(*)::int FROM audit_events
+               WHERE account_id = $1 AND entity_type = 'encounter_non_cash_receipt') AS audits,
+             (SELECT COUNT(*)::int FROM outbox_events
+               WHERE account_id = $1 AND event_type = 'encounter.non-cash-receipt.created') AS outbox_events,
+             (SELECT COUNT(*)::int FROM inbox_events
+               WHERE account_id = $1 AND consumer_name = 'confirmed-pix-settlement') AS inbox_events,
+             (SELECT COUNT(*)::int FROM pix_provider_event_deliveries
+               WHERE account_id = $1 AND last_error_code = 'PIX_SETTLEMENT_CANONICAL_REPLAY') AS canonical_replays`,
+          [fixture.accountId, fixture.attemptId]
+        );
+        expect(effects.rows[0]).toEqual({
+          audits: 1,
+          proofs: 1,
+          payments: 1,
+          financial_accounts: 1,
+          receivables: 1,
+          journal_entries: 1,
+          journal_lines: 2,
+          outbox_events: 1,
+          inbox_events: 2,
+          canonical_replays: 1
+        });
+      } finally {
+        await Promise.all([poolA.end(), poolB.end()]);
+      }
     });
 
     it('revalidates a tenant-local service principal then retries missing provider correlation', async () => {

@@ -11,6 +11,8 @@ export interface ApplyConfirmedPixSettlementInput {
   readonly attemptId?: string;
   readonly provider: ConfirmedPixProvider;
   readonly providerEventId: string;
+  /** Semantic identity from the authenticated provider receipt, when available. */
+  readonly claimsFingerprint?: string;
   readonly transactionId: string;
   readonly billingRecordId: string;
   readonly amountCents: number;
@@ -177,6 +179,19 @@ function isSameConfirmation(
     && record.confirmedAt === input.confirmedAt;
 }
 
+function isEquivalentConfirmation(
+  record: ConfirmedPixSettlementRecord,
+  input: ApplyConfirmedPixSettlementInput
+): boolean {
+  return record.accountId === input.accountId
+    && record.provider === input.provider
+    && record.transactionId === input.transactionId
+    && record.billingRecordId === input.billingRecordId
+    && record.amountCents === input.amountCents
+    && record.currency === input.currency
+    && record.confirmedAt === input.confirmedAt;
+}
+
 function assertPixMatches(pix: PixRow, input: ApplyConfirmedPixSettlementInput): void {
   const isAttemptSettlement = input.attemptId !== undefined;
   if (pix.provider !== input.provider) {
@@ -238,10 +253,18 @@ implements ConfirmedPixSettlementRepository {
     if (!claimed) return this.#canonicalReplay(transaction, input);
     await this.#checkpoint('after_inbox_claim');
 
+    // Keep the initial PIX read non-locking so missing/cross-tenant PIX
+    // failures preserve the established error contract. Billing remains the
+    // first financial lock; semantic replay is checked only after that lock so
+    // equivalent provider events cannot invert the billing -> PIX lock order.
     const pixSnapshot = await this.#findPix(transaction, input, false);
-    assertPixMatches(pixSnapshot, input);
-
     const billing = await this.#lockBilling(transaction, input);
+    const canonical = await this.#findCanonicalReplay(transaction, input);
+    if (canonical) return canonical;
+
+    assertPixMatches(pixSnapshot, input);
+    await this.#assertBillingEligible(transaction, input, billing);
+
     const encounter = await transaction.client.query<{ readonly status: string }>(
       `SELECT status
          FROM encounters
@@ -507,11 +530,15 @@ implements ConfirmedPixSettlementRepository {
     input: ApplyConfirmedPixSettlementInput
   ): Promise<ConfirmedPixSettlementRecord> {
     const result = await transaction.client.query<ProofRow>(
-      `SELECT proof.*, pix.payment_attempt_id
+      `SELECT proof.*, pix.payment_attempt_id, canonical_event.claims_fingerprint
          FROM encounter_non_cash_receipts AS proof
          JOIN pix_transactions AS pix
            ON pix.account_id = proof.account_id
           AND pix.transaction_id = proof.transaction_id
+         LEFT JOIN pix_provider_events AS canonical_event
+           ON canonical_event.account_id = proof.account_id
+          AND canonical_event.provider = proof.provider
+          AND canonical_event.provider_event_id = proof.provider_event_id
         WHERE proof.account_id = $1 AND proof.provider = $2 AND proof.provider_event_id = $3
         LIMIT 1`,
       [input.accountId, input.provider, input.providerEventId]
@@ -524,9 +551,51 @@ implements ConfirmedPixSettlementRepository {
     if (!isSameConfirmation(record, input)) {
       fail('CONFIRMED_PIX_EVENT_CONFLICT', 'PIX provider event payload does not match', 409);
     }
+    if (
+      input.claimsFingerprint !== undefined
+      && row['claims_fingerprint'] !== input.claimsFingerprint
+    ) {
+      fail('PIX_SETTLEMENT_CLAIMS_DIVERGENT', 'PIX provider receipt claims diverge', 409);
+    }
     const storedAttemptId = row['payment_attempt_id'] as string | null | undefined;
     if ((input.attemptId ?? null) !== (storedAttemptId ?? null)) {
       fail('CONFIRMED_PIX_EVENT_CONFLICT', 'PIX provider event attempt binding does not match', 409);
+    }
+    return record;
+  }
+
+  async #findCanonicalReplay(
+    transaction: TenantTransactionContext,
+    input: ApplyConfirmedPixSettlementInput
+  ): Promise<ConfirmedPixSettlementRecord | null> {
+    if (input.attemptId === undefined || input.claimsFingerprint === undefined) return null;
+    const result = await transaction.client.query<ProofRow>(
+      `SELECT proof.*, canonical_event.claims_fingerprint,
+              canonical_event.payment_attempt_id AS canonical_payment_attempt_id
+         FROM encounter_non_cash_receipts AS proof
+         JOIN pix_provider_events AS canonical_event
+           ON canonical_event.account_id = proof.account_id
+          AND canonical_event.provider = proof.provider
+          AND canonical_event.provider_event_id = proof.provider_event_id
+        WHERE proof.account_id = $1
+          AND proof.provider = $2
+          AND proof.transaction_id = $3
+          AND proof.billing_record_id = $4
+        ORDER BY proof.created_at ASC, proof.id ASC
+        LIMIT 1`,
+      [input.accountId, input.provider, input.transactionId, input.billingRecordId]
+    );
+    const row = result.rows[0];
+    if (!row) return null;
+    if (row['claims_fingerprint'] !== input.claimsFingerprint) {
+      fail('PIX_SETTLEMENT_CLAIMS_DIVERGENT', 'PIX provider receipt claims diverge', 409);
+    }
+    if (row['canonical_payment_attempt_id'] !== input.attemptId) {
+      fail('PIX_SETTLEMENT_CLAIMS_DIVERGENT', 'PIX provider attempt binding diverges', 409);
+    }
+    const record = mapProof(row);
+    if (!isEquivalentConfirmation(record, input)) {
+      fail('PIX_SETTLEMENT_CLAIMS_DIVERGENT', 'PIX provider receipt claims diverge', 409);
     }
     return record;
   }
@@ -614,6 +683,14 @@ implements ConfirmedPixSettlementRepository {
     );
     const billing = result.rows[0];
     if (!billing) fail('BILLING_RECORD_NOT_FOUND', 'Billing record not found', 404);
+    return billing;
+  }
+
+  async #assertBillingEligible(
+    transaction: TenantTransactionContext,
+    input: ApplyConfirmedPixSettlementInput,
+    billing: BillingRow
+  ): Promise<void> {
     if (billing.status !== 'open') {
       fail('BILLING_NOT_RECEIVABLE', 'Billing record is not eligible for PIX settlement', 409);
     }
@@ -632,7 +709,6 @@ implements ConfirmedPixSettlementRepository {
     if (Number(items.rows[0]?.count ?? 0) < 1) {
       fail('BILLING_ITEMS_REQUIRED', 'Billing must contain at least one item before settlement', 409);
     }
-    return billing;
   }
 
   async #lockOrCreateFinancialAccount(

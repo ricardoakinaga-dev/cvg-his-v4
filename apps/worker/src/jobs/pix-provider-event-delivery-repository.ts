@@ -10,6 +10,7 @@ import type { ApplyConfirmedPixSettlementInput } from '@cvg-his-v2/module-pix';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ERROR_CODE_PATTERN = /^[A-Z0-9_]{1,64}$/;
+const CLAIMS_FINGERPRINT_PATTERN = /^[a-f0-9]{64}$/;
 const MAX_LEASE_MS = 60 * 60 * 1_000;
 
 export interface ClaimPixProviderEventDeliveryInput {
@@ -60,7 +61,7 @@ export type PixProviderEventDeliveryFailureStatus = 'reconciliation_required' | 
 export type ExecuteConfirmedPixSettlement = (
   input: ApplyConfirmedPixSettlementInput,
   transaction: TenantTransactionContext
-) => Promise<void>;
+) => Promise<'canonical_replay' | void>;
 
 export interface PixProviderEventDeliveryRepository {
   claimNext(
@@ -104,6 +105,7 @@ interface EventRow {
   readonly currency: string;
   readonly event_id: string;
   readonly event_type: string;
+  readonly claims_fingerprint: string;
   readonly payment_attempt_id: string;
   readonly provider: string;
   readonly provider_event_id: string;
@@ -204,10 +206,12 @@ function mapClaim(row: ClaimRow): PixProviderEventDeliveryClaim {
 }
 
 function assertAttemptMatches(event: EventRow, attempt: AttemptRow): void {
+  const semanticReplayCandidate =
+    attempt.state === 'settled' && CLAIMS_FINGERPRINT_PATTERN.test(event.claims_fingerprint);
   if (
     !['pending_dispatch', 'awaiting_confirmation', 'confirmed_pending_apply'].includes(
       attempt.state
-    )
+    ) && !semanticReplayCandidate
   ) {
     fail('PIX_SETTLEMENT_ATTEMPT_TERMINAL', 'PIX payment attempt is not eligible for settlement');
   }
@@ -265,7 +269,8 @@ function settlementInput(
     billingRecordId: attempt.billing_record_id,
     amountCents: Number(event.amount_cents),
     currency: event.currency as 'BRL',
-    confirmedAt: event.confirmed_at.toISOString()
+    confirmedAt: event.confirmed_at.toISOString(),
+    claimsFingerprint: event.claims_fingerprint
   });
 }
 
@@ -371,12 +376,16 @@ export class DatabasePixProviderEventDeliveryRepository implements PixProviderEv
             correlationId: event.correlation_id
           },
           async (transaction) => {
-            await execute(input, transaction);
+            const executionOutcome = await execute(input, transaction);
             const applied = await transaction.client.query(
               `UPDATE pix_provider_event_deliveries
               SET state = 'applied', applied_at = clock_timestamp(), next_attempt_at = NULL,
                   lease_owner = NULL, lease_token = NULL, lease_expires_at = NULL,
-                  last_error_code = NULL, last_error_class = NULL,
+                  last_error_code = CASE
+                    WHEN $7 = 'canonical_replay' THEN 'PIX_SETTLEMENT_CANONICAL_REPLAY'
+                    ELSE NULL
+                  END,
+                  last_error_class = NULL,
                   updated_at = clock_timestamp()
             WHERE account_id = $1 AND id = $2 AND event_id = $3
               AND state = 'processing' AND lease_owner = $4
@@ -388,7 +397,8 @@ export class DatabasePixProviderEventDeliveryRepository implements PixProviderEv
                 claim.eventId,
                 claim.leaseOwner,
                 claim.leaseToken,
-                claim.leaseVersion
+                claim.leaseVersion,
+                executionOutcome ?? null
               ]
             );
             if (applied.rowCount !== 1) throw new PixProviderSettlementFenceError();
@@ -519,7 +529,8 @@ export class DatabasePixProviderEventDeliveryRepository implements PixProviderEv
       `SELECT event.id AS event_id, event.provider, event.provider_event_id,
               event.event_type, event.payment_attempt_id,
               event.provider_transaction_id, event.amount_cents::text,
-              event.currency, event.confirmed_at, event.correlation_id
+              event.currency, event.confirmed_at, event.correlation_id,
+              event.claims_fingerprint
          FROM pix_provider_event_deliveries AS delivery
          JOIN pix_provider_events AS event
            ON event.account_id = delivery.account_id AND event.id = delivery.event_id

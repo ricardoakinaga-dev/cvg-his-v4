@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
+import { ValidationError } from '@cvg-his-v2/shared-errors';
+import { ConfirmedPixSettlementCommand } from './confirmed-settlement/confirmed-pix-settlement-command.js';
 import { PixService } from './pix.service.js';
 import { MockPixAdapter } from './adapters/mock.adapter.js';
 import type { PixTransactionId } from './types.js';
@@ -166,4 +168,30 @@ test('PixService buildTransaction creates a valid transaction object', () => {
   assert.equal(tx.status, 'pending');
   assert.equal(tx.provider, 'mock');
   assert.equal(tx.providerTransactionId, 'prov_tx_123');
+});
+
+test('ConfirmedPixSettlementCommand rejects malformed claims fingerprints before transaction access', async () => {
+  const command = new ConfirmedPixSettlementCommand(
+    { apply: async () => { throw new Error('repository must not be reached'); } },
+    {},
+    () => undefined
+  );
+
+  await assert.rejects(
+    () => command.execute({
+      accountId: '00000000-0000-0000-0000-000000000001',
+      actorUserId: '00000000-0000-0000-0000-000000000002',
+      attemptId: '00000000-0000-0000-0000-000000000003',
+      provider: 'local-pix',
+      providerEventId: 'provider-event',
+      claimsFingerprint: 'not-a-sha256-digest',
+      transactionId: 'transaction',
+      billingRecordId: 'billing',
+      amountCents: 100,
+      currency: 'BRL',
+      confirmedAt: '2026-08-30T12:00:00.000Z'
+    }),
+    (error: unknown) =>
+      error instanceof ValidationError && error.message.includes('claimsFingerprint')
+  );
 });

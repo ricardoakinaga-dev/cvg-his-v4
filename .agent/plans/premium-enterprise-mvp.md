@@ -2508,3 +2508,34 @@ Evidence: `.agent/gates/verified-CVG-012-namespace-canonical-boundary.json`,
 `.agent/artifacts/CVG-012-NAMESPACE-CANONICAL-BOUNDARY-2026-08-30.md`,
 `.agent/artifacts/CVG-003-TRIAGE-CLOSED-ENCOUNTER-ATOMICITY-2026-08-30.md`,
 `.agent/verification.jsonl#VFY-CVG-003-TRIAGE-CLOSED-ENCOUNTER-ATOMICITY-CONTROL-PLANE-001`.
+
+## 2026-08-30 — bounded semantic PIX replay convergence
+
+`CVG-002B2B-SEMANTIC-PIX-REPLAY` is locally reconciled as
+`PASS_BOUNDED` / `COMPLETE_BOUNDED`. The dedicated signed PIX worker now
+transports `claims_fingerprint` to B1; equivalent distinct provider event IDs
+converge after billing serialization to one financial effect and two applied
+deliveries, while divergent claims remain terminal and append-only receipts
+remain observable. Same-event replay remains idempotent and direct legacy
+callers without a fingerprint remain compatible.
+
+TDD RED reproduced the provider_event_id-only gap. GREEN and regression passed
+the disposable PostgreSQL consumer suite `11/11`, confirmed-settlement
+integration `19/19`, module PIX `9/9`, worker `17/17`, workspace typecheck,
+module/worker builds and the full financial-effect concurrency matrix. OpenAPI,
+RLS, namespace, secrets, targeted ESLint and diff checks passed. The full lint
+baseline still contains only the unrelated `no-control-regex` findings in
+`packages/contracts/src/counterSales.ts:38,77`. A compatible independent
+re-review confirmed the previous findings were resolved with no material
+remaining issue.
+
+The verified child gate has high local confidence and high residual risk. It
+does not promote global ERP readiness, Vetus/clinical parity, provider,
+target, production, deployment, backup/restore or release acceptance. Global
+ERP remains `IN_PROGRESS/PARTIAL` and promotion remains `BLOCKED`; continue
+with fresh scouting under a new authority after the local commit.
+
+Evidence: `.agent/gates/verified-CVG-002B2B-semantic-pix-replay.json`,
+`.agent/artifacts/CVG-002B2B-semantic-pix-replay-2026-08-30.md`,
+`.agent/tasks/CVG-002B2B-SEMANTIC-PIX-REPLAY.md`,
+`.agent/verification.jsonl#VFY-CVG-002B2B-SEMANTIC-PIX-REPLAY-FINAL-001`.

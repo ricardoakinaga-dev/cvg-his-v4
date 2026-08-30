@@ -444,6 +444,52 @@ describe('atomic confirmed PIX settlement command', () => {
     });
   });
 
+  it('replays the same provider event with its claims fingerprint without new effects', async () => {
+    const fixture = await createFixture(adminPool);
+    const reserved = await reservePendingAttempt(adminPool, fixture);
+    const claimsFingerprint = createHash('sha256').update('same-provider-claims').digest('hex');
+    await adminPool.query(
+      `INSERT INTO pix_provider_events (
+         id, account_id, provider, provider_event_id, event_type, payment_attempt_id,
+         provider_transaction_id, amount_cents, currency, confirmed_at,
+         body_fingerprint, claims_fingerprint, correlation_id
+       ) VALUES ($1, $2, $3, $4, 'pix.payment.confirmed.v1', $5, $6, $7,
+                 'BRL', $8, $9, $10, $11)`,
+      [
+        randomUUID(),
+        fixture.accountId,
+        PROVIDER,
+        fixture.providerEventId,
+        reserved.attemptId,
+        fixture.providerTransactionId,
+        AMOUNT_CENTS,
+        fixture.confirmedAt,
+        claimsFingerprint,
+        claimsFingerprint,
+        `same-event-correlation-${randomUUID()}`
+      ]
+    );
+    const payload = { ...input(fixture), attemptId: reserved.attemptId, claimsFingerprint };
+
+    const first = await executeSettlement(restrictedPool, fixture, randomUUID(), payload);
+    const replay = await executeSettlement(restrictedPool, fixture, randomUUID(), payload);
+
+    expect(first.replayed).toBe(false);
+    expect(replay.replayed).toBe(false);
+    expect(replay.value).toEqual(first.value);
+    expect(await artifactCounts(adminPool, fixture)).toEqual({
+      proofs: 1,
+      payments: 1,
+      financial_accounts: 1,
+      receivables: 1,
+      journal_entries: 1,
+      audits: 1,
+      outbox_events: 1,
+      inbox_events: 1,
+      cash_movements: 0
+    });
+  });
+
   it('lets the shared B1 stage a reserved pending PIX and settle the attempt atomically', async () => {
     const fixture = await createFixture(adminPool);
     const reserved = await reservePendingAttempt(adminPool, fixture);

@@ -3129,6 +3129,39 @@
         "Independent post-implementation review is required for higher-confidence use and must not be inferred from scouting."
       ],
       "next_action": "Return to fresh residual scouting under a new authority. Keep this child closure bounded; global ERP remains IN_PROGRESS/PARTIAL and promotion BLOCKED."
+    },
+    {
+      "id": "CVG-002B2B-SEMANTIC-PIX-REPLAY",
+      "title": "Converge semantically equivalent signed PIX events without duplicate settlement",
+      "stage": "CLOSE",
+      "priority": "P0",
+      "status": "COMPLETE_BOUNDED",
+      "selection_status": "CLOSED_BOUNDED",
+      "origin": "Fresh residual scouting confirmed that persisted claims_fingerprint is not transported to the worker/B1 replay boundary, so distinct equivalent event IDs can become terminal after the first settlement.",
+      "dependencies": ["CVG-002B2B"],
+      "owner": "root integrator",
+      "acceptance_summary": "The dedicated worker/B1 path transports the persisted semantic claims fingerprint; equivalent distinct event IDs converge after billing serialization to one financial proof and two applied deliveries, while divergent claims remain terminal and append-only receipts remain observable.",
+      "evidence_refs": [
+        ".agent/tasks/CVG-002B2B-SEMANTIC-PIX-REPLAY.md",
+        ".agent/gates/implementation-ready-CVG-002B2B-semantic-pix-replay.json",
+        ".agent/authority.jsonl#AUTH-CVG-002B2B-SEMANTIC-PIX-REPLAY-IR-001",
+        ".agent/verification.jsonl#VFY-SCOUT-CVG-002B2B-SEMANTIC-PIX-REPLAY-001",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-SEMANTIC-PIX-REPLAY-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-SEMANTIC-PIX-REPLAY-REGRESSION-001",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-SEMANTIC-PIX-REPLAY-REVIEW-001",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-SEMANTIC-PIX-REPLAY-FINAL-001",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-SEMANTIC-PIX-REPLAY-CONTROL-PLANE-001",
+        "packages/db/migrations/0111_pix_provider_event_ingress.sql",
+        "apps/worker/src/jobs/pix-provider-event-delivery-repository.ts",
+        "packages/modules/pix/src/confirmed-settlement/confirmed-pix-settlement-repository.ts",
+        "tests/integration/database/pix-provider-settlement-consumer.test.ts"
+      ],
+      "limitations": [
+        "Repository-local dedicated signed PIX worker/B1 seam only; provider, target, production, deployment, release, full parity and global ERP remain out of scope.",
+        "Three auxiliary read-only scouts were unavailable within bounded windows; no independent approval is inferred.",
+        "No schema expansion is authorized unless a failing invariant proves it necessary and authority is revalidated."
+      ],
+      "next_action": "Return to fresh residual scouting under a new authority; preserve global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
     }
   ]
 }
