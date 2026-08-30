@@ -7,7 +7,7 @@
   "work_mode_overlays": ["MIGRATION"],
   "lifecycle_stage": "CLOSE",
   "active_activity": "RECONCILIATION",
-  "final_checkpoint_evidence": "The host-restart checkpoint and prior bounded slices remain reconciled. EVT-1209 through EVT-1216 close CVG-003-INPATIENT-STAY-SERVICE-TENANT-BOUNDARY as COMPLETE_BOUNDED/PASS_BOUNDED. EVT-1217 through EVT-1227 record CVG-012 namespace implementation, critic-driven AST hardening, regression, bounded gate and control-plane reconciliation. EVT-1239 through EVT-1247 record CVG-002B2B semantic PIX replay selection through control-plane closure. EVT-1248 through EVT-1257 record CVG-002B2B auth login input-boundary selection, TDD, review remediation, final regressions, security/quality, independent approval, bounded closure and reconciliation. EVT-1258 through EVT-1261 record the fresh bounded POST /auth/login/mfa input-boundary authority, TDD and compiled regression. EVT-1262 records a separate inventory-invoices sidecar finding requiring future scoped remediation and does not alter MFA scope. EVT-1263 through EVT-1267 record MFA quality, explicit review unavailability, non-promotion, bounded closure and control-plane reconciliation. Parent/global ERP remain IN_PROGRESS/PARTIAL and promotion remains BLOCKED.",
+  "final_checkpoint_evidence": "The host-restart checkpoint and prior bounded slices remain reconciled. EVT-1209 through EVT-1216 close CVG-003-INPATIENT-STAY-SERVICE-TENANT-BOUNDARY as COMPLETE_BOUNDED/PASS_BOUNDED. EVT-1217 through EVT-1227 record CVG-012 namespace implementation, critic-driven AST hardening, regression, bounded gate and control-plane reconciliation. EVT-1239 through EVT-1247 record CVG-002B2B semantic PIX replay selection through control-plane closure. EVT-1248 through EVT-1257 record CVG-002B2B auth login input-boundary selection, TDD, review remediation, final regressions, security/quality, independent approval, bounded closure and reconciliation. EVT-1258 through EVT-1261 record the fresh bounded POST /auth/login/mfa input-boundary authority, TDD and compiled regression. EVT-1262 records a separate inventory-invoices sidecar finding requiring future scoped remediation and does not alter MFA scope. EVT-1263 through EVT-1267 record MFA quality, explicit review unavailability, non-promotion, bounded closure and control-plane reconciliation. EVT-1268 records local commit 233d3ed9; the next activity is fresh scouting. Parent/global ERP remain IN_PROGRESS/PARTIAL and promotion remains BLOCKED.",
   "engineering_tier": "T4_CRITICAL",
   "risk_level": "CRITICAL",
   "blast_radius": "CROSS_SYSTEM",
@@ -22,10 +22,10 @@
   "instruction_scope_refs": [".agent/instruction-scope.md"],
   "last_gate_record": ".agent/gates/verified-CVG-002B2B-auth-mfa-login-input-boundary.json",
   "latest_checkpoint_evidence": "2026-08-30: EVT-1217 through EVT-1227 reconcile CVG-012 implementation, AST guard hardening after independent FAIL_BOUNDED findings, focused/regression/quality evidence, verified bounded gate and control-plane closure. EVT-1228/EVT-1229 record fresh independent residual scouting and authority for CVG-003-TRIAGE-CLOSED-ENCOUNTER-ATOMICITY; EVT-1230 through EVT-1237 record its bounded TDD, quality, review limitation, gate and control-plane closure; EVT-1238 records continuation recovery and active-plan repair; EVT-1239 through EVT-1247 record CVG-002B2B semantic PIX replay selection through closure; EVT-1248 through EVT-1257 record auth login input-boundary selection, RED, GREEN, review remediation, final regression, security/quality, independent approval, bounded gate and control-plane reconciliation. EVT-1258 through EVT-1261 record fresh MFA authority, TDD and compiled regression. EVT-1262 records a separate inventory-invoices review finding requiring future fresh authority. EVT-1263 through EVT-1267 record MFA quality, explicit review limitation, non-promotion, bounded closure and control-plane reconciliation. Parent/global ERP remain IN_PROGRESS/PARTIAL and promotion remains BLOCKED.",
-  "last_event_id": "EVT-1267",
-  "state_revision": 935,
+  "last_event_id": "EVT-1268",
+  "state_revision": 936,
   "next_gate": "SCOUT",
-  "next_action": "Commit this bounded MFA slice, verify the worktree retains only the user-owned tsbuildinfo cache, then fresh-scout the next repository-local residual under a new implementation-ready authority; preserve global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+  "next_action": "Fresh-scout the next repository-local residual under a new implementation-ready authority. The bounded MFA slice is committed as 233d3ed9; preserve global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED.",
   "blocked_by": [],
   "human_approval_required": [
     "Production go-live, credential rotation, provider selection, fiscal homologation, and residual HIGH/CRITICAL risk acceptance remain outside repository implementation authority"
@@ -59,5 +59,5 @@
   },
   "current_runner_reconciliation": "PASS_BOUNDED final4: combined focused contracts 31/31, Windows 5 skipped on Linux, final disposable matrix 10/10 with PIX 25/25, post-run database/process/artifact checks clean, final independent review APPROVE_BOUNDED, global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED.",
   "current_retest_evidence": "2026-08-30: CVG-002B2B MFA login input-boundary bounded closure is PASS_BOUNDED/COMPLETE_BOUNDED: source and compiled auth-route 30/30, complete API 525/525, module-auth 46/46, API build, workspace typecheck, coverage, security/static/contract checks passed; independent review was unavailable and is explicitly not claimed. Known unrelated full-lint baseline remains explicit; next gate is SCOUT, global ERP remains IN_PROGRESS/PARTIAL and promotion remains BLOCKED.",
-  "updated_at": "2026-08-30T15:44:11-03:00"
+  "updated_at": "2026-08-30T15:48:39-03:00"
 }

@@ -69,3 +69,10 @@ Este artifact não certifica a matriz MFA completa, WebAuthn, enrollment,
 Redis/distribuição, providers, target/RLS operacional, produção, deployment,
 backup/restore, acessibilidade, LGPD, parity, release ou prontidão global do
 ERP.
+
+## Checkpoint de commit
+
+O slice foi commitado localmente como `233d3ed9 fix: enforce MFA login input
+boundary`. Após o commit, não há arquivos staged; o único caminho dirty é o
+`packages/design-system/tsconfig.vue.tsbuildinfo` pré-existente e fora do
+escopo. Não houve push, deploy, operação em target ou promoção.

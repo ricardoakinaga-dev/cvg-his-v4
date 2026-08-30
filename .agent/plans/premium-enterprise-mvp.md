@@ -2612,8 +2612,8 @@ production, deployment, remote CI, parity, accessibility, LGPD, backup/restore
 or release acceptance. Global ERP remains `IN_PROGRESS/PARTIAL`, Vetus remains
 `4/11` functionally verified, clinical parity remains `2/3`, readiness remains
 `95/100` (`42 PASS`, `3 WARN`, `1 FAIL`) and promotion remains `BLOCKED`.
-Commit the explicit bounded slice, then resume fresh residual scouting under a
-new authority.
+The explicit bounded slice was committed locally as `233d3ed9`; resume fresh
+residual scouting under a new authority.
 
 Evidence: `.agent/gates/verified-CVG-002B2B-auth-mfa-login-input-boundary.json`,
 `.agent/artifacts/CVG-002B2B-auth-mfa-login-input-boundary-2026-08-30.md`,
