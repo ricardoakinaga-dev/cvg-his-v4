@@ -43,7 +43,7 @@ describe('module-diagnostics / operational contract', () => {
   it('lists catalog, exposes resulted orders and keeps detail scoped by account', async () => {
     const { diagnostics, laboratory, encounter } = createServices();
 
-    const order = diagnostics.createOrder({
+    const order = diagnostics.createOrder('acc_test' as never, {
       encounterId: encounter.id,
       patientId: encounter.patientId,
       examType: 'Hemograma',
@@ -51,11 +51,11 @@ describe('module-diagnostics / operational contract', () => {
       reason: 'Check-up'
     });
 
-    diagnostics.recordResult(order.id, {
+    diagnostics.recordResult('acc_test' as never, order.id, {
       status: 'collected',
       collectedByUserId: 'lab_1'
     });
-    diagnostics.recordResult(order.id, {
+    diagnostics.recordResult('acc_test' as never, order.id, {
       status: 'resulted',
       resultAttachmentId: 'att_1',
       releasedByUserId: 'lab_1'
@@ -77,7 +77,7 @@ describe('module-diagnostics / operational contract', () => {
     const { diagnostics, encounter } = createServices();
 
     expect(() =>
-      diagnostics.createOrder({
+      diagnostics.createOrder('acc_test' as never, {
         encounterId: encounter.id,
         patientId: 'other_patient',
         examType: 'Hemograma',
@@ -85,7 +85,7 @@ describe('module-diagnostics / operational contract', () => {
       })
     ).toThrow('patientId must match the encounter patient');
 
-    const order = diagnostics.createOrder({
+    const order = diagnostics.createOrder('acc_test' as never, {
       encounterId: encounter.id,
       patientId: encounter.patientId,
       examType: 'Hemograma',
@@ -94,18 +94,18 @@ describe('module-diagnostics / operational contract', () => {
     });
 
     expect(() =>
-      diagnostics.recordResult(order.id, {
+      diagnostics.recordResult('acc_test' as never, order.id, {
         status: 'collected'
       })
     ).toThrow('collectedByUserId');
 
-    diagnostics.recordResult(order.id, {
+    diagnostics.recordResult('acc_test' as never, order.id, {
       status: 'collected',
       collectedByUserId: 'lab_1'
     });
 
     expect(() =>
-      diagnostics.recordResult(order.id, {
+      diagnostics.recordResult('acc_test' as never, order.id, {
         status: 'resulted'
       })
     ).toThrow(
@@ -117,24 +117,24 @@ describe('module-diagnostics / operational contract', () => {
     const { diagnostics, encounter } = createServices();
     const laboratory = new LaboratoryService(diagnostics);
 
-    const released = diagnostics.createOrder({
+    const released = diagnostics.createOrder('acc_test' as never, {
       encounterId: encounter.id,
       patientId: encounter.patientId,
       examType: 'Bioquimico',
       reason: 'Seguimento'
     });
-    diagnostics.createOrder({
+    diagnostics.createOrder('acc_test' as never, {
       encounterId: encounter.id,
       patientId: encounter.patientId,
       examType: 'Urinalise',
       reason: 'Triagem'
     });
 
-    diagnostics.recordResult(released.id, {
+    diagnostics.recordResult('acc_test' as never, released.id, {
       status: 'collected',
       collectedByUserId: 'lab_2'
     });
-    diagnostics.recordResult(released.id, {
+    diagnostics.recordResult('acc_test' as never, released.id, {
       status: 'resulted',
       resultSummary: 'Tudo normal',
       releasedByUserId: 'lab_2'
@@ -158,21 +158,21 @@ describe('module-diagnostics / operational contract', () => {
   it('blocks cross-account order detail access and keeps proxy methods coherent', () => {
     const { laboratory, encounter } = createServices();
 
-    const created = laboratory.createOrder({
+    const created = laboratory.createOrder('acc_test' as never, {
       encounterId: encounter.id,
       patientId: encounter.patientId,
       examType: 'Citologia',
       reason: 'Controle'
     });
 
-    const collected = laboratory.recordResult(created.id, {
+    const collected = laboratory.recordResult('acc_test' as never, created.id, {
       status: 'collected',
       collectedByUserId: 'lab_3'
     });
 
     expect(collected.status).toBe('collected');
     expect(() => laboratory.getOrder('acc_other' as never, created.id)).toThrow(
-      'Diagnostic order does not belong to the current account'
+      'Diagnostic order not found'
     );
   });
 
@@ -239,27 +239,27 @@ describe('module-diagnostics / operational contract', () => {
       accountId: 'acc_test',
       patientId: 'patient_1'
     };
-    const secondOrder = diagnostics.createOrder({
+    const secondOrder = diagnostics.createOrder('acc_test' as never, {
       encounterId: secondEncounter.id,
       patientId: secondEncounter.patientId,
       examType: 'Bioquímico',
       reason: 'Controle'
     });
-    const collectedOrder = diagnostics.createOrder({
+    const collectedOrder = diagnostics.createOrder('acc_test' as never, {
       encounterId: encounter.id,
       patientId: encounter.patientId,
       examType: 'Urinalise',
       reason: 'Seguimento'
     });
-    diagnostics.recordResult(collectedOrder.id, {
+    diagnostics.recordResult('acc_test' as never, collectedOrder.id, {
       status: 'collected',
       collectedByUserId: 'lab_10'
     });
-    diagnostics.recordResult(secondOrder.id, {
+    diagnostics.recordResult('acc_test' as never, secondOrder.id, {
       status: 'collected',
       collectedByUserId: 'lab_11'
     });
-    diagnostics.recordResult(secondOrder.id, {
+    diagnostics.recordResult('acc_test' as never, secondOrder.id, {
       status: 'resulted',
       resultSummary: 'Liberado',
       releasedByUserId: 'lab_11'

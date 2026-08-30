@@ -198,7 +198,8 @@ function assertSafeFileMetadata(fileName: string, mimeType: string): void {
 
 function assertKnownMagicBytes(mimeType: string, content: Buffer): void {
   const normalizedMime = mimeType.trim().toLowerCase();
-  const startsWith = (prefix: string) => content.subarray(0, prefix.length).toString('ascii') === prefix;
+  const startsWith = (prefix: string) =>
+    content.subarray(0, prefix.length).toString('ascii') === prefix;
   const isPng = content.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
   const isJpeg = content.subarray(0, 3).equals(Buffer.from([255, 216, 255]));
   const isGif = startsWith('GIF8');
@@ -213,13 +214,17 @@ function assertKnownMagicBytes(mimeType: string, content: Buffer): void {
     throw new ValidationError('Attachment content does not match image/png', { field: 'mimeType' });
   }
   if (normalizedMime === 'image/jpeg' && !isJpeg) {
-    throw new ValidationError('Attachment content does not match image/jpeg', { field: 'mimeType' });
+    throw new ValidationError('Attachment content does not match image/jpeg', {
+      field: 'mimeType'
+    });
   }
   if (normalizedMime === 'image/gif' && !isGif) {
     throw new ValidationError('Attachment content does not match image/gif', { field: 'mimeType' });
   }
   if (normalizedMime === 'image/webp' && !isWebp) {
-    throw new ValidationError('Attachment content does not match image/webp', { field: 'mimeType' });
+    throw new ValidationError('Attachment content does not match image/webp', {
+      field: 'mimeType'
+    });
   }
 }
 
@@ -245,6 +250,7 @@ export class AttachmentsService {
 
   public async upload(
     actorUserId: UserId,
+    accountId: AccountId,
     payload: CreateAttachmentRequest,
     fileContent?: Buffer
   ): Promise<AttachmentSummary> {
@@ -278,24 +284,26 @@ export class AttachmentsService {
       });
     }
 
+    let targetAccountId: AccountId;
     if (payload.linkedEntityType === 'encounter') {
-      this.#encounters.getOrThrow(linkedEntityId as never);
+      targetAccountId = this.#encounters.getOrThrow(linkedEntityId as never).accountId as AccountId;
     } else if (payload.linkedEntityType === 'medical_record') {
-      await this.#medicalRecords.getRecordOrThrowAsync(linkedEntityId as never);
+      targetAccountId = (await this.#medicalRecords.getRecordOrThrowAsync(linkedEntityId as never))
+        .accountId as AccountId;
     } else if (payload.linkedEntityType === 'diagnostic_order') {
-      this.#diagnostics.getOrThrow(linkedEntityId as never);
+      targetAccountId = this.#diagnostics.getOrThrow(accountId, linkedEntityId as never).accountId;
     } else {
       throw new NotFoundError('Invalid attachment link target', {
         linkedEntityType: payload.linkedEntityType
       });
     }
 
-    const accountId =
-      payload.linkedEntityType === 'encounter'
-        ? this.#encounters.getOrThrow(linkedEntityId as never).accountId
-        : payload.linkedEntityType === 'medical_record'
-          ? (await this.#medicalRecords.getRecordOrThrowAsync(linkedEntityId as never)).accountId
-          : this.#diagnostics.getOrThrow(linkedEntityId as never).accountId;
+    if (targetAccountId !== accountId) {
+      throw new NotFoundError('Attachment target not found', {
+        linkedEntityType: payload.linkedEntityType,
+        linkedEntityId
+      });
+    }
 
     let storageKey: string;
     let checksum: string;

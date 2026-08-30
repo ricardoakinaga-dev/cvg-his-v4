@@ -110,6 +110,7 @@ test('canonical PostgreSQL runtime survives connection close and rehydrates crit
         const fileContent = Buffer.from('canonical restart attachment', 'utf8');
         const attachment = await runtimeA.attachments.upload(
           actorUserId,
+          accountId,
           {
             linkedEntityType: 'encounter',
             linkedEntityId: encounter.id,
@@ -434,7 +435,8 @@ test('canonical PostgreSQL runtime survives connection close and rehydrates crit
         assert.equal(billing.status, 'estimated');
 
         assert.equal(
-          runtimeB!.diagnostics.getOrThrow(identifiers.diagnosticOrderId as never).status,
+          runtimeB!.diagnostics.getOrThrow(accountId, identifiers.diagnosticOrderId as never)
+            .status,
           'resulted'
         );
         const prescription = runtimeB!.prescriptions.getById(identifiers.prescriptionId as never);

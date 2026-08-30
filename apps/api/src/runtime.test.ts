@@ -1059,14 +1059,18 @@ test('clinical record supports entries, prescriptions, conduct and attachments l
   });
 
   const record = runtime.medicalRecords.getRecordByEncounterOrThrow(encounter.id);
-  const attachment = await runtime.attachments.upload(veterinarian.user.id, {
-    linkedEntityType: 'medical_record',
-    linkedEntityId: record.id,
-    category: 'document',
-    fileName: 'prescricao-inicial.pdf',
-    mimeType: 'application/pdf',
-    checksum: 'sha256:phase6-prescricao'
-  });
+  const attachment = await runtime.attachments.upload(
+    veterinarian.user.id,
+    veterinarian.user.accountId,
+    {
+      linkedEntityType: 'medical_record',
+      linkedEntityId: record.id,
+      category: 'document',
+      fileName: 'prescricao-inicial.pdf',
+      mimeType: 'application/pdf',
+      checksum: 'sha256:phase6-prescricao'
+    }
+  );
   runtime.medicalRecords.appendAttachmentEvent(
     encounter.id,
     veterinarian.user.id,
@@ -1213,7 +1217,7 @@ test('advanced care keeps inpatient, surgery and diagnostics tied to the same cl
     `Surgery case moved to ${updatedSurgery.status}`
   );
 
-  const order = runtime.diagnostics.createOrder({
+  const order = runtime.diagnostics.createOrder(veterinarian.user.accountId, {
     encounterId: encounter.id,
     patientId: encounter.patientId,
     examType: 'ultrasound',
@@ -1226,14 +1230,18 @@ test('advanced care keeps inpatient, surgery and diagnostics tied to the same cl
     `Diagnostic order requested: ${order.examType}`
   );
 
-  const attachment = await runtime.attachments.upload(veterinarian.user.id, {
-    linkedEntityType: 'diagnostic_order',
-    linkedEntityId: order.id,
-    category: 'lab',
-    fileName: 'laudo-ultrassom.pdf',
-    mimeType: 'application/pdf',
-    checksum: 'sha256:phase7-laudo'
-  });
+  const attachment = await runtime.attachments.upload(
+    veterinarian.user.id,
+    veterinarian.user.accountId,
+    {
+      linkedEntityType: 'diagnostic_order',
+      linkedEntityId: order.id,
+      category: 'lab',
+      fileName: 'laudo-ultrassom.pdf',
+      mimeType: 'application/pdf',
+      checksum: 'sha256:phase7-laudo'
+    }
+  );
   runtime.medicalRecords.appendAttachmentEvent(
     encounter.id,
     veterinarian.user.id,
@@ -1241,7 +1249,7 @@ test('advanced care keeps inpatient, surgery and diagnostics tied to the same cl
     `Attachment added to diagnostic order ${order.id}`
   );
 
-  const collectedOrder = runtime.diagnostics.recordResult(order.id, {
+  const collectedOrder = runtime.diagnostics.recordResult(veterinarian.user.accountId, order.id, {
     status: 'collected',
     collectedByUserId: veterinarian.user.id
   });
@@ -1252,7 +1260,7 @@ test('advanced care keeps inpatient, surgery and diagnostics tied to the same cl
     `Diagnostic order collected by ${collectedOrder.collectedByUserId}`
   );
 
-  const resultedOrder = runtime.diagnostics.recordResult(order.id, {
+  const resultedOrder = runtime.diagnostics.recordResult(veterinarian.user.accountId, order.id, {
     status: 'resulted',
     resultSummary: 'Sem evidencias de efusao abdominal, com alcas discretamente espessadas.',
     releasedByUserId: veterinarian.user.id

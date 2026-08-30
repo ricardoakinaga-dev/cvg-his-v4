@@ -5,7 +5,11 @@ import test from 'node:test';
 import { AuditService } from '@cvg-his-v2/module-audit';
 import { DiagnosticsService, LaboratoryService } from '@cvg-his-v2/module-diagnostics';
 import { EncountersService } from '@cvg-his-v2/module-encounters';
-import { DemandForecastingService, LabAnomalyDetectionService, OcrFiscalService } from '@cvg-his-v2/module-ml';
+import {
+  DemandForecastingService,
+  LabAnomalyDetectionService,
+  OcrFiscalService
+} from '@cvg-his-v2/module-ml';
 import { OwnersService } from '@cvg-his-v2/module-owners';
 import { PatientsService } from '@cvg-his-v2/module-patients';
 import { SchedulingService } from '@cvg-his-v2/module-scheduling';
@@ -18,12 +22,20 @@ class MockResponse extends Writable {
   public statusCode = 200;
   readonly #chunks: Buffer[] = [];
 
-  _write(chunk: string | Buffer, _encoding: BufferEncoding, callback: (error?: Error | null) => void): void {
+  _write(
+    chunk: string | Buffer,
+    _encoding: BufferEncoding,
+    callback: (error?: Error | null) => void
+  ): void {
     this.#chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
     callback();
   }
 
-  override end(chunk?: string | Buffer | (() => void), encoding?: BufferEncoding | (() => void), callback?: () => void): this {
+  override end(
+    chunk?: string | Buffer | (() => void),
+    encoding?: BufferEncoding | (() => void),
+    callback?: () => void
+  ): this {
     const finalCallback =
       typeof chunk === 'function' ? chunk : typeof encoding === 'function' ? encoding : callback;
     if (chunk !== undefined && typeof chunk !== 'function') {
@@ -105,17 +117,17 @@ test('handleMlRoutes exposes OCR, demand forecasting and lab anomalies', async (
     origin: 'reception',
     reason: 'Anomaly scan'
   });
-  const order = laboratory.createOrder({
+  const order = laboratory.createOrder('acc_cvg_demo' as never, {
     encounterId: encounter.id,
     patientId: encounter.patientId,
     examType: 'HEM',
     reason: 'Monitoramento'
   });
-  laboratory.recordResult(order.id, {
+  laboratory.recordResult('acc_cvg_demo' as never, order.id, {
     status: 'collected',
     collectedByUserId: 'lab_user'
   });
-  laboratory.recordResult(order.id, {
+  laboratory.recordResult('acc_cvg_demo' as never, order.id, {
     status: 'resulted',
     resultSummary: 'Leucocitos: 30',
     releasedByUserId: 'lab_user'
@@ -166,7 +178,10 @@ test('handleMlRoutes exposes OCR, demand forecasting and lab anomalies', async (
     'corr-ml-3',
     handlers
   );
-  const anomalies = anomalyResponse.bodyJson<{ flaggedOrders: number; flags: Array<{ severity: string }> }>();
+  const anomalies = anomalyResponse.bodyJson<{
+    flaggedOrders: number;
+    flags: Array<{ severity: string }>;
+  }>();
   assert.equal(anomalies.flaggedOrders, 1);
   assert.equal(anomalies.flags[0]?.severity, 'critical');
 });
@@ -240,17 +255,17 @@ test('handleMlRoutes publishes operational report and anomaly review workflow', 
     origin: 'reception',
     reason: 'Anomaly scan'
   });
-  const order = laboratory.createOrder({
+  const order = laboratory.createOrder('acc_cvg_demo' as never, {
     encounterId: encounter.id,
     patientId: encounter.patientId,
     examType: 'HEM',
     reason: 'Monitoramento'
   });
-  laboratory.recordResult(order.id, {
+  laboratory.recordResult('acc_cvg_demo' as never, order.id, {
     status: 'collected',
     collectedByUserId: 'lab_user'
   });
-  laboratory.recordResult(order.id, {
+  laboratory.recordResult('acc_cvg_demo' as never, order.id, {
     status: 'resulted',
     resultSummary: 'Leucocitos: 30',
     releasedByUserId: 'lab_user'
@@ -297,13 +312,29 @@ test('handleMlRoutes publishes operational report and anomaly review workflow', 
       mlForecastingEnabled: true,
       mlAnomalyDetectionEnabled: true,
       mlOcrFiscalEnabled: true,
-      provider: { name: 'test', evaluate: async () => ({ key: '', enabled: true, provider: 'test', reason: 'default', evaluatedAt: '', definition: {} as never, context: {} as never }) } as never
+      provider: {
+        name: 'test',
+        evaluate: async () => ({
+          key: '',
+          enabled: true,
+          provider: 'test',
+          reason: 'default',
+          evaluatedAt: '',
+          definition: {} as never,
+          context: {} as never
+        })
+      } as never
     },
     requirePrincipal: () => ({
       ...principal(),
       access: {
         ...principal().access,
-        permissionCodes: ['fiscal.read', 'scheduling.read', 'diagnostics.read', 'diagnostics.manage']
+        permissionCodes: [
+          'fiscal.read',
+          'scheduling.read',
+          'diagnostics.read',
+          'diagnostics.manage'
+        ]
       }
     })
   };
@@ -311,7 +342,10 @@ test('handleMlRoutes publishes operational report and anomaly review workflow', 
   const forecastResponse = new MockResponse();
   await handleMlRoutes(
     '/ml/forecasting/demand',
-    createRequest('GET', '/ml/forecasting/demand?horizonDays=5&referenceDate=2026-04-21T00:00:00.000Z'),
+    createRequest(
+      'GET',
+      '/ml/forecasting/demand?horizonDays=5&referenceDate=2026-04-21T00:00:00.000Z'
+    ),
     forecastResponse as never,
     'corr-ml-report-1',
     handlers
@@ -364,5 +398,9 @@ test('handleMlRoutes publishes operational report and anomaly review workflow', 
   assert.equal(report.anomalyDetection.scans, 1);
   assert.equal(report.anomalyDetection.reviewedOrders, 1);
   assert.equal(report.anomalyDetection.confirmedOrders, 1);
-  assert.ok(report.governance.features.some((feature) => feature.key === 'ml.forecasting.enabled' && feature.enabled));
+  assert.ok(
+    report.governance.features.some(
+      (feature) => feature.key === 'ml.forecasting.enabled' && feature.enabled
+    )
+  );
 });

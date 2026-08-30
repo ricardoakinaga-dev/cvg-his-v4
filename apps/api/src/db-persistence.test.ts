@@ -1070,27 +1070,38 @@ describe('Database Persistence Integration Tests', () => {
     );
     await runtime.encounters.waitForPersistence();
 
-    const order = await runtime.diagnostics.createOrderAndPersist({
-      encounterId: encounter.id,
-      patientId: encounter.patientId,
-      examType: 'Hemograma',
-      examCatalogId: 'cat_001',
-      reason: 'Check-up cirurgico'
-    });
+    const order = await runtime.diagnostics.createOrderAndPersist(
+      persistenceFixture.accountId as never,
+      {
+        encounterId: encounter.id,
+        patientId: encounter.patientId,
+        examType: 'Hemograma',
+        examCatalogId: 'cat_001',
+        reason: 'Check-up cirurgico'
+      }
+    );
 
-    await runtime.diagnostics.recordResultAndPersist(order.id, {
-      status: 'collected',
-      collectedByUserId: persistenceFixture.labUserId
-    });
+    await runtime.diagnostics.recordResultAndPersist(
+      persistenceFixture.accountId as never,
+      order.id,
+      {
+        status: 'collected',
+        collectedByUserId: persistenceFixture.labUserId
+      }
+    );
 
     await sleep(50);
 
-    const resulted = await runtime.diagnostics.recordResultAndPersist(order.id, {
-      status: 'resulted',
-      resultSummary: 'Hemograma sem alteracoes relevantes',
-      resultAttachmentId: 'att_diag_test' as never,
-      releasedByUserId: persistenceFixture.labUserId
-    });
+    const resulted = await runtime.diagnostics.recordResultAndPersist(
+      persistenceFixture.accountId as never,
+      order.id,
+      {
+        status: 'resulted',
+        resultSummary: 'Hemograma sem alteracoes relevantes',
+        resultAttachmentId: 'att_diag_test' as never,
+        releasedByUserId: persistenceFixture.labUserId
+      }
+    );
 
     await sleep(50);
 
@@ -1166,6 +1177,7 @@ describe('Database Persistence Integration Tests', () => {
 
       const attachment = await runtime.attachments.upload(
         veterinarian.user.id,
+        persistenceFixture.accountId as never,
         {
           linkedEntityType: 'medical_record',
           linkedEntityId: record.id,

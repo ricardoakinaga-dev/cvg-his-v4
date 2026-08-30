@@ -38,7 +38,7 @@ function createService() {
 test('DiagnosticsService createOrder creates requested diagnostic order', () => {
   const { service, encounter } = createService();
 
-  const order = service.createOrder({
+  const order = service.createOrder('acc_test' as never, {
     encounterId: encounter.id,
     patientId: encounter.patientId,
     examType: 'xray',
@@ -47,7 +47,111 @@ test('DiagnosticsService createOrder creates requested diagnostic order', () => 
 
   assert.equal(order.encounterId, encounter.id);
   assert.equal(order.status, 'requested');
-  assert.equal(service.list(encounter.id).length, 1);
+  assert.equal(service.list('acc_test' as never, encounter.id).length, 1);
+});
+
+test('DiagnosticsService requires account scope before diagnostic reads and writes', () => {
+  const { service, encounter } = createService();
+  const createOrder = service.createOrder.bind(service) as unknown as (
+    accountId: string,
+    payload: Parameters<DiagnosticsService['createOrder']>[1]
+  ) => ReturnType<DiagnosticsService['createOrder']>;
+  const list = service.list.bind(service) as unknown as (
+    accountId: string,
+    encounterId?: string
+  ) => ReturnType<DiagnosticsService['list']>;
+  const getOrThrow = service.getOrThrow.bind(service) as unknown as (
+    accountId: string,
+    orderId: never
+  ) => ReturnType<DiagnosticsService['getOrThrow']>;
+  const recordResult = service.recordResult.bind(service) as unknown as (
+    accountId: string,
+    orderId: never,
+    payload: unknown
+  ) => ReturnType<DiagnosticsService['recordResult']>;
+
+  const order = createOrder('acc_test', {
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    examType: 'xray',
+    reason: 'Tenant boundary'
+  });
+
+  assert.equal(list('acc_test', encounter.id).length, 1);
+  assert.equal(list('acc_other', encounter.id).length, 0);
+  assert.equal(getOrThrow('acc_test', order.id as never).id, order.id);
+  assert.throws(() => getOrThrow('acc_other', order.id as never), NotFoundError);
+  assert.throws(
+    () =>
+      createOrder('acc_other', {
+        encounterId: encounter.id,
+        patientId: encounter.patientId,
+        examType: 'xray',
+        reason: 'Foreign encounter'
+      }),
+    NotFoundError
+  );
+  assert.throws(
+    () => recordResult('acc_other', order.id as never, { status: 'cancelled' }),
+    NotFoundError
+  );
+  assert.equal(getOrThrow('acc_test', order.id as never).status, 'requested');
+});
+
+test('LaboratoryService forwards account scope to its diagnostics gateway', async () => {
+  const calls: unknown[][] = [];
+  const order = {
+    id: 'diag_gateway_1',
+    accountId: 'acc_test',
+    encounterId: 'encounter_1',
+    patientId: 'patient_1',
+    examType: 'Hemograma',
+    reason: 'Gateway boundary',
+    status: 'requested',
+    createdAt: '2026-08-30T00:00:00.000Z',
+    updatedAt: '2026-08-30T00:00:00.000Z'
+  };
+  const gateway = {
+    list(...args: unknown[]) {
+      calls.push(args);
+      return [order];
+    },
+    listByAccount() {
+      return [order];
+    },
+    listCatalog() {
+      return [];
+    },
+    createOrder(...args: unknown[]) {
+      calls.push(args);
+      return order;
+    },
+    getOrThrow(...args: unknown[]) {
+      calls.push(args);
+      return order;
+    },
+    recordResult(...args: unknown[]) {
+      calls.push(args);
+      return order;
+    }
+  };
+  const laboratory = new LaboratoryService(gateway as never);
+
+  const orders = await laboratory.listOrders('acc_test' as never, 'encounter_1');
+  laboratory.createOrder('acc_test' as never, {
+    encounterId: 'encounter_1',
+    patientId: 'patient_1',
+    examType: 'Hemograma',
+    reason: 'Gateway boundary'
+  });
+  laboratory.getOrder('acc_test' as never, order.id as never);
+  laboratory.recordResult('acc_test' as never, order.id as never, { status: 'collected' });
+
+  assert.equal(orders.length, 1);
+  assert.deepEqual(calls[0], ['acc_test', 'encounter_1']);
+  assert.equal(calls[1]?.[0], 'acc_test');
+  assert.equal(calls[2]?.[0], 'acc_test');
+  assert.equal(calls[3]?.[0], 'acc_test');
 });
 
 test('DiagnosticsService durable create waits for persistence and does not publish a phantom order', async () => {
@@ -80,7 +184,7 @@ test('DiagnosticsService durable create waits for persistence and does not publi
 
   await assert.rejects(
     () =>
-      service.createOrderAndPersist({
+      service.createOrderAndPersist('acc_test' as never, {
         encounterId: encounter.id,
         patientId: encounter.patientId,
         examType: 'xray',
@@ -88,25 +192,25 @@ test('DiagnosticsService durable create waits for persistence and does not publi
       }),
     /diagnostic database unavailable/
   );
-  assert.equal(service.list(encounter.id).length, 0);
+  assert.equal(service.list('acc_test' as never, encounter.id).length, 0);
 });
 
 test('DiagnosticsService recordResult updates status and summary', () => {
   const { service, encounter } = createService();
-  const order = service.createOrder({
+  const order = service.createOrder('acc_test' as never, {
     encounterId: encounter.id,
     patientId: encounter.patientId,
     examType: 'blood_panel',
     reason: 'Check-up'
   });
 
-  const collected = service.recordResult(order.id, {
+  const collected = service.recordResult('acc_test' as never, order.id, {
     status: 'collected',
     collectedByUserId: 'enf_joao'
   });
   assert.equal(collected.status, 'collected');
 
-  const updated = service.recordResult(order.id, {
+  const updated = service.recordResult('acc_test' as never, order.id, {
     status: 'resulted',
     resultSummary: 'Hemograma sem alteracoes',
     releasedByUserId: 'vet_ana'
@@ -123,33 +227,36 @@ test('DiagnosticsService recordResult updates status and summary', () => {
 test('DiagnosticsService getOrThrow rejects unknown order', () => {
   const { service } = createService();
 
-  assert.throws(() => service.getOrThrow('diag_missing' as never), NotFoundError);
+  assert.throws(
+    () => service.getOrThrow('acc_test' as never, 'diag_missing' as never),
+    NotFoundError
+  );
 });
 
 test('DiagnosticsService list filters by encounter', () => {
   const { service, encounter } = createService();
-  service.createOrder({
+  service.createOrder('acc_test' as never, {
     encounterId: encounter.id,
     patientId: encounter.patientId,
     examType: 'ultrasound',
     reason: 'Abdome'
   });
 
-  assert.equal(service.list().length, 1);
-  assert.equal(service.list(encounter.id).length, 1);
+  assert.equal(service.list('acc_test' as never).length, 1);
+  assert.equal(service.list('acc_test' as never, encounter.id).length, 1);
 });
 
 test('DiagnosticsService recordResult follows valid lifecycle', () => {
   const { service, encounter } = createService();
 
-  const order = service.createOrder({
+  const order = service.createOrder('acc_test' as never, {
     encounterId: encounter.id,
     patientId: encounter.patientId,
     examType: 'blood_panel',
     reason: 'Check-up'
   });
 
-  const collected = service.recordResult(order.id, {
+  const collected = service.recordResult('acc_test' as never, order.id, {
     status: 'collected',
     collectedByUserId: 'enf_joao'
   });
@@ -157,7 +264,7 @@ test('DiagnosticsService recordResult follows valid lifecycle', () => {
   assert.equal(collected.collectedByUserId, 'enf_joao');
   assert.ok(collected.collectedAt);
 
-  const resulted = service.recordResult(order.id, {
+  const resulted = service.recordResult('acc_test' as never, order.id, {
     status: 'resulted',
     resultSummary: 'Valores dentro da normalidade',
     releasedByUserId: 'vet_ana',
@@ -173,7 +280,7 @@ test('DiagnosticsService recordResult follows valid lifecycle', () => {
 test('DiagnosticsService preserves validated structured laboratory result values', () => {
   const { service, encounter } = createService();
 
-  const order = service.createOrder({
+  const order = service.createOrder('acc_test' as never, {
     encounterId: encounter.id,
     patientId: encounter.patientId,
     examType: 'Bioquimico',
@@ -197,11 +304,11 @@ test('DiagnosticsService preserves validated structured laboratory result values
     }
   ];
 
-  service.recordResult(order.id, {
+  service.recordResult('acc_test' as never, order.id, {
     status: 'collected',
     collectedByUserId: 'lab_joao'
   });
-  const resulted = service.recordResult(order.id, {
+  const resulted = service.recordResult('acc_test' as never, order.id, {
     status: 'resulted',
     resultSummary: 'Bilirrubina acima da referencia',
     resultValues,
@@ -212,18 +319,18 @@ test('DiagnosticsService preserves validated structured laboratory result values
   assert.notEqual(resulted.resultValues, resultValues);
   assert.ok(Object.isFrozen(resulted.resultValues));
   assert.ok(Object.isFrozen(resulted.resultValues?.[0]));
-  const invalidOrder = service.createOrder({
+  const invalidOrder = service.createOrder('acc_test' as never, {
     encounterId: encounter.id,
     patientId: encounter.patientId,
     examType: 'Bioquimico',
     reason: 'Validacao de resultado'
   });
-  service.recordResult(invalidOrder.id, {
+  service.recordResult('acc_test' as never, invalidOrder.id, {
     status: 'collected',
     collectedByUserId: 'lab_joao'
   });
   assert.throws(() => {
-    service.recordResult(invalidOrder.id, {
+    service.recordResult('acc_test' as never, invalidOrder.id, {
       status: 'resulted',
       resultValues: [{ parameter: 'ALT', value: '' }],
       releasedByUserId: 'vet_ana'
@@ -234,22 +341,25 @@ test('DiagnosticsService preserves validated structured laboratory result values
 test('DiagnosticsService recordResult blocks invalid transitions', () => {
   const { service, encounter } = createService();
 
-  const order = service.createOrder({
+  const order = service.createOrder('acc_test' as never, {
     encounterId: encounter.id,
     patientId: encounter.patientId,
     examType: 'xray',
     reason: 'Tosse'
   });
 
-  service.recordResult(order.id, { status: 'collected', collectedByUserId: 'enf_joao' });
-  service.recordResult(order.id, {
+  service.recordResult('acc_test' as never, order.id, {
+    status: 'collected',
+    collectedByUserId: 'enf_joao'
+  });
+  service.recordResult('acc_test' as never, order.id, {
     status: 'resulted',
     resultSummary: 'Sem alteracoes',
     releasedByUserId: 'vet_ana'
   });
 
   assert.throws(
-    () => service.recordResult(order.id, { status: 'requested' } as never),
+    () => service.recordResult('acc_test' as never, order.id, { status: 'requested' } as never),
     /Invalid status transition/
   );
 });
@@ -257,14 +367,14 @@ test('DiagnosticsService recordResult blocks invalid transitions', () => {
 test('DiagnosticsService recordResult allows cancellation', () => {
   const { service, encounter } = createService();
 
-  const order = service.createOrder({
+  const order = service.createOrder('acc_test' as never, {
     encounterId: encounter.id,
     patientId: encounter.patientId,
     examType: 'xray',
     reason: 'Tosse'
   });
 
-  const cancelled = service.recordResult(order.id, { status: 'cancelled' });
+  const cancelled = service.recordResult('acc_test' as never, order.id, { status: 'cancelled' });
   assert.equal(cancelled.status, 'cancelled');
 });
 
@@ -279,7 +389,7 @@ test('DiagnosticsService listCatalog returns default catalog', () => {
 test('DiagnosticsService createOrder links catalog entry', () => {
   const { service, encounter } = createService();
 
-  const order = service.createOrder({
+  const order = service.createOrder('acc_test' as never, {
     encounterId: encounter.id,
     patientId: encounter.patientId,
     examType: 'Hemograma',
@@ -297,7 +407,7 @@ test('DiagnosticsService createOrder rejects patient mismatch and unknown catalo
 
   assert.throws(
     () =>
-      service.createOrder({
+      service.createOrder('acc_test' as never, {
         encounterId: encounter.id,
         patientId: 'patient_other',
         examType: 'Hemograma',
@@ -308,7 +418,7 @@ test('DiagnosticsService createOrder rejects patient mismatch and unknown catalo
 
   assert.throws(
     () =>
-      service.createOrder({
+      service.createOrder('acc_test' as never, {
         encounterId: encounter.id,
         patientId: encounter.patientId,
         examType: 'Hemograma',
@@ -322,7 +432,7 @@ test('DiagnosticsService createOrder rejects patient mismatch and unknown catalo
 test('DiagnosticsService recordResult requires collector and clinical evidence when resulting', () => {
   const { service, encounter } = createService();
 
-  const order = service.createOrder({
+  const order = service.createOrder('acc_test' as never, {
     encounterId: encounter.id,
     patientId: encounter.patientId,
     examType: 'Hemograma',
@@ -331,42 +441,43 @@ test('DiagnosticsService recordResult requires collector and clinical evidence w
   });
 
   assert.throws(
-    () => service.recordResult(order.id, { status: 'collected' }),
+    () => service.recordResult('acc_test' as never, order.id, { status: 'collected' }),
     /collectedByUserId/
   );
 
-  service.recordResult(order.id, {
+  service.recordResult('acc_test' as never, order.id, {
     status: 'collected',
     collectedByUserId: 'lab_1'
   });
 
   assert.throws(
-    () => service.recordResult(order.id, { status: 'resulted' }),
+    () => service.recordResult('acc_test' as never, order.id, { status: 'resulted' }),
     /resultSummary or resultAttachmentId/
   );
 
-  const whitespaceOrder = service.createOrder({
+  const whitespaceOrder = service.createOrder('acc_test' as never, {
     encounterId: encounter.id,
     patientId: encounter.patientId,
     examType: 'Hemograma',
     reason: 'Resumo vazio'
   });
-  service.recordResult(whitespaceOrder.id, {
+  service.recordResult('acc_test' as never, whitespaceOrder.id, {
     status: 'collected',
     collectedByUserId: 'lab_1'
   });
   assert.throws(
-    () => service.recordResult(whitespaceOrder.id, {
-      status: 'resulted',
-      resultSummary: '   ',
-      releasedByUserId: 'vet_ana'
-    }),
+    () =>
+      service.recordResult('acc_test' as never, whitespaceOrder.id, {
+        status: 'resulted',
+        resultSummary: '   ',
+        releasedByUserId: 'vet_ana'
+      }),
     /resultSummary or resultAttachmentId/
   );
 
   assert.throws(
     () =>
-      service.recordResult(order.id, {
+      service.recordResult('acc_test' as never, order.id, {
         status: 'resulted',
         resultSummary: 'Sem alteracoes'
       }),
@@ -377,44 +488,60 @@ test('DiagnosticsService recordResult requires collector and clinical evidence w
 test('LaboratoryService runs the canonical workflow through delivery with signed reporting', async () => {
   const { service: diagnostics, encounter } = createService();
   const laboratory = new LaboratoryService(diagnostics);
-  const order = diagnostics.createOrder({
+  const order = diagnostics.createOrder('acc_test' as never, {
     encounterId: encounter.id,
     patientId: encounter.patientId,
     examType: 'Hemograma',
     reason: 'Esteira completa'
   });
 
-  const collected = await laboratory.transitionOrderAndPersistForAccount('acc_test' as never, order.id, {
-    status: 'collected',
-    collectedByUserId: 'collector-1'
-  });
+  const collected = await laboratory.transitionOrderAndPersistForAccount(
+    'acc_test' as never,
+    order.id,
+    {
+      status: 'collected',
+      collectedByUserId: 'collector-1'
+    }
+  );
   assert.equal(collected.status, 'collected');
   assert.equal(collected.collectionAttempt, 1);
 
-  const inAnalysis = await laboratory.transitionOrderAndPersistForAccount('acc_test' as never, order.id, {
-    status: 'in_analysis',
-    actorUserId: 'analyst-1'
-  });
+  const inAnalysis = await laboratory.transitionOrderAndPersistForAccount(
+    'acc_test' as never,
+    order.id,
+    {
+      status: 'in_analysis',
+      actorUserId: 'analyst-1'
+    }
+  );
   assert.equal(inAnalysis.status, 'in_analysis');
   assert.equal(inAnalysis.analysisStartedByUserId, 'analyst-1');
 
-  const reported = await laboratory.transitionOrderAndPersistForAccount('acc_test' as never, order.id, {
-    status: 'reported',
-    resultSummary: 'Sem alteracoes',
-    actorUserId: 'rt-1',
-    signedByUserId: 'attacker',
-    signatureHash: 'forged'
-  } as never);
+  const reported = await laboratory.transitionOrderAndPersistForAccount(
+    'acc_test' as never,
+    order.id,
+    {
+      status: 'reported',
+      resultSummary: 'Sem alteracoes',
+      actorUserId: 'rt-1',
+      signedByUserId: 'attacker',
+      signatureHash: 'forged'
+    } as never
+  );
   assert.equal(reported.status, 'reported');
   assert.equal(reported.reportedByUserId, 'rt-1');
   assert.equal(reported.signedByUserId, 'rt-1');
   assert.ok(reported.signatureHash);
 
-  const delivered = await laboratory.transitionOrderAndPersistForAccount('acc_test' as never, order.id, {
-    status: 'delivered',
-    deliveredByUserId: 'user-1',
-    deliveryChannel: 'portal'
-  });
+  const delivered = await laboratory.transitionOrderAndPersistForAccount(
+    'acc_test' as never,
+    order.id,
+    {
+      status: 'delivered',
+      deliveredByUserId: 'user-1',
+      deliveryChannel: 'portal'
+    }
+  );
   assert.equal(delivered.status, 'delivered');
   assert.equal(delivered.deliveredByUserId, 'user-1');
   assert.equal(delivered.deliveryChannel, 'portal');
@@ -428,7 +555,7 @@ test('LaboratoryService runs the canonical workflow through delivery with signed
 test('LaboratoryService rejects an inactive signer even when the caller supplies only an actor id', async () => {
   const { service: diagnostics, encounter } = createService();
   const laboratory = new LaboratoryService(diagnostics);
-  const order = diagnostics.createOrder({
+  const order = diagnostics.createOrder('acc_test' as never, {
     encounterId: encounter.id,
     patientId: encounter.patientId,
     examType: 'Hemograma',
@@ -445,11 +572,12 @@ test('LaboratoryService rejects an inactive signer even when the caller supplies
   });
 
   await assert.rejects(
-    () => laboratory.transitionOrderAndPersistForAccount('acc_test' as never, order.id, {
-      status: 'reported',
-      resultSummary: 'Resultado',
-      actorUserId: 'disabled-signer'
-    }),
+    () =>
+      laboratory.transitionOrderAndPersistForAccount('acc_test' as never, order.id, {
+        status: 'reported',
+        resultSummary: 'Resultado',
+        actorUserId: 'disabled-signer'
+      }),
     /active|enabled|professional|signat/i
   );
 });
@@ -457,7 +585,7 @@ test('LaboratoryService rejects an inactive signer even when the caller supplies
 test('LaboratoryService replays an idempotent transition without duplicating history', async () => {
   const { service: diagnostics, encounter } = createService();
   const laboratory = new LaboratoryService(diagnostics);
-  const order = diagnostics.createOrder({
+  const order = diagnostics.createOrder('acc_test' as never, {
     encounterId: encounter.id,
     patientId: encounter.patientId,
     examType: 'Hemograma',
@@ -543,7 +671,7 @@ test('LaboratoryService delegates the order, workflow and history write as one p
 test('LaboratoryService records a reasoned recollection as a new attempt and keeps history', async () => {
   const { service: diagnostics, encounter } = createService();
   const laboratory = new LaboratoryService(diagnostics);
-  const order = diagnostics.createOrder({
+  const order = diagnostics.createOrder('acc_test' as never, {
     encounterId: encounter.id,
     patientId: encounter.patientId,
     examType: 'Bioquimico',
@@ -554,10 +682,14 @@ test('LaboratoryService records a reasoned recollection as a new attempt and kee
     status: 'collected',
     collectedByUserId: 'collector-1'
   });
-  const recollected = await laboratory.recollectOrderAndPersistForAccount('acc_test' as never, order.id, {
-    reason: 'Amostra hemolisada',
-    collectedByUserId: 'collector-2'
-  });
+  const recollected = await laboratory.recollectOrderAndPersistForAccount(
+    'acc_test' as never,
+    order.id,
+    {
+      reason: 'Amostra hemolisada',
+      collectedByUserId: 'collector-2'
+    }
+  );
 
   assert.equal(recollected.status, 'collected');
   assert.equal(recollected.collectionAttempt, 2);
@@ -616,7 +748,7 @@ test('LaboratoryService serves backend-first catalog and dashboard summary', asy
     catalogRepository: new InMemoryLaboratoryCatalogRepository()
   });
 
-  diagnostics.createOrder({
+  diagnostics.createOrder('acc_test' as never, {
     encounterId: encounter.id,
     patientId: encounter.patientId,
     examType: 'Hemograma',
@@ -718,7 +850,7 @@ test('LaboratoryService exposes resulted orders and order detail scoped by accou
     catalogRepository: new InMemoryLaboratoryCatalogRepository()
   });
 
-  const order = diagnostics.createOrder({
+  const order = diagnostics.createOrder('acc_test' as never, {
     encounterId: encounter.id,
     patientId: encounter.patientId,
     examType: 'Hemograma',
@@ -726,11 +858,11 @@ test('LaboratoryService exposes resulted orders and order detail scoped by accou
     reason: 'Check-up'
   });
 
-  diagnostics.recordResult(order.id, {
+  diagnostics.recordResult('acc_test' as never, order.id, {
     status: 'collected',
     collectedByUserId: 'lab_1'
   });
-  diagnostics.recordResult(order.id, {
+  diagnostics.recordResult('acc_test' as never, order.id, {
     status: 'resulted',
     resultAttachmentId: 'att_1',
     releasedByUserId: 'vet_ana'
@@ -761,7 +893,10 @@ test('LaboratoryService falls back to default catalogs when repository is not co
   assert.ok(equipment.length >= 1);
   assert.ok(reportTypes.length >= 1);
   assert.ok(referenceValues.length >= 1);
-  assert.equal(referenceValues.every((item) => item.examType.toUpperCase().includes('HEM')), true);
+  assert.equal(
+    referenceValues.every((item) => item.examType.toUpperCase().includes('HEM')),
+    true
+  );
 });
 
 test('LaboratoryService keeps order listing available when catalog repository is unavailable', async () => {
@@ -810,7 +945,7 @@ test('LaboratoryService keeps order listing available when catalog repository is
     }
   });
 
-  const order = diagnostics.createOrder({
+  const order = diagnostics.createOrder('acc_test' as never, {
     encounterId: encounter.id,
     patientId: encounter.patientId,
     examType: 'Hemograma',
@@ -827,24 +962,24 @@ test('LaboratoryService listResults filters only released or evidenced orders', 
   const { service: diagnostics, encounter } = createService();
   const laboratory = new LaboratoryService(diagnostics);
 
-  const openOrder = diagnostics.createOrder({
+  const openOrder = diagnostics.createOrder('acc_test' as never, {
     encounterId: encounter.id,
     patientId: encounter.patientId,
     examType: 'Urinalise',
     reason: 'Triagem'
   });
-  const releasedOrder = diagnostics.createOrder({
+  const releasedOrder = diagnostics.createOrder('acc_test' as never, {
     encounterId: encounter.id,
     patientId: encounter.patientId,
     examType: 'Bioquimico',
     reason: 'Seguimento'
   });
 
-  diagnostics.recordResult(releasedOrder.id, {
+  diagnostics.recordResult('acc_test' as never, releasedOrder.id, {
     status: 'collected',
     collectedByUserId: 'lab_1'
   });
-  diagnostics.recordResult(releasedOrder.id, {
+  diagnostics.recordResult('acc_test' as never, releasedOrder.id, {
     status: 'resulted',
     resultSummary: 'Tudo normal',
     releasedByUserId: 'vet_ana'
@@ -852,21 +987,27 @@ test('LaboratoryService listResults filters only released or evidenced orders', 
 
   const results = await laboratory.listResults('acc_test' as never);
 
-  assert.equal(results.some((item) => item.id === releasedOrder.id), true);
-  assert.equal(results.some((item) => item.id === openOrder.id), false);
+  assert.equal(
+    results.some((item) => item.id === releasedOrder.id),
+    true
+  );
+  assert.equal(
+    results.some((item) => item.id === openOrder.id),
+    false
+  );
 });
 
 test('LaboratoryService getOrder blocks access to another account and proxy methods stay coherent', () => {
   const { service: diagnostics, encounter } = createService();
   const laboratory = new LaboratoryService(diagnostics);
 
-  const created = laboratory.createOrder({
+  const created = laboratory.createOrder('acc_test' as never, {
     encounterId: encounter.id,
     patientId: encounter.patientId,
     examType: 'Citologia',
     reason: 'Controle'
   });
-  const collected = laboratory.recordResult(created.id, {
+  const collected = laboratory.recordResult('acc_test' as never, created.id, {
     status: 'collected',
     collectedByUserId: 'lab_2'
   });
@@ -874,6 +1015,307 @@ test('LaboratoryService getOrder blocks access to another account and proxy meth
   assert.equal(collected.status, 'collected');
   assert.throws(
     () => laboratory.getOrder('acc_other' as never, created.id),
-    /does not belong to the current account/
+    /Diagnostic order not found/
+  );
+});
+
+test('LaboratoryService exercises scoped compatibility gateways and workflow fallbacks', async () => {
+  const { service: diagnostics, encounter } = createService();
+  const order = diagnostics.createOrder('acc_test' as never, {
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    examType: 'Hemograma',
+    reason: 'Compatibility gateway'
+  });
+  const workflow = diagnostics.getLaboratoryOrderOrThrow('acc_test' as never, order.id);
+
+  const optionalGateway = {
+    list: () => [order],
+    listByAccount: () => [order],
+    listCatalog: () => [],
+    createOrder: () => order,
+    createOrderAndPersist: async () => order,
+    createOrderAndPersistForAccount: async () => order,
+    getOrThrow: () => order,
+    recordResult: () => order,
+    recordResultAndPersist: async () => order,
+    recordResultAndPersistForAccount: async () => order,
+    listLaboratoryOrders: () => [workflow],
+    getLaboratoryOrderOrThrow: () => workflow,
+    transitionLaboratoryOrderAndPersistForAccount: async () => workflow,
+    recollectLaboratoryOrderAndPersistForAccount: async () => workflow
+  };
+  const optionalLaboratory = new LaboratoryService(optionalGateway as never);
+
+  assert.equal(
+    (await optionalLaboratory.listWorkflowOrders('acc_test' as never, encounter.id)).length,
+    1
+  );
+  assert.equal(optionalLaboratory.getWorkflowOrder('acc_test' as never, order.id).id, order.id);
+  assert.equal(
+    (
+      await optionalLaboratory.createOrderAndPersist('acc_test' as never, {
+        encounterId: encounter.id,
+        patientId: encounter.patientId,
+        examType: 'Hemograma',
+        reason: 'Optional persistence'
+      })
+    ).id,
+    order.id
+  );
+  assert.equal(
+    (
+      await optionalLaboratory.createOrderAndPersistForAccount('acc_test' as never, {
+        encounterId: encounter.id,
+        patientId: encounter.patientId,
+        examType: 'Hemograma',
+        reason: 'Optional account persistence'
+      })
+    ).id,
+    order.id
+  );
+  assert.equal(
+    (
+      await optionalLaboratory.recordResultAndPersist('acc_test' as never, order.id, {
+        status: 'collected'
+      })
+    ).id,
+    order.id
+  );
+  assert.equal(
+    (
+      await optionalLaboratory.recordResultAndPersistForAccount('acc_test' as never, order.id, {
+        status: 'collected'
+      })
+    ).id,
+    order.id
+  );
+  assert.equal(
+    (
+      await optionalLaboratory.transitionOrderAndPersistForAccount('acc_test' as never, order.id, {
+        status: 'collected'
+      } as never)
+    ).id,
+    order.id
+  );
+  assert.equal(
+    (
+      await optionalLaboratory.recollectOrderAndPersistForAccount('acc_test' as never, order.id, {
+        reason: 'Amostra insuficiente',
+        collectedByUserId: 'collector'
+      } as never)
+    ).id,
+    order.id
+  );
+
+  const fallbackGateway = {
+    list: () => [order],
+    listByAccount: () => [order],
+    listCatalog: () => [],
+    createOrder: () => order,
+    getOrThrow: () => order,
+    recordResult: () => order
+  };
+  const fallbackLaboratory = new LaboratoryService(fallbackGateway as never);
+  assert.equal(
+    (await fallbackLaboratory.listWorkflowOrders('acc_test' as never, encounter.id))[0]?.id,
+    order.id
+  );
+  assert.equal(fallbackLaboratory.getWorkflowOrder('acc_test' as never, order.id).id, order.id);
+  assert.equal(
+    (
+      await fallbackLaboratory.createOrderAndPersist('acc_test' as never, {
+        encounterId: encounter.id,
+        patientId: encounter.patientId,
+        examType: 'Hemograma',
+        reason: 'Fallback persistence'
+      })
+    ).id,
+    order.id
+  );
+  assert.equal(
+    (
+      await fallbackLaboratory.createOrderAndPersistForAccount('acc_test' as never, {
+        encounterId: encounter.id,
+        patientId: encounter.patientId,
+        examType: 'Hemograma',
+        reason: 'Fallback account persistence'
+      })
+    ).id,
+    order.id
+  );
+  assert.equal(
+    (
+      await fallbackLaboratory.recordResultAndPersist('acc_test' as never, order.id, {
+        status: 'collected'
+      })
+    ).id,
+    order.id
+  );
+  assert.equal(
+    (
+      await fallbackLaboratory.recordResultAndPersistForAccount('acc_test' as never, order.id, {
+        status: 'collected'
+      })
+    ).id,
+    order.id
+  );
+  await assert.rejects(
+    () =>
+      fallbackLaboratory.transitionOrderAndPersistForAccount('acc_test' as never, order.id, {
+        status: 'collected'
+      } as never),
+    /Canonical laboratory workflow persistence is not configured/
+  );
+  await assert.rejects(
+    () =>
+      fallbackLaboratory.recollectOrderAndPersistForAccount('acc_test' as never, order.id, {
+        reason: 'Amostra insuficiente',
+        collectedByUserId: 'collector'
+      } as never),
+    /Canonical laboratory workflow persistence is not configured/
+  );
+});
+
+test('LaboratoryService covers catalog repository defaults and missing-record guards', async () => {
+  const { service: diagnostics } = createService();
+  const fallback = new LaboratoryService(diagnostics);
+
+  await fallback.hydrateCatalog('acc_test' as never);
+  await assert.rejects(
+    () =>
+      fallback.createEquipment('acc_test' as never, {
+        name: 'Equipamento',
+        type: 'Analise',
+        serialNumber: 'EQ-1',
+        lastCalibrationAt: '2026-08-30T00:00:00.000Z'
+      }),
+    /equipment persistence is not configured/
+  );
+  await assert.rejects(
+    () => fallback.updateEquipment('acc_test' as never, 'missing', {}),
+    /equipment persistence is not configured/
+  );
+  await assert.rejects(
+    () =>
+      fallback.createReportType('acc_test' as never, {
+        name: 'Laudo',
+        code: 'LAU',
+        category: 'Laboratorio',
+        description: 'Modelo'
+      }),
+    /report type persistence is not configured/
+  );
+  await assert.rejects(
+    () => fallback.updateReportType('acc_test' as never, 'missing', {}),
+    /report type persistence is not configured/
+  );
+  await assert.rejects(
+    () =>
+      fallback.createReferenceValue('acc_test' as never, {
+        parameter: 'ALT',
+        examType: 'HEM',
+        minValue: 10,
+        maxValue: 100,
+        unit: 'U/L'
+      }),
+    /reference value persistence is not configured/
+  );
+  await assert.rejects(
+    () => fallback.updateReferenceValue('acc_test' as never, 'missing', {}),
+    /reference value persistence is not configured/
+  );
+  await assert.rejects(
+    () => fallback.getEquipment('acc_test' as never, 'missing'),
+    /equipment not found/
+  );
+  await assert.rejects(
+    () => fallback.getReportType('acc_test' as never, 'missing'),
+    /report type not found/
+  );
+  await assert.rejects(
+    () => fallback.getReferenceValue('acc_test' as never, 'missing'),
+    /reference value not found/
+  );
+  assert.ok((await fallback.listReferenceValues('acc_test' as never)).length > 0);
+
+  const repository = new InMemoryLaboratoryCatalogRepository();
+  const laboratory = new LaboratoryService(diagnostics, { catalogRepository: repository });
+  await laboratory.hydrateCatalog('acc_catalog' as never);
+  await laboratory.hydrateCatalog('acc_catalog' as never);
+
+  const equipment = await laboratory.createEquipment('acc_catalog' as never, {
+    name: 'Equipamento Completo',
+    type: 'Analise',
+    serialNumber: 'EQ-2',
+    lastCalibrationAt: '2026-08-30T00:00:00.000Z'
+  });
+  assert.equal(equipment.status, 'active');
+  const equipmentUnchanged = await laboratory.updateEquipment(
+    'acc_catalog' as never,
+    equipment.id,
+    {}
+  );
+  assert.equal(equipmentUnchanged.name, equipment.name);
+  await assert.rejects(
+    () => laboratory.updateEquipment('acc_catalog' as never, 'missing', {}),
+    /equipment not found/
+  );
+  await assert.rejects(
+    () => laboratory.getEquipment('acc_catalog' as never, 'missing'),
+    /equipment not found/
+  );
+
+  const reportType = await laboratory.createReportType('acc_catalog' as never, {
+    name: 'Laudo Completo',
+    code: 'LAU-2',
+    category: 'Laboratorio',
+    description: 'Modelo',
+    active: true
+  });
+  const reportTypeUnchanged = await laboratory.updateReportType(
+    'acc_catalog' as never,
+    reportType.id,
+    {}
+  );
+  assert.equal(reportTypeUnchanged.name, reportType.name);
+  await assert.rejects(
+    () => laboratory.updateReportType('acc_catalog' as never, 'missing', {}),
+    /report type not found/
+  );
+  await assert.rejects(
+    () => laboratory.getReportType('acc_catalog' as never, 'missing'),
+    /report type not found/
+  );
+
+  const referenceValue = await laboratory.createReferenceValue('acc_catalog' as never, {
+    parameter: 'ALT',
+    examType: 'HEM',
+    minValue: 10,
+    maxValue: 100,
+    unit: 'U/L'
+  });
+  const referenceUnchanged = await laboratory.updateReferenceValue(
+    'acc_catalog' as never,
+    referenceValue.id,
+    {}
+  );
+  assert.equal(referenceUnchanged.parameter, referenceValue.parameter);
+  assert.ok((await laboratory.listReferenceValues('acc_catalog' as never)).length > 0);
+  await assert.rejects(
+    () => laboratory.updateReferenceValue('acc_catalog' as never, 'missing', {}),
+    /reference value not found/
+  );
+  await assert.rejects(
+    () => laboratory.getReferenceValue('acc_catalog' as never, 'missing'),
+    /reference value not found/
+  );
+  await assert.rejects(
+    () =>
+      laboratory.updateReferenceValue('acc_catalog' as never, referenceValue.id, {
+        minValue: 500,
+        maxValue: 100
+      }),
+    /minimum cannot be greater/
   );
 });

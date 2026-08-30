@@ -576,6 +576,17 @@ function createTwoAccountTriageServer() {
     changedByUserId: record.triagedByUserId,
     createdAt: record.updatedAt
   }));
+  const diagnosticOrders = accounts.map((accountId, index) => ({
+    id: `diagnostic_http_${index}`,
+    accountId,
+    encounterId: encounters[index]!.id,
+    patientId: encounters[index]!.patientId,
+    examType: 'Hemograma',
+    reason: `Diagnostico da conta ${index}`,
+    status: 'requested' as const,
+    createdAt,
+    updatedAt: createdAt
+  }));
 
   const usersRepository = {
     async create() {},
@@ -649,12 +660,26 @@ function createTwoAccountTriageServer() {
       return triageVersions.filter((version) => version.accountId === accountId);
     }
   };
+  const diagnosticOrderRepository = {
+    async create() {},
+    async update() {},
+    async findById(id: string) {
+      return diagnosticOrders.find((order) => order.id === id) ?? null;
+    },
+    async findAll(accountId: string) {
+      return diagnosticOrders.filter((order) => order.accountId === accountId);
+    },
+    async findByEncounterId(encounterId: string) {
+      return diagnosticOrders.filter((order) => order.encounterId === encounterId);
+    }
+  };
 
   return createServerUnderTest({
     repositories: {
       users: usersRepository,
       encounter: encounterRepository,
-      triage: triageRepository
+      triage: triageRepository,
+      diagnosticOrder: diagnosticOrderRepository
     } as never,
     preserveSeedUsersWithRepository: true
   });
@@ -2136,6 +2161,108 @@ test('bootstrap deletes encounters over HTTP semantics', async () => {
   assert.equal(getResponse.statusCode, 404);
 });
 
+test('diagnostic summaries and attachments preserve the authenticated account over HTTP', async () => {
+  const server = createServerUnderTest();
+  const accessToken = await login(server, 'admin', 'seed_admin');
+  const authenticatedHeaders = {
+    authorization: `Bearer ${accessToken}`,
+    host: 'localhost'
+  };
+
+  const encounterResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/encounters',
+    headers: {
+      ...authenticatedHeaders,
+      'content-type': 'application/json'
+    },
+    body: {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      visitType: 'walk_in',
+      origin: 'reception',
+      reason: 'Diagnostic HTTP account boundary'
+    }
+  });
+  assert.equal(encounterResponse.statusCode, 201);
+  const encounter = encounterResponse.bodyJson<{ id: string; patientId: string }>();
+
+  const orderResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/diagnostics/orders',
+    headers: {
+      ...authenticatedHeaders,
+      'content-type': 'application/json'
+    },
+    body: {
+      encounterId: encounter.id,
+      patientId: encounter.patientId,
+      examType: 'Hemograma',
+      reason: 'HTTP account boundary'
+    }
+  });
+  assert.equal(orderResponse.statusCode, 201);
+  const order = orderResponse.bodyJson<{
+    id: string;
+    accountId: string;
+    encounterId: string;
+  }>();
+  assert.equal(order.encounterId, encounter.id);
+
+  const summaryResponse = await performRequest(server, {
+    method: 'GET',
+    url: `/encounters/${encounter.id}/summary`,
+    headers: authenticatedHeaders
+  });
+  assert.equal(summaryResponse.statusCode, 200);
+  const summary = summaryResponse.bodyJson<{
+    diagnostics: { totalOrders: number; latestOrders: Array<{ id: string; accountId: string }> };
+  }>();
+  assert.equal(summary.diagnostics.totalOrders, 1);
+  assert.equal(summary.diagnostics.latestOrders[0]?.id, order.id);
+  assert.equal(summary.diagnostics.latestOrders[0]?.accountId, order.accountId);
+
+  const attachmentResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/attachments',
+    headers: {
+      ...authenticatedHeaders,
+      'content-type': 'application/json'
+    },
+    body: {
+      linkedEntityType: 'diagnostic_order',
+      linkedEntityId: order.id,
+      category: 'lab',
+      fileName: 'resultado.txt',
+      mimeType: 'text/plain',
+      checksum: 'metadata-only-checksum'
+    }
+  });
+  assert.equal(attachmentResponse.statusCode, 201);
+  const attachment = attachmentResponse.bodyJson<{
+    id: string;
+    accountId: string;
+    linkedEntityType: string;
+    linkedEntityId: string;
+  }>();
+  assert.equal(attachment.accountId, order.accountId);
+  assert.equal(attachment.linkedEntityType, 'diagnostic_order');
+  assert.equal(attachment.linkedEntityId, order.id);
+
+  const listResponse = await performRequest(server, {
+    method: 'GET',
+    url: `/attachments?linkedEntityType=diagnostic_order&linkedEntityId=${order.id}`,
+    headers: authenticatedHeaders
+  });
+  assert.equal(listResponse.statusCode, 200);
+  assert.deepEqual(
+    listResponse
+      .bodyJson<{ items: Array<{ id: string; accountId: string }> }>()
+      .items.map((item) => ({ id: item.id, accountId: item.accountId })),
+    [{ id: attachment.id, accountId: order.accountId }]
+  );
+});
+
 test('bootstrap serves administrative report hubs over HTTP semantics', async () => {
   const server = createServerUnderTest();
   const accessToken = await login(server, 'admin', 'seed_admin');
@@ -2584,6 +2711,85 @@ test('triage HTTP collections and history remain isolated across authenticated a
   assert.equal(ownHistory.bodyJson<{ items: unknown[] }>().items.length, 1);
 });
 
+test('diagnostic summaries, orders and attachments fail closed across authenticated accounts', async () => {
+  const server = createTwoAccountTriageServer();
+  await server.ready;
+  const accessTokenA = await login(server, 'triage_admin_0', 'seed_admin_0');
+  const accessTokenB = await login(server, 'triage_admin_1', 'seed_admin_1');
+
+  const listA = await performRequest(server, {
+    method: 'GET',
+    url: '/diagnostics/orders',
+    headers: { authorization: `Bearer ${accessTokenA}`, host: 'localhost' }
+  });
+  assert.equal(listA.statusCode, 200);
+  assert.deepEqual(
+    listA.bodyJson<{ items: Array<{ id: string }> }>().items.map((item) => item.id),
+    ['diagnostic_http_0']
+  );
+
+  const listB = await performRequest(server, {
+    method: 'GET',
+    url: '/diagnostics/orders',
+    headers: { authorization: `Bearer ${accessTokenB}`, host: 'localhost' }
+  });
+  assert.equal(listB.statusCode, 200);
+  assert.deepEqual(
+    listB.bodyJson<{ items: Array<{ id: string }> }>().items.map((item) => item.id),
+    ['diagnostic_http_1']
+  );
+
+  const crossAccountOrder = await performRequest(server, {
+    method: 'GET',
+    url: '/diagnostics/orders/diagnostic_http_1',
+    headers: { authorization: `Bearer ${accessTokenA}`, host: 'localhost' }
+  });
+  assert.equal(crossAccountOrder.statusCode, 404);
+
+  const crossAccountSummary = await performRequest(server, {
+    method: 'GET',
+    url: '/encounters/enc_triage_http_1/summary',
+    headers: { authorization: `Bearer ${accessTokenA}`, host: 'localhost' }
+  });
+  assert.equal(crossAccountSummary.statusCode, 404);
+
+  const crossAccountCreate = await performRequest(server, {
+    method: 'POST',
+    url: '/diagnostics/orders',
+    headers: {
+      authorization: `Bearer ${accessTokenA}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      encounterId: 'enc_triage_http_1',
+      patientId: 'patient_triage_http_1',
+      examType: 'Hemograma',
+      reason: 'Tentativa diagnostica cruzada'
+    }
+  });
+  assert.equal(crossAccountCreate.statusCode, 404);
+
+  const crossAccountAttachment = await performRequest(server, {
+    method: 'POST',
+    url: '/attachments',
+    headers: {
+      authorization: `Bearer ${accessTokenA}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      linkedEntityType: 'diagnostic_order',
+      linkedEntityId: 'diagnostic_http_1',
+      category: 'lab',
+      fileName: 'resultado.txt',
+      mimeType: 'text/plain',
+      checksum: 'cross-account-attachment'
+    }
+  });
+  assert.equal(crossAccountAttachment.statusCode, 404);
+});
+
 test('triage validation does not transition a reception encounter before persistence', async () => {
   const server = createServerUnderTest();
   const accessToken = await login(server, 'admin', 'seed_admin');
@@ -2706,7 +2912,10 @@ test('triage creation rejects a closed encounter without speculative list or tim
   const timeline = timelineResponse.bodyJson<{
     items: Array<{ eventType?: string }>;
   }>().items;
-  assert.equal(timeline.some((event) => event.eventType === 'triage_recorded'), false);
+  assert.equal(
+    timeline.some((event) => event.eventType === 'triage_recorded'),
+    false
+  );
 });
 
 test('quotes expose dedicated PDF generation over HTTP semantics', async () => {

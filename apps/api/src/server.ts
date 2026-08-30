@@ -5111,7 +5111,12 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                 principal.user.accountId
               );
               const fileContent = decodeAttachmentContent(payload.contentBase64);
-              const attachment = await attachments.upload(principal.user.id, payload, fileContent);
+              const attachment = await attachments.upload(
+                principal.user.id,
+                principal.user.accountId as AccountId,
+                payload,
+                fileContent
+              );
 
               if (payload.linkedEntityType === 'encounter') {
                 medicalRecords.ensureRecord(payload.linkedEntityId as never);
@@ -5132,7 +5137,10 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                   `Attachment added to medical record ${record.id}`
                 );
               } else {
-                const order = diagnostics.getOrThrow(payload.linkedEntityId as never);
+                const order = diagnostics.getOrThrow(
+                  principal.user.accountId as AccountId,
+                  payload.linkedEntityId as never
+                );
                 medicalRecords.appendAttachmentEvent(
                   order.encounterId,
                   principal.user.id,
@@ -6024,7 +6032,10 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
 
               if (pathname.endsWith('/summary')) {
                 const timeline = await encounters.listTimelineAsync(encounterId as never);
-                const orders = diagnostics.list(encounterId as never);
+                const orders = diagnostics.list(
+                  principal.user.accountId as AccountId,
+                  encounterId as never
+                );
                 let financial = null;
 
                 try {
@@ -8027,7 +8038,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
         ? requireEncounterForAccount(linkedEntityId, accountId).accountId
         : linkedEntityType === 'medical_record'
           ? (await medicalRecords.getRecordOrThrowAsync(linkedEntityId as never)).accountId
-          : diagnostics.getOrThrow(linkedEntityId as never).accountId;
+          : diagnostics.getOrThrow(accountId as AccountId, linkedEntityId as never).accountId;
     if (targetAccountId !== accountId) {
       throw new NotFoundError('Attachment target not found', {
         linkedEntityType,

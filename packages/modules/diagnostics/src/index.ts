@@ -21,9 +21,7 @@ import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 import { DEFAULT_EXAM_CATALOG } from './catalog.js';
 import { normalizeLaboratoryResultValues } from './laboratory-result-values.js';
-import {
-  DatabaseLaboratoryCatalogRepository
-} from './repositories/database-laboratory-catalog.repository.js';
+import { DatabaseLaboratoryCatalogRepository } from './repositories/database-laboratory-catalog.repository.js';
 import { DatabaseDiagnosticOrderRepository } from './repositories/database-diagnostics.repository.js';
 import type {
   DiagnosticOrderRepository,
@@ -111,9 +109,10 @@ export class DiagnosticsService {
     this.#encounters = encounters;
     this.#catalog = options?.catalog ?? DEFAULT_EXAM_CATALOG;
     this.#repository = options?.diagnosticOrderRepository;
-    this.#laboratorySignerAuthority = options?.laboratorySignerAuthority
-      ?? (options?.diagnosticOrderRepository?.isEnabledLaboratorySigner
-        ? options.diagnosticOrderRepository as LaboratorySignerAuthority
+    this.#laboratorySignerAuthority =
+      options?.laboratorySignerAuthority ??
+      (options?.diagnosticOrderRepository?.isEnabledLaboratorySigner
+        ? (options.diagnosticOrderRepository as LaboratorySignerAuthority)
         : undefined);
   }
 
@@ -148,16 +147,18 @@ export class DiagnosticsService {
     resultedAt: string
   ): string {
     return createHash('sha256')
-      .update([
-        order.id,
-        order.accountId,
-        payload.releasedByUserId,
-        payload.releasedByUserId,
-        payload.resultSummary ?? '',
-        JSON.stringify(payload.resultValues ?? []),
-        payload.resultAttachmentId ?? '',
-        resultedAt
-      ].join('|'))
+      .update(
+        [
+          order.id,
+          order.accountId,
+          payload.releasedByUserId,
+          payload.releasedByUserId,
+          payload.resultSummary ?? '',
+          JSON.stringify(payload.resultValues ?? []),
+          payload.resultAttachmentId ?? '',
+          resultedAt
+        ].join('|')
+      )
       .digest('hex');
   }
 
@@ -171,16 +172,18 @@ export class DiagnosticsService {
     reportedAt: string
   ): string {
     return createHash('sha256')
-      .update([
-        order.id,
-        order.accountId,
-        reportedByUserId,
-        signedByUserId,
-        resultSummary ?? '',
-        JSON.stringify(resultValues ?? []),
-        resultAttachmentId ?? '',
-        reportedAt
-      ].join('|'))
+      .update(
+        [
+          order.id,
+          order.accountId,
+          reportedByUserId,
+          signedByUserId,
+          resultSummary ?? '',
+          JSON.stringify(resultValues ?? []),
+          resultAttachmentId ?? '',
+          reportedAt
+        ].join('|')
+      )
       .digest('hex');
   }
 
@@ -197,9 +200,10 @@ export class DiagnosticsService {
   }
 
   private deriveLaboratoryWorkflow(order: DiagnosticOrderSummary): LaboratoryWorkflowState {
-    const status = order.status === 'resulted'
-      ? 'reported'
-      : order.status as LaboratoryWorkflowState['status'];
+    const status =
+      order.status === 'resulted'
+        ? 'reported'
+        : (order.status as LaboratoryWorkflowState['status']);
     return {
       orderId: order.id,
       accountId: order.accountId,
@@ -267,15 +271,16 @@ export class DiagnosticsService {
     requestFingerprint?: string
   ): LaboratoryWorkflowState {
     const event: LaboratoryWorkflowEvent = {
-      id: idempotencyKey && requestFingerprint
-        ? createLaboratoryWorkflowEventId(
-          workflow.accountId,
-          workflow.orderId,
-          eventType,
-          idempotencyKey,
-          requestFingerprint
-        )
-        : createCorrelationId('lab-event'),
+      id:
+        idempotencyKey && requestFingerprint
+          ? createLaboratoryWorkflowEventId(
+              workflow.accountId,
+              workflow.orderId,
+              eventType,
+              idempotencyKey,
+              requestFingerprint
+            )
+          : createCorrelationId('lab-event'),
       eventType,
       status,
       attempt,
@@ -317,7 +322,9 @@ export class DiagnosticsService {
           .map((key) => [key, canonicalize(record[key])])
       );
     };
-    return createHash('sha256').update(JSON.stringify(canonicalize(payload))).digest('hex');
+    return createHash('sha256')
+      .update(JSON.stringify(canonicalize(payload)))
+      .digest('hex');
   }
 
   private laboratoryIdempotencyCacheKey(
@@ -334,16 +341,13 @@ export class DiagnosticsService {
     return payload.status === 'resulted' ? 'reported' : payload.status;
   }
 
-  private async assertEnabledLaboratorySigner(
-    accountId: AccountId,
-    userId: string
-  ): Promise<void> {
+  private async assertEnabledLaboratorySigner(accountId: AccountId, userId: string): Promise<void> {
     const authority = this.#laboratorySignerAuthority;
-    if (!authority?.isEnabledLaboratorySigner
-      || !(await authority.isEnabledLaboratorySigner(accountId, userId))) {
-      throw new ForbiddenError(
-        'Laboratory result requires an enabled professional/staff signer'
-      );
+    if (
+      !authority?.isEnabledLaboratorySigner ||
+      !(await authority.isEnabledLaboratorySigner(accountId, userId))
+    ) {
+      throw new ForbiddenError('Laboratory result requires an enabled professional/staff signer');
     }
   }
 
@@ -362,8 +366,19 @@ export class DiagnosticsService {
     return this.#catalog.find((entry) => entry.id === catalogId);
   }
 
-  private buildOrder(payload: CreateDiagnosticOrderRequest): DiagnosticOrderSummary {
-    const encounter = this.#encounters.getOrThrow(payload.encounterId as never);
+  private getEncounterForAccount(accountId: AccountId, encounterId: string) {
+    const encounter = this.#encounters.getOrThrow(encounterId as never);
+    if (encounter.accountId !== accountId) {
+      throw new NotFoundError('Encounter not found', { encounterId });
+    }
+    return encounter;
+  }
+
+  private buildOrder(
+    accountId: AccountId,
+    payload: CreateDiagnosticOrderRequest
+  ): DiagnosticOrderSummary {
+    const encounter = this.getEncounterForAccount(accountId, payload.encounterId);
     if (payload.patientId !== encounter.patientId) {
       throw new Error('patientId must match the encounter patient');
     }
@@ -396,18 +411,22 @@ export class DiagnosticsService {
     }
   }
 
-  public createOrder(payload: CreateDiagnosticOrderRequest): DiagnosticOrderSummary {
+  public createOrder(
+    accountId: AccountId,
+    payload: CreateDiagnosticOrderRequest
+  ): DiagnosticOrderSummary {
     this.requireSynchronousPersistenceMode();
-    const order = this.buildOrder(payload);
+    const order = this.buildOrder(accountId, payload);
     this.#orders.set(order.id, order);
     this.#laboratoryWorkflows.set(order.id, this.createInitialLaboratoryWorkflow(order));
     return order;
   }
 
   public async createOrderAndPersist(
+    accountId: AccountId,
     payload: CreateDiagnosticOrderRequest
   ): Promise<DiagnosticOrderSummary> {
-    const order = this.buildOrder(payload);
+    const order = this.buildOrder(accountId, payload);
     await this.persistOrder(order);
     await this.persistLaboratoryWorkflow(this.createInitialLaboratoryWorkflow(order));
     this.#orders.set(order.id, order);
@@ -418,16 +437,13 @@ export class DiagnosticsService {
     accountId: AccountId,
     payload: CreateDiagnosticOrderRequest
   ): Promise<DiagnosticOrderSummary> {
-    const encounter = this.#encounters.getOrThrow(payload.encounterId as never);
-    if (encounter.accountId !== accountId) {
-      throw new NotFoundError('Encounter not found', { encounterId: payload.encounterId });
-    }
-    return this.createOrderAndPersist(payload);
+    return this.createOrderAndPersist(accountId, payload);
   }
 
-  public list(encounterId?: string): readonly DiagnosticOrderSummary[] {
+  public list(accountId: AccountId, encounterId?: string): readonly DiagnosticOrderSummary[] {
     return Array.from(this.#orders.values()).filter(
-      (order) => !encounterId || order.encounterId === encounterId
+      (order) =>
+        order.accountId === accountId && (!encounterId || order.encounterId === encounterId)
     );
   }
 
@@ -470,7 +486,7 @@ export class DiagnosticsService {
     return this.toLaboratoryOrderSummary(order, this.getLaboratoryWorkflow(order));
   }
 
-  public getOrThrow(orderId: DiagnosticOrderId): DiagnosticOrderSummary {
+  private getOrderOrThrow(orderId: DiagnosticOrderId): DiagnosticOrderSummary {
     const order = this.#orders.get(orderId);
     if (!order) {
       throw new NotFoundError('Diagnostic order not found', { orderId });
@@ -479,11 +495,26 @@ export class DiagnosticsService {
     return order;
   }
 
+  private getOrderForAccount(
+    accountId: AccountId,
+    orderId: DiagnosticOrderId
+  ): DiagnosticOrderSummary {
+    const order = this.getOrderOrThrow(orderId);
+    if (order.accountId !== accountId) {
+      throw new NotFoundError('Diagnostic order not found', { orderId });
+    }
+    return order;
+  }
+
+  public getOrThrow(accountId: AccountId, orderId: DiagnosticOrderId): DiagnosticOrderSummary {
+    return this.getOrderForAccount(accountId, orderId);
+  }
+
   private buildResult(
     orderId: DiagnosticOrderId,
     payload: RecordDiagnosticResultRequest
   ): DiagnosticOrderSummary {
-    const current = this.getOrThrow(orderId);
+    const current = this.getOrderOrThrow(orderId);
 
     if (!this.isValidTransition(current.status, payload.status)) {
       throw new Error(`Invalid status transition from '${current.status}' to '${payload.status}'`);
@@ -493,22 +524,23 @@ export class DiagnosticsService {
       requireNonEmptyString(payload.collectedByUserId, 'collectedByUserId');
     }
 
-    const resultSummary = payload.status === 'resulted'
-      ? payload.resultSummary?.trim() || undefined
-      : undefined;
-    const resultAttachmentId = payload.status === 'resulted'
-      ? payload.resultAttachmentId?.trim() || undefined
-      : undefined;
-    const resultValues = payload.status === 'resulted'
-      ? normalizeLaboratoryResultValues(payload.resultValues)
-      : undefined;
-    if (
+    const resultSummary =
+      payload.status === 'resulted' ? payload.resultSummary?.trim() || undefined : undefined;
+    const resultAttachmentId =
+      payload.status === 'resulted' ? payload.resultAttachmentId?.trim() || undefined : undefined;
+    const resultValues =
       payload.status === 'resulted'
-      && !resultSummary
-      && !resultAttachmentId
-      && !resultValues?.length
+        ? normalizeLaboratoryResultValues(payload.resultValues)
+        : undefined;
+    if (
+      payload.status === 'resulted' &&
+      !resultSummary &&
+      !resultAttachmentId &&
+      !resultValues?.length
     ) {
-      throw new Error('resultSummary or resultAttachmentId or resultValues is required when status is resulted');
+      throw new Error(
+        'resultSummary or resultAttachmentId or resultValues is required when status is resulted'
+      );
     }
 
     const now = nowIso();
@@ -519,14 +551,18 @@ export class DiagnosticsService {
     const signedByUserId = payload.status === 'resulted' ? releasedByUserId : undefined;
     const signatureHash =
       payload.status === 'resulted'
-        ? this.createResultSignatureHash(current, {
-          ...payload,
-          resultSummary,
-          resultValues,
-          resultAttachmentId,
-          releasedByUserId,
-          signedByUserId
-        }, now)
+        ? this.createResultSignatureHash(
+            current,
+            {
+              ...payload,
+              resultSummary,
+              resultValues,
+              resultAttachmentId,
+              releasedByUserId,
+              signedByUserId
+            },
+            now
+          )
         : undefined;
     const updated: DiagnosticOrderSummary = {
       ...current,
@@ -554,9 +590,8 @@ export class DiagnosticsService {
     payload: RecordDiagnosticResultRequest
   ): LaboratoryWorkflowState {
     const current = this.getLaboratoryWorkflow(order);
-    const nextStatus: LaboratoryWorkflowState['status'] = order.status === 'resulted'
-      ? 'reported'
-      : order.status;
+    const nextStatus: LaboratoryWorkflowState['status'] =
+      order.status === 'resulted' ? 'reported' : order.status;
     const shouldAppendEvent = current.status !== nextStatus;
     const updated = {
       ...current,
@@ -566,7 +601,8 @@ export class DiagnosticsService {
       collectedAt: order.collectedAt,
       collectedByUserId: order.collectedByUserId,
       reportedAt: order.status === 'resulted' ? order.resultedAt : current.reportedAt,
-      reportedByUserId: order.status === 'resulted' ? order.releasedByUserId : current.reportedByUserId,
+      reportedByUserId:
+        order.status === 'resulted' ? order.releasedByUserId : current.reportedByUserId,
       resultSummary: order.resultSummary,
       resultValues: order.resultValues,
       resultAttachmentId: order.resultAttachmentId,
@@ -578,21 +614,20 @@ export class DiagnosticsService {
     const requestFingerprint = this.fingerprintLaboratoryPayload(payload);
     const withEvent = shouldAppendEvent
       ? this.appendLaboratoryEvent(
-        updated,
-        nextStatus,
-        nextStatus,
-        updated.collectionAttempt,
-        order.updatedAt,
-        payload.status === 'collected'
+          updated,
+          nextStatus,
+          nextStatus,
+          updated.collectionAttempt,
+          order.updatedAt,
+          payload.status === 'collected'
             ? payload.collectedByUserId
             : payload.status === 'resulted'
-            ? payload.releasedByUserId
-            : undefined
-        ,
-        undefined,
-        idempotencyKey,
-        requestFingerprint
-      )
+              ? payload.releasedByUserId
+              : undefined,
+          undefined,
+          idempotencyKey,
+          requestFingerprint
+        )
       : updated;
     return withEvent;
   }
@@ -601,18 +636,23 @@ export class DiagnosticsService {
     orderId: DiagnosticOrderId,
     payload: LaboratoryWorkflowTransitionRequest
   ): { readonly order: DiagnosticOrderSummary; readonly workflow: LaboratoryWorkflowState } {
-    const currentOrder = this.getOrThrow(orderId);
+    const currentOrder = this.getOrderOrThrow(orderId);
     const currentWorkflow = this.getLaboratoryWorkflow(currentOrder);
     const allowed = VALID_LABORATORY_TRANSITIONS[currentWorkflow.status] ?? [];
     if (!allowed.includes(payload.status)) {
-      throw new Error(`Invalid laboratory status transition from '${currentWorkflow.status}' to '${payload.status}'`);
+      throw new Error(
+        `Invalid laboratory status transition from '${currentWorkflow.status}' to '${payload.status}'`
+      );
     }
 
     const now = nowIso();
     const idempotencyKey = this.getLaboratoryIdempotencyKey(payload);
     const requestFingerprint = this.fingerprintLaboratoryPayload(payload);
     if (payload.status === 'collected') {
-      const collectedByUserId = requireNonEmptyString(payload.collectedByUserId, 'collectedByUserId');
+      const collectedByUserId = requireNonEmptyString(
+        payload.collectedByUserId,
+        'collectedByUserId'
+      );
       const workflow = this.appendLaboratoryEvent(
         {
           ...currentWorkflow,
@@ -674,7 +714,9 @@ export class DiagnosticsService {
       const resultAttachmentId = payload.resultAttachmentId?.trim();
       const resultValues = normalizeLaboratoryResultValues(payload.resultValues);
       if (!resultSummary && !resultAttachmentId && !resultValues?.length) {
-        throw new Error('resultSummary or resultAttachmentId or resultValues is required when status is reported');
+        throw new Error(
+          'resultSummary or resultAttachmentId or resultValues is required when status is reported'
+        );
       }
       const actorUserId = requireNonEmptyString(payload.actorUserId, 'actorUserId');
       const signatureHash = this.createLaboratorySignatureHash(
@@ -727,14 +769,15 @@ export class DiagnosticsService {
     }
 
     if (payload.status === 'delivered') {
-      const deliveredByUserId = requireNonEmptyString(payload.deliveredByUserId, 'deliveredByUserId');
+      const deliveredByUserId = requireNonEmptyString(
+        payload.deliveredByUserId,
+        'deliveredByUserId'
+      );
       const deliveryChannel = requireNonEmptyString(payload.deliveryChannel, 'deliveryChannel');
       if (deliveryChannel.length > 80) {
         throw new Error('deliveryChannel must be at most 80 characters');
       }
-      const deliveredAt = payload.deliveredAt
-        ? new Date(payload.deliveredAt)
-        : new Date(now);
+      const deliveredAt = payload.deliveredAt ? new Date(payload.deliveredAt) : new Date(now);
       if (Number.isNaN(deliveredAt.getTime())) {
         throw new Error('deliveredAt must be a valid date');
       }
@@ -790,7 +833,7 @@ export class DiagnosticsService {
     orderId: DiagnosticOrderId,
     payload: LaboratoryRecollectionRequest
   ): { readonly order: DiagnosticOrderSummary; readonly workflow: LaboratoryWorkflowState } {
-    const currentOrder = this.getOrThrow(orderId);
+    const currentOrder = this.getOrderOrThrow(orderId);
     const currentWorkflow = this.getLaboratoryWorkflow(currentOrder);
     if (!['collected', 'in_analysis', 'reported', 'delivered'].includes(currentWorkflow.status)) {
       throw new Error(`Laboratory order cannot be recollected from '${currentWorkflow.status}'`);
@@ -941,12 +984,12 @@ export class DiagnosticsService {
 
       const replay = idempotencyKey
         ? await this.findLaboratoryReplay({
-          accountId,
-          orderId,
-          eventType: this.laboratoryEventType(payload),
-          idempotencyKey,
-          requestFingerprint
-        })
+            accountId,
+            orderId,
+            eventType: this.laboratoryEventType(payload),
+            idempotencyKey,
+            requestFingerprint
+          })
         : null;
       if (replay) {
         return this.applyLaboratoryPersistenceResult(replay, cacheKey, requestFingerprint);
@@ -994,12 +1037,12 @@ export class DiagnosticsService {
 
       const replay = idempotencyKey
         ? await this.findLaboratoryReplay({
-          accountId,
-          orderId,
-          eventType: 'recollected',
-          idempotencyKey,
-          requestFingerprint
-        })
+            accountId,
+            orderId,
+            eventType: 'recollected',
+            idempotencyKey,
+            requestFingerprint
+          })
         : null;
       if (replay) {
         return this.applyLaboratoryPersistenceResult(replay, cacheKey, requestFingerprint);
@@ -1026,10 +1069,12 @@ export class DiagnosticsService {
   }
 
   public recordResult(
+    accountId: AccountId,
     orderId: DiagnosticOrderId,
     payload: RecordDiagnosticResultRequest
   ): DiagnosticOrderSummary {
     this.requireSynchronousPersistenceMode();
+    this.getOrderForAccount(accountId, orderId);
     const updated = this.buildResult(orderId, payload);
     const workflow = this.synchronizeLegacyLaboratoryWorkflow(updated, payload);
     this.#orders.set(orderId, updated);
@@ -1038,12 +1083,11 @@ export class DiagnosticsService {
   }
 
   public async recordResultAndPersist(
+    accountId: AccountId,
     orderId: DiagnosticOrderId,
     payload: RecordDiagnosticResultRequest
   ): Promise<DiagnosticOrderSummary> {
-    const current = this.#orders.get(orderId);
-    if (!current) throw new NotFoundError('Diagnostic order not found', { orderId });
-    return this.recordResultAndPersistForAccount(current.accountId, orderId, payload);
+    return this.recordResultAndPersistForAccount(accountId, orderId, payload);
   }
 
   public async recordResultAndPersistForAccount(
@@ -1065,12 +1109,12 @@ export class DiagnosticsService {
 
       const replay = idempotencyKey
         ? await this.findLaboratoryReplay({
-          accountId,
-          orderId,
-          eventType: 'reported',
-          idempotencyKey,
-          requestFingerprint
-        })
+            accountId,
+            orderId,
+            eventType: 'reported',
+            idempotencyKey,
+            requestFingerprint
+          })
         : null;
       if (replay) {
         this.applyLaboratoryPersistenceResult(replay, cacheKey, requestFingerprint);

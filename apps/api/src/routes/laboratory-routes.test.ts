@@ -137,7 +137,7 @@ function createLaboratoryService(): LaboratoryService {
     } as never
   );
 
-  const requestedOrder = diagnostics.createOrder({
+  const requestedOrder = diagnostics.createOrder('acc-1' as never, {
     encounterId: 'enc-1',
     patientId: 'pat-1',
     examType: 'Hemograma',
@@ -145,17 +145,17 @@ function createLaboratoryService(): LaboratoryService {
     reason: 'Check-up'
   });
 
-  diagnostics.recordResult(requestedOrder.id, {
+  diagnostics.recordResult('acc-1' as never, requestedOrder.id, {
     status: 'collected',
     collectedByUserId: 'lab-user'
   });
-  diagnostics.recordResult(requestedOrder.id, {
+  diagnostics.recordResult('acc-1' as never, requestedOrder.id, {
     status: 'resulted',
     resultSummary: 'Hemograma dentro da normalidade',
     releasedByUserId: 'user-1'
   });
 
-  diagnostics.createOrder({
+  diagnostics.createOrder('acc-1' as never, {
     encounterId: 'enc-1',
     patientId: 'pat-1',
     examType: 'Bioquimico',
@@ -209,7 +209,10 @@ test('handleLaboratoryRoutes keeps /diagnostics/orders as a coherent bridge', as
   assert.equal(response.statusCode, 200);
   const payload = response.bodyJson<{ items: Array<{ encounterId: string }> }>();
   assert.equal(payload.items.length, 2);
-  assert.equal(payload.items.every((item) => item.encounterId === 'enc-1'), true);
+  assert.equal(
+    payload.items.every((item) => item.encounterId === 'enc-1'),
+    true
+  );
 });
 
 test('handleLaboratoryRoutes keeps legacy resulted status beside canonical reported status', async () => {
@@ -245,11 +248,14 @@ test('handleLaboratoryRoutes keeps legacy resulted status beside canonical repor
     }
   );
 
-  const legacy = legacyResponse.bodyJson<{ items: Array<{ id: string; status: string }> }>().items
-    .find((item) => item.id === legacyOrder.id);
-  const canonical = canonicalResponse.bodyJson<{
-    items: Array<{ id: string; status: string; legacyStatus?: string; workflowVersion?: number }>;
-  }>().items.find((item) => item.id === legacyOrder.id);
+  const legacy = legacyResponse
+    .bodyJson<{ items: Array<{ id: string; status: string }> }>()
+    .items.find((item) => item.id === legacyOrder.id);
+  const canonical = canonicalResponse
+    .bodyJson<{
+      items: Array<{ id: string; status: string; legacyStatus?: string; workflowVersion?: number }>;
+    }>()
+    .items.find((item) => item.id === legacyOrder.id);
 
   assert.equal(legacy?.status, 'resulted');
   assert.equal(canonical?.status, 'reported');
@@ -294,7 +300,10 @@ test('handleLaboratoryRoutes accepts Vetus-like laboratory exams aliases and fil
   assert.equal(datedResponse.statusCode, 200);
   const datedPayload = datedResponse.bodyJson<{ items: Array<{ patientId: string }> }>();
   assert.equal(datedPayload.items.length, 2);
-  assert.equal(datedPayload.items.every((item) => item.patientId === 'pat-1'), true);
+  assert.equal(
+    datedPayload.items.every((item) => item.patientId === 'pat-1'),
+    true
+  );
 });
 
 test('handleLaboratoryRoutes searches structured-only laboratory values', async () => {
@@ -312,18 +321,18 @@ test('handleLaboratoryRoutes searches structured-only laboratory values', async 
       }
     } as never
   );
-  const requested = diagnostics.createOrder({
+  const requested = diagnostics.createOrder('acc-1' as never, {
     encounterId: 'enc-1',
     patientId: 'pat-1',
     examType: 'Bioquimico',
     examCatalogId: 'cat_002',
     reason: 'Busca estruturada'
   });
-  diagnostics.recordResult(requested.id, {
+  diagnostics.recordResult('acc-1' as never, requested.id, {
     status: 'collected',
     collectedByUserId: 'lab-user'
   });
-  diagnostics.recordResult(requested.id, {
+  diagnostics.recordResult('acc-1' as never, requested.id, {
     status: 'resulted',
     resultValues: [
       { parameter: 'ALT', value: '92', unit: 'U/L' },
@@ -362,7 +371,10 @@ test('handleLaboratoryRoutes searches structured-only laboratory values', async 
   );
 
   assert.equal(accentInsensitiveResponse.statusCode, 200);
-  assert.equal(accentInsensitiveResponse.bodyJson<{ items: Array<{ id: string }> }>().items.length, 1);
+  assert.equal(
+    accentInsensitiveResponse.bodyJson<{ items: Array<{ id: string }> }>().items.length,
+    1
+  );
 });
 
 test('handleLaboratoryRoutes exposes diagnostics catalog and order detail', async () => {
@@ -530,7 +542,10 @@ test('handleLaboratoryRoutes exposes the canonical analysis, report, recollectio
   const request = (status: string, body: object) =>
     handleLaboratoryRoutes(
       `/laboratory/orders/${openOrder.id}/result`,
-      createMockRequest('POST', `/laboratory/orders/${openOrder.id}/result`, { status, ...body }) as never,
+      createMockRequest('POST', `/laboratory/orders/${openOrder.id}/result`, {
+        status,
+        ...body
+      }) as never,
       new MockResponse() as never,
       `corr-lab-workflow-${status}`,
       {
@@ -545,22 +560,28 @@ test('handleLaboratoryRoutes exposes the canonical analysis, report, recollectio
 
   const forgedSignatureResponse = new MockResponse();
   await assert.rejects(
-    () => handleLaboratoryRoutes(
-      `/laboratory/orders/${openOrder.id}/result`,
-      createMockRequest('POST', `/laboratory/orders/${openOrder.id}/result`, {
-        status: 'reported',
-        resultSummary: 'Resultado forjado',
-        signedByUserId: 'attacker',
-        signatureHash: 'hash-forjado'
-      }, 'lab-forged-signature') as never,
-      forgedSignatureResponse as never,
-      'corr-lab-workflow-forged',
-      {
-        laboratory,
-        audit: { write: () => ({}) } as never,
-        requirePrincipal: () => createPrincipal()
-      }
-    ),
+    () =>
+      handleLaboratoryRoutes(
+        `/laboratory/orders/${openOrder.id}/result`,
+        createMockRequest(
+          'POST',
+          `/laboratory/orders/${openOrder.id}/result`,
+          {
+            status: 'reported',
+            resultSummary: 'Resultado forjado',
+            signedByUserId: 'attacker',
+            signatureHash: 'hash-forjado'
+          },
+          'lab-forged-signature'
+        ) as never,
+        forgedSignatureResponse as never,
+        'corr-lab-workflow-forged',
+        {
+          laboratory,
+          audit: { write: () => ({}) } as never,
+          requirePrincipal: () => createPrincipal()
+        }
+      ),
     /server|principal|assinatura|signature/i
   );
 
@@ -581,8 +602,14 @@ test('handleLaboratoryRoutes exposes the canonical analysis, report, recollectio
   );
   assert.equal(reportedHandled, true);
   assert.equal(reportedResponse.statusCode, 200);
-  assert.equal(reportedResponse.bodyJson<{ status: string; reportedByUserId?: string }>().status, 'reported');
-  assert.equal(reportedResponse.bodyJson<{ reportedByUserId?: string }>().reportedByUserId, 'user-1');
+  assert.equal(
+    reportedResponse.bodyJson<{ status: string; reportedByUserId?: string }>().status,
+    'reported'
+  );
+  assert.equal(
+    reportedResponse.bodyJson<{ reportedByUserId?: string }>().reportedByUserId,
+    'user-1'
+  );
 
   const recollectResponse = new MockResponse();
   const recollectHandled = await handleLaboratoryRoutes(
@@ -599,7 +626,10 @@ test('handleLaboratoryRoutes exposes the canonical analysis, report, recollectio
     }
   );
   assert.equal(recollectHandled, true);
-  assert.equal(recollectResponse.bodyJson<{ status: string; collectionAttempt: number }>().status, 'collected');
+  assert.equal(
+    recollectResponse.bodyJson<{ status: string; collectionAttempt: number }>().status,
+    'collected'
+  );
   assert.equal(recollectResponse.bodyJson<{ collectionAttempt: number }>().collectionAttempt, 2);
 
   await request('in_analysis', {});
@@ -643,9 +673,12 @@ test('handleLaboratoryRoutes exposes the canonical analysis, report, recollectio
       requirePrincipal: () => createPrincipal()
     }
   );
-  assert.equal(listResponse.bodyJson<{ items: Array<{ id: string; status: string }> }>().items.find(
-    (item) => item.id === openOrder.id
-  )?.status, 'delivered');
+  assert.equal(
+    listResponse
+      .bodyJson<{ items: Array<{ id: string; status: string }> }>()
+      .items.find((item) => item.id === openOrder.id)?.status,
+    'delivered'
+  );
 });
 
 test('handleLaboratoryRoutes requires an enabled staff principal for laboratory signatures', async () => {
@@ -671,21 +704,22 @@ test('handleLaboratoryRoutes requires an enabled staff principal for laboratory 
   };
 
   await assert.rejects(
-    () => handleLaboratoryRoutes(
-      `/laboratory/orders/${order.id}/result`,
-      createMockRequest('POST', `/laboratory/orders/${order.id}/result`, {
-        status: 'reported',
-        resultSummary: 'Sem staff habilitado',
-        signedByUserId: 'attacker'
-      }) as never,
-      new MockResponse() as never,
-      'corr-lab-disabled-staff',
-      {
-        laboratory,
-        audit: { write: () => ({}) } as never,
-        requirePrincipal: () => inactivePrincipal
-      }
-    ),
+    () =>
+      handleLaboratoryRoutes(
+        `/laboratory/orders/${order.id}/result`,
+        createMockRequest('POST', `/laboratory/orders/${order.id}/result`, {
+          status: 'reported',
+          resultSummary: 'Sem staff habilitado',
+          signedByUserId: 'attacker'
+        }) as never,
+        new MockResponse() as never,
+        'corr-lab-disabled-staff',
+        {
+          laboratory,
+          audit: { write: () => ({}) } as never,
+          requirePrincipal: () => inactivePrincipal
+        }
+      ),
     /staff|professional|habilitado|active/i
   );
 });
@@ -778,7 +812,9 @@ test('handleLaboratoryRoutes exposes Vetus-like hemograms aliases filtered to HE
 
   assert.equal(handled, true);
   assert.equal(response.statusCode, 200);
-  const payload = response.bodyJson<{ items: Array<{ examCatalogId?: string; resultSummary?: string }> }>();
+  const payload = response.bodyJson<{
+    items: Array<{ examCatalogId?: string; resultSummary?: string }>;
+  }>();
   assert.equal(payload.items.length, 1);
   assert.equal(payload.items[0].examCatalogId, 'cat_001');
   assert.match(payload.items[0].resultSummary ?? '', /normalidade/i);
@@ -805,18 +841,18 @@ test('handleLaboratoryRoutes exposes Vetus-like hemograms aliases filtered to HE
 
 test('handleLaboratoryRoutes exposes Vetus-like urinalysis aliases filtered to URIN results', async () => {
   const laboratory = createLaboratoryService();
-  const urinalysisOrder = laboratory.createOrder({
+  const urinalysisOrder = laboratory.createOrder('acc-1' as never, {
     encounterId: 'enc-1',
     patientId: 'pat-1',
     examType: 'Urina',
     examCatalogId: 'cat_003',
     reason: 'Suspeita urinaria'
   });
-  laboratory.recordResult(urinalysisOrder.id, {
+  laboratory.recordResult('acc-1' as never, urinalysisOrder.id, {
     status: 'collected',
     collectedByUserId: 'lab-user'
   });
-  laboratory.recordResult(urinalysisOrder.id, {
+  laboratory.recordResult('acc-1' as never, urinalysisOrder.id, {
     status: 'resulted',
     resultSummary: 'Densidade urinaria dentro da referencia',
     releasedByUserId: 'user-1'
@@ -837,7 +873,9 @@ test('handleLaboratoryRoutes exposes Vetus-like urinalysis aliases filtered to U
 
   assert.equal(handled, true);
   assert.equal(response.statusCode, 200);
-  const payload = response.bodyJson<{ items: Array<{ examCatalogId?: string; resultSummary?: string }> }>();
+  const payload = response.bodyJson<{
+    items: Array<{ examCatalogId?: string; resultSummary?: string }>;
+  }>();
   assert.equal(payload.items.length, 1);
   assert.equal(payload.items[0].examCatalogId, 'cat_003');
   assert.match(payload.items[0].resultSummary ?? '', /densidade/i);
@@ -864,18 +902,18 @@ test('handleLaboratoryRoutes exposes Vetus-like urinalysis aliases filtered to U
 
 test('handleLaboratoryRoutes exposes Vetus-like biochemistry aliases filtered to BIO results', async () => {
   const laboratory = createLaboratoryService();
-  const biochemistryOrder = laboratory.createOrder({
+  const biochemistryOrder = laboratory.createOrder('acc-1' as never, {
     encounterId: 'enc-1',
     patientId: 'pat-1',
     examType: 'Bioquimico',
     examCatalogId: 'cat_002',
     reason: 'Perfil bioquimico'
   });
-  laboratory.recordResult(biochemistryOrder.id, {
+  laboratory.recordResult('acc-1' as never, biochemistryOrder.id, {
     status: 'collected',
     collectedByUserId: 'lab-user'
   });
-  laboratory.recordResult(biochemistryOrder.id, {
+  laboratory.recordResult('acc-1' as never, biochemistryOrder.id, {
     status: 'resulted',
     resultSummary: 'ALT dentro da referencia',
     releasedByUserId: 'user-1'
@@ -896,7 +934,9 @@ test('handleLaboratoryRoutes exposes Vetus-like biochemistry aliases filtered to
 
   assert.equal(handled, true);
   assert.equal(response.statusCode, 200);
-  const payload = response.bodyJson<{ items: Array<{ examCatalogId?: string; resultSummary?: string }> }>();
+  const payload = response.bodyJson<{
+    items: Array<{ examCatalogId?: string; resultSummary?: string }>;
+  }>();
   assert.equal(payload.items.length, 1);
   assert.equal(payload.items[0].examCatalogId, 'cat_002');
   assert.match(payload.items[0].resultSummary ?? '', /alt/i);
@@ -952,7 +992,10 @@ test('handleLaboratoryRoutes exposes Vetus-like laboratory equipment catalog wit
   const listResponse = new MockResponse();
   const listHandled = await handleLaboratoryRoutes(
     '/laboratorio/equipamentos',
-    { method: 'GET', url: '/laboratorio/equipamentos?descricao=bioquimico&tipo=bioquimica' } as never,
+    {
+      method: 'GET',
+      url: '/laboratorio/equipamentos?descricao=bioquimico&tipo=bioquimica'
+    } as never,
     listResponse as never,
     'corr-lab-equip-list',
     {
@@ -1020,7 +1063,10 @@ test('handleLaboratoryRoutes exposes Vetus-like laboratory report type catalog w
   const listResponse = new MockResponse();
   const listHandled = await handleLaboratoryRoutes(
     '/laboratorio/tipos-de-laudo',
-    { method: 'GET', url: '/laboratorio/tipos-de-laudo?descricao=citologico&categoria=laboratorial' } as never,
+    {
+      method: 'GET',
+      url: '/laboratorio/tipos-de-laudo?descricao=citologico&categoria=laboratorial'
+    } as never,
     listResponse as never,
     'corr-lab-report-type-list',
     {
@@ -1087,7 +1133,10 @@ test('handleLaboratoryRoutes exposes Vetus-like hemogram reference value catalog
   const listResponse = new MockResponse();
   const listHandled = await handleLaboratoryRoutes(
     '/laboratorio/vlr-ref-hemograma',
-    { method: 'GET', url: '/laboratorio/vlr-ref-hemograma?parametro=plaquetas&unidade=mil' } as never,
+    {
+      method: 'GET',
+      url: '/laboratorio/vlr-ref-hemograma?parametro=plaquetas&unidade=mil'
+    } as never,
     listResponse as never,
     'corr-lab-hem-ref-list',
     {
@@ -1101,7 +1150,10 @@ test('handleLaboratoryRoutes exposes Vetus-like hemogram reference value catalog
   assert.equal(listResponse.statusCode, 200);
   const listPayload = listResponse.bodyJson<{ items: Array<{ id: string; examType: string }> }>();
   assert.ok(listPayload.items.some((item) => item.id === created.id));
-  assert.equal(listPayload.items.every((item) => item.examType === 'HEM'), true);
+  assert.equal(
+    listPayload.items.every((item) => item.examType === 'HEM'),
+    true
+  );
 
   const updateResponse = new MockResponse();
   const updateHandled = await handleLaboratoryRoutes(
@@ -1169,7 +1221,10 @@ test('handleLaboratoryRoutes exposes Vetus-like biochemistry reference value cat
   assert.equal(listResponse.statusCode, 200);
   const listPayload = listResponse.bodyJson<{ items: Array<{ id: string; examType: string }> }>();
   assert.ok(listPayload.items.some((item) => item.id === created.id));
-  assert.equal(listPayload.items.every((item) => item.examType === 'BIO'), true);
+  assert.equal(
+    listPayload.items.every((item) => item.examType === 'BIO'),
+    true
+  );
 
   const updateResponse = new MockResponse();
   const updateHandled = await handleLaboratoryRoutes(

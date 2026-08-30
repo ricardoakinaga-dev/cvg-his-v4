@@ -2693,3 +2693,40 @@ list and worktree were reconciled. The pre-existing design-system
 `tsbuildinfo` cache remains outside the commit. The next action is fresh
 residual scouting under a new authority; global ERP remains
 `IN_PROGRESS/PARTIAL` and promotion remains `BLOCKED`.
+
+## 2026-08-30 — diagnostics/laboratory/attachments tenant-boundary checkpoint
+
+Fresh residual scouting after `19de7ff0` selected
+`CVG-003-DIAGNOSTICS-TENANT-BOUNDARY`. The bounded implementation now
+requires explicit `AccountId` scope across DiagnosticsService compatibility
+create/list/detail/result paths, LaboratoryService gateway/proxy calls,
+diagnostic attachment upload and authenticated encounter-summary/order/
+attachment callers. Foreign encounters and orders fail closed before
+disclosure or mutation; same-account laboratory and attachment behavior is
+preserved. No migration, schema, repository SQL, provider, credential,
+target, production, deployment, release or external mutation was performed.
+
+TDD RED recorded the expected legacy-signature failures. GREEN passed
+diagnostics `32/32` and attachments `14/14`; focused V8 coverage passed
+`50/50` at `91.05%` statements, `84.71%` branches and `93.91%` functions.
+The complete API rail passed `528/528`; official workspace coverage passed
+`2189` with `1` expected skip at `80.63%` statements, `81.13%` branches and
+`87.17%` functions. Typecheck/build and bounded security/static controls
+passed. Full lint retains only the unrelated pre-existing
+`packages/contracts/src/counterSales.ts:38,77` `no-control-regex` baseline.
+
+The first independent review returned `CONDITIONAL` with two Medium findings;
+behavior-focused coverage and first-party HTTP tests remediated both. A fresh
+independent review then returned `APPROVE_BOUNDED` with no Critical, High or
+Medium findings. The Low residual remains explicit: direct attachment
+`getById`, `getFileContent` and `listByLinkedEntity` APIs lack account scope,
+while authenticated server callers retain target/account checks. The bounded
+gate is `PASS_BOUNDED` / `COMPLETE_BOUNDED`, ready for an explicit commit.
+
+Evidence: `.agent/gates/verified-CVG-003-diagnostics-tenant-boundary.json`,
+`.agent/artifacts/CVG-003-diagnostics-tenant-boundary-2026-08-30.md`,
+`.agent/tasks/CVG-003-DIAGNOSTICS-TENANT-BOUNDARY.md` and the related
+`.agent/verification.jsonl` records. Global ERP remains `IN_PROGRESS/PARTIAL`,
+Vetus functional verification remains `4/11`, clinical parity remains `2/3`,
+readiness remains `95/100` (`42 PASS`, `3 WARN`, `1 FAIL`) and promotion
+remains `BLOCKED`.

@@ -32,23 +32,26 @@ import {
 } from './catalog.js';
 
 interface DiagnosticsOrdersGateway {
-  list(encounterId?: string): readonly DiagnosticOrderSummary[];
+  list(accountId: AccountId, encounterId?: string): readonly DiagnosticOrderSummary[];
   listByAccount(accountId: AccountId): readonly DiagnosticOrderSummary[];
   listCatalog(): readonly ExamCatalogEntry[];
-  createOrder(payload: CreateDiagnosticOrderRequest): DiagnosticOrderSummary;
+  createOrder(accountId: AccountId, payload: CreateDiagnosticOrderRequest): DiagnosticOrderSummary;
   createOrderAndPersist?: (
+    accountId: AccountId,
     payload: CreateDiagnosticOrderRequest
   ) => Promise<DiagnosticOrderSummary>;
   createOrderAndPersistForAccount?: (
     accountId: AccountId,
     payload: CreateDiagnosticOrderRequest
   ) => Promise<DiagnosticOrderSummary>;
-  getOrThrow(orderId: DiagnosticOrderId): DiagnosticOrderSummary;
+  getOrThrow(accountId: AccountId, orderId: DiagnosticOrderId): DiagnosticOrderSummary;
   recordResult(
+    accountId: AccountId,
     orderId: DiagnosticOrderId,
     payload: RecordDiagnosticResultRequest
   ): DiagnosticOrderSummary;
   recordResultAndPersist?: (
+    accountId: AccountId,
     orderId: DiagnosticOrderId,
     payload: RecordDiagnosticResultRequest
   ) => Promise<DiagnosticOrderSummary>;
@@ -77,7 +80,10 @@ interface DiagnosticsOrdersGateway {
 export interface LaboratoryCatalogRepository {
   ensureSeedData(accountId: AccountId): Promise<void>;
   listEquipment(accountId: AccountId): Promise<readonly LaboratoryEquipmentSummary[]>;
-  getEquipment(accountId: AccountId, equipmentId: string): Promise<LaboratoryEquipmentSummary | undefined>;
+  getEquipment(
+    accountId: AccountId,
+    equipmentId: string
+  ): Promise<LaboratoryEquipmentSummary | undefined>;
   createEquipment(
     accountId: AccountId,
     payload: CreateLaboratoryEquipmentRequest
@@ -88,7 +94,10 @@ export interface LaboratoryCatalogRepository {
     payload: UpdateLaboratoryEquipmentRequest
   ): Promise<LaboratoryEquipmentSummary>;
   listReportTypes(accountId: AccountId): Promise<readonly LaboratoryReportTypeSummary[]>;
-  getReportType(accountId: AccountId, reportTypeId: string): Promise<LaboratoryReportTypeSummary | undefined>;
+  getReportType(
+    accountId: AccountId,
+    reportTypeId: string
+  ): Promise<LaboratoryReportTypeSummary | undefined>;
   createReportType(
     accountId: AccountId,
     payload: CreateLaboratoryReportTypeRequest
@@ -102,7 +111,10 @@ export interface LaboratoryCatalogRepository {
     accountId: AccountId,
     filterExam?: string
   ): Promise<readonly LaboratoryReferenceValueSummary[]>;
-  getReferenceValue(accountId: AccountId, referenceValueId: string): Promise<LaboratoryReferenceValueSummary | undefined>;
+  getReferenceValue(
+    accountId: AccountId,
+    referenceValueId: string
+  ): Promise<LaboratoryReferenceValueSummary | undefined>;
   createReferenceValue(
     accountId: AccountId,
     payload: CreateLaboratoryReferenceValueRequest
@@ -119,7 +131,10 @@ export interface LaboratoryServiceOptions {
 }
 
 function normalizeText(value: string | undefined): string {
-  return (value ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toUpperCase();
+  return (value ?? '')
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toUpperCase();
 }
 
 function toCanonicalLaboratoryStatus(
@@ -281,7 +296,9 @@ export class InMemoryLaboratoryCatalogRepository implements LaboratoryCatalogRep
     await this.ensureSeedData(accountId);
     const normalizedFilter = normalizeText(filterExam);
     return [...(this.#referenceValues.get(accountId) ?? [])]
-      .filter((item) => !normalizedFilter || normalizeText(item.examType).includes(normalizedFilter))
+      .filter(
+        (item) => !normalizedFilter || normalizeText(item.examType).includes(normalizedFilter)
+      )
       .sort((left, right) => left.parameter.localeCompare(right.parameter));
   }
 
@@ -290,7 +307,9 @@ export class InMemoryLaboratoryCatalogRepository implements LaboratoryCatalogRep
     referenceValueId: string
   ): Promise<LaboratoryReferenceValueSummary | undefined> {
     await this.ensureSeedData(accountId);
-    return (this.#referenceValues.get(accountId) ?? []).find((item) => item.id === referenceValueId);
+    return (this.#referenceValues.get(accountId) ?? []).find(
+      (item) => item.id === referenceValueId
+    );
   }
 
   public async createReferenceValue(
@@ -357,9 +376,9 @@ export class LaboratoryService {
     accountId: AccountId,
     encounterId?: string
   ): Promise<readonly DiagnosticOrderSummary[]> {
-    const items = encounterId
-      ? this.#diagnostics.list(encounterId).filter((order) => order.accountId === accountId)
-      : this.#diagnostics.listByAccount(accountId);
+    const items = this.#diagnostics
+      .list(accountId, encounterId)
+      .filter((order) => order.accountId === accountId);
 
     return [...items].sort((left, right) => right.createdAt.localeCompare(left.createdAt));
   }
@@ -370,29 +389,29 @@ export class LaboratoryService {
   ): Promise<readonly LaboratoryOrderSummary[]> {
     const items = this.#diagnostics.listLaboratoryOrders
       ? this.#diagnostics.listLaboratoryOrders(accountId)
-      : (await this.listOrders(accountId)).map((order): LaboratoryOrderSummary => ({
-        ...order,
-        status: toCanonicalLaboratoryStatus(order.status),
-        legacyStatus: order.status === 'resulted' ? 'resulted' : undefined,
-        collectionAttempt: order.status === 'requested' ? 0 : 1,
-        history: [],
-        workflowVersion: 2 as const
-      }));
+      : (await this.listOrders(accountId)).map(
+          (order): LaboratoryOrderSummary => ({
+            ...order,
+            status: toCanonicalLaboratoryStatus(order.status),
+            legacyStatus: order.status === 'resulted' ? 'resulted' : undefined,
+            collectionAttempt: order.status === 'requested' ? 0 : 1,
+            history: [],
+            workflowVersion: 2 as const
+          })
+        );
     return [...items]
       .filter((order) => !encounterId || order.encounterId === encounterId)
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
   }
 
   public getOrder(accountId: AccountId, orderId: DiagnosticOrderId): DiagnosticOrderSummary {
-    const order = this.#diagnostics.getOrThrow(orderId);
-    if (order.accountId !== accountId) {
-      throw new Error('Diagnostic order does not belong to the current account');
-    }
-
-    return order;
+    return this.#diagnostics.getOrThrow(accountId, orderId);
   }
 
-  public getWorkflowOrder(accountId: AccountId, orderId: DiagnosticOrderId): LaboratoryOrderSummary {
+  public getWorkflowOrder(
+    accountId: AccountId,
+    orderId: DiagnosticOrderId
+  ): LaboratoryOrderSummary {
     if (this.#diagnostics.getLaboratoryOrderOrThrow) {
       return this.#diagnostics.getLaboratoryOrderOrThrow(accountId, orderId);
     }
@@ -427,21 +446,27 @@ export class LaboratoryService {
   }
 
   public listCatalog(): readonly ExamCatalogEntry[] {
-    return [...this.#diagnostics.listCatalog()].sort((left, right) => left.name.localeCompare(right.name));
+    return [...this.#diagnostics.listCatalog()].sort((left, right) =>
+      left.name.localeCompare(right.name)
+    );
   }
 
-  public createOrder(payload: CreateDiagnosticOrderRequest): DiagnosticOrderSummary {
-    return this.#diagnostics.createOrder(payload);
+  public createOrder(
+    accountId: AccountId,
+    payload: CreateDiagnosticOrderRequest
+  ): DiagnosticOrderSummary {
+    return this.#diagnostics.createOrder(accountId, payload);
   }
 
   public async createOrderAndPersist(
+    accountId: AccountId,
     payload: CreateDiagnosticOrderRequest
   ): Promise<DiagnosticOrderSummary> {
     if (this.#diagnostics.createOrderAndPersist) {
-      return this.#diagnostics.createOrderAndPersist(payload);
+      return this.#diagnostics.createOrderAndPersist(accountId, payload);
     }
 
-    return this.#diagnostics.createOrder(payload);
+    return this.#diagnostics.createOrder(accountId, payload);
   }
 
   public async createOrderAndPersistForAccount(
@@ -451,29 +476,27 @@ export class LaboratoryService {
     if (this.#diagnostics.createOrderAndPersistForAccount) {
       return this.#diagnostics.createOrderAndPersistForAccount(accountId, payload);
     }
-    const order = await this.createOrderAndPersist(payload);
-    if (order.accountId !== accountId) {
-      throw new Error('Diagnostic order does not belong to the current account');
-    }
-    return order;
+    return this.createOrderAndPersist(accountId, payload);
   }
 
   public recordResult(
+    accountId: AccountId,
     orderId: DiagnosticOrderId,
     payload: RecordDiagnosticResultRequest
   ): DiagnosticOrderSummary {
-    return this.#diagnostics.recordResult(orderId, payload);
+    return this.#diagnostics.recordResult(accountId, orderId, payload);
   }
 
   public async recordResultAndPersist(
+    accountId: AccountId,
     orderId: DiagnosticOrderId,
     payload: RecordDiagnosticResultRequest
   ): Promise<DiagnosticOrderSummary> {
     if (this.#diagnostics.recordResultAndPersist) {
-      return this.#diagnostics.recordResultAndPersist(orderId, payload);
+      return this.#diagnostics.recordResultAndPersist(accountId, orderId, payload);
     }
 
-    return this.#diagnostics.recordResult(orderId, payload);
+    return this.#diagnostics.recordResult(accountId, orderId, payload);
   }
 
   public async recordResultAndPersistForAccount(
@@ -485,7 +508,7 @@ export class LaboratoryService {
       return this.#diagnostics.recordResultAndPersistForAccount(accountId, orderId, payload);
     }
     const order = this.getOrder(accountId, orderId);
-    return this.recordResultAndPersist(order.id, payload);
+    return this.recordResultAndPersist(accountId, order.id, payload);
   }
 
   public async transitionOrderAndPersistForAccount(
@@ -494,7 +517,11 @@ export class LaboratoryService {
     payload: LaboratoryWorkflowTransitionRequest
   ): Promise<LaboratoryOrderSummary> {
     if (this.#diagnostics.transitionLaboratoryOrderAndPersistForAccount) {
-      return this.#diagnostics.transitionLaboratoryOrderAndPersistForAccount(accountId, orderId, payload);
+      return this.#diagnostics.transitionLaboratoryOrderAndPersistForAccount(
+        accountId,
+        orderId,
+        payload
+      );
     }
     throw new Error('Canonical laboratory workflow persistence is not configured');
   }
@@ -505,7 +532,11 @@ export class LaboratoryService {
     payload: LaboratoryRecollectionRequest
   ): Promise<LaboratoryOrderSummary> {
     if (this.#diagnostics.recollectLaboratoryOrderAndPersistForAccount) {
-      return this.#diagnostics.recollectLaboratoryOrderAndPersistForAccount(accountId, orderId, payload);
+      return this.#diagnostics.recollectLaboratoryOrderAndPersistForAccount(
+        accountId,
+        orderId,
+        payload
+      );
     }
     throw new Error('Canonical laboratory workflow persistence is not configured');
   }
@@ -525,9 +556,7 @@ export class LaboratoryService {
     };
   }
 
-  public async listEquipment(
-    accountId: AccountId
-  ): Promise<readonly LaboratoryEquipmentSummary[]> {
+  public async listEquipment(accountId: AccountId): Promise<readonly LaboratoryEquipmentSummary[]> {
     if (!this.#catalogRepository) {
       return [...DEFAULT_LABORATORY_EQUIPMENT].sort((left, right) =>
         left.name.localeCompare(right.name)
@@ -640,7 +669,9 @@ export class LaboratoryService {
     if (!this.#catalogRepository) {
       const normalizedFilter = normalizeText(filterExam);
       return [...DEFAULT_LABORATORY_REFERENCE_VALUES]
-        .filter((item) => !normalizedFilter || normalizeText(item.examType).includes(normalizedFilter))
+        .filter(
+          (item) => !normalizedFilter || normalizeText(item.examType).includes(normalizedFilter)
+        )
         .sort((left, right) => left.parameter.localeCompare(right.parameter));
     }
 
@@ -653,13 +684,18 @@ export class LaboratoryService {
     referenceValueId: string
   ): Promise<LaboratoryReferenceValueSummary> {
     if (!this.#catalogRepository) {
-      const referenceValue = DEFAULT_LABORATORY_REFERENCE_VALUES.find((item) => item.id === referenceValueId);
+      const referenceValue = DEFAULT_LABORATORY_REFERENCE_VALUES.find(
+        (item) => item.id === referenceValueId
+      );
       if (!referenceValue) throw new Error('Laboratory reference value not found');
       return referenceValue;
     }
 
     await this.#catalogRepository.ensureSeedData(accountId);
-    const referenceValue = await this.#catalogRepository.getReferenceValue(accountId, referenceValueId);
+    const referenceValue = await this.#catalogRepository.getReferenceValue(
+      accountId,
+      referenceValueId
+    );
     if (!referenceValue) {
       throw new Error('Laboratory reference value not found');
     }

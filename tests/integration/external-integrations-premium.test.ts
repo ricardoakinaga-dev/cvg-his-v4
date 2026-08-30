@@ -5,7 +5,10 @@ import { describe, expect, it } from 'vitest';
 
 import { ApiKeysService } from '../../packages/modules/api-keys/src/index.ts';
 import { AuditService } from '../../packages/modules/audit/src/index.ts';
-import { DiagnosticsService, LaboratoryService } from '../../packages/modules/diagnostics/src/index.ts';
+import {
+  DiagnosticsService,
+  LaboratoryService
+} from '../../packages/modules/diagnostics/src/index.ts';
 import { EncountersService } from '../../packages/modules/encounters/src/index.ts';
 import { OwnersService } from '../../packages/modules/owners/src/index.ts';
 import { PatientsService } from '../../packages/modules/patients/src/index.ts';
@@ -98,10 +101,7 @@ const LAB_PROVIDER_KEY_ID = 'lab-key-01';
 const LAB_PROVIDER_SECRET = Buffer.alloc(32, 0x52);
 const LAB_PROVIDER_NOW_SECONDS = Math.floor(Date.now() / 1_000);
 
-function createSignedLaboratoryRequest(
-  rawKey: string,
-  payload: Record<string, string>
-): Readable {
+function createSignedLaboratoryRequest(rawKey: string, payload: Record<string, string>): Readable {
   const rawBody = Buffer.from(JSON.stringify(payload), 'utf8');
   const timestamp = String(LAB_PROVIDER_NOW_SECONDS);
   const signature = `v1=${createHmac('sha256', LAB_PROVIDER_SECRET)
@@ -408,12 +408,18 @@ describe('external integrations premium evidence', () => {
       const inboundResponse = new MockResponse();
       const inboundHandled = await handleWhatsAppRoutes(
         '/webhooks/whatsapp/inbound',
-        createJsonRequest('POST', '/webhooks/whatsapp/inbound', 'unused', {
-          MessageSid: 'wamid-inbound-1',
-          From: 'whatsapp:+5511999999999',
-          Body: 'CONFIRMAR',
-          AppointmentId: appointment.id
-        }, { 'x-webhook-secret': 'test-webhook-secret' }) as never,
+        createJsonRequest(
+          'POST',
+          '/webhooks/whatsapp/inbound',
+          'unused',
+          {
+            MessageSid: 'wamid-inbound-1',
+            From: 'whatsapp:+5511999999999',
+            Body: 'CONFIRMAR',
+            AppointmentId: appointment.id
+          },
+          { 'x-webhook-secret': 'test-webhook-secret' }
+        ) as never,
         inboundResponse as never,
         'corr-int-wa-inbound',
         {
@@ -432,7 +438,11 @@ describe('external integrations premium evidence', () => {
       const reportResponse = new MockResponse();
       await handleWhatsAppRoutes(
         `/whatsapp/appointments/${appointment.id}/report`,
-        createJsonRequest('GET', `/whatsapp/appointments/${appointment.id}/report`, 'unused') as never,
+        createJsonRequest(
+          'GET',
+          `/whatsapp/appointments/${appointment.id}/report`,
+          'unused'
+        ) as never,
         reportResponse as never,
         'corr-int-wa-report',
         {
@@ -511,7 +521,9 @@ describe('external integrations premium evidence', () => {
     );
 
     expect(syncResponse.statusCode).toBe(202);
-    expect(syncResponse.bodyJson<{ status: string; lastError: string | null }>().status).toBe('failed');
+    expect(syncResponse.bodyJson<{ status: string; lastError: string | null }>().status).toBe(
+      'failed'
+    );
 
     const reportResponse = new MockResponse();
     await handleGoogleCalendarRoutes(
@@ -561,7 +573,7 @@ describe('external integrations premium evidence', () => {
       origin: 'reception',
       reason: 'Equipment premium'
     });
-    const order = laboratory.createOrder({
+    const order = laboratory.createOrder('acc_cvg_demo' as never, {
       encounterId: encounter.id,
       patientId: encounter.patientId,
       examType: 'HEM',

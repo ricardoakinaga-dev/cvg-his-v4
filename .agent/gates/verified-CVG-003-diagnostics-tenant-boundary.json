@@ -1,0 +1,134 @@
+{
+  "record_id": "GATE-CVG-003-DIAGNOSTICS-TENANT-BOUNDARY-VFY-001",
+  "timestamp": "2026-08-30T17:50:00-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-003 account-aware DiagnosticsService/LaboratoryService/AttachmentsService and authenticated diagnostic HTTP boundary",
+  "scope_ref": "CVG-003-DIAGNOSTICS-TENANT-BOUNDARY",
+  "version": 1,
+  "active_plan": ".agent/plans/premium-enterprise-mvp.md",
+  "active_task": ".agent/tasks/CVG-003-DIAGNOSTICS-TENANT-BOUNDARY.md",
+  "verification_state": "VERIFIED_BOUNDED",
+  "next_gate": "COMMIT",
+  "criteria": [
+    {
+      "id": "V-001-SERVICE-ACCOUNT-SCOPE",
+      "description": "DiagnosticsService create/list/detail/result compatibility methods require account scope, filter encounter/order access and check before state mutation or disclosure.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-DIAGNOSTICS-TENANT-BOUNDARY-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-003-DIAGNOSTICS-TENANT-BOUNDARY-GREEN-001",
+        "packages/modules/diagnostics/src/index.ts",
+        "packages/modules/diagnostics/src/diagnostics.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The proof is repository-local and covers the service cache/repository seam; it does not certify production deployment or every future external consumer."
+    },
+    {
+      "id": "V-002-ADAPTER-AND-HTTP-SCOPE",
+      "description": "LaboratoryService forwards account scope for list/create/get/record compatibility calls, and authenticated summary/order/attachment HTTP paths preserve same-account behavior while failing closed across accounts.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/diagnostics/src/laboratory.ts",
+        "packages/modules/diagnostics/src/diagnostics.test.ts",
+        "packages/modules/attachments/src/index.ts",
+        "apps/api/src/server.ts",
+        "apps/api/src/server.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Attachment service read APIs outside upload remain outside this slice; authenticated server target/account guards remain in place."
+    },
+    {
+      "id": "V-003-REGRESSION",
+      "description": "Focused module contracts, complete API regression and official workspace coverage pass after the signature and caller changes.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-DIAGNOSTICS-TENANT-BOUNDARY-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-003-DIAGNOSTICS-TENANT-BOUNDARY-REGRESSION-001",
+        ".agent/artifacts/CVG-003-diagnostics-tenant-boundary-2026-08-30.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Local tests do not certify remote CI, target, production or distributed operation."
+    },
+    {
+      "id": "V-004-QUALITY-SECURITY",
+      "description": "Focused coverage, typecheck/build, dependency and secret security, API/schema/RLS/static controls, formatting and diff hygiene pass, with the unrelated workspace lint baseline isolated.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-DIAGNOSTICS-TENANT-BOUNDARY-QUALITY-001",
+        ".agent/artifacts/CVG-003-diagnostics-tenant-boundary-2026-08-30.md"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "Workspace lint retains packages/contracts/src/counterSales.ts:38,77 no-control-regex; remote CI, target operations and release checks remain open."
+    },
+    {
+      "id": "V-005-INDEPENDENT-REVIEW",
+      "description": "The first independent review findings were remediated with additional behavior-focused coverage and HTTP tests, and a fresh independent review approved the bounded result.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-DIAGNOSTICS-TENANT-BOUNDARY-REVIEW-001",
+        ".agent/verification.jsonl#VFY-CVG-003-DIAGNOSTICS-TENANT-BOUNDARY-REVIEW-REMEDIATION-001",
+        ".agent/verification.jsonl#VFY-CVG-003-DIAGNOSTICS-TENANT-BOUNDARY-REVIEW-REMEDIATED-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Approval is bounded; direct attachment read APIs without accountId remain a documented Low residual outside this upload-focused slice."
+    },
+    {
+      "id": "V-006-GLOBAL-NON-PROMOTION",
+      "description": "The child result is reconciled without promoting CVG-003/global ERP readiness, Vetus parity, providers, target operations, production, deployment, release or other clinical modules.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-DIAGNOSTICS-TENANT-BOUNDARY-GLOBAL-NON-PROMOTION-001",
+        ".agent/state.json",
+        ".agent/backlog.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Global ERP remains IN_PROGRESS/PARTIAL and promotion remains BLOCKED."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-003-DIAGNOSTICS-TENANT-BOUNDARY.md",
+    ".agent/artifacts/CVG-003-diagnostics-tenant-boundary-2026-08-30.md",
+    ".agent/gates/implementation-ready-CVG-003-diagnostics-tenant-boundary.json",
+    ".agent/authority.jsonl#AUTH-CVG-003-DIAGNOSTICS-TENANT-BOUNDARY-IR-001",
+    "packages/modules/diagnostics/src/index.ts",
+    "packages/modules/diagnostics/src/laboratory.ts",
+    "packages/modules/attachments/src/index.ts",
+    "apps/api/src/server.ts",
+    "apps/api/src/server.test.ts",
+    ".agent/verification.jsonl#VFY-CVG-003-DIAGNOSTICS-TENANT-BOUNDARY-FINAL-001",
+    ".agent/verification.jsonl#VFY-CVG-003-DIAGNOSTICS-TENANT-BOUNDARY-CONTROL-PLANE-001"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "No claim is made for attachment read APIs outside upload, schema/migration changes, other clinical modules, target, production, deployment, release or global ERP readiness."
+  ],
+  "conditions": [
+    "Keep this result limited to explicit account scope at the diagnostics/laboratory/attachment service and authenticated HTTP boundaries.",
+    "Preserve the documented attachment read-surface residual and require account/target authorization in future direct callers.",
+    "Keep CVG-003/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-003-DIAGNOSTICS-TENANT-BOUNDARY-IR-001",
+    "scope": "Repository-local account-aware DiagnosticsService/LaboratoryService/AttachmentsService and authenticated diagnostic HTTP boundary",
+    "decision": "Authorize only reversible service/adapter account-scope changes, authenticated server caller updates and focused tests. Exclude migrations, schema, repository SQL redesign, providers, credentials, target, production, deployment, release and global ERP promotion.",
+    "revalidation_trigger": "Any change to schema/migrations/repository SQL, other clinical modules, providers, credentials, target, production, deployment, release or global ERP promotion."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_BOUNDED",
+  "implementation_status": "COMPLETE_BOUNDED",
+  "next_action": "Commit this bounded diagnostics correction with explicit paths, verify the exact post-commit file list and then resume fresh residual scouting under a new authority.",
+  "revalidation_triggers": [
+    "Changing diagnostics, laboratory or attachment schema, migrations or repository SQL",
+    "Expanding attachment read scope or another clinical module/workflow",
+    "Changing providers, credentials, target, production, deployment, release or global ERP promotion"
+  ],
+  "supersedes": ".agent/gates/implementation-ready-CVG-003-diagnostics-tenant-boundary.json"
+}
