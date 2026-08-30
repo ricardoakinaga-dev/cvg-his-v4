@@ -178,3 +178,15 @@ readiness remains `95/100` (`42 PASS`, `3 WARN`, `1 FAIL`) and promotion
 remains `BLOCKED`. The pre-existing
 `packages/design-system/tsconfig.vue.tsbuildinfo` cache must remain outside
 the explicit commit.
+
+## Checkpoint pós-commit — 2026-08-30
+
+The bounded correction was committed locally as `8ffafa9b` with the explicit
+24-path source, test and control-plane set. The exact commit file list was
+verified and the only remaining worktree change is the pre-existing
+`packages/design-system/tsconfig.vue.tsbuildinfo`, intentionally unstaged.
+The next lifecycle state is fresh `SCOUT` under a new authority; global ERP
+remains `IN_PROGRESS/PARTIAL` and promotion remains `BLOCKED`.
+
+Evidence:
+`.agent/verification.jsonl#VFY-CVG-003-DIAGNOSTICS-TENANT-BOUNDARY-COMMIT-001`.

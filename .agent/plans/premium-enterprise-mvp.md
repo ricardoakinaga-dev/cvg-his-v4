@@ -2730,3 +2730,8 @@ Evidence: `.agent/gates/verified-CVG-003-diagnostics-tenant-boundary.json`,
 Vetus functional verification remains `4/11`, clinical parity remains `2/3`,
 readiness remains `95/100` (`42 PASS`, `3 WARN`, `1 FAIL`) and promotion
 remains `BLOCKED`.
+
+The bounded correction was committed locally as `8ffafa9b` and reconciled with
+only the pre-existing design-system `tsbuildinfo` cache outside the commit.
+Resume fresh residual scouting under a new authority; do not infer global ERP
+promotion from this child checkpoint.

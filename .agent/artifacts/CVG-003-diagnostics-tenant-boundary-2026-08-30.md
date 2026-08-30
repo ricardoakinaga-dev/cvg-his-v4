@@ -85,3 +85,15 @@ review approved within scope and is ready for an explicit local commit. After
 the commit, inspect the exact committed file list and preserve the global
 non-promotion condition before starting a new residual scout under a fresh
 authority.
+
+## Reconciliação pós-commit
+
+The bounded correction was committed locally as `8ffafa9b` (`fix: enforce
+diagnostics tenant boundary`). The commit contains the 24 explicit source,
+test and control-plane paths. The pre-existing
+`packages/design-system/tsconfig.vue.tsbuildinfo` cache remains the only
+unstaged worktree change and was intentionally excluded.
+
+Evidence:
+`.agent/verification.jsonl#VFY-CVG-003-DIAGNOSTICS-TENANT-BOUNDARY-COMMIT-001`
+and `.agent/execution-log.jsonl#EVT-1299`.

@@ -3352,7 +3352,7 @@
         "Full workspace lint retains the unrelated pre-existing packages/contracts/src/counterSales.ts:38,77 no-control-regex baseline.",
         "The pre-existing packages/design-system/tsconfig.vue.tsbuildinfo cache remains outside scope."
       ],
-      "next_action": "Ready for explicit local commit with only bounded diagnostics/laboratory/attachment source, caller, test and control-plane paths; do not stage the pre-existing tsbuildinfo cache. Reconcile the post-commit file list, then resume fresh residual scouting under a new authority while global ERP remains IN_PROGRESS/PARTIAL and promotion remains BLOCKED."
+      "next_action": "Committed locally as 8ffafa9b with only the bounded diagnostics/laboratory/attachment source, caller, test and control-plane paths; the pre-existing tsbuildinfo cache remains unstaged. Post-commit file list is reconciled. Resume fresh residual scouting under a new authority while global ERP remains IN_PROGRESS/PARTIAL and promotion remains BLOCKED."
     }
   ]
 }
