@@ -228,7 +228,7 @@ test('canonical PostgreSQL runtime survives connection close and rehydrates crit
         );
         await runtimeA.inpatient.waitForPersistence();
 
-        const surgeryCase = runtimeA.surgery.requestCase({
+        const surgeryCase = runtimeA.surgery.requestCase(accountId, {
           encounterId: encounter.id,
           patientId: patient.id,
           procedureName: 'Limpeza dentaria',
@@ -236,7 +236,7 @@ test('canonical PostgreSQL runtime survives connection close and rehydrates crit
           surgicalTeam: ['Equipe A']
         });
         await runtimeA.surgery.waitForPersistence();
-        const surgeryPreOp = runtimeA.surgery.updateStatus(surgeryCase.id, {
+        const surgeryPreOp = runtimeA.surgery.updateStatus(accountId, surgeryCase.id, {
           status: 'pre_op'
         });
         await runtimeA.surgery.waitForPersistence();
@@ -465,7 +465,7 @@ test('canonical PostgreSQL runtime survives connection close and rehydrates crit
         );
 
         assert.equal(
-          runtimeB!.surgery.getOrThrow(identifiers.surgeryCaseId as never).status,
+          runtimeB!.surgery.getOrThrow(accountId, identifiers.surgeryCaseId as never).status,
           'pre_op'
         );
         const inventoryItem = runtimeB!.inventory.getItemOrThrow(

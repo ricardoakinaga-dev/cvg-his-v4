@@ -1,0 +1,129 @@
+{
+  "record_id": "GATE-CVG-003-SURGERY-TENANT-BOUNDARY-VFY-001",
+  "timestamp": "2026-08-30T16:23:51-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-003 account-aware service and HTTP boundary for surgery case operations",
+  "scope_ref": "CVG-003-SURGERY-TENANT-BOUNDARY",
+  "version": 1,
+  "active_plan": ".agent/plans/premium-enterprise-mvp.md",
+  "active_task": ".agent/tasks/CVG-003-SURGERY-TENANT-BOUNDARY.md",
+  "verification_state": "VERIFIED_BOUNDED",
+  "next_gate": "COMMIT",
+  "criteria": [
+    {
+      "id": "V-001-SERVICE-ACCOUNT-SCOPE",
+      "description": "SurgeryService requires an explicit account for encounter-backed creation and case list/read/update operations, rejects foreign account access as not found, and checks before cache or persistence mutation.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-SURGERY-TENANT-BOUNDARY-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-003-SURGERY-TENANT-BOUNDARY-GREEN-001",
+        "packages/modules/surgery/src/index.ts:54-155",
+        "packages/modules/surgery/src/surgery.test.ts:189-215"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The proof is repository-local and covers the service cache/repository seam; it does not certify production deployment or every future external consumer."
+    },
+    {
+      "id": "V-002-HTTP-CALLER-COMPATIBILITY",
+      "description": "The authenticated surgery route forwards the principal account for list, create, detail and status operations, and existing first-party runtime persistence callers use the explicit contract.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/api/src/routes/surgery-routes.ts:36-126",
+        "apps/api/src/routes/surgery-routes.test.ts:7-66",
+        "apps/api/src/runtime.test.ts:1168-1218",
+        "apps/api/src/db-persistence.test.ts:993-1012",
+        "apps/api/src/canonical-db-runtime.test.ts:231-242,468"
+      ],
+      "confidence": "HIGH",
+      "limitations": "HTTP input-shape validation and broader surgery workflow semantics remain outside this bounded boundary slice."
+    },
+    {
+      "id": "V-003-REGRESSION",
+      "description": "Focused Surgery tests, compiled route contract, API build and complete API regression pass after the signature change.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-SURGERY-TENANT-BOUNDARY-REGRESSION-001",
+        ".agent/artifacts/CVG-003-surgery-tenant-boundary-2026-08-30.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Local tests do not certify remote CI, target, production or distributed operation."
+    },
+    {
+      "id": "V-004-QUALITY-SECURITY",
+      "description": "Focused coverage, typecheck/build, security, secret scanning, API contract, RLS/namespaces/migration checks, formatting and diff hygiene pass, with the unrelated workspace lint baseline isolated.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-SURGERY-TENANT-BOUNDARY-QUALITY-001",
+        ".agent/artifacts/CVG-003-surgery-tenant-boundary-2026-08-30.md"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "Workspace lint retains packages/contracts/src/counterSales.ts:38,77 no-control-regex; remote CI, target operations and release checks remain open."
+    },
+    {
+      "id": "V-005-INDEPENDENT-REVIEW",
+      "description": "Independent review was attempted but unavailable under the account/model limit; local adversarial review found no additional bounded defect and the absence is retained as a limitation rather than approval.",
+      "required": true,
+      "status": "CONDITIONAL",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-SURGERY-TENANT-BOUNDARY-REVIEW-UNAVAILABLE-001"
+      ],
+      "confidence": "LOW",
+      "limitations": "Obtain compatible independent review before higher-confidence use or scope expansion."
+    },
+    {
+      "id": "V-006-GLOBAL-NON-PROMOTION",
+      "description": "The child result is reconciled without promoting CVG-003/global ERP readiness, Vetus parity, providers, target operations, production, deployment, release or other clinical modules.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-SURGERY-TENANT-BOUNDARY-GLOBAL-NON-PROMOTION-001",
+        ".agent/state.json",
+        ".agent/backlog.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Global ERP remains IN_PROGRESS/PARTIAL and promotion remains BLOCKED."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-003-SURGERY-TENANT-BOUNDARY.md",
+    ".agent/artifacts/CVG-003-surgery-tenant-boundary-2026-08-30.md",
+    ".agent/gates/implementation-ready-CVG-003-surgery-tenant-boundary.json",
+    ".agent/authority.jsonl#AUTH-CVG-003-SURGERY-TENANT-BOUNDARY-IR-001",
+    "packages/modules/surgery/src/index.ts",
+    "packages/modules/surgery/src/surgery.test.ts",
+    "apps/api/src/routes/surgery-routes.ts",
+    "apps/api/src/routes/surgery-routes.test.ts"
+  ],
+  "confidence": "MEDIUM",
+  "gaps": [
+    "No independent post-implementation reviewer verdict was available; this is explicit and not treated as approval.",
+    "No claim is made for surgery schema, migration, repository SQL redesign, other clinical modules, target, production, deployment, release or global ERP readiness."
+  ],
+  "conditions": [
+    "Keep this result limited to explicit account scope at the SurgeryService and authenticated HTTP boundaries.",
+    "Obtain compatible independent review before higher-confidence use or scope expansion.",
+    "Keep CVG-003/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-003-SURGERY-TENANT-BOUNDARY-IR-001",
+    "scope": "Repository-local account-aware service and HTTP boundary for surgery case operations",
+    "decision": "Authorize only SurgeryService account-scoped method signatures, authenticated route forwarding, focused service/route tests and first-party caller updates. Exclude migrations, schema, repository SQL redesign, other clinical modules, providers, credentials, target, production, deployment, release and global ERP promotion.",
+    "revalidation_trigger": "Any change to surgery schema/repository SQL, another clinical module, providers, target, production, deployment, release or global ERP promotion."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_BOUNDED",
+  "implementation_status": "COMPLETE_BOUNDED",
+  "next_action": "Commit this bounded surgery service/HTTP tenant correction with explicit paths, reconcile the post-commit worktree, then resume fresh residual scouting under a new authority. Keep global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+  "revalidation_triggers": [
+    "Changing the surgery schema, migrations or repository SQL",
+    "Expanding to another clinical module or workflow",
+    "Changing providers, credentials, target, production, deployment, release or global ERP promotion"
+  ],
+  "supersedes": ".agent/gates/implementation-ready-CVG-003-surgery-tenant-boundary.json"
+}

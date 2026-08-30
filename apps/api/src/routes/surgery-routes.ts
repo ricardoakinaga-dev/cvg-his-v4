@@ -18,7 +18,10 @@ export interface SurgeryRoutesHandlers {
   surgery: SurgeryService;
   encounters: EncountersService;
   audit: AuditService;
-  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
+  requirePrincipal: (
+    request: IncomingMessage,
+    permissionCode: string
+  ) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
 }
 
 export async function handleSurgeryRoutes(
@@ -40,9 +43,7 @@ export async function handleSurgeryRoutes(
         throw new NotFoundError('Encounter not found', { encounterId });
       }
     }
-    const items = surgery
-      .list(encounterId ?? undefined)
-      .filter((item) => item.accountId === principal.user.accountId);
+    const items = surgery.list(principal.user.accountId, encounterId ?? undefined);
 
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -68,7 +69,7 @@ export async function handleSurgeryRoutes(
     if (encounter.accountId !== principal.user.accountId) {
       throw new NotFoundError('Encounter not found', { encounterId: payload.encounterId });
     }
-    const surgeryCase = surgery.requestCase(payload);
+    const surgeryCase = surgery.requestCase(principal.user.accountId, payload);
     await surgery.waitForPersistence();
 
     appendAudit(audit, {
@@ -92,10 +93,7 @@ export async function handleSurgeryRoutes(
   if (detailMatch && request.method === 'GET') {
     const principal = await requirePrincipal(request, 'surgery.read');
     const surgeryCaseId = requireNonEmptyString(detailMatch[1], 'surgeryCaseId');
-    const surgeryCase = surgery.getOrThrow(surgeryCaseId as never);
-    if (surgeryCase.accountId !== principal.user.accountId) {
-      throw new NotFoundError('Surgery case not found', { surgeryCaseId });
-    }
+    const surgeryCase = surgery.getOrThrow(principal.user.accountId, surgeryCaseId as never);
 
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -118,12 +116,13 @@ export async function handleSurgeryRoutes(
   if (statusMatch && request.method === 'POST') {
     const principal = await requirePrincipal(request, 'surgery.manage');
     const surgeryCaseId = requireNonEmptyString(statusMatch[1], 'surgeryCaseId');
-    const existing = surgery.getOrThrow(surgeryCaseId as never);
-    if (existing.accountId !== principal.user.accountId) {
-      throw new NotFoundError('Surgery case not found', { surgeryCaseId });
-    }
+    surgery.getOrThrow(principal.user.accountId, surgeryCaseId as never);
     const payload = (await readJsonBody(request)) as UpdateSurgeryStatusRequest;
-    const surgeryCase = surgery.updateStatus(surgeryCaseId as never, payload);
+    const surgeryCase = surgery.updateStatus(
+      principal.user.accountId,
+      surgeryCaseId as never,
+      payload
+    );
     await surgery.waitForPersistence();
 
     appendAudit(audit, {

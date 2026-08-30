@@ -21,8 +21,12 @@ test('SurgeryService hydrates durable cases after an API restart', async () => {
   let writes = 0;
   const service = new SurgeryService({ getOrThrow: () => undefined } as never, {
     surgeryCaseRepository: {
-      create: async () => { writes += 1; },
-      update: async () => { writes += 1; },
+      create: async () => {
+        writes += 1;
+      },
+      update: async () => {
+        writes += 1;
+      },
       findById: async () => persistedCase,
       findByEncounterId: async () => [persistedCase],
       findByAccountId: async (accountId: string) =>
@@ -32,7 +36,7 @@ test('SurgeryService hydrates durable cases after an API restart', async () => {
 
   await service.hydrateAccount(persistedCase.accountId);
 
-  assert.deepEqual(service.list(), [persistedCase]);
-  assert.equal(service.getOrThrow(persistedCase.id), persistedCase);
+  assert.deepEqual(service.list(persistedCase.accountId), [persistedCase]);
+  assert.equal(service.getOrThrow(persistedCase.accountId, persistedCase.id), persistedCase);
   assert.equal(writes, 0, 'Hydration must never reinsert already durable rows');
 });

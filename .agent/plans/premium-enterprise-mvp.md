@@ -2656,3 +2656,31 @@ The bounded worker correction was committed locally as `f14bf7a4`; the
 pre-existing design-system `tsbuildinfo` cache remained outside the commit.
 Resume fresh residual scouting under a new authority while global ERP remains
 `IN_PROGRESS/PARTIAL` and promotion remains `BLOCKED`.
+
+## 2026-08-30 — implementation-ready surgery tenant boundary
+
+Fresh local scouting after `f14bf7a4` selected
+`CVG-003-SURGERY-TENANT-BOUNDARY`: `SurgeryService` currently lacks explicit
+account scope on case create/list/read/update while the HTTP adapter owns the
+only account checks. The database repository is already tenant-scoped, so the
+authorized slice is limited to service signatures, route forwarding, focused
+tests and first-party caller updates. Two explorer delegations were unavailable
+because the account reached the `gpt-5.3-codex-spark` usage limit; this is local
+evidence, not scout consensus or approval.
+
+Evidence: `.agent/gates/implementation-ready-CVG-003-surgery-tenant-boundary.json`,
+`.agent/tasks/CVG-003-SURGERY-TENANT-BOUNDARY.md`,
+`.agent/authority.jsonl#AUTH-CVG-003-SURGERY-TENANT-BOUNDARY-IR-001` and
+`.agent/verification.jsonl#VFY-SCOUT-CVG-003-SURGERY-TENANT-BOUNDARY-001`.
+
+The intentional RED is recorded in
+`.agent/verification.jsonl#VFY-CVG-003-SURGERY-TENANT-BOUNDARY-RED-001`;
+GREEN, regression and quality are recorded in
+`.agent/verification.jsonl#VFY-CVG-003-SURGERY-TENANT-BOUNDARY-GREEN-001`,
+`.agent/verification.jsonl#VFY-CVG-003-SURGERY-TENANT-BOUNDARY-REGRESSION-001`
+and `.agent/verification.jsonl#VFY-CVG-003-SURGERY-TENANT-BOUNDARY-QUALITY-001`.
+The bounded child gate is now `PASS_BOUNDED` / `COMPLETE_BOUNDED` with an
+explicit `CONDITIONAL`/`LOW` independent-review limitation; the next action is
+an explicit commit followed by post-commit reconciliation and fresh residual
+scouting. Global ERP remains `IN_PROGRESS/PARTIAL` and promotion remains
+`BLOCKED`.

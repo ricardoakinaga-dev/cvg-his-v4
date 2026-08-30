@@ -1165,7 +1165,7 @@ test('advanced care keeps inpatient, surgery and diagnostics tied to the same cl
     `Inpatient progress registered: ${progress.note}`
   );
 
-  const surgeryCase = runtime.surgery.requestCase({
+  const surgeryCase = runtime.surgery.requestCase(veterinarian.user.accountId, {
     encounterId: encounter.id,
     patientId: encounter.patientId,
     procedureName: 'Exploratoria abdominal',
@@ -1178,7 +1178,7 @@ test('advanced care keeps inpatient, surgery and diagnostics tied to the same cl
     `Surgery requested: ${surgeryCase.procedureName}`
   );
 
-  const preOpSurgery = runtime.surgery.updateStatus(surgeryCase.id, {
+  const preOpSurgery = runtime.surgery.updateStatus(veterinarian.user.accountId, surgeryCase.id, {
     status: 'pre_op'
   });
   runtime.medicalRecords.appendAdvancedCareEvent(
@@ -1188,9 +1188,13 @@ test('advanced care keeps inpatient, surgery and diagnostics tied to the same cl
     `Surgery case moved to ${preOpSurgery.status}`
   );
 
-  const inProgressSurgery = runtime.surgery.updateStatus(surgeryCase.id, {
-    status: 'in_progress'
-  });
+  const inProgressSurgery = runtime.surgery.updateStatus(
+    veterinarian.user.accountId,
+    surgeryCase.id,
+    {
+      status: 'in_progress'
+    }
+  );
   runtime.medicalRecords.appendAdvancedCareEvent(
     encounter.id,
     veterinarian.user.id,
@@ -1198,7 +1202,7 @@ test('advanced care keeps inpatient, surgery and diagnostics tied to the same cl
     `Surgery case moved to ${inProgressSurgery.status}`
   );
 
-  const updatedSurgery = runtime.surgery.updateStatus(surgeryCase.id, {
+  const updatedSurgery = runtime.surgery.updateStatus(veterinarian.user.accountId, surgeryCase.id, {
     status: 'recovery',
     operativeNotes: 'Procedimento concluido sem intercorrencias imediatas.'
   });

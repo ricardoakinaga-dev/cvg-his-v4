@@ -1,0 +1,85 @@
+{
+  "record_id": "GATE-CVG-003-SURGERY-TENANT-BOUNDARY-IR-001",
+  "timestamp": "2026-08-30T16:06:05-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "Account-aware service and HTTP boundary for surgery case operations",
+  "scope_ref": "CVG-003-SURGERY-TENANT-BOUNDARY",
+  "version": 1,
+  "confidence": "HIGH",
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "SurgeryService requestCase, list, getOrThrow and updateStatus currently lack an explicit caller account, while the HTTP route performs account checks outside the service.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-SCOUT-CVG-003-SURGERY-TENANT-BOUNDARY-001",
+        "packages/modules/surgery/src/index.ts:75-124",
+        "apps/api/src/routes/surgery-routes.ts:39-126"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Repository-local source evidence; no target or production assertion."
+    },
+    {
+      "id": "IR-002",
+      "description": "The smallest safe correction is to require accountId at the service boundary, preserve the existing database repository tenant predicates and forward the authenticated account from the route.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-003-SURGERY-TENANT-BOUNDARY.md",
+        "packages/modules/surgery/src/repositories/database-surgery.repository.ts:28-115",
+        "apps/api/src/routes/surgery-routes.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "No schema, migration, provider, target or production change is authorized."
+    },
+    {
+      "id": "IR-003",
+      "description": "Focused service tests, a new surgery route test seam and existing runtime persistence callers can prove same-account compatibility and cross-account fail-closed behavior.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-003-SURGERY-TENANT-BOUNDARY.md",
+        "packages/modules/surgery/src/surgery.test.ts",
+        "apps/api/src/routes/surgery-routes.ts",
+        "apps/api/src/runtime.test.ts",
+        "apps/api/src/db-persistence.test.ts",
+        "apps/api/src/canonical-db-runtime.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Fresh RED/GREEN and regression evidence remain required before closure."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-003-SURGERY-TENANT-BOUNDARY.md",
+    "packages/modules/surgery/src/index.ts",
+    "apps/api/src/routes/surgery-routes.ts",
+    "packages/modules/surgery/src/surgery.test.ts",
+    "packages/modules/surgery/src/repositories/database-surgery.repository.ts"
+  ],
+  "gaps": [
+    "The intentional RED, implementation, regression, quality and review remain pending."
+  ],
+  "conditions": [
+    "Require account scope before every service-side surgery case read, create or update.",
+    "Preserve valid same-account lifecycle behavior and repository persistence.",
+    "Keep CVG-003/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via fresh local scouting after f14bf7a4",
+    "scope": "CVG-003 surgery service/HTTP tenant boundary",
+    "decision": "Authorize only surgery service signatures, route forwarding, focused tests and first-party caller updates for account-scoped read/create/update behavior. Exclude migration, schema, repository SQL redesign, providers, credentials, target, production, deployment, release and global ERP promotion.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-003-SURGERY-TENANT-BOUNDARY-IR-001",
+    "expires_or_revalidates": "Revalidate before changing schema, migration, repository SQL, other clinical modules, provider/target/production or global promotion."
+  },
+  "revalidation_triggers": [
+    "Changing surgery schema or repository SQL",
+    "Expanding to another clinical module or workflow",
+    "Changing provider, target, production, deployment, release or global ERP behavior"
+  ],
+  "next_action": "Write the focused direct-service and route RED tests before changing SurgeryService or its callers."
+}

@@ -990,7 +990,7 @@ describe('Database Persistence Integration Tests', () => {
     );
     await runtime.encounters.waitForPersistence();
 
-    const surgeryCase = runtime.surgery.requestCase({
+    const surgeryCase = runtime.surgery.requestCase(reception.user.accountId, {
       encounterId: encounter.id,
       patientId: encounter.patientId,
       procedureName: 'Ovariohisterectomia teste',
@@ -999,9 +999,11 @@ describe('Database Persistence Integration Tests', () => {
       scheduledAt: new Date().toISOString()
     });
 
-    runtime.surgery.updateStatus(surgeryCase.id, { status: 'pre_op' });
-    runtime.surgery.updateStatus(surgeryCase.id, { status: 'in_progress' });
-    const completed = runtime.surgery.updateStatus(surgeryCase.id, {
+    runtime.surgery.updateStatus(reception.user.accountId, surgeryCase.id, { status: 'pre_op' });
+    runtime.surgery.updateStatus(reception.user.accountId, surgeryCase.id, {
+      status: 'in_progress'
+    });
+    const completed = runtime.surgery.updateStatus(reception.user.accountId, surgeryCase.id, {
       status: 'recovery',
       operativeNotes: 'Procedimento realizado sem intercorrencias'
     });
