@@ -2477,3 +2477,34 @@ new authority.
 Evidence: `.agent/gates/verified-CVG-003-inpatient-stay-service-tenant-boundary.json`,
 `.agent/artifacts/CVG-003-INPATIENT-STAY-SERVICE-TENANT-BOUNDARY-2026-08-30.md`,
 `.agent/verification.jsonl#VFY-CVG-003-INPATIENT-STAY-SERVICE-TENANT-BOUNDARY-FINAL-001`.
+
+## 2026-08-30 — recovery reconciliation: namespace and triage bounded closures
+
+Continuation recovery found that this active plan ended at the inpatient-stay
+checkpoint while the current `.agent` state and append-only ledgers had already
+advanced through the CVG-012 namespace boundary and the closed-encounter
+triage slice. The plan pointer was retained; the missing history is repaired
+here without rewriting prior entries or changing product scope.
+
+`CVG-012-NAMESPACE-CANONICAL-BOUNDARY` is locally reconciled as
+`PASS_BOUNDED` / `COMPLETE_BOUNDED` after AST guard hardening and regression.
+`CVG-003-TRIAGE-CLOSED-ENCOUNTER-ATOMICITY` is locally reconciled as
+`PASS_BOUNDED` / `COMPLETE_BOUNDED`: `createTriage` rejects closed encounters
+before persistence/cache mutation, API `520/520`, workspace typecheck/build
+`70/70`, and official coverage `2,178 passed / 1 skipped` at `80.18%`
+statements/lines, `80.73%` branches and `86.66%` functions. The current
+triage review criterion remains conditional because compatible independent
+review was unavailable; no approval is inferred.
+
+Global ERP remains `IN_PROGRESS/PARTIAL`, Vetus evidence remains `100/100`
+with `4/11` areas functionally verified, clinical parity remains `2/3`,
+enterprise readiness remains `95/100` (`42 PASS`, `3 WARN`, `1 FAIL`) and
+promotion remains `BLOCKED`. The generated design-system tsbuildinfo cache is
+preserved outside scope. The next action is fresh residual scouting under a
+new authority.
+
+Evidence: `.agent/gates/verified-CVG-012-namespace-canonical-boundary.json`,
+`.agent/gates/verified-CVG-003-triage-closed-encounter-atomicity.json`,
+`.agent/artifacts/CVG-012-NAMESPACE-CANONICAL-BOUNDARY-2026-08-30.md`,
+`.agent/artifacts/CVG-003-TRIAGE-CLOSED-ENCOUNTER-ATOMICITY-2026-08-30.md`,
+`.agent/verification.jsonl#VFY-CVG-003-TRIAGE-CLOSED-ENCOUNTER-ATOMICITY-CONTROL-PLANE-001`.

@@ -21,9 +21,9 @@
   "finalization_note": "CVG-003 inpatient stay, CVG-012 namespace boundary and CVG-003 closed-encounter triage atomicity are closed locally as PASS_BOUNDED/COMPLETE_BOUNDED with MEDIUM confidence and HIGH residual risk. CVG-012's initial critic findings were remediated with AST detection, expanded fixtures and control-plane reconciliation; the current triage slice has no compatible independent review approval, which is retained as a condition. All target/provider/global gates remain open.",
   "instruction_scope_refs": [".agent/instruction-scope.md"],
   "last_gate_record": ".agent/gates/verified-CVG-003-triage-closed-encounter-atomicity.json",
-  "latest_checkpoint_evidence": "2026-08-30: EVT-1217 through EVT-1227 reconcile CVG-012 implementation, AST guard hardening after independent FAIL_BOUNDED findings, focused/regression/quality evidence, verified bounded gate and control-plane closure. EVT-1228/EVT-1229 record fresh independent residual scouting and authority for CVG-003-TRIAGE-CLOSED-ENCOUNTER-ATOMICITY; EVT-1230 records the intentional module/HTTP TDD RED; EVT-1231 records GREEN with module 11/11 and targeted HTTP 1/1 no-residue evidence; EVT-1232 through EVT-1237 record bounded regression, quality, review unavailability, global non-promotion, verified gate and control-plane reconciliation. Parent CVG-003/global ERP remain IN_PROGRESS/PARTIAL and promotion remains BLOCKED.",
-  "last_event_id": "EVT-1237",
-  "state_revision": 914,
+  "latest_checkpoint_evidence": "2026-08-30: EVT-1217 through EVT-1227 reconcile CVG-012 implementation, AST guard hardening after independent FAIL_BOUNDED findings, focused/regression/quality evidence, verified bounded gate and control-plane closure. EVT-1228/EVT-1229 record fresh independent residual scouting and authority for CVG-003-TRIAGE-CLOSED-ENCOUNTER-ATOMICITY; EVT-1230 records the intentional module/HTTP TDD RED; EVT-1231 records GREEN with module 11/11 and targeted HTTP 1/1 no-residue evidence; EVT-1232 through EVT-1237 record bounded regression, quality, review unavailability, global non-promotion, verified gate and control-plane reconciliation; EVT-1238 records continuation recovery and repair of the active ExecPlan history. Parent CVG-003/global ERP remain IN_PROGRESS/PARTIAL and promotion remains BLOCKED.",
+  "last_event_id": "EVT-1238",
+  "state_revision": 915,
   "next_gate": "SCOUT",
   "next_action": "Return to fresh residual scouting under a new authority. Preserve global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED; obtain compatible independent review before higher-confidence use or scope expansion.",
   "blocked_by": [],
@@ -59,5 +59,5 @@
   },
   "current_runner_reconciliation": "PASS_BOUNDED final4: combined focused contracts 31/31, Windows 5 skipped on Linux, final disposable matrix 10/10 with PIX 25/25, post-run database/process/artifact checks clean, final independent review APPROVE_BOUNDED, global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED.",
   "current_retest_evidence": "2026-08-30: CVG-003 triage closed-encounter bounded closure passed: API 520/520, workspace typecheck/build 70/70, official coverage 2,178 passed/1 skipped at 80.18% statements/lines, 80.73% branches and 86.66% functions, targeted security/contracts checks green, global non-promotion reconciled. Independent review was unavailable and full lint retains only the unrelated counterSales no-control-regex baseline; the verified gate is PASS_BOUNDED/COMPLETE_BOUNDED and next gate is SCOUT.",
-  "updated_at": "2026-08-30T13:14:00-03:00"
+  "updated_at": "2026-08-30T13:17:00-03:00"
 }
