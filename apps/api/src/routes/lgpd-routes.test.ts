@@ -87,6 +87,7 @@ function principal(): AuthenticatedPrincipal {
 
 function createHandlers() {
   const auditEntries: unknown[] = [];
+  const requestedPermissions: string[] = [];
   const lgpd = {
     async getDsrRequests(accountId: string) {
       assert.equal(accountId, ACCOUNT);
@@ -142,7 +143,11 @@ function createHandlers() {
     lgpd,
     auditEntries,
     audit: { write(entry: unknown) { auditEntries.push(entry); } } as AuditService,
-    requirePrincipal: () => principal()
+    requestedPermissions,
+    requirePrincipal: (_request: unknown, permissionCode: string) => {
+      requestedPermissions.push(permissionCode);
+      return principal();
+    }
   };
 }
 
@@ -160,6 +165,7 @@ test('handleLgpdRoutes lists all DSR requests without requiring filters', async 
 
   assert.equal(response.statusCode, 200);
   assert.equal(response.bodyJson<{ requests: unknown[] }>().requests.length, 1);
+  assert.deepEqual(handlers.requestedPermissions, ['lgpd.requests.read']);
 });
 
 test('handleLgpdRoutes durably audits filtered DSR reads before responding', async () => {

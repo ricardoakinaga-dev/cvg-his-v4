@@ -1,0 +1,172 @@
+{
+  "record_id": "GATE-CVG-004-VETUS-IMPORT-INTEGRITY-VFY-001",
+  "timestamp": "2026-08-26T17:21:55-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-004 bounded durable Vetus import idempotency and reconciliation integrity",
+  "scope_ref": "CVG-004-VETUS-IMPORT-INTEGRITY",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-001-MIGRATION",
+      "description": "Canonical migration 0149 adds nullable, lowercase SHA-256 request fingerprints to Vetus import logs and batches without rewriting historical migrations or data.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-VETUS-IMPORT-INTEGRITY-DB-001",
+        "packages/db/migrations/0149_vetus_import_request_fingerprints.sql",
+        "packages/db/src/schema/vetus-import-logs.ts",
+        "packages/db/src/schema/vetus-import-batches.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Migration application was verified only on a fresh disposable PostgreSQL database; production migration execution remains open."
+    },
+    {
+      "id": "V-002-FINGERPRINT-CONFLICT",
+      "description": "Normalized single and batch payloads persist internal fingerprints, exact source-reference replays are idempotent, divergent replays and item conflicts return stable 409 responses, and request hashes are omitted from public summaries.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-VETUS-IMPORT-INTEGRITY-API-001",
+        ".agent/verification.jsonl#VFY-CVG-004-VETUS-IMPORT-INTEGRITY-DB-001",
+        "apps/api/src/routes/vetus-import-routes.ts",
+        "apps/api/src/repositories/vetus-import-log-repository.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Legacy rows with NULL fingerprints remain replay-compatible; no backfill or external Vetus reconciliation is claimed."
+    },
+    {
+      "id": "V-003-TRANSACTION-BOUNDARY",
+      "description": "Source-reference acquisition uses the existing tenant database transaction with a transaction-scoped advisory lock, row lock and the existing unique indexes; two API instances and cross-tenant isolation are covered.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-VETUS-IMPORT-INTEGRITY-DB-001",
+        "tests/integration/database/vetus-import-http-postgres.test.ts",
+        "apps/api/src/repositories/vetus-import-log-repository.ts",
+        "packages/shared/database/src/tenant-unit-of-work.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Concurrency evidence is local disposable PostgreSQL with two API runtimes; target connection, pool and deployment behavior remain open."
+    },
+    {
+      "id": "V-004-BATCH-LIFECYCLE",
+      "description": "Batch dry-run, rejected-row persistence, immutable partial resume, original row identity, rollback of only batch-created participants and response-size protection are enforced before and during mutation.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-VETUS-IMPORT-INTEGRITY-API-001",
+        ".agent/verification.jsonl#VFY-CVG-004-VETUS-IMPORT-INTEGRITY-DB-001",
+        "apps/api/src/routes/vetus-import-routes.ts",
+        "tests/integration/database/vetus-import-http-postgres.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The bounded contract does not establish full Vetus batch behavior or target-environment rollback acceptance."
+    },
+    {
+      "id": "V-005-CACHE-AUDIT-RECOVERY",
+      "description": "Commit and rollback recovery refreshes owners, patients and audit for the affected account; refreshes are serialized per account and all sibling snapshots settle before the queue advances.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-VETUS-IMPORT-INTEGRITY-API-001",
+        "apps/api/src/helpers/vetus-cache-recovery.ts",
+        "apps/api/src/helpers/vetus-cache-recovery.test.ts",
+        "packages/modules/audit/src/index.ts",
+        "apps/api/src/server.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The cache test is deterministic in-process evidence; distributed cache invalidation and target observability remain outside scope."
+    },
+    {
+      "id": "V-006-QUALITY-SECURITY",
+      "description": "The bounded implementation passes focused regression, full API, workspace typecheck/lint, official coverage and repository security/contract validators.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-VETUS-IMPORT-INTEGRITY-QUALITY-001",
+        ".agent/verification.jsonl#VFY-CVG-004-VETUS-IMPORT-INTEGRITY-SECURITY-001",
+        ".agent/artifacts/CVG-004-vetus-import-integrity-2026-08-26.md",
+        "apps/api/src/routes/vetus-import-routes.test.ts",
+        "apps/api/src/helpers/vetus-cache-recovery.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Repository-local quality and security controls do not certify target infrastructure, remote CI, production operations, accessibility or release readiness."
+    },
+    {
+      "id": "V-007-INDEPENDENT-REVIEW-BOUNDARY",
+      "description": "Independent review findings were addressed with RED/GREEN regression evidence, and a final independent read-only review returned PASS_BOUNDED without current HIGH or MEDIUM findings; global parity remains explicitly unpromoted.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-VETUS-IMPORT-INTEGRITY-REVIEW-001",
+        ".agent/verification.jsonl#VFY-CVG-004-VETUS-IMPORT-INTEGRITY-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-004-VETUS-IMPORT-INTEGRITY-GLOBAL-RETEST-001",
+        ".agent/tasks/CVG-004-vetus-import-integrity.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This is not a complete Vetus parity, enterprise readiness or release gate."
+    },
+    {
+      "id": "V-008-BROWSER-E2E",
+      "description": "The existing assisted-import UI is exercised through real browser authentication against the SPA, API and disposable PostgreSQL: validation, durable dry-run, import, participant reads and UI rollback are verified, including inactive persisted owner/patient statuses after rollback.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-VETUS-IMPORT-BROWSER-E2E-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-004-VETUS-IMPORT-BROWSER-E2E-REVIEW-001",
+        ".agent/verification.jsonl#VFY-CVG-004-VETUS-IMPORT-BROWSER-E2E-GLOBAL-RETEST-001",
+        ".agent/verification.jsonl#VFY-CVG-004-VETUS-IMPORT-BROWSER-E2E-FINAL-001",
+        ".agent/verification.jsonl#VFY-CVG-004-VETUS-IMPORT-BROWSER-E2E-HYGIENE-001",
+        "e2e/spa/vetus-import-flow.spec.ts",
+        ".agent/artifacts/CVG-004-vetus-import-browser-e2e-2026-08-27.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Evidence is limited to the canonical local runner with seeded tenants, disposable PostgreSQL/Redis and Chromium. It does not certify external Vetus behavior, target deployment, provider homologation, accessibility or release acceptance."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-vetus-import-integrity.md",
+    ".agent/artifacts/CVG-004-vetus-import-integrity-2026-08-26.md",
+    ".agent/authority.jsonl#AUTH-CVG-004-VETUS-IMPORT-INTEGRITY-IR-001",
+    ".agent/verification.jsonl#VFY-CVG-004-VETUS-IMPORT-INTEGRITY-FINAL-001",
+    ".agent/verification.jsonl#VFY-CVG-004-VETUS-IMPORT-BROWSER-E2E-FINAL-001",
+    ".agent/verification.jsonl#VFY-CVG-004-VETUS-IMPORT-BROWSER-E2E-GREEN-001",
+    ".agent/verification.jsonl#VFY-CVG-004-VETUS-IMPORT-BROWSER-E2E-REVIEW-001",
+    ".agent/verification.jsonl#VFY-CVG-004-VETUS-IMPORT-BROWSER-E2E-GLOBAL-RETEST-001",
+    ".agent/verification.jsonl#VFY-CVG-004-VETUS-IMPORT-BROWSER-E2E-HYGIENE-001",
+    ".agent/artifacts/CVG-004-vetus-import-browser-e2e-2026-08-27.md",
+    "e2e/spa/vetus-import-flow.spec.ts",
+    "packages/db/migrations/0149_vetus_import_request_fingerprints.sql",
+    "apps/api/src/routes/vetus-import-routes.ts",
+    "apps/api/src/helpers/vetus-cache-recovery.ts",
+    "tests/integration/database/vetus-import-http-postgres.test.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "CVG-004 parent parity remains IN_PROGRESS/PARTIAL: general Vetus parity is 98/100 with 4/11 areas verified.",
+    "Clinical parity remains 100/100 with 2/3 areas verified; laboratory provider and homologation remain open.",
+    "External Vetus/Live Pet/Live Lab connectors, provider/target behavior, distributed worker failure/observability, backup/restore, remote CI, accessibility, operations and release acceptance remain open; only the local seeded browser composition is covered by V-008."
+  ],
+  "conditions": [
+    "Keep the request fingerprint internal; do not expose or log it as a public API field.",
+    "Revalidate before any backfill, external import reconciliation, provider/target operation, deployment, production or release action."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner)",
+    "scope": "CVG-004 bounded durable Vetus import idempotency and reconciliation integrity",
+    "decision": "Authorize reversible repository implementation, one additive canonical migration and disposable PostgreSQL/authenticated HTTP verification for internal source-payload fingerprints, divergent source-reference conflicts and transaction-safe acquisition. Exclude external Vetus/Live Pet/Live Lab, providers, credentials, target, production, deployment, backfill, external mutation and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-VETUS-IMPORT-INTEGRITY-IR-001",
+    "expires_or_revalidates": "Revalidate before external import reconciliation, backfill, provider/target operation, credential handling, production/deployment or release action."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_BOUNDED",
+  "next_action": "Keep CVG-004 and the global program IN_PROGRESS/PARTIAL. Select the next separately authorized gap; do not promote this result to full Vetus parity, enterprise readiness or release.",
+  "revalidation_triggers": [
+    "Changes to Vetus import identity, owner/patient persistence composition, cache recovery or rollback semantics",
+    "Changes to migrations 0098/0102 or the additive fingerprint migration",
+    "Any external Vetus/Live Pet/Live Lab integration, backfill, provider, target, credential, production, deployment or release expansion"
+  ],
+  "supersedes": ".agent/gates/implementation-ready-CVG-004-vetus-import-integrity.json"
+}

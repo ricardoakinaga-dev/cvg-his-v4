@@ -35,9 +35,8 @@ describe('marketing delivery guarantees on PostgreSQL', () => {
     operation: () => Promise<T> | T
   ): Promise<T> {
     const correlationId = `marketing-guarantees-${randomUUID()}`;
-    return runWithTenantContext(
-      { tenantId: TENANT_ID, accountId, correlationId },
-      () => runInTenantTransactionContext(
+    return runWithTenantContext({ tenantId: TENANT_ID, accountId, correlationId }, () =>
+      runInTenantTransactionContext(
         getPool(),
         { accountId, actorUserId: userId, correlationId },
         async () => operation()
@@ -78,6 +77,12 @@ describe('marketing delivery guarantees on PostgreSQL', () => {
         `marketing-b-${USER_B}@example.test`
       ]
     );
+    await pool.query(
+      `INSERT INTO owners (id, account_id, full_name, email, phone_main)
+       VALUES ($1, $3, 'Marketing owner A', 'owner-a@example.test', '5511999999999'),
+              ($2, $3, 'Marketing owner B', 'owner-b@example.test', '5511000000000')`,
+      [OWNER_A, OWNER_B, ACCOUNT_A]
+    );
   });
 
   afterAll(async () => {
@@ -110,50 +115,67 @@ describe('marketing delivery guarantees on PostgreSQL', () => {
       { status: 'revoked', subject_id: OWNER_A, account_id: ACCOUNT_A }
     ]);
 
-    const segment = await command(ACCOUNT_A, USER_A, () => service.createSegment(ACCOUNT_A, USER_A, {
-      name: 'Marketing consentido',
-      criteria: { consentPurpose: 'marketing' }
-    }));
-    const template = await command(ACCOUNT_A, USER_A, () => service.createTemplate(ACCOUNT_A, USER_A, {
-      name: 'Marketing SMS',
-      channel: 'sms',
-      body: 'Mensagem {{ownerName}}'
-    }));
-    const blockedCampaign = await command(ACCOUNT_A, USER_A, () => service.createCampaign(ACCOUNT_A, USER_A, {
-      name: 'Bloqueada por opt-out',
-      channel: 'sms',
-      segmentId: segment.id,
-      templateId: template.id,
-      scheduledAt: now.toISOString()
-    }));
-    await command(ACCOUNT_A, USER_A, () => service.scheduleCampaign(ACCOUNT_A, USER_A, blockedCampaign.id));
-    const blocked = await command(ACCOUNT_A, USER_A, () => service.dispatchCampaign(
-      ACCOUNT_A,
-      USER_A,
-      blockedCampaign.id,
-      {
-        audience: [{
-          ownerId: OWNER_A,
-          ownerName: 'Opt-out',
-          consentPurposes: ['marketing'],
-          contacts: [{ type: 'sms', value: '5511999999999' }]
-        }],
+    const segment = await command(ACCOUNT_A, USER_A, () =>
+      service.createSegment(ACCOUNT_A, USER_A, {
+        name: 'Marketing consentido',
+        criteria: { consentPurpose: 'marketing' }
+      })
+    );
+    const template = await command(ACCOUNT_A, USER_A, () =>
+      service.createTemplate(ACCOUNT_A, USER_A, {
+        name: 'Marketing SMS',
+        channel: 'sms',
+        body: 'Mensagem {{ownerName}}'
+      })
+    );
+    const blockedCampaign = await command(ACCOUNT_A, USER_A, () =>
+      service.createCampaign(ACCOUNT_A, USER_A, {
+        name: 'Bloqueada por opt-out',
+        channel: 'sms',
+        segmentId: segment.id,
+        templateId: template.id,
+        scheduledAt: now.toISOString()
+      })
+    );
+    await command(ACCOUNT_A, USER_A, () =>
+      service.scheduleCampaign(ACCOUNT_A, USER_A, blockedCampaign.id)
+    );
+    const blocked = await command(ACCOUNT_A, USER_A, () =>
+      service.dispatchCampaign(ACCOUNT_A, USER_A, blockedCampaign.id, {
+        audience: [
+          {
+            ownerId: OWNER_A,
+            ownerName: 'Opt-out',
+            consentPurposes: ['marketing'],
+            contacts: [{ type: 'sms', value: '5511999999999' }]
+          }
+        ],
         gateway: new DeterministicMarketingSandboxGateway({ clock: () => new Date(now) })
-      }
-    ));
+      })
+    );
     expect(blocked.summary).toEqual({ total: 0, sent: 0, failed: 0, skipped: 1 });
-    expect(await command(ACCOUNT_A, USER_A, () => repository.findDeliveries(ACCOUNT_A))).toHaveLength(0);
+    expect(
+      await command(ACCOUNT_A, USER_A, () => repository.findDeliveries(ACCOUNT_A))
+    ).toHaveLength(0);
 
-    await command(ACCOUNT_A, USER_A, () => service.setConsent(ACCOUNT_A, USER_A, OWNER_A, 'granted'));
-    await command(ACCOUNT_A, USER_A, () => service.setConsent(ACCOUNT_A, USER_A, OWNER_B, 'granted'));
-    const campaign = await command(ACCOUNT_A, USER_A, () => service.createCampaign(ACCOUNT_A, USER_A, {
-      name: 'Idempotência e retry',
-      channel: 'sms',
-      segmentId: segment.id,
-      templateId: template.id,
-      scheduledAt: now.toISOString()
-    }));
-    await command(ACCOUNT_A, USER_A, () => service.scheduleCampaign(ACCOUNT_A, USER_A, campaign.id));
+    await command(ACCOUNT_A, USER_A, () =>
+      service.setConsent(ACCOUNT_A, USER_A, OWNER_A, 'granted')
+    );
+    await command(ACCOUNT_A, USER_A, () =>
+      service.setConsent(ACCOUNT_A, USER_A, OWNER_B, 'granted')
+    );
+    const campaign = await command(ACCOUNT_A, USER_A, () =>
+      service.createCampaign(ACCOUNT_A, USER_A, {
+        name: 'Idempotência e retry',
+        channel: 'sms',
+        segmentId: segment.id,
+        templateId: template.id,
+        scheduledAt: now.toISOString()
+      })
+    );
+    await command(ACCOUNT_A, USER_A, () =>
+      service.scheduleCampaign(ACCOUNT_A, USER_A, campaign.id)
+    );
 
     const memberA = {
       ownerId: OWNER_A,
@@ -167,15 +189,12 @@ describe('marketing delivery guarantees on PostgreSQL', () => {
       consentPurposes: ['marketing'] as const,
       contacts: [{ type: 'sms' as const, value: '5511000000000' }]
     };
-    const dispatched = await command(ACCOUNT_A, USER_A, () => service.dispatchCampaign(
-      ACCOUNT_A,
-      USER_A,
-      campaign.id,
-      {
+    const dispatched = await command(ACCOUNT_A, USER_A, () =>
+      service.dispatchCampaign(ACCOUNT_A, USER_A, campaign.id, {
         audience: [memberA, memberA, memberB],
         gateway: new DeterministicMarketingSandboxGateway({ clock: () => new Date(now) })
-      }
-    ));
+      })
+    );
     expect(dispatched.summary).toEqual({ total: 2, sent: 1, failed: 1, skipped: 1 });
     const failed = dispatched.deliveries.find((delivery) => delivery.status === 'failed');
     expect(failed).toMatchObject({
@@ -196,12 +215,9 @@ describe('marketing delivery guarantees on PostgreSQL', () => {
         };
       }
     };
-    const retried = await command(ACCOUNT_A, USER_A, () => service.retryDelivery(
-      ACCOUNT_A,
-      USER_A,
-      failed!.id,
-      successfulRetryGateway
-    ));
+    const retried = await command(ACCOUNT_A, USER_A, () =>
+      service.retryDelivery(ACCOUNT_A, USER_A, failed!.id, successfulRetryGateway)
+    );
     expect(retried).toMatchObject({
       status: 'sent',
       attemptCount: 2,
@@ -209,16 +225,22 @@ describe('marketing delivery guarantees on PostgreSQL', () => {
       nextAttemptAt: undefined
     });
 
-    const persistedDeliveries = await command(ACCOUNT_A, USER_A, () => repository.findDeliveries(ACCOUNT_A, campaign.id));
+    const persistedDeliveries = await command(ACCOUNT_A, USER_A, () =>
+      repository.findDeliveries(ACCOUNT_A, campaign.id)
+    );
     expect(persistedDeliveries).toHaveLength(2);
     expect(persistedDeliveries.every((delivery) => delivery.status === 'sent')).toBe(true);
     const persistedFailedRetry = persistedDeliveries.find((delivery) => delivery.id === failed!.id);
     expect(persistedFailedRetry?.attemptCount).toBe(2);
 
     const foreignRepository = new DatabaseMarketingRepository();
-    await expect(command(ACCOUNT_B, USER_B, () => foreignRepository.findDeliveries(ACCOUNT_B))).resolves.toEqual([]);
     await expect(
-      command(ACCOUNT_B, USER_B, () => foreignRepository.findDeliveryByKey(ACCOUNT_B, failed!.deliveryKey))
+      command(ACCOUNT_B, USER_B, () => foreignRepository.findDeliveries(ACCOUNT_B))
+    ).resolves.toEqual([]);
+    await expect(
+      command(ACCOUNT_B, USER_B, () =>
+        foreignRepository.findDeliveryByKey(ACCOUNT_B, failed!.deliveryKey)
+      )
     ).resolves.toBeNull();
   });
 });

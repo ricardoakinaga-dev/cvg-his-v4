@@ -8,7 +8,7 @@ import {
   API_CONFIG_FIELDS,
   WORKER_CONFIG_FIELDS,
   SPA_CONFIG_FIELDS,
-  isProductionLikeEnvironment,
+  isProductionLikeEnvironment
 } from './index.js';
 
 function cleanApiEnv(): Record<string, string> {
@@ -26,7 +26,7 @@ function cleanApiEnv(): Record<string, string> {
     OTEL_ENABLED: 'false',
     OTEL_EXPORTER_OTLP_PROTOCOL: 'http/protobuf',
     FILE_STORAGE_PATH: '/tmp/attachments',
-    ENABLE_MFA: 'false',
+    ENABLE_MFA: 'false'
   };
 }
 
@@ -75,14 +75,13 @@ describe('config module', () => {
       expect(config.authRateLimitMaxRequests).toBe(10);
       expect(config.pixSyntheticWebhookEnabled).toBe(false);
       expect(config.pixProviderWebhookKeyringJson).toBeUndefined();
+      expect(config.laboratoryProviderKeyringJson).toBeUndefined();
     });
 
     it('requires an explicit keyring when the synthetic PIX callback is enabled', () => {
       const env = cleanApiEnv();
       env.PIX_SYNTHETIC_WEBHOOK_ENABLED = 'true';
-      expect(() => loadApiConfig(env as NodeJS.ProcessEnv)).toThrow(
-        /PIX_WEBHOOK_KEYRING_JSON/
-      );
+      expect(() => loadApiConfig(env as NodeJS.ProcessEnv)).toThrow(/PIX_WEBHOOK_KEYRING_JSON/);
 
       env.PIX_WEBHOOK_KEYRING_JSON = JSON.stringify({
         local_key_01: {
@@ -108,6 +107,22 @@ describe('config module', () => {
       });
 
       expect(() => loadApiConfig(env as NodeJS.ProcessEnv)).toThrow(/must be false/);
+    });
+
+    it('rejects the local laboratory provider keyring in production-like environments', () => {
+      const env = cleanApiEnv();
+      env.NODE_ENV = 'production';
+      env.DATABASE_URL = 'postgres://localhost/db';
+      env.LABORATORY_PROVIDER_KEYRING_JSON = JSON.stringify({
+        lab_key_01: {
+          accountId: '11111111-1111-4111-8111-111111111111',
+          secretBase64: Buffer.alloc(32, 0x42).toString('base64')
+        }
+      });
+
+      expect(() => loadApiConfig(env as NodeJS.ProcessEnv)).toThrow(
+        /LABORATORY_PROVIDER_KEYRING_JSON must be unset/
+      );
     });
 
     it('loads with explicit values', () => {
@@ -165,6 +180,15 @@ describe('config module', () => {
       env.AUTH_SECRET = 'changeme-production-secret-12345678901234567890';
       env.DATABASE_URL = 'postgres://localhost/db';
       expect(() => loadApiConfig(env as NodeJS.ProcessEnv)).toThrow();
+    });
+
+    it('rejects an obviously periodic setup token at the shared config boundary', () => {
+      const env = cleanApiEnv();
+      env.SETUP_BOOTSTRAP_TOKEN = '01234567'.repeat(6);
+
+      expect(() => loadApiConfig(env as NodeJS.ProcessEnv)).toThrow(
+        /SETUP_BOOTSTRAP_TOKEN must contain at least/
+      );
     });
 
     it('throws when OTEL_ENABLED but no OTEL_EXPORTER_OTLP_TRACES_ENDPOINT', () => {
@@ -244,7 +268,6 @@ describe('config module', () => {
       expect(config.otlpHeaders['x-api-key']).toBe('mykey');
       expect(config.otlpHeaders['x-auth']).toBe('token');
     });
-
   });
 
   describe('loadWorkerConfig', () => {
@@ -261,24 +284,42 @@ describe('config module', () => {
         APP_NAME: 'my-worker',
         WORKER_INTERVAL_MS: '10000',
         WORKER_HEALTH_PORT: '4000',
+        WORKER_REPORTS_USER_ID: '11111111-1111-4111-8111-111111111111'
       };
       const config = loadWorkerConfig(env as NodeJS.ProcessEnv);
       expect(config.appName).toBe('my-worker');
       expect(config.intervalMs).toBe(10000);
       expect(config.healthPort).toBe(4000);
+      expect(config.workerReportsUserId).toBe('11111111-1111-4111-8111-111111111111');
     });
 
     it('throws when DATABASE_URL missing in production', () => {
       const env: Record<string, string> = {
-        NODE_ENV: 'production',
+        NODE_ENV: 'production'
       };
       expect(() => loadWorkerConfig(env as NodeJS.ProcessEnv)).toThrow();
+    });
+
+    it('requires an explicit report actor in production-like environments', () => {
+      const env: Record<string, string> = {
+        NODE_ENV: 'production',
+        DATABASE_URL: 'postgres://localhost/cvg_his'
+      };
+      expect(() => loadWorkerConfig(env as NodeJS.ProcessEnv)).toThrow(/WORKER_REPORTS_USER_ID/);
+    });
+
+    it('rejects a malformed report actor in every environment', () => {
+      const env: Record<string, string> = {
+        NODE_ENV: 'test',
+        WORKER_REPORTS_USER_ID: 'account-id-is-not-a-user-uuid'
+      };
+      expect(() => loadWorkerConfig(env as NodeJS.ProcessEnv)).toThrow(/WORKER_REPORTS_USER_ID/);
     });
 
     it('loads otel config when provided', () => {
       const env: Record<string, string> = {
         OTEL_ENABLED: 'true',
-        OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: 'http://otel:4318',
+        OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: 'http://otel:4318'
       };
       const config = loadWorkerConfig(env as NodeJS.ProcessEnv);
       expect(config.otelEnabled).toBe(true);
@@ -290,7 +331,7 @@ describe('config module', () => {
     it('loads valid web config', () => {
       const env: Record<string, string> = {
         VITE_APP_NAME: 'MyApp',
-        VITE_API_BASE_URL: 'http://localhost:3001',
+        VITE_API_BASE_URL: 'http://localhost:3001'
       };
       const config = loadWebConfig(env as NodeJS.ProcessEnv);
       expect(config.appName).toBe('MyApp');
@@ -299,7 +340,7 @@ describe('config module', () => {
 
     it('accepts relative path /api for VITE_API_BASE_URL', () => {
       const env: Record<string, string> = {
-        VITE_API_BASE_URL: '/api',
+        VITE_API_BASE_URL: '/api'
       };
       const config = loadWebConfig(env as NodeJS.ProcessEnv);
       expect(config.apiBaseUrl).toBe('');
@@ -307,7 +348,7 @@ describe('config module', () => {
 
     it('accepts empty string for VITE_API_BASE_URL', () => {
       const env: Record<string, string> = {
-        VITE_API_BASE_URL: '',
+        VITE_API_BASE_URL: ''
       };
       const config = loadWebConfig(env as NodeJS.ProcessEnv);
       expect(config.apiBaseUrl).toBe('');
@@ -315,7 +356,7 @@ describe('config module', () => {
 
     it('strips trailing slash from VITE_API_BASE_URL', () => {
       const env: Record<string, string> = {
-        VITE_API_BASE_URL: 'http://localhost:3001/',
+        VITE_API_BASE_URL: 'http://localhost:3001/'
       };
       const config = loadWebConfig(env as NodeJS.ProcessEnv);
       expect(config.apiBaseUrl).toBe('http://localhost:3001');
@@ -326,7 +367,7 @@ describe('config module', () => {
     it('loads client config', () => {
       const env = {
         VITE_APP_NAME: 'SPA App',
-        VITE_API_BASE_URL: 'http://api.example.com',
+        VITE_API_BASE_URL: 'http://api.example.com'
       };
       const config = loadSpaClientConfig(env);
       expect(config.appName).toBe('SPA App');

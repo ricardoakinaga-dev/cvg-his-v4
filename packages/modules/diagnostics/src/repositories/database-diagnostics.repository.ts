@@ -1,10 +1,8 @@
-import { eq, sql } from 'drizzle-orm';
-import {
-  withTenantTransaction,
-  type DatabaseClient
-} from '@cvg-his-v2/shared-database';
+import { and, eq, sql } from 'drizzle-orm';
+import { withTenantTransaction, type DatabaseClient } from '@cvg-his-v2/shared-database';
 import { diagnosticOrders } from '@cvg-his-v2/shared-database';
 import { ConflictError, NotFoundError } from '@cvg-his-v2/shared-errors';
+import { requireAccountId } from '@cvg-his-v2/tenant-context';
 import type {
   AccountId,
   PatientId,
@@ -17,6 +15,7 @@ import type {
   LaboratoryWorkflowPersistenceResult,
   LaboratoryWorkflowState
 } from '../laboratory-workflow.js';
+import { normalizeLaboratoryResultValues } from '../laboratory-result-values.js';
 import { createLaboratoryWorkflowEventId as buildLaboratoryWorkflowEventId } from '../laboratory-workflow.js';
 
 export interface LaboratoryTransitionPersistenceInput {
@@ -56,59 +55,72 @@ export interface DiagnosticOrderRepository {
 }
 
 export class DatabaseDiagnosticOrderRepository implements DiagnosticOrderRepository {
-  readonly #db: DatabaseClient;
-
-  public constructor(db: DatabaseClient) {
-    this.#db = db;
-  }
+  public constructor(_db: DatabaseClient) {}
 
   public async create(order: DiagnosticOrderSummary): Promise<void> {
-    await this.#db.insert(diagnosticOrders).values({
-      id: order.id,
-      accountId: order.accountId,
-      encounterId: order.encounterId,
-      patientId: order.patientId,
-      examType: order.examType,
-      examCatalogId: order.examCatalogId ?? null,
-      reason: order.reason,
-      status: order.status,
-      collectedAt: order.collectedAt ? new Date(order.collectedAt) : null,
-      collectedByUserId: order.collectedByUserId ?? null,
-      resultSummary: order.resultSummary ?? null,
-      resultAttachmentId: order.resultAttachmentId ?? null,
-      resultedAt: order.resultedAt ? new Date(order.resultedAt) : null,
-      releasedByUserId: order.releasedByUserId ?? null,
-      signedByUserId: order.signedByUserId ?? null,
-      signatureHash: order.signatureHash ?? null,
-      createdAt: new Date(order.createdAt),
-      updatedAt: new Date(order.updatedAt)
-    });
-  }
-
-  public async update(order: DiagnosticOrderSummary): Promise<void> {
-    await this.#db
-      .update(diagnosticOrders)
-      .set({
+    const accountId = requireAccountId();
+    if (accountId !== order.accountId) {
+      throw new Error('Diagnostic order account does not match tenant context');
+    }
+    await withTenantTransaction(accountId, async (database) => {
+      await database.insert(diagnosticOrders).values({
+        id: order.id,
+        accountId: order.accountId,
+        encounterId: order.encounterId,
+        patientId: order.patientId,
+        examType: order.examType,
+        examCatalogId: order.examCatalogId ?? null,
+        reason: order.reason,
         status: order.status,
         collectedAt: order.collectedAt ? new Date(order.collectedAt) : null,
         collectedByUserId: order.collectedByUserId ?? null,
         resultSummary: order.resultSummary ?? null,
+        resultValues: order.resultValues ?? null,
         resultAttachmentId: order.resultAttachmentId ?? null,
         resultedAt: order.resultedAt ? new Date(order.resultedAt) : null,
         releasedByUserId: order.releasedByUserId ?? null,
         signedByUserId: order.signedByUserId ?? null,
         signatureHash: order.signatureHash ?? null,
+        createdAt: new Date(order.createdAt),
         updatedAt: new Date(order.updatedAt)
-      })
-      .where(eq(diagnosticOrders.id, order.id));
+      });
+    });
+  }
+
+  public async update(order: DiagnosticOrderSummary): Promise<void> {
+    const accountId = requireAccountId();
+    if (accountId !== order.accountId) {
+      throw new Error('Diagnostic order account does not match tenant context');
+    }
+    await withTenantTransaction(accountId, async (database) => {
+      await database
+        .update(diagnosticOrders)
+        .set({
+          status: order.status,
+          collectedAt: order.collectedAt ? new Date(order.collectedAt) : null,
+          collectedByUserId: order.collectedByUserId ?? null,
+          resultSummary: order.resultSummary ?? null,
+          resultValues: order.resultValues ?? null,
+          resultAttachmentId: order.resultAttachmentId ?? null,
+          resultedAt: order.resultedAt ? new Date(order.resultedAt) : null,
+          releasedByUserId: order.releasedByUserId ?? null,
+          signedByUserId: order.signedByUserId ?? null,
+          signatureHash: order.signatureHash ?? null,
+          updatedAt: new Date(order.updatedAt)
+        })
+        .where(eq(diagnosticOrders.id, order.id));
+    });
   }
 
   public async findById(id: DiagnosticOrderId): Promise<DiagnosticOrderSummary | null> {
-    const result = await this.#db
-      .select()
-      .from(diagnosticOrders)
-      .where(eq(diagnosticOrders.id, id))
-      .limit(1);
+    const accountId = requireAccountId();
+    const result = await withTenantTransaction(accountId, async (database) =>
+      database
+        .select()
+        .from(diagnosticOrders)
+        .where(and(eq(diagnosticOrders.id, id), eq(diagnosticOrders.accountId, accountId)))
+        .limit(1)
+    );
 
     if (result.length === 0) {
       return null;
@@ -120,42 +132,55 @@ export class DatabaseDiagnosticOrderRepository implements DiagnosticOrderReposit
   public async findByEncounterId(
     encounterId: EncounterId
   ): Promise<readonly DiagnosticOrderSummary[]> {
-    const result = await this.#db
-      .select()
-      .from(diagnosticOrders)
-      .where(eq(diagnosticOrders.encounterId, encounterId));
+    const accountId = requireAccountId();
+    const result = await withTenantTransaction(accountId, async (database) =>
+      database
+        .select()
+        .from(diagnosticOrders)
+        .where(
+          and(
+            eq(diagnosticOrders.encounterId, encounterId),
+            eq(diagnosticOrders.accountId, accountId)
+          )
+        )
+    );
 
     return result.map((row) => this.mapRowToDiagnosticOrder(row));
   }
 
   public async findAll(accountId: AccountId): Promise<readonly DiagnosticOrderSummary[]> {
-    const result = await this.#db
-      .select()
-      .from(diagnosticOrders)
-      .where(eq(diagnosticOrders.accountId, accountId));
+    const contextAccountId = requireAccountId();
+    if (contextAccountId !== accountId) {
+      throw new Error('Diagnostic order account does not match tenant context');
+    }
+    const result = await withTenantTransaction(accountId, async (database) =>
+      database.select().from(diagnosticOrders).where(eq(diagnosticOrders.accountId, accountId))
+    );
 
     return result.map((row) => this.mapRowToDiagnosticOrder(row));
   }
 
   public async isEnabledLaboratorySigner(accountId: AccountId, userId: string): Promise<boolean> {
-    const result = await this.#db.execute(sql`
-      SELECT 1
-        FROM users AS u
-        JOIN staff AS s
-          ON s.account_id = u.account_id
-         AND s.user_id = u.id
-        JOIN professions AS p
-          ON p.account_id = s.account_id
-         AND p.id = s.profession_id
-       WHERE u.account_id = ${accountId}
-         AND u.id = ${userId}
-         AND u.is_active = TRUE
-         AND u.principal_kind = 'human'
-         AND s.is_active = TRUE
-         AND p.is_active = TRUE
-       LIMIT 1
-    `);
-    return result.rows.length === 1;
+    return withTenantTransaction(accountId, async (database) => {
+      const result = await database.execute(sql`
+        SELECT 1
+          FROM users AS u
+          JOIN staff AS s
+            ON s.account_id = u.account_id
+           AND s.user_id = u.id
+          JOIN professions AS p
+            ON p.account_id = s.account_id
+           AND p.id = s.profession_id
+         WHERE u.account_id = ${accountId}
+           AND u.id = ${userId}
+           AND u.is_active = TRUE
+           AND u.principal_kind = 'human'
+           AND s.is_active = TRUE
+           AND p.is_active = TRUE
+         LIMIT 1
+      `);
+      return result.rows.length === 1;
+    });
   }
 
   public async findLaboratoryTransitionReplay(
@@ -227,8 +252,10 @@ export class DatabaseDiagnosticOrderRepository implements DiagnosticOrderReposit
         }
       }
 
-      if (!this.sameInstant(current.order.updatedAt, input.expectedOrder.updatedAt)
-        || !this.sameInstant(current.workflow.updatedAt, input.expectedWorkflow.updatedAt)) {
+      if (
+        !this.sameInstant(current.order.updatedAt, input.expectedOrder.updatedAt) ||
+        !this.sameInstant(current.workflow.updatedAt, input.expectedWorkflow.updatedAt)
+      ) {
         throw new ConflictError('Laboratory order changed; retry the transition');
       }
 
@@ -238,6 +265,7 @@ export class DatabaseDiagnosticOrderRepository implements DiagnosticOrderReposit
                collected_at = ${this.dateOrNull(input.order.collectedAt)},
                collected_by_user_id = ${input.order.collectedByUserId ?? null},
                result_summary = ${input.order.resultSummary ?? null},
+               result_values = ${this.jsonbValue(input.order.resultValues)}::jsonb,
                result_attachment_id = ${input.order.resultAttachmentId ?? null},
                resulted_at = ${this.dateOrNull(input.order.resultedAt)},
                released_by_user_id = ${input.order.releasedByUserId ?? null},
@@ -268,6 +296,7 @@ export class DatabaseDiagnosticOrderRepository implements DiagnosticOrderReposit
                delivered_by_user_id = ${input.workflow.deliveredByUserId ?? null},
                delivery_channel = ${input.workflow.deliveryChannel ?? null},
                result_summary = ${input.workflow.resultSummary ?? null},
+               result_values = ${this.jsonbValue(input.workflow.resultValues)}::jsonb,
                result_attachment_id = ${input.workflow.resultAttachmentId ?? null},
                signed_by_user_id = ${input.workflow.signedByUserId ?? null},
                signature_hash = ${input.workflow.signatureHash ?? null},
@@ -284,12 +313,12 @@ export class DatabaseDiagnosticOrderRepository implements DiagnosticOrderReposit
 
       const eventId = input.idempotencyKey
         ? buildLaboratoryWorkflowEventId(
-          input.accountId,
-          input.order.id,
-          input.eventType,
-          input.idempotencyKey,
-          input.requestFingerprint
-        )
+            input.accountId,
+            input.order.id,
+            input.eventType,
+            input.idempotencyKey,
+            input.requestFingerprint
+          )
         : event.id;
       await database.execute(sql`
         INSERT INTO diagnostic_order_workflow_events (
@@ -314,44 +343,55 @@ export class DatabaseDiagnosticOrderRepository implements DiagnosticOrderReposit
   public async findLaboratoryWorkflows(
     accountId: AccountId
   ): Promise<readonly LaboratoryWorkflowState[]> {
-    const workflows = await this.#db.execute(sql`
-      SELECT order_id, account_id, status, legacy_status, collection_attempt,
-             collected_at, collected_by_user_id, analysis_started_at,
-             analysis_started_by_user_id, reported_at, reported_by_user_id,
-             delivered_at, delivered_by_user_id, delivery_channel, result_summary,
-             result_attachment_id, signed_by_user_id, signature_hash,
-             recollection_reason, cancellation_reason, created_at, updated_at
-        FROM diagnostic_order_workflows
-       WHERE account_id = ${accountId}
-       ORDER BY updated_at DESC
-    `);
-    const events = await this.#db.execute(sql`
-      SELECT id, order_id, event_type, status, attempt, reason, actor_user_id, occurred_at
-        FROM diagnostic_order_workflow_events
-       WHERE account_id = ${accountId}
-       ORDER BY occurred_at ASC, id ASC
-    `);
-    const eventsByOrder = new Map<string, LaboratoryWorkflowEvent[]>();
-    for (const row of events.rows as Record<string, unknown>[]) {
-      const orderId = String(row.order_id);
-      const current = eventsByOrder.get(orderId) ?? [];
-      current.push(this.mapWorkflowEvent(row));
-      eventsByOrder.set(orderId, current);
+    const contextAccountId = requireAccountId();
+    if (contextAccountId !== accountId) {
+      throw new Error('Laboratory workflow account does not match tenant context');
     }
+    return withTenantTransaction(accountId, async (database) => {
+      const workflows = await database.execute(sql`
+        SELECT order_id, account_id, status, legacy_status, collection_attempt,
+               collected_at, collected_by_user_id, analysis_started_at,
+               analysis_started_by_user_id, reported_at, reported_by_user_id,
+               delivered_at, delivered_by_user_id, delivery_channel, result_summary,
+               result_values, result_attachment_id, signed_by_user_id, signature_hash,
+               recollection_reason, cancellation_reason, created_at, updated_at
+          FROM diagnostic_order_workflows
+         WHERE account_id = ${accountId}
+         ORDER BY updated_at DESC
+      `);
+      const events = await database.execute(sql`
+        SELECT id, order_id, event_type, status, attempt, reason, actor_user_id, occurred_at
+          FROM diagnostic_order_workflow_events
+         WHERE account_id = ${accountId}
+         ORDER BY occurred_at ASC, id ASC
+      `);
+      const eventsByOrder = new Map<string, LaboratoryWorkflowEvent[]>();
+      for (const row of events.rows as Record<string, unknown>[]) {
+        const orderId = String(row.order_id);
+        const current = eventsByOrder.get(orderId) ?? [];
+        current.push(this.mapWorkflowEvent(row));
+        eventsByOrder.set(orderId, current);
+      }
 
-    return (workflows.rows as Record<string, unknown>[]).map((row) =>
-      this.mapWorkflow(row, eventsByOrder.get(String(row.order_id)) ?? [])
-    );
+      return (workflows.rows as Record<string, unknown>[]).map((row) =>
+        this.mapWorkflow(row, eventsByOrder.get(String(row.order_id)) ?? [])
+      );
+    });
   }
 
   public async upsertLaboratoryWorkflow(workflow: LaboratoryWorkflowState): Promise<void> {
-    await this.#db.execute(sql`
+    const accountId = requireAccountId();
+    if (accountId !== workflow.accountId) {
+      throw new Error('Laboratory workflow account does not match tenant context');
+    }
+    await withTenantTransaction(accountId, async (database) => {
+      await database.execute(sql`
       INSERT INTO diagnostic_order_workflows (
         order_id, account_id, status, legacy_status, collection_attempt,
         collected_at, collected_by_user_id, analysis_started_at,
         analysis_started_by_user_id, reported_at, reported_by_user_id,
         delivered_at, delivered_by_user_id, delivery_channel, result_summary,
-        result_attachment_id, signed_by_user_id, signature_hash,
+        result_values, result_attachment_id, signed_by_user_id, signature_hash,
         recollection_reason, cancellation_reason, created_at, updated_at
       ) VALUES (
         ${workflow.orderId}, ${workflow.accountId}, ${workflow.status},
@@ -364,7 +404,8 @@ export class DatabaseDiagnosticOrderRepository implements DiagnosticOrderReposit
         ${workflow.reportedByUserId ?? null},
         ${workflow.deliveredAt ? new Date(workflow.deliveredAt) : null},
         ${workflow.deliveredByUserId ?? null}, ${workflow.deliveryChannel ?? null},
-        ${workflow.resultSummary ?? null}, ${workflow.resultAttachmentId ?? null},
+        ${workflow.resultSummary ?? null}, ${this.jsonbValue(workflow.resultValues)}::jsonb,
+        ${workflow.resultAttachmentId ?? null},
         ${workflow.signedByUserId ?? null}, ${workflow.signatureHash ?? null},
         ${workflow.recollectionReason ?? null}, ${workflow.cancellationReason ?? null},
         ${new Date(workflow.createdAt)}, ${new Date(workflow.updatedAt)}
@@ -384,16 +425,17 @@ export class DatabaseDiagnosticOrderRepository implements DiagnosticOrderReposit
         delivered_by_user_id = EXCLUDED.delivered_by_user_id,
         delivery_channel = EXCLUDED.delivery_channel,
         result_summary = EXCLUDED.result_summary,
+        result_values = EXCLUDED.result_values,
         result_attachment_id = EXCLUDED.result_attachment_id,
         signed_by_user_id = EXCLUDED.signed_by_user_id,
         signature_hash = EXCLUDED.signature_hash,
         recollection_reason = EXCLUDED.recollection_reason,
         cancellation_reason = EXCLUDED.cancellation_reason,
         updated_at = EXCLUDED.updated_at
-    `);
+      `);
 
-    for (const event of workflow.history) {
-      await this.#db.execute(sql`
+      for (const event of workflow.history) {
+        await database.execute(sql`
         INSERT INTO diagnostic_order_workflow_events (
           id, account_id, order_id, event_type, status, attempt, reason,
           actor_user_id, occurred_at
@@ -403,8 +445,9 @@ export class DatabaseDiagnosticOrderRepository implements DiagnosticOrderReposit
           ${event.actorUserId ?? null}, ${new Date(event.occurredAt)}
         )
         ON CONFLICT (id) DO NOTHING
-      `);
-    }
+        `);
+      }
+    });
   }
 
   private async lockLaboratoryState(
@@ -418,7 +461,7 @@ export class DatabaseDiagnosticOrderRepository implements DiagnosticOrderReposit
     const orderResult = await database.execute(sql`
       SELECT id, account_id, encounter_id, patient_id, exam_type, exam_catalog_id,
              reason, status, collected_at, collected_by_user_id, result_summary,
-             result_attachment_id, resulted_at, released_by_user_id, signed_by_user_id,
+             result_values, result_attachment_id, resulted_at, released_by_user_id, signed_by_user_id,
              signature_hash, created_at, updated_at
         FROM diagnostic_orders
        WHERE account_id = ${accountId}
@@ -433,7 +476,7 @@ export class DatabaseDiagnosticOrderRepository implements DiagnosticOrderReposit
              collected_at, collected_by_user_id, analysis_started_at,
              analysis_started_by_user_id, reported_at, reported_by_user_id,
              delivered_at, delivered_by_user_id, delivery_channel, result_summary,
-             result_attachment_id, signed_by_user_id, signature_hash,
+             result_values, result_attachment_id, signed_by_user_id, signature_hash,
              recollection_reason, cancellation_reason, created_at, updated_at
         FROM diagnostic_order_workflows
        WHERE account_id = ${accountId}
@@ -475,6 +518,7 @@ export class DatabaseDiagnosticOrderRepository implements DiagnosticOrderReposit
       collectedAt: row.collectedAt?.toISOString(),
       collectedByUserId: row.collectedByUserId ?? undefined,
       resultSummary: row.resultSummary ?? undefined,
+      resultValues: this.parseResultValues(row.resultValues),
       resultAttachmentId: row.resultAttachmentId ?? undefined,
       resultedAt: row.resultedAt?.toISOString(),
       releasedByUserId: row.releasedByUserId ?? undefined,
@@ -498,6 +542,7 @@ export class DatabaseDiagnosticOrderRepository implements DiagnosticOrderReposit
       collectedAt: this.optionalIso(row.collected_at),
       collectedByUserId: this.optionalString(row.collected_by_user_id),
       resultSummary: this.optionalString(row.result_summary),
+      resultValues: this.parseResultValues(row.result_values),
       resultAttachmentId: this.optionalString(row.result_attachment_id),
       resultedAt: this.optionalIso(row.resulted_at),
       releasedByUserId: this.optionalString(row.released_by_user_id),
@@ -540,6 +585,7 @@ export class DatabaseDiagnosticOrderRepository implements DiagnosticOrderReposit
       deliveredByUserId: this.optionalString(row.delivered_by_user_id),
       deliveryChannel: this.optionalString(row.delivery_channel),
       resultSummary: this.optionalString(row.result_summary),
+      resultValues: this.parseResultValues(row.result_values),
       resultAttachmentId: this.optionalString(row.result_attachment_id),
       signedByUserId: this.optionalString(row.signed_by_user_id),
       signatureHash: this.optionalString(row.signature_hash),
@@ -553,6 +599,23 @@ export class DatabaseDiagnosticOrderRepository implements DiagnosticOrderReposit
 
   private optionalString(value: unknown): string | undefined {
     return typeof value === 'string' && value.length > 0 ? value : undefined;
+  }
+
+  private parseResultValues(value: unknown): ReturnType<typeof normalizeLaboratoryResultValues> {
+    if (value === null || value === undefined) return undefined;
+    let decoded: unknown = value;
+    if (typeof value === 'string') {
+      try {
+        decoded = JSON.parse(value) as unknown;
+      } catch (error) {
+        throw new Error('Persisted laboratory result values are not valid JSON', { cause: error });
+      }
+    }
+    return normalizeLaboratoryResultValues(decoded);
+  }
+
+  private jsonbValue(value: unknown): string | null {
+    return value === undefined ? null : JSON.stringify(value);
   }
 
   private optionalIso(value: unknown): string | undefined {

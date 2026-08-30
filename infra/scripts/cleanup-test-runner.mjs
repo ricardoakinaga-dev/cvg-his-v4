@@ -54,6 +54,10 @@ function resolveProtectedDbNames() {
   return protectedNames;
 }
 
+function quoteIdentifier(identifier) {
+  return `"${identifier.replaceAll('"', '""')}"`;
+}
+
 function inspectProcesses() {
   const output = execFileSync('ps', ['-eo', 'pid=,ppid=,etimes=,command='], {
     encoding: 'utf8'
@@ -180,11 +184,50 @@ async function dropStaleDatabases() {
   }
 }
 
+async function dropStaleSetupRoles(client) {
+  const result = await client.query(`
+    SELECT rolname
+      FROM pg_roles
+     WHERE rolname LIKE 'cvg_test_setup_http_api_%'
+        OR rolname LIKE 'cvg_test_setup_http_worker_%'
+     ORDER BY rolname
+  `);
+  const dropped = [];
+
+  for (const row of result.rows) {
+    const roleName = row.rolname;
+    if (!roleName) continue;
+
+    const activeConnections = await client.query(
+      `SELECT COUNT(*)::int AS count
+         FROM pg_stat_activity
+        WHERE usename = $1`,
+      [roleName]
+    );
+    if (activeConnections.rows[0]?.count > 0) continue;
+
+    try {
+      await client.query(`DROP ROLE IF EXISTS ${quoteIdentifier(roleName)}`);
+      dropped.push(roleName);
+    } catch (error) {
+      log(
+        `Skipped stale setup role ${roleName}: ${error instanceof Error ? error.message : 'unknown error'}`
+      );
+    }
+  }
+
+  if (dropped.length > 0) {
+    log(`Dropped ${dropped.length} stale setup role(s): ${dropped.join(', ')}`);
+  }
+  return dropped;
+}
+
 async function main() {
   const killRequested = hasFlag('--kill-orphans');
   const dropRequested = hasFlag('--drop-stale-dbs');
   let killed = [];
   let dropped = [];
+  let droppedRoles = [];
 
   if (killRequested) {
     killed = await killOrphans();
@@ -192,6 +235,17 @@ async function main() {
 
   if (dropRequested) {
     dropped = await dropStaleDatabases();
+    const client = new Client({ connectionString: resolveAdminDbUrl() });
+    try {
+      await client.connect();
+      droppedRoles = await dropStaleSetupRoles(client);
+    } catch (error) {
+      log(
+        `Skipping setup-role cleanup: ${error instanceof Error ? error.message : 'unknown error'}`
+      );
+    } finally {
+      await client.end().catch(() => undefined);
+    }
   }
 
   if (hasFlag('--json')) {
@@ -204,7 +258,8 @@ async function main() {
             elapsedSeconds,
             command
           })),
-          droppedDatabases: dropped
+          droppedDatabases: dropped,
+          droppedSetupRoles: droppedRoles
         },
         null,
         2

@@ -1,0 +1,68 @@
+{
+  "record_id": "GATE-CVG-003-INPATIENT-SECTOR-BED-TENANT-BOUNDARY-IR-001",
+  "task": "CVG-003-INPATIENT-SECTOR-BED-TENANT-BOUNDARY",
+  "gate_id": "IMPLEMENTATION_READY",
+  "decision": "PASS",
+  "timestamp": "2026-08-30T09:05:00-03:00",
+  "scope": "Repository-local account-scoped sector/bed lookups and inpatient route propagation",
+  "criteria": [
+    {
+      "id": "IR-001-DIRECT-GAP",
+      "description": "In-memory and database sector/bed identifier, sector and status lookups are confirmed to omit account scope, and the sector-filtered route passes an account that the service currently discards.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-SCOUT-CVG-003-INPATIENT-SECTOR-BED-TENANT-BOUNDARY-001",
+        "packages/modules/inpatient/src/sector-bed.service.ts",
+        "apps/api/src/routes/inpatient-routes.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The finding is repository-local and does not assert target RLS or production exposure."
+    },
+    {
+      "id": "IR-002-MINIMAL-FIX",
+      "description": "The authorized correction is limited to AccountId propagation, account predicates and first-party caller updates while preserving response shapes and bed lifecycle behavior.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-003-INPATIENT-SECTOR-BED-TENANT-BOUNDARY.md",
+        "packages/modules/inpatient/src/sector-bed.service.ts",
+        "packages/modules/inpatient/src/index.ts",
+        "apps/api/src/routes/inpatient-routes.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "No migration, provider, credential, target, production, deployment, release or global ERP action is authorized."
+    },
+    {
+      "id": "IR-003-TEST-FIRST",
+      "description": "Intentional RED module, route and disposable PostgreSQL cross-tenant tests are required before GREEN and bounded verification.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-003-INPATIENT-SECTOR-BED-TENANT-BOUNDARY.md",
+        "packages/modules/inpatient/src/inpatient.test.ts",
+        "apps/api/src/routes/inpatient-routes.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The implementation-ready gate does not claim that the correction, regression, quality or independent review has passed."
+    },
+    {
+      "id": "IR-004-NO-SCHEMA",
+      "description": "Existing account columns, indexes, tenant integrity constraints and RLS are sufficient for this service-boundary correction; no schema change is authorized without new evidence.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/db/migrations/0030_vetus_boxes_internacao.sql",
+        "packages/db/migrations/0073_inpatient_tenant_integrity.sql",
+        "packages/db/migrations/0074_inpatient_reference_hardening.sql",
+        "packages/db/src/schema/beds.ts",
+        "packages/db/src/schema/sectors.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Target catalog, grants and RLS still require separate operational evidence."
+    }
+  ],
+  "next_gate": "TDD_RED",
+  "implementation_status": "AUTHORIZED",
+  "global_boundary": "CVG-003 and global ERP remain IN_PROGRESS/PARTIAL; promotion BLOCKED."
+}

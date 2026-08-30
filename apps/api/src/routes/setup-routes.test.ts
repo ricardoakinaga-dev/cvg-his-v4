@@ -88,14 +88,22 @@ function setupHandlers(input: {
     },
     setupBootstrapToken: input.setupBootstrapToken,
     getPool: () => ({
-      query: async (sql: string, values?: readonly unknown[]) => {
-        if (input.queryCount) input.queryCount.value += 1;
-        if (input.poolQuery) return input.poolQuery(sql, values);
-        return {
-          rows: [{ exists: !(input.setupRequired ?? true), setup_required: input.setupRequired ?? true }],
-          rowCount: 1
-        };
-      }
+      connect: async () => ({
+        query: async (sql: string, values?: readonly unknown[]) => {
+          if (sql.includes('app.is_initial_setup_required') && input.queryCount) {
+            input.queryCount.value += 1;
+          }
+          if (sql === 'BEGIN' || sql === 'SET LOCAL ROLE cvg_installer' || sql === 'COMMIT') {
+            return { rows: [], rowCount: 0 };
+          }
+          if (input.poolQuery) return input.poolQuery(sql, values);
+          return {
+            rows: [{ exists: !(input.setupRequired ?? true), setup_required: input.setupRequired ?? true }],
+            rowCount: 1
+          };
+        },
+        release: () => undefined
+      })
     }),
     appendAudit: () => {}
   } as never;

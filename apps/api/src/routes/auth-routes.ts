@@ -9,7 +9,12 @@ import {
   generatePKCE,
   type OIDCConfig
 } from '@cvg-his-v2/module-auth';
-import type { MfaService, WebAuthnService } from '@cvg-his-v2/module-mfa';
+import type {
+  MfaService,
+  WebAuthnChallengeKey,
+  WebAuthnChallengeStore,
+  WebAuthnService
+} from '@cvg-his-v2/module-mfa';
 import { extractBearerToken } from '@cvg-his-v2/shared-auth-sdk';
 import type {
   AuthSessionResponse,
@@ -19,8 +24,8 @@ import type {
   RefreshSessionRequest,
   SessionListResponse
 } from '@cvg-his-v2/shared-contracts';
-import { toErrorResponse } from '@cvg-his-v2/shared-errors';
-import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
+import { AppError, toErrorResponse } from '@cvg-his-v2/shared-errors';
+import type { AuthenticatedPrincipal, SessionSummary } from '@cvg-his-v2/shared-types';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 
 import { readJsonBody } from '../helpers/common.js';
@@ -58,6 +63,8 @@ interface AuthRateLimiter {
 interface AuthLogger {
   error(message: string, context?: unknown): void;
 }
+
+const MAX_RATE_LIMIT_DIMENSION_LENGTH = 256;
 
 interface OidcStateValue {
   codeChallenge: string;
@@ -109,6 +116,47 @@ function consumeWebAuthnChallenge(
   }
 
   return { ok: true, challenge: stored.challenge };
+}
+
+function createWebAuthnChallengeKey(
+  accountId: string,
+  userId: string,
+  purpose: WebAuthnChallengeKey['purpose']
+): WebAuthnChallengeKey {
+  return { accountId, userId, purpose };
+}
+
+async function issueWebAuthnChallenge(
+  challengeStore: WebAuthnChallengeStore | undefined,
+  fallback: Map<string, WebAuthnChallengeValue>,
+  fallbackKey: string,
+  key: WebAuthnChallengeKey,
+  challenge: string,
+  ttlMs: number
+): Promise<void> {
+  if (challengeStore) {
+    await challengeStore.issue({ key, challenge, ttlMs });
+    return;
+  }
+
+  fallback.set(fallbackKey, createWebAuthnChallengeValue(challenge));
+}
+
+async function consumeStoredWebAuthnChallenge(
+  challengeStore: WebAuthnChallengeStore | undefined,
+  fallback: Map<string, WebAuthnChallengeValue>,
+  fallbackKey: string,
+  key: WebAuthnChallengeKey,
+  ttlMs: number
+): Promise<
+  | { ok: true; challenge: string }
+  | { ok: false; code: 'INVALID_CHALLENGE' | 'CHALLENGE_EXPIRED'; message: string }
+> {
+  if (challengeStore) {
+    return challengeStore.consume(key);
+  }
+
+  return consumeWebAuthnChallenge(fallback, fallbackKey, ttlMs);
 }
 
 export function createInMemoryOidcStateStore(): OidcStateStore {
@@ -189,6 +237,7 @@ export interface AuthRoutesHandlers {
     authWebauthnEnabled: boolean;
   };
   webauthnService?: WebAuthnService;
+  webauthnChallengeStore?: WebAuthnChallengeStore;
   webauthnChallenges: Map<string, WebAuthnChallengeValue>;
   webauthnChallengeTtlMs: number;
   oidcConfig: OIDCConfig | null;
@@ -199,7 +248,10 @@ export interface AuthRoutesHandlers {
   /** Browser origins allowed to send cookie-backed session mutations. */
   csrfAllowedOrigins?: readonly string[];
   trustedProxyCidrs?: readonly string[];
-  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
+  requirePrincipal: (
+    request: IncomingMessage,
+    permissionCode: string
+  ) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
   appendAudit: AuditAppender;
 }
 
@@ -381,7 +433,21 @@ function normalizeRateLimitDimension(value: unknown): string | undefined {
   }
 
   const normalized = value.trim();
-  return normalized.length > 0 ? normalized : undefined;
+  return normalized.length > 0 && normalized.length <= MAX_RATE_LIMIT_DIMENSION_LENGTH
+    ? normalized
+    : undefined;
+}
+
+function combineRateLimitInfo(...infos: readonly AuthRateLimitInfo[]): AuthRateLimitInfo {
+  const blockedInfos = infos.filter((info) => info.blocked);
+  return {
+    limit: Math.min(...infos.map((info) => info.limit)),
+    remaining: Math.min(...infos.map((info) => info.remaining)),
+    reset: Math.max(...infos.map((info) => info.reset)),
+    blocked: blockedInfos.length > 0,
+    retryAfterMs:
+      blockedInfos.length > 0 ? Math.max(...blockedInfos.map((info) => info.retryAfterMs)) : 0
+  };
 }
 
 async function checkAuthAttemptRateLimit(
@@ -393,24 +459,35 @@ async function checkAuthAttemptRateLimit(
     readonly userId?: unknown;
   }
 ): Promise<AuthRateLimitInfo> {
-  const identity = normalizeRateLimitDimension(input.userId);
-  if (identity) {
-    return authRateLimiter.check({
+  try {
+    const ipRateLimit = await authRateLimiter.check({
+      ip: input.ip,
+      route: `${input.route}:ip`
+    });
+    if (ipRateLimit.blocked) return ipRateLimit;
+
+    const identity = normalizeRateLimitDimension(input.userId);
+    if (!identity) return ipRateLimit;
+
+    const identityRateLimit = await authRateLimiter.check({
       ip: 'identity',
       route: `${input.route}:identity`,
       accountId: normalizeRateLimitDimension(input.accountId),
       userId: identity
     });
+    return combineRateLimitInfo(ipRateLimit, identityRateLimit);
+  } catch {
+    // Distributed authentication limits fail closed. Do not allow the
+    // caller to continue into password verification or session creation.
+    throw new AppError('RATE_LIMIT_UNAVAILABLE', 'Rate limit service unavailable', 503);
   }
-
-  return authRateLimiter.check({
-    ip: input.ip,
-    route: `${input.route}:ip`
-  });
 }
 
 function normalizeIpAddress(value: string): string {
-  return value.trim().toLowerCase().replace(/^::ffff:/, '');
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/^::ffff:/, '');
 }
 
 function ipv4ToNumber(value: string): number | undefined {
@@ -494,6 +571,7 @@ export async function handleAuthRoutes(
     appName,
     featureFlags,
     webauthnService,
+    webauthnChallengeStore,
     webauthnChallenges,
     webauthnChallengeTtlMs,
     oidcConfig,
@@ -505,7 +583,7 @@ export async function handleAuthRoutes(
   } = handlers;
 
   if (pathname === '/auth/session' && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'auth.session.read');
+    const principal = await requirePrincipal(request, 'auth.session.read');
     appendAudit(
       principal.user.id,
       principal.user.accountId,
@@ -525,8 +603,10 @@ export async function handleAuthRoutes(
   }
 
   if (pathname === '/auth/sessions' && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'auth.session.read');
-    const items = auth.listSessionsForUser(principal.user.id);
+    const principal = await requirePrincipal(request, 'auth.session.read');
+    const items = (
+      await auth.listSessionsForUserAuthoritative(principal.user.id, correlationId)
+    ).map(toPublicSessionSummary);
     appendAudit(
       principal.user.id,
       principal.user.accountId,
@@ -580,7 +660,10 @@ export async function handleAuthRoutes(
         message: 'Session not found'
       });
     }
-    const session = await auth.refresh({ refreshToken } satisfies RefreshSessionRequest, correlationId);
+    const session = await auth.refresh(
+      { refreshToken } satisfies RefreshSessionRequest,
+      correlationId
+    );
     return sendAuthSession(response, session, handlers);
   }
 
@@ -603,7 +686,7 @@ export async function handleAuthRoutes(
   }
 
   if (pathname === '/auth/logout-all-others' && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'auth.session.read');
+    const principal = await requirePrincipal(request, 'auth.session.read');
     const revoked = await auth.revokeOtherSessions(principal.session.sessionId, correlationId);
     appendAudit(
       principal.user.id,
@@ -624,7 +707,7 @@ export async function handleAuthRoutes(
 
   const revokeSessionMatch = pathname.match(/^\/auth\/sessions\/([^/]+)\/revoke$/);
   if (revokeSessionMatch && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'auth.session.read');
+    const principal = await requirePrincipal(request, 'auth.session.read');
     const targetSessionId = revokeSessionMatch[1] as never;
     const revoked = await auth.revokeSessionForUser(
       principal.session.sessionId,
@@ -696,7 +779,7 @@ export async function handleAuthRoutes(
   }
 
   if (pathname === '/mfa/setup' && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'auth.mfa.manage');
+    const principal = await requirePrincipal(request, 'auth.mfa.manage');
     const mfaService = getMfaService(auth);
     if (!mfaService) {
       return sendJson(response, 501, { code: 'NOT_IMPLEMENTED', message: 'MFA not configured' });
@@ -711,7 +794,7 @@ export async function handleAuthRoutes(
   }
 
   if (pathname === '/mfa/setup/confirm' && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'auth.mfa.manage');
+    const principal = await requirePrincipal(request, 'auth.mfa.manage');
     const mfaService = getMfaService(auth);
     if (!mfaService) {
       return sendJson(response, 501, { code: 'NOT_IMPLEMENTED', message: 'MFA not configured' });
@@ -737,7 +820,7 @@ export async function handleAuthRoutes(
   }
 
   if (pathname === '/mfa/status' && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'auth.mfa.read');
+    const principal = await requirePrincipal(request, 'auth.mfa.read');
     const mfaService = getMfaService(auth);
     if (!mfaService) {
       return sendJson(response, 200, { isActive: false, isRequired: false });
@@ -748,7 +831,7 @@ export async function handleAuthRoutes(
   }
 
   if (pathname === '/mfa/disable' && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'auth.mfa.manage');
+    const principal = await requirePrincipal(request, 'auth.mfa.manage');
     const mfaService = getMfaService(auth);
     if (!mfaService) {
       return sendJson(response, 501, { code: 'NOT_IMPLEMENTED', message: 'MFA not configured' });
@@ -770,7 +853,7 @@ export async function handleAuthRoutes(
   }
 
   if (pathname === '/mfa/recovery-codes/regenerate' && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'auth.mfa.manage');
+    const principal = await requirePrincipal(request, 'auth.mfa.manage');
     const mfaService = getMfaService(auth);
     if (!mfaService) {
       return sendJson(response, 501, { code: 'NOT_IMPLEMENTED', message: 'MFA not configured' });
@@ -783,7 +866,7 @@ export async function handleAuthRoutes(
   }
 
   if (pathname === '/auth/mfa/webauthn/setup' && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'auth.mfa.manage');
+    const principal = await requirePrincipal(request, 'auth.mfa.manage');
     if (!webauthnService) {
       return sendJson(response, 501, {
         code: 'NOT_IMPLEMENTED',
@@ -795,6 +878,7 @@ export async function handleAuthRoutes(
     }
     const rpId = request.headers['x-rp-id']?.toString() ?? 'localhost';
     const { publicKeyOptions, challenge } = await webauthnService.generateRegistrationOptions(
+      principal.user.accountId,
       principal.user.id,
       {
         rpName: 'CVG-HIS-V2',
@@ -803,12 +887,19 @@ export async function handleAuthRoutes(
         userName: principal.user.email
       }
     );
-    webauthnChallenges.set(`reg:${principal.user.id}`, createWebAuthnChallengeValue(challenge));
+    await issueWebAuthnChallenge(
+      webauthnChallengeStore,
+      webauthnChallenges,
+      `reg:${principal.user.id}`,
+      createWebAuthnChallengeKey(principal.user.accountId, principal.user.id, 'registration'),
+      challenge,
+      webauthnChallengeTtlMs
+    );
     return sendJson(response, 200, { publicKeyOptions, challenge });
   }
 
   if (pathname === '/auth/mfa/webauthn/setup' && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'auth.mfa.manage');
+    const principal = await requirePrincipal(request, 'auth.mfa.manage');
     if (!webauthnService) {
       return sendJson(response, 501, {
         code: 'NOT_IMPLEMENTED',
@@ -823,9 +914,11 @@ export async function handleAuthRoutes(
       attestationObject: string;
       clientDataJSON: string;
     };
-    const challengeResult = consumeWebAuthnChallenge(
+    const challengeResult = await consumeStoredWebAuthnChallenge(
+      webauthnChallengeStore,
       webauthnChallenges,
       `reg:${principal.user.id}`,
+      createWebAuthnChallengeKey(principal.user.accountId, principal.user.id, 'registration'),
       webauthnChallengeTtlMs
     );
     if (!challengeResult.ok) {
@@ -838,6 +931,7 @@ export async function handleAuthRoutes(
       });
     }
     const result = await webauthnService.verifyRegistration(
+      principal.user.accountId,
       principal.user.id,
       {
         credentialId: payload.credentialId,
@@ -861,7 +955,7 @@ export async function handleAuthRoutes(
   }
 
   if (pathname === '/auth/mfa/webauthn/authenticate' && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'auth.mfa.manage');
+    const principal = await requirePrincipal(request, 'auth.mfa.manage');
     if (!webauthnService) {
       return sendJson(response, 501, {
         code: 'NOT_IMPLEMENTED',
@@ -874,6 +968,7 @@ export async function handleAuthRoutes(
     const payload = (await readJsonBody(request)) as { credentialId?: string };
     const rpId = request.headers['x-rp-id']?.toString() ?? 'localhost';
     const { publicKeyOptions, challenge } = await webauthnService.generateAuthenticationOptions(
+      principal.user.accountId,
       principal.user.id,
       { rpId, timeout: 60000, userVerification: 'preferred' }
     );
@@ -882,12 +977,19 @@ export async function handleAuthRoutes(
         { id: payload.credentialId, type: 'public-key' }
       ];
     }
-    webauthnChallenges.set(`auth:${principal.user.id}`, createWebAuthnChallengeValue(challenge));
+    await issueWebAuthnChallenge(
+      webauthnChallengeStore,
+      webauthnChallenges,
+      `auth:${principal.user.id}`,
+      createWebAuthnChallengeKey(principal.user.accountId, principal.user.id, 'authentication'),
+      challenge,
+      webauthnChallengeTtlMs
+    );
     return sendJson(response, 200, { publicKeyOptions, challenge });
   }
 
   if (pathname === '/auth/mfa/webauthn/assert' && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'auth.mfa.manage');
+    const principal = await requirePrincipal(request, 'auth.mfa.manage');
     if (!webauthnService) {
       return sendJson(response, 501, {
         code: 'NOT_IMPLEMENTED',
@@ -904,9 +1006,11 @@ export async function handleAuthRoutes(
       signature: string;
       userHandle?: string;
     };
-    const challengeResult = consumeWebAuthnChallenge(
+    const challengeResult = await consumeStoredWebAuthnChallenge(
+      webauthnChallengeStore,
       webauthnChallenges,
       `auth:${principal.user.id}`,
+      createWebAuthnChallengeKey(principal.user.accountId, principal.user.id, 'authentication'),
       webauthnChallengeTtlMs
     );
     if (!challengeResult.ok) {
@@ -920,6 +1024,8 @@ export async function handleAuthRoutes(
     }
     const rpId = request.headers['x-rp-id']?.toString() ?? 'localhost';
     const result = await webauthnService.verifyAuthentication(
+      principal.user.accountId,
+      principal.user.id,
       payload.credentialId,
       {
         authenticatorData: payload.authenticatorData,
@@ -1057,4 +1163,17 @@ export async function handleAuthRoutes(
   }
 
   return false;
+}
+
+function toPublicSessionSummary(session: SessionSummary): SessionSummary {
+  return {
+    sessionId: session.sessionId,
+    userId: session.userId,
+    accountId: session.accountId,
+    createdAt: session.createdAt,
+    expiresAt: session.expiresAt,
+    authTime: session.authTime,
+    refreshExpiresAt: session.refreshExpiresAt,
+    active: session.active
+  };
 }

@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { getPool } from '@cvg-his-v2/shared-database';
 import { withTenantQueryExplicit } from '@cvg-his-v2/tenant-context';
 
@@ -11,7 +13,10 @@ import type {
 } from '../routes/expenses-catalog-store.js';
 
 export interface FinanceCatalogPersistence {
-  list(accountId: string, filters?: ExpenseCatalogFilters): Promise<{
+  list(
+    accountId: string,
+    filters?: ExpenseCatalogFilters
+  ): Promise<{
     items: ExpenseCatalogItem[];
     categories: string[];
     costCenters: ExpenseCostCenterItem[];
@@ -22,7 +27,10 @@ export interface FinanceCatalogPersistence {
     sort: string;
     order: string;
   }>;
-  listCostCenters(accountId: string, filters?: CostCenterCatalogFilters): Promise<{
+  listCostCenters(
+    accountId: string,
+    filters?: CostCenterCatalogFilters
+  ): Promise<{
     items: ExpenseCostCenterItem[];
     page: number;
     pageSize: number;
@@ -31,11 +39,26 @@ export interface FinanceCatalogPersistence {
     sort: string;
     order: string;
   }>;
-  create(accountId: string, actorId: string, payload: ExpenseCatalogPayload): Promise<ExpenseCatalogItem>;
-  update(accountId: string, expenseId: string, payload: ExpenseCatalogPayload): Promise<{ item: ExpenseCatalogItem; diffSummary: string }>;
+  create(
+    accountId: string,
+    actorId: string,
+    payload: ExpenseCatalogPayload
+  ): Promise<ExpenseCatalogItem>;
+  update(
+    accountId: string,
+    expenseId: string,
+    payload: ExpenseCatalogPayload
+  ): Promise<{ item: ExpenseCatalogItem; diffSummary: string }>;
   remove(accountId: string, expenseId: string): Promise<ExpenseCatalogItem>;
-  createCostCenter(accountId: string, payload: CostCenterCatalogPayload): Promise<ExpenseCostCenterItem>;
-  updateCostCenter(accountId: string, code: string, payload: CostCenterCatalogPayload): Promise<{ item: ExpenseCostCenterItem; diffSummary: string }>;
+  createCostCenter(
+    accountId: string,
+    payload: CostCenterCatalogPayload
+  ): Promise<ExpenseCostCenterItem>;
+  updateCostCenter(
+    accountId: string,
+    code: string,
+    payload: CostCenterCatalogPayload
+  ): Promise<{ item: ExpenseCostCenterItem; diffSummary: string }>;
   removeCostCenter(accountId: string, code: string): Promise<ExpenseCostCenterItem>;
   isValidCategory(category: string): boolean;
 }
@@ -47,7 +70,8 @@ const DEFAULT_COST_CENTERS: readonly ExpenseCostCenterItem[] = [
     name: 'Administrativo Central',
     kind: 'Administrativo',
     owner: 'Diretoria Administrativa',
-    description: 'Centro responsável por despesas administrativas, contratos corporativos e custos de apoio.'
+    description:
+      'Centro responsável por despesas administrativas, contratos corporativos e custos de apoio.'
   },
   {
     code: 'CC-ATD',
@@ -61,12 +85,15 @@ const DEFAULT_COST_CENTERS: readonly ExpenseCostCenterItem[] = [
     name: 'Diagnóstico e Laboratório',
     kind: 'Operacional',
     owner: 'Coordenação de Diagnóstico',
-    description: 'Centro vinculado a exames, imagem, processamento laboratorial e suporte técnico diagnóstico.'
+    description:
+      'Centro vinculado a exames, imagem, processamento laboratorial e suporte técnico diagnóstico.'
   }
 ] as const;
 
 function normalizeSearch(value?: string): string {
-  return String(value ?? '').trim().toLowerCase();
+  return String(value ?? '')
+    .trim()
+    .toLowerCase();
 }
 
 function normalizePage(value?: number): number {
@@ -104,15 +131,30 @@ function mapCostCenterRow(row: Record<string, unknown>): ExpenseCostCenterItem {
 }
 
 function summarizeExpenseDiff(previous: ExpenseCatalogItem, current: ExpenseCatalogItem): string {
-  const fields: Array<keyof ExpenseCatalogItem> = ['name', 'kind', 'category', 'costCenterCode', 'description'];
+  const fields: Array<keyof ExpenseCatalogItem> = [
+    'name',
+    'kind',
+    'category',
+    'costCenterCode',
+    'description'
+  ];
   return fields
     .filter((field) => previous[field] !== current[field])
     .map((field) => `${field}: ${previous[field]} → ${current[field]}`)
     .join('; ');
 }
 
-function summarizeCostCenterDiff(previous: ExpenseCostCenterItem, current: ExpenseCostCenterItem): string {
-  const fields: Array<keyof ExpenseCostCenterItem> = ['code', 'name', 'kind', 'owner', 'description'];
+function summarizeCostCenterDiff(
+  previous: ExpenseCostCenterItem,
+  current: ExpenseCostCenterItem
+): string {
+  const fields: Array<keyof ExpenseCostCenterItem> = [
+    'code',
+    'name',
+    'kind',
+    'owner',
+    'description'
+  ];
   return fields
     .filter((field) => previous[field] !== current[field])
     .map((field) => `${field}: ${previous[field]} → ${current[field]}`)
@@ -143,7 +185,9 @@ export class DatabaseFinanceCatalogRepository implements FinanceCatalogPersisten
 
     if (search) {
       params.push(`%${search}%`);
-      clauses.push(`(id ILIKE $${params.length} OR name ILIKE $${params.length} OR description ILIKE $${params.length})`);
+      clauses.push(
+        `(id ILIKE $${params.length} OR name ILIKE $${params.length} OR description ILIKE $${params.length})`
+      );
     }
     if (category) {
       params.push(`%${category}%`);
@@ -151,7 +195,17 @@ export class DatabaseFinanceCatalogRepository implements FinanceCatalogPersisten
     }
     if (costCenter) {
       params.push(`%${costCenter}%`);
-      clauses.push(`(cost_center_code ILIKE $${params.length} OR cost_center_name ILIKE $${params.length})`);
+      clauses.push(
+        `(cost_center_code ILIKE $${params.length} OR cost_center_name ILIKE $${params.length})`
+      );
+    }
+    if (filters.dateFrom) {
+      params.push(filters.dateFrom);
+      clauses.push(`created_at >= $${params.length}::date`);
+    }
+    if (filters.dateTo) {
+      params.push(filters.dateTo);
+      clauses.push(`created_at < ($${params.length}::date + INTERVAL '1 day')`);
     }
 
     return withTenantQueryExplicit(getPool(), accountId, async (client) => {
@@ -168,7 +222,7 @@ export class DatabaseFinanceCatalogRepository implements FinanceCatalogPersisten
         `SELECT id, account_id, name, kind, category, cost_center_code, cost_center_name, description, created_by_user_id, created_at, updated_at
          FROM finance_expense_catalog_items
          WHERE ${whereClause}
-         ORDER BY ${sort} ${order}
+         ORDER BY ${sort} ${order}, id ${order}
          LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
         [...params, pageSize, offset]
       );
@@ -188,7 +242,9 @@ export class DatabaseFinanceCatalogRepository implements FinanceCatalogPersisten
         pageSize,
         totalItems,
         totalPages,
-        sort: Object.keys(sortMap).find((key) => sortMap[key as keyof typeof sortMap] === sort) ?? 'name',
+        sort:
+          Object.keys(sortMap).find((key) => sortMap[key as keyof typeof sortMap] === sort) ??
+          'name',
         order: order.toLowerCase()
       };
     });
@@ -207,7 +263,9 @@ export class DatabaseFinanceCatalogRepository implements FinanceCatalogPersisten
 
     if (search) {
       params.push(`%${search}%`);
-      clauses.push(`(code ILIKE $${params.length} OR name ILIKE $${params.length} OR owner ILIKE $${params.length} OR description ILIKE $${params.length})`);
+      clauses.push(
+        `(code ILIKE $${params.length} OR name ILIKE $${params.length} OR owner ILIKE $${params.length} OR description ILIKE $${params.length})`
+      );
     }
     if (kind) {
       params.push(`%${kind}%`);
@@ -244,14 +302,15 @@ export class DatabaseFinanceCatalogRepository implements FinanceCatalogPersisten
     });
   }
 
-  async create(accountId: string, actorId: string, payload: ExpenseCatalogPayload): Promise<ExpenseCatalogItem> {
+  async create(
+    accountId: string,
+    actorId: string,
+    payload: ExpenseCatalogPayload
+  ): Promise<ExpenseCatalogItem> {
     return withTenantQueryExplicit(getPool(), accountId, async (client) => {
-      const idRow = await client.query(
-        `SELECT COALESCE(MAX(CAST(SUBSTRING(id FROM 5) AS INTEGER)), 0) + 1 AS next_id
-         FROM finance_expense_catalog_items WHERE account_id = $1`,
-        [accountId]
-      );
-      const nextId = `DES-${String(Number(idRow.rows[0]?.next_id ?? 1)).padStart(3, '0')}`;
+      // The table keeps a global primary key for compatibility with existing
+      // catalog consumers, so a per-account numeric counter is unsafe here.
+      const nextId = `DES-${randomUUID()}`;
       const centerRow = await client.query(
         'SELECT name FROM finance_cost_centers WHERE account_id = $1 AND code = $2 LIMIT 1',
         [accountId, payload.costCenterCode]
@@ -262,7 +321,17 @@ export class DatabaseFinanceCatalogRepository implements FinanceCatalogPersisten
           id, account_id, name, kind, category, cost_center_code, cost_center_name, description, created_by_user_id, created_at, updated_at
         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW(),NOW())
         RETURNING id, account_id, name, kind, category, cost_center_code, cost_center_name, description, created_by_user_id, created_at, updated_at`,
-        [nextId, accountId, payload.name, payload.kind, payload.category, payload.costCenterCode, costCenterName, payload.description, actorId]
+        [
+          nextId,
+          accountId,
+          payload.name,
+          payload.kind,
+          payload.category,
+          payload.costCenterCode,
+          costCenterName,
+          payload.description,
+          actorId
+        ]
       );
       return mapExpenseRow(inserted.rows[0] as Record<string, unknown>);
     });
@@ -287,7 +356,16 @@ export class DatabaseFinanceCatalogRepository implements FinanceCatalogPersisten
          SET name = $3, kind = $4, category = $5, cost_center_code = $6, cost_center_name = $7, description = $8, updated_at = NOW()
          WHERE account_id = $1 AND id = $2
          RETURNING id, account_id, name, kind, category, cost_center_code, cost_center_name, description, created_by_user_id, created_at, updated_at`,
-        [accountId, expenseId, payload.name, payload.kind, payload.category, payload.costCenterCode, costCenterName, payload.description]
+        [
+          accountId,
+          expenseId,
+          payload.name,
+          payload.kind,
+          payload.category,
+          payload.costCenterCode,
+          costCenterName,
+          payload.description
+        ]
       );
       const item = mapExpenseRow(updatedRow.rows[0] as Record<string, unknown>);
       return { item, diffSummary: summarizeExpenseDiff(previous, item) };
@@ -307,7 +385,10 @@ export class DatabaseFinanceCatalogRepository implements FinanceCatalogPersisten
     });
   }
 
-  async createCostCenter(accountId: string, payload: CostCenterCatalogPayload): Promise<ExpenseCostCenterItem> {
+  async createCostCenter(
+    accountId: string,
+    payload: CostCenterCatalogPayload
+  ): Promise<ExpenseCostCenterItem> {
     return withTenantQueryExplicit(getPool(), accountId, async (client) => {
       const result = await client.query(
         `INSERT INTO finance_cost_centers (account_id, code, name, kind, owner, description, created_at, updated_at)
@@ -332,13 +413,21 @@ export class DatabaseFinanceCatalogRepository implements FinanceCatalogPersisten
          SET code = $3, name = $4, kind = $5, owner = $6, description = $7, updated_at = NOW()
          WHERE account_id = $1 AND code = $2
          RETURNING code, name, kind, owner, description`,
-        [accountId, code, payload.code, payload.name, payload.kind, payload.owner, payload.description]
+        [
+          accountId,
+          code,
+          payload.code,
+          payload.name,
+          payload.kind,
+          payload.owner,
+          payload.description
+        ]
       );
       await client.query(
         `UPDATE finance_expense_catalog_items
          SET cost_center_code = $3, cost_center_name = $4, updated_at = NOW()
          WHERE account_id = $1 AND cost_center_code = $2`,
-        [accountId, code, payload.code, payload.name]
+        [accountId, payload.code, payload.code, payload.name]
       );
       const item = mapCostCenterRow(updated.rows[0] as Record<string, unknown>);
       return { item, diffSummary: summarizeCostCenterDiff(previous, item) };

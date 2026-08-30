@@ -299,6 +299,52 @@ test('handleVetusImportRoutes replays the same source reference idempotently', a
   assert.equal(handlers.patients.list().length, 1);
 });
 
+test('handleVetusImportRoutes rejects a divergent single-import source reference', async () => {
+  const handlers = createHandlers();
+  const firstBody = {
+    sourceSystem: 'Vetus',
+    sourceReference: 'source-reference-conflict-001',
+    owner: { legacyVetusId: 'owner-conflict-1', fullName: 'Fonte Original', phone: '(11) 90000-0010' },
+    patient: { legacyVetusId: 'patient-conflict-1', name: 'Paciente Original', species: 'Canina' }
+  };
+
+  await handleVetusImportRoutes(
+    '/vetus-imports',
+    new MockRequest({ method: 'POST', url: '/vetus-imports', body: firstBody }) as never,
+    new MockResponse() as never,
+    'corr-vetus-conflict-first',
+    handlers
+  );
+
+  await assert.rejects(
+    () => handleVetusImportRoutes(
+      '/vetus-imports',
+      new MockRequest({
+        method: 'POST',
+        url: '/vetus-imports',
+        body: {
+          ...firstBody,
+          patient: {
+            ...firstBody.patient,
+            name: 'Paciente Divergente'
+          }
+        }
+      }) as never,
+      new MockResponse() as never,
+      'corr-vetus-conflict-second',
+      handlers
+    ),
+    (error: unknown) => {
+      assert.equal((error as { readonly code?: string }).code, 'CONFLICT');
+      return true;
+    }
+  );
+
+  assert.equal(handlers.importLogStore.size, 1);
+  assert.equal(handlers.owners.list().length, 1);
+  assert.equal(handlers.patients.list()[0]?.name, 'Paciente Original');
+});
+
 test('handleVetusImportRoutes validates Vetus batches without creating records during dry-run', async () => {
   const handlers = createBatchHandlers();
   const response = new MockResponse();
@@ -378,6 +424,338 @@ test('handleVetusImportRoutes replays a batch by source reference without duplic
   assert.equal(second.batch.id, first.batch.id);
   assert.equal(handlers.owners.list().length, 1);
   assert.equal(handlers.patients.list().length, 1);
+});
+
+test('handleVetusImportRoutes fingerprints the normalized batch command', async () => {
+  const handlers = createBatchHandlers();
+  const firstResponse = new MockResponse();
+  await handleVetusImportRoutes(
+    '/vetus-import-batches',
+    new MockRequest({
+      method: 'POST',
+      url: '/vetus-import-batches',
+      body: {
+        sourceReference: 'batch-normalized-replay-001',
+        items: [{
+          ignoredField: 'not persisted',
+          owner: { fullName: '  Comando Normalizado  ', phone: '  11  ' },
+          patient: { name: '  Paciente Normalizado ', species: 'Canina', sex: 'Femea', baseWeightKg: '12,4' }
+        }]
+      }
+    }) as never,
+    firstResponse as never,
+    'corr-vetus-batch-normalized-first',
+    handlers
+  );
+
+  const secondResponse = new MockResponse();
+  await handleVetusImportRoutes(
+    '/vetus-import-batches',
+    new MockRequest({
+      method: 'POST',
+      url: '/vetus-import-batches',
+      body: {
+        sourceSystem: ' Vetus ',
+        sourceReference: 'batch-normalized-replay-001',
+        items: [{
+          owner: { fullName: 'Comando Normalizado', phone: '11' },
+          patient: { name: 'Paciente Normalizado', species: 'Canina', sex: 'female', baseWeightKg: 12.4 }
+        }]
+      }
+    }) as never,
+    secondResponse as never,
+    'corr-vetus-batch-normalized-second',
+    handlers
+  );
+
+  const first = firstResponse.bodyJson<{ batch: VetusImportBatchSummary }>();
+  const second = secondResponse.bodyJson<{ batch: VetusImportBatchSummary }>();
+  assert.equal(secondResponse.statusCode, 200);
+  assert.equal(second.batch.id, first.batch.id);
+  assert.equal(handlers.owners.list().length, 1);
+  assert.equal(handlers.patients.list().length, 1);
+});
+
+test('handleVetusImportRoutes rejects a divergent batch source reference', async () => {
+  const handlers = createBatchHandlers();
+  const firstBody = {
+    sourceSystem: 'Vetus',
+    sourceReference: 'batch-source-reference-conflict-001',
+    items: [{
+      owner: { fullName: 'Batch Original', phone: '(11) 90000-0011' },
+      patient: { name: 'Batch Paciente Original', species: 'Felina' }
+    }]
+  };
+
+  await handleVetusImportRoutes(
+    '/vetus-import-batches',
+    new MockRequest({ method: 'POST', url: '/vetus-import-batches', body: firstBody }) as never,
+    new MockResponse() as never,
+    'corr-vetus-batch-conflict-first',
+    handlers
+  );
+
+  await assert.rejects(
+    () => handleVetusImportRoutes(
+      '/vetus-import-batches',
+      new MockRequest({
+        method: 'POST',
+        url: '/vetus-import-batches',
+        body: {
+          ...firstBody,
+          items: [{
+            ...firstBody.items[0],
+            patient: {
+              ...firstBody.items[0].patient,
+              name: 'Batch Paciente Divergente'
+            }
+          }]
+        }
+      }) as never,
+      new MockResponse() as never,
+      'corr-vetus-batch-conflict-second',
+      handlers
+    ),
+    (error: unknown) => {
+      assert.equal((error as { readonly code?: string }).code, 'CONFLICT');
+      return true;
+    }
+  );
+
+  assert.equal((await handlers.importLogStore.listBatches('acc_cvg_demo' as never)).length, 1);
+  assert.equal(handlers.owners.list().length, 1);
+  assert.equal(handlers.patients.list()[0]?.name, 'Batch Paciente Original');
+});
+
+test('handleVetusImportRoutes rejects a conflicting source reference inside a batch', async () => {
+  const handlers = createBatchHandlers();
+  await handleVetusImportRoutes(
+    '/vetus-imports',
+    new MockRequest({
+      method: 'POST',
+      url: '/vetus-imports',
+      body: {
+        sourceSystem: 'Vetus',
+        sourceReference: 'line-source-reference-conflict-001',
+        owner: { fullName: 'Linha Original', phone: '(11) 90000-0012' },
+        patient: { name: 'Paciente Linha Original', species: 'Felina' }
+      }
+    }) as never,
+    new MockResponse() as never,
+    'corr-vetus-line-conflict-first',
+    handlers
+  );
+
+  await assert.rejects(
+    () => handleVetusImportRoutes(
+      '/vetus-import-batches',
+      new MockRequest({
+        method: 'POST',
+        url: '/vetus-import-batches',
+        body: {
+          items: [{
+            sourceReference: 'line-source-reference-conflict-001',
+            owner: { fullName: 'Linha Original', phone: '(11) 90000-0012' },
+            patient: { name: 'Paciente Linha Divergente', species: 'Felina' }
+          }]
+        }
+      }) as never,
+      new MockResponse() as never,
+      'corr-vetus-line-conflict-second',
+      handlers
+    ),
+    (error: unknown) => {
+      assert.equal((error as { readonly code?: string }).code, 'CONFLICT');
+      return true;
+    }
+  );
+
+  assert.equal((await handlers.importLogStore.listBatches('acc_cvg_demo' as never)).length, 0);
+  assert.equal(handlers.owners.list().length, 1);
+  assert.equal(handlers.patients.list()[0]?.name, 'Paciente Linha Original');
+});
+
+test('handleVetusImportRoutes preserves rejected row numbers when resuming without items', async () => {
+  const handlers = createBatchHandlers();
+  const temporarilyInactiveOwner = handlers.owners.create('acc_cvg_demo' as never, {
+    fullName: 'Linha Rejeitada',
+    contacts: [{ label: 'Phone', value: '(11) 90000-0015', type: 'phone', primary: true }],
+    financialResponsible: true
+  });
+  handlers.owners.update(temporarilyInactiveOwner.id, { status: 'inactive' });
+  const firstResponse = new MockResponse();
+  await handleVetusImportRoutes(
+    '/vetus-import-batches',
+    new MockRequest({
+      method: 'POST',
+      url: '/vetus-import-batches',
+      body: {
+        items: [
+          {
+            owner: { fullName: 'Linha Já Importada', phone: '(11) 90000-0013' },
+            patient: { name: 'Paciente Já Importado', species: 'Canina' }
+          },
+          {
+            owner: { fullName: 'Linha Rejeitada', phone: '(11) 90000-0015' },
+            patient: { name: 'Paciente Rejeitado', species: 'Felina' }
+          }
+        ]
+      }
+    }) as never,
+    firstResponse as never,
+    'corr-vetus-row-number-first',
+    handlers
+  );
+  const partial = firstResponse.bodyJson<{ batch: VetusImportBatchSummary }>();
+  assert.equal(partial.batch.status, 'partial');
+  handlers.owners.update(temporarilyInactiveOwner.id, { status: 'active' });
+
+  const resumeResponse = new MockResponse();
+  await handleVetusImportRoutes(
+    '/vetus-import-batches',
+    new MockRequest({
+      method: 'POST',
+      url: '/vetus-import-batches',
+      body: { resumeBatchId: partial.batch.id }
+    }) as never,
+    resumeResponse as never,
+    'corr-vetus-row-number-resume',
+    handlers
+  );
+
+  const resumed = resumeResponse.bodyJson<{
+    batch: VetusImportBatchSummary;
+    items: VetusImportBatchItemSummary[];
+  }>();
+  assert.equal(resumed.batch.status, 'completed');
+  assert.deepEqual(
+    resumed.items.map((item) => [item.rowNumber, item.status]),
+    [[1, 'imported'], [2, 'imported']]
+  );
+  assert.equal(handlers.owners.list().length, 2);
+  assert.equal(handlers.patients.list().length, 2);
+});
+
+test('handleVetusImportRoutes does not alter batch identity or resume a completed batch', async () => {
+  const handlers = createBatchHandlers();
+  const partialResponse = new MockResponse();
+  await handleVetusImportRoutes(
+    '/vetus-import-batches',
+    new MockRequest({
+      method: 'POST',
+      url: '/vetus-import-batches',
+      body: {
+        sourceSystem: 'Vetus',
+        sourceReference: 'immutable-batch-001',
+        items: [{ owner: { fullName: 'Batch Imutável' }, patient: { name: 'Paciente Imutável', species: 'Canina' } }]
+      }
+    }) as never,
+    partialResponse as never,
+    'corr-vetus-immutable-partial',
+    handlers
+  );
+  const partial = partialResponse.bodyJson<{ batch: VetusImportBatchSummary }>();
+
+  await assert.rejects(
+    () => handleVetusImportRoutes(
+      '/vetus-import-batches',
+      new MockRequest({
+        method: 'POST',
+        url: '/vetus-import-batches',
+        body: {
+          resumeBatchId: partial.batch.id,
+          sourceSystem: 'OtherSystem',
+          sourceReference: 'other-reference',
+          dryRun: true,
+          items: [{
+            owner: { fullName: 'Batch Imutável', phone: '(11) 90000-0014' },
+            patient: { name: 'Paciente Imutável', species: 'Canina' }
+          }]
+        }
+      }) as never,
+      new MockResponse() as never,
+      'corr-vetus-immutable-conflict',
+      handlers
+    ),
+    (error: unknown) => {
+      assert.equal((error as { readonly code?: string }).code, 'VALIDATION_ERROR');
+      return true;
+    }
+  );
+
+  const completedResponse = new MockResponse();
+  await handleVetusImportRoutes(
+    '/vetus-import-batches',
+    new MockRequest({
+      method: 'POST',
+      url: '/vetus-import-batches',
+      body: {
+        resumeBatchId: partial.batch.id,
+        sourceSystem: 'Vetus',
+        sourceReference: 'immutable-batch-001',
+        items: [{
+          owner: { fullName: 'Batch Imutável', phone: '(11) 90000-0014' },
+          patient: { name: 'Paciente Imutável', species: 'Canina' }
+        }]
+      }
+    }) as never,
+    completedResponse as never,
+    'corr-vetus-immutable-complete',
+    handlers
+  );
+  const completed = completedResponse.bodyJson<{ batch: VetusImportBatchSummary }>();
+  assert.equal(completed.batch.status, 'completed');
+
+  await assert.rejects(
+    () => handleVetusImportRoutes(
+      '/vetus-import-batches',
+      new MockRequest({
+        method: 'POST',
+        url: '/vetus-import-batches',
+        body: {
+          resumeBatchId: completed.batch.id,
+          items: [{
+            owner: { fullName: 'Batch Imutável', phone: '(11) 90000-0014' },
+            patient: { name: 'Paciente Imutável', species: 'Canina' }
+          }]
+        }
+      }) as never,
+      new MockResponse() as never,
+      'corr-vetus-immutable-completed-replay',
+      handlers
+    ),
+    (error: unknown) => {
+      assert.equal((error as { readonly code?: string }).code, 'VALIDATION_ERROR');
+      return true;
+    }
+  );
+});
+
+test('handleVetusImportRoutes rejects a batch that cannot fit the transactional response budget', async () => {
+  const handlers = createBatchHandlers();
+  const oversizedItems = Array.from({ length: 600 }, () => ({ noise: 'x'.repeat(500) }));
+
+  await assert.rejects(
+    () => handleVetusImportRoutes(
+      '/vetus-import-batches',
+      new MockRequest({
+        method: 'POST',
+        url: '/vetus-import-batches',
+        body: { items: oversizedItems }
+      }) as never,
+      new MockResponse() as never,
+      'corr-vetus-response-budget',
+      handlers
+    ),
+    (error: unknown) => {
+      assert.equal((error as { readonly code?: string }).code, 'VALIDATION_ERROR');
+      return true;
+    }
+  );
+
+  assert.equal((await handlers.importLogStore.listBatches('acc_cvg_demo' as never)).length, 0);
+  assert.equal(handlers.owners.list().length, 0);
+  assert.equal(handlers.patients.list().length, 0);
 });
 
 test('handleVetusImportRoutes resumes rejected Vetus rows and rolls back created records', async () => {

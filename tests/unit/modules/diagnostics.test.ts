@@ -25,15 +25,13 @@ function createServices() {
       }
     ]
   ]);
-  const diagnostics = new DiagnosticsService(
-    {
-      getOrThrow(encounterId: string) {
-        const encounter = encounters.get(encounterId);
-        expect(encounter).toBeDefined();
-        return encounter;
-      }
-    } as never
-  );
+  const diagnostics = new DiagnosticsService({
+    getOrThrow(encounterId: string) {
+      const encounter = encounters.get(encounterId);
+      expect(encounter).toBeDefined();
+      return encounter;
+    }
+  } as never);
   const laboratory = new LaboratoryService(diagnostics, {
     catalogRepository: new InMemoryLaboratoryCatalogRepository()
   });
@@ -110,7 +108,9 @@ describe('module-diagnostics / operational contract', () => {
       diagnostics.recordResult(order.id, {
         status: 'resulted'
       })
-    ).toThrow('resultSummary or resultAttachmentId is required when status is resulted');
+    ).toThrow(
+      'resultSummary or resultAttachmentId or resultValues is required when status is resulted'
+    );
   });
 
   it('covers laboratory fallback catalogs and released-results filtering without repository wiring', async () => {

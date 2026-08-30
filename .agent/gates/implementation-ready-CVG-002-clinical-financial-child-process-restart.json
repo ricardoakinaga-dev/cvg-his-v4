@@ -1,0 +1,90 @@
+{
+  "record_id": "GATE-CVG-002-CLINICAL-FINANCIAL-CHILD-PROCESS-RESTART-IR-001",
+  "timestamp": "2026-08-28T10:18:00-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-002 bounded real child-process clinical-financial restart/replay evidence",
+  "scope_ref": "CVG-002-CLINICAL-FINANCIAL-CHILD-PROCESS-RESTART",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The residual full-graph process-boundary gap, owner, contract and exclusions are frozen without promoting CVG-002 or global readiness.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-002-clinical-financial-child-process-restart.md",
+        ".agent/authority.jsonl#AUTH-CVG-002-CLINICAL-FINANCIAL-CHILD-PROCESS-RESTART-IR-001",
+        ".agent/verification.jsonl#VFY-SCOUT-CVG-002-CLINICAL-FINANCIAL-CHILD-PROCESS-RESTART-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The parent remains open for target operations, PIX/provider delivery, distributed behavior and release acceptance."
+    },
+    {
+      "id": "IR-002",
+      "description": "Existing bounded HTTP/PostgreSQL composition, same-process restart and isolated child SIGKILL proofs establish a coherent additive process harness gap.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "tests/integration/database/inpatient-clinical-financial-vertical-http-postgres.test.ts",
+        "tests/integration/process/inpatient-clinical-financial-restart.test.ts",
+        "tests/integration/process/inpatient-domain-sigkill.test.ts",
+        "tests/integration/process/inpatient-cash-receipt-sigkill.test.ts",
+        "infra/scripts/run-critical-process-suite.mjs"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The prior clinical-financial restart test controls bootstrap in-process; the full-composition child proof is now reviewed and bounded-verified, while the serial runner retains the unrelated PIX timeout."
+    },
+    {
+      "id": "IR-003",
+      "description": "A disposable two-account process test can prove deterministic interruption after the inventory billing-item write, rollback of inventory/lot/billing/audit/outbox/idempotency residue, restricted runtime roles and effective privileges, distinct-PID restart, replay/conflict, full financial continuation and exact SQL graph invariants.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-002-clinical-financial-child-process-restart.md",
+        "apps/api/test-fixtures/inpatient-clinical-financial-process.ts",
+        "tests/integration/process/inpatient-clinical-financial-child-process.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "HARDENED-GREEN-001 and the post-correction HARDENED-GREEN-002 exist. GREEN-001 and HARDENED-GREEN-001 are historical and superseded by HARDENED-GREEN-002; the first post-hardening review found only stale control-plane pointers, which were subsequently closed by the append-only reconciliation and final independent review."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-002-clinical-financial-child-process-restart.md",
+    "apps/api/test-fixtures/inpatient-clinical-financial-process.ts",
+    "tests/integration/process/inpatient-clinical-financial-child-process.test.ts",
+    "infra/scripts/run-critical-process-suite.mjs",
+    ".agent/verification.jsonl#VFY-CVG-002-CLINICAL-FINANCIAL-CHILD-PROCESS-RESTART-HARDENED-GREEN-001",
+    ".agent/verification.jsonl#VFY-CVG-002-CLINICAL-FINANCIAL-CHILD-PROCESS-RESTART-HARDENED-GREEN-002",
+    ".agent/verification.jsonl#VFY-CVG-002-CLINICAL-FINANCIAL-CHILD-PROCESS-RESTART-REVIEW-001",
+    ".agent/verification.jsonl#VFY-CVG-002-CLINICAL-FINANCIAL-CHILD-PROCESS-RESTART-EVIDENCE-POINTER-RECONCILIATION-001",
+    ".agent/artifacts/CVG-002-clinical-financial-child-process-restart-2026-08-28.md",
+    "tests/integration/database/inpatient-clinical-financial-vertical-http-postgres.test.ts",
+    "tests/integration/process/inpatient-clinical-financial-restart.test.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "This implementation-ready gate is historical and superseded by the verified bounded gate.",
+    "The full serial critical runner remains open at the unrelated PIX timeout; global parity/readiness and parent CVG-002 remain open."
+  ],
+  "conditions": [],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via explicit continuation of the consolidation request",
+    "scope": "CVG-002 bounded real child-process clinical-financial restart/replay evidence",
+    "decision": "Authorize only reversible test-fixture/critical-process harness work and disposable PostgreSQL verification of the existing public clinical-financial commands. Preserve the real API child PID boundary, restricted runtime roles, transaction rollback, idempotent replay, divergent conflict, two-account isolation and exact SQL reconciliation. Exclude production behavior changes, migrations, providers, credentials, deployment, target authorization and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-002-CLINICAL-FINANCIAL-CHILD-PROCESS-RESTART-IR-001",
+    "expires_or_revalidates": "Revalidate before adding production failpoints, changing command/financial semantics, changing runtime-role policy, touching providers/target or claiming parent/global readiness."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "implementation_status": "SUPERSEDED_BY_VERIFIED_BOUNDED",
+  "next_action": "Historical implementation-ready authority retained for scope provenance; use .agent/gates/verified-CVG-002-clinical-financial-child-process-restart.json as the current bounded decision and retain the PIX runner timeout and CVG-002/global promotion as open.",
+  "revalidation_triggers": [
+    "Changes to the public clinical-financial command transaction or idempotency semantics",
+    "Changes to runtime roles, RLS policy, process fixtures or critical-suite manifest",
+    "Expansion into provider, target, production, deployment, migration or release work"
+  ],
+  "supersedes": null,
+  "superseded_by": ".agent/gates/verified-CVG-002-clinical-financial-child-process-restart.json"
+}

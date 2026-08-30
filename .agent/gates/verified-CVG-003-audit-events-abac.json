@@ -1,0 +1,147 @@
+{
+  "record_id": "GATE-CVG-003-AUDIT-EVENTS-ABAC-VFY-001",
+  "timestamp": "2026-08-29T13:49:00-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-003 bounded ABAC enforcement on GET /audit/events",
+  "scope_ref": "CVG-003-AUDIT-EVENTS-ABAC",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "VFY-001",
+      "description": "GET /audit/events invokes the existing audit.read ABAC callback with audit_entry/events and the authenticated principal account before audit.listPage or the audit.list fallback; denial fails closed before either query.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/api/src/routes/access-control-routes.ts",
+        "apps/api/src/routes/access-control-audit-events.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-003-AUDIT-EVENTS-ABAC-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-003-AUDIT-EVENTS-ABAC-GREEN-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This certifies only the GET /audit/events branch and its two current read paths; it does not certify other audit surfaces."
+    },
+    {
+      "id": "VFY-002",
+      "description": "The API server supplies the existing enforceAbac callback, the configured abac-006 admin allow path composes successfully, and filters, cursor, limit, account binding, audit append, fallback and response behavior remain preserved.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/api/src/routes/access-control-routes.ts",
+        "apps/api/src/server.ts",
+        "apps/api/src/server.test.ts",
+        "apps/api/src/routes/access-control-audit-events.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-003-AUDIT-EVENTS-ABAC-INTEGRATION-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-003-AUDIT-EVENTS-ABAC-REGRESSION-001",
+        ".agent/verification.jsonl#VFY-CVG-003-AUDIT-EVENTS-ABAC-REGRESSION-FINAL-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The server integration covers the authenticated admin allow path; a full unauthorized-user HTTP integration remains a non-blocking follow-up."
+    },
+    {
+      "id": "VFY-003",
+      "description": "OpenAPI documents Bearer authentication and 401/403 outcomes for GET /audit/events without changing the deferred operational-coverage contract.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/api/src/openapi.yaml",
+        ".agent/verification.jsonl#VFY-CVG-003-AUDIT-EVENTS-ABAC-QUALITY-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Documentation validation does not replace deployed gateway or external client compatibility evidence."
+    },
+    {
+      "id": "VFY-004",
+      "description": "Current local quality evidence passes: API 489/489, access-control 38/38, official coverage above 80%, typechecks, OpenAPI, RLS, secret scan, formatting and diff hygiene.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-AUDIT-EVENTS-ABAC-REGRESSION-001",
+        ".agent/verification.jsonl#VFY-CVG-003-AUDIT-EVENTS-ABAC-REGRESSION-FINAL-001",
+        ".agent/verification.jsonl#VFY-CVG-003-AUDIT-EVENTS-ABAC-QUALITY-001",
+        ".agent/verification.jsonl#VFY-CVG-003-AUDIT-EVENTS-ABAC-COVERAGE-001",
+        ".agent/artifacts/CVG-003-audit-events-abac-2026-08-29.md",
+        "coverage/coverage-final.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Local coverage and quality gates do not replace remote CI, external homologation, target operations or release acceptance."
+    },
+    {
+      "id": "VFY-005",
+      "description": "Independent security and compatibility reviews approve the bounded slice with no P0/P1/P2 findings; remaining P3 observations are non-blocking and explicitly recorded.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-AUDIT-EVENTS-ABAC-REVIEW-001",
+        ".agent/verification.jsonl#VFY-CVG-003-AUDIT-EVENTS-ABAC-REVIEW-002"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Review approval is bounded to this route; generic ABAC error-detail hardening and broader unauthorized-user HTTP evidence remain separate follow-ups."
+    },
+    {
+      "id": "VFY-006",
+      "description": "Fresh global audits confirm non-promotion after final local evidence: Vetus parity 4/11 verified, clinical parity 2/3 verified, readiness 95/100 with 42 PASS, 3 WARN and 1 FAIL, and promotion remains blocked.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-AUDIT-EVENTS-ABAC-GLOBAL-RETEST-001",
+        ".agent/state.json",
+        ".agent/backlog.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This is a status reconciliation, not evidence of complete ERP/Vetus parity, external-provider homologation, target readiness or release acceptance."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-003-AUDIT-EVENTS-ABAC.md",
+    ".agent/artifacts/CVG-003-audit-events-abac-2026-08-29.md",
+    ".agent/gates/implementation-ready-CVG-003-audit-events-abac.json",
+    ".agent/authority.jsonl#AUTH-CVG-003-AUDIT-EVENTS-ABAC-IR-001",
+    ".agent/verification.jsonl#VFY-SCOUT-CVG-003-AUDIT-EVENTS-ABAC-001",
+    ".agent/verification.jsonl#VFY-CVG-003-AUDIT-EVENTS-ABAC-RED-001",
+    ".agent/verification.jsonl#VFY-CVG-003-AUDIT-EVENTS-ABAC-GREEN-001",
+    ".agent/verification.jsonl#VFY-CVG-003-AUDIT-EVENTS-ABAC-INTEGRATION-GREEN-001",
+    ".agent/verification.jsonl#VFY-CVG-003-AUDIT-EVENTS-ABAC-REGRESSION-001",
+    ".agent/verification.jsonl#VFY-CVG-003-AUDIT-EVENTS-ABAC-REGRESSION-FINAL-001",
+    ".agent/verification.jsonl#VFY-CVG-003-AUDIT-EVENTS-ABAC-QUALITY-001",
+    ".agent/verification.jsonl#VFY-CVG-003-AUDIT-EVENTS-ABAC-REVIEW-001",
+    ".agent/verification.jsonl#VFY-CVG-003-AUDIT-EVENTS-ABAC-REVIEW-002",
+    ".agent/verification.jsonl#VFY-CVG-003-AUDIT-EVENTS-ABAC-COVERAGE-001",
+    ".agent/verification.jsonl#VFY-CVG-003-AUDIT-EVENTS-ABAC-GLOBAL-RETEST-001"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "GET /audit/operational-coverage has a separate cache/source-of-truth gap and remains deferred.",
+    "Reprocess/audit.write and replay-after-revocation authorization remain separate P0 follow-ups.",
+    "Generic ABAC denial responses currently retain policy metadata in details; hardening is outside this route-only authority.",
+    "A full unauthorized-user HTTP integration for this GET remains a non-blocking follow-up.",
+    "Global Vetus functional parity remains not verified: 4/11 areas verified; clinical parity remains not verified: 2/3 areas verified.",
+    "Enterprise readiness remains 95/100 with remote CI, real backup/restore and real deploy/cutover warnings; external providers, target operations, accessibility, LGPD operations and release evidence remain open."
+  ],
+  "conditions": [
+    "Close only GET /audit/events and its existing server callback seam as PASS_BOUNDED.",
+    "Preserve principal-derived account scope, filters, cursor, limit, audit append, fallback and response contract.",
+    "Keep operational coverage source-of-truth, reprocess/audit.write, replay, systemic ABAC, generic error-detail hardening and all provider/target/production/deployment/release work outside this gate unless newly authorized.",
+    "Keep CVG-003/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+    "Do not infer target, production, provider, deployment or release acceptance from this gate."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via explicit continuation request and fresh bounded scout selection",
+    "scope": "CVG-003 bounded ABAC enforcement for GET /audit/events only",
+    "decision": "Authorize only the existing enforceAbac route/server seam, focused tests and matching OpenAPI documentation. Exclude operational-coverage source-of-truth changes, reprocess/audit.write, replay-after-revocation, systemic ABAC, policy broadening, storage, workers, migrations, providers, credentials, target, production, deployment and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-003-AUDIT-EVENTS-ABAC-IR-001",
+    "expires_or_revalidates": "Revalidate before enforcing ABAC on operational coverage, another audit family, replay/reprocess, changing policy definitions or expanding beyond GET /audit/events."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_WITH_CONDITIONS",
+  "implementation_status": "COMPLETE_BOUNDED",
+  "next_action": "Return to fresh bounded scouting for the next residual issue; do not promote CVG-003 or global ERP readiness.",
+  "revalidation_triggers": [
+    "GET /audit/operational-coverage or another audit route",
+    "Changes to abac-006 or policy semantics",
+    "Generic ABAC error-detail redaction, replay/reprocess authorization or permission revocation handling",
+    "Expansion to migrations, providers, credentials, target, production, deployment or release scope"
+  ],
+  "supersedes": null
+}

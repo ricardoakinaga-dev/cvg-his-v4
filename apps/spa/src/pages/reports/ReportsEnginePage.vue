@@ -12,15 +12,22 @@
     </AppPageHeader>
 
     <DsAlert variant="info">
-      O motor enterprise usa o catálogo real de relatórios do backend, registra execuções e prepara exportações ou
-      agendamentos sem depender das telas estáticas do workbench legado.
+      O motor enterprise usa o catálogo real de relatórios do backend, registra execuções e prepara
+      exportações ou agendamentos sem depender das telas estáticas do workbench legado.
     </DsAlert>
 
-    <DsCard v-if="originHref && selectedDeliverySchedule" title="Agendamento aberto pela auditoria" variant="compact">
+    <DsCard
+      v-if="originHref && selectedDeliverySchedule"
+      title="Agendamento aberto pela auditoria"
+      variant="compact"
+    >
       <div class="reports-engine-page__origin-context">
         <div>
           <strong>{{ selectedDeliverySchedule.name }}</strong>
-          <span>{{ selectedDeliverySchedule.reportId }} · {{ selectedDeliverySchedule.recipients.length }} destinatário(s)</span>
+          <span
+            >{{ selectedDeliverySchedule.reportId }} ·
+            {{ selectedDeliverySchedule.recipients.length }} destinatário(s)</span
+          >
         </div>
         <DsButton tag="a" :to="originHref" variant="secondary">{{ originLabel }}</DsButton>
       </div>
@@ -36,7 +43,11 @@
 
     <section class="reports-engine-page__kpis">
       <DsStatCard label="Relatórios no catálogo" :value="formatInteger(catalog.length)" icon="📚" />
-      <DsStatCard label="Execuções registradas" :value="formatInteger(executions.length)" icon="🧮" />
+      <DsStatCard
+        label="Execuções registradas"
+        :value="formatInteger(executions.length)"
+        icon="🧮"
+      />
       <DsStatCard label="Execuções com dados" :value="formatInteger(filledExecutions)" icon="📈" />
       <DsStatCard label="Execuções vazias" :value="formatInteger(emptyExecutions)" icon="∅" />
       <DsStatCard label="Agendamentos ativos" :value="formatInteger(activeSchedules)" icon="⏱️" />
@@ -47,7 +58,11 @@
         aria-label="Filtrar agendamentos com falha"
         @click="scheduleFilter = 'failed'"
       >
-        <DsStatCard label="Agendamentos com falha" :value="formatInteger(failedSchedules)" icon="⚠️" />
+        <DsStatCard
+          label="Agendamentos com falha"
+          :value="formatInteger(failedSchedules)"
+          icon="⚠️"
+        />
       </button>
     </section>
 
@@ -86,7 +101,12 @@
       </div>
 
       <div class="reports-engine-page__actions">
-        <DsButton variant="primary" :loading="executing" :disabled="!selectedReportId" @click="executeReport">
+        <DsButton
+          variant="primary"
+          :loading="executing"
+          :disabled="!selectedReportId"
+          @click="executeReport"
+        >
           Executar
         </DsButton>
         <DsButton
@@ -127,7 +147,12 @@
     <DsCard title="Agendar recorrência">
       <div class="reports-engine-page__form-grid">
         <DsInput id="schedule-name" v-model="scheduleName" label="Nome do agendamento" />
-        <DsInput id="schedule-frequency" v-model="scheduleFrequency" type="select" label="Frequência">
+        <DsInput
+          id="schedule-frequency"
+          v-model="scheduleFrequency"
+          type="select"
+          label="Frequência"
+        >
           <option value="daily">Diária</option>
           <option value="weekly">Semanal</option>
           <option value="monthly">Mensal</option>
@@ -147,7 +172,12 @@
       </div>
 
       <div class="reports-engine-page__actions">
-        <DsButton variant="secondary" :loading="scheduling" :disabled="!selectedReportId" @click="createSchedule">
+        <DsButton
+          variant="secondary"
+          :loading="scheduling"
+          :disabled="!selectedReportId"
+          @click="createSchedule"
+        >
           Agendar relatório
         </DsButton>
       </div>
@@ -163,7 +193,11 @@
         empty-description="Selecione um relatório e execute para visualizar as linhas retornadas pelo motor enterprise."
         variant="hoverable"
       >
-        <template v-for="column in selectedExecution?.columns ?? []" #[`cell-${column.key}`]="{ value }" :key="column.key">
+        <template
+          v-for="column in selectedExecution?.columns ?? []"
+          #[`cell-${column.key}`]="{ value }"
+          :key="column.key"
+        >
           {{ formatCell(value, column.type) }}
         </template>
       </DataTable>
@@ -231,7 +265,12 @@
             <DsButton size="sm" variant="secondary" @click="toggleSchedule(row.id as string)">
               {{ row.active ? 'Pausar' : 'Reativar' }}
             </DsButton>
-            <DsButton size="sm" variant="ghost" :loading="loadingDeliveries === row.id" @click="loadDeliveries(row.id as string)">
+            <DsButton
+              size="sm"
+              variant="ghost"
+              :loading="loadingDeliveries === row.id"
+              @click="loadDeliveries(row.id as string)"
+            >
               Entregas
             </DsButton>
           </template>
@@ -241,17 +280,32 @@
 
     <DsCard title="Histórico de entregas">
       <p class="reports-engine-page__delivery-context">
-        {{ selectedDeliveryScheduleName || 'Selecione um agendamento para consultar entregas por destinatário.' }}
+        {{
+          selectedDeliveryScheduleName ||
+          'Selecione um agendamento para consultar entregas por destinatário.'
+        }}
       </p>
       <div class="reports-engine-page__delivery-filters">
-        <DsInput id="delivery-status-filter" v-model="deliveryFilters.status" type="select" label="Status">
+        <DsInput
+          id="delivery-status-filter"
+          v-model="deliveryFilters.status"
+          type="select"
+          label="Status"
+        >
           <option value="all">Todos</option>
           <option value="sent">Enviados</option>
           <option value="failed">Falhados</option>
         </DsInput>
-        <DsInput id="delivery-date-from" v-model="deliveryFilters.dateFrom" type="date" label="De" />
+        <DsInput
+          id="delivery-date-from"
+          v-model="deliveryFilters.dateFrom"
+          type="date"
+          label="De"
+        />
         <DsInput id="delivery-date-to" v-model="deliveryFilters.dateTo" type="date" label="Até" />
-        <DsButton variant="ghost" type="button" @click="clearDeliveryFilters">Limpar filtros</DsButton>
+        <DsButton variant="ghost" type="button" @click="clearDeliveryFilters"
+          >Limpar filtros</DsButton
+        >
         <DsButton
           variant="secondary"
           type="button"
@@ -263,11 +317,18 @@
         </DsButton>
       </div>
       <div class="reports-engine-page__delivery-summary" aria-label="Resumo de entregas filtradas">
-        <DsStatCard label="entregas no filtro" :value="formatInteger(filteredDeliveryCount)" icon="📬" />
+        <DsStatCard
+          label="entregas no filtro"
+          :value="formatInteger(filteredDeliveryCount)"
+          icon="📬"
+        />
         <DsStatCard label="enviado(s)" :value="formatInteger(sentDeliveryCount)" icon="✅" />
         <DsStatCard label="falhado(s)" :value="formatInteger(failedDeliveryCount)" icon="⚠️" />
       </div>
-      <section class="reports-engine-page__failed-recipients" aria-label="Falhas recorrentes por destinatário">
+      <section
+        class="reports-engine-page__failed-recipients"
+        aria-label="Falhas recorrentes por destinatário"
+      >
         <h4 class="reports-engine-page__section-title">Falhas recorrentes por destinatário</h4>
         <DataTable
           :columns="failedRecipientColumns"
@@ -460,11 +521,21 @@ const deliveryAlertColumns: DataTableColumn[] = [
   { key: 'actions', label: 'Ações' }
 ];
 
-const selectedDefinition = computed(() => catalog.value.find((definition) => definition.id === selectedReportId.value) ?? null);
-const activeSchedules = computed(() => schedules.value.filter((schedule) => schedule.isActive).length);
-const failedSchedules = computed(() => schedules.value.filter((schedule) => Boolean(schedule.lastError)).length);
-const filledExecutions = computed(() => executions.value.filter((execution) => execution.rowCount > 0).length);
-const emptyExecutions = computed(() => executions.value.filter((execution) => execution.rowCount === 0).length);
+const selectedDefinition = computed(
+  () => catalog.value.find((definition) => definition.id === selectedReportId.value) ?? null
+);
+const activeSchedules = computed(
+  () => schedules.value.filter((schedule) => schedule.isActive).length
+);
+const failedSchedules = computed(
+  () => schedules.value.filter((schedule) => Boolean(schedule.lastError)).length
+);
+const filledExecutions = computed(
+  () => executions.value.filter((execution) => execution.rowCount > 0).length
+);
+const emptyExecutions = computed(
+  () => executions.value.filter((execution) => execution.rowCount === 0).length
+);
 const executionColumns = computed<DataTableColumn[]>(() => {
   const columns = selectedExecution.value?.columns ?? selectedDefinition.value?.columns ?? [];
   return columns.map((column) => ({ key: column.key, label: column.label }));
@@ -487,7 +558,9 @@ const scheduleRows = computed<DataTableRow[]>(() =>
   filteredSchedules.value.map((schedule) => ({
     id: schedule.id,
     name: schedule.name,
-    report: catalog.value.find((definition) => definition.id === schedule.reportId)?.title ?? schedule.reportId,
+    report:
+      catalog.value.find((definition) => definition.id === schedule.reportId)?.title ??
+      schedule.reportId,
     active: schedule.isActive,
     hasError: Boolean(schedule.lastError),
     status: schedule.isActive ? 'Ativo' : 'Pausado',
@@ -515,8 +588,12 @@ const selectedDeliverySchedule = computed(() => {
   if (!selectedDeliveryScheduleId.value) return null;
   return schedules.value.find((item) => item.id === selectedDeliveryScheduleId.value) ?? null;
 });
-const originHref = computed(() => (typeof route?.query?.origin === 'string' ? route.query.origin : ''));
-const originLabel = computed(() => (typeof route?.query?.originLabel === 'string' ? route.query.originLabel : 'Voltar para origem'));
+const originHref = computed(() =>
+  typeof route?.query?.origin === 'string' ? route.query.origin : ''
+);
+const originLabel = computed(() =>
+  typeof route?.query?.originLabel === 'string' ? route.query.originLabel : 'Voltar para origem'
+);
 const deliveryRows = computed<DataTableRow[]>(() =>
   filteredDeliveries.value.map((delivery) => ({
     id: delivery.id,
@@ -531,20 +608,32 @@ const deliveryRows = computed<DataTableRow[]>(() =>
 );
 const filteredDeliveries = computed(() =>
   deliveries.value.filter((delivery) => {
-    if (deliveryFilters.status !== 'all' && delivery.status !== deliveryFilters.status) return false;
-    if (deliveryFilters.dateFrom && delivery.deliveredAt.slice(0, 10) < deliveryFilters.dateFrom) return false;
-    if (deliveryFilters.dateTo && delivery.deliveredAt.slice(0, 10) > deliveryFilters.dateTo) return false;
+    if (deliveryFilters.status !== 'all' && delivery.status !== deliveryFilters.status)
+      return false;
+    if (deliveryFilters.dateFrom && delivery.deliveredAt.slice(0, 10) < deliveryFilters.dateFrom)
+      return false;
+    if (deliveryFilters.dateTo && delivery.deliveredAt.slice(0, 10) > deliveryFilters.dateTo)
+      return false;
     return true;
   })
 );
 const filteredDeliveryCount = computed(() => filteredDeliveries.value.length);
-const sentDeliveryCount = computed(() => filteredDeliveries.value.filter((delivery) => delivery.status === 'sent').length);
-const failedDeliveryCount = computed(() => filteredDeliveries.value.filter((delivery) => delivery.status === 'failed').length);
+const sentDeliveryCount = computed(
+  () => filteredDeliveries.value.filter((delivery) => delivery.status === 'sent').length
+);
+const failedDeliveryCount = computed(
+  () => filteredDeliveries.value.filter((delivery) => delivery.status === 'failed').length
+);
 const retryableFilteredDeliveries = computed(() =>
-  filteredDeliveries.value.filter((delivery) => delivery.status === 'failed' && Boolean(delivery.executionId))
+  filteredDeliveries.value.filter(
+    (delivery) => delivery.status === 'failed' && Boolean(delivery.executionId)
+  )
 );
 const failedRecipientRows = computed<DataTableRow[]>(() => {
-  const byRecipient = new Map<string, { failures: number; lastFailureAt: string; lastError: string }>();
+  const byRecipient = new Map<
+    string,
+    { failures: number; lastFailureAt: string; lastError: string }
+  >();
 
   for (const delivery of filteredDeliveries.value) {
     if (delivery.status !== 'failed') continue;
@@ -563,7 +652,7 @@ const failedRecipientRows = computed<DataTableRow[]>(() => {
     byRecipient.set(delivery.recipient, {
       failures: current.failures + 1,
       lastFailureAt: isMoreRecent ? delivery.deliveredAt : current.lastFailureAt,
-      lastError: isMoreRecent ? delivery.error ?? 'Sem erro registrado' : current.lastError
+      lastError: isMoreRecent ? (delivery.error ?? 'Sem erro registrado') : current.lastError
     });
   }
 
@@ -576,7 +665,8 @@ const failedRecipientRows = computed<DataTableRow[]>(() => {
       lastError: summary.lastError
     }))
     .sort((left, right) => {
-      const failureOrder = Number(String(right.failures).split(' ')[0]) - Number(String(left.failures).split(' ')[0]);
+      const failureOrder =
+        Number(String(right.failures).split(' ')[0]) - Number(String(left.failures).split(' ')[0]);
       return failureOrder || String(left.recipient).localeCompare(String(right.recipient), 'pt-BR');
     });
 });
@@ -616,7 +706,8 @@ async function loadData(): Promise<void> {
     executions.value = executionsResult;
     schedules.value = schedulesResult;
     selectedReportId.value = selectedReportId.value || catalogResult[0]?.id || '';
-    const routeScheduleId = typeof route?.query?.scheduleId === 'string' ? route.query.scheduleId : '';
+    const routeScheduleId =
+      typeof route?.query?.scheduleId === 'string' ? route.query.scheduleId : '';
     if (routeScheduleId && schedulesResult.some((schedule) => schedule.id === routeScheduleId)) {
       await loadDeliveries(routeScheduleId);
     }
@@ -640,7 +731,10 @@ async function executeReport(): Promise<void> {
       filters: buildFilters()
     });
     selectedExecution.value = execution;
-    executions.value = [toExecutionSummary(execution), ...executions.value.filter((item) => item.id !== execution.id)];
+    executions.value = [
+      toExecutionSummary(execution),
+      ...executions.value.filter((item) => item.id !== execution.id)
+    ];
     success.value = `Relatório executado com ${execution.rowCount} linha(s).`;
   } catch (err) {
     error.value = errorMessage(err, 'Não foi possível executar o relatório.');
@@ -695,7 +789,8 @@ async function createSchedule(): Promise<void> {
     const schedule = await reportsService.createSchedule({
       reportId: selectedReportId.value,
       filters: buildFilters(),
-      name: scheduleName.value.trim() || `${selectedDefinition.value?.title ?? 'Relatório'} recorrente`,
+      name:
+        scheduleName.value.trim() || `${selectedDefinition.value?.title ?? 'Relatório'} recorrente`,
       frequency: scheduleFrequency.value,
       format: scheduleFormat.value,
       recipients: scheduleRecipients.value
@@ -757,7 +852,10 @@ async function retryDelivery(deliveryId: string): Promise<void> {
   success.value = '';
 
   try {
-    const delivery = await reportsService.retryScheduleDelivery(selectedDeliveryScheduleId.value, deliveryId);
+    const delivery = await reportsService.retryScheduleDelivery(
+      selectedDeliveryScheduleId.value,
+      deliveryId
+    );
     deliveries.value = [delivery, ...deliveries.value.filter((item) => item.id !== delivery.id)];
     success.value = `Entrega reprocessada para ${delivery.recipient}.`;
   } catch (err) {
@@ -822,10 +920,11 @@ async function retryDeliveryAlert(recipient: string): Promise<void> {
 }
 
 function retryableDeliveriesForRecipient(recipient: string): ReportScheduleDeliverySummary[] {
-  return deliveries.value.filter((delivery) =>
-    delivery.recipient === recipient &&
-    delivery.status === 'failed' &&
-    Boolean(delivery.executionId)
+  return deliveries.value.filter(
+    (delivery) =>
+      delivery.recipient === recipient &&
+      delivery.status === 'failed' &&
+      Boolean(delivery.executionId)
   );
 }
 
@@ -892,7 +991,8 @@ function categoryLabel(category: ReportDefinition['category']): string {
     commercial: 'Comercial',
     clinical: 'Clínico',
     inventory: 'Estoque',
-    staff: 'Equipe'
+    staff: 'Equipe',
+    registrations: 'Cadastros'
   };
   return labels[category];
 }

@@ -44,6 +44,13 @@ test('rejects an obviously low-entropy token even when it is long', () => {
   );
 });
 
+test('rejects an obviously periodic token even when it has enough length and distinct characters', () => {
+  assert.throws(
+    () => resolveSetupBootstrapToken('01234567'.repeat(6)),
+    /high-entropy secret generator/
+  );
+});
+
 test('accepts only the exact token', () => {
   const token = '0123456789abcdef'.repeat(4);
 

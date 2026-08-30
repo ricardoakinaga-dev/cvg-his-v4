@@ -36,6 +36,9 @@ describe('runtime role sensitive-table ACL', () => {
         `GRANT CONNECT ON DATABASE "${dbIdentifier}" TO "${apiRole}", "${workerRole}"`
       );
       await testPool.query(`GRANT DELETE ON TABLE public.users TO "${donorRole}"`);
+      await testPool.query(
+        `GRANT DELETE, TRUNCATE ON TABLE public.laboratory_result_imports TO "${donorRole}"`
+      );
       await adminPool.query(`GRANT "${donorRole}" TO "${apiRole}", "${workerRole}"`);
 
       const client = await testPool.connect();
@@ -56,6 +59,9 @@ describe('runtime role sensitive-table ACL', () => {
         api_mfa_delete: boolean;
         api_challenge_update: boolean;
         api_challenge_delete: boolean;
+        api_webauthn_credential_delete: boolean;
+        api_webauthn_challenge_update: boolean;
+        api_webauthn_challenge_delete: boolean;
         worker_mapping_select: boolean;
         worker_mapping_insert: boolean;
         worker_users_select: boolean;
@@ -67,6 +73,10 @@ describe('runtime role sensitive-table ACL', () => {
         worker_mfa_update: boolean;
         worker_challenge_select: boolean;
         worker_challenge_update: boolean;
+        worker_webauthn_credential_select: boolean;
+        worker_webauthn_credential_update: boolean;
+        worker_webauthn_challenge_select: boolean;
+        worker_webauthn_challenge_update: boolean;
         api_keys_select: boolean;
         api_key_usage_insert: boolean;
         api_key_rate_limits_update: boolean;
@@ -87,6 +97,10 @@ describe('runtime role sensitive-table ACL', () => {
         api_donor_membership: boolean;
         worker_donor_membership: boolean;
         worker_sensitive_dml: boolean;
+        api_laboratory_ingress_delete: boolean;
+        api_laboratory_ingress_truncate: boolean;
+        worker_laboratory_ingress_delete: boolean;
+        worker_laboratory_ingress_truncate: boolean;
       }>(
         `SELECT
            has_table_privilege($1, 'public.users', 'INSERT') AS api_users_insert,
@@ -98,6 +112,9 @@ describe('runtime role sensitive-table ACL', () => {
            has_table_privilege($1, 'public.mfa_credentials', 'DELETE') AS api_mfa_delete,
            has_table_privilege($1, 'public.auth_mfa_login_challenges', 'UPDATE') AS api_challenge_update,
            has_table_privilege($1, 'public.auth_mfa_login_challenges', 'DELETE') AS api_challenge_delete,
+           has_table_privilege($1, 'public.auth_webauthn_credentials', 'DELETE') AS api_webauthn_credential_delete,
+           has_table_privilege($1, 'public.auth_webauthn_challenges', 'UPDATE') AS api_webauthn_challenge_update,
+           has_table_privilege($1, 'public.auth_webauthn_challenges', 'DELETE') AS api_webauthn_challenge_delete,
            has_table_privilege($2, 'public.account_service_principals', 'SELECT') AS worker_mapping_select,
            has_table_privilege($2, 'public.account_service_principals', 'INSERT') AS worker_mapping_insert,
            has_table_privilege($2, 'public.users', 'SELECT') AS worker_users_select,
@@ -109,6 +126,10 @@ describe('runtime role sensitive-table ACL', () => {
            has_table_privilege($2, 'public.mfa_credentials', 'UPDATE') AS worker_mfa_update,
            has_table_privilege($2, 'public.auth_mfa_login_challenges', 'SELECT') AS worker_challenge_select,
            has_table_privilege($2, 'public.auth_mfa_login_challenges', 'UPDATE') AS worker_challenge_update,
+           has_table_privilege($2, 'public.auth_webauthn_credentials', 'SELECT') AS worker_webauthn_credential_select,
+           has_table_privilege($2, 'public.auth_webauthn_credentials', 'UPDATE') AS worker_webauthn_credential_update,
+           has_table_privilege($2, 'public.auth_webauthn_challenges', 'SELECT') AS worker_webauthn_challenge_select,
+           has_table_privilege($2, 'public.auth_webauthn_challenges', 'UPDATE') AS worker_webauthn_challenge_update,
            has_table_privilege($1, 'public.api_keys', 'SELECT') AS api_keys_select,
            has_table_privilege($1, 'public.api_key_usage', 'INSERT') AS api_key_usage_insert,
            has_table_privilege($1, 'public.api_key_rate_limits', 'UPDATE') AS api_key_rate_limits_update,
@@ -119,6 +140,15 @@ describe('runtime role sensitive-table ACL', () => {
            has_function_privilege($1, 'app.is_pix_transaction_owned_by(text, uuid)'::regprocedure, 'EXECUTE') AS api_pix_account_execute,
            has_function_privilege($2, 'app.resolve_active_api_key(text, text)'::regprocedure, 'EXECUTE') AS worker_key_auth_execute,
            has_function_privilege($2, 'app.is_pix_transaction_owned_by(text, uuid)'::regprocedure, 'EXECUTE') AS worker_pix_account_execute,
+           has_function_privilege($1, 'app.assert_encounter_cash_receipt_consistent(uuid, boolean)'::regprocedure, 'EXECUTE') AS api_cash_receipt_consistency_execute,
+           has_function_privilege($1, 'app.assert_encounter_non_cash_receipt_consistent(uuid)'::regprocedure, 'EXECUTE') AS api_non_cash_receipt_consistency_execute,
+           has_function_privilege($1, 'app.assert_one_active_encounter_cash_receipt(uuid, uuid)'::regprocedure, 'EXECUTE') AS api_active_cash_receipt_guard_execute,
+           has_function_privilege($2, 'app.assert_encounter_cash_receipt_consistent(uuid, boolean)'::regprocedure, 'EXECUTE') AS worker_cash_receipt_consistency_execute,
+           has_function_privilege($2, 'app.assert_encounter_non_cash_receipt_consistent(uuid)'::regprocedure, 'EXECUTE') AS worker_non_cash_receipt_consistency_execute,
+           has_function_privilege($2, 'app.assert_one_active_encounter_cash_receipt(uuid, uuid)'::regprocedure, 'EXECUTE') AS worker_active_cash_receipt_guard_execute,
+           has_function_privilege('public', 'app.assert_encounter_cash_receipt_consistent(uuid, boolean)'::regprocedure, 'EXECUTE') AS public_cash_receipt_consistency_execute,
+           has_function_privilege('public', 'app.assert_encounter_non_cash_receipt_consistent(uuid)'::regprocedure, 'EXECUTE') AS public_non_cash_receipt_consistency_execute,
+           has_function_privilege('public', 'app.assert_one_active_encounter_cash_receipt(uuid, uuid)'::regprocedure, 'EXECUTE') AS public_active_cash_receipt_guard_execute,
            EXISTS (
              SELECT 1
                FROM pg_proc procedure
@@ -142,11 +172,16 @@ describe('runtime role sensitive-table ACL', () => {
            (SELECT rolinherit FROM pg_roles WHERE rolname = $2) AS worker_inherit,
            pg_has_role($1, $3, 'MEMBER') AS api_donor_membership,
            pg_has_role($2, $3, 'MEMBER') AS worker_donor_membership,
+           has_table_privilege($1, 'public.laboratory_result_imports', 'DELETE') AS api_laboratory_ingress_delete,
+           has_table_privilege($1, 'public.laboratory_result_imports', 'TRUNCATE') AS api_laboratory_ingress_truncate,
+           has_table_privilege($2, 'public.laboratory_result_imports', 'DELETE') AS worker_laboratory_ingress_delete,
+           has_table_privilege($2, 'public.laboratory_result_imports', 'TRUNCATE') AS worker_laboratory_ingress_truncate,
            EXISTS (
              SELECT 1
              FROM unnest(ARRAY[
                'users', 'account_service_principals', 'sessions',
-               'mfa_credentials', 'auth_mfa_login_challenges'
+               'mfa_credentials', 'auth_mfa_login_challenges',
+               'auth_webauthn_credentials', 'auth_webauthn_challenges'
              ]) AS sensitive_table(table_name)
              CROSS JOIN unnest(ARRAY['INSERT', 'UPDATE', 'DELETE', 'TRUNCATE']) AS dml(privilege_name)
              WHERE has_table_privilege(
@@ -168,6 +203,9 @@ describe('runtime role sensitive-table ACL', () => {
         api_mfa_delete: true,
         api_challenge_update: true,
         api_challenge_delete: false,
+        api_webauthn_credential_delete: true,
+        api_webauthn_challenge_update: true,
+        api_webauthn_challenge_delete: false,
         worker_mapping_select: true,
         worker_mapping_insert: false,
         worker_users_select: false,
@@ -179,6 +217,10 @@ describe('runtime role sensitive-table ACL', () => {
         worker_mfa_update: false,
         worker_challenge_select: false,
         worker_challenge_update: false,
+        worker_webauthn_credential_select: false,
+        worker_webauthn_credential_update: false,
+        worker_webauthn_challenge_select: false,
+        worker_webauthn_challenge_update: false,
         api_keys_select: true,
         api_key_usage_insert: true,
         api_key_rate_limits_update: true,
@@ -189,6 +231,15 @@ describe('runtime role sensitive-table ACL', () => {
         api_pix_account_execute: true,
         worker_key_auth_execute: false,
         worker_pix_account_execute: false,
+        api_cash_receipt_consistency_execute: true,
+        api_non_cash_receipt_consistency_execute: true,
+        api_active_cash_receipt_guard_execute: true,
+        worker_cash_receipt_consistency_execute: true,
+        worker_non_cash_receipt_consistency_execute: true,
+        worker_active_cash_receipt_guard_execute: true,
+        public_cash_receipt_consistency_execute: false,
+        public_non_cash_receipt_consistency_execute: false,
+        public_active_cash_receipt_guard_execute: false,
         public_key_auth_execute: false,
         api_key_auth_nologin: true,
         api_key_auth_noinherit: true,
@@ -198,6 +249,10 @@ describe('runtime role sensitive-table ACL', () => {
         worker_inherit: false,
         api_donor_membership: false,
         worker_donor_membership: false,
+        api_laboratory_ingress_delete: false,
+        api_laboratory_ingress_truncate: false,
+        worker_laboratory_ingress_delete: false,
+        worker_laboratory_ingress_truncate: false,
         worker_sensitive_dml: false
       });
 
@@ -266,7 +321,10 @@ describe('runtime role sensitive-table ACL', () => {
         await deniedClient.query('BEGIN');
         await deniedClient.query(`SET ROLE "${workerRole}"`);
         await expect(
-          deniedClient.query('SELECT * FROM app.resolve_active_api_key($1, $2)', [apiKeyPrefix, apiKeyHash])
+          deniedClient.query('SELECT * FROM app.resolve_active_api_key($1, $2)', [
+            apiKeyPrefix,
+            apiKeyHash
+          ])
         ).rejects.toThrow(/permission denied/);
         await deniedClient.query('ROLLBACK');
       } finally {

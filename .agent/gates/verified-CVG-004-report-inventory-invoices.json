@@ -1,0 +1,179 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-INVENTORY-INVOICES-VFY-001",
+  "timestamp": "2026-08-28T03:46:08-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-004 bounded on-demand server-backed inventory purchase-entry report and audited export",
+  "scope_ref": "CVG-004-REPORT-INVENTORY-INVOICES",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-001-CONTRACT",
+      "description": "The catalog, permissions, persisted purchase-header grain, strict status/search/date filters, deterministic order, exact twelve-field contract, 10,000-row bound and explicit operational/non-fiscal exclusions are implemented and covered.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-inventory-invoices.md",
+        ".agent/authority.jsonl#AUTH-CVG-004-REPORT-INVENTORY-INVOICES-IR-001",
+        "packages/modules/reports/src/index.ts",
+        "packages/modules/reports/src/reports.test.ts",
+        "packages/modules/inventory/src/procurement.ts",
+        "apps/api/src/routes/reports-routes.ts",
+        "apps/spa/src/pages/reports/ReportWorkbenchPage.vue",
+        "apps/spa/src/pages/reports/__tests__/ReportWorkbenchPage.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The Vetus route establishes the existence of an EntradaNotaFiscal surface but not an authoritative dynamic-executor schema; this gate certifies only the frozen persisted-purchase operational reference contract."
+    },
+    {
+      "id": "V-002-DATABASE-SOURCE",
+      "description": "The source is a bounded parameterized tenant-scoped query over persisted inventory_purchases, excludes blank invoice references, applies inclusive date/search/status filters and deterministic ordering, and the service defensively validates source rows and tenant context.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/db/migrations/0085_inventory_procurement.sql",
+        "packages/modules/inventory/src/procurement.ts",
+        "packages/modules/inventory/src/index.ts",
+        "packages/modules/inventory/src/inventory.test.ts",
+        "tests/integration/database/inventory-stock-report-postgres.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-INVOICES-DB-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The proof is against disposable local PostgreSQL. Target RLS/roles, production scale and historical/fiscal document semantics remain outside this gate."
+    },
+    {
+      "id": "V-003-API-RBAC-EXPORT",
+      "description": "The API enforces billing.read plus inventory.read, derives the account from the authenticated principal, validates source/output shape and filters, rejects non-durable or unsupported sources and keeps execution, audit and export on durable ReportsService.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/api/src/routes/reports-routes.ts",
+        "apps/api/src/routes/reports-routes.test.ts",
+        "packages/modules/reports/src/index.ts",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-INVOICES-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-INVOICES-DB-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The local route proof does not authorize fiscal writes, external providers, scheduled delivery, credentials, target operations or release acceptance."
+    },
+    {
+      "id": "V-004-SPA-SERVER-CONTRACT",
+      "description": "The Reports Workbench forwards strict filters, consumes and validates the authenticated server execution, renders the exact twelve purchase/receipt fields, exposes loading/error/empty behavior and does not reconstruct rows from local inventory, lots or consumptions.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/spa/src/pages/reports/ReportWorkbenchPage.vue",
+        "apps/spa/src/pages/reports/__tests__/ReportWorkbenchPage.test.ts",
+        "e2e/spa/inventory-invoices-report-flow.spec.ts",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-INVOICES-E2E-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-INVOICES-GREEN-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Browser evidence is local and disposable; it does not certify deployed browser policy, accessibility acceptance or production assets."
+    },
+    {
+      "id": "V-005-POSTGRES-E2E",
+      "description": "Disposable PostgreSQL and authenticated browser proofs confirm account isolation, inclusive date/search behavior, stored-reference filtering, deterministic order, exact rows, durable execution/export/audit, blank-reference exclusion and no local inventory fallback.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "tests/integration/database/inventory-stock-report-postgres.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-INVOICES-DB-001",
+        "e2e/spa/inventory-invoices-report-flow.spec.ts",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-INVOICES-E2E-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The proof uses disposable local PostgreSQL/Redis/Chromium and does not certify target RLS/roles, backup/restore, RTO/RPO, continuous workers or production operations."
+    },
+    {
+      "id": "V-006-QUALITY",
+      "description": "Intentional RED/GREEN, focused and full regressions, builds, typecheck, coverage, static/security checks, formatting, diff and empty-index hygiene satisfy the bounded repository quality bar.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-INVOICES-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-INVOICES-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-INVOICES-DB-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-INVOICES-E2E-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-INVOICES-HYGIENE-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Coverage and validators are local; remote CI, target operations, external homologation, production and release acceptance remain open."
+    },
+    {
+      "id": "V-007-INDEPENDENT-REVIEW",
+      "description": "A fresh independent post-remediation read-only review was attempted but no verdict was obtained; the limitation is retained rather than represented as approval.",
+      "required": true,
+      "status": "CONDITIONAL",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-INVOICES-REVIEW-UNAVAILABLE-001"
+      ],
+      "confidence": "LOW",
+      "limitations": "The reviewer role was rejected by account model policy and two compatible default-review attempts timed out before verdict. A fresh independent post-remediation review is required before higher-confidence evidence or scope expansion."
+    },
+    {
+      "id": "V-008-GLOBAL-NON-PROMOTION",
+      "description": "The bounded result is reconciled without promoting CVG-004, general Vetus parity, clinical parity, enterprise readiness, target operations or release acceptance.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/state.json",
+        ".agent/backlog.json",
+        ".gauntlet/state.md",
+        ".gauntlet/progress.md",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-INVOICES-GLOBAL-RETEST-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-INVOICES-FINAL-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "General Vetus parity, clinical parity, enterprise readiness, target operations, provider/fiscal homologation and release acceptance remain open; global promotion remains blocked."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-report-inventory-invoices.md",
+    ".agent/artifacts/CVG-004-report-inventory-invoices-2026-08-28.md",
+    ".agent/authority.jsonl#AUTH-CVG-004-REPORT-INVENTORY-INVOICES-IR-001",
+    "packages/db/migrations/0085_inventory_procurement.sql",
+    "packages/modules/inventory/src/procurement.ts",
+    "packages/modules/reports/src/index.ts",
+    "apps/api/src/routes/reports-routes.ts",
+    "apps/spa/src/pages/reports/ReportWorkbenchPage.vue",
+    "tests/integration/database/inventory-stock-report-postgres.test.ts",
+    "e2e/spa/inventory-invoices-report-flow.spec.ts",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-INVOICES-RED-001",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-INVOICES-GREEN-001",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-INVOICES-DB-001",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-INVOICES-E2E-001",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-INVOICES-REVIEW-UNAVAILABLE-001",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-INVOICES-HYGIENE-001",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-INVOICES-FINAL-001"
+  ],
+  "confidence": "MEDIUM",
+  "gaps": [
+    "No independent post-remediation reviewer verdict was available; the limitation is explicit and not treated as approval.",
+    "The Vetus dynamic executor does not provide an authoritative local schema for exact columns, filters or semantics.",
+    "Disposable local services do not certify target RLS/roles, backup/restore, RTO/RPO, Redis operations, remote CI, accessibility, operational LGPD, providers, production or release acceptance.",
+    "Fiscal NF issuance/cancellation, tax/CFOP, municipality/provider calls, credentials, supplier master and commercial reconciliation remain outside the operational purchase-reference contract."
+  ],
+  "conditions": [
+    "Keep the result limited to authenticated tenant-scoped on-demand reads/exports of persisted inventory_purchases headers with non-empty stored invoice references and the exact twelve-field contract.",
+    "Obtain a fresh independent post-remediation review before treating this slice as higher-confidence evidence or expanding it.",
+    "Revalidate before adding fiscal interpretation, issuance/cancellation, tax/CFOP, lots/items reconstruction, valuation, schedules, providers, credentials, target, production, deployment, backfill or release action."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via the original consolidation brief and explicit continuation request",
+    "scope": "CVG-004 bounded on-demand server-backed inventory purchase-entry report/export",
+    "decision": "Authorize only the operational tenant-scoped persisted inventory_purchases header projection with non-empty stored invoice references and audited on-demand execution/export. Exclude fiscal document semantics, writes, tax/CFOP, providers, credentials, target, production, deployment, backfill and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-INVENTORY-INVOICES-IR-001",
+    "expires_or_revalidates": "Revalidate before adding fiscal semantics, a new source/grain, lot or item reconstruction, scheduled delivery, provider, credential, target, production, deployment, backfill or release activity."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_BOUNDED",
+  "next_action": "Keep CVG-004 and the global ERP IN_PROGRESS/PARTIAL with promotion BLOCKED; obtain an independent post-remediation review before higher-confidence use or scope expansion, and choose any next gap only through fresh scouting and a new implementation-ready authority.",
+  "revalidation_triggers": [
+    "Changes to inventory_purchases schema, invoice-reference persistence, receipt lifecycle, tenant joins or report authorization",
+    "Changes to ReportsService execution/export/audit or Report Workbench behavior",
+    "Expansion beyond current persisted operational purchase headers to fiscal documents, lots, items, history, valuation, schedules, providers, credentials, target, production, deployment, backfill or release action"
+  ],
+  "supersedes": ".agent/gates/implementation-ready-CVG-004-report-inventory-invoices.json"
+}

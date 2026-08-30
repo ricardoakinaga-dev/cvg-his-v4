@@ -6,7 +6,7 @@
  * replacement for well-known seed credentials: the installation starts with no
  * usable account until an operator completes the setup wizard.
  */
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 
 import { AccessControlService } from '@cvg-his-v2/module-access-control';
 import { hashPassword } from '@cvg-his-v2/module-users';
@@ -40,6 +40,30 @@ export const INITIAL_PERMISSION_SEEDS: readonly {
 
 export const INITIAL_ROLE_PERMISSION_MAP: Readonly<Record<string, readonly string[]>> =
   Object.fromEntries(canonicalRoles.map((role) => [role.code, [...role.permissionCodes]]));
+
+const INSTALLER_CAPABILITY_ROLE = 'cvg_installer';
+
+async function withInstallerCapability<T>(
+  pool: Pool,
+  operation: (client: PoolClient) => Promise<T>
+): Promise<T> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    // Runtime login roles remain NOINHERIT. Elevate only this connection and
+    // only for the atomic capability transaction; the capability role has no
+    // direct table grants and cannot be used to create an interactive session.
+    await client.query(`SET LOCAL ROLE ${INSTALLER_CAPABILITY_ROLE}`);
+    const result = await operation(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
 
 export interface InitialProvisioningInput {
   readonly clinicName: string;
@@ -88,8 +112,10 @@ export function toAccountSlug(clinicName: string): string {
  * context exists and deleting the last user must never reopen setup.
  */
 export async function isSetupRequired(pool: Pool): Promise<boolean> {
-  const result = await pool.query<{ setup_required: boolean }>(
-    'SELECT app.is_initial_setup_required() AS setup_required'
+  const result = await withInstallerCapability(pool, (client) =>
+    client.query<{ setup_required: boolean }>(
+      'SELECT app.is_initial_setup_required() AS setup_required'
+    )
   );
   return result.rows[0]?.setup_required === true;
 }
@@ -109,30 +135,32 @@ export async function provisionInitialInstallation(
   const clinicSlug = toAccountSlug(input.clinicName);
 
   try {
-    const result = await pool.query<{
-      account_id: string;
-      user_id: string;
-      clinic_slug: string;
-    }>(
-      `SELECT account_id, user_id, clinic_slug
-       FROM app.provision_initial_installation(
-         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11::jsonb, $12::jsonb, $13
-       )`,
-      [
-        input.clinicName,
-        clinicSlug,
-        input.clinicName,
-        DEFAULT_UNIT_CODE,
-        'Unidade Central',
-        input.adminUsername,
-        input.adminEmail,
-        passwordHash,
-        input.adminFullName?.trim() || input.adminUsername,
-        JSON.stringify(INITIAL_ROLE_SEEDS),
-        JSON.stringify(INITIAL_PERMISSION_SEEDS),
-        JSON.stringify(INITIAL_ROLE_PERMISSION_MAP),
-        input.correlationId
-      ]
+    const result = await withInstallerCapability(pool, (client) =>
+      client.query<{
+        account_id: string;
+        user_id: string;
+        clinic_slug: string;
+      }>(
+        `SELECT account_id, user_id, clinic_slug
+         FROM app.provision_initial_installation(
+           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11::jsonb, $12::jsonb, $13
+         )`,
+        [
+          input.clinicName,
+          clinicSlug,
+          input.clinicName,
+          DEFAULT_UNIT_CODE,
+          'Unidade Central',
+          input.adminUsername,
+          input.adminEmail,
+          passwordHash,
+          input.adminFullName?.trim() || input.adminUsername,
+          JSON.stringify(INITIAL_ROLE_SEEDS),
+          JSON.stringify(INITIAL_PERMISSION_SEEDS),
+          JSON.stringify(INITIAL_ROLE_PERMISSION_MAP),
+          input.correlationId
+        ]
+      )
     );
 
     const provisioned = result.rows[0];

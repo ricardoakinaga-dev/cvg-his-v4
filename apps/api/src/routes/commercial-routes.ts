@@ -24,7 +24,7 @@ export interface CommercialRoutesHandlers {
   commercial: CommercialService;
   packages: PackagesService;
   audit: AuditService;
-  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
+  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
 }
 
 function json(response: ServerResponse, statusCode: number, payload: unknown): true {
@@ -117,14 +117,14 @@ export async function handleCommercialRoutes(
   const method = request.method ?? 'GET';
 
   if ((pathname === '/packages' || pathname === '/pacotes') && method === 'GET') {
-    const principal = requirePrincipal(request, 'counter_sale.read');
+    const principal = await requirePrincipal(request, 'counter_sale.read');
     return json(response, 200, {
       items: packages.list(principal.user.accountId)
     });
   }
 
   if ((pathname === '/packages' || pathname === '/pacotes') && method === 'POST') {
-    const principal = requirePrincipal(request, 'counter_sale.write');
+    const principal = await requirePrincipal(request, 'counter_sale.write');
     const payload = await readJsonBody(request) as {
       ownerId: string;
       patientId?: string | null;
@@ -149,13 +149,13 @@ export async function handleCommercialRoutes(
 
   const packageId = parsePackageId(pathname);
   if (packageId && method === 'GET') {
-    const principal = requirePrincipal(request, 'counter_sale.read');
+    const principal = await requirePrincipal(request, 'counter_sale.read');
     return json(response, 200, packages.detail(principal.user.accountId, packageId));
   }
 
   const packageItemsId = parsePackageId(pathname, '/items');
   if (packageItemsId && method === 'POST') {
-    const principal = requirePrincipal(request, 'counter_sale.write');
+    const principal = await requirePrincipal(request, 'counter_sale.write');
     const payload = await readJsonBody(request) as {
       itemKind: PackageItemKind;
       catalogItemId?: string | null;
@@ -182,7 +182,7 @@ export async function handleCommercialRoutes(
 
   const packageActivateId = parsePackageId(pathname, '/activate');
   if (packageActivateId && method === 'POST') {
-    const principal = requirePrincipal(request, 'counter_sale.write');
+    const principal = await requirePrincipal(request, 'counter_sale.write');
     const detail = await packages.activate(principal.user.accountId, packageActivateId);
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -200,7 +200,7 @@ export async function handleCommercialRoutes(
 
   const packageRenewId = parsePackageId(pathname, '/renew');
   if (packageRenewId && method === 'POST') {
-    const principal = requirePrincipal(request, 'counter_sale.write');
+    const principal = await requirePrincipal(request, 'counter_sale.write');
     const payload = await readJsonBody(request) as {
       startsAt?: string | null;
       expiresAt?: string | null;
@@ -223,7 +223,7 @@ export async function handleCommercialRoutes(
 
   const packageCancelId = parsePackageId(pathname, '/cancel');
   if (packageCancelId && method === 'POST') {
-    const principal = requirePrincipal(request, 'counter_sale.write');
+    const principal = await requirePrincipal(request, 'counter_sale.write');
     const pkg = await packages.cancel(principal.user.accountId, packageCancelId);
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -241,7 +241,7 @@ export async function handleCommercialRoutes(
 
   const packageItemConsumptionId = parsePackageItemConsumptionId(pathname);
   if (packageItemConsumptionId && method === 'POST') {
-    const principal = requirePrincipal(request, 'counter_sale.write');
+    const principal = await requirePrincipal(request, 'counter_sale.write');
     const payload = await readJsonBody(request) as {
       quantity: number;
       consumedAt?: string | null;
@@ -270,14 +270,14 @@ export async function handleCommercialRoutes(
   }
 
   if (pathname === '/loyalty/programs' && method === 'GET') {
-    const principal = requirePrincipal(request, 'counter_sale.read');
+    const principal = await requirePrincipal(request, 'counter_sale.read');
     return json(response, 200, {
       items: commercial.listLoyaltyPrograms(principal.user.accountId)
     });
   }
 
   if (pathname === '/loyalty/programs' && method === 'POST') {
-    const principal = requirePrincipal(request, 'counter_sale.write');
+    const principal = await requirePrincipal(request, 'counter_sale.write');
     const payload = await readJsonBody(request) as {
       name: string;
       pointsPerReal?: number;
@@ -300,13 +300,13 @@ export async function handleCommercialRoutes(
   }
 
   if (pathname === '/loyalty/summary' && method === 'GET') {
-    const principal = requirePrincipal(request, 'counter_sale.read');
+    const principal = await requirePrincipal(request, 'counter_sale.read');
     const ownerId = query(request, pathname).searchParams.get('ownerId');
     return json(response, 200, commercial.getLoyaltyBalance(principal.user.accountId, ownerId));
   }
 
   if (pathname === '/loyalty/points' && method === 'POST') {
-    const principal = requirePrincipal(request, 'counter_sale.write');
+    const principal = await requirePrincipal(request, 'counter_sale.write');
     const payload = await readJsonBody(request) as {
       ownerId: string;
       points: number;
@@ -332,7 +332,7 @@ export async function handleCommercialRoutes(
   }
 
   if (pathname === '/loyalty/redemptions' && method === 'GET') {
-    const principal = requirePrincipal(request, 'counter_sale.read');
+    const principal = await requirePrincipal(request, 'counter_sale.read');
     const ownerId = query(request, pathname).searchParams.get('ownerId') ?? undefined;
     return json(response, 200, {
       items: commercial.listLoyaltyRedemptions(principal.user.accountId, { ownerId })
@@ -340,7 +340,7 @@ export async function handleCommercialRoutes(
   }
 
   if (pathname === '/loyalty/redemptions' && method === 'POST') {
-    const principal = requirePrincipal(request, 'counter_sale.write');
+    const principal = await requirePrincipal(request, 'counter_sale.write');
     const payload = await readJsonBody(request) as {
       ownerId: string;
       pointsUsed: number;
@@ -367,7 +367,7 @@ export async function handleCommercialRoutes(
   }
 
   if (priceTableCollectionPaths.has(pathname) && method === 'GET') {
-    const principal = requirePrincipal(request, 'inventory.read');
+    const principal = await requirePrincipal(request, 'inventory.read');
     const url = query(request, pathname);
     return json(response, 200, {
       items: commercial.listPriceTables(principal.user.accountId, {
@@ -378,7 +378,7 @@ export async function handleCommercialRoutes(
   }
 
   if (priceTableCollectionPaths.has(pathname) && method === 'POST') {
-    const principal = requirePrincipal(request, 'inventory.manage');
+    const principal = await requirePrincipal(request, 'inventory.manage');
     const payload = await readJsonBody(request) as {
       legacyId?: string | null;
       description: string;
@@ -404,12 +404,12 @@ export async function handleCommercialRoutes(
 
   const priceTableId = parsePriceTableId(pathname);
   if (priceTableId && method === 'GET') {
-    const principal = requirePrincipal(request, 'inventory.read');
+    const principal = await requirePrincipal(request, 'inventory.read');
     return json(response, 200, commercial.getPriceTableDetail(principal.user.accountId, priceTableId));
   }
 
   if (priceTableId && method === 'PATCH') {
-    const principal = requirePrincipal(request, 'inventory.manage');
+    const principal = await requirePrincipal(request, 'inventory.manage');
     const payload = await readJsonBody(request) as {
       legacyId?: string | null;
       description: string;
@@ -434,7 +434,7 @@ export async function handleCommercialRoutes(
   }
 
   if (priceTableId && method === 'DELETE') {
-    const principal = requirePrincipal(request, 'inventory.manage');
+    const principal = await requirePrincipal(request, 'inventory.manage');
     const table = await commercial.archivePriceTable(principal.user.accountId, priceTableId);
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -454,7 +454,7 @@ export async function handleCommercialRoutes(
 
   const priceTableItemsId = parsePriceTableItemsId(pathname);
   if (priceTableItemsId && method === 'POST') {
-    const principal = requirePrincipal(request, 'inventory.manage');
+    const principal = await requirePrincipal(request, 'inventory.manage');
     const payload = await readJsonBody(request) as {
       itemKind: PriceTableItemKind;
       itemId: string;
@@ -480,7 +480,7 @@ export async function handleCommercialRoutes(
   }
 
   if (pathname === '/pos-sync/jobs' && method === 'GET') {
-    const principal = requirePrincipal(request, 'inventory.read');
+    const principal = await requirePrincipal(request, 'inventory.read');
     const url = query(request, pathname);
     return json(response, 200, {
       items: commercial.listPosSyncJobs(principal.user.accountId, {
@@ -491,7 +491,7 @@ export async function handleCommercialRoutes(
   }
 
   if (pathname === '/pos-sync/jobs' && method === 'POST') {
-    const principal = requirePrincipal(request, 'inventory.manage');
+    const principal = await requirePrincipal(request, 'inventory.manage');
     const payload = await readJsonBody(request) as {
       syncKind: PosSyncKind;
       metadata?: Record<string, unknown>;
@@ -524,7 +524,7 @@ export async function handleCommercialRoutes(
 
   const posSyncJobMatch = pathname.match(/^\/pos-sync\/jobs\/([^/]+)$/);
   if (posSyncJobMatch && method === 'PATCH') {
-    const principal = requirePrincipal(request, 'inventory.manage');
+    const principal = await requirePrincipal(request, 'inventory.manage');
     const payload = await readJsonBody(request) as {
       status: PosSyncStatus;
       processedCount?: number;

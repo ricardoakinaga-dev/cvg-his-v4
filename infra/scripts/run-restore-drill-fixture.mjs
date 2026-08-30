@@ -12,6 +12,7 @@ function run(command, args, options = {}) {
     encoding: 'utf8',
     stdio: options.capture ? ['ignore', 'pipe', 'pipe'] : 'inherit',
     shell: false,
+    env: options.env
   });
 
   if (result.status !== 0) {
@@ -23,7 +24,15 @@ function run(command, args, options = {}) {
 }
 
 try {
-  const fixture = run('node', ['infra/scripts/create-restore-drill-fixture.mjs'], { capture: true });
+  const fixtureProfile = process.env.RESTORE_FIXTURE_PROFILE ?? 'minimal';
+  if (!['minimal', 'representative'].includes(fixtureProfile)) {
+    throw new Error(`unsupported restore fixture profile: ${fixtureProfile}`);
+  }
+
+  const fixture = run('node', ['infra/scripts/create-restore-drill-fixture.mjs'], {
+    capture: true,
+    env: { ...process.env, RESTORE_FIXTURE_PROFILE: fixtureProfile }
+  });
   const bundleDir = fixture.stdout
     .split('\n')
     .map((line) => line.trim())
@@ -40,7 +49,7 @@ try {
     args.push('--report-dir', reportDir);
   }
 
-  run('bash', args);
+  run('bash', args, { env: { ...process.env, RESTORE_FIXTURE_PROFILE: fixtureProfile } });
 
   const resolvedReportDir = reportDir || '';
   const reportPath = resolvedReportDir ? join(resolvedReportDir, 'restore-drill-report.json') : '';

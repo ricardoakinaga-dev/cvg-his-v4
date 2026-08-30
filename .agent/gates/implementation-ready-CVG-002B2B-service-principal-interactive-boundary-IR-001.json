@@ -1,0 +1,87 @@
+{
+  "record_id": "GATE-CVG-002B2B-SERVICE-PRINCIPAL-INTERACTIVE-BOUNDARY-IR-001",
+  "timestamp": "2026-08-29T04:15:00-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-002B2B repository-local service-principal interactive-login boundary",
+  "scope_ref": "CVG-002B2B-SERVICE-PRINCIPAL-INTERACTIVE-BOUNDARY",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001-CONCRETE-GAP",
+      "description": "Authentication's repository-backed ID refresh currently relies on generic UsersService.resolveById, which materializes a service principal even though interactive username/hydration/session/MFA paths have human-only guards.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-002B2B-SERVICE-PRINCIPAL-INTERACTIVE-BOUNDARY.md",
+        "packages/modules/users/src/index.ts",
+        "packages/modules/auth/src/index.ts",
+        "tests/unit/auth/interactive-principal-guard.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The gap is repository-local; it does not imply the dedicated worker service-principal resolver is unsafe."
+    },
+    {
+      "id": "IR-002-LOCAL-PROOF",
+      "description": "Focused in-memory auth/users tests can prove service-principal exclusion from the dedicated interactive-by-id resolution/cache while preserving generic administration lookup, refresh, bearer, MFA and worker-specific service identity behavior.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "tests/unit/auth/interactive-principal-guard.test.ts",
+        "tests/unit/auth/service-principal-interactive-login.test.ts",
+        "tests/integration/database/worker-report-service-principal.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Focused local tests do not certify target identity governance or production worker provisioning."
+    },
+    {
+      "id": "IR-003-NON-PROMOTION",
+      "description": "The change is a small interactive resolver/cache correction and can preserve CVG-002B2B, CVG-002 and global ERP as IN_PROGRESS/PARTIAL with promotion BLOCKED.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/state.json",
+        ".agent/backlog.json",
+        ".gauntlet/state.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This gate authorizes only local resolver/test work and is not settlement, provider, target, production or release approval."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-002B2B-SERVICE-PRINCIPAL-INTERACTIVE-BOUNDARY.md",
+    ".agent/authority.jsonl#AUTH-CVG-002B2B-SERVICE-PRINCIPAL-INTERACTIVE-BOUNDARY-IR-001",
+    "packages/modules/users/src/index.ts",
+    "packages/modules/auth/src/index.ts",
+    "tests/unit/auth/interactive-principal-guard.test.ts",
+    "tests/integration/database/worker-report-service-principal.test.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "The interactive-only resolver correction and focused regression have not been implemented yet.",
+    "API regression, coverage, independent review and final reconciliation remain pending."
+  ],
+  "conditions": [
+    "Begin with intentional TDD RED before adding or wiring the explicit interactive-by-id resolver; preserve the generic UsersService.resolveById administration contract.",
+    "Do not change the dedicated worker service-principal resolver or PIX settlement UoW.",
+    "Keep CVG-002B2B/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+    "Do not add migrations, credentials, providers, target, production, deployment or release scope."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via explicit continuation of the consolidation request",
+    "scope": "Authorize only the repository-local interactive service-principal resolver/cache boundary",
+    "decision": "Add and use an explicit repository-backed interactive-by-id resolver, evict non-interactive principals from the interactive cache and prove login/session/MFA exclusion while preserving the generic administration resolver and dedicated worker service identity resolution.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-002B2B-SERVICE-PRINCIPAL-INTERACTIVE-BOUNDARY-IR-001",
+    "expires_or_revalidates": "Revalidate before changing principal mapping, worker settlement identity, MFA/session semantics or any target/provider/production behavior."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "next_action": "Reconcile the implemented interactive-by-id correction with focused/API/worker evidence, independent review and final hygiene.",
+  "revalidation_triggers": [
+    "New interactive resolver, session or MFA cache path",
+    "Changes to service-principal mapping or worker settlement identity",
+    "Any target, provider, credential, production, deployment or release scope"
+  ],
+  "supersedes": null
+}

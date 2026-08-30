@@ -10,7 +10,7 @@ function createDeps(
     databaseConfigured: boolean;
     databaseHealthy: boolean;
     databaseDetail: string;
-    persistenceMode: 'database' | 'in-memory' | 'not-initialized';
+    persistenceMode: 'database' | 'in-memory' | 'unavailable' | 'not-initialized';
     repositoriesReady: boolean;
     repositoryCount: number;
     workerReady: boolean;
@@ -76,6 +76,64 @@ describe('Health — createHealthResponse', () => {
     expect(response.dependencies.worker.state).toBe('degraded');
   });
 
+  it('fails closed when persistence is unavailable after a database failure', () => {
+    const response = createHealthResponse(
+      'cvg-his-v2-api',
+      'test',
+      '0.1.0',
+      { headers: {} } as never,
+      createDeps({
+        databaseConfigured: true,
+        databaseHealthy: false,
+        persistenceMode: 'unavailable',
+        repositoriesReady: true,
+        workerReady: false,
+        productionReady: false
+      })
+    );
+
+    expect(response.ok).toBe(false);
+    expect(response.readiness.ready).toBe(false);
+    expect(response.readiness.persistenceMode).toBe('unavailable');
+    expect(response.dependencies.database.state).toBe('unhealthy');
+  });
+
+  it('does not relabel unavailable persistence as an unconfigured in-memory fallback', () => {
+    const response = createHealthResponse(
+      'cvg-his-v2-api',
+      'test',
+      '0.1.0',
+      { headers: {} } as never,
+      createDeps({
+        databaseConfigured: false,
+        databaseHealthy: false,
+        persistenceMode: 'unavailable',
+        repositoriesReady: true
+      })
+    );
+
+    expect(response.ok).toBe(false);
+    expect(response.dependencies.database.state).toBe('unhealthy');
+    expect(response.dependencies.database.detail).toBe('Database persistence is unavailable.');
+  });
+
+  it('does not expose database connection details', () => {
+    const response = createHealthResponse(
+      'cvg-his-v2-api',
+      'production',
+      '0.1.0',
+      { headers: {} } as never,
+      createDeps({
+        databaseConfigured: true,
+        databaseHealthy: false,
+        databaseDetail: 'postgresql://admin:super-secret@db.internal:5432/cvg'
+      })
+    );
+
+    expect(response.dependencies.database.detail).toBe('Database is unavailable.');
+    expect(JSON.stringify(response)).not.toMatch(/super-secret|db\.internal|5432/);
+  });
+
   it('returns ok when database is healthy and configured', () => {
     const response = createHealthResponse(
       'cvg-his-v2-api',
@@ -97,7 +155,7 @@ describe('Health — createHealthResponse', () => {
 
     expect(response.ok).toBe(true);
     expect(response.dependencies.database.state).toBe('healthy');
-    expect(response.dependencies.database.detail).toBe('Database connected');
+    expect(response.dependencies.database.detail).toBe('Database connection is healthy.');
     expect(response.dependencies.worker.state).toBe('ready');
     expect(response.readiness.ready).toBe(true);
   });
@@ -163,9 +221,7 @@ describe('Health — createHealthResponse', () => {
 
     expect(response.ok).toBe(false);
     expect(response.dependencies.database.state).toBe('unhealthy');
-    expect(response.dependencies.database.detail).toBe(
-      'Connection refused: ECONNREFUSED 127.0.0.1:5432'
-    );
+    expect(response.dependencies.database.detail).toBe('Database is unavailable.');
   });
 });
 

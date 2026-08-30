@@ -1,0 +1,101 @@
+{
+  "record_id": "GATE-CVG-002C2-DAILY-CHARGE-DISTINCT-KEY-RACE-IR-001",
+  "timestamp": "2026-08-30T03:43:48-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-002C2 public daily-charge billing distinct-key PostgreSQL UoW race",
+  "scope_ref": "CVG-002C2-DAILY-CHARGE-DISTINCT-KEY-RACE",
+  "version": 1,
+  "active_plan": ".agent/plans/premium-enterprise-mvp.md",
+  "active_task": ".agent/tasks/CVG-002C2-DAILY-CHARGE-DISTINCT-KEY-RACE.md",
+  "verification_state": "PARTIAL",
+  "next_gate": "IMPLEMENTATION_READY",
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "Fresh independent residual scouting selected the daily-charge distinct-key HTTP/UoW convergence gap after confirming same-key replay and direct-service coverage do not exercise the aborted PostgreSQL client path.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-SCOUT-CVG-002C2-DAILY-CHARGE-DISTINCT-KEY-RACE-001",
+        ".agent/tasks/CVG-002C2-DAILY-CHARGE-DISTINCT-KEY-RACE.md",
+        ".agent/state.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Selection is read-only source evidence; it is not implementation, runtime proof, independent approval or release certification."
+    },
+    {
+      "id": "IR-002",
+      "description": "The existing source-linked billing uniqueness index is present, while BillingService recovery currently reloads after a repository unique violation without a transaction-safe savepoint boundary.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/billing/src/index.ts",
+        "packages/modules/billing/src/repositories/database-billing.repository.ts",
+        "packages/db/migrations/0115_inpatient_daily_charge_billing_idempotency.sql",
+        "packages/db/migrations/0117_inventory_charge_capture_contract.sql",
+        "packages/shared/database/src/tenant-unit-of-work.ts",
+        "packages/tenant-context/src/tenant-db.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The aborted-client behavior remains to be reproduced by the intentional RED PostgreSQL HTTP test."
+    },
+    {
+      "id": "IR-003",
+      "description": "The bounded correction can remain repository-local and preserve existing public payloads, source conflict semantics, idempotency completion and tenant UoW ownership; no migration is currently required.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/authority.jsonl#AUTH-CVG-002C2-DAILY-CHARGE-DISTINCT-KEY-RACE-IR-001",
+        ".agent/tasks/CVG-002C2-DAILY-CHARGE-DISTINCT-KEY-RACE.md",
+        "tests/integration/database/inpatient-daily-charge-bill-http-postgres.test.ts",
+        ".agent/backlog.json"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "Implementation must confirm the savepoint/unique-race behavior before any schema or contract decision."
+    },
+    {
+      "id": "IR-004",
+      "description": "The frozen Quality Bar requires equivalent distinct-key concurrency, divergent-source conflict, durable one-item reconciliation, tenant safety and regression evidence before bounded closure.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-002C2-DAILY-CHARGE-DISTINCT-KEY-RACE.md",
+        ".agent/backlog.json",
+        ".gauntlet/state.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "RED/GREEN, focused and full regression, quality, independent review and final reconciliation remain open."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-002C2-DAILY-CHARGE-DISTINCT-KEY-RACE.md",
+    ".agent/verification.jsonl#VFY-SCOUT-CVG-002C2-DAILY-CHARGE-DISTINCT-KEY-RACE-001",
+    "packages/modules/billing/src/index.ts",
+    "packages/modules/billing/src/repositories/database-billing.repository.ts",
+    "tests/integration/database/inpatient-daily-charge-bill-http-postgres.test.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "Intentional RED/GREEN, focused HTTP/PostgreSQL proof, regression, coverage, static quality, independent review and final reconciliation remain open.",
+    "Schema/provider/target/production/deployment/release and global ERP behavior remain out of scope."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via explicit continuation and three independent read-only residual scouts",
+    "scope": "Repository-local safe recovery for source-unique daily-charge billing races inside the existing tenant HTTP UoW",
+    "decision": "Authorize only the distinct-idempotency-key daily-charge concurrency correction and its TDD/quality evidence. Preserve public payloads, existing same-key replay, typed source conflicts, tenant scope and outer idempotency semantics. Exclude unrelated billing commands, migrations unless proven necessary, providers, target, production, deployment, release and global ERP promotion.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-002C2-DAILY-CHARGE-DISTINCT-KEY-RACE-IR-001",
+    "expires_or_revalidates": "Revalidate before changing schema/uniqueness semantics, global idempotency policy, other financial commands, provider behavior or any target/production/deployment/release surface."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "implementation_status": "IMPLEMENTATION_READY",
+  "next_action": "Write and run the intentional RED HTTP/PostgreSQL test for equivalent distinct-key daily-charge concurrency, then implement the smallest transaction-safe recovery boundary. Keep parent CVG-002/CVG-002C2/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+  "revalidation_triggers": [
+    "Changing billing source uniqueness/index semantics or idempotency policy",
+    "Changing other billing/receipt commands or public payloads",
+    "Changing provider, target, production, deployment, backup/restore, release or global parity behavior"
+  ],
+  "supersedes": null
+}

@@ -1,0 +1,154 @@
+{
+  "record_id": "GATE-CVG-003-AUDIT-OPERATIONAL-COVERAGE-LEGACY-RLS-VFY-001",
+  "timestamp": "2026-08-29T17:18:30-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-003 tenant-safe legacy audit coverage under NOBYPASSRLS",
+  "scope_ref": "CVG-003-AUDIT-OPERATIONAL-COVERAGE-LEGACY-RLS",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "VFY-001",
+      "description": "A forward audit_events policy gives a tenant read access to a NULL-account legacy row only when metadata.legacyAccountId exactly matches app.current_account_id().",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/db/migrations/0156_audit_legacy_account_rls.sql",
+        ".agent/verification.jsonl#VFY-CVG-003-AUDIT-OPERATIONAL-COVERAGE-LEGACY-RLS-GREEN-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This certifies the canonical repository migration source, not a target cluster rollout."
+    },
+    {
+      "id": "VFY-002",
+      "description": "Legacy rows are read-only under tenant context: INSERT, UPDATE and DELETE require a non-null ordinary account_id equal to the active tenant, with no broad NULL-row visibility.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/db/migrations/0156_audit_legacy_account_rls.sql",
+        "tests/integration/database/audit-cursor-pagination-postgres.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-003-AUDIT-OPERATIONAL-COVERAGE-LEGACY-RLS-GREEN-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The proof is local and disposable; production policy state is not claimed."
+    },
+    {
+      "id": "VFY-003",
+      "description": "The PostgreSQL proof uses the effective cvg_test_rls role with rolbypassrls=false and proves matching legacy inclusion, foreign legacy exclusion and no legacy rows without tenant context.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "tests/integration/database/audit-cursor-pagination-postgres.test.ts",
+        "tests/helpers/rls-helpers.ts",
+        ".agent/verification.jsonl#VFY-CVG-003-AUDIT-OPERATIONAL-COVERAGE-LEGACY-RLS-GREEN-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The disposable harness does not replace target role/connection validation."
+    },
+    {
+      "id": "VFY-004",
+      "description": "The complete committed account snapshot remains beyond the old 100-row page boundary, preserves newest-first timestamp/ID ordering, and the repository compatibility branches reject a mis-tagged ordinary row.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/audit/src/repositories/database-audit.repository.ts",
+        "tests/integration/database/audit-cursor-pagination-postgres.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-003-AUDIT-OPERATIONAL-COVERAGE-LEGACY-RLS-REGRESSION-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This is limited to the audit snapshot/listing paths covered by the parent slice."
+    },
+    {
+      "id": "VFY-005",
+      "description": "TDD and regression evidence is green: the unsafe-policy DML assertion and unguarded-repository predicate both failed intentionally, then the focused PostgreSQL proof passed 2/2, the audit module passed 27/27 and the full API passed 496/496.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-AUDIT-OPERATIONAL-COVERAGE-LEGACY-RLS-RED-DML-001",
+        ".agent/verification.jsonl#VFY-CVG-003-AUDIT-OPERATIONAL-COVERAGE-LEGACY-RLS-RED-REPOSITORY-PREDICATE-001",
+        ".agent/verification.jsonl#VFY-CVG-003-AUDIT-OPERATIONAL-COVERAGE-LEGACY-RLS-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-003-AUDIT-OPERATIONAL-COVERAGE-LEGACY-RLS-REGRESSION-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Local test evidence does not certify remote CI or release environments."
+    },
+    {
+      "id": "VFY-006",
+      "description": "Quality gates pass: official coverage is 80.09% statements/lines, 80.97% branches and 88.28% functions; RLS, migration-source, OpenAPI, secret and formatting checks are green.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-AUDIT-OPERATIONAL-COVERAGE-LEGACY-RLS-QUALITY-001",
+        ".agent/artifacts/CVG-003-audit-operational-coverage-legacy-rls-2026-08-29.md",
+        "coverage/coverage-final.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Coverage is workspace-local and does not replace target observability or accessibility evidence."
+    },
+    {
+      "id": "VFY-007",
+      "description": "A fresh independent read-only review inspected the migration, repository guards, restricted-role test and parent implementation and returned APPROVE with no findings.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-AUDIT-OPERATIONAL-COVERAGE-LEGACY-RLS-REVIEW-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The review is bounded to the selected repository slice."
+    },
+    {
+      "id": "VFY-008",
+      "description": "Global non-promotion boundaries remain explicit: ERP is IN_PROGRESS/PARTIAL, Vetus parity is 4/11, clinical parity is 2/3, readiness is 95/100 and promotion remains BLOCKED.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/state.json",
+        ".agent/backlog.json",
+        ".agent/verification.jsonl#VFY-CVG-003-AUDIT-OPERATIONAL-COVERAGE-LEGACY-RLS-GLOBAL-NON-PROMOTION-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This is a control-plane assertion and not a global readiness certification."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-003-AUDIT-OPERATIONAL-COVERAGE-LEGACY-RLS.md",
+    ".agent/artifacts/CVG-003-audit-operational-coverage-legacy-rls-2026-08-29.md",
+    ".agent/gates/implementation-ready-CVG-003-audit-operational-coverage-legacy-rls.json",
+    ".agent/authority.jsonl#AUTH-CVG-003-AUDIT-OPERATIONAL-COVERAGE-LEGACY-RLS-IR-001",
+    "packages/db/migrations/0156_audit_legacy_account_rls.sql",
+    "packages/modules/audit/src/repositories/database-audit.repository.ts",
+    "tests/integration/database/audit-cursor-pagination-postgres.test.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "This gate does not certify target-cluster migration application, production, providers, credentials, remote CI or release acceptance.",
+    "Global Vetus parity remains 4/11 and clinical parity remains 2/3; enterprise readiness remains 95/100 with 42 PASS, 3 WARN and 1 FAIL.",
+    "Replay-after-revocation/idempotency, durable audit atomicity, systemic ABAC and other operational boundaries remain separate residuals."
+  ],
+  "conditions": [
+    "Keep the migration forward-only and preserve migration 0003 and the RLS helper setup.",
+    "Keep legacy rows read-only and require exact legacyAccountId equality under an active tenant context.",
+    "Keep the repository guard limited to the two existing compatibility predicates and the associated regression proof.",
+    "Keep CVG-003/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+    "Do not infer target, production, provider, deployment or release acceptance from this local gate."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED_REVALIDATED",
+    "actor": "Ricardo (repository owner), via explicit continuation request and bounded implementation-ready authority",
+    "scope": "One audit_events RLS policy correction, restricted-role PostgreSQL proof and the review-driven account_id IS NULL guards on the two existing audit repository compatibility predicates",
+    "decision": "Authorize bounded local completion of the tenant-safe legacy audit coverage correction. The predicate guards are a minimal defense-in-depth amendment identified during verification; exclude unrelated RLS, report, route, mutation, external and release scope.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-003-AUDIT-OPERATIONAL-COVERAGE-LEGACY-RLS-IR-001",
+    "expires_or_revalidates": "Revalidate before changing any policy outside audit_events, report behavior, route authorization or any target/production boundary."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_BOUNDED",
+  "implementation_status": "COMPLETE_BOUNDED",
+  "next_action": "Reconcile this child into the parent operational-coverage source-of-truth gate, then fresh-scout the next repository-local P1 gap. Do not promote CVG-003 or global ERP readiness.",
+  "revalidation_triggers": [
+    "Changes to policies outside audit_events",
+    "Changes to report JSON, account filtering or route authorization",
+    "Changes to replay/idempotency, durable audit atomicity or systemic ABAC",
+    "Any target, production, provider, credential, deployment or release action"
+  ],
+  "supersedes": ".agent/gates/implementation-ready-CVG-003-audit-operational-coverage-legacy-rls.json"
+}

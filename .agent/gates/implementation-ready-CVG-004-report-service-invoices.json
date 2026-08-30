@@ -1,0 +1,82 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-SERVICE-INVOICES-IR-001",
+  "timestamp": "2026-08-27T20:28:31-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-004 bounded persisted NFS-e service-invoice report and audited export",
+  "scope_ref": "CVG-004-REPORT-SERVICE-INVOICES",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The bounded report scope, authority, exclusions and non-promotion boundary are recorded.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-service-invoices.md",
+        ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SERVICE-INVOICES-IR-001",
+        ".agent/backlog.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Only repository-local read-only report execution/export and disposable verification are authorized; fiscal writes, providers, Vetus parity and release remain open."
+    },
+    {
+      "id": "IR-002",
+      "description": "Existing persisted fiscal_nfse_documents fields, tenant repository, FiscalService list path and ReportsService export path establish a safe document-grain report contract.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/db/migrations/0097_fiscal_nfse_tenant_persistence.sql",
+        "packages/modules/fiscal/src/database-fiscal.repository.ts",
+        "packages/modules/fiscal/src/service.ts",
+        "packages/modules/reports/src/index.ts",
+        "docs/vetus/guides/2026-04-24-relatorio-relatorios-personalizados.md",
+        "docs/vetus/guides/02-ANALISE-SISTEMA-VETUS.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The legacy dynamic executor's exact columns, filters and grain are not documented; this slice defines a transparent persisted-document contract without claiming exact parity."
+    },
+    {
+      "id": "IR-003",
+      "description": "Focused RED tests can prove catalog/source/filter/RBAC/export behavior, PostgreSQL tenant/competence boundaries, SPA behavior and the official browser composition before reconciliation.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-service-invoices.md",
+        "packages/modules/reports/src/reports.test.ts",
+        "apps/api/src/routes/reports-routes.test.ts",
+        "packages/modules/fiscal/src/fiscal.test.ts",
+        "apps/spa/src/pages/reports/__tests__/ReportWorkbenchPage.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Fresh implementation, independent review, regression, PostgreSQL and browser evidence are pending."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-report-service-invoices.md",
+    "packages/modules/fiscal/src/database-fiscal.repository.ts",
+    "packages/modules/fiscal/src/service.ts",
+    "apps/api/src/routes/reports-routes.ts",
+    "apps/spa/src/pages/reports/ReportWorkbenchPage.vue"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "TDD RED/GREEN, independent review, global regression/coverage retest and final control-plane reconciliation are pending."
+  ],
+  "conditions": [],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via the original consolidation brief",
+    "scope": "CVG-004 bounded persisted NFS-e service-invoice report and audited export",
+    "decision": "Authorize reversible repository implementation and disposable PostgreSQL/Redis/browser verification using only tenant-scoped fiscal_nfse_documents through the existing FiscalService read path and ReportsService execution/export. Exclude fiscal writes, issuance, cancellation, municipality/provider calls, credentials, commercial reconciliation, external Vetus operation, target, production, deployment, backfill and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SERVICE-INVOICES-IR-001",
+    "expires_or_revalidates": "Revalidate before adding fiscal write lifecycle, provider/municipality calls, commercial reconciliation, external Vetus, target/provider/credential/production/deployment or release activity."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "next_action": "Write RED tests, implement the bounded persisted document report, then run focused review and disposable verification before reconciliation.",
+  "revalidation_triggers": [
+    "Changes to fiscal document persistence, NFS-e status semantics, report grain/filters or ReportsService export behavior",
+    "Any fiscal write, provider, municipality, credential, commercial reconciliation, target, production, deployment or release activity"
+  ]
+}

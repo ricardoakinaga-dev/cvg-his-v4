@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+  foreignKey,
   index,
   numeric,
   pgEnum,
@@ -99,6 +100,11 @@ export const cashMovements = pgTable(
       table.accountId,
       table.id
     ),
+    accountRegisterFk: foreignKey({
+      name: 'cash_movements_account_register_fk',
+      columns: [table.accountId, table.cashRegisterId],
+      foreignColumns: [cashRegisters.accountId, cashRegisters.id]
+    }).onDelete('cascade'),
     cashRegisterIdx: index('idx_cash_movements_register').on(table.cashRegisterId),
     accountTypeIdx: index('idx_cash_movements_account_type').on(
       table.accountId,

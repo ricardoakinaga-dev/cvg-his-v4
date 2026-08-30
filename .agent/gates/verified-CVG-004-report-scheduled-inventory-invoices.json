@@ -1,0 +1,162 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-VFY-001",
+  "timestamp": "2026-08-29T01:18:36-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-004 bounded tenant-scoped scheduled inventory purchase-entry report through the real worker",
+  "scope_ref": "CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-001-CONTRACT",
+      "description": "The scheduled inventory-invoices path preserves exactly the existing twelve purchase-header fields, strict search/status/inclusive UTC createdAt filters, deterministic createdAt DESC/purchaseId ASC ordering and the frozen non-fiscal exclusions.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-scheduled-inventory-invoices.md",
+        ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-IR-002",
+        "packages/modules/inventory/src/inventory-invoices-report.ts",
+        "apps/worker/src/runner.ts",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-GREEN-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This is the existing operational purchase-header projection only; it does not establish complete Vetus Entrada de NF, fiscal, tax, lot, movement or historical-valuation parity."
+    },
+    {
+      "id": "V-002-DATABASE-SOURCE",
+      "description": "The dedicated source reads only persisted inventory_purchases headers with a non-empty stored invoice number, explicit tenant context and account predicate, parameterized escaped search, UTC calendar bounds and a 10,001-row database read bound; malformed and foreign rows fail closed.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/inventory/src/inventory-invoices-report.ts",
+        "packages/modules/inventory/src/inventory-invoices-report.test.ts",
+        "packages/modules/inventory/src/procurement.ts",
+        "packages/db/migrations/0085_inventory_procurement.sql",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-PROCESS-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Database evidence is disposable local PostgreSQL; target grants, runtime roles, scale and production operations remain outside this gate."
+    },
+    {
+      "id": "V-003-WORKER-WIRING",
+      "description": "The worker composes the persisted asynchronous source, validates filters and tenant ownership, validates canonical timestamps and monetary values, emits only the twelve fields and retains durable schedule, export, audit, recipient and one-shot semantics.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/worker/src/runner.ts",
+        "apps/worker/src/bootstrap.ts",
+        "apps/worker/src/jobs/scheduled-report-job.ts",
+        "apps/worker/src/runner.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-GREEN-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Continuous distributed worker operations and real delivery providers are not certified by this bounded gate."
+    },
+    {
+      "id": "V-004-POSTGRES-PROCESS",
+      "description": "Fresh disposable PostgreSQL process evidence proves two-account run-once isolation, persisted-reference filtering, non-UTC session UTC boundaries, exact rows, durable execution identity, non-PII audit and pre-execution recipient failure persistence; source and worker tests prove overflow and malformed fail-closed handling.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-PROCESS-001",
+        "tests/integration/process/worker-run-once-reports.test.ts",
+        "apps/worker/src/run-once.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The process uses disposable local PostgreSQL and mock delivery; it does not certify target roles, external providers, production or release behavior."
+    },
+    {
+      "id": "V-005-QUALITY",
+      "description": "Intentional RED/GREEN, focused coverage, complete workspace regression, existing PostgreSQL report regression, typecheck/build, secrets, formatting and diff hygiene satisfy the bounded repository quality bar.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-COVERAGE-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-REGRESSION-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-HYGIENE-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Local validators do not replace remote CI, target operations, external homologation or release acceptance."
+    },
+    {
+      "id": "V-006-INDEPENDENT-REVIEW",
+      "description": "A fresh compatible read-only independent review returned APPROVE_BOUNDED with no P0, P1 or P2 finding after the timezone and pre-execution delivery corrections.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-REVIEW-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Approval is limited to this bounded local slice and is not global ERP, target, production or release approval."
+    },
+    {
+      "id": "V-007-GLOBAL-NON-PROMOTION",
+      "description": "The bounded result is reconciled without promoting CVG-004, general Vetus parity, clinical parity, enterprise readiness, target operations or release acceptance.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-GLOBAL-RETEST-001",
+        ".agent/state.json",
+        ".agent/backlog.json",
+        ".gauntlet/state.md",
+        ".gauntlet/progress.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "General Vetus parity remains 4/11 verified, clinical parity 2/3 verified and enterprise readiness 95/100 with 42 PASS, 3 WARN and 1 FAIL."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-report-scheduled-inventory-invoices.md",
+    ".agent/artifacts/CVG-004-report-scheduled-inventory-invoices-2026-08-29.md",
+    ".agent/gates/implementation-ready-CVG-004-report-scheduled-inventory-invoices-IR-002.json",
+    ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-IR-002",
+    "packages/modules/inventory/src/inventory-invoices-report.ts",
+    "packages/modules/inventory/src/inventory-invoices-report.test.ts",
+    "packages/modules/inventory/src/procurement.ts",
+    "packages/modules/inventory/src/index.ts",
+    "apps/worker/src/runner.ts",
+    "apps/worker/src/bootstrap.ts",
+    "apps/worker/src/jobs/scheduled-report-job.ts",
+    "apps/worker/src/jobs/scheduled-report-job.test.ts",
+    "tests/integration/process/worker-run-once-reports.test.ts",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-RED-001",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-GREEN-001",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-COVERAGE-001",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-PROCESS-001",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-REGRESSION-001",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-REVIEW-001",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-GLOBAL-RETEST-001",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-HYGIENE-001",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-FINAL-001"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "The report is a raw persisted operational purchase-header projection only; full Vetus dynamic event semantics, fiscal/NF-e lifecycle, line/lot/consumption reconciliation and historical valuation remain outside scope.",
+    "Disposable local services do not certify target RLS/runtime roles, backup/restore, RTO/RPO, distributed worker operations, remote CI, accessibility, operational LGPD, providers, production or release acceptance.",
+    "Complete CVG-004 and ERP parity remains unverified even though this exact scheduled worker slice is bounded and independently reviewed."
+  ],
+  "conditions": [
+    "Keep the result limited to the authenticated tenant-scoped scheduled read path over inventory_purchases and the exact twelve-field purchase-entry contract.",
+    "Keep CVG-004/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+    "Revalidate before changing inventory purchase schema/RLS, numeric/timestamp semantics, fields/filters, schedule/audit behavior or adding fiscal, provider, target, production, deployment, backfill or release scope."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via explicit continuation request and original consolidation brief",
+    "scope": "CVG-004 bounded tenant-scoped scheduled inventory purchase-entry report through the real worker",
+    "decision": "Authorize only the persisted inventory purchase-header report source, worker/bootstrap wiring and local verification preserving the exact twelve fields, explicit tenant context/predicate, stored non-empty invoice reference, filters, UTC semantics, deterministic ordering, 10,000-row bound, durable one-shot behavior and non-PII audit. Exclude fiscal issuance, tax/CFOP, line/lot reconstruction, API/SPA changes, providers, credentials, target, production, deployment, backfill and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-IR-002",
+    "expires_or_revalidates": "Revalidate before adding fiscal semantics, line/lot joins, new fields, API/SPA behavior, provider/target work, mutations or release acceptance."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_BOUNDED",
+  "next_action": "Close this bounded slice and begin fresh local scouting for the next repository-local blocker; keep global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+  "revalidation_triggers": [
+    "Changes to inventory purchase persistence, invoice-reference semantics or report grain/filters",
+    "Changes to worker bootstrap, schedule claiming, report execution/export/audit or one-shot failure behavior",
+    "Expansion beyond the scheduled inventory-invoices read path or exact twelve-field contract"
+  ],
+  "supersedes": ".agent/gates/implementation-ready-CVG-004-report-scheduled-inventory-invoices-IR-002.json"
+}

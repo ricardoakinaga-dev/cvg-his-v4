@@ -13,6 +13,14 @@ services:
       POSTGRES_DB: cvg_his_e2e
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
+      POSTGRES_RUNTIME_USER: cvg_runtime
+      POSTGRES_RUNTIME_PASSWORD: e2e-runtime-password
+      POSTGRES_API_USER: cvg_api
+      POSTGRES_API_PASSWORD: e2e-api-password
+      POSTGRES_WORKER_USER: cvg_worker
+      POSTGRES_WORKER_PASSWORD: e2e-worker-password
+    volumes:
+      - ./infra/postgres/init-runtime-role.sh:/docker-entrypoint-initdb.d/20-runtime-role.sh:ro
     ports:
       - '5434:5432'
     healthcheck:
@@ -40,6 +48,7 @@ services:
     environment:
       DATABASE_URL: postgres://postgres:postgres@postgres-e2e:5432/cvg_his_e2e
       REDIS_URL: redis://redis-e2e:6379
+      RUNTIME_DISTRIBUTED_STATE_ENABLED: '1'
       AUTH_SECRET: e2e-test-secret-key-do-not-use-in-production-12345678
       AUTH_ACCESS_TOKEN_TTL_SECONDS: '900'
       AUTH_REFRESH_TOKEN_TTL_SECONDS: '604800'
@@ -53,7 +62,7 @@ services:
       redis-e2e:
         condition: service_healthy
     healthcheck:
-      test: ['CMD-SHELL', 'curl -fsS http://127.0.0.1:3001/health || exit 1']
+      test: ['CMD-SHELL', 'curl -fsS http://127.0.0.1:3001/ready || exit 1']
       interval: 5s
       timeout: 5s
       retries: 30

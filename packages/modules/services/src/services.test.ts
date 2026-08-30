@@ -172,3 +172,35 @@ test('ServicesService persistenceMode is in-memory without repository', () => {
   const service = createService();
   assert.equal(service.persistenceMode, 'in-memory');
 });
+
+test('ServicesService hydrates tenant-scoped records from a database repository', async () => {
+  const persisted = {
+    id: 'service-persisted-1',
+    accountId: ACCOUNT_ID,
+    name: 'Persisted Consultation',
+    code: 'PERSISTED-001',
+    description: 'Loaded from the services table',
+    basePrice: 175.25,
+    active: true,
+    createdAt: '2026-08-26T10:00:00.000Z',
+    updatedAt: '2026-08-26T10:00:00.000Z'
+  };
+  const service = new ServicesService({
+    repository: {
+      async create() {},
+      async update() {},
+      async findById() {
+        return null;
+      },
+      async findByAccountId(accountId) {
+        return accountId === ACCOUNT_ID ? [persisted] : [];
+      }
+    }
+  });
+
+  await service.hydrateFromDatabase(ACCOUNT_ID);
+
+  assert.equal(service.persistenceMode, 'database');
+  assert.deepEqual(service.list(ACCOUNT_ID), [persisted]);
+  assert.deepEqual(service.list('acc_other' as AccountId), []);
+});

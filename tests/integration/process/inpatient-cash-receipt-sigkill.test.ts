@@ -34,6 +34,7 @@ const encounterB = randomUUID();
 const usernameB = `receipt-kill-b-${userB.slice(0, 8)}`;
 const triggerName = `receipt_kill_pause_${suffix}`;
 const triggerFunction = `receipt_kill_pause_fn_${suffix}`;
+const receiptOperation = 'encounter.cash-receipt.create';
 const amountInventory = 80;
 const amountDaily = 180;
 const amountTotal = amountInventory + amountDaily;
@@ -497,7 +498,7 @@ async function assertNoReceiptResidue(idempotencyKey: string): Promise<void> {
        (SELECT COUNT(*)::int FROM encounter_financial_accounts WHERE account_id = $1 AND encounter_id = $2) AS "financialAccount",
        (SELECT COUNT(*)::int FROM encounter_receivables WHERE account_id = $1 AND encounter_id = $2 AND status = 'settled') AS "receivableSettled",
        (SELECT COUNT(*)::int FROM encounter_financial_accounts WHERE account_id = $1 AND encounter_id = $2 AND financial_status = 'paid') AS "financialPaid"`,
-    [accountA, encounterA, idempotencyKey, `POST /encounters/${encounterA}/cash-receipts`]
+    [accountA, encounterA, idempotencyKey, receiptOperation]
   );
   expect(result.rows[0]).toEqual({
     receipt: 0,
@@ -550,7 +551,7 @@ async function assertExactlyOneReceipt(idempotencyKey: string): Promise<void> {
        (SELECT COUNT(*)::int FROM encounter_financial_accounts WHERE account_id = $1 AND encounter_id = $2 AND financial_status = 'paid') AS "financialPaid",
        (SELECT COALESCE(SUM(debit), 0)::float8 FROM financial_journal_lines WHERE account_id = $1 AND entry_id IN (SELECT id FROM financial_journal_entries WHERE account_id = $1 AND source_type = 'encounter_cash_receipt')) AS debit,
        (SELECT COALESCE(SUM(credit), 0)::float8 FROM financial_journal_lines WHERE account_id = $1 AND entry_id IN (SELECT id FROM financial_journal_entries WHERE account_id = $1 AND source_type = 'encounter_cash_receipt')) AS credit`,
-    [accountA, encounterA, idempotencyKey, `POST /encounters/${encounterA}/cash-receipts`]
+    [accountA, encounterA, idempotencyKey, receiptOperation]
   );
   expect(result.rows[0]).toEqual({
     receipt: 1,

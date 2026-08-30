@@ -112,10 +112,18 @@
     },
     "worker": {
       "type": "object",
-      "required": ["service", "probes", "env", "accountIds"],
+      "required": ["service", "probes", "env", "accountIds", "reportsUser"],
       "properties": {
         "replicaCount": { "type": "integer", "minimum": 1 },
         "accountIds": {
+          "type": "object",
+          "required": ["secretKey"],
+          "properties": {
+            "existingSecret": { "type": "string" },
+            "secretKey": { "type": "string", "minLength": 1 }
+          }
+        },
+        "reportsUser": {
           "type": "object",
           "required": ["secretKey"],
           "properties": {

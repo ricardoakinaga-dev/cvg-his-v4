@@ -1,0 +1,140 @@
+{
+  "record_id": "GATE-CVG-002B2B-SERVICE-PRINCIPAL-INTERACTIVE-BOUNDARY-VFY-001",
+  "timestamp": "2026-08-29T08:56:30-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-002B2B bounded repository-local service-principal interactive-login boundary",
+  "scope_ref": "CVG-002B2B-SERVICE-PRINCIPAL-INTERACTIVE-BOUNDARY",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-001-INTERACTIVE-RESOLVER",
+      "description": "Repository-backed interactive-by-id resolution returns only active human principals with interactive login enabled and evicts service, inactive and disabled identities from the interactive cache, including warm-cache cases.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-002B2B-SERVICE-PRINCIPAL-INTERACTIVE-BOUNDARY.md",
+        "packages/modules/users/src/index.ts",
+        "tests/unit/auth/interactive-principal-guard.test.ts#cold-and-warm-cache"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This is local repository evidence; it does not certify target identity governance or service-principal provisioning."
+    },
+    {
+      "id": "V-002-AUTHORITATIVE-AUTH",
+      "description": "Bearer/session refresh, session retrieval and MFA enrollment resolve the principal through the interactive boundary, reject stale service/inactive/disabled identities with generic authentication errors and avoid existence disclosure; API request guards await the authoritative session.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/auth/src/index.ts",
+        "apps/api/src/server.ts",
+        "tests/unit/auth/interactive-principal-guard.test.ts",
+        "packages/modules/auth/src/auth.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The final decision is bounded to current repository paths and does not certify distributed target runtime behavior."
+    },
+    {
+      "id": "V-003-ADMIN-WORKER-SEPARATION",
+      "description": "Generic UsersService.resolveById remains available for administrative materialization, while the dedicated worker service-principal resolver remains purpose-scoped and is not routed through the interactive cache.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/users/src/index.ts",
+        "apps/worker/src/worker-report-identity.ts",
+        "apps/worker/src/jobs/pix-provider-event-delivery-repository.ts",
+        "apps/worker/src/worker-report-identity.test.ts",
+        "tests/integration/database/worker-report-service-principal.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Worker service identity remains an existing local contract; this gate does not broaden PIX or worker settlement authority."
+    },
+    {
+      "id": "V-004-QUALITY-REGRESSION",
+      "description": "The bounded implementation satisfies intentional RED/GREEN, focused Auth/Users regression, official API/Worker regressions, disposable PostgreSQL proof, focused coverage and static security/hygiene checks.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002B2B-SERVICE-PRINCIPAL-INTERACTIVE-BOUNDARY-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-SERVICE-PRINCIPAL-INTERACTIVE-BOUNDARY-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-SERVICE-PRINCIPAL-INTERACTIVE-BOUNDARY-QUALITY-002",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-SERVICE-PRINCIPAL-INTERACTIVE-BOUNDARY-COVERAGE-002",
+        "packages/modules/users/src/index.ts",
+        "packages/modules/auth/src/index.ts",
+        "apps/api/src/server.ts",
+        "tests/unit/auth/interactive-principal-guard.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Local/disposable evidence does not replace remote CI, target RLS/restore, external providers, production operations or release acceptance."
+    },
+    {
+      "id": "V-005-INDEPENDENT-REVIEW",
+      "description": "A fresh separated read-only reviewer returned APPROVE_BOUNDED with no P0, P1 or P2 finding after current task/backlog/state reconciliation.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002B2B-SERVICE-PRINCIPAL-INTERACTIVE-BOUNDARY-REVIEW-004"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Approval is limited to this bounded local identity slice."
+    },
+    {
+      "id": "V-006-GLOBAL-NON-PROMOTION",
+      "description": "The bounded identity result is reconciled without promoting CVG-002B2B, global ERP, Vetus parity, enterprise readiness, target operations, production or release acceptance.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-005-LAB-PROVIDER-INGRESS-LOCAL-GLOBAL-RETEST-001",
+        ".agent/state.json",
+        ".agent/backlog.json",
+        ".gauntlet/state.md",
+        ".gauntlet/progress.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Fresh global audits remain non-promoting: general Vetus parity 4/11, clinical parity 2/3 and readiness 95/100 with 42 PASS, 3 WARN and 1 FAIL."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-002B2B-SERVICE-PRINCIPAL-INTERACTIVE-BOUNDARY.md",
+    ".agent/gates/implementation-ready-CVG-002B2B-service-principal-interactive-boundary-IR-001.json",
+    ".agent/authority.jsonl#AUTH-CVG-002B2B-SERVICE-PRINCIPAL-INTERACTIVE-BOUNDARY-IR-001",
+    "packages/modules/users/src/index.ts",
+    "packages/modules/auth/src/index.ts",
+    "apps/api/src/server.ts",
+    "tests/unit/auth/interactive-principal-guard.test.ts",
+    "tests/integration/database/worker-report-service-principal.test.ts",
+    ".agent/verification.jsonl#VFY-CVG-002B2B-SERVICE-PRINCIPAL-INTERACTIVE-BOUNDARY-QUALITY-002",
+    ".agent/verification.jsonl#VFY-CVG-002B2B-SERVICE-PRINCIPAL-INTERACTIVE-BOUNDARY-COVERAGE-002",
+    ".agent/verification.jsonl#VFY-CVG-002B2B-SERVICE-PRINCIPAL-INTERACTIVE-BOUNDARY-REVIEW-004"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "Target identity governance, service-principal provisioning lifecycle and distributed runtime behavior remain unverified.",
+    "Global ERP remains IN_PROGRESS/PARTIAL because Vetus functional parity, external provider homologation, target operations, restore/RTO-RPO, remote CI, accessibility, LGPD and release evidence remain open.",
+    "The engineering checker still reports pre-existing historical ledger/schema drift in old authority records, backlog conventions and gate bindings; the current slice has current task/backlog/evidence pointers but the whole historical corpus is not migrated."
+  ],
+  "conditions": [
+    "Keep the result limited to the repository-local interactive principal resolver/cache/session/MFA boundary.",
+    "Keep generic UsersService.resolveById administrative and keep the dedicated worker service-principal resolver purpose-scoped.",
+    "Keep CVG-002B2B/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+    "Do not use this gate as approval for PIX settlement, providers, credentials, target, production, deployment, backup/restore, Vetus parity or release.",
+    "Revalidate before changing principal mapping, interactive cache, session/MFA semantics or adding target/provider/production scope."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via explicit continuation of the consolidation request",
+    "scope": "CVG-002B2B repository-local service-principal interactive-login boundary",
+    "decision": "Authorize only the repository-local interactive principal resolver/cache/session/MFA correction and bounded verification; preserve administrative resolution, dedicated worker identity resolution and all global non-promotion conditions.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-002B2B-SERVICE-PRINCIPAL-INTERACTIVE-BOUNDARY-IR-001",
+    "expires_or_revalidates": "Revalidate before changing principal mapping, worker settlement identity, session/MFA semantics or any target/provider/production behavior."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "Close only this bounded identity slice, then fresh-scout the next repository-local gap under new authority; keep CVG-002B2B/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+  "revalidation_triggers": [
+    "New interactive resolver, authentication cache, session or MFA path",
+    "Changes to service-principal mapping or worker settlement identity",
+    "Any provider, credential, target, production, deployment or release scope"
+  ],
+  "supersedes": "GATE-CVG-002B2B-SERVICE-PRINCIPAL-INTERACTIVE-BOUNDARY-IR-001"
+}

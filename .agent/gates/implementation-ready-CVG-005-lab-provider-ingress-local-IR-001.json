@@ -1,0 +1,86 @@
+{
+  "record_id": "GATE-CVG-005-LAB-PROVIDER-INGRESS-LOCAL-IR-001",
+  "timestamp": "2026-08-29T01:25:00-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-005 local hardening of the tenant-scoped equipment laboratory provider-result ingress",
+  "scope_ref": "CVG-005-LAB-PROVIDER-INGRESS-LOCAL",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001-CONCRETE-GAP",
+      "description": "The existing equipment-result path accepts a legacy unsigned payload, uses a generic notifications permission, mutates the clinical order and has only process-local idempotency; the gap is concrete and local.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-005-LAB-PROVIDER-INGRESS-LOCAL.md",
+        "apps/api/src/routes/laboratory-integration-routes.ts",
+        "apps/api/src/laboratory-result-import-repository.ts",
+        "packages/db/migrations/0096_laboratory_result_imports.sql"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The review is repository-local and does not establish an external provider contract or target behavior."
+    },
+    {
+      "id": "IR-001-LOCAL-PROOF",
+      "description": "Strict raw-body protocol tests, route tests, repository tests and disposable PostgreSQL/RLS checks can prove signature freshness, tenant binding, atomic replay/conflict and pending-human-review behavior without external credentials.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-005-LAB-PROVIDER-INGRESS-LOCAL.md",
+        "apps/api/src/routes/laboratory-integration-routes.test.ts",
+        "apps/api/src/laboratory-provider-ingress.test.ts",
+        "tests/integration/rls"
+      ],
+      "confidence": "HIGH",
+      "limitations": "RED, GREEN, PostgreSQL, review, regression and final evidence remain pending."
+    },
+    {
+      "id": "IR-001-NON-PROMOTION",
+      "description": "The bounded change can preserve global ERP/CVG-005 IN_PROGRESS/PARTIAL and promotion BLOCKED while excluding provider homologation, credentials, target, production and release acceptance.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/state.json",
+        ".agent/backlog.json",
+        ".gauntlet/state.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This gate authorizes implementation and verification only; it does not certify the parent provider chain."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-005-LAB-PROVIDER-INGRESS-LOCAL.md",
+    ".agent/authority.jsonl#AUTH-CVG-005-LAB-PROVIDER-INGRESS-LOCAL-IR-001",
+    "apps/api/src/routes/laboratory-integration-routes.ts",
+    "apps/api/src/laboratory-result-import-repository.ts",
+    "packages/db/migrations/0096_laboratory_result_imports.sql"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "The signed parser/verifier, durable atomic repository method, migration, server/config wiring and tests are not implemented yet."
+  ],
+  "conditions": [
+    "Begin with intentional TDD RED before adding the production parser, route contract or repository implementation.",
+    "Keep global ERP/CVG-005 IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+    "Do not add provider selection/homologation, external credentials, target, production, deployment or release scope."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via explicit continuation of the consolidation request",
+    "scope": "Authorize only local versioned/signed laboratory provider-result ingress hardening",
+    "decision": "Implement the exact signed equipment-bridge contract, account-bound HMAC verification, durable tenant-scoped atomic replay/conflict ledger and pending-human-review status under TDD; remove automatic clinical mutation from this provider boundary.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-005-LAB-PROVIDER-INGRESS-LOCAL-IR-001",
+    "expires_or_revalidates": "Revalidate before changing the protocol, adding another provider, mutating clinical workflows, using external credentials/targets or claiming homologation/production readiness."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "selection_status": "SELECTED",
+  "next_action": "Write and execute intentional TDD RED for the strict parser/verifier, route, atomic repository and migration/RLS contract.",
+  "revalidation_triggers": [
+    "Payload or signing scheme changes",
+    "Additional provider or transport integration",
+    "Clinical order/workflow mutation or automatic release/signature",
+    "External credentials, target, production, deployment, backfill or release activity"
+  ]
+}

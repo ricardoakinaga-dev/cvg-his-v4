@@ -59,6 +59,21 @@ function createRepository(overrides?: Partial<BillingRepository>): BillingReposi
       }
       return [...records.values()].filter((record) => record.accountId === accountId);
     },
+    async findItemBySource(accountId, sourceEntityType, sourceEntityId) {
+      if (overrides?.findItemBySource) {
+        return overrides.findItemBySource(accountId, sourceEntityType, sourceEntityId);
+      }
+      return (
+        [...items.values()]
+          .flat()
+          .find(
+            (item) =>
+              item.accountId === accountId &&
+              item.sourceEntityType === sourceEntityType &&
+              item.sourceEntityId === sourceEntityId
+          ) ?? null
+      );
+    },
     async createItem(item) {
       const nextItems = [item, ...(items.get(item.billingRecordId) ?? [])];
       items.set(item.billingRecordId, nextItems);
@@ -126,6 +141,48 @@ test('BillingService replays a source-linked item without creating a duplicate',
 
   assert.equal(replay.id, first.id);
   assert.equal((await service.listItems(payload.encounterId as never)).length, 1);
+});
+
+test('BillingService does not trust an uncommitted source item in the hot cache', async () => {
+  let itemWrites = 0;
+  const repository = createRepository({
+    async createItem() {
+      itemWrites += 1;
+    },
+    async findItemBySource() {
+      // Model a row that was visible only to the request that later rolled
+      // back. The authoritative repository must remain empty for the retry.
+      return null;
+    }
+  });
+  const service = new BillingService(
+    {
+      getOrThrow(encounterId: string) {
+        return {
+          id: encounterId,
+          accountId: 'acc_test',
+          patientId: 'patient_1',
+          ownerId: 'owner_1'
+        };
+      }
+    } as never,
+    { repository }
+  );
+
+  const payload = {
+    encounterId: 'encounter_uncommitted_cache',
+    itemType: 'daily_rate' as const,
+    description: 'Diaria UTI',
+    quantity: 1,
+    unitPriceAmount: 180,
+    sourceEntityType: 'inpatient_daily_charge' as const,
+    sourceEntityId: 'stayday_uncommitted'
+  };
+  const first = await service.addItem('user_1' as never, payload);
+  const retry = await service.addItem('user_1' as never, payload);
+
+  assert.notEqual(retry.id, first.id);
+  assert.equal(itemWrites, 2);
 });
 
 test('BillingService read methods do not create billing records', async () => {

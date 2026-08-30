@@ -9,8 +9,8 @@
     "lint": "eslint \"src/**/*.ts\" --ignore-pattern \"src/**/*.d.ts\"",
     "test": "vitest run --passWithNoTests",
     "build": "tsc -b tsconfig.json --force",
-    "db:generate": "tsc -p tsconfig.json && drizzle-kit generate --config=drizzle.config.ts",
-    "db:push": "drizzle-kit push --config=drizzle.config.ts",
+    "db:generate": "node ../../scripts/reject-legacy-db-command.mjs @cvg-his/db:generate",
+    "db:push": "node ../../scripts/reject-legacy-db-command.mjs @cvg-his/db:push",
     "db:migrate": "tsx src/migrate.ts",
     "db:seed": "tsx src/seed.ts"
   },
@@ -20,7 +20,6 @@
     "pg": "^8.13.1"
   },
   "devDependencies": {
-    "@types/pg": "^8.15.0",
-    "drizzle-kit": "^0.30.4"
+    "@types/pg": "^8.15.0"
   }
 }

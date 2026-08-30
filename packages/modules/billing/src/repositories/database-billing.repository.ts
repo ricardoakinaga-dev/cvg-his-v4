@@ -1,3 +1,5 @@
+import type { PoolClient } from 'pg';
+
 import { getPool } from '@cvg-his-v2/shared-database';
 import { ConflictError } from '@cvg-his-v2/shared-errors';
 import { withTenantQuery } from '@cvg-his-v2/tenant-context';
@@ -12,6 +14,26 @@ import type {
   PatientId,
   UserId
 } from '@cvg-his-v2/shared-types';
+
+const CREATE_RECORD_SAVEPOINT = 'billing_create_record';
+const CREATE_ITEM_SAVEPOINT = 'billing_create_item';
+
+async function withSavepoint<T>(
+  client: PoolClient,
+  name: string,
+  operation: () => Promise<T>
+): Promise<T> {
+  await client.query(`SAVEPOINT ${name}`);
+  try {
+    const result = await operation();
+    await client.query(`RELEASE SAVEPOINT ${name}`);
+    return result;
+  } catch (error) {
+    await client.query(`ROLLBACK TO SAVEPOINT ${name}`).catch(() => undefined);
+    await client.query(`RELEASE SAVEPOINT ${name}`).catch(() => undefined);
+    throw error;
+  }
+}
 
 export interface BillingRepository {
   createRecord(record: BillingRecordSummary): Promise<void>;
@@ -36,25 +58,27 @@ export interface BillingRepository {
 
 export class DatabaseBillingRepository implements BillingRepository {
   async createRecord(record: BillingRecordSummary): Promise<void> {
-    return withTenantQuery(getPool(), async (client) => {
-      await client.query(
-        `INSERT INTO billing_records (id, account_id, encounter_id, patient_id, owner_id, status, subtotal_amount, currency, administrative_notes, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-        [
-          record.id,
-          record.accountId,
-          record.encounterId,
-          record.patientId,
-          record.ownerId,
-          record.status,
-          record.subtotalAmount,
-          record.currency,
-          record.administrativeNotes ?? null,
-          new Date(record.createdAt),
-          new Date(record.updatedAt)
-        ]
-      );
-    });
+    return withTenantQuery(getPool(), async (client) =>
+      withSavepoint(client, CREATE_RECORD_SAVEPOINT, async () => {
+        await client.query(
+          `INSERT INTO billing_records (id, account_id, encounter_id, patient_id, owner_id, status, subtotal_amount, currency, administrative_notes, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+          [
+            record.id,
+            record.accountId,
+            record.encounterId,
+            record.patientId,
+            record.ownerId,
+            record.status,
+            record.subtotalAmount,
+            record.currency,
+            record.administrativeNotes ?? null,
+            new Date(record.createdAt),
+            new Date(record.updatedAt)
+          ]
+        );
+      })
+    );
   }
 
   async updateRecord(record: BillingRecordSummary): Promise<void> {
@@ -139,55 +163,59 @@ export class DatabaseBillingRepository implements BillingRepository {
   }
 
   async createItem(item: BillingItemSummary): Promise<void> {
-    return withTenantQuery(getPool(), async (client) => {
-      const billing = await client.query<{ readonly active_payment_attempt_id: string | null }>(
-        `SELECT active_payment_attempt_id::text
-           FROM billing_records
-          WHERE account_id = $1 AND id = $2
-          FOR UPDATE`,
-        [item.accountId, item.billingRecordId]
-      );
-      if (billing.rows[0]?.active_payment_attempt_id) {
-        throw new ConflictError('Billing record already has a payment in progress', {
-          recordId: item.billingRecordId
-        });
-      }
-      await client.query(
-        `INSERT INTO billing_items (
-           id, account_id, billing_record_id, encounter_id, item_type, description,
-           quantity, unit_price_amount, total_amount, source_entity_type, source_entity_id,
-           created_by_user_id, created_at
-         )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
-        [
-          item.id,
-          item.accountId,
-          item.billingRecordId,
-          item.encounterId,
-          item.itemType,
-          item.description,
-          item.quantity,
-          item.unitPriceAmount,
-          item.totalAmount,
-          item.sourceEntityType ?? null,
-          item.sourceEntityId ?? null,
-          item.createdByUserId,
-          new Date(item.createdAt)
-        ]
-      );
+    return withTenantQuery(getPool(), async (client) =>
+      withSavepoint(client, CREATE_ITEM_SAVEPOINT, async () => {
+        const billing = await client.query<{
+          readonly active_payment_attempt_id: string | null;
+        }>(
+          `SELECT active_payment_attempt_id::text
+             FROM billing_records
+            WHERE account_id = $1 AND id = $2
+            FOR UPDATE`,
+          [item.accountId, item.billingRecordId]
+        );
+        if (billing.rows[0]?.active_payment_attempt_id) {
+          throw new ConflictError('Billing record already has a payment in progress', {
+            recordId: item.billingRecordId
+          });
+        }
+        await client.query(
+          `INSERT INTO billing_items (
+             id, account_id, billing_record_id, encounter_id, item_type, description,
+             quantity, unit_price_amount, total_amount, source_entity_type, source_entity_id,
+             created_by_user_id, created_at
+           )
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+          [
+            item.id,
+            item.accountId,
+            item.billingRecordId,
+            item.encounterId,
+            item.itemType,
+            item.description,
+            item.quantity,
+            item.unitPriceAmount,
+            item.totalAmount,
+            item.sourceEntityType ?? null,
+            item.sourceEntityId ?? null,
+            item.createdByUserId,
+            new Date(item.createdAt)
+          ]
+        );
 
-      await client.query(
-        `UPDATE billing_records
-         SET subtotal_amount = (
-           SELECT COALESCE(SUM(total_amount), 0)
-           FROM billing_items
-           WHERE account_id = $1 AND billing_record_id = $2
-         ),
-         updated_at = $3
-         WHERE account_id = $1 AND id = $2`,
-        [item.accountId, item.billingRecordId, new Date(item.createdAt)]
-      );
-    });
+        await client.query(
+          `UPDATE billing_records
+           SET subtotal_amount = (
+             SELECT COALESCE(SUM(total_amount), 0)
+             FROM billing_items
+             WHERE account_id = $1 AND billing_record_id = $2
+           ),
+           updated_at = $3
+           WHERE account_id = $1 AND id = $2`,
+          [item.accountId, item.billingRecordId, new Date(item.createdAt)]
+        );
+      })
+    );
   }
 
   async findItemBySource(

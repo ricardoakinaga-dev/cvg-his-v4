@@ -6,26 +6,58 @@
   "work_mode": "FEATURE",
   "work_mode_overlays": ["MIGRATION"],
   "lifecycle_stage": "BUILD",
-  "active_activity": "VERIFY",
+  "active_activity": "RECONCILED",
+  "final_checkpoint_evidence": "The host-restart checkpoint and prior bounded slices remain reconciled. EVT-1199 through EVT-1208 reconcile fresh selection, implementation-ready authority, TDD RED/GREEN, PostgreSQL account-boundary proof, workspace regression, quality, review-attempt limitation, global non-promotion, verified bounded closure and final control-plane reconciliation for CVG-003-INPATIENT-SECTOR-BED-TENANT-BOUNDARY. The child slice is COMPLETE_BOUNDED/PASS_BOUNDED with MEDIUM confidence and HIGH residual risk; parent CVG-003/global ERP remain IN_PROGRESS/PARTIAL and promotion remains BLOCKED. Fresh residual scouting is the next gate.",
   "engineering_tier": "T4_CRITICAL",
   "risk_level": "CRITICAL",
   "blast_radius": "CROSS_SYSTEM",
   "status": "IN_PROGRESS",
   "active_execplan": ".agent/plans/premium-enterprise-mvp.md",
-  "active_task": "CVG-002C6",
-  "verification_state": "PARTIAL",
-  "repository_state": "The current bounded slices harden the production-like worker deployment contract, prove real API cash-receipt rollback/concurrency, make laboratory catalog bootstrap idempotent across two simultaneous API PIDs, validate the real Helm render path with pinned Helm v3.15.4, prove PIX settlement under a reconciled LOGIN NOINHERIT NOBYPASSRLS worker role, reconcile the durable webhook executor handoff with runtime truth, execute scheduled reports through the real worker run-once boundary, fence concurrent report retries with an account-scoped PostgreSQL lease, export loaded Vetus workbench report slices as protected CSV downloads, and now execute/export Contas a Pagar, Contas Pagas, Contas a Receber and Contas Recebidas server-side with persistence, audit, pagination, filter validation, semantic dates and tenant isolation. Helm staging/prod require WORKER_ACCOUNT_IDS through operator-managed Secrets, dev keeps local account discovery, and the receipt/laboratory/PIX/report fixtures use restricted or disposable PostgreSQL plus controlled local receivers. test:critical:process remains a six-file serial runner with separate ephemeral databases; the report one-shot proof is a focused additional process gate. Fresh targeted evidence includes A/B isolation, ACL negatives, SIGKILL/takeover/fencing, exact grants, Helm lint/template, report execution/delivery, concurrent report claim, server-side payable/receivable report execution/export, CSV formula neutralization, workbench unit/component/browser tests, worker/module test suites and type/security/diff checks. The reports workbench still lacks authoritative Vetus cheques, advance-payment, registration/custom families; the user-owned packages/design-system/tsconfig.vue.tsbuildinfo cache remains outside scope and must not be staged",
-  "latest_bounded_evidence": "2026-08-24: the inpatient cross-domain slice now proves real PostgreSQL rollback for clinical_timeline projection, assignment bed occupation, transfer destination occupation and audit persistence. Each failed public command leaves committed state unchanged and converges on a same-key retry. The process fixture uses durable sector/beds and SIGKILL/replay passed 4/4 for assignment/transfer plus status/inventory/stale-owner in a 10/10 full matrix; the current public clinical-financial vertical passed 9/9. The bounded result does not promote the global ERP, full Vetus parity, provider, production, Redis, DR/RPO, operations, WCAG, coverage or release gates.",
-  "latest_retest_evidence": "2026-08-24: docs/2026-08-24-handoff-inpatient-bed-status-idempotency.md and .agent/artifacts/CVG-002C6-inpatient-cross-domain-failpoint-recovery-2026-08-24.md record the RED/GREEN sequence and conditional bounded gate. Medical-records tests passed 17/17, inpatient route tests 22/22, the failpoint matrix passed 5/5, the full inpatient process matrix passed 10/10, the focused assignment/transfer SIGKILL matrix passed 4/4, and API/module builds plus focused Prettier remained green. No independent reviewer was available. Production/provider/Redis/RLS/FORCE RLS/DR/parity/WCAG/coverage/operations/release remain open.",
+  "active_task": "CVG-003-INPATIENT-SECTOR-BED-TENANT-BOUNDARY",
+  "verification_state": "VERIFIED_BOUNDED",
+  "current_slice_evidence": "CVG-003-INPATIENT-SECTOR-BED-TENANT-BOUNDARY closed bounded after AccountId propagation and account predicates across in-memory/PostgreSQL sector/bed repositories, service guards, inpatient callers and authenticated routes. Module 18/18, PostgreSQL 3/3, compiled route 25/25 and API 518/518 passed; workspace typecheck/build and official quality gates passed. PostgreSQL pre-fix RED was not captured after an initial UUID fixture failure, and independent review was unavailable; neither limitation is treated as approval. No schema, provider, target or global promotion occurred.",
+  "repository_state": "The worktree is intentionally mixed and dirty with user/prior bounded changes preserved. The prior CVG-002B2B writer-linearization and CVG-003 prescription-execution and outbox-administration slices are closed locally as PASS_BOUNDED under their verified bounded gates, without migration/provider/credential/target/production expansion. Global Vetus parity remains 100/100 evidence with 4/11 verified, clinical parity 100/100 with 2/3 verified, and enterprise readiness 95/100 with 42 PASS, 3 WARN and 1 FAIL. External provider/homologation, target operations, remote CI, accessibility, LGPD, backup/restore, distributed operations and release evidence remain open. The user-owned packages/design-system/tsconfig.vue.tsbuildinfo cache remains outside scope and must not be staged.",
+  "latest_retest_evidence": "2026-08-30: CVG-003-INPATIENT-SECTOR-BED-TENANT-BOUNDARY closed PASS_BOUNDED/COMPLETE_BOUNDED after module 18/18, PostgreSQL 3/3, compiled route 25/25, API 518/518, workspace typecheck/build, coverage 80%+ and static/security quality evidence. PostgreSQL pre-fix RED and independent review remain explicit conditional limitations. Parent CVG-003/global ERP remain IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+  "finalization_note": "CVG-003-INPATIENT-SECTOR-BED-TENANT-BOUNDARY is closed locally as PASS_BOUNDED/COMPLETE_BOUNDED with MEDIUM confidence and HIGH residual risk. The PostgreSQL pre-fix RED was not captured due the initial fixture UUID mismatch, and no independent review verdict was available; neither is inferred. All target/provider/global gates remain open.",
   "instruction_scope_refs": [".agent/instruction-scope.md"],
-  "last_gate_record": ".agent/gates/implementation-ready-CVG-002C6.json",
-  "last_event_id": "EVT-0302",
-  "state_revision": 291,
-  "next_gate": "VERIFIED",
-  "next_action": "Read docs/2026-08-24-handoff-inpatient-bed-status-idempotency.md and .agent/artifacts/CVG-002C6-inpatient-cross-domain-failpoint-recovery-2026-08-24.md first: database failpoints for timeline, assignment, transfer and audit plus assignment/transfer SIGKILL/replay are green bounded. Keep CVG-002C6, ERP, production, parity, operations and release IN_PROGRESS/PARTIAL. Next reconcile this evidence into the parent clinical-financial gate and select the next source-backed gap without inventing missing Vetus sources. Preserve global RLS/FORCE RLS, DR/RPO, migration checksum, CI deploy, provider/Redis/SPA/parity/WCAG/coverage/operations/release gaps, Helm cluster/Secret limitation and the user-owned tsbuildinfo cache outside stage",
+  "last_gate_record": ".agent/gates/verified-CVG-003-inpatient-sector-bed-tenant-boundary.json",
+  "latest_checkpoint_evidence": "2026-08-30: EVT-1199 through EVT-1208 reconcile fresh selection, authority, implementation-ready gate, intentional module/route RED, account-scoped implementation, PostgreSQL/API/workspace regression, quality, review limitation, global non-promotion, final bounded gate and control-plane validation for CVG-003-INPATIENT-SECTOR-BED-TENANT-BOUNDARY. The child is COMPLETE_BOUNDED/PASS_BOUNDED; parent CVG-003/global ERP remain IN_PROGRESS/PARTIAL and promotion remains BLOCKED.",
+  "last_event_id": "EVT-1208",
+  "state_revision": 886,
+  "next_gate": "SCOUT",
+  "next_action": "Open fresh residual scouting under a new authority. Preserve parent CVG-003/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED; obtain compatible independent review before higher-confidence use or scope expansion.",
   "blocked_by": [],
   "human_approval_required": [
     "Production go-live, credential rotation, provider selection, fiscal homologation, and residual HIGH/CRITICAL risk acceptance remain outside repository implementation authority"
   ],
-  "updated_at": "2026-08-24T22:24:26-03:00"
+  "resume_checkpoint": {
+    "created_at": "2026-08-28T15:39:43-03:00",
+    "status": "RECONCILED_AFTER_HOST_RESTART",
+    "task": "CVG-OPS-CRITICAL-PROCESS-RUNNER-001",
+    "implementation": "Hardened runner/runtime changes are saved in the working tree; the post-restart combined runner+CI contract check passed 31/31 and the final4 matrix passed 10/10.",
+    "latest_checks": [
+      "node --check runtime and runner: PASS",
+      "targeted Prettier and ESLint: PASS",
+      "pnpm security:secrets: PASS/no findings",
+      "pnpm validate:openapi: PASS (348 paths, 40 tags, 405 schemas)",
+      "focused critical-runner + CI contracts: PASS 31/31 (24 runner + 7 CI)",
+      "Windows contract suite: PASS with 5 expected Linux-host skips",
+      "final4 disposable process matrix: PASS 10/10 including PIX 25/25",
+      "post-run DB/process/artifact cleanup: PASS/no residuals"
+    ],
+    "interrupted_checks": [
+      "Historical pre-restart interruptions are superseded by the post-restart bounded verification."
+    ],
+    "review": "Final compatible independent read-only review returned APPROVE_BOUNDED with no P0/P1/P2 finding; native Windows execution remains a windows-2022 CI responsibility.",
+    "process_matrix": "The unique final4 matrix completed all ten serial entries, including PIX 25/25; every per-entry ephemeral database was cleaned.",
+    "cleanup": "Runner verification processes were stopped; only the pre-existing @cvg/web server remained. Do not stop that server blindly.",
+    "resume_order": [
+      "Keep the bounded runner evidence and global non-promotion state intact",
+      "Begin any next scope only with fresh scouting and a new implementation-ready authority",
+      "Do not promote global ERP or claim target, production or release readiness"
+    ]
+  },
+  "current_runner_reconciliation": "PASS_BOUNDED final4: combined focused contracts 31/31, Windows 5 skipped on Linux, final disposable matrix 10/10 with PIX 25/25, post-run database/process/artifact checks clean, final independent review APPROVE_BOUNDED, global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+  "current_retest_evidence": "2026-08-30 CVG-003 inpatient sector/bed tenant boundary: account-scoped repository predicates, service guards, first-party propagation and route isolation passed bounded tests and workspace quality. Child closed PASS_BOUNDED; PostgreSQL pre-fix RED and independent review are explicit limitations. Fresh residual scouting is next; global ERP remains IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+  "updated_at": "2026-08-30T09:37:00-03:00"
 }

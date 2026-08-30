@@ -19,6 +19,7 @@ export const vetusImportBatches = pgTable(
     accountId: uuid('account_id').notNull().references(() => accounts.id, { onDelete: 'cascade' }),
     sourceSystem: varchar('source_system', { length: 80 }).notNull(),
     sourceReference: varchar('source_reference', { length: 255 }),
+    requestHash: varchar('request_hash', { length: 64 }),
     status: varchar('status', { length: 20 }).notNull(),
     totalCount: integer('total_count').notNull(),
     importedCount: integer('imported_count').notNull(),

@@ -1,0 +1,168 @@
+{
+  "record_id": "GATE-CVG-001-WEBAUTHN-DURABLE-MFA-STATE-VFY-001",
+  "timestamp": "2026-08-29T18:30:00-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-001 durable WebAuthn credentials/challenges with tenant-user isolation",
+  "scope_ref": "CVG-001-WEBAUTHN-DURABLE-MFA-STATE",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "VFY-001",
+      "description": "PostgreSQL credential state is durable across repository instances and all credential reads, counter updates and deletes require account plus user scope.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/db/migrations/0157_webauthn_durable_state.sql",
+        "packages/modules/mfa/src/repositories/database-webauthn.repository.ts",
+        "packages/modules/mfa/src/webauthn.ts",
+        "tests/integration/mfa/webauthn-durable-state.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-001-WEBAUTHN-DURABLE-MFA-STATE-GREEN-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The proof is repository-local and disposable; it does not certify a target-cluster rollout."
+    },
+    {
+      "id": "VFY-002",
+      "description": "Credential counter advancement is monotonic compare-and-swap, account/user scoped and reports false after a lost race or a repeated/regressing direct update.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/mfa/src/repositories/database-webauthn.repository.ts",
+        "packages/modules/mfa/src/webauthn.ts",
+        "tests/unit/modules/webauthn-durable-state.test.ts",
+        "tests/integration/mfa/webauthn-durable-state.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-001-WEBAUTHN-DURABLE-MFA-STATE-REGRESSION-FINAL-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Full authenticator sign-counter semantics remain part of the separate FIDO2 verifier slice."
+    },
+    {
+      "id": "VFY-003",
+      "description": "Registration and authentication challenges are purpose-specific and durable; PostgreSQL consume is atomic, TTL-bound and single-use, with replay and expiry rejected.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/mfa/src/repositories/database-webauthn-challenge.store.ts",
+        "packages/db/migrations/0157_webauthn_durable_state.sql",
+        "tests/integration/mfa/webauthn-durable-state.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-001-WEBAUTHN-DURABLE-MFA-STATE-INTEGRATION-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Response challenge parsing and binding belong to the full FIDO2 verifier and are deliberately not claimed here."
+    },
+    {
+      "id": "VFY-004",
+      "description": "Both durable tables are ENABLE/FORCE RLS with one tenant policy, runtime ACLs give the API exact access and revoke worker sensitive DML, and repeated reconciliation remains safe.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/db/migrations/0157_webauthn_durable_state.sql",
+        "packages/db/src/runtime-role-policy.ts",
+        "infra/postgres/init-runtime-role.sh",
+        "infra/helm/cvg-his-v2/templates/postgres-runtime-role-configmap.yaml",
+        "tests/integration/mfa/webauthn-durable-state.test.ts",
+        "tests/integration/rls/runtime-role-sensitive-acl.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-001-WEBAUTHN-DURABLE-MFA-STATE-ACL-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Local database role evidence does not replace target IAM/role validation."
+    },
+    {
+      "id": "VFY-005",
+      "description": "Bootstrap and auth routes use the configured durable repositories and principal account/user scope; local/test doubles remain explicit, while non-local enabled WebAuthn fails closed without durable state or a full FIDO2 verifier.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/api/src/bootstrap.ts",
+        "apps/api/src/server.ts",
+        "apps/api/src/routes/auth-routes.ts",
+        "apps/api/src/routes/auth-routes.test.ts",
+        "tests/unit/modules/webauthn-durable-state.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-001-WEBAUTHN-DURABLE-MFA-STATE-HTTP-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The foundational verifier is intentionally unavailable outside local/test; this is a safety gate, not production WebAuthn acceptance."
+    },
+    {
+      "id": "VFY-006",
+      "description": "TDD and regression evidence is green: intentional RED preceded implementation; focused module/ACL tests pass 23/23, HTTP routes pass 23/23, the PostgreSQL durable-state file passes 2/2 and the full API passes 498/498.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-001-WEBAUTHN-DURABLE-MFA-STATE-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-001-WEBAUTHN-DURABLE-MFA-STATE-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-001-WEBAUTHN-DURABLE-MFA-STATE-INTEGRATION-001",
+        ".agent/verification.jsonl#VFY-CVG-001-WEBAUTHN-DURABLE-MFA-STATE-REGRESSION-FINAL-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Local evidence does not certify remote CI or release environments."
+    },
+    {
+      "id": "VFY-007",
+      "description": "Quality gates pass with official workspace coverage above the required threshold and no migration, OpenAPI, secret, formatting or diff-hygiene failure.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-001-WEBAUTHN-DURABLE-MFA-STATE-QUALITY-001",
+        ".agent/artifacts/CVG-001-webauthn-durable-mfa-state-2026-08-29.md",
+        "coverage/coverage-final.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Coverage and static checks are workspace-local and do not replace target operations evidence."
+    },
+    {
+      "id": "VFY-008",
+      "description": "Independent review findings were resolved: no P0/P1 remains, the identified direct-repository monotonic P2 was fixed and regression-tested; global ERP non-promotion remains explicit.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-001-WEBAUTHN-DURABLE-MFA-STATE-REVIEW-001",
+        ".agent/verification.jsonl#VFY-CVG-001-WEBAUTHN-DURABLE-MFA-STATE-REVIEW-FOLLOWUP-001",
+        ".agent/state.json",
+        ".agent/backlog.json"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "The final time-boxed sign-off attempt was incomplete; the bounded decision relies on the completed independent review plus direct post-fix tests."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-001-WEBAUTHN-DURABLE-MFA-STATE.md",
+    ".agent/artifacts/CVG-001-webauthn-durable-mfa-state-2026-08-29.md",
+    ".agent/gates/implementation-ready-CVG-001-webauthn-durable-mfa-state.json",
+    ".agent/authority.jsonl#AUTH-CVG-001-WEBAUTHN-DURABLE-MFA-STATE-IR-001",
+    "packages/db/migrations/0157_webauthn_durable_state.sql",
+    "tests/integration/mfa/webauthn-durable-state.test.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "Full FIDO2 attestation-chain and assertion signature verification, response challenge binding and origin/RP-ID policy remain open and are hard-disabled outside local/test.",
+    "This gate does not certify target-cluster migration application, production, providers, remote CI, deployment, backup/restore or release acceptance.",
+    "Global Vetus parity, clinical parity, enterprise readiness and ERP completion remain open; the prior control-plane snapshot remains non-promoting."
+  ],
+  "conditions": [
+    "Keep auth_webauthn_credentials and auth_webauthn_challenges tenant/user scoped with FORCE RLS and the least-privilege runtime ACL.",
+    "Keep challenge consumption atomic, single-use and TTL-bound, and keep credential counter advancement monotonic CAS.",
+    "Do not enable WebAuthn outside local/test until a production-grade FIDO2 verifier is configured and independently verified.",
+    "Keep global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+    "Do not infer target, production, provider, deployment or release acceptance from this local gate."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED_REVALIDATED",
+    "actor": "Ricardo (repository owner), via explicit continuation and review-driven bounded correction",
+    "scope": "Durable WebAuthn credential/challenge state, account-user isolation, atomic TTL consumption, runtime wiring, ACL/RLS and non-local fail-closed guard",
+    "decision": "Authorize bounded local closure of durable state only. Keep full FIDO2 verification, providers, target, production, deployment and release acceptance outside this gate.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-001-WEBAUTHN-DURABLE-MFA-STATE-IR-001",
+    "expires_or_revalidates": "Revalidate before enabling non-local WebAuthn, changing FIDO verification semantics, altering MFA policy, or entering target/production/deployment/release scope."
+  },
+  "residual_risk": "CRITICAL",
+  "decision": "PASS_BOUNDED",
+  "implementation_status": "COMPLETE_BOUNDED",
+  "next_action": "Close this bounded task, return to fresh independent scouting and create a new implementation-ready authority before touching the next ERP gap. Do not enable non-local WebAuthn or promote global ERP.",
+  "revalidation_triggers": [
+    "Adding or enabling full FIDO2 attestation/signature verification",
+    "Changing challenge binding, MFA enrollment/login policy or credential lifecycle",
+    "Changing target, production, provider, deployment, backup/restore or release boundaries"
+  ],
+  "supersedes": ".agent/gates/implementation-ready-CVG-001-webauthn-durable-mfa-state.json"
+}

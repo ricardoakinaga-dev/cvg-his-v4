@@ -50,12 +50,12 @@ class MockResponse extends Writable {
   }
 }
 
-function createPrincipal(): AuthenticatedPrincipal {
+function createPrincipal(accountId = 'acc-1'): AuthenticatedPrincipal {
   const now = new Date().toISOString();
   return {
     user: {
       id: 'user-1' as never,
-      accountId: 'acc-1' as never,
+      accountId: accountId as never,
       username: 'medico',
       email: 'medico@example.com',
       displayName: 'Medico',
@@ -66,7 +66,7 @@ function createPrincipal(): AuthenticatedPrincipal {
     session: {
       sessionId: 'session-1' as never,
       userId: 'user-1' as never,
-      accountId: 'acc-1' as never,
+      accountId: accountId as never,
       createdAt: now,
       expiresAt: new Date(Date.now() + 60_000).toISOString(),
       authTime: now,
@@ -100,11 +100,11 @@ function createMockRequest(method: string, url: string, body?: object): object {
   };
 }
 
-function createHandlers(service: PrescriptionsService) {
+function createHandlers(service: PrescriptionsService, accountId = 'acc-1') {
   return {
     prescriptions: service,
     audit: { write: () => ({}) } as never,
-    requirePrincipal: () => createPrincipal()
+    requirePrincipal: () => createPrincipal(accountId)
   };
 }
 
@@ -130,7 +130,11 @@ describe('Prescriptions API integration', () => {
 
     await service.waitForPersistence();
 
-    const created = response.bodyJson<{ id: string; medicalRecordId: string; medicationName: string }>();
+    const created = response.bodyJson<{
+      id: string;
+      medicalRecordId: string;
+      medicationName: string;
+    }>();
     const persisted = await repository.findById(created.id as never);
 
     expect(handled).toBe(true);
@@ -167,7 +171,9 @@ describe('Prescriptions API integration', () => {
       createHandlers(service)
     );
 
-    const result = response.bodyJson<{ items: Array<{ encounterId: string; medicationName: string }> }>();
+    const result = response.bodyJson<{
+      items: Array<{ encounterId: string; medicationName: string }>;
+    }>();
 
     expect(handled).toBe(true);
     expect(response.statusCode).toBe(200);
@@ -176,6 +182,94 @@ describe('Prescriptions API integration', () => {
       encounterId: 'enc-1',
       medicationName: 'Amoxicilina'
     });
+  });
+
+  it('does not list another account prescription when filtering by shared encounter or patient identifiers', async () => {
+    const repository = new InMemoryPrescriptionRepository();
+    const service = new PrescriptionsService({
+      prescriptionRepository: repository
+    });
+
+    service.create('acc-1' as never, 'user-1' as never, {
+      medicalRecordId: 'mr-1',
+      encounterId: 'shared-encounter',
+      patientId: 'shared-patient',
+      medicationName: 'Dipirona'
+    });
+    service.create('acc-2' as never, 'user-2' as never, {
+      medicalRecordId: 'mr-2',
+      encounterId: 'shared-encounter',
+      patientId: 'shared-patient',
+      medicationName: 'Prednisona'
+    });
+    await service.waitForPersistence();
+
+    const hydratedService = new PrescriptionsService({ prescriptionRepository: repository });
+    await hydratedService.hydrateFromDatabase('acc-1' as never);
+    await hydratedService.hydrateFromDatabase('acc-2' as never);
+
+    const encounterResponse = new MockResponse();
+    const encounterHandled = await handlePrescriptionRoutes(
+      '/prescriptions',
+      { method: 'GET', url: '/prescriptions?encounterId=shared-encounter' } as never,
+      encounterResponse as never,
+      'corr-rx-tenant-encounter',
+      createHandlers(hydratedService, 'acc-1')
+    );
+    const encounterResult = encounterResponse.bodyJson<{
+      items: Array<{ accountId: string; medicationName: string }>;
+    }>();
+
+    const patientResponse = new MockResponse();
+    const patientHandled = await handlePrescriptionRoutes(
+      '/prescriptions',
+      { method: 'GET', url: '/prescriptions?patientId=shared-patient' } as never,
+      patientResponse as never,
+      'corr-rx-tenant-patient',
+      createHandlers(hydratedService, 'acc-1')
+    );
+    const patientResult = patientResponse.bodyJson<{
+      items: Array<{ accountId: string; medicationName: string }>;
+    }>();
+
+    expect(encounterHandled).toBe(true);
+    expect(patientHandled).toBe(true);
+    expect(encounterResult.items).toHaveLength(1);
+    expect(encounterResult.items[0]).toMatchObject({
+      accountId: 'acc-1',
+      medicationName: 'Dipirona'
+    });
+    expect(patientResult.items).toHaveLength(1);
+    expect(patientResult.items[0]).toMatchObject({
+      accountId: 'acc-1',
+      medicationName: 'Dipirona'
+    });
+  });
+
+  it('rejects an empty collection filter instead of broadening to the account list', async () => {
+    const service = new PrescriptionsService({
+      prescriptionRepository: new InMemoryPrescriptionRepository()
+    });
+
+    await expect(
+      handlePrescriptionRoutes(
+        '/prescriptions',
+        { method: 'GET', url: '/prescriptions?encounterId=' } as never,
+        new MockResponse() as never,
+        'corr-rx-empty-encounter',
+        createHandlers(service)
+      )
+    ).rejects.toBeInstanceOf(ValidationError);
+
+    await expect(
+      handlePrescriptionRoutes(
+        '/prescriptions',
+        { method: 'GET', url: '/prescriptions?patientId=' } as never,
+        new MockResponse() as never,
+        'corr-rx-empty-patient',
+        createHandlers(service)
+      )
+    ).rejects.toBeInstanceOf(ValidationError);
   });
 
   it('rejects create requests without medicalRecordId', async () => {

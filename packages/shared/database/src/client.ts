@@ -204,9 +204,21 @@ export function getPool() {
 
 export async function withTenantTransaction<T>(
   accountId: string,
-  operation: (client: DatabaseClient) => Promise<T>
+  operation: (client: DatabaseClient) => Promise<T>,
+  metadata?: {
+    readonly actorUserId: string;
+    readonly correlationId: string;
+  }
 ): Promise<T> {
-  const { runInTenantTransaction } = await import('./tenant-unit-of-work.js');
+  const { runInTenantTransaction, runInTenantTransactionContext } =
+    await import('./tenant-unit-of-work.js');
+  if (metadata) {
+    return runInTenantTransactionContext(
+      getPool(),
+      { accountId, actorUserId: metadata.actorUserId, correlationId: metadata.correlationId },
+      (transaction) => operation(transaction.database)
+    );
+  }
   return runInTenantTransaction(getPool(), accountId, (client) =>
     operation(createScopedDatabaseClient(client))
   );

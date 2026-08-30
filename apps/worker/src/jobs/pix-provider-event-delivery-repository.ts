@@ -1,6 +1,7 @@
 import type { Pool, PoolClient } from 'pg';
 
 import {
+  acquireTenantAuthorizationLock,
   runInTenantTransaction,
   runInTenantTransactionContext,
   type TenantTransactionContext
@@ -351,6 +352,10 @@ export class DatabasePixProviderEventDeliveryRepository implements PixProviderEv
       return await runInTenantTransaction(this.pool, claim.accountId, async (client) => {
         const event = await this.lockClaimedEvent(client, claim);
         if (!event) return 'lease_lost';
+        // Revocations and other protected authorization writes take the same
+        // transaction advisory lock in the API. Acquire it before reading the
+        // service principal so a concurrent revocation linearizes before B1.
+        await acquireTenantAuthorizationLock(claim.accountId);
         const actorUserId = await this.resolveServicePrincipal(client, claim.accountId);
         const attempt = await this.findAttempt(client, claim.accountId, event.payment_attempt_id);
         if (!attempt) fail('PIX_NOT_CORRELATED', 'PIX provider receipt is not correlated');

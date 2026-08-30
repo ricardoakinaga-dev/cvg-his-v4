@@ -1,0 +1,97 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-SCHEDULED-EXECUTION-EXPORT-LEASE-FENCING-IR-001",
+  "timestamp": "2026-08-30T01:52:00-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-004 scheduled-report execution and export persistence lease fencing",
+  "scope_ref": "CVG-004-REPORT-SCHEDULED-EXECUTION-EXPORT-LEASE-FENCING",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "A fresh independent read-only reconciliation selected the scheduled execution/export takeover freshness gap after the delivery-row fence was closed.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-SCOUT-CVG-004-REPORT-SCHEDULED-EXECUTION-EXPORT-LEASE-FENCING-001",
+        ".agent/tasks/CVG-004-report-scheduled-execution-export-lease-fencing.md",
+        ".agent/state.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Selection is bounded source evidence, not implementation, PostgreSQL proof, independent code review or release approval."
+    },
+    {
+      "id": "IR-002",
+      "description": "The worker derives deterministic execution/export ids, while generic repository persistence currently uses ON CONFLICT DO NOTHING and does not require the active schedule claim.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/worker/src/jobs/scheduled-report-job.ts",
+        "packages/modules/reports/src/index.ts",
+        "packages/db/migrations/0142_reports_schedule_claims.sql",
+        "packages/db/migrations/0134_reports_delivery_tenant_integrity.sql"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The current behavior is identified by source inspection; intentional RED and database takeover tests remain open."
+    },
+    {
+      "id": "IR-003",
+      "description": "The existing schedule claim columns and repository contract support a local conditional write without changing report payloads or adding a migration; the SQL design can serialize the schedule-row claim check.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/db/migrations/0048_report_engine.sql",
+        "packages/db/migrations/0142_reports_schedule_claims.sql",
+        "packages/modules/reports/src/index.ts",
+        "tests/integration/database/reports-schedule-lease-fencing-postgres.test.ts"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "No migration is planned; implementation must revalidate the schema and transaction behavior before adding one."
+    },
+    {
+      "id": "IR-004",
+      "description": "The frozen contract limits changes to explicit scheduled execution/export capability, in-memory and PostgreSQL active-lease fences, worker propagation, takeover recomputation tests and quality evidence.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-EXECUTION-EXPORT-LEASE-FENCING-IR-001",
+        ".agent/tasks/CVG-004-report-scheduled-execution-export-lease-fencing.md",
+        ".agent/gates/verified-CVG-004-report-scheduled-delivery-lease-fencing-v2.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "RED/GREEN implementation, PostgreSQL proof, regression, quality, review and final reconciliation remain open."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-report-scheduled-execution-export-lease-fencing.md",
+    ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-EXECUTION-EXPORT-LEASE-FENCING-IR-001",
+    ".agent/verification.jsonl#VFY-SCOUT-CVG-004-REPORT-SCHEDULED-EXECUTION-EXPORT-LEASE-FENCING-001",
+    "packages/modules/reports/src/index.ts",
+    "apps/worker/src/jobs/scheduled-report-job.ts",
+    "packages/db/migrations/0142_reports_schedule_claims.sql",
+    ".agent/gates/verified-CVG-004-report-scheduled-delivery-lease-fencing-v2.json"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "Implementation, intentional RED/GREEN, PostgreSQL takeover/concurrency proof, regression, quality and review evidence remain open.",
+    "Provider side effects, retry-lease expiry, renewal, target, production, deployment, release and global ERP remain out of scope."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via explicit continuation and independent read-only residual scouting",
+    "scope": "Repository-local scheduled execution/export persistence fence, ReportsService capability separation, worker propagation and disposable PostgreSQL takeover/concurrency tests",
+    "decision": "Authorize only an additive schedule-claim fence for scheduled execution and export persistence. Preserve generic on-demand APIs, report payloads, the closed delivery-row fence and schedule finalization. Exclude provider behavior, retry claims, renewal, target, production, deployment, release and global ERP promotion.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-EXECUTION-EXPORT-LEASE-FENCING-IR-001",
+    "expires_or_revalidates": "Revalidate before changing generic API callers, report payload semantics, delivery/retry claims, claim expiry/clock semantics, migration shape, provider behavior or target/production/deployment/release scope."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "implementation_status": "IMPLEMENTATION_READY",
+  "next_action": "Write and run intentional RED tests for stale/current scheduled execution/export persistence, worker token propagation and PostgreSQL takeover serialization. Keep the delivery-row gate closed, parent CVG-004/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+  "revalidation_triggers": [
+    "Changing generic report execution/export callers or payloads",
+    "Changing schedule claim expiry/clock semantics or migration shape",
+    "Changing delivery retry/provider behavior",
+    "Adding target, production, deployment, backup/restore, release or global parity behavior"
+  ]
+}

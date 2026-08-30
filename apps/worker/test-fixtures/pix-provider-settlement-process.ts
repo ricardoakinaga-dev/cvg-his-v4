@@ -3,6 +3,7 @@ import { createWriteStream, writeSync } from 'node:fs';
 import { createInterface } from 'node:readline';
 
 import { closeDatabaseClient, createDatabaseClient, getPool } from '@cvg-his-v2/shared-database';
+import type { ConfirmedPixSettlementCheckpoint } from '@cvg-his-v2/module-pix';
 
 import { DatabasePixProviderEventDeliveryRepository } from '../src/jobs/pix-provider-event-delivery-repository.js';
 import {
@@ -18,6 +19,10 @@ const checkpointValue = process.env.PIX_SETTLEMENT_CHECKPOINT?.trim();
 const checkpoint = checkpointValue
   ? (checkpointValue as PixProviderSettlementCheckpoint)
   : undefined;
+const b1CheckpointValue = process.env.PIX_SETTLEMENT_B1_CHECKPOINT?.trim();
+const b1Checkpoint = b1CheckpointValue
+  ? (b1CheckpointValue as ConfirmedPixSettlementCheckpoint)
+  : undefined;
 const leaseMs = Number(process.env.PIX_SETTLEMENT_LEASE_MS ?? '250');
 const healthPort = Number(process.env.PIX_SETTLEMENT_HEALTH_PORT ?? '0');
 const waitForRelease = process.env.PIX_SETTLEMENT_WAIT_FOR_RELEASE === '1';
@@ -28,6 +33,24 @@ const checkpoints: readonly PixProviderSettlementCheckpoint[] = [
   'before_b1',
   'after_b1_before_cas',
   'after_applied_cas'
+];
+const b1Checkpoints: readonly ConfirmedPixSettlementCheckpoint[] = [
+  'after_inbox_claim',
+  'after_financial_account_insert',
+  'after_receivable_insert',
+  'after_receivable_settlement',
+  'after_receivable_payment_insert',
+  'after_financial_account_settlement',
+  'after_billing_settlement',
+  'after_pix_settlement',
+  'after_pix_staging',
+  'after_attempt_confirmed_pending_apply',
+  'after_attempt_settlement',
+  'after_journal_entry_insert',
+  'after_journal_lines_insert',
+  'after_proof_insert',
+  'after_audit_append',
+  'after_outbox_append'
 ];
 
 // File descriptor 3 is a machine-readable control channel owned by the
@@ -45,6 +68,9 @@ function getConfig(): { readonly accountId: string; readonly databaseUrl: string
   if (!accountId || !databaseUrl) throw new Error('process fixture requires account and database');
   if (!checkpoints.includes(checkpoint as PixProviderSettlementCheckpoint)) {
     if (checkpoint !== undefined) throw new Error(`unknown checkpoint: ${checkpoint}`);
+  }
+  if (!b1Checkpoints.includes(b1Checkpoint as ConfirmedPixSettlementCheckpoint)) {
+    if (b1Checkpoint !== undefined) throw new Error(`unknown B1 checkpoint: ${b1Checkpoint}`);
   }
   if (!Number.isSafeInteger(leaseMs) || leaseMs <= 0 || leaseMs > 60_000) {
     throw new Error('process fixture lease is invalid');
@@ -136,7 +162,25 @@ async function main(): Promise<void> {
       if (name !== checkpoint) return;
       writeLine('PIX_CHECKPOINT', { checkpoint: name, ...context, pid: process.pid });
       await (waitForRelease ? waitForReleaseSignal() : waitForever());
-    }
+    },
+    ...(b1Checkpoint
+      ? {
+          onSettlementCheckpoint: async (name, context) => {
+            writeLine('PIX_B1_CHECKPOINT_OBSERVED', {
+              checkpoint: name,
+              ...context,
+              pid: process.pid
+            });
+            if (name !== b1Checkpoint) return;
+            writeLine('PIX_B1_CHECKPOINT', {
+              checkpoint: name,
+              ...context,
+              pid: process.pid
+            });
+            await (waitForRelease ? waitForReleaseSignal() : waitForever());
+          }
+        }
+      : {})
   });
 
   try {

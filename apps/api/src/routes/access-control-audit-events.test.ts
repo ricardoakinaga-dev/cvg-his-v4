@@ -4,22 +4,38 @@ import { Readable, Writable } from 'node:stream';
 import test from 'node:test';
 
 import { AccessControlService } from '@cvg-his-v2/module-access-control';
+import { encodeAuditCursor } from '@cvg-his-v2/module-audit';
 import { UsersService, type UserRecord } from '@cvg-his-v2/module-users';
-import { AuthenticationError, ForbiddenError, ValidationError } from '@cvg-his-v2/shared-errors';
+import {
+  AppError,
+  AuthenticationError,
+  ForbiddenError,
+  ValidationError
+} from '@cvg-his-v2/shared-errors';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 import { handleAccessControlRoutes } from './access-control-routes.js';
+import type { TenantCommandInput } from '../helpers/tenant-command.js';
 
 class MockResponse extends Writable {
   public statusCode = 200;
   readonly #chunks: Buffer[] = [];
 
-  _write(chunk: string | Buffer, _encoding: BufferEncoding, callback: (error?: Error | null) => void): void {
+  _write(
+    chunk: string | Buffer,
+    _encoding: BufferEncoding,
+    callback: (error?: Error | null) => void
+  ): void {
     this.#chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
     callback();
   }
 
-  override end(chunk?: string | Buffer | (() => void), encoding?: BufferEncoding | (() => void), callback?: () => void): this {
-    const finalCallback = typeof chunk === 'function' ? chunk : typeof encoding === 'function' ? encoding : callback;
+  override end(
+    chunk?: string | Buffer | (() => void),
+    encoding?: BufferEncoding | (() => void),
+    callback?: () => void
+  ): this {
+    const finalCallback =
+      typeof chunk === 'function' ? chunk : typeof encoding === 'function' ? encoding : callback;
     if (chunk !== undefined && typeof chunk !== 'function') {
       this.#chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
     }
@@ -65,6 +81,8 @@ function createPrincipal(
     }
   };
 }
+
+const allowAbac = () => {};
 
 function jsonRequest(method: string, url: string, body: unknown) {
   const request = Readable.from([JSON.stringify(body)]) as never as {
@@ -149,7 +167,8 @@ function createAccessHandlers(accessControl: AccessControlService, users = creat
         accountId: principal.user.accountId
       });
       return principal;
-    }
+    },
+    enforceAbac: allowAbac
   };
 }
 
@@ -209,7 +228,8 @@ test('access-control audit route filters audit events by finance domain query pa
         list: () => auditEvents,
         write: () => undefined
       } as never,
-      requirePrincipal: () => createPrincipal()
+      requirePrincipal: () => createPrincipal(),
+      enforceAbac: allowAbac
     }
   );
 
@@ -233,9 +253,274 @@ test('access-control audit route filters audit events by finance domain query pa
   });
 });
 
+test('audit events route enforces audit.read ABAC before querying the audit service', async () => {
+  const evaluations: Array<{
+    action: unknown;
+    accountId: unknown;
+    resourceType: unknown;
+    resourceId: unknown;
+  }> = [];
+  const reads: string[] = [];
+  const handlers = {
+    accessControl: {} as never,
+    users: {} as never,
+    audit: {
+      listPage: async (query: { accountId: string }) => {
+        reads.push('audit');
+        assert.equal(query.accountId, 'acc-1');
+        return { items: [] };
+      },
+      write: () => undefined
+    } as never,
+    requirePrincipal: () => createPrincipal(),
+    enforceAbac: (...args: readonly unknown[]) => {
+      const [action, evaluatedPrincipal, resource] = args as [
+        unknown,
+        AuthenticatedPrincipal,
+        { resourceType: unknown; resourceId: unknown; accountId: unknown }
+      ];
+      assert.deepEqual(reads, []);
+      evaluations.push({
+        action,
+        accountId: evaluatedPrincipal.user.accountId,
+        resourceType: resource.resourceType,
+        resourceId: resource.resourceId
+      });
+    }
+  };
+
+  await handleAccessControlRoutes(
+    '/audit/events',
+    { method: 'GET', url: '/audit/events?module=billing&limit=10' } as never,
+    new MockResponse() as never,
+    'corr-audit-abac',
+    handlers
+  );
+
+  assert.deepEqual(evaluations, [
+    {
+      action: 'audit.read',
+      accountId: 'acc-1',
+      resourceType: 'audit_entry',
+      resourceId: 'events'
+    }
+  ]);
+  assert.deepEqual(reads, ['audit']);
+});
+
+test('audit events route fails closed when ABAC denies before querying the audit service', async () => {
+  let queried = false;
+  const handlers = {
+    accessControl: {} as never,
+    users: {} as never,
+    audit: {
+      listPage: async () => {
+        queried = true;
+        return { items: [] };
+      },
+      write: () => undefined
+    } as never,
+    requirePrincipal: () => createPrincipal(),
+    enforceAbac: () => {
+      throw new ForbiddenError('ABAC denied audit events');
+    }
+  };
+
+  await assert.rejects(
+    handleAccessControlRoutes(
+      '/audit/events',
+      { method: 'GET', url: '/audit/events' } as never,
+      new MockResponse() as never,
+      'corr-audit-abac-denied',
+      handlers
+    ),
+    (error: unknown) =>
+      error instanceof ForbiddenError && error.message === 'ABAC denied audit events'
+  );
+  assert.equal(queried, false);
+});
+
+test('audit events route fails closed before the fallback audit list when ABAC denies', async () => {
+  let queried = false;
+  const handlers = {
+    accessControl: {} as never,
+    users: {} as never,
+    audit: {
+      list: () => {
+        queried = true;
+        return [];
+      },
+      write: () => undefined
+    } as never,
+    requirePrincipal: () => createPrincipal(),
+    enforceAbac: () => {
+      throw new ForbiddenError('ABAC denied audit events');
+    }
+  };
+
+  await assert.rejects(
+    handleAccessControlRoutes(
+      '/audit/events',
+      { method: 'GET', url: '/audit/events' } as never,
+      new MockResponse() as never,
+      'corr-audit-abac-fallback-denied',
+      handlers
+    ),
+    (error: unknown) =>
+      error instanceof ForbiddenError && error.message === 'ABAC denied audit events'
+  );
+  assert.equal(queried, false);
+});
+
+test('access-control audit route forwards cursor pagination and returns the next cursor', async () => {
+  const response = new MockResponse();
+  const cursor = encodeAuditCursor({
+    occurredAt: '2026-04-22T12:10:00.000Z',
+    eventId: 'evt-cursor' as never
+  });
+  const queries: unknown[] = [];
+  const page = {
+    items: [
+      {
+        actorId: 'user-1',
+        accountId: 'acc-1',
+        module: 'billing',
+        action: 'read',
+        entityType: 'invoice',
+        entityId: 'inv-1',
+        correlationId: 'corr-cursor',
+        riskLevel: 'low',
+        payloadSummary: 'Invoice read',
+        occurredAt: '2026-04-22T12:00:00.000Z'
+      }
+    ],
+    nextCursor: 'next-page-cursor'
+  };
+
+  const handled = await handleAccessControlRoutes(
+    '/audit/events',
+    {
+      method: 'GET',
+      url: `/audit/events?module=billing&entity=invoice&entityType=invoice&limit=1&cursor=${encodeURIComponent(cursor)}`
+    } as never,
+    response as never,
+    'corr-audit-cursor',
+    {
+      accessControl: {} as never,
+      users: {} as never,
+      audit: {
+        listPage: async (query: unknown) => {
+          queries.push(query);
+          return page;
+        },
+        write: () => undefined
+      } as never,
+      requirePrincipal: () => createPrincipal(),
+      enforceAbac: allowAbac
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(response.bodyJson(), page);
+  assert.deepEqual(queries, [
+    {
+      accountId: 'acc-1',
+      cursor: {
+        occurredAt: '2026-04-22T12:10:00.000Z',
+        eventId: 'evt-cursor'
+      },
+      filters: {
+        module: 'billing',
+        entity: 'invoice',
+        correlationId: undefined,
+        query: undefined,
+        entityTypes: ['invoice']
+      },
+      limit: 1
+    }
+  ]);
+});
+
+test('access-control audit route rejects an invalid cursor before querying events', async () => {
+  const response = new MockResponse();
+  let queried = false;
+
+  await assert.rejects(
+    () =>
+      handleAccessControlRoutes(
+        '/audit/events',
+        { method: 'GET', url: '/audit/events?cursor=invalid' } as never,
+        response as never,
+        'corr-audit-invalid-cursor',
+        {
+          accessControl: {} as never,
+          users: {} as never,
+          audit: {
+            listPage: async () => {
+              queried = true;
+              return { items: [] };
+            },
+            write: () => undefined
+          } as never,
+          requirePrincipal: () => createPrincipal(),
+          enforceAbac: allowAbac
+        }
+      ),
+    (error: unknown) => error instanceof ValidationError && error.message === 'Invalid audit cursor'
+  );
+
+  assert.equal(queried, false);
+});
+
+test('access-control routes bound membership entries and repeated audit filters', async () => {
+  const accessControl = new AccessControlService();
+  const mutationHandlers = createAccessHandlers(accessControl);
+
+  await assert.rejects(
+    () =>
+      handleAccessControlRoutes(
+        '/access-control/users/user-a/teams',
+        jsonRequest('POST', '/access-control/users/user-a/teams', {
+          teamIds: ['t'.repeat(256)]
+        }),
+        new MockResponse() as never,
+        'corr-membership-entry-bound',
+        mutationHandlers
+      ),
+    ValidationError
+  );
+
+  const repeatedEntityTypes = Array.from({ length: 21 }, () => 'invoice')
+    .map((value) => `entityType=${value}`)
+    .join('&');
+  await assert.rejects(
+    () =>
+      handleAccessControlRoutes(
+        '/audit/events',
+        { method: 'GET', url: `/audit/events?${repeatedEntityTypes}` } as never,
+        new MockResponse() as never,
+        'corr-audit-filter-bound',
+        {
+          accessControl: {} as never,
+          users: {} as never,
+          audit: { list: () => [], write: () => undefined } as never,
+          requirePrincipal: () => createPrincipal(),
+          enforceAbac: allowAbac
+        }
+      ),
+    ValidationError
+  );
+});
+
 test('access-control audit route exposes operational coverage report and audits the read', async () => {
   const response = new MockResponse();
-  const auditWrites: Array<{ action: string; entityType: string; entityId: string; riskLevel: string }> = [];
+  const auditWrites: Array<{
+    action: string;
+    entityType: string;
+    entityId: string;
+    riskLevel: string;
+  }> = [];
 
   const handled = await handleAccessControlRoutes(
     '/audit/operational-coverage',
@@ -250,7 +535,7 @@ test('access-control audit route exposes operational coverage report and audits 
       users: {} as never,
       audit: {
         list: () => [],
-        getOperationalCoverageReport: () => ({
+        getOperationalCoverageReport: async () => ({
           generatedAt: '2026-05-28T12:00:00.000Z',
           accountId: 'acc-1',
           totalEvents: 2,
@@ -261,21 +546,148 @@ test('access-control audit route exposes operational coverage report and audits 
           missingRequirements: 1,
           coveragePercent: 50
         }),
-        write: (event: { action: string; entityType: string; entityId: string; riskLevel: string }) => {
+        write: (event: {
+          action: string;
+          entityType: string;
+          entityId: string;
+          riskLevel: string;
+        }) => {
           auditWrites.push(event);
           return event;
         }
       } as never,
-      requirePrincipal: () => createPrincipal()
+      requirePrincipal: () => createPrincipal(),
+      enforceAbac: allowAbac
     }
   );
 
   assert.equal(handled, true);
   assert.equal(response.statusCode, 200);
   assert.equal(response.bodyJson<{ coveragePercent: number }>().coveragePercent, 50);
-  assert.deepEqual(auditWrites.map((event) => event.action), ['operational_coverage_read']);
+  assert.deepEqual(
+    auditWrites.map((event) => event.action),
+    ['operational_coverage_read']
+  );
   assert.equal(auditWrites[0].entityType, 'audit-coverage');
   assert.equal(auditWrites[0].riskLevel, 'high');
+});
+
+test('operational coverage fails closed with a sanitized 503 when the committed source is unavailable', async () => {
+  await assert.rejects(
+    () =>
+      handleAccessControlRoutes(
+        '/audit/operational-coverage',
+        {
+          method: 'GET',
+          url: '/audit/operational-coverage'
+        } as never,
+        new MockResponse() as never,
+        'corr-audit-coverage-unavailable',
+        {
+          accessControl: {} as never,
+          users: {} as never,
+          audit: {
+            getOperationalCoverageReport: async () => {
+              throw new Error('database credentials leaked if surfaced');
+            },
+            write: () => undefined
+          } as never,
+          requirePrincipal: () => createPrincipal(),
+          enforceAbac: allowAbac
+        }
+      ),
+    (error: unknown) =>
+      error instanceof AppError &&
+      error.code === 'AUDIT_COVERAGE_UNAVAILABLE' &&
+      error.statusCode === 503 &&
+      error.message === 'Operational audit coverage is temporarily unavailable' &&
+      !error.message.includes('credentials')
+  );
+});
+
+test('operational coverage enforces audit ABAC before querying or auditing the durable source', async () => {
+  let queried = false;
+  let audited = false;
+  const handlers = {
+    accessControl: {} as never,
+    users: {} as never,
+    audit: {
+      getOperationalCoverageReport: async () => {
+        queried = true;
+        return {};
+      },
+      write: () => {
+        audited = true;
+      }
+    } as never,
+    requirePrincipal: () => createPrincipal(),
+    enforceAbac: () => {
+      assert.equal(queried, false);
+      throw new ForbiddenError('ABAC denied operational coverage');
+    }
+  };
+
+  await assert.rejects(
+    handleAccessControlRoutes(
+      '/audit/operational-coverage',
+      { method: 'GET', url: '/audit/operational-coverage' } as never,
+      new MockResponse() as never,
+      'corr-audit-coverage-abac-denied',
+      handlers
+    ),
+    (error: unknown) =>
+      error instanceof ForbiddenError && error.message === 'ABAC denied operational coverage'
+  );
+  assert.equal(queried, false);
+  assert.equal(audited, false);
+});
+
+test('operational coverage waits for the durable read audit before responding', async () => {
+  let releasePersistence!: () => void;
+  const persistence = new Promise<void>((resolve) => {
+    releasePersistence = resolve;
+  });
+  const response = new MockResponse();
+  let auditWaits = 0;
+
+  const routePromise = handleAccessControlRoutes(
+    '/audit/operational-coverage',
+    { method: 'GET', url: '/audit/operational-coverage' } as never,
+    response as never,
+    'corr-audit-coverage-await',
+    {
+      accessControl: {} as never,
+      users: {} as never,
+      audit: {
+        getOperationalCoverageReport: async () => ({
+          generatedAt: '2026-05-28T12:00:00.000Z',
+          accountId: 'acc-1',
+          totalEvents: 0,
+          eventsByModule: {},
+          eventsByRiskLevel: { low: 0, medium: 0, high: 0 },
+          requirements: [],
+          coveredRequirements: 0,
+          missingRequirements: 0,
+          coveragePercent: 100
+        }),
+        writeAndWait: async () => {
+          auditWaits += 1;
+          await persistence;
+        }
+      } as never,
+      requirePrincipal: () => createPrincipal(),
+      enforceAbac: allowAbac
+    }
+  );
+
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.equal(auditWaits, 1);
+  assert.throws(() => response.bodyJson(), SyntaxError);
+
+  releasePersistence();
+  assert.equal(await routePromise, true);
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.bodyJson<{ coveragePercent: number }>().coveragePercent, 100);
 });
 
 test('RH-VAL-1 validates editable groups, memberships, grants and effective permission by routine', async () => {
@@ -308,7 +720,10 @@ test('RH-VAL-1 validates editable groups, memberships, grants and effective perm
     'corr-rh-val-2',
     handlers
   );
-  assert.equal(updateTemplateResponse.bodyJson<{ name: string }>().name, 'Template Operacional Editado');
+  assert.equal(
+    updateTemplateResponse.bodyJson<{ name: string }>().name,
+    'Template Operacional Editado'
+  );
 
   const groupResponse = new MockResponse();
   await handleAccessControlRoutes(
@@ -413,19 +828,23 @@ test('RH-VAL-1 validates editable groups, memberships, grants and effective perm
     effectivePermissions: Array<{ permissionCode: string; effective: boolean; resolution: string }>;
   }>();
   assert.equal(
-    effective.effectivePermissions.find((item) => item.permissionCode === 'counter_sale.write')?.effective,
+    effective.effectivePermissions.find((item) => item.permissionCode === 'counter_sale.write')
+      ?.effective,
     true
   );
   assert.equal(
-    effective.effectivePermissions.find((item) => item.permissionCode === 'counter_sale.write')?.resolution,
+    effective.effectivePermissions.find((item) => item.permissionCode === 'counter_sale.write')
+      ?.resolution,
     'team_allow'
   );
   assert.equal(
-    effective.effectivePermissions.find((item) => item.permissionCode === 'scheduling.manage')?.effective,
+    effective.effectivePermissions.find((item) => item.permissionCode === 'scheduling.manage')
+      ?.effective,
     false
   );
   assert.equal(
-    effective.effectivePermissions.find((item) => item.permissionCode === 'scheduling.manage')?.resolution,
+    effective.effectivePermissions.find((item) => item.permissionCode === 'scheduling.manage')
+      ?.resolution,
     'sector_deny'
   );
 
@@ -444,6 +863,65 @@ test('RH-VAL-1 validates editable groups, memberships, grants and effective perm
       }),
     ForbiddenError
   );
+});
+
+test('permission grant fails closed when audit persistence rejects', async () => {
+  const accessControl = new AccessControlService();
+  const users = createUsersService();
+  const team = await accessControl.createTeam('acc-1' as never, {
+    code: 'audit-failure-team',
+    name: 'Audit Failure Team'
+  });
+  let runCommandCalls = 0;
+  let refreshCalls = 0;
+  let writeAndWaitCalls = 0;
+  const principal = createPrincipal(['users.manage'], 'user-admin', 'acc-1');
+  const audit = {
+    write: () => undefined,
+    writeAndWait: async () => {
+      writeAndWaitCalls += 1;
+      throw new Error('audit-store-down');
+    }
+  };
+
+  await assert.rejects(
+    () =>
+      handleAccessControlRoutes(
+        '/access-control/grants',
+        jsonRequest('POST', '/access-control/grants', {
+          subjectType: 'team',
+          subjectId: team.id,
+          permissionCode: 'counter_sale.write',
+          effect: 'allow'
+        }),
+        new MockResponse() as never,
+        'corr-audit-failure',
+        {
+          accessControl,
+          users,
+          audit: audit as never,
+          requirePrincipal: () => principal,
+          enforceAbac: allowAbac,
+          runCommand: async <T>(input: TenantCommandInput<T>) => {
+            runCommandCalls += 1;
+            try {
+              return await input.command();
+            } catch (error) {
+              await input.onRollback?.();
+              throw error;
+            }
+          },
+          refreshAccessControl: async () => {
+            refreshCalls += 1;
+          }
+        }
+      ),
+    (error: unknown) => error instanceof Error && error.message === 'audit-store-down'
+  );
+
+  assert.equal(runCommandCalls, 1);
+  assert.equal(writeAndWaitCalls, 1);
+  assert.equal(refreshCalls, 1);
 });
 
 test('access-control exposes auditable RBAC module permission matrix by profile, unit and action', async () => {
@@ -582,7 +1060,8 @@ test('access-control mutations validate input and leave a tenant-scoped audit tr
         auditWrites.push(event);
       }
     } as never,
-    requirePrincipal: () => principal
+    requirePrincipal: () => principal,
+    enforceAbac: allowAbac
   };
 
   await assert.rejects(

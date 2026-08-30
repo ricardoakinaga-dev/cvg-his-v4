@@ -33,8 +33,13 @@ import type {
 } from '@cvg-his-v2/shared-types';
 import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
+import { getTenantContext } from '@cvg-his-v2/tenant-context';
 
-import type { SchedulingRepository } from './repositories/database-scheduling.repository.js';
+import {
+  MAX_SCHEDULING_APPOINTMENT_REPORT_READ_ROWS,
+  type SchedulingAppointmentReportFilters,
+  type SchedulingRepository
+} from './repositories/database-scheduling.repository.js';
 
 const CANCELLABLE_APPOINTMENT_STATUSES: readonly SchedulingAppointmentSummary['status'][] = [
   'scheduled',
@@ -69,6 +74,20 @@ const DEFAULT_APPOINTMENT_DURATION: Record<SchedulingAppointmentSummary['visitTy
 export interface SchedulingQueueStateSnapshot {
   readonly queueEntry: QueueEntrySummary;
   readonly appointment?: SchedulingAppointmentSummary;
+}
+
+export interface SchedulingProfessionalCareReportFilters {
+  readonly dateFrom?: string;
+  readonly dateTo?: string;
+}
+
+export interface SchedulingProfessionalCareReportRow {
+  readonly professional: string;
+  readonly scheduled: number;
+  readonly completed: number;
+  readonly checkedIn: number;
+  readonly cancelled: number;
+  readonly services: number;
 }
 
 const SCHEDULING_WINDOW_START_HOUR = 7;
@@ -232,7 +251,8 @@ function setUtcTime(input: Date, hour: number, minute = 0): Date {
 
 function parseTimeMinutes(value: string): number {
   const match = /^(\d{2}):(\d{2})$/.exec(value);
-  if (!match) throw new ValidationError('Agenda availability time must use HH:MM format', { value });
+  if (!match)
+    throw new ValidationError('Agenda availability time must use HH:MM format', { value });
   const hours = Number(match[1]);
   const minutes = Number(match[2]);
   if (hours > 23 || minutes > 59) {
@@ -317,6 +337,142 @@ function uniqueStrings(values: readonly (string | undefined)[]): string[] {
   return [...new Set(values.filter((value): value is string => Boolean(value && value.trim())))]
     .map((value) => value.trim())
     .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+}
+
+const APPOINTMENT_REPORT_STATUSES: readonly SchedulingAppointmentSummary['status'][] = [
+  'scheduled',
+  'checked_in',
+  'completed',
+  'cancelled'
+];
+
+function normalizeAppointmentReportFilters(
+  filters: SchedulingAppointmentReportFilters
+): SchedulingAppointmentReportFilters {
+  if (filters.search !== undefined && typeof filters.search !== 'string') {
+    throw new ValidationError('search must be a string with at most 200 characters', {
+      value: filters.search
+    });
+  }
+  const search = filters.search?.trim();
+  if (search && search.length > 200) {
+    throw new ValidationError('search must be a string with at most 200 characters', { search });
+  }
+
+  const dateFrom = normalizeAppointmentReportDate(filters.dateFrom, 'dateFrom');
+  const dateTo = normalizeAppointmentReportDate(filters.dateTo, 'dateTo');
+  if (dateFrom && dateTo && dateFrom > dateTo) {
+    throw new ValidationError('dateFrom must be before or equal to dateTo', { dateFrom, dateTo });
+  }
+
+  if (
+    filters.status !== undefined &&
+    !APPOINTMENT_REPORT_STATUSES.includes(filters.status as SchedulingAppointmentSummary['status'])
+  ) {
+    throw new ValidationError('status must be scheduled, checked_in, completed or cancelled', {
+      status: filters.status
+    });
+  }
+
+  const limit = filters.limit ?? MAX_SCHEDULING_APPOINTMENT_REPORT_READ_ROWS;
+  if (
+    !Number.isSafeInteger(limit) ||
+    limit < 1 ||
+    limit > MAX_SCHEDULING_APPOINTMENT_REPORT_READ_ROWS
+  ) {
+    throw new ValidationError('Appointments report read limit must be between 1 and 10001', {
+      limit
+    });
+  }
+
+  return {
+    ...(search ? { search } : {}),
+    ...(filters.status ? { status: filters.status } : {}),
+    ...(dateFrom ? { dateFrom } : {}),
+    ...(dateTo ? { dateTo } : {}),
+    limit
+  };
+}
+
+function normalizeAppointmentReportDate(
+  value: string | undefined,
+  field: string
+): string | undefined {
+  if (value === undefined || value === '') return undefined;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    throw new ValidationError(`${field} must be an ISO calendar date`, { value });
+  }
+  const date = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) {
+    throw new ValidationError(`${field} must be an ISO calendar date`, { value });
+  }
+  return value;
+}
+
+function isAppointmentReportSourceRow(value: unknown): value is SchedulingAppointmentSummary {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const appointment = value as Record<string, unknown>;
+  const optionalString = (field: string): boolean =>
+    appointment[field] === undefined || typeof appointment[field] === 'string';
+  const validStatus = APPOINTMENT_REPORT_STATUSES.includes(
+    appointment.status as SchedulingAppointmentSummary['status']
+  );
+  const validVisitType = ['walk_in', 'scheduled', 'return'].includes(
+    appointment.visitType as string
+  );
+  const duration = appointment.durationMinutes;
+  return (
+    typeof appointment.id === 'string' &&
+    typeof appointment.accountId === 'string' &&
+    typeof appointment.patientId === 'string' &&
+    typeof appointment.ownerId === 'string' &&
+    typeof appointment.scheduledAt === 'string' &&
+    !Number.isNaN(Date.parse(appointment.scheduledAt)) &&
+    (duration === undefined ||
+      (typeof duration === 'number' && Number.isFinite(duration) && duration > 0)) &&
+    validVisitType &&
+    typeof appointment.reason === 'string' &&
+    validStatus &&
+    optionalString('practitionerStaffId') &&
+    optionalString('serviceId') &&
+    optionalString('unit') &&
+    optionalString('specialty') &&
+    optionalString('resourceLabel') &&
+    typeof appointment.createdAt === 'string' &&
+    !Number.isNaN(Date.parse(appointment.createdAt)) &&
+    typeof appointment.updatedAt === 'string' &&
+    !Number.isNaN(Date.parse(appointment.updatedAt))
+  );
+}
+
+function matchesAppointmentReportPeriod(
+  scheduledAt: string,
+  dateFrom: string | undefined,
+  dateTo: string | undefined
+): boolean {
+  const date = scheduledAt.slice(0, 10);
+  return (!dateFrom || date >= dateFrom) && (!dateTo || date <= dateTo);
+}
+
+function matchesAppointmentReportSearch(
+  appointment: SchedulingAppointmentSummary,
+  search: string | undefined
+): boolean {
+  if (!search) return true;
+  const normalizedSearch = search.toLowerCase();
+  return [
+    appointment.id,
+    appointment.patientId,
+    appointment.ownerId,
+    appointment.practitionerStaffId,
+    appointment.serviceId,
+    appointment.reason,
+    appointment.unit,
+    appointment.specialty,
+    appointment.resourceLabel
+  ]
+    .filter((value): value is string => Boolean(value))
+    .some((value) => value.toLowerCase().includes(normalizedSearch));
 }
 
 function operationalStatusForQueueStatus(
@@ -525,6 +681,129 @@ export class SchedulingService {
           .some((value) => String(value).toLowerCase().includes(search));
       })
       .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
+  }
+
+  public async listPersistedReportRows(
+    accountId: AccountId,
+    filters: SchedulingAppointmentReportFilters = {}
+  ): Promise<readonly SchedulingAppointmentSummary[]> {
+    if (!this.#repository) {
+      throw new ValidationError('Appointments report requires a database-backed scheduling source');
+    }
+    const activeAccountId = getTenantContext()?.accountId;
+    if (activeAccountId && activeAccountId !== accountId) {
+      throw new ValidationError(
+        'Appointments report source account does not match tenant context',
+        {
+          accountId
+        }
+      );
+    }
+    if (typeof this.#repository.findAppointmentReportRows !== 'function') {
+      throw new ValidationError(
+        'Appointments report requires a source-bounded database appointment query'
+      );
+    }
+
+    const normalizedFilters = normalizeAppointmentReportFilters(filters);
+    const sourceRows = await this.#repository.findAppointmentReportRows(
+      accountId,
+      normalizedFilters
+    );
+    if (!Array.isArray(sourceRows)) {
+      throw new ValidationError('Appointments report source returned an invalid row collection');
+    }
+
+    const filtered = sourceRows
+      .map((appointment) => {
+        if (!isAppointmentReportSourceRow(appointment)) {
+          throw new ValidationError('Appointments report source returned an invalid row');
+        }
+        return appointment;
+      })
+      .filter((appointment) => appointment.accountId === accountId)
+      .filter(
+        (appointment) =>
+          !normalizedFilters.status || appointment.status === normalizedFilters.status
+      )
+      .filter((appointment) =>
+        matchesAppointmentReportPeriod(
+          appointment.scheduledAt,
+          normalizedFilters.dateFrom,
+          normalizedFilters.dateTo
+        )
+      )
+      .filter((appointment) =>
+        matchesAppointmentReportSearch(appointment, normalizedFilters.search)
+      )
+      .sort(
+        (left, right) =>
+          left.scheduledAt.localeCompare(right.scheduledAt) || left.id.localeCompare(right.id)
+      );
+
+    return filtered;
+  }
+
+  public async listPersistedProfessionalCareReportRows(
+    accountId: AccountId,
+    filters: SchedulingProfessionalCareReportFilters = {}
+  ): Promise<readonly SchedulingProfessionalCareReportRow[]> {
+    const sourceRows = await this.listPersistedReportRows(accountId, {
+      ...(filters.dateFrom ? { dateFrom: filters.dateFrom } : {}),
+      ...(filters.dateTo ? { dateTo: filters.dateTo } : {}),
+      limit: MAX_SCHEDULING_APPOINTMENT_REPORT_READ_ROWS
+    });
+    if (sourceRows.length > MAX_SCHEDULING_APPOINTMENT_REPORT_READ_ROWS - 1) {
+      throw new ValidationError('Professional care report source contains too many rows', {
+        maxRows: MAX_SCHEDULING_APPOINTMENT_REPORT_READ_ROWS - 1
+      });
+    }
+
+    type MutableProfessionalCareRow = {
+      readonly professional: string;
+      readonly scheduled: number;
+      readonly completed: number;
+      readonly checkedIn: number;
+      readonly cancelled: number;
+      readonly services: ReadonlySet<string>;
+    };
+
+    const grouped = new Map<string, MutableProfessionalCareRow>();
+    for (const appointment of sourceRows) {
+      const groupKey = appointment.practitionerStaffId ?? 'unassigned';
+      const current = grouped.get(groupKey) ?? {
+        professional: appointment.practitionerStaffId ?? 'Sem profissional',
+        scheduled: 0,
+        completed: 0,
+        checkedIn: 0,
+        cancelled: 0,
+        services: new Set<string>()
+      };
+      const services = new Set(current.services);
+      if (appointment.serviceId) services.add(appointment.serviceId);
+      grouped.set(groupKey, {
+        ...current,
+        scheduled: current.scheduled + 1,
+        completed: current.completed + (appointment.status === 'completed' ? 1 : 0),
+        checkedIn: current.checkedIn + (appointment.status === 'checked_in' ? 1 : 0),
+        cancelled: current.cancelled + (appointment.status === 'cancelled' ? 1 : 0),
+        services
+      });
+    }
+
+    return [...grouped.values()]
+      .sort(
+        (left, right) =>
+          right.scheduled - left.scheduled || left.professional.localeCompare(right.professional)
+      )
+      .map((row) => ({
+        professional: row.professional,
+        scheduled: row.scheduled,
+        completed: row.completed,
+        checkedIn: row.checkedIn,
+        cancelled: row.cancelled,
+        services: row.services.size
+      }));
   }
 
   public getSchedulingProfessionals(accountId: AccountId): SchedulingProfessionalSummary[] {
@@ -873,10 +1152,7 @@ export class SchedulingService {
       if (linkedAppointment.accountId !== accountId) {
         throw new NotFoundError('Appointment not found', { appointmentId });
       }
-      if (
-        linkedAppointment.patientId !== patientId ||
-        linkedAppointment.ownerId !== ownerId
-      ) {
+      if (linkedAppointment.patientId !== patientId || linkedAppointment.ownerId !== ownerId) {
         throw new ValidationError('Check-in participants must match the appointment participants', {
           appointmentId,
           appointmentPatientId: linkedAppointment.patientId,
@@ -958,10 +1234,7 @@ export class SchedulingService {
     }
     if (checkedInAppointment && previousAppointmentStatus) {
       this.#appointments.set(checkedInAppointment.id, checkedInAppointment);
-      await this.#onAppointmentStatusChanged?.(
-        checkedInAppointment,
-        previousAppointmentStatus
-      );
+      await this.#onAppointmentStatusChanged?.(checkedInAppointment, previousAppointmentStatus);
     }
     this.#queue.set(entry.id, entry);
     return entry;
@@ -1072,7 +1345,10 @@ export class SchedulingService {
       throw new ConflictError('Queue transfer is already received', { transferId });
     }
 
-    const normalizedReceiver = requireNonEmptyString(receivedByUserId, 'receivedByUserId') as UserId;
+    const normalizedReceiver = requireNonEmptyString(
+      receivedByUserId,
+      'receivedByUserId'
+    ) as UserId;
     const receivedAt = nowIso();
     const receivedTransfer: QueueTransferSummary = {
       ...transfer,
@@ -1255,14 +1531,12 @@ export class SchedulingService {
     );
     const practitionerStaffId =
       payload.practitionerStaffId !== undefined
-        ? (payload.practitionerStaffId.trim()
-            ? (payload.practitionerStaffId.trim() as StaffId)
-            : undefined)
+        ? payload.practitionerStaffId.trim()
+          ? (payload.practitionerStaffId.trim() as StaffId)
+          : undefined
         : current.practitionerStaffId;
     const serviceId =
-      payload.serviceId !== undefined
-        ? payload.serviceId.trim() || undefined
-        : current.serviceId;
+      payload.serviceId !== undefined ? payload.serviceId.trim() || undefined : current.serviceId;
 
     if (practitionerStaffId && this.#staff) {
       this.#staff.getOrThrow(practitionerStaffId, accountId);
@@ -1467,7 +1741,14 @@ export class SchedulingService {
     const slotEnd = new Date(requestedAt);
     slotEnd.setUTCMinutes(slotEnd.getUTCMinutes() + durationMinutes);
     const conflicts: SchedulingConflictSummary[] = [];
-    if (!this.isWithinConfiguredAvailability(accountId, requestedAt, slotEnd, options.practitionerStaffId)) {
+    if (
+      !this.isWithinConfiguredAvailability(
+        accountId,
+        requestedAt,
+        slotEnd,
+        options.practitionerStaffId
+      )
+    ) {
       conflicts.push({
         type: 'outside_hours',
         severity: 'critical',
@@ -1478,12 +1759,13 @@ export class SchedulingService {
     }
 
     if (options.practitionerStaffId) {
-      const timeOffs = this.#timeOff?.listTimeOffOverlaps(
-        accountId,
-        options.practitionerStaffId,
-        requestedAt.toISOString(),
-        slotEnd.toISOString()
-      ) ?? [];
+      const timeOffs =
+        this.#timeOff?.listTimeOffOverlaps(
+          accountId,
+          options.practitionerStaffId,
+          requestedAt.toISOString(),
+          slotEnd.toISOString()
+        ) ?? [];
       for (const timeOff of timeOffs) {
         conflicts.push({
           type: 'staff_overlap',
@@ -1606,8 +1888,10 @@ export class SchedulingService {
       if (row.effectiveFrom && localDate < row.effectiveFrom) return false;
       if (row.effectiveUntil && localDate > row.effectiveUntil) return false;
       if (start.dayOfWeek !== row.dayOfWeek || end.dayOfWeek !== row.dayOfWeek) return false;
-      return start.minutes >= parseTimeMinutes(row.startTime)
-        && end.minutes <= parseTimeMinutes(row.endTime);
+      return (
+        start.minutes >= parseTimeMinutes(row.startTime) &&
+        end.minutes <= parseTimeMinutes(row.endTime)
+      );
     });
   }
 
@@ -1652,5 +1936,7 @@ export { createSeedAppointments };
 
 export {
   DatabaseSchedulingRepository,
+  MAX_SCHEDULING_APPOINTMENT_REPORT_READ_ROWS,
+  type SchedulingAppointmentReportFilters,
   type SchedulingRepository
 } from './repositories/database-scheduling.repository.js';

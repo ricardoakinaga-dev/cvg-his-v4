@@ -334,13 +334,12 @@ export class AuthService {
     );
   }
 
-  public getPendingMfaEnrollmentUser(challengeId: string): UserRecord {
+  public async getPendingMfaEnrollmentUser(
+    challengeId: string,
+    correlationId = createCorrelationId('mfa-pending')
+  ): Promise<UserRecord> {
     const challenge = this.#verifyMfaChallenge(challengeId);
-    const user = this.#users.getOrThrow(challenge.sub as UserId);
-    if (user.accountId !== challenge.account_id || !isInteractiveHumanUser(user)) {
-      throw new AuthenticationError('MFA login challenge is missing or expired');
-    }
-    return user;
+    return this.#resolveInteractiveChallengeUser(challenge, correlationId);
   }
 
   public async beginMfaEnrollment(
@@ -535,7 +534,7 @@ export class AuthService {
   public authenticateAccessToken(accessToken: string): AuthenticatedPrincipal {
     const payload = this.#verifyToken(accessToken, 'access');
     const session = this.#requireActiveSession(payload.session_id as SessionId, 'access');
-    const user = this.#users.getOrThrow(payload.sub as UserId);
+    const user = this.#requireCachedUserForAuthentication(payload.sub as UserId);
     this.#requireInteractiveHuman(user);
     return this.#buildPrincipal(user, session);
   }
@@ -550,19 +549,56 @@ export class AuthService {
     await this.#loadAuthoritativeSession(payload, 'access', correlationId);
   }
 
-  public getSession(accessToken: string): SessionSummary {
+  public async getSession(
+    accessToken: string,
+    correlationId = createCorrelationId('auth-session')
+  ): Promise<SessionSummary> {
     const payload = this.#verifyToken(accessToken, 'access');
-    return this.#requireActiveSession(payload.session_id as SessionId, 'access');
+    const { session } = await this.#loadAuthoritativeSession(payload, 'access', correlationId);
+    return toSessionSummary(session);
   }
 
   public listSessions(): readonly SessionSummary[] {
-    return Array.from(this.#sessions.values());
+    return Array.from(this.#sessions.values()).map(toSessionSummary);
   }
 
   public listSessionsForUser(userId: UserId): readonly SessionSummary[] {
     return Array.from(this.#sessions.values())
       .filter((session) => session.userId === userId)
-      .reverse();
+      .reverse()
+      .map(toSessionSummary);
+  }
+
+  /**
+   * Reads a user's sessions from durable state whenever persistence is
+   * configured. The process-local map is only a compatibility source for the
+   * explicit in-memory runtime; repository errors intentionally propagate so a
+   * stale cache can never be presented as authoritative.
+   */
+  public async listSessionsForUserAuthoritative(
+    userId: UserId,
+    correlationId = createCorrelationId('auth-session-list')
+  ): Promise<readonly SessionSummary[]> {
+    const cachedUser = this.#requireCachedUserForAuthentication(userId);
+    const user = this.#sessionRepository
+      ? await this.#runAsUser(cachedUser, correlationId, () =>
+          this.#resolveCurrentUser(userId, cachedUser.accountId)
+        )
+      : cachedUser;
+    if (!user || !isInteractiveHumanUser(user)) {
+      throw new AuthenticationError('Session is not active');
+    }
+
+    const sessions = this.#sessionRepository
+      ? await this.#runAsUser(user, correlationId, () =>
+          this.#sessionRepository!.findByUserId(userId)
+        )
+      : Array.from(this.#sessions.values());
+
+    return sessions
+      .filter((session) => session.userId === userId && session.accountId === user.accountId)
+      .sort(compareSessionRecords)
+      .map(toSessionSummary);
   }
 
   public async revokeOtherSessions(
@@ -581,7 +617,11 @@ export class AuthService {
     let revoked = 0;
 
     for (const session of candidateSessions) {
-      if (session.userId !== currentSession.userId || session.sessionId === currentSessionId) {
+      if (
+        session.userId !== currentSession.userId ||
+        session.accountId !== currentSession.accountId ||
+        session.sessionId === currentSessionId
+      ) {
         continue;
       }
       if (!session.active || session.revokedAt) {
@@ -634,7 +674,11 @@ export class AuthService {
         )
       : this.#sessions.get(targetSessionId);
 
-    if (!targetSession || targetSession.userId !== currentSession.userId) {
+    if (
+      !targetSession ||
+      targetSession.userId !== currentSession.userId ||
+      targetSession.accountId !== currentSession.accountId
+    ) {
       throw new NotFoundError('Session not found');
     }
 
@@ -711,7 +755,7 @@ export class AuthService {
     if (!this.#sessionRepository) {
       const session = this.#requireActiveSession(payload.session_id as SessionId, tokenType);
       this.#assertTokenSessionMatch(payload, session);
-      const cachedUser = this.#users.getOrThrow(session.userId);
+      const cachedUser = this.#requireCachedUserForAuthentication(session.userId);
       const user = await this.#runAsUser(cachedUser, correlationId, () =>
         this.#resolveCurrentUser(session.userId, session.accountId)
       );
@@ -749,7 +793,7 @@ export class AuthService {
     }
 
     const user = await this.#runAsTokenPayload(payload, correlationId, () =>
-      this.#users.resolveById(session.userId, session.accountId)
+      this.#resolveCurrentUser(session.userId, session.accountId)
     );
     if (!user || !isInteractiveHumanUser(user)) {
       throw new AuthenticationError('Session is not active');
@@ -765,9 +809,9 @@ export class AuthService {
   ): Promise<{ readonly session: SessionRecord; readonly user: UserRecord }> {
     const cachedSession = this.#requireActiveSession(sessionId, 'access');
     const user = await this.#runAsUser(
-      this.#users.getOrThrow(cachedSession.userId),
+      this.#requireCachedUserForAuthentication(cachedSession.userId),
       correlationId,
-      () => this.#users.resolveById(cachedSession.userId, cachedSession.accountId)
+      () => this.#resolveCurrentUser(cachedSession.userId, cachedSession.accountId)
     );
     if (!user || !isInteractiveHumanUser(user)) {
       throw new AuthenticationError('Session is not active');
@@ -841,7 +885,10 @@ export class AuthService {
     challenge: MfaChallengeTokenPayload,
     correlationId: string
   ): Promise<UserRecord> {
-    const cachedUser = this.#users.getOrThrow(challenge.sub as UserId);
+    const cachedUser = this.#requireCachedUserForAuthentication(
+      challenge.sub as UserId,
+      'MFA login challenge is missing or expired'
+    );
     if (cachedUser.accountId !== challenge.account_id) {
       throw new AuthenticationError('MFA login challenge is missing or expired');
     }
@@ -860,18 +907,35 @@ export class AuthService {
     }
   }
 
+  #requireCachedUserForAuthentication(
+    userId: UserId,
+    message = 'Session is not active'
+  ): UserRecord {
+    try {
+      return this.#users.getOrThrow(userId);
+    } catch (error) {
+      if (error instanceof NotFoundError) {
+        throw new AuthenticationError(message);
+      }
+      throw error;
+    }
+  }
+
   async #resolveCurrentUser(userId: UserId, accountId: string): Promise<UserRecord | undefined> {
     const resolver = (
       this.#users as UsersService & {
-        resolveById?: UsersService['resolveById'];
+        resolveInteractiveById?: (
+          userId: UserId,
+          accountId?: string
+        ) => Promise<UserRecord | undefined>;
       }
-    ).resolveById;
+    ).resolveInteractiveById;
     if (typeof resolver === 'function') {
-      return resolver.call(this.#users, userId, accountId as never);
+      return resolver.call(this.#users, userId, accountId);
     }
 
     // Compatibility for legacy in-memory UsersService test doubles. Production
-    // UsersService always exposes resolveById and refreshes repository state.
+    // UsersService always exposes resolveInteractiveById and refreshes repository state.
     const user = this.#users.getOrThrow(userId);
     return user.accountId === accountId ? user : undefined;
   }
@@ -900,7 +964,7 @@ export class AuthService {
         updatedAt: user.updatedAt
       },
       staff,
-      session,
+      session: toSessionSummary(session),
       access
     };
   }
@@ -1068,6 +1132,30 @@ export class AuthService {
 
 function futureIso(ttlSeconds: number): string {
   return new Date(Date.now() + ttlSeconds * 1000).toISOString();
+}
+
+function compareSessionRecords(left: SessionSummary, right: SessionSummary): number {
+  const createdAtDifference = Date.parse(right.createdAt) - Date.parse(left.createdAt);
+  if (createdAtDifference !== 0) return createdAtDifference;
+
+  const authTimeDifference = Date.parse(right.authTime) - Date.parse(left.authTime);
+  if (authTimeDifference !== 0) return authTimeDifference;
+
+  if (left.sessionId === right.sessionId) return 0;
+  return right.sessionId < left.sessionId ? -1 : 1;
+}
+
+function toSessionSummary(session: SessionSummary): SessionSummary {
+  return {
+    sessionId: session.sessionId,
+    userId: session.userId,
+    accountId: session.accountId,
+    createdAt: session.createdAt,
+    expiresAt: session.expiresAt,
+    authTime: session.authTime,
+    refreshExpiresAt: session.refreshExpiresAt,
+    active: session.active
+  };
 }
 
 function toEpochSeconds(isoDate: string): number {

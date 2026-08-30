@@ -15,6 +15,7 @@ import { TEST_DB_URL } from '../../setup/env.js';
 const TENANT_ID = randomUUID();
 const ACCOUNT_ID = randomUUID();
 const USER_ID = randomUUID();
+const LIMITED_USER_ID = randomUUID();
 const FOREIGN_TENANT_ID = randomUUID();
 const FOREIGN_ACCOUNT_ID = randomUUID();
 const FOREIGN_USER_ID = randomUUID();
@@ -26,15 +27,19 @@ const BILLING_RECORD_ID = randomUUID();
 const BILLING_ITEM_ID = randomUUID();
 const USERNAME = `cash-http-${USER_ID.slice(0, 8)}`;
 const EMAIL = `${USERNAME}@example.com`;
+const LIMITED_USERNAME = `cash-http-limited-${LIMITED_USER_ID.slice(0, 8)}`;
+const LIMITED_EMAIL = `${LIMITED_USERNAME}@example.com`;
 const FOREIGN_USERNAME = `cash-http-foreign-${FOREIGN_USER_ID.slice(0, 8)}`;
 const FOREIGN_EMAIL = `${FOREIGN_USERNAME}@example.com`;
 const AMOUNT = 125.5;
-const HTTP_OPERATION = `POST /encounters/${ENCOUNTER_ID}/cash-receipts`;
+const HTTP_OPERATION = 'encounter.cash-receipt.create';
 
 let server: ApiServer | undefined;
 let baseUrl = '';
 let accessToken = '';
+let limitedAccessToken = '';
 let foreignAccessToken = '';
+let receiptId = '';
 
 interface LoginResponse {
   readonly accessToken: string;
@@ -45,6 +50,17 @@ interface ReceiptResponse {
   readonly encounterId: string;
   readonly amount: number;
   readonly billingRecordId: string;
+  readonly cashMovementId: string;
+  readonly journalEntryId: string;
+}
+
+interface ReversalResponse {
+  readonly id: string;
+  readonly receiptId: string;
+  readonly encounterId: string;
+  readonly amount: number;
+  readonly currency: 'BRL';
+  readonly reason: string;
 }
 
 async function seedFixture(): Promise<void> {
@@ -65,14 +81,20 @@ async function seedFixture(): Promise<void> {
      ) VALUES ($1, $2, $3, $4, 'cvg-his-v2-seed-salt-v1:seed_admin', 'Cash HTTP Operator', true)`,
     [USER_ID, ACCOUNT_ID, USERNAME, EMAIL]
   );
+  await pool.query(
+    `INSERT INTO users (
+       id, account_id, username, email, password_hash, full_name, is_active
+     ) VALUES ($1, $2, $3, $4, 'cvg-his-v2-seed-salt-v1:seed_admin', 'Cash HTTP Limited Operator', true)`,
+    [LIMITED_USER_ID, ACCOUNT_ID, LIMITED_USERNAME, LIMITED_EMAIL]
+  );
   const role = await pool.query<{ readonly id: string }>(
     `SELECT id FROM roles WHERE name = 'admin' ORDER BY created_at LIMIT 1`
   );
   if (!role.rows[0]) throw new Error('admin role is missing from the test seed');
-  await pool.query(
-    `INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)`,
-    [USER_ID, role.rows[0].id]
-  );
+  await pool.query(`INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)`, [
+    USER_ID,
+    role.rows[0].id
+  ]);
   await pool.query(
     `INSERT INTO owners (id, account_id, full_name)
      VALUES ($1, $2, 'Cash HTTP Owner')`,
@@ -122,7 +144,11 @@ async function seedForeignFixture(): Promise<void> {
   await pool.query(
     `INSERT INTO accounts (id, tenant_id, slug, name)
      VALUES ($1, $2, $3, 'Cash receipt foreign account')`,
-    [FOREIGN_ACCOUNT_ID, FOREIGN_TENANT_ID, `cash-http-foreign-account-${FOREIGN_ACCOUNT_ID.slice(0, 8)}`]
+    [
+      FOREIGN_ACCOUNT_ID,
+      FOREIGN_TENANT_ID,
+      `cash-http-foreign-account-${FOREIGN_ACCOUNT_ID.slice(0, 8)}`
+    ]
   );
   const poolRole = await pool.query<{ readonly id: string }>(
     `SELECT id FROM roles WHERE name = 'admin' ORDER BY created_at LIMIT 1`
@@ -134,10 +160,10 @@ async function seedForeignFixture(): Promise<void> {
      ) VALUES ($1, $2, $3, $4, 'cvg-his-v2-seed-salt-v1:seed_admin', 'Cash HTTP Foreign Operator', true)`,
     [FOREIGN_USER_ID, FOREIGN_ACCOUNT_ID, FOREIGN_USERNAME, FOREIGN_EMAIL]
   );
-  await pool.query(
-    `INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)`,
-    [FOREIGN_USER_ID, poolRole.rows[0].id]
-  );
+  await pool.query(`INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)`, [
+    FOREIGN_USER_ID,
+    poolRole.rows[0].id
+  ]);
 }
 
 async function requestJson<T>(path: string, init: RequestInit = {}) {
@@ -153,6 +179,14 @@ async function requestJson<T>(path: string, init: RequestInit = {}) {
 function authHeaders(): HeadersInit {
   return {
     authorization: `Bearer ${accessToken}`,
+    'x-tenant-id': TENANT_ID,
+    'x-account-id': ACCOUNT_ID
+  };
+}
+
+function limitedAuthHeaders(): HeadersInit {
+  return {
+    authorization: `Bearer ${limitedAccessToken}`,
     'x-tenant-id': TENANT_ID,
     'x-account-id': ACCOUNT_ID
   };
@@ -191,6 +225,25 @@ async function postReceiptAs(
       notes: 'Pagamento HTTP em dinheiro'
     })
   });
+}
+
+async function postReversal(
+  receiptId: string,
+  idempotencyKey: string,
+  headers: HeadersInit = authHeaders()
+): Promise<{ status: number; body?: ReversalResponse; text: string }> {
+  return requestJson<ReversalResponse>(
+    `/encounters/${ENCOUNTER_ID}/cash-receipts/${receiptId}/reverse`,
+    {
+      method: 'POST',
+      headers: {
+        ...headers,
+        'content-type': 'application/json',
+        'idempotency-key': idempotencyKey
+      },
+      body: JSON.stringify({ reason: 'Correção HTTP de caixa' })
+    }
+  );
 }
 
 beforeAll(async () => {
@@ -248,13 +301,27 @@ beforeAll(async () => {
   }
   accessToken = login.body.accessToken;
 
+  const limitedLogin = await requestJson<LoginResponse>('/auth/login', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ username: LIMITED_USERNAME, password: 'seed_admin' })
+  });
+  if (limitedLogin.status !== 200 || !limitedLogin.body?.accessToken) {
+    throw new Error(
+      `Limited HTTP fixture login failed: ${limitedLogin.status} ${limitedLogin.text}`
+    );
+  }
+  limitedAccessToken = limitedLogin.body.accessToken;
+
   const foreignLogin = await requestJson<LoginResponse>('/auth/login', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ username: FOREIGN_USERNAME, password: 'seed_admin' })
   });
   if (foreignLogin.status !== 200 || !foreignLogin.body?.accessToken) {
-    throw new Error(`Foreign HTTP fixture login failed: ${foreignLogin.status} ${foreignLogin.text}`);
+    throw new Error(
+      `Foreign HTTP fixture login failed: ${foreignLogin.status} ${foreignLogin.text}`
+    );
   }
   foreignAccessToken = foreignLogin.body.accessToken;
 });
@@ -284,6 +351,8 @@ describe('cash receipt HTTP PostgreSQL boundary', () => {
       amount: AMOUNT,
       billingRecordId: BILLING_RECORD_ID
     });
+    if (!first.body) throw new Error(`Receipt was not returned: ${first.text}`);
+    receiptId = first.body.id;
     expect(replay.status).toBe(201);
     expect(replay.body).toEqual(first.body);
     expect(conflict.status).toBe(409);
@@ -320,6 +389,129 @@ describe('cash receipt HTTP PostgreSQL boundary', () => {
       idempotencyRows: 1,
       billingStatus: 'settled'
     });
+  });
+
+  it('reverses through the published route, replays idempotently and reopens only financial projections', async () => {
+    const idempotencyKey = randomUUID();
+    const first = await postReversal(receiptId, idempotencyKey);
+    const replay = await postReversal(receiptId, idempotencyKey);
+    const unauthorizedReplay = await postReversal(receiptId, idempotencyKey, limitedAuthHeaders());
+
+    expect(first.status).toBe(201);
+    expect(first.body).toMatchObject({
+      receiptId,
+      encounterId: ENCOUNTER_ID,
+      amount: AMOUNT,
+      currency: 'BRL',
+      reason: 'Correção HTTP de caixa'
+    });
+    expect(replay.status).toBe(201);
+    expect(replay.body).toEqual(first.body);
+    expect(unauthorizedReplay.status).toBe(403);
+
+    const state = await getTestPool().query<{
+      readonly receipts: number;
+      readonly reversals: number;
+      readonly payments: number;
+      readonly withdrawals: number;
+      readonly reversalJournals: number;
+      readonly reversalAudits: number;
+      readonly reversalOutbox: number;
+      readonly billingStatus: string;
+      readonly financialStatus: string;
+      readonly receivableStatus: string;
+      readonly encounterStatus: string;
+      readonly runningBalance: string;
+    }>(
+      `SELECT
+         (SELECT COUNT(*)::int FROM encounter_cash_receipts WHERE account_id = $1 AND encounter_id = $2) AS "receipts",
+         (SELECT COUNT(*)::int FROM encounter_cash_receipt_reversals WHERE account_id = $1 AND receipt_id = $3) AS "reversals",
+         (SELECT COUNT(*)::int FROM encounter_receivable_payments WHERE account_id = $1 AND encounter_id = $2) AS "payments",
+         (SELECT COUNT(*)::int FROM cash_movements WHERE account_id = $1 AND cash_register_id = $4 AND movement_type = 'withdrawal') AS "withdrawals",
+         (SELECT COUNT(*)::int FROM financial_journal_entries WHERE account_id = $1 AND source_type = 'encounter_cash_receipt_reversal') AS "reversalJournals",
+         (SELECT COUNT(*)::int FROM audit_events WHERE account_id = $1 AND entity_type = 'encounter_cash_receipt_reversal') AS "reversalAudits",
+         (SELECT COUNT(*)::int FROM outbox_events WHERE account_id = $1 AND event_type = 'encounter.cash-receipt.reversed') AS "reversalOutbox",
+         (SELECT status FROM billing_records WHERE account_id = $1 AND encounter_id = $2) AS "billingStatus",
+         (SELECT financial_status FROM encounter_financial_accounts WHERE account_id = $1 AND encounter_id = $2) AS "financialStatus",
+         (SELECT status FROM encounter_receivables WHERE account_id = $1 AND encounter_id = $2) AS "receivableStatus",
+         (SELECT status FROM encounters WHERE account_id = $1 AND id = $2) AS "encounterStatus",
+         (SELECT running_balance FROM cash_movements WHERE account_id = $1 AND cash_register_id = $4 ORDER BY created_at DESC, id DESC LIMIT 1) AS "runningBalance"`,
+      [ACCOUNT_ID, ENCOUNTER_ID, receiptId, CASH_REGISTER_ID]
+    );
+    expect(state.rows[0]).toEqual({
+      receipts: 1,
+      reversals: 1,
+      payments: 1,
+      withdrawals: 1,
+      reversalJournals: 1,
+      reversalAudits: 1,
+      reversalOutbox: 1,
+      billingStatus: 'open',
+      financialStatus: 'pending',
+      receivableStatus: 'open',
+      encounterStatus: 'closed',
+      runningBalance: '50.00'
+    });
+
+    const detail = await requestJson<
+      ReceiptResponse & {
+        readonly reversalId: string;
+        readonly reversalReason: string;
+      }
+    >(`/encounters/${ENCOUNTER_ID}/cash-receipts/${receiptId}`, {
+      method: 'GET',
+      headers: authHeaders()
+    });
+    expect(detail.status).toBe(200);
+    expect(detail.body).toMatchObject({
+      id: receiptId,
+      reversalId: first.body?.id,
+      reversalReason: 'Correção HTTP de caixa'
+    });
+
+    const summary = await requestJson<{
+      readonly financialStatus: string;
+      readonly financialClosed: boolean;
+      readonly paidAmount: number;
+      readonly balanceDue: number;
+      readonly receivable: { readonly status: string } | null;
+    }>(`/encounters/${ENCOUNTER_ID}/financial-summary`, {
+      method: 'GET',
+      headers: authHeaders()
+    });
+    expect(summary.status).toBe(200);
+    expect(summary.body).toMatchObject({
+      financialStatus: 'pending',
+      financialClosed: false,
+      paidAmount: 0,
+      balanceDue: AMOUNT,
+      receivable: { status: 'open' }
+    });
+
+    const close = await requestJson<{ readonly financialClosed: boolean }>(
+      `/encounters/${ENCOUNTER_ID}/financial-close`,
+      {
+        method: 'POST',
+        headers: {
+          ...authHeaders(),
+          'content-type': 'application/json',
+          'idempotency-key': randomUUID()
+        },
+        body: JSON.stringify({
+          installments: [{ amount: AMOUNT, label: 'Parcela reaberta' }]
+        })
+      }
+    );
+    expect(close.status).toBe(200);
+    expect(close.body?.financialClosed).toBe(true);
+
+    const historicalPaymentState = await getTestPool().query<{ readonly count: number }>(
+      `SELECT COUNT(*)::int AS count
+         FROM encounter_receivable_payments
+        WHERE account_id = $1 AND encounter_id = $2`,
+      [ACCOUNT_ID, ENCOUNTER_ID]
+    );
+    expect(historicalPaymentState.rows[0]?.count).toBe(1);
   });
 
   it('keeps the published receipt route opaque across tenants', async () => {

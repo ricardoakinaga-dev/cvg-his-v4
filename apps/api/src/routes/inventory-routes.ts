@@ -45,7 +45,7 @@ export interface InventoryRoutesHandlers {
   refreshAccount?: (accountId: string) => Promise<void>;
   procurement: ProcurementService;
   audit: AuditService;
-  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
+  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
   enforceAbac: (
     actionCode: string,
     principal: AuthenticatedPrincipal,
@@ -79,7 +79,7 @@ export async function handleInventoryRoutes(
     handlers.runCommand ?? (async <T>(input: TenantCommandInput<T>) => input.command());
 
   if (pathname === '/inventory/purchases' && request.method === 'GET') {
-    const principal = rp(request, 'inventory.read');
+    const principal = await rp(request, 'inventory.read');
     const purchases = handlers.procurement.listPurchases(principal.user.accountId as never);
     response.statusCode = 200;
     response.end(JSON.stringify({ items: purchases }));
@@ -87,7 +87,7 @@ export async function handleInventoryRoutes(
   }
 
   if (pathname === '/inventory/purchases' && request.method === 'POST') {
-    const principal = rp(request, 'inventory.manage');
+    const principal = await rp(request, 'inventory.manage');
     const payload = (await readJsonBody(request)) as CreateInventoryPurchaseInput;
     const purchase = await runCommand({
       request,
@@ -126,7 +126,7 @@ export async function handleInventoryRoutes(
     pathname.endsWith('/approve') &&
     request.method === 'POST'
   ) {
-    const principal = rp(request, 'inventory.manage');
+    const principal = await rp(request, 'inventory.manage');
     const purchaseId = requireNonEmptyString(pathname.split('/')[3], 'purchaseId');
     const purchase = await runCommand({
       request,
@@ -165,7 +165,7 @@ export async function handleInventoryRoutes(
     pathname.endsWith('/receive') &&
     request.method === 'POST'
   ) {
-    const principal = rp(request, 'inventory.manage');
+    const principal = await rp(request, 'inventory.manage');
     const purchaseId = requireNonEmptyString(pathname.split('/')[3], 'purchaseId');
     const payload = (await readJsonBody(request)) as ReceiveInventoryPurchaseInput;
     const purchase = await runCommand({
@@ -206,7 +206,7 @@ export async function handleInventoryRoutes(
     pathname.endsWith('/cancel') &&
     request.method === 'POST'
   ) {
-    const principal = rp(request, 'inventory.manage');
+    const principal = await rp(request, 'inventory.manage');
     const purchaseId = requireNonEmptyString(pathname.split('/')[3], 'purchaseId');
     const purchase = await runCommand({
       request,
@@ -240,7 +240,7 @@ export async function handleInventoryRoutes(
   }
 
   if (pathname === '/inventory/transfers' && request.method === 'GET') {
-    const principal = rp(request, 'inventory.read');
+    const principal = await rp(request, 'inventory.read');
     const transfers = handlers.procurement.listTransfers(principal.user.accountId as never);
     response.statusCode = 200;
     response.end(JSON.stringify({ items: transfers }));
@@ -248,7 +248,7 @@ export async function handleInventoryRoutes(
   }
 
   if (pathname === '/inventory/transfers' && request.method === 'POST') {
-    const principal = rp(request, 'inventory.manage');
+    const principal = await rp(request, 'inventory.manage');
     const payload = (await readJsonBody(request)) as InventoryTransferRequest;
     const transfer = await runCommand({
       request,
@@ -283,7 +283,7 @@ export async function handleInventoryRoutes(
   }
 
   if (pathname === '/inventory/reservations' && request.method === 'GET') {
-    const principal = rp(request, 'inventory.read');
+    const principal = await rp(request, 'inventory.read');
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const status = url.searchParams.get('status') ?? undefined;
     const items = inventory.listReservations(principal.user.accountId as never, status as never);
@@ -293,7 +293,7 @@ export async function handleInventoryRoutes(
   }
 
   if (pathname === '/inventory/reservations' && request.method === 'POST') {
-    const principal = rp(request, 'inventory.manage');
+    const principal = await rp(request, 'inventory.manage');
     const payload = (await readJsonBody(request)) as CreateInventoryReservationRequest;
     const reservations = await runCommand({
       request,
@@ -331,7 +331,7 @@ export async function handleInventoryRoutes(
     /^\/inventory\/reservations\/([^/]+)\/(release|consume|return)$/
   );
   if (reservationAction && request.method === 'POST') {
-    const principal = rp(request, 'inventory.manage');
+    const principal = await rp(request, 'inventory.manage');
     const reservationId = requireNonEmptyString(reservationAction[1], 'reservationId');
     const action = reservationAction[2];
     const reservation = await runCommand({
@@ -381,7 +381,7 @@ export async function handleInventoryRoutes(
 
   // GET /inventory/consumptions
   if (pathname === '/inventory/consumptions' && request.method === 'GET') {
-    const principal = rp(request, 'inventory.read');
+    const principal = await rp(request, 'inventory.read');
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const encounterId = url.searchParams.get('encounterId') ?? undefined;
     const items = inventory.listConsumptionsByAccount(
@@ -406,7 +406,7 @@ export async function handleInventoryRoutes(
 
   // POST /inventory/consumptions
   if (pathname === '/inventory/consumptions' && request.method === 'POST') {
-    const principal = rp(request, 'inventory.manage');
+    const principal = await rp(request, 'inventory.manage');
     const payload = (await readJsonBody(request)) as CreateInventoryConsumptionRequest;
     // Inventory charge capture can be retried on a different API replica than
     // the admission command. Hydrate committed tenant state before resolving
@@ -439,7 +439,10 @@ export async function handleInventoryRoutes(
                 503
               );
             }
-            const stay = inpatient.getOrThrow(chargeSourceId as never);
+            const stay = inpatient.getOrThrow(
+              chargeSourceId as never,
+              principal.user.accountId as never
+            );
             if (
               stay.accountId !== principal.user.accountId ||
               stay.encounterId !== payload.encounterId
@@ -563,7 +566,7 @@ export async function handleInventoryRoutes(
 
   // GET /inventory/lots
   if (pathname === '/inventory/lots' && request.method === 'GET') {
-    const principal = rp(request, 'inventory.read');
+    const principal = await rp(request, 'inventory.read');
     const items = inventory.listLots(principal.user.accountId as never);
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -583,7 +586,7 @@ export async function handleInventoryRoutes(
 
   // GET /inventory/movements
   if (pathname === '/inventory/movements' && request.method === 'GET') {
-    const principal = rp(request, 'inventory.read');
+    const principal = await rp(request, 'inventory.read');
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const inventoryItemId = url.searchParams.get('inventoryItemId') ?? undefined;
     const items = inventory.listStockMovements(principal.user.accountId as never, inventoryItemId);
@@ -605,7 +608,7 @@ export async function handleInventoryRoutes(
 
   // POST /inventory/adjustments
   if (pathname === '/inventory/adjustments' && request.method === 'POST') {
-    const principal = rp(request, 'inventory.manage');
+    const principal = await rp(request, 'inventory.manage');
     const payload = (await readJsonBody(request)) as CreateInventoryStockAdjustmentRequest;
     enforceAbac(
       'inventory.manage',
@@ -651,7 +654,7 @@ export async function handleInventoryRoutes(
 
   // GET /inventory
   if (pathname === '/inventory' && request.method === 'GET') {
-    const principal = rp(request, 'inventory.read');
+    const principal = await rp(request, 'inventory.read');
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const search = url.searchParams.get('search') ?? undefined;
     const items = inventory.listItems(principal.user.accountId as never, { search });
@@ -673,7 +676,7 @@ export async function handleInventoryRoutes(
 
   // POST /inventory
   if (pathname === '/inventory' && request.method === 'POST') {
-    const principal = rp(request, 'inventory.manage');
+    const principal = await rp(request, 'inventory.manage');
     const payload = (await readJsonBody(request)) as CreateInventoryItemRequest;
     enforceAbac(
       'inventory.manage',
@@ -716,7 +719,7 @@ export async function handleInventoryRoutes(
   // GET /inventory/:itemId
   if (pathname.startsWith('/inventory/') && request.method === 'GET') {
     const itemId = requireNonEmptyString(pathname.split('/')[2], 'inventoryItemId');
-    const principal = rp(request, 'inventory.read');
+    const principal = await rp(request, 'inventory.read');
     try {
       const item = inventory.getItemOrThrow(itemId as never, principal.user.accountId);
       appendAudit(audit, {
@@ -749,7 +752,7 @@ export async function handleInventoryRoutes(
   // PATCH /inventory/:itemId
   if (pathname.startsWith('/inventory/') && request.method === 'PATCH') {
     const itemId = requireNonEmptyString(pathname.split('/')[2], 'inventoryItemId');
-    const principal = rp(request, 'inventory.manage');
+    const principal = await rp(request, 'inventory.manage');
     const payload = (await readJsonBody(request)) as UpdateInventoryItemRequest;
     enforceAbac(
       'inventory.manage',

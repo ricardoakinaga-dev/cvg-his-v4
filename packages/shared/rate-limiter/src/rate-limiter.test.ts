@@ -22,6 +22,24 @@ function createTestKey(overrides: Partial<RateLimitKey> = {}): RateLimitKey {
   };
 }
 
+type RateLimiterHealth = {
+  readonly healthy: boolean;
+  readonly backend: 'redis' | 'in-memory';
+  readonly detail: string;
+};
+
+type HealthCheckable = {
+  healthCheck(): Promise<RateLimiterHealth>;
+};
+
+function getHealth(target: unknown): Promise<RateLimiterHealth> {
+  const candidate = target as Partial<HealthCheckable>;
+  if (typeof candidate.healthCheck !== 'function') {
+    throw new Error('Rate limiter backends must expose healthCheck()');
+  }
+  return candidate.healthCheck();
+}
+
 test('RateLimiter: allows requests within limit', async () => {
   const limiter = createRateLimiter({ windowMs: 60000, maxRequests: 5, name: 'test' });
 
@@ -182,6 +200,127 @@ test('InMemoryRateLimiterStore: resetAll clears all entries', async () => {
   assert.equal(await store.get('key2'), undefined);
 });
 
+test('RateLimiter: exposes an explicit healthy in-memory backend', async () => {
+  const limiter = createRateLimiter({ windowMs: 60_000, maxRequests: 5 });
+
+  const health = await getHealth(limiter);
+
+  assert.equal(health.healthy, true);
+  assert.equal(health.backend, 'in-memory');
+  assert.match(health.detail, /in-memory|memory|healthy/i);
+});
+
+test('RedisRateLimiterStore: healthCheck sends PING and identifies the Redis backend', async () => {
+  let pingCalls = 0;
+  let quitCalls = 0;
+  const fakeClient = {
+    isOpen: true,
+    isReady: true,
+    ping: async () => {
+      pingCalls += 1;
+      return 'PONG';
+    },
+    ref: () => undefined,
+    unref: () => undefined,
+    quit: async () => {
+      quitCalls += 1;
+      return 'OK';
+    }
+  };
+  const store = new RedisRateLimiterStore({
+    redisUrl: 'redis://redis.internal:6379/0'
+  });
+  Object.assign(store as unknown as { clientPromise: Promise<unknown> }, {
+    clientPromise: Promise.resolve(fakeClient)
+  });
+
+  try {
+    const storeHealth = await getHealth(store);
+    const limiterHealth = await getHealth(
+      new RateLimiter({ windowMs: 60_000, maxRequests: 5 }, store)
+    );
+
+    assert.equal(storeHealth.healthy, true);
+    assert.equal(storeHealth.backend, 'redis');
+    assert.match(storeHealth.detail, /redis|ping|healthy|pong/i);
+    assert.equal(limiterHealth.healthy, true);
+    assert.equal(limiterHealth.backend, 'redis');
+    assert.equal(pingCalls, 2, 'RateLimiter health must delegate to the Redis store');
+  } finally {
+    await store.close();
+  }
+
+  assert.equal(quitCalls, 1, 'health probing must not leave the Redis connection open');
+});
+
+test('RedisRateLimiterStore: healthCheck fails closed on PING failure without exposing the URL', async () => {
+  const secretUrl = 'redis://:super-secret@redis.internal:6379/0';
+  let pingCalls = 0;
+  let disconnectCalls = 0;
+  const fakeClient = {
+    isOpen: true,
+    isReady: true,
+    ping: async () => {
+      pingCalls += 1;
+      throw new Error(`ECONNREFUSED ${secretUrl}`);
+    },
+    ref: () => undefined,
+    unref: () => undefined,
+    disconnect: async () => {
+      disconnectCalls += 1;
+    },
+    quit: async () => 'OK'
+  };
+  const store = new RedisRateLimiterStore({ redisUrl: secretUrl });
+  Object.assign(store as unknown as { clientPromise: Promise<unknown> }, {
+    clientPromise: Promise.resolve(fakeClient)
+  });
+
+  let health: RateLimiterHealth | undefined;
+  try {
+    health = await getHealth(store);
+  } finally {
+    await store.close();
+  }
+
+  assert.equal(pingCalls, 1);
+  assert.equal(health?.healthy, false);
+  assert.equal(health?.backend, 'redis');
+  assert.match(health?.detail ?? '', /unavailable|unhealthy|failed/i);
+  assert.doesNotMatch(health?.detail ?? '', /super-secret|redis\.internal|6379/);
+  assert.equal(disconnectCalls, 1, 'failed probes must retire their client');
+});
+
+test('RedisRateLimiterStore: bounds a connected-but-unresponsive command', async () => {
+  let disconnectCalls = 0;
+  const fakeClient = {
+    isOpen: true,
+    ping: async () => new Promise<string>(() => undefined),
+    ref: () => undefined,
+    unref: () => undefined,
+    disconnect: async () => {
+      disconnectCalls += 1;
+    }
+  };
+  const store = new RedisRateLimiterStore({
+    redisUrl: 'redis://unused.test:6379',
+    commandTimeoutMs: 25
+  });
+  Object.assign(store as unknown as { clientPromise: Promise<unknown> }, {
+    clientPromise: Promise.resolve(fakeClient)
+  });
+
+  const startedAt = Date.now();
+  const health = await getHealth(store);
+  const elapsedMs = Date.now() - startedAt;
+
+  assert.equal(health.healthy, false);
+  assert.equal(health.backend, 'redis');
+  assert.ok(elapsedMs < 500, `hung Redis command must fail quickly; elapsed=${elapsedMs}ms`);
+  assert.equal(disconnectCalls, 1, 'a timed-out command must retire its client');
+  await store.close();
+});
+
 test('RateLimiter: atomically enforces a shared limit across concurrent instances', async () => {
   const store = new InMemoryRateLimiterStore();
   const firstLimiter = new RateLimiter({ windowMs: 60_000, maxRequests: 5 }, store);
@@ -217,6 +356,40 @@ test('RateLimiter: fails closed when the atomic store operation is unavailable',
     limiter.check(createTestKey()),
     /distributed store unavailable/,
     'a store outage must never fall back to an independent local counter'
+  );
+});
+
+test('RateLimiter: distributed auth limiter outage never falls back to an in-memory counter', async () => {
+  let incrementCalls = 0;
+  const unavailableStore: RateLimiterStore & HealthCheckable = {
+    healthCheck: async () => ({
+      healthy: false,
+      backend: 'redis',
+      detail: 'Redis rate limiter unavailable'
+    }),
+    increment: async () => {
+      incrementCalls += 1;
+      throw new Error('Redis rate limiter unavailable');
+    },
+    get: async () => undefined,
+    set: async () => undefined,
+    reset: async () => undefined,
+    resetAll: async () => undefined
+  };
+  const limiter = new RateLimiter({ windowMs: 60_000, maxRequests: 5 }, unavailableStore);
+
+  const health = await getHealth(limiter);
+  assert.equal(health.healthy, false);
+  assert.equal(health.backend, 'redis');
+
+  await assert.rejects(
+    limiter.check(createTestKey({ userId: 'auth-user' })),
+    /Redis rate limiter unavailable/
+  );
+  assert.equal(
+    incrementCalls,
+    1,
+    'an auth limiter outage must reject the attempt instead of creating a local bucket'
   );
 });
 

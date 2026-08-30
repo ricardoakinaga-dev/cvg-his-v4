@@ -9,8 +9,10 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { setAppState } from '../../../apps/api/src/app-state.js';
 import { bootstrapServices, shutdownServices } from '../../../apps/api/src/bootstrap.js';
 import { createApiServer, type ApiServer } from '../../../apps/api/src/server.js';
+import { DatabaseDischargeRepository } from '../../../packages/modules/discharges/src/index.js';
 import { getTestPool } from '../../db/db-admin.js';
 import { TEST_DB_URL } from '../../setup/env.js';
+import { runWithTenantContext } from '@cvg-his-v2/tenant-context';
 
 const TENANT_ID = randomUUID();
 const ACCOUNT_ID = randomUUID();
@@ -23,6 +25,8 @@ const ROLLBACK_ENCOUNTER_ID = randomUUID();
 const ROLLBACK_STAY_ID = randomUUID();
 const CONCURRENT_ENCOUNTER_ID = randomUUID();
 const CONCURRENT_STAY_ID = randomUUID();
+const DETAIL_ENCOUNTER_ID = randomUUID();
+const DETAIL_STAY_ID = randomUUID();
 const FOREIGN_TENANT_ID = randomUUID();
 const FOREIGN_ACCOUNT_ID = randomUUID();
 const FOREIGN_USER_ID = randomUUID();
@@ -58,6 +62,8 @@ interface DischargeResponse {
   readonly accountId: string;
   readonly encounterId: string;
   readonly dischargeType: string;
+  readonly outcome?: string;
+  readonly version: number;
 }
 
 async function requestJson<T>(path: string, init: RequestInit = {}): Promise<JsonResponse<T>> {
@@ -186,8 +192,13 @@ beforeAll(async () => {
     patientId: PATIENT_ID,
     username: USERNAME,
     email: EMAIL,
-    encounterIds: [ENCOUNTER_ID, ROLLBACK_ENCOUNTER_ID, CONCURRENT_ENCOUNTER_ID],
-    stayIds: [STAY_ID, ROLLBACK_STAY_ID, CONCURRENT_STAY_ID]
+    encounterIds: [
+      ENCOUNTER_ID,
+      ROLLBACK_ENCOUNTER_ID,
+      CONCURRENT_ENCOUNTER_ID,
+      DETAIL_ENCOUNTER_ID
+    ],
+    stayIds: [STAY_ID, ROLLBACK_STAY_ID, CONCURRENT_STAY_ID, DETAIL_STAY_ID]
   });
   await seedTenant({
     tenantId: FOREIGN_TENANT_ID,
@@ -463,5 +474,151 @@ describe('inpatient discharge HTTP PostgreSQL boundary', () => {
       [FOREIGN_ACCOUNT_ID, ROLLBACK_ENCOUNTER_ID]
     );
     expect(state.rows[0]?.discharges).toBe(0);
+  });
+
+  it('does not disclose or mutate discharge detail across authenticated accounts', async () => {
+    const created = await postDischarge(
+      accessToken,
+      TENANT_ID,
+      ACCOUNT_ID,
+      DETAIL_ENCOUNTER_ID,
+      randomUUID()
+    );
+    expect(created.status).toBe(201);
+    const dischargeId = created.body?.id;
+    expect(dischargeId).toBeTruthy();
+
+    const foreignDetail = await requestJson<DischargeResponse>(`/discharges/${dischargeId}`, {
+      headers: authHeaders(foreignAccessToken, TENANT_ID, ACCOUNT_ID)
+    });
+    expect(foreignDetail.status).toBe(404);
+
+    const foreignPatch = await requestJson<DischargeResponse>(`/discharges/${dischargeId}`, {
+      method: 'PATCH',
+      headers: authHeaders(foreignAccessToken, TENANT_ID, ACCOUNT_ID),
+      body: JSON.stringify({ outcome: 'cross-account mutation' })
+    });
+    expect(foreignPatch.status).toBe(404);
+
+    const ownerDetail = await requestJson<DischargeResponse>(`/discharges/${dischargeId}`, {
+      headers: authHeaders(accessToken, TENANT_ID, ACCOUNT_ID)
+    });
+    expect(ownerDetail.status).toBe(200);
+    expect(ownerDetail.body).toMatchObject({
+      id: dischargeId,
+      accountId: ACCOUNT_ID,
+      encounterId: DETAIL_ENCOUNTER_ID
+    });
+    expect(ownerDetail.body?.outcome).toBeUndefined();
+
+    const repository = new DatabaseDischargeRepository();
+    const ownerContext = {
+      tenantId: TENANT_ID,
+      accountId: ACCOUNT_ID,
+      correlationId: randomUUID()
+    };
+    const foreignContext = {
+      tenantId: FOREIGN_TENANT_ID,
+      accountId: FOREIGN_ACCOUNT_ID,
+      correlationId: randomUUID()
+    };
+    const ownerRow = await runWithTenantContext(ownerContext, () =>
+      repository.findById(ACCOUNT_ID as never, dischargeId as never)
+    );
+    expect(ownerRow?.accountId).toBe(ACCOUNT_ID);
+    if (!ownerRow) throw new Error('Owner discharge row was not persisted');
+
+    const concurrentUpdates = await Promise.allSettled([
+      runWithTenantContext(ownerContext, () =>
+        repository.update(
+          { ...ownerRow, outcome: 'first atomic update', version: ownerRow.version + 1 },
+          ownerRow.version
+        )
+      ),
+      runWithTenantContext(ownerContext, () =>
+        repository.update(
+          { ...ownerRow, outcome: 'second atomic update', version: ownerRow.version + 1 },
+          ownerRow.version
+        )
+      )
+    ]);
+    expect(concurrentUpdates.map((result) => result.status).sort()).toEqual([
+      'fulfilled',
+      'rejected'
+    ]);
+    const conflict = concurrentUpdates.find(
+      (result): result is PromiseRejectedResult => result.status === 'rejected'
+    );
+    expect(conflict?.reason).toMatchObject({ code: 'CONFLICT' });
+
+    await expect(
+      runWithTenantContext(foreignContext, () =>
+        repository.create({
+          ...ownerRow,
+          id: randomUUID() as never,
+          accountId: ACCOUNT_ID,
+          version: 1,
+          outcome: 'incompatible active account'
+        })
+      )
+    ).rejects.toThrow('Discharge not found');
+
+    await expect(
+      runWithTenantContext(foreignContext, () =>
+        repository.findById(ACCOUNT_ID as never, dischargeId as never)
+      )
+    ).resolves.toBeNull();
+    await expect(
+      runWithTenantContext(foreignContext, () =>
+        repository.findByEncounterId(ACCOUNT_ID as never, DETAIL_ENCOUNTER_ID as never)
+      )
+    ).resolves.toBeNull();
+    await expect(
+      runWithTenantContext(foreignContext, () =>
+        repository.update({ ...ownerRow, accountId: FOREIGN_ACCOUNT_ID as never })
+      )
+    ).rejects.toThrow('Discharge not found');
+
+    await runWithTenantContext(foreignContext, () =>
+      repository.delete(FOREIGN_ACCOUNT_ID as never, dischargeId as never)
+    );
+    await expect(
+      runWithTenantContext(ownerContext, () =>
+        repository.findById(ACCOUNT_ID as never, dischargeId as never)
+      )
+    ).resolves.toMatchObject({
+      id: dischargeId,
+      accountId: ACCOUNT_ID,
+      version: ownerRow.version + 1
+    });
+
+    const replicaPatch = await requestJsonAt<DischargeResponse>(
+      secondaryBaseUrl,
+      `/discharges/${dischargeId}`,
+      {
+        method: 'PATCH',
+        headers: authHeaders(accessToken, TENANT_ID, ACCOUNT_ID),
+        body: JSON.stringify({
+          expectedVersion: ownerRow.version + 1,
+          outcome: 'updated on secondary replica'
+        })
+      }
+    );
+    expect(replicaPatch.status).toBe(200);
+    expect(replicaPatch.body).toMatchObject({
+      id: dischargeId,
+      accountId: ACCOUNT_ID,
+      outcome: 'updated on secondary replica',
+      version: ownerRow.version + 2
+    });
+
+    const persistedAfterReplicaPatch = await runWithTenantContext(ownerContext, () =>
+      repository.findById(ACCOUNT_ID as never, dischargeId as never)
+    );
+    expect(persistedAfterReplicaPatch).toMatchObject({
+      id: dischargeId,
+      outcome: 'updated on secondary replica',
+      version: ownerRow.version + 2
+    });
   });
 });

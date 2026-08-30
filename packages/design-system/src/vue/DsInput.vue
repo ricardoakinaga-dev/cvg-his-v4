@@ -19,7 +19,7 @@
       :min="min"
       :max="max"
       :aria-invalid="!!error"
-      :aria-describedby="error ? inputId + '-error' : undefined"
+      :aria-describedby="describedById"
       class="ds-input"
       @input="modelValue = ($event.target as HTMLInputElement).value"
       @blur="$emit('blur')"
@@ -36,7 +36,7 @@
       :maxlength="maxlength"
       :rows="rows"
       :aria-invalid="!!error"
-      :aria-describedby="error ? inputId + '-error' : undefined"
+      :aria-describedby="describedById"
       class="ds-input ds-input--textarea"
       @input="modelValue = ($event.target as HTMLTextAreaElement).value"
       @blur="$emit('blur')"
@@ -49,7 +49,7 @@
       :disabled="disabled"
       :required="required"
       :aria-invalid="!!error"
-      :aria-describedby="error ? inputId + '-error' : undefined"
+      :aria-describedby="describedById"
       class="ds-input ds-input--select"
       @change="modelValue = ($event.target as HTMLSelectElement).value"
       @blur="$emit('blur')"
@@ -61,7 +61,7 @@
     <p v-if="error" :id="inputId + '-error'" class="ds-input__error" role="alert">
       {{ error }}
     </p>
-    <p v-if="hint && !error" class="ds-input__hint">
+    <p v-if="hint && !error" :id="hintId" class="ds-input__hint">
       {{ hint }}
     </p>
   </div>
@@ -139,6 +139,11 @@ defineEmits<{
 
 const generatedInputId = `ds-input-${Math.random().toString(36).slice(2, 8)}`;
 const inputId = computed(() => props.id || generatedInputId);
+const hintId = computed(() => `${inputId.value}-hint`);
+const errorId = computed(() => `${inputId.value}-error`);
+const describedById = computed(() =>
+  props.error ? errorId.value : props.hint ? hintId.value : undefined
+);
 </script>
 
 <style scoped>

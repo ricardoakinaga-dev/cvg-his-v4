@@ -1,0 +1,120 @@
+{
+  "record_id": "GATE-CVG-001-WEBAUTHN-DURABLE-MFA-STATE-IR-001",
+  "timestamp": "2026-08-29T18:45:00-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-001 bounded durable WebAuthn credentials and challenge state",
+  "scope_ref": "CVG-001-WEBAUTHN-DURABLE-MFA-STATE",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "Fresh independent scouting identifies process-local WebAuthn credentials and challenges as a P0 shared-runtime security gap; cancellation history remains a separate P1 residual.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-SCOUT-CVG-001-WEBAUTHN-DURABLE-MFA-STATE-001",
+        ".agent/tasks/CVG-001-WEBAUTHN-DURABLE-MFA-STATE.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Scouting selects a bounded repository-local security slice; it does not certify the complete FIDO verifier or production readiness."
+    },
+    {
+      "id": "IR-002",
+      "description": "The frozen contract requires durable account/user-scoped credentials and purpose-specific challenges with tenant RLS and atomic single-use TTL consumption.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/authority.jsonl#AUTH-CVG-001-WEBAUTHN-DURABLE-MFA-STATE-IR-001",
+        ".agent/tasks/CVG-001-WEBAUTHN-DURABLE-MFA-STATE.md",
+        "packages/db/src/schema/mfa_credentials.ts",
+        "packages/db/src/schema/mfa_login_challenges.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The new WebAuthn tables, migration and executable RLS proof are implementation work, not yet complete."
+    },
+    {
+      "id": "IR-003",
+      "description": "The runtime contract wires durable repositories through bootstrap and fails closed in production-like mode when WebAuthn is enabled without both stores; explicit local/test doubles remain compatible.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/authority.jsonl#AUTH-CVG-001-WEBAUTHN-DURABLE-MFA-STATE-IR-001",
+        "apps/api/src/bootstrap.ts",
+        "apps/api/src/runtime.ts",
+        "apps/api/src/server.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The current server still constructs process-local state unconditionally; RED/GREEN tests must prove the correction."
+    },
+    {
+      "id": "IR-004",
+      "description": "The auth-route boundary carries principal account scope into WebAuthn service and challenge operations while preserving only bounded local Map test compatibility.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/authority.jsonl#AUTH-CVG-001-WEBAUTHN-DURABLE-MFA-STATE-IR-001",
+        "apps/api/src/routes/auth-routes.ts",
+        "packages/modules/mfa/src/webauthn.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The existing service API is user-only and must be migrated coherently with focused unit/API tests."
+    },
+    {
+      "id": "IR-005",
+      "description": "TDD RED/GREEN, security review, full regression, coverage, static quality, current-slice control-plane reconciliation and global non-promotion are required before bounded closure.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/instruction-scope.md",
+        ".agent/state.json",
+        ".agent/backlog.json",
+        ".agent/tasks/CVG-001-WEBAUTHN-DURABLE-MFA-STATE.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This gate authorizes implementation only; it is not a completion or release-readiness verdict."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-001-WEBAUTHN-DURABLE-MFA-STATE.md",
+    ".agent/verification.jsonl#VFY-SCOUT-CVG-001-WEBAUTHN-DURABLE-MFA-STATE-001",
+    "apps/api/src/server.ts",
+    "apps/api/src/routes/auth-routes.ts",
+    "packages/modules/mfa/src/webauthn.ts",
+    "packages/db/src/schema/mfa_login_challenges.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "Intentional RED and implementation are pending.",
+    "Durable schema, RLS, atomic consume and cross-process evidence are pending.",
+    "Full FIDO verifier/attestation hardening remains a separate open requirement.",
+    "Independent security review, regression, coverage and final control-plane validation are pending.",
+    "Global ERP parity, target, production and release evidence remain open."
+  ],
+  "conditions": [
+    "Keep credential and challenge state account/user scoped and RLS protected.",
+    "Use atomic conditional consume with expiry and consumed-state guards.",
+    "Do not silently use in-memory WebAuthn state when enabled in production-like mode.",
+    "Preserve explicit local/test compatibility without weakening the production boundary.",
+    "Do not expand into FIDO verifier redesign, providers, credentials, target, production, deployment or release scope.",
+    "Keep global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via explicit continuation request and fresh independent scouting",
+    "scope": "CVG-001 bounded durable WebAuthn credentials and challenge state",
+    "decision": "Authorize only repository-local schema/migration/RLS, account-scoped WebAuthn repository/service interfaces, atomic durable challenge state, runtime/bootstrap wiring, production-like fail-closed checks and focused tests. Exclude full FIDO verification, external providers, target, production, deployment and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-001-WEBAUTHN-DURABLE-MFA-STATE-IR-001",
+    "expires_or_revalidates": "Revalidate before changing WebAuthn verifier semantics, challenge policy beyond purpose/TTL/single-use, external identity, target runtime or any production/release boundary."
+  },
+  "residual_risk": "CRITICAL",
+  "decision": "PASS",
+  "implementation_status": "READY",
+  "next_action": "Write and execute intentional RED tests for cross-instance durable state, account isolation, atomic single-use TTL consumption and production-like fail-closed startup before implementing the slice.",
+  "revalidation_triggers": [
+    "Changes to FIDO attestation/signature verification or origin/RP-ID policy",
+    "Changes to MFA enrollment/login policy beyond durable state",
+    "Changes to external identity, providers, target, production, deployment or release scope"
+  ],
+  "supersedes": null
+}

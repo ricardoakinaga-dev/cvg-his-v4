@@ -3,7 +3,8 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { AuditService } from '@cvg-his-v2/module-audit';
 import type { OwnersService } from '@cvg-his-v2/module-owners';
 import type { PatientsService } from '@cvg-his-v2/module-patients';
-import { ValidationError } from '@cvg-his-v2/shared-errors';
+import { ConflictError, ValidationError } from '@cvg-his-v2/shared-errors';
+import { hashIdempotencyPayload, type JsonValue } from '@cvg-his-v2/shared-database';
 import type {
   AuthenticatedPrincipal,
   OwnerContact,
@@ -75,7 +76,7 @@ export interface VetusImportRoutesHandlers {
   audit: AuditService;
   importLogStore: VetusImportLogRepository | Map<string, VetusImportSummary>;
   importBatchStore?: VetusImportLogRepository;
-  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
+  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
 }
 
 type VetusImportBatchStore = VetusImportLogRepository & {
@@ -153,10 +154,151 @@ function json(response: ServerResponse, statusCode: number, payload: unknown): t
   return true;
 }
 
+function toJsonValue(value: unknown): JsonValue {
+  const serialized = JSON.stringify(value);
+  if (serialized === undefined) {
+    throw new ValidationError('Vetus import payload cannot be fingerprinted');
+  }
+  return JSON.parse(serialized) as JsonValue;
+}
+
+function hashImportPayload(value: unknown): string {
+  return hashIdempotencyPayload(toJsonValue(value));
+}
+
+function hashImportRequest(payload: CreateVetusImportRequest): string {
+  return hashImportPayload({
+    sourceSystem: optionalText(payload.sourceSystem) ?? 'Vetus',
+    sourceReference: optionalText(payload.sourceReference) ?? null,
+    reviewedBy: optionalText(payload.reviewedBy) ?? null,
+    owner: payload.owner,
+    patient: payload.patient
+  });
+}
+
+class VetusSourceReferenceConflictError extends ConflictError {
+  public constructor(sourceSystem: string, sourceReference: string) {
+    super(
+      'Vetus source reference was already imported with a different payload',
+      { sourceSystem, sourceReference }
+    );
+    this.name = 'VetusSourceReferenceConflictError';
+  }
+}
+
+function assertSourceReferenceMatches(
+  existingHash: string | null,
+  requestHash: string,
+  sourceSystem: string,
+  sourceReference: string
+): void {
+  // Rows created before the fingerprint migration are legacy facts. Preserve
+  // their replay behavior until an explicit, separately authorized backfill.
+  if (!existingHash || existingHash === requestHash) return;
+  throw new VetusSourceReferenceConflictError(sourceSystem, sourceReference);
+}
+
+function publicImportSummary(summary: VetusImportSummary): Omit<VetusImportSummary, 'requestHash'> {
+  const { requestHash: _requestHash, ...publicSummary } = summary;
+  return publicSummary;
+}
+
+function publicBatchSummary(
+  batch: VetusImportBatchSummary
+): Omit<VetusImportBatchSummary, 'requestHash'> {
+  const { requestHash: _requestHash, ...publicBatch } = batch;
+  return publicBatch;
+}
+
 function optionalText(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
+}
+
+const MAX_VETUS_BATCH_RESPONSE_BODY_BYTES = 160 * 1024;
+const MAX_VETUS_BATCH_ITEM_REASON_LENGTH = 1000;
+
+interface PreparedVetusBatchRow {
+  readonly rowNumber: number;
+  readonly rawRow: unknown;
+  readonly normalized: CreateVetusImportRequest | null;
+  readonly validationError: string | null;
+}
+
+function storedBatchPayload(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : { rawValue: value };
+}
+
+function prepareBatchRow(
+  rowNumber: number,
+  rawRow: unknown,
+  sourceSystem: string,
+  batchSourceReference: string | undefined
+): PreparedVetusBatchRow {
+  try {
+    const parsed = validatePayload(rawRow);
+    const sourceReference = parsed.sourceReference
+      ?? (batchSourceReference ? `${batchSourceReference}:${rowNumber}` : undefined);
+    return {
+      rowNumber,
+      rawRow,
+      normalized: { ...parsed, sourceSystem, sourceReference },
+      validationError: null
+    };
+  } catch (error) {
+    return {
+      rowNumber,
+      rawRow,
+      normalized: null,
+      validationError: error instanceof Error ? error.message : 'Vetus row rejected'
+    };
+  }
+}
+
+function batchFingerprintPayload(
+  sourceSystem: string,
+  sourceReference: string | undefined,
+  dryRun: boolean,
+  rows: readonly PreparedVetusBatchRow[]
+): Record<string, unknown> {
+  return {
+    sourceSystem,
+    sourceReference: sourceReference ?? null,
+    dryRun,
+    items: rows.map((row) => ({
+      rowNumber: row.rowNumber,
+      valid: row.normalized !== null,
+      payload: row.normalized
+        ? batchItemPayload(row.normalized, sourceSystem)
+        : storedBatchPayload(row.rawRow)
+    }))
+  };
+}
+
+async function assertBatchItemSourceReferences(
+  rows: readonly PreparedVetusBatchRow[],
+  importLogStore: VetusImportRoutesHandlers['importLogStore'],
+  accountId: string
+): Promise<void> {
+  for (const row of rows) {
+    if (!row.normalized?.sourceReference) continue;
+    const existing = await findImportBySourceReference(
+      importLogStore,
+      accountId,
+      optionalText(row.normalized.sourceSystem) ?? 'Vetus',
+      row.normalized.sourceReference
+    );
+    if (!existing) continue;
+    assertSourceReferenceMatches(
+      existing.requestHash,
+      hashImportRequest(row.normalized),
+      optionalText(row.normalized.sourceSystem) ?? 'Vetus',
+      row.normalized.sourceReference
+    );
+  }
 }
 
 function requiredText(value: unknown, field: string): string {
@@ -382,6 +524,7 @@ async function importOne(
   const sourceSystem = optionalText(payload.sourceSystem) ?? 'Vetus';
   const sourceReference = optionalText(payload.sourceReference) ?? null;
   const reviewedBy = optionalText(payload.reviewedBy) ?? null;
+  const requestHash = hashImportRequest(payload);
 
   if (sourceReference) {
     const existing = await findImportBySourceReference(
@@ -391,6 +534,7 @@ async function importOne(
       sourceReference
     );
     if (existing) {
+      assertSourceReferenceMatches(existing.requestHash, requestHash, sourceSystem, sourceReference);
       return {
         summary: existing,
         replayed: true,
@@ -416,6 +560,7 @@ async function importOne(
     accountId: principal.user.accountId,
     sourceSystem,
     sourceReference,
+    requestHash,
     status,
     ownerId: ownerResult.owner.id,
     ownerName: ownerResult.owner.fullName,
@@ -476,6 +621,93 @@ function batchCounts(items: readonly VetusImportBatchItemSummary[]): Pick<
   };
 }
 
+function projectedBatchItem(
+  batch: VetusImportBatchSummary,
+  row: PreparedVetusBatchRow,
+  sourceSystem: string,
+  dryRun: boolean,
+  current?: VetusImportBatchItemSummary
+): VetusImportBatchItemSummary {
+  const base: VetusImportBatchItemSummary = current ?? {
+    id: 'vetusbatchitem_response_budget_placeholder',
+    accountId: batch.accountId,
+    batchId: batch.id,
+    rowNumber: row.rowNumber,
+    sourceReference: null,
+    status: 'pending',
+    importLogId: null,
+    ownerId: null,
+    patientId: null,
+    ownerCreated: false,
+    patientCreated: false,
+    reason: null,
+    payload: {},
+    createdAt: '2000-01-01T00:00:00.000Z',
+    updatedAt: '2000-01-01T00:00:00.000Z'
+  };
+  const valid = row.normalized !== null;
+  return {
+    ...base,
+    rowNumber: row.rowNumber,
+    sourceReference: row.normalized?.sourceReference ?? null,
+    status: valid ? (dryRun ? 'validated' : 'imported') : 'rejected',
+    importLogId: valid ? 'vetusimport_response_budget_placeholder' : null,
+    ownerId: valid ? '00000000-0000-0000-0000-000000000000' : null,
+    patientId: valid ? '00000000-0000-0000-0000-000000000000' : null,
+    ownerCreated: valid && !dryRun,
+    patientCreated: valid && !dryRun,
+    reason: valid ? null : 'x'.repeat(MAX_VETUS_BATCH_ITEM_REASON_LENGTH),
+    payload: row.normalized
+      ? batchItemPayload(row.normalized, sourceSystem)
+      : storedBatchPayload(row.rawRow)
+  };
+}
+
+function projectedBatchItems(
+  batch: VetusImportBatchSummary,
+  existingItems: readonly VetusImportBatchItemSummary[],
+  rows: readonly PreparedVetusBatchRow[],
+  sourceSystem: string,
+  dryRun: boolean
+): readonly VetusImportBatchItemSummary[] {
+  const rowByNumber = new Map(rows.map((row) => [row.rowNumber, row]));
+  if (existingItems.length === 0) {
+    return rows.map((row) => projectedBatchItem(batch, row, sourceSystem, dryRun));
+  }
+  return existingItems.map((item) => {
+    const row = rowByNumber.get(item.rowNumber);
+    return row ? projectedBatchItem(batch, row, sourceSystem, dryRun, item) : item;
+  });
+}
+
+function assertBatchResponseBudget(
+  batch: VetusImportBatchSummary,
+  items: readonly VetusImportBatchItemSummary[]
+): void {
+  const body = JSON.stringify({ batch: publicBatchSummary(batch), items });
+  if (body === undefined || Buffer.byteLength(body, 'utf8') > MAX_VETUS_BATCH_RESPONSE_BODY_BYTES) {
+    throw new ValidationError(
+      'Vetus batch response is too large for the transactional command; split the import into smaller batches'
+    );
+  }
+}
+
+function projectedBatchSummary(
+  batch: VetusImportBatchSummary,
+  items: readonly VetusImportBatchItemSummary[],
+  dryRun: boolean
+): VetusImportBatchSummary {
+  return {
+    ...batch,
+    ...batchCounts(items),
+    status: dryRun
+      ? 'dry_run'
+      : items.some((item) => item.status === 'rejected')
+        ? 'partial'
+        : 'completed'
+  };
+}
+
 export async function handleVetusImportRoutes(
   pathname: string,
   request: IncomingMessage,
@@ -488,7 +720,7 @@ export async function handleVetusImportRoutes(
 
   const batchStore = getBatchStore(handlers);
   if (pathname === '/vetus-import-batches' && method === 'GET') {
-    const principal = requirePrincipal(request, 'patients.read');
+    const principal = await requirePrincipal(request, 'patients.read');
     if (!batchStore) {
       return json(response, 503, {
         error: 'vetus_import_batch_unavailable',
@@ -507,12 +739,12 @@ export async function handleVetusImportRoutes(
       riskLevel: 'medium',
       correlationId
     });
-    return json(response, 200, { items: batches });
+    return json(response, 200, { items: batches.map(publicBatchSummary) });
   }
 
   const batchDetailMatch = pathname.match(/^\/vetus-import-batches\/([^/]+)$/);
   if (batchDetailMatch && method === 'GET') {
-    const principal = requirePrincipal(request, 'patients.read');
+    const principal = await requirePrincipal(request, 'patients.read');
     if (!batchStore) {
       return json(response, 503, {
         error: 'vetus_import_batch_unavailable',
@@ -523,12 +755,12 @@ export async function handleVetusImportRoutes(
     const batch = await batchStore.findBatch(principal.user.accountId, batchId);
     if (!batch) return json(response, 404, { error: 'vetus_import_batch_not_found' });
     const items = await batchStore.listBatchItems(principal.user.accountId, batchId);
-    return json(response, 200, { batch, items });
+    return json(response, 200, { batch: publicBatchSummary(batch), items });
   }
 
   if (pathname === '/vetus-import-batches' && method === 'POST') {
-    const principal = requirePrincipal(request, 'patients.manage');
-    requirePrincipal(request, 'owners.manage');
+    const principal = await requirePrincipal(request, 'patients.manage');
+    await requirePrincipal(request, 'owners.manage');
     if (!batchStore) {
       return json(response, 503, {
         error: 'vetus_import_batch_unavailable',
@@ -536,34 +768,105 @@ export async function handleVetusImportRoutes(
       });
     }
     const requestPayload = validateBatchRequest(await readJsonBody(request));
-    const sourceSystem = requestPayload.sourceSystem ?? 'Vetus';
-    let batch: VetusImportBatchSummary;
+    const isResume = Boolean(requestPayload.resumeBatchId);
+    let sourceSystem = requestPayload.sourceSystem ?? 'Vetus';
+    let requestHash: string | null = null;
+    let batch!: VetusImportBatchSummary;
     let existingItems: readonly VetusImportBatchItemSummary[] = [];
-    let rows: readonly unknown[] = requestPayload.items ?? [];
+    let preparedRows: readonly PreparedVetusBatchRow[] = [];
 
-    if (requestPayload.resumeBatchId) {
+    if (isResume) {
       const existingBatch = await batchStore.findBatch(
         principal.user.accountId,
-        requestPayload.resumeBatchId
+        requestPayload.resumeBatchId as string
       );
       if (!existingBatch) return json(response, 404, { error: 'vetus_import_batch_not_found' });
-      if (existingBatch.status === 'dry_run' || existingBatch.status === 'rolled_back') {
+      if (existingBatch.status !== 'partial') {
         throw new ValidationError('Only a partial Vetus import batch can be resumed');
       }
-      batch = existingBatch;
-      existingItems = await batchStore.listBatchItems(principal.user.accountId, batch.id);
-      if (rows.length === 0) {
-        rows = existingItems
-          .filter((item) => item.status === 'rejected')
-          .map((item) => item.payload);
+      if (requestPayload.dryRun) {
+        throw new ValidationError('A resumed Vetus import batch cannot be a dry-run');
       }
-      if (rows.length === 0) {
+      if (
+        requestPayload.sourceSystem !== undefined
+        && requestPayload.sourceSystem !== existingBatch.sourceSystem
+      ) {
+        throw new ValidationError('A resumed Vetus import batch cannot change sourceSystem');
+      }
+      if (
+        requestPayload.sourceReference !== undefined
+        && requestPayload.sourceReference !== existingBatch.sourceReference
+      ) {
+        throw new ValidationError('A resumed Vetus import batch cannot change sourceReference');
+      }
+      batch = existingBatch;
+      sourceSystem = existingBatch.sourceSystem;
+      existingItems = await batchStore.listBatchItems(principal.user.accountId, batch.id);
+      const rejectedItems = existingItems.filter((item) => item.status === 'rejected');
+      if (rejectedItems.length === 0) {
         throw new ValidationError('No rejected rows are available to resume');
       }
+      const requestedRows = requestPayload.items ?? [];
+      if (requestedRows.length > 0 && requestedRows.length !== rejectedItems.length) {
+        throw new ValidationError(
+          `Resume must provide exactly ${rejectedItems.length} replacement row(s)`
+        );
+      }
+      const rows = requestedRows.length > 0
+        ? requestedRows.map((rawRow, index) => ({
+            rawRow,
+            rowNumber: rejectedItems[index]!.rowNumber
+          }))
+        : rejectedItems.map((item) => ({ rawRow: item.payload, rowNumber: item.rowNumber }));
+      preparedRows = rows.map(({ rawRow, rowNumber }) =>
+        prepareBatchRow(rowNumber, rawRow, sourceSystem, batch.sourceReference ?? undefined)
+      );
+      await assertBatchItemSourceReferences(
+        preparedRows,
+        importLogStore,
+        principal.user.accountId
+      );
+      const projectedItems = projectedBatchItems(
+        batch,
+        existingItems,
+        preparedRows,
+        sourceSystem,
+        false
+      );
+      assertBatchResponseBudget(projectedBatchSummary(batch, projectedItems, false), projectedItems);
     } else {
-      if (rows.length === 0) {
+      const rawRows = requestPayload.items ?? [];
+      if (rawRows.length === 0) {
         throw new ValidationError('items must contain at least one Vetus row');
       }
+      preparedRows = rawRows.map((rawRow, index) =>
+        prepareBatchRow(index + 1, rawRow, sourceSystem, requestPayload.sourceReference)
+      );
+      requestHash = hashImportPayload(
+        batchFingerprintPayload(
+          sourceSystem,
+          requestPayload.sourceReference,
+          requestPayload.dryRun === true,
+          preparedRows
+        )
+      );
+      const timestamp = nowIso();
+      batch = {
+        id: createCorrelationId('vetusbatch'),
+        accountId: principal.user.accountId,
+        sourceSystem,
+        sourceReference: requestPayload.sourceReference ?? null,
+        requestHash,
+        status: requestPayload.dryRun ? 'dry_run' : 'partial',
+        totalCount: rawRows.length,
+        importedCount: 0,
+        linkedCount: 0,
+        rejectedCount: 0,
+        rolledBackCount: 0,
+        createdByUserId: principal.user.id,
+        createdAt: timestamp,
+        updatedAt: timestamp
+      };
       if (requestPayload.sourceReference) {
         const existingBatch = await batchStore.findBatchBySourceReference(
           principal.user.accountId,
@@ -571,10 +874,17 @@ export async function handleVetusImportRoutes(
           requestPayload.sourceReference
         );
         if (existingBatch) {
+          assertSourceReferenceMatches(
+            existingBatch.requestHash,
+            requestHash,
+            sourceSystem,
+            requestPayload.sourceReference
+          );
           const existingItems = await batchStore.listBatchItems(
             principal.user.accountId,
             existingBatch.id
           );
+          assertBatchResponseBudget(existingBatch, existingItems);
           appendAudit(audit, {
             actorId: principal.user.id,
             accountId: principal.user.accountId,
@@ -586,33 +896,39 @@ export async function handleVetusImportRoutes(
             riskLevel: 'medium',
             correlationId
           });
-          return json(response, 200, { batch: existingBatch, items: existingItems });
+          return json(response, 200, {
+            batch: publicBatchSummary(existingBatch),
+            items: existingItems
+          });
         }
       }
-      const timestamp = nowIso();
-      batch = {
-        id: createCorrelationId('vetusbatch'),
-        accountId: principal.user.accountId,
+      await assertBatchItemSourceReferences(
+        preparedRows,
+        importLogStore,
+        principal.user.accountId
+      );
+      const projectedItems = projectedBatchItems(
+        batch,
+        [],
+        preparedRows,
         sourceSystem,
-        sourceReference: requestPayload.sourceReference ?? null,
-        status: requestPayload.dryRun ? 'dry_run' : 'partial',
-        totalCount: rows.length,
-        importedCount: 0,
-        linkedCount: 0,
-        rejectedCount: 0,
-        rolledBackCount: 0,
-        createdByUserId: principal.user.id,
-        createdAt: timestamp,
-        updatedAt: timestamp
-      };
+        requestPayload.dryRun === true
+      );
+      assertBatchResponseBudget(
+        projectedBatchSummary(batch, projectedItems, requestPayload.dryRun === true),
+        projectedItems
+      );
       await batchStore.createBatch(batch);
     }
 
     const itemByRow = new Map(existingItems.map((item) => [item.rowNumber, item]));
-    for (let index = 0; index < rows.length; index += 1) {
-      const rowNumber = index + 1;
-      const rawRow = rows[index];
+    const isDryRun = !isResume && requestPayload.dryRun === true;
+    for (const preparedRow of preparedRows) {
+      const { rowNumber, rawRow, normalized } = preparedRow;
       const current = itemByRow.get(rowNumber);
+      if (isResume && (!current || current.status !== 'rejected')) {
+        throw new ValidationError(`Only rejected Vetus row ${rowNumber} can be resumed`);
+      }
       let item: VetusImportBatchItemSummary = current ?? {
         id: createCorrelationId('vetusbatchitem'),
         accountId: principal.user.accountId,
@@ -626,19 +942,17 @@ export async function handleVetusImportRoutes(
         ownerCreated: false,
         patientCreated: false,
         reason: null,
-        payload: rawRow && typeof rawRow === 'object' && !Array.isArray(rawRow)
-          ? rawRow as Record<string, unknown>
-          : { rawValue: rawRow },
+        payload: storedBatchPayload(rawRow),
         createdAt: nowIso(),
         updatedAt: nowIso()
       };
       if (!current) await batchStore.createBatchItem(item);
 
       try {
-        const parsed = validatePayload(rawRow);
-        const sourceReference = parsed.sourceReference
-          ?? (requestPayload.sourceReference ? `${requestPayload.sourceReference}:${rowNumber}` : undefined);
-        const normalized = { ...parsed, sourceSystem, sourceReference };
+        if (!normalized) {
+          throw new ValidationError(preparedRow.validationError ?? 'Vetus row rejected');
+        }
+        const sourceReference = normalized.sourceReference;
         item = {
           ...item,
           sourceReference: sourceReference ?? null,
@@ -646,7 +960,7 @@ export async function handleVetusImportRoutes(
           reason: null,
           updatedAt: nowIso()
         };
-        if (requestPayload.dryRun) {
+        if (isDryRun) {
           requireOwnerContact(normalized.owner);
           const existing = sourceReference
             ? await findImportBySourceReference(
@@ -656,6 +970,14 @@ export async function handleVetusImportRoutes(
                 sourceReference
               )
             : null;
+          if (existing) {
+            assertSourceReferenceMatches(
+              existing.requestHash,
+              hashImportRequest(normalized),
+              sourceSystem,
+              sourceReference as string
+            );
+          }
           item = {
             ...item,
             status: existing ? 'linked' : 'validated',
@@ -678,10 +1000,14 @@ export async function handleVetusImportRoutes(
           };
         }
       } catch (error) {
+        if (error instanceof VetusSourceReferenceConflictError) throw error;
         item = {
           ...item,
           status: 'rejected',
-          reason: error instanceof Error ? error.message : 'Vetus row rejected',
+          reason: (error instanceof Error ? error.message : 'Vetus row rejected').slice(
+            0,
+            MAX_VETUS_BATCH_ITEM_REASON_LENGTH
+          ),
           updatedAt: nowIso()
         };
       }
@@ -693,7 +1019,7 @@ export async function handleVetusImportRoutes(
     const updatedBatch: VetusImportBatchSummary = {
       ...batch,
       ...counts,
-      status: requestPayload.dryRun
+      status: isDryRun
         ? 'dry_run'
         : counts.rejectedCount > 0
           ? 'partial'
@@ -701,27 +1027,31 @@ export async function handleVetusImportRoutes(
       updatedAt: nowIso()
     };
     const persistedBatch = await batchStore.updateBatch(updatedBatch);
+    // Keep the last defensive size check before the audit write. If an
+    // unexpected payload expansion is detected, the surrounding tenant UoW
+    // can roll back without first adding a phantom audit event to the cache.
+    assertBatchResponseBudget(updatedBatch, allItems);
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
       module: 'vetus-imports',
-      action: requestPayload.dryRun ? 'dry_run_batch' : requestPayload.resumeBatchId ? 'resume_batch' : 'create_batch',
+      action: isDryRun ? 'dry_run_batch' : isResume ? 'resume_batch' : 'create_batch',
       entityType: 'vetus-import-batch',
       entityId: persistedBatch.id,
       payloadSummary: `Vetus batch ${persistedBatch.id}: ${persistedBatch.importedCount} imported, ${persistedBatch.linkedCount} linked, ${persistedBatch.rejectedCount} rejected`,
       riskLevel: 'high',
       correlationId
     });
-    return json(response, requestPayload.resumeBatchId ? 200 : 201, {
-      batch: persistedBatch,
+    return json(response, isResume ? 200 : 201, {
+      batch: publicBatchSummary(persistedBatch),
       items: allItems
     });
   }
 
   const rollbackBatchMatch = pathname.match(/^\/vetus-import-batches\/([^/]+)\/rollback$/);
   if (rollbackBatchMatch && method === 'POST') {
-    const principal = requirePrincipal(request, 'patients.manage');
-    requirePrincipal(request, 'owners.manage');
+    const principal = await requirePrincipal(request, 'patients.manage');
+    await requirePrincipal(request, 'owners.manage');
     if (!batchStore) {
       return json(response, 503, {
         error: 'vetus_import_batch_unavailable',
@@ -734,19 +1064,31 @@ export async function handleVetusImportRoutes(
     if (batch.status === 'dry_run' || batch.status === 'rolled_back') {
       throw new ValidationError('This Vetus import batch cannot be rolled back');
     }
+    // A batch may have been resumed by another API instance. Refresh both
+    // participant caches, including primary links, before mutating statuses.
+    await Promise.all([
+      owners.hydrateFromDatabase(principal.user.accountId as never),
+      patients.hydrateFromDatabase(principal.user.accountId as never)
+    ]);
     const items = await batchStore.listBatchItems(principal.user.accountId, batchId);
     for (const item of items) {
       if (item.status !== 'imported' && item.status !== 'linked') continue;
-      if (item.patientCreated && item.patientId) {
-        const patient = patients.getOrThrow(item.patientId as never);
-        if (patient.accountId === principal.user.accountId) {
-          patients.update(patient.id, { status: 'inactive' });
-        }
-      }
       if (item.ownerCreated && item.ownerId) {
-        const owner = owners.getOrThrow(item.ownerId as never);
+        const owner = await owners.getAuthoritativeOrThrow(
+          principal.user.accountId,
+          item.ownerId as never
+        );
         if (owner.accountId === principal.user.accountId) {
           owners.update(owner.id, { status: 'inactive' });
+        }
+      }
+      if (item.patientCreated && item.patientId) {
+        const patient = await patients.getAuthoritativeOrThrow(
+          principal.user.accountId,
+          item.patientId as never
+        );
+        if (patient.accountId === principal.user.accountId) {
+          patients.update(patient.id, { status: 'inactive' });
         }
       }
       await batchStore.updateBatchItem({
@@ -775,12 +1117,14 @@ export async function handleVetusImportRoutes(
       riskLevel: 'high',
       correlationId
     });
-    return json(response, 200, { batch: updatedBatch, items: updatedItems });
+    return json(response, 200, { batch: publicBatchSummary(updatedBatch), items: updatedItems });
   }
 
   if (pathname === '/vetus-imports' && method === 'GET') {
-    const principal = requirePrincipal(request, 'patients.read');
-    const items = await listImportLogs(importLogStore, principal.user.accountId);
+    const principal = await requirePrincipal(request, 'patients.read');
+    const items = (await listImportLogs(importLogStore, principal.user.accountId)).map(
+      publicImportSummary
+    );
 
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -798,8 +1142,8 @@ export async function handleVetusImportRoutes(
   }
 
   if (pathname === '/vetus-imports' && method === 'POST') {
-    const principal = requirePrincipal(request, 'patients.manage');
-    requirePrincipal(request, 'owners.manage');
+    const principal = await requirePrincipal(request, 'patients.manage');
+    await requirePrincipal(request, 'owners.manage');
     const payload = validatePayload(await readJsonBody(request));
     const result = await importOne(principal, payload, owners, patients, importLogStore);
 
@@ -817,7 +1161,7 @@ export async function handleVetusImportRoutes(
       correlationId
     });
 
-    return json(response, result.replayed ? 200 : 201, result.summary);
+    return json(response, result.replayed ? 200 : 201, publicImportSummary(result.summary));
   }
 
   return false;

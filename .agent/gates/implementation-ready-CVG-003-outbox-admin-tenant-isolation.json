@@ -1,0 +1,95 @@
+{
+  "record_id": "GATE-CVG-003-OUTBOX-ADMIN-TENANT-ISOLATION-IR-001",
+  "timestamp": "2026-08-29T10:49:37-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-003 bounded account-scoped outbox administration service, repository and internal-events HTTP boundary",
+  "scope_ref": "CVG-003-OUTBOX-ADMIN-TENANT-ISOLATION",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The internal event administration service and in-memory repository are confirmed to omit account predicates while the HTTP routes rely only on permission checks and identifier calls.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-003-OUTBOX-ADMIN-TENANT-ISOLATION.md",
+        ".agent/verification.jsonl#VFY-SCOUT-CVG-003-OUTBOX-ADMIN-TENANT-ISOLATION-001",
+        "packages/modules/event-bus/src/outbox.interface.ts",
+        "packages/modules/event-bus/src/event-bus.service.ts",
+        "apps/api/src/runtime-repositories.ts",
+        "apps/api/src/routes/internal-events-routes.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The scouting identifies a repository-local supported-runtime boundary; it does not claim a production fallback or release failure."
+    },
+    {
+      "id": "IR-002",
+      "description": "The authorized correction is limited to explicit AccountId-first administrative service/repository methods, account-scoped in-memory and database behavior, count delegation and principal forwarding from internal event routes.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-003-OUTBOX-ADMIN-TENANT-ISOLATION.md",
+        ".agent/authority.jsonl#AUTH-CVG-003-OUTBOX-ADMIN-TENANT-ISOLATION-IR-001",
+        "packages/modules/event-bus/src/outbox.interface.ts",
+        "packages/modules/event-bus/src/event-bus.service.ts",
+        "apps/api/src/runtime-repositories.ts",
+        "apps/api/src/routes/internal-events-routes.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "No worker claim changes, migration, target, provider, credential, production, deployment, external mutation or release action is authorized."
+    },
+    {
+      "id": "IR-003",
+      "description": "Intentional RED tests for two-account in-memory administration and principal-account route forwarding are the required implementation entry point; GREEN, quality checks and independent review remain pending.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-003-OUTBOX-ADMIN-TENANT-ISOLATION.md",
+        "apps/api/src/runtime.test.ts",
+        "apps/api/src/routes/internal-events-routes.test.ts",
+        "packages/modules/event-bus/src/event-bus.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The implementation-ready gate does not claim that the correction, regression, coverage, independent review or bounded verification has passed."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-003-OUTBOX-ADMIN-TENANT-ISOLATION.md",
+    ".agent/authority.jsonl#AUTH-CVG-003-OUTBOX-ADMIN-TENANT-ISOLATION-IR-001",
+    ".agent/verification.jsonl#VFY-SCOUT-CVG-003-OUTBOX-ADMIN-TENANT-ISOLATION-001",
+    "packages/modules/event-bus/src/outbox.interface.ts",
+    "packages/modules/event-bus/src/event-bus.service.ts",
+    "apps/api/src/runtime-repositories.ts",
+    "apps/api/src/routes/internal-events-routes.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "The corrected code and focused regressions still require execution.",
+    "Independent read-only security/correctness review is not complete.",
+    "Global parity/readiness, target, provider, operations and release evidence remain open."
+  ],
+  "conditions": [
+    "Preserve the existing PostgreSQL/Vue monolith and package boundaries.",
+    "Do not leave any identifier-only administrative service or repository path in the authorized scope.",
+    "Do not change worker claim semantics or modify migrations, target infrastructure, providers, credentials or external systems."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via explicit continuation request and original consolidation brief",
+    "scope": "CVG-003 bounded account-scoped outbox administration service, repository and internal-events HTTP boundary",
+    "decision": "Authorize reversible repository-local administrative service/repository/route/test correction with principal-derived AccountId; exclude worker claim behavior, migrations, target, providers, credentials, production, deployment, external mutation and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-003-OUTBOX-ADMIN-TENANT-ISOLATION-IR-001",
+    "expires_or_revalidates": "Revalidate before adding worker claims or expanding beyond the event administration service/HTTP boundary."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "implementation_status": "READY",
+  "next_action": "Write and execute intentional RED two-account administration and route-forwarding regressions, then implement the smallest AccountId-first correction without global promotion.",
+  "revalidation_triggers": [
+    "New internal event administration route or repository operation",
+    "Changes to outbox tenant context, runtime repository selection, permission policy or redrive semantics",
+    "Expansion to claimPending, migrations, target, provider, credential, production, deployment or release scope"
+  ],
+  "supersedes": null
+}

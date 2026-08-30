@@ -143,6 +143,200 @@ tags:
     description: Utility endpoints for master search and address lookup
 
 paths:
+  /internal/events/dlq:
+    get:
+      operationId: listInternalEventDlq
+      summary: List tenant-scoped failed outbox events
+      description: Returns sanitized failed events for audit and dead-letter operations.
+      tags: [Audit]
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+      responses:
+        '200':
+          description: Failed events visible to the authenticated account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OutboxEventSummaryListResponse'
+        '400':
+          description: Invalid limit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+        '403':
+          description: Audit read permission required
+
+  /internal/events/stats:
+    get:
+      operationId: getInternalEventStats
+      summary: Get tenant-scoped outbox event counts
+      description: Returns pending, retrying, completed, failed and total counts for the authenticated account.
+      tags: [Audit]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Event counts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OutboxEventCounts'
+        '401':
+          description: Authentication required
+        '403':
+          description: Audit read permission required
+
+  /internal/events/pending:
+    get:
+      operationId: listInternalPendingEvents
+      summary: List tenant-scoped pending outbox events
+      description: Returns sanitized pending and retrying events for the authenticated account.
+      tags: [Audit]
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+      responses:
+        '200':
+          description: Pending and retrying events visible to the authenticated account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OutboxEventSummaryListResponse'
+        '400':
+          description: Invalid limit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+        '403':
+          description: Audit read permission required
+
+  /internal/events/{eventId}:
+    get:
+      operationId: getInternalEvent
+      summary: Get one tenant-scoped outbox event
+      description: Returns metadata for one outbox event only when it belongs to the authenticated account; raw payload is intentionally omitted.
+      tags: [Audit]
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: eventId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Metadata-only outbox event view
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OutboxEventAdminView'
+        '401':
+          description: Authentication required
+        '403':
+          description: Audit read permission required
+        '404':
+          description: Event is absent or belongs to another account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /internal/events/by-correlation/{correlationId}:
+    get:
+      operationId: listInternalEventsByCorrelation
+      summary: List tenant-scoped outbox events by correlation ID
+      description: Returns metadata-only event views for the correlation ID owned by the authenticated account; raw payloads are intentionally omitted.
+      tags: [Audit]
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: correlationId
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+      responses:
+        '200':
+          description: Metadata-only correlated outbox event views
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OutboxEventAdminViewListResponse'
+        '400':
+          description: Invalid limit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+        '403':
+          description: Audit read permission required
+
+  /internal/events/{eventId}/reprocess:
+    post:
+      operationId: reprocessInternalEvent
+      summary: Reprocess one failed tenant-scoped outbox event
+      description: Atomically queues one failed or retrying event for reprocessing when it belongs to the authenticated account.
+      tags: [Audit]
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: eventId
+          required: true
+          schema:
+            type: string
+      responses:
+        '202':
+          description: Event queued for reprocessing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OutboxReprocessResponse'
+        '401':
+          description: Authentication required
+        '403':
+          description: Audit write permission and administrative ABAC policy required
+        '404':
+          description: Event is absent, belongs to another account or is not reprocessable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /internal/pix-settlement/deliveries:
     get:
       operationId: listPixSettlementDlqDeliveries
@@ -247,14 +441,15 @@ paths:
       operationId: getHealth
       summary: Health check
       description: |
-        Returns full system health status including database connectivity,
-        repository state, worker status, and initialization state.
-        Use this for comprehensive monitoring.
+        Returns a compact operational health summary. The transport status is
+        always 200; inspect `ok` and `persistenceMode` for dependency health.
+        During a database-failure containment window, `ok` is false and
+        durable mutations are rejected with 503.
       tags: [Health]
       security: []
       responses:
         '200':
-          description: System is healthy
+          description: Health summary returned; `ok` may be false when degraded
           headers:
             x-correlation-id:
               schema:
@@ -263,7 +458,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HealthResponse'
+                $ref: '#/components/schemas/HealthSummaryResponse'
 
   /live:
     get:
@@ -2395,6 +2590,86 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /encounters/{encounterId}/cash-receipts/{receiptId}/reverse:
+    post:
+      operationId: reverseEncounterCashReceipt
+      summary: Reverse a full BRL cash receipt
+      description: Appends an immutable compensating cash withdrawal and inverse journal entry, reopens the billing projection and records the audit/outbox facts atomically. The encounter itself remains closed until an explicit reopen operation.
+      tags: [Financial, Cash]
+      parameters:
+        - name: encounterId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: receiptId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 255
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReverseEncounterCashReceiptRequest'
+      responses:
+        '201':
+          description: Cash receipt reversal committed
+          headers:
+            Location:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EncounterCashReceiptReversal'
+        '409':
+          description: Receipt is already reversed, inconsistent, or the cash register cannot fund the reversal
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Invalid UUID, idempotency key, or reversal reason
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: The authenticated principal cannot manage billing for this account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Receipt or encounter was not found in the active account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: The durable reversal ledger is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /appointments:
     get:
       operationId: listAppointments
@@ -3262,6 +3537,161 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CashReconciliation'
+
+  /finance/advance-payments:
+    get:
+      operationId: listAdvancePayments
+      summary: List persisted advance-payment ledger facts
+      description: Returns only immutable advance-payment facts with balances derived from append-only compensations.
+      tags: [Financial]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 200
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [available, partially_compensated, compensated]
+        - name: dateFrom
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Advance-payment ledger facts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdvancePaymentListResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '503':
+          description: Canonical advance-payment repository unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      operationId: createAdvancePayment
+      summary: Issue a manual advance payment
+      description: Appends an immutable BRL advance-payment fact and emits transactional audit and outbox records.
+      tags: [Financial]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 255
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAdvancePaymentRequest'
+      responses:
+        '201':
+          description: Advance payment issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdvancePaymentSummary'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Owner not found
+        '409':
+          description: Idempotency conflict or concurrent command conflict
+        '503':
+          description: Canonical advance-payment repository unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /finance/advance-payments/{advancePaymentId}/allocations:
+    post:
+      operationId: compensateAdvancePayment
+      summary: Append an advance-payment compensation
+      description: Appends an immutable compensation allocation after locking the parent fact and validating the derived balance.
+      tags: [Financial]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: advancePaymentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 255
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAdvancePaymentAllocationRequest'
+      responses:
+        '201':
+          description: Advance-payment compensation appended
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdvancePaymentSummary'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Advance payment not found
+        '409':
+          description: Idempotency conflict or allocation exceeds available balance
+        '503':
+          description: Canonical advance-payment repository unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /billing/{encounterId}/items:
     get:
@@ -6676,10 +7106,40 @@ paths:
   /integrations/laboratory/equipment-results/imports:
     post:
       operationId: importEquipmentResult
-      summary: Import one laboratory result from external equipment bridge
+      summary: Queue one authenticated laboratory result from the local equipment bridge
+      description: |
+        Accepts only an account-bound HMAC-signed versioned payload. The API
+        durably records the immutable ingress and returns it in
+        `pending_human_review`; it never changes a diagnostic order, releases
+        a result, or invents a clinical signer. Replays of the same semantic
+        payload are acknowledged idempotently, while a changed payload for the
+        same external result is rejected with `409`.
       tags: [Integrations]
       security:
         - ApiKeyAuth: []
+      parameters:
+        - name: X-Lab-Provider-Key-Id
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 8
+            maxLength: 128
+            pattern: '^[A-Za-z0-9_-]{8,128}$'
+        - name: X-Lab-Timestamp
+          in: header
+          required: true
+          description: Unix timestamp in seconds used by the HMAC freshness window.
+          schema:
+            type: string
+            pattern: '^\d{10}$'
+        - name: X-Lab-Signature
+          in: header
+          required: true
+          description: HMAC-SHA256 over the exact raw body using `v1.<timestamp>.<raw-body>`.
+          schema:
+            type: string
+            pattern: '^v1=[0-9a-f]{64}$'
       requestBody:
         required: true
         content:
@@ -6687,24 +7147,39 @@ paths:
             schema:
               $ref: '#/components/schemas/LaboratoryResultImportRequest'
       responses:
-        '201':
-          description: Result imported
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/LaboratoryResultImportResponse'
         '202':
-          description: Import failed and was recorded for retry
+          description: Signed result durably queued for human review
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/LaboratoryResultImportResponse'
+        '200':
+          description: Identical signed result replayed idempotently
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LaboratoryResultImportResponse'
+        '400':
+          description: Invalid content type or versioned payload
+        '401':
+          description: API key, HMAC key, timestamp or signature is invalid
+        '403':
+          description: Dedicated laboratory result write permission is required
+        '409':
+          description: External result id conflicts with an immutable prior payload
+        '413':
+          description: Signed request body exceeds the maximum size
+        '503':
+          description: Durable ingress or awaited audit is unavailable
 
   /integrations/laboratory/equipment-results/imports/{externalResultId}/retry:
     post:
       operationId: retryLaboratoryResultImport
-      summary: Retry failed laboratory result import
-      description: Reprocesses a tenant-scoped failed result using its original correlation data.
+      summary: Inspect a laboratory result import requiring human review
+      description: |
+        This compatibility endpoint is tenant-scoped and does not mutate a
+        clinical order, release a result, or create a signer. Failed legacy
+        records return `409` until a human review workflow is implemented.
       tags: [Integrations]
       security:
         - ApiKeyAuth: []
@@ -6716,19 +7191,17 @@ paths:
             type: string
       responses:
         '200':
-          description: Laboratory result imported or already imported
+          description: Pending or already imported record returned without clinical mutation
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/LaboratoryResultImportResponse'
-        '202':
-          description: Retry failed and remains available for another attempt
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/LaboratoryResultImportResponse'
+        '403':
+          description: Dedicated laboratory result write permission is required
+        '409':
+          description: Failed records require human review before clinical processing
         '404':
-          description: Failed import not found
+          description: Laboratory result import not found
 
   /integrations/laboratory/equipment-results/report:
     get:
@@ -7548,8 +8021,43 @@ paths:
     get:
       operationId: listAuditEvents
       summary: List audit events
-      description: Returns the audit trail for the account.
+      description: Returns the tenant-scoped audit trail with stable cursor pagination.
       tags: [Audit]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: cursor
+          in: query
+          description: Opaque cursor returned by the previous page.
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 100
+        - name: module
+          in: query
+          schema:
+            type: string
+        - name: entity
+          in: query
+          schema:
+            type: string
+        - name: entityType
+          in: query
+          schema:
+            type: string
+        - name: correlationId
+          in: query
+          schema:
+            type: string
+        - name: q
+          in: query
+          schema:
+            type: string
       responses:
         '200':
           description: Audit events
@@ -7562,12 +8070,19 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/AuditEvent'
+                  nextCursor:
+                    type: string
+                    nullable: true
+        '401':
+          description: Authentication required
+        '403':
+          description: Audit read permission or ABAC policy denied
 
   /audit/operational-coverage:
     get:
       operationId: getOperationalAuditCoverage
       summary: Operational audit coverage report
-      description: Returns coverage of required enterprise audit events by module, risk and account.
+      description: Returns coverage of required enterprise audit events by module, risk and account from the complete committed audit snapshot. If that source is unavailable, the endpoint fails closed with 503.
       tags: [Audit]
       responses:
         '200':
@@ -7576,6 +8091,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OperationalAuditCoverageReport'
+        '401':
+          description: Authentication required
+        '403':
+          description: Audit read permission denied
+        '503':
+          description: Committed audit coverage source unavailable
 
   /professions:
     get:
@@ -8547,8 +9068,8 @@ paths:
   /counter-sales/{counterSaleId}/cancel:
     post:
       operationId: cancelCounterSale
-      summary: Cancel counter sale
-      description: Cancels an open counter sale.
+      summary: Cancel counter sale with durable provenance
+      description: Cancels an open counter sale and records the authenticated actor, reason and correlation in the tenant audit trail atomically with the status transition.
       tags: [Counter Sales]
       parameters:
         - name: counterSaleId
@@ -8556,6 +9077,20 @@ paths:
           required: true
           schema:
             type: string
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: Stable key for safe replay of the cancellation command.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 255
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelCounterSaleRequest'
       responses:
         '200':
           description: Counter sale cancelled
@@ -8563,6 +9098,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CounterSale'
+        '400':
+          description: Cancellation reason is missing, invalid or contains an unknown field
+        '409':
+          description: Sale is already closed or the cancellation command conflicts with another request
 
   /counter-sales/{counterSaleId}/reopen:
     post:
@@ -9039,6 +9578,15 @@ paths:
       operationId: createPrescriptionExecution
       summary: Create prescription execution
       tags: [Prescriptions]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: Stable key for safe replay of the clinical command.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 255
       requestBody:
         required: true
         content:
@@ -9060,7 +9608,7 @@ paths:
           required: true
           schema:
             type: string
-            format: uuid
+            pattern: '^pe_[A-Za-z0-9_-]+$'
       responses:
         '200':
           description: Execution details
@@ -9076,7 +9624,15 @@ paths:
           required: true
           schema:
             type: string
-            format: uuid
+            pattern: '^pe_[A-Za-z0-9_-]+$'
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: Stable key for safe replay of the clinical command.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 255
       requestBody:
         required: true
         content:
@@ -9086,6 +9642,12 @@ paths:
       responses:
         '200':
           description: Prescription executed
+        '409':
+          description: Execution version conflict; retry with the current expectedVersion
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /prescription-executions/{executionId}/suspend:
     post:
@@ -9098,7 +9660,15 @@ paths:
           required: true
           schema:
             type: string
-            format: uuid
+            pattern: '^pe_[A-Za-z0-9_-]+$'
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: Stable key for safe replay of the clinical command.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 255
       requestBody:
         required: true
         content:
@@ -9108,6 +9678,12 @@ paths:
       responses:
         '200':
           description: Prescription suspended
+        '409':
+          description: Execution version conflict; retry with the current expectedVersion
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /prescription-executions/{executionId}/resume:
     post:
@@ -9121,10 +9697,30 @@ paths:
           required: true
           schema:
             type: string
-            format: uuid
+            pattern: '^pe_[A-Za-z0-9_-]+$'
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: Stable key for safe replay of the clinical command.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 255
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResumePrescriptionRequest'
       responses:
         '200':
           description: Prescription resumed
+        '409':
+          description: Execution version conflict; retry with the current expectedVersion
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /prescription-executions/{executionId}/log:
     post:
@@ -9138,7 +9734,15 @@ paths:
           required: true
           schema:
             type: string
-            format: uuid
+            pattern: '^pe_[A-Za-z0-9_-]+$'
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: Stable key for safe replay of the clinical command.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 255
       requestBody:
         required: true
         content:
@@ -9151,6 +9755,9 @@ paths:
                   type: string
                 notes:
                   type: string
+                vitalsSnapshot:
+                  type: object
+                  additionalProperties: true
       responses:
         '201':
           description: Event logged
@@ -11007,6 +11614,9 @@ components:
       properties:
         id:
           type: string
+          pattern: '^pe_[A-Za-z0-9_-]+$'
+        accountId:
+          type: string
           format: uuid
         eventId:
           type: string
@@ -11058,6 +11668,7 @@ components:
           type: string
           minLength: 1
           maxLength: 500
+          pattern: '\S'
 
     PixSettlementDlqRedriveResponse:
       type: object
@@ -11154,6 +11765,53 @@ components:
           maxLength: 255
           description: Request correlation identifier echoed by the HTTP boundary.
 
+    HealthSummaryResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - ok
+        - service
+        - version
+        - environment
+        - timestamp
+        - uptime
+        - memory
+        - persistenceMode
+        - activeChaosExperiments
+        - redisHealthy
+        - rateLimiterMode
+      properties:
+        ok:
+          type: boolean
+          description: False when a required runtime dependency is degraded.
+        service:
+          type: string
+        version:
+          type: string
+        environment:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        uptime:
+          type: integer
+          minimum: 0
+        memory:
+          type: object
+          additionalProperties: true
+        persistenceMode:
+          type: string
+          enum: [in-memory, database, unavailable, not-initialized]
+        activeChaosExperiments:
+          type: array
+          items:
+            type: string
+        redisHealthy:
+          type: boolean
+        rateLimiterMode:
+          type: string
+          enum: [redis, in-memory, fail-closed]
+
     HealthResponse:
       type: object
       properties:
@@ -11190,7 +11848,7 @@ components:
               type: boolean
             persistenceMode:
               type: string
-              enum: [in-memory, database]
+              enum: [in-memory, database, unavailable, not-initialized]
         dependencies:
           type: object
 
@@ -12688,7 +13346,20 @@ components:
 
     QueueTransfer:
       type: object
-      required: [id, accountId, queueEntryId, fromSector, toSector, sentByUserId, sentAt, status, reason, urgency, createdAt]
+      required:
+        [
+          id,
+          accountId,
+          queueEntryId,
+          fromSector,
+          toSector,
+          sentByUserId,
+          sentAt,
+          status,
+          reason,
+          urgency,
+          createdAt
+        ]
       properties:
         id:
           type: string
@@ -13029,6 +13700,137 @@ components:
         updatedAt:
           type: string
           format: date-time
+
+    AdvancePaymentSummary:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          id,
+          accountId,
+          ownerId,
+          ownerName,
+          documentId,
+          issuedAt,
+          amountCents,
+          compensatedAmountCents,
+          balanceCents,
+          currency,
+          sourceType,
+          sourceId,
+          reference,
+          notes,
+          status,
+          createdByUserId,
+          createdAt
+        ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        accountId:
+          type: string
+          format: uuid
+        ownerId:
+          type: string
+          format: uuid
+        ownerName:
+          type: string
+        documentId:
+          type: string
+        issuedAt:
+          type: string
+          format: date-time
+        amountCents:
+          type: integer
+          format: int64
+          minimum: 1
+        compensatedAmountCents:
+          type: integer
+          format: int64
+          minimum: 0
+        balanceCents:
+          type: integer
+          format: int64
+          minimum: 0
+        currency:
+          type: string
+          enum: [BRL]
+        sourceType:
+          type: string
+          description: Persisted source discriminator. New manual issuance uses manual; legacy facts may expose another discriminator.
+        sourceId:
+          type: string
+          minLength: 1
+          maxLength: 255
+        reference:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [available, partially_compensated, compensated]
+        createdByUserId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+
+    AdvancePaymentListResponse:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdvancePaymentSummary'
+
+    CreateAdvancePaymentRequest:
+      type: object
+      additionalProperties: false
+      required: [ownerId, amountCents, sourceId]
+      properties:
+        ownerId:
+          type: string
+          format: uuid
+        amountCents:
+          type: integer
+          format: int64
+          minimum: 1
+        sourceId:
+          type: string
+          minLength: 1
+          maxLength: 255
+        reference:
+          type: string
+          minLength: 1
+          maxLength: 255
+        notes:
+          type: string
+          minLength: 1
+          maxLength: 2000
+
+    CreateAdvancePaymentAllocationRequest:
+      type: object
+      additionalProperties: false
+      required: [amountCents, reference]
+      properties:
+        amountCents:
+          type: integer
+          format: int64
+          minimum: 1
+        reference:
+          type: string
+          minLength: 1
+          maxLength: 255
+        notes:
+          type: string
+          minLength: 1
+          maxLength: 2000
 
     CashMovementType:
       type: string
@@ -14325,6 +15127,119 @@ components:
           format: uuid
         notes:
           type: string
+
+        reversalId:
+          type: string
+          format: uuid
+        reversalCashMovementId:
+          type: string
+          format: uuid
+        reversalJournalEntryId:
+          type: string
+          format: uuid
+        reversalReason:
+          type: string
+          maxLength: 500
+        reversedByUserId:
+          type: string
+          format: uuid
+        reversedAt:
+          type: string
+          format: date-time
+
+    ReverseEncounterCashReceiptRequest:
+      type: object
+      required: [reason]
+      additionalProperties: false
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: '\S'
+
+    EncounterCashReceiptReversal:
+      type: object
+      required:
+        - id
+        - accountId
+        - receiptId
+        - encounterId
+        - billingRecordId
+        - financialAccountId
+        - receivableId
+        - receivablePaymentId
+        - originalCashRegisterId
+        - reversalCashRegisterId
+        - originalCashMovementId
+        - reversalCashMovementId
+        - originalJournalEntryId
+        - reversalJournalEntryId
+        - amount
+        - currency
+        - reason
+        - reversedByUserId
+        - reversedAt
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        accountId:
+          type: string
+          format: uuid
+        receiptId:
+          type: string
+          format: uuid
+        encounterId:
+          type: string
+          format: uuid
+        billingRecordId:
+          type: string
+        financialAccountId:
+          type: string
+          format: uuid
+        receivableId:
+          type: string
+          format: uuid
+        receivablePaymentId:
+          type: string
+          format: uuid
+        originalCashRegisterId:
+          type: string
+          format: uuid
+        reversalCashRegisterId:
+          type: string
+          format: uuid
+        originalCashMovementId:
+          type: string
+          format: uuid
+        reversalCashMovementId:
+          type: string
+          format: uuid
+        originalJournalEntryId:
+          type: string
+          format: uuid
+        reversalJournalEntryId:
+          type: string
+          format: uuid
+        amount:
+          type: number
+          exclusiveMinimum: 0
+          multipleOf: 0.01
+        currency:
+          type: string
+          enum: [BRL]
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+        reversedByUserId:
+          type: string
+          format: uuid
+        reversedAt:
+          type: string
+          format: date-time
 
     SettleReceivableRequest:
       type: object
@@ -16722,7 +17637,7 @@ components:
       allOf:
         - $ref: '#/components/schemas/CounterSale'
         - type: object
-          required: [items, payments]
+          required: [items, payments, cancellationHistory]
           properties:
             items:
               type: array
@@ -16736,6 +17651,45 @@ components:
               allOf:
                 - $ref: '#/components/schemas/CounterSaleReceipt'
               nullable: true
+            cancellationHistory:
+              type: array
+              items:
+                $ref: '#/components/schemas/CounterSaleCancellationHistory'
+
+    CounterSaleCancellationHistory:
+      type: object
+      required:
+        - eventId
+        - accountId
+        - counterSaleId
+        - cancelledByUserId
+        - cancelledAt
+        - reason
+        - correlationId
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        accountId:
+          type: string
+          format: uuid
+        counterSaleId:
+          type: string
+        cancelledByUserId:
+          type: string
+          format: uuid
+        cancelledAt:
+          type: string
+          format: date-time
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: '^[^\u0000-\u001F\u007F-\u009F]*$'
+        correlationId:
+          type: string
+          minLength: 1
+          maxLength: 255
 
     CounterSaleCloseResponse:
       allOf:
@@ -16855,6 +17809,17 @@ components:
           maxItems: 20
           items:
             $ref: '#/components/schemas/CreateCounterSalePaymentRequest'
+
+    CancelCounterSaleRequest:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: '^[^\u0000-\u001F\u007F-\u009F]*$'
 
     CounterSalesCommercialDashboard:
       type: object
@@ -17184,33 +18149,29 @@ components:
 
     PrescriptionExecution:
       type: object
+      required:
+        [
+          id,
+          accountId,
+          clinicalEntryId,
+          patientId,
+          encounterId,
+          medicationName,
+          dosage,
+          status,
+          scheduledAt,
+          version
+        ]
       properties:
         id:
           type: string
+          pattern: '^pe_[A-Za-z0-9_-]+$'
+        accountId:
+          type: string
           format: uuid
         clinicalEntryId:
           type: string
-          format: uuid
-        patientId:
-          type: string
-          format: uuid
-        medicationName:
-          type: string
-        dosage:
-          type: string
-        status:
-          type: string
-        scheduledAt:
-          type: string
-          format: date-time
-
-    CreatePrescriptionExecutionRequest:
-      type: object
-      required: [clinicalEntryId, patientId, encounterId, medicationName, dosage, scheduledAt]
-      properties:
-        clinicalEntryId:
-          type: string
-          format: uuid
+          pattern: '^rx_[A-Za-z0-9_-]+$'
         patientId:
           type: string
           format: uuid
@@ -17221,9 +18182,59 @@ components:
           type: string
         dosage:
           type: string
+        route:
+          type: string
+        frequency:
+          type: string
+        status:
+          type: string
+          enum: [pending, administered, not-administered, suspended, cancelled]
         scheduledAt:
           type: string
           format: date-time
+        administeredBy:
+          type: string
+        administeredAt:
+          type: string
+          format: date-time
+        notes:
+          type: string
+        version:
+          type: integer
+          minimum: 1
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreatePrescriptionExecutionRequest:
+      type: object
+      required: [clinicalEntryId, patientId, encounterId, medicationName, dosage, scheduledAt]
+      properties:
+        clinicalEntryId:
+          type: string
+          pattern: '^rx_[A-Za-z0-9_-]+$'
+        patientId:
+          type: string
+          format: uuid
+        encounterId:
+          type: string
+          format: uuid
+        medicationName:
+          type: string
+        dosage:
+          type: string
+        route:
+          type: string
+        frequency:
+          type: string
+        scheduledAt:
+          type: string
+          format: date-time
+        notes:
+          type: string
 
     ExecutePrescriptionRequest:
       type: object
@@ -17231,18 +18242,32 @@ components:
       properties:
         status:
           type: string
-          enum: [given, refused, missed]
-        executedAt:
-          type: string
-          format: date-time
+          enum: [administered, not-administered]
         notes:
           type: string
+        vitalsSnapshot:
+          type: object
+          additionalProperties: true
+        expectedVersion:
+          type: integer
+          minimum: 1
 
     SuspendPrescriptionRequest:
       type: object
+      required: [reason]
       properties:
         reason:
           type: string
+        expectedVersion:
+          type: integer
+          minimum: 1
+
+    ResumePrescriptionRequest:
+      type: object
+      properties:
+        expectedVersion:
+          type: integer
+          minimum: 1
 
     ExamCatalogEntry:
       type: object
@@ -17262,6 +18287,25 @@ components:
           type: boolean
         preparationInstructions:
           type: string
+
+    LaboratoryResultValue:
+      type: object
+      required: [parameter, value]
+      properties:
+        parameter:
+          type: string
+          maxLength: 120
+        value:
+          type: string
+          maxLength: 255
+        unit:
+          type: string
+          maxLength: 120
+        reference:
+          type: string
+          maxLength: 120
+        outOfRange:
+          type: boolean
 
     DiagnosticOrderSummary:
       type: object
@@ -17292,6 +18336,11 @@ components:
           type: string
         resultSummary:
           type: string
+        resultValues:
+          type: array
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/LaboratoryResultValue'
         resultAttachmentId:
           type: string
         resultedAt:
@@ -17334,6 +18383,11 @@ components:
           enum: [collected, resulted, cancelled]
         resultSummary:
           type: string
+        resultValues:
+          type: array
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/LaboratoryResultValue'
         resultAttachmentId:
           type: string
         collectedByUserId:
@@ -17693,6 +18747,9 @@ components:
           type: string
         notes:
           type: string
+        vitalsSnapshot:
+          type: object
+          additionalProperties: true
 
     Webhook:
       type: object
@@ -17880,6 +18937,20 @@ components:
               type: array
               items:
                 type: string
+            operatorEndpoints:
+              type: array
+              items:
+                type: string
+            authentication:
+              type: object
+              properties:
+                type:
+                  type: string
+                  enum: [bearer]
+                readPermission:
+                  type: string
+                writePermission:
+                  type: string
         webhooks:
           type: object
           properties:
@@ -17902,6 +18973,156 @@ components:
               type: array
               items:
                 type: string
+
+    OutboxEventAdminView:
+      type: object
+      required:
+        - id
+        - accountId
+        - correlationId
+        - moduleName
+        - eventType
+        - status
+        - attempts
+        - maxAttempts
+        - scheduledAt
+        - processedAt
+        - error
+        - createdAt
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        correlationId:
+          type: string
+        moduleName:
+          type: string
+        eventType:
+          type: string
+        status:
+          type: string
+          enum: [pending, processing, completed, failed, retrying]
+        attempts:
+          type: integer
+          minimum: 0
+        maxAttempts:
+          type: integer
+          minimum: 1
+        scheduledAt:
+          type: string
+          format: date-time
+        processedAt:
+          type: string
+          format: date-time
+          nullable: true
+        error:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    OutboxEventSummary:
+      type: object
+      required:
+        - id
+        - correlationId
+        - moduleName
+        - eventType
+        - status
+        - attempts
+        - maxAttempts
+        - error
+        - createdAt
+        - scheduledAt
+      properties:
+        id:
+          type: string
+        correlationId:
+          type: string
+        moduleName:
+          type: string
+        eventType:
+          type: string
+        status:
+          type: string
+          enum: [pending, processing, completed, failed, retrying]
+        attempts:
+          type: integer
+          minimum: 0
+        maxAttempts:
+          type: integer
+          minimum: 1
+        error:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        processedAt:
+          type: string
+          format: date-time
+          nullable: true
+        scheduledAt:
+          type: string
+          format: date-time
+
+    OutboxEventSummaryListResponse:
+      type: object
+      required: [items, count]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OutboxEventSummary'
+        count:
+          type: integer
+          minimum: 0
+
+    OutboxEventAdminViewListResponse:
+      type: object
+      required: [items, count]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OutboxEventAdminView'
+        count:
+          type: integer
+          minimum: 0
+
+    OutboxEventCounts:
+      type: object
+      required: [pending, retrying, completed, failed, total]
+      properties:
+        pending:
+          type: integer
+          minimum: 0
+        retrying:
+          type: integer
+          minimum: 0
+        completed:
+          type: integer
+          minimum: 0
+        failed:
+          type: integer
+          minimum: 0
+        total:
+          type: integer
+          minimum: 0
+
+    OutboxReprocessResponse:
+      type: object
+      required: [id, status, message]
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          enum: [reprocessing]
+        message:
+          type: string
 
     PixPaymentIntentRequest:
       type: object
@@ -18391,19 +19612,55 @@ components:
 
     LaboratoryResultImportRequest:
       type: object
-      required: [externalResultId, orderId, equipmentId, resultSummary]
+      additionalProperties: false
+      required:
+        [schemaVersion, provider, externalResultId, orderId, equipmentId, resultSummary, observedAt]
       properties:
+        schemaVersion:
+          type: string
+          enum: ['1']
+        provider:
+          type: string
+          enum: [equipment-bridge]
         externalResultId:
           type: string
+          minLength: 3
+          maxLength: 120
         orderId:
           type: string
+          minLength: 3
+          maxLength: 120
         equipmentId:
           type: string
+          minLength: 2
+          maxLength: 120
         resultSummary:
           type: string
+          minLength: 1
+          maxLength: 4000
+        observedAt:
+          type: string
+          format: date-time
+          pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$'
 
     LaboratoryResultImportResponse:
       type: object
+      required:
+        [
+          externalResultId,
+          orderId,
+          accountId,
+          equipmentId,
+          providerCode,
+          schemaVersion,
+          signatureKeyId,
+          payloadFingerprint,
+          observedAt,
+          status,
+          importedAt,
+          resultSummary,
+          replayed
+        ]
       properties:
         externalResultId:
           type: string
@@ -18413,9 +19670,23 @@ components:
           type: string
         equipmentId:
           type: string
+        providerCode:
+          type: string
+          enum: [equipment-bridge]
+        schemaVersion:
+          type: string
+          enum: ['1', legacy]
+        signatureKeyId:
+          type: string
+        payloadFingerprint:
+          type: string
+          pattern: '^[0-9a-f]{64}$'
+        observedAt:
+          type: string
+          format: date-time
         status:
           type: string
-          enum: [imported, failed]
+          enum: [pending_human_review, imported, failed]
         importedAt:
           type: string
           format: date-time
@@ -18431,6 +19702,8 @@ components:
           type: string
           format: date-time
           nullable: true
+        replayed:
+          type: boolean
 
     LaboratoryResultImportReportResponse:
       type: object
@@ -18441,6 +19714,8 @@ components:
           type: object
           properties:
             total:
+              type: integer
+            pendingHumanReview:
               type: integer
             imported:
               type: integer
@@ -18972,7 +20247,7 @@ components:
           type: string
         category:
           type: string
-          enum: [executive, financial, commercial, clinical, inventory, staff]
+          enum: [executive, financial, commercial, clinical, inventory, staff, registrations]
         requiredPermission:
           type: string
         supportedFormats:

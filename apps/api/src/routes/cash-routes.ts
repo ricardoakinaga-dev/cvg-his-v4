@@ -23,7 +23,7 @@ import { readJsonBody } from '../helpers/common.js';
 export interface CashRoutesHandlers {
   cash: CashService;
   audit: AuditService;
-  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
+  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
 }
 
 function json(response: ServerResponse, statusCode: number, payload: unknown): true {
@@ -189,7 +189,7 @@ export async function handleCashRoutes(
       || pathname === '/finance/drawer/dashboard')
     && method === 'GET'
   ) {
-    const principal = requirePrincipal(request, 'billing.read');
+    const principal = await requirePrincipal(request, 'billing.read');
     const dashboard = await buildDashboard(cash, principal.user.accountId);
 
     appendAudit(audit, {
@@ -208,7 +208,7 @@ export async function handleCashRoutes(
   }
 
   if (pathname === '/cash-register/reconciliation' && method === 'GET') {
-    const principal = requirePrincipal(request, 'billing.read');
+    const principal = await requirePrincipal(request, 'billing.read');
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const requestedRegisterId = url.searchParams.get('registerId');
     const register = requestedRegisterId
@@ -236,7 +236,7 @@ export async function handleCashRoutes(
     (pathname === '/cash-register/open' || pathname === '/financeiro/gaveta/abrir')
     && method === 'POST'
   ) {
-    const principal = requirePrincipal(request, 'billing.manage');
+    const principal = await requirePrincipal(request, 'billing.manage');
     const payload = (await readJsonBody(request)) as OpenCashRegisterRequest;
     const register = await cash.openRegister(principal.user.accountId, principal.user.id, {
       openingAmount: Number(payload.openingAmount),
@@ -262,7 +262,7 @@ export async function handleCashRoutes(
     (pathname === '/cash-register/movements' || pathname === '/financeiro/gaveta/movimentos')
     && method === 'POST'
   ) {
-    const principal = requirePrincipal(request, 'billing.manage');
+    const principal = await requirePrincipal(request, 'billing.manage');
     const payload = (await readJsonBody(request)) as CreateCashMovementRequest;
     const openRegister = await cash.findOpenRegister(principal.user.accountId);
     if (!openRegister) {
@@ -300,7 +300,7 @@ export async function handleCashRoutes(
     (pathname === '/cash-register/close' || pathname === '/financeiro/gaveta/fechar')
     && method === 'POST'
   ) {
-    const principal = requirePrincipal(request, 'billing.manage');
+    const principal = await requirePrincipal(request, 'billing.manage');
     const payload = (await readJsonBody(request)) as CloseCashRegisterRequest;
     const openRegister = await cash.findOpenRegister(principal.user.accountId);
     if (!openRegister) {

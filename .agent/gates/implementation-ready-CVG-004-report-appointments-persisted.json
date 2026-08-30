@@ -1,0 +1,100 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-APPOINTMENTS-PERSISTED-IR-001",
+  "timestamp": "2026-08-29T20:47:00-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-004 bounded persisted appointments report through the Reports Workbench",
+  "scope_ref": "CVG-004-REPORT-APPOINTMENTS-PERSISTED",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The repository-local appointments report gap, frozen thirteen-field contract, owner, authority and exclusions are recorded without promoting CVG-004 or global readiness.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-appointments-persisted.md",
+        ".agent/backlog.json",
+        ".agent/authority.jsonl#AUTH-CVG-004-REPORT-APPOINTMENTS-PERSISTED-IR-001",
+        ".agent/verification.jsonl#VFY-SCOUT-CVG-004-REPORT-APPOINTMENTS-PERSISTED-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This is bounded integrator authority and implementation readiness, not implementation success, global readiness or release approval."
+    },
+    {
+      "id": "IR-002",
+      "description": "The current SPA appointments report reads the process-local appointment service and exports a browser-local CSV, while persisted appointments, RLS/account rails and the ReportsService execution/export boundary already exist; no existing verified gate covers this conversion.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/spa/src/pages/reports/ReportWorkbenchPage.vue",
+        "apps/spa/src/pages/reports/__tests__/ReportWorkbenchPage.test.ts",
+        "apps/api/src/routes/reports-routes.ts",
+        "apps/api/src/server.ts",
+        "packages/modules/scheduling/src/index.ts",
+        "packages/modules/scheduling/src/repositories/database-scheduling.repository.ts",
+        "packages/modules/reports/src/index.ts",
+        "packages/db/src/schema/appointments.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This source inspection does not prove the future query, filter semantics, database behavior or browser behavior."
+    },
+    {
+      "id": "IR-003",
+      "description": "A bounded TDD and verification plan is frozen for the scheduling source, report catalog/API/runtime seam, SPA Workbench and disposable PostgreSQL regressions, including strict filters, tenant isolation, exact raw rows, overflow and non-PII audit behavior.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-appointments-persisted.md",
+        "packages/modules/scheduling/src/scheduling.test.ts",
+        "packages/modules/reports/src/reports.test.ts",
+        "apps/api/src/routes/reports-routes.test.ts",
+        "apps/spa/src/pages/reports/__tests__/ReportWorkbenchPage.test.ts",
+        "tests/integration/database"
+      ],
+      "confidence": "HIGH",
+      "limitations": "RED/GREEN execution, disposable PostgreSQL proof, regression, review, global non-promotion retest and final reconciliation remain open after this gate."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-report-appointments-persisted.md",
+    ".agent/backlog.json",
+    ".agent/authority.jsonl#AUTH-CVG-004-REPORT-APPOINTMENTS-PERSISTED-IR-001",
+    ".agent/verification.jsonl#VFY-SCOUT-CVG-004-REPORT-APPOINTMENTS-PERSISTED-001",
+    "apps/spa/src/pages/reports/ReportWorkbenchPage.vue",
+    "apps/api/src/routes/reports-routes.ts",
+    "apps/api/src/server.ts",
+    "packages/modules/scheduling/src/index.ts",
+    "packages/modules/scheduling/src/repositories/database-scheduling.repository.ts",
+    "packages/modules/reports/src/index.ts",
+    "packages/db/src/schema/appointments.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "The persisted appointment report source, report catalog branch, runtime handler seam, SPA conversion, RED/GREEN tests and PostgreSQL proof do not exist at gate creation.",
+    "The report preserves appointment IDs and operational text only; patient/owner/professional name enrichment, productivity aggregation and queue/encounter semantics remain outside scope.",
+    "Independent review, full regression, global non-promotion retest, hygiene and final bounded reconciliation remain required."
+  ],
+  "conditions": [
+    "Keep the result limited to the authenticated tenant-scoped on-demand scheduling-appointments report and its appointments Workbench caller.",
+    "Do not add writes, joins to process-local registries, professional-care aggregation, scheduling worker, migrations, providers, credentials, target, production, deployment, backfill or release acceptance.",
+    "Keep CVG-004/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via explicit continuation and local read-only repository reconciliation",
+    "scope": "CVG-004 bounded persisted appointments report through the Reports Workbench",
+    "decision": "Authorize only reversible scheduling-module/repository, ReportsService catalog/API/runtime seam, SPA Workbench and focused/disposable PostgreSQL verification changes for a tenant-scoped on-demand appointments report. Preserve the exact thirteen persisted fields, strict status/search/inclusive UTC date filters, deterministic scheduledAt/appointmentId order, 10,000-row bound, database-only source and audited execution/export. Exclude professional-care aggregation, local registry name joins, writes, queue/encounter semantics, worker scheduling, migrations, providers, credentials, target, production, deployment, backfill, legal retention and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-APPOINTMENTS-PERSISTED-IR-001",
+    "expires_or_revalidates": "Revalidate before changing appointments schema/RLS, adding PII/name joins, changing status/date/search semantics, adding worker schedules or expanding into professional-care, queue, encounter, provider, target or production behavior."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "next_action": "Write and run the intentional scheduling source, report catalog/API and SPA RED tests, then implement the smallest bounded persisted report path and PostgreSQL proof.",
+  "revalidation_triggers": [
+    "Changes to appointments schema, status normalization, account RLS/FORCE-RLS or persisted timestamp semantics",
+    "Changes to ReportsService execution/export/audit or the authenticated report permission boundary",
+    "Expansion beyond the appointments report into professional-care, queue, encounter, worker or provider behavior"
+  ],
+  "supersedes": null
+}

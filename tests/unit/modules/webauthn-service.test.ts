@@ -6,10 +6,12 @@ import {
   WebAuthnServiceImpl
 } from '../../../packages/modules/mfa/src/webauthn.js';
 
+const ACCOUNT_ID = 'account-webauthn';
+
 describe('WebAuthn coverage guard', () => {
   it('generates URL-safe challenges and registration options with existing credential exclusion', async () => {
     const repository = new InMemoryWebAuthnRepository();
-    const existingCredentialId = await repository.save('user_reg', {
+    const existingCredentialId = await repository.save(ACCOUNT_ID, 'user_reg', {
       publicKey: 'user:user_reg:cred_existing',
       counter: 2,
       deviceType: 'platform',
@@ -23,7 +25,7 @@ describe('WebAuthn coverage guard', () => {
     expect(challenge).toMatch(/^[A-Za-z0-9_-]+$/);
     expect(generateWebAuthnChallenge()).not.toBe(challenge);
 
-    const registration = await service.generateRegistrationOptions('user_reg', {
+    const registration = await service.generateRegistrationOptions(ACCOUNT_ID, 'user_reg', {
       rpName: 'CVG HIS',
       rpId: 'cvg.local',
       userName: 'user@example.com',
@@ -61,6 +63,7 @@ describe('WebAuthn coverage guard', () => {
     const service = new WebAuthnServiceImpl(repository);
 
     const registered = await service.verifyRegistration(
+      ACCOUNT_ID,
       'user_register',
       {
         credentialId: 'browser-credential-id',
@@ -70,8 +73,12 @@ describe('WebAuthn coverage guard', () => {
       'expected-challenge'
     );
 
-    const stored = await repository.findByCredentialId(registered.credentialId);
-    const byUser = await repository.findByUserId('user_register');
+    const stored = await repository.findByCredentialId(
+      ACCOUNT_ID,
+      'user_register',
+      registered.credentialId
+    );
+    const byUser = await repository.findByUserId(ACCOUNT_ID, 'user_register');
 
     expect(registered.credentialId).toMatch(/^webauthn_/);
     expect(stored).toEqual(
@@ -89,7 +96,7 @@ describe('WebAuthn coverage guard', () => {
     const repository = new InMemoryWebAuthnRepository();
     const service = new WebAuthnServiceImpl(repository);
 
-    const authOptions = await service.generateAuthenticationOptions('user_auth', {
+    const authOptions = await service.generateAuthenticationOptions(ACCOUNT_ID, 'user_auth', {
       rpId: 'cvg.local',
       timeout: 20_000,
       userVerification: 'required'
@@ -105,6 +112,8 @@ describe('WebAuthn coverage guard', () => {
     );
 
     const missing = await service.verifyAuthentication(
+      ACCOUNT_ID,
+      'user_auth',
       'cred_missing',
       {
         authenticatorData: 'auth-data',
@@ -116,7 +125,7 @@ describe('WebAuthn coverage guard', () => {
     );
     expect(missing).toEqual({ success: false });
 
-    const savedCredentialId = await repository.save('user_auth', {
+    const savedCredentialId = await repository.save(ACCOUNT_ID, 'user_auth', {
       publicKey: 'user:user_auth:cred_real',
       counter: 4,
       deviceType: 'cross-platform',
@@ -125,6 +134,8 @@ describe('WebAuthn coverage guard', () => {
     });
 
     const verified = await service.verifyAuthentication(
+      ACCOUNT_ID,
+      'user_auth',
       savedCredentialId,
       {
         authenticatorData: 'auth-data',
@@ -136,7 +147,7 @@ describe('WebAuthn coverage guard', () => {
       'cvg.local'
     );
 
-    const updated = await repository.findByCredentialId(savedCredentialId);
+    const updated = await repository.findByCredentialId(ACCOUNT_ID, 'user_auth', savedCredentialId);
     expect(verified).toEqual({ success: true, newCounter: 5 });
     expect(updated?.counter).toBe(5);
     expect(updated?.lastUsedAt).toBeTypeOf('string');
@@ -144,7 +155,7 @@ describe('WebAuthn coverage guard', () => {
 
   it('supports repository lifecycle operations for stored authenticators', async () => {
     const repository = new InMemoryWebAuthnRepository();
-    const credentialId = await repository.save('user_delete', {
+    const credentialId = await repository.save(ACCOUNT_ID, 'user_delete', {
       publicKey: 'user:user_delete:cred_to_delete',
       counter: 0,
       deviceType: 'platform',
@@ -153,16 +164,16 @@ describe('WebAuthn coverage guard', () => {
       nickname: 'Passkey iPhone'
     });
 
-    expect(await repository.findByCredentialId(credentialId)).toEqual(
+    expect(await repository.findByCredentialId(ACCOUNT_ID, 'user_delete', credentialId)).toEqual(
       expect.objectContaining({
         nickname: 'Passkey iPhone',
         deviceType: 'platform'
       })
     );
 
-    await repository.delete(credentialId);
+    await repository.delete(ACCOUNT_ID, 'user_delete', credentialId);
 
-    expect(await repository.findByCredentialId(credentialId)).toBeNull();
-    expect(await repository.findByUserId('user_delete')).toEqual([]);
+    expect(await repository.findByCredentialId(ACCOUNT_ID, 'user_delete', credentialId)).toBeNull();
+    expect(await repository.findByUserId(ACCOUNT_ID, 'user_delete')).toEqual([]);
   });
 });

@@ -15,8 +15,16 @@ import {
 import { DatabaseNotificationRepository } from '@cvg-his-v2/module-notifications';
 import { DatabaseOutboxRepository } from '@cvg-his-v2/module-event-bus';
 import { DatabaseReportRepository } from '@cvg-his-v2/module-reports';
+import { AuditService, DatabaseAuditRepository } from '@cvg-his-v2/module-audit';
+import { DatabaseFiscalRepository, FiscalService } from '@cvg-his-v2/module-fiscal';
 import { CashService, DatabaseCashRepository } from '@cvg-his-v2/module-cash';
-import { CommissionsService, DatabaseCommissionRepository } from '@cvg-his-v2/module-commissions';
+import { DatabaseCommissionCalculationsReportSource } from '@cvg-his-v2/module-commissions';
+import {
+  DatabaseInventoryInvoicesReportSource,
+  DatabaseInventoryProductsReportSource,
+  DatabaseInventoryStockReportSource,
+  DatabaseInventoryMovementsReportSource
+} from '@cvg-his-v2/module-inventory';
 import {
   CounterSalesService,
   DatabaseCounterSalesRepository
@@ -24,6 +32,9 @@ import {
 import {
   DatabaseEncounterFinancialRepository,
   DatabaseFinancialPayablesRepository,
+  DatabaseAdvancePaymentsReportSource,
+  DatabaseFinanceCatalogReportSource,
+  DatabaseFinancialReceivablesReportSource,
   FinancialIncomeStatementService,
   EncounterFinancialService
 } from '@cvg-his-v2/module-financial';
@@ -33,12 +44,18 @@ import {
   DatabaseEncounterRepository,
   DatabaseEncounterTimelineRepository
 } from '@cvg-his-v2/module-encounters';
-import { OwnersService, DatabaseOwnerRepository } from '@cvg-his-v2/module-owners';
+import {
+  OwnersService,
+  DatabaseOwnerRepository,
+  DatabaseOwnersReportSource
+} from '@cvg-his-v2/module-owners';
+import { DatabaseServicesReportSource } from '@cvg-his-v2/module-services';
 import {
   PatientsService,
   DatabasePatientRepository,
   DatabaseOwnerPatientLinkRepository,
-  DatabasePatientMergeRepository
+  DatabasePatientMergeRepository,
+  DatabasePatientsReportSource
 } from '@cvg-his-v2/module-patients';
 import { DatabaseWebhookRepository, WebhooksService } from '@cvg-his-v2/module-webhooks';
 import {
@@ -100,6 +117,7 @@ export interface WorkerPixPaymentDispatchRuntime {
 export interface PixProviderSettlementRuntimeOptions {
   readonly enabled: boolean;
   readonly allowSyntheticProviders: boolean;
+  readonly environment?: string;
   readonly pool: Pool;
   readonly workerId?: string;
 }
@@ -121,6 +139,8 @@ export interface WorkerBootstrapResult {
   readonly unitOfWork?: TenantUnitOfWork;
   readonly reportRepository?: ReportRepository;
   readonly reportSources?: AdministrativeExecutiveReportSources;
+  readonly audit?: AuditService;
+  readonly advancePaymentsReportSchemaReady?: boolean;
   readonly pixPaymentDispatch?: WorkerPixPaymentDispatchRuntime;
   readonly pixProviderSettlement?: WorkerPixProviderSettlementRuntime;
   readonly eventConsumers?: WorkerEventConsumerRuntime;
@@ -128,6 +148,34 @@ export interface WorkerBootstrapResult {
   readonly webhookDeliveryExecutor?: WebhooksService;
   readonly webhookDeliverySchemaReady?: boolean;
 }
+
+const ADVANCE_PAYMENT_REPORT_TABLES = ['advance_payments', 'advance_payment_allocations'] as const;
+const ADVANCE_PAYMENT_REPORT_PAYMENT_COLUMNS = [
+  'id',
+  'account_id',
+  'owner_id',
+  'amount_cents',
+  'source_type',
+  'notes',
+  'issued_at'
+] as const;
+const ADVANCE_PAYMENT_REPORT_ALLOCATION_COLUMNS = [
+  'account_id',
+  'advance_payment_id',
+  'amount_cents',
+  'allocation_type'
+] as const;
+const ADVANCE_PAYMENT_REPORT_POLICIES = [
+  'advance_payments_tenant_select',
+  'advance_payments_tenant_insert',
+  'advance_payment_allocations_tenant_select',
+  'advance_payment_allocations_tenant_insert'
+] as const;
+const ADVANCE_PAYMENT_REPORT_TRIGGERS = [
+  'advance_payments_immutability_trigger',
+  'advance_payment_allocations_immutability_trigger',
+  'advance_payment_allocations_prevent_overallocation'
+] as const;
 
 function normalizedEnvironment(environment?: string): string {
   const normalized = (environment ?? process.env.NODE_ENV ?? 'production').trim().toLowerCase();
@@ -142,12 +190,7 @@ function assertSyntheticEnvironment(environment?: string): string {
   const processEnvironment = process.env.NODE_ENV
     ? normalizedEnvironment(process.env.NODE_ENV)
     : normalized;
-  if (
-    normalized === 'production' ||
-    normalized === 'prod' ||
-    processEnvironment === 'production' ||
-    processEnvironment === 'prod'
-  ) {
+  if (isProductionLikeEnvironment(normalized) || isProductionLikeEnvironment(processEnvironment)) {
     throw new PixPaymentDispatchConfigurationError(
       'SYNTHETIC_PIX_PROVIDER_DISABLED',
       'Synthetic PIX providers require an explicit non-production environment'
@@ -203,6 +246,7 @@ export function createPixProviderSettlementRuntime(
       'Local PIX settlement requires the explicit synthetic provider capability'
     );
   }
+  assertSyntheticEnvironment(options.environment);
   const workerId = resolvePixSettlementWorkerId(options.workerId);
   const repository = new DatabasePixProviderEventDeliveryRepository(options.pool);
   const consumer = new PixProviderSettlementConsumer(repository, {
@@ -257,6 +301,261 @@ async function loadPersistedAccountIds(productionLike: boolean): Promise<readonl
   return result.rows.map((account) => account.id);
 }
 
+async function checkPixProviderSettlementSchema(): Promise<boolean> {
+  const result = await getPool().query<{ readonly ready: boolean }>(
+    `WITH required_tables(table_name) AS (
+       VALUES
+         ('pix_provider_events'),
+         ('pix_provider_event_deliveries'),
+         ('account_service_principals'),
+         ('users'),
+         ('encounter_payment_attempts'),
+         ('pix_transactions')
+     ),
+     table_state AS (
+       SELECT required.table_name, relation.oid,
+              relation.relrowsecurity, relation.relforcerowsecurity
+         FROM required_tables AS required
+         LEFT JOIN pg_class AS relation
+           ON relation.relname = required.table_name
+          AND relation.relnamespace = 'public'::regnamespace
+     ),
+     required_privileges(table_name, privilege_type) AS (
+       VALUES
+         ('pix_provider_events', 'SELECT'),
+         ('pix_provider_event_deliveries', 'SELECT'),
+         ('pix_provider_event_deliveries', 'UPDATE'),
+         ('account_service_principals', 'SELECT'),
+         ('encounter_payment_attempts', 'SELECT'),
+         ('pix_transactions', 'SELECT')
+     ),
+     required_policies(table_name, policy_name, policy_command, expected_qual, expected_with_check) AS (
+       VALUES
+         ('pix_provider_events', 'pix_provider_events_tenant_isolation', 'ALL', '(account_id = app.current_account_id())', '(account_id = app.current_account_id())'),
+         ('pix_provider_event_deliveries', 'pix_provider_event_deliveries_tenant_isolation', 'ALL', '(account_id = app.current_account_id())', '(account_id = app.current_account_id())'),
+         ('account_service_principals', 'account_service_principals_tenant_isolation', 'ALL', '(account_id = app.current_account_id())', '(account_id = app.current_account_id())'),
+         ('users', 'users_tenant_isolation', 'ALL', '(account_id = app.current_account_id())', '(account_id = app.current_account_id())'),
+         ('encounter_payment_attempts', 'encounter_payment_attempts_tenant_isolation', 'ALL', '(account_id = app.current_account_id())', '(account_id = app.current_account_id())'),
+         ('pix_transactions', 'pix_transactions_tenant_isolation', 'ALL', '(account_id = app.current_account_id())', '(account_id = app.current_account_id())')
+     ),
+     required_columns(table_name, column_name) AS (
+       VALUES
+         ('pix_provider_events', 'id'),
+         ('pix_provider_events', 'account_id'),
+         ('pix_provider_events', 'provider'),
+         ('pix_provider_events', 'provider_event_id'),
+         ('pix_provider_events', 'event_type'),
+         ('pix_provider_events', 'payment_attempt_id'),
+         ('pix_provider_events', 'provider_transaction_id'),
+         ('pix_provider_events', 'amount_cents'),
+         ('pix_provider_events', 'currency'),
+         ('pix_provider_events', 'confirmed_at'),
+         ('pix_provider_events', 'correlation_id'),
+         ('pix_provider_event_deliveries', 'id'),
+         ('pix_provider_event_deliveries', 'account_id'),
+         ('pix_provider_event_deliveries', 'event_id'),
+         ('pix_provider_event_deliveries', 'state'),
+         ('pix_provider_event_deliveries', 'attempts'),
+         ('pix_provider_event_deliveries', 'max_attempts'),
+         ('pix_provider_event_deliveries', 'next_attempt_at'),
+         ('pix_provider_event_deliveries', 'lease_owner'),
+         ('pix_provider_event_deliveries', 'lease_token'),
+         ('pix_provider_event_deliveries', 'lease_version'),
+         ('pix_provider_event_deliveries', 'lease_expires_at'),
+         ('pix_provider_event_deliveries', 'last_error_code'),
+         ('pix_provider_event_deliveries', 'last_error_class'),
+         ('pix_provider_event_deliveries', 'applied_at'),
+         ('pix_provider_event_deliveries', 'created_at'),
+         ('pix_provider_event_deliveries', 'updated_at'),
+         ('account_service_principals', 'account_id'),
+         ('account_service_principals', 'purpose'),
+         ('account_service_principals', 'user_id'),
+         ('account_service_principals', 'is_active'),
+         ('account_service_principals', 'created_at'),
+         ('users', 'id'),
+         ('users', 'account_id'),
+         ('users', 'is_active'),
+         ('users', 'principal_kind'),
+         ('users', 'interactive_login_enabled'),
+         ('encounter_payment_attempts', 'id'),
+         ('encounter_payment_attempts', 'account_id'),
+         ('encounter_payment_attempts', 'state'),
+         ('encounter_payment_attempts', 'provider_key'),
+         ('encounter_payment_attempts', 'provider_transaction_id'),
+         ('encounter_payment_attempts', 'amount_cents'),
+         ('encounter_payment_attempts', 'currency'),
+         ('encounter_payment_attempts', 'billing_record_id'),
+         ('pix_transactions', 'transaction_id'),
+         ('pix_transactions', 'provider'),
+         ('pix_transactions', 'account_id'),
+         ('pix_transactions', 'billing_record_id'),
+         ('pix_transactions', 'payment_attempt_id'),
+         ('pix_transactions', 'amount'),
+         ('pix_transactions', 'currency'),
+         ('pix_transactions', 'provider_transaction_id')
+     ),
+     required_constraints(table_name, constraint_name) AS (
+       VALUES
+         ('pix_provider_events', 'pix_provider_events_account_provider_event_unique'),
+         ('pix_provider_events', 'pix_provider_events_account_attempt_fk'),
+         ('pix_provider_events', 'pix_provider_events_provider_chk'),
+         ('pix_provider_events', 'pix_provider_events_type_chk'),
+         ('pix_provider_events', 'pix_provider_events_amount_cents_chk'),
+         ('pix_provider_events', 'pix_provider_events_currency_chk'),
+         ('pix_provider_event_deliveries', 'pix_provider_event_deliveries_account_event_unique'),
+         ('pix_provider_event_deliveries', 'pix_provider_event_deliveries_account_event_fk'),
+         ('pix_provider_event_deliveries', 'pix_provider_event_deliveries_state_chk'),
+         ('pix_provider_event_deliveries', 'pix_provider_event_deliveries_lease_state_chk'),
+         ('pix_provider_event_deliveries', 'pix_provider_event_deliveries_next_attempt_chk'),
+         ('account_service_principals', 'account_service_principals_account_user_fk'),
+         ('account_service_principals', 'account_service_principals_purpose_chk'),
+         ('users', 'users_principal_kind_chk'),
+         ('users', 'users_service_principal_interactive_login_chk'),
+         ('encounter_payment_attempts', 'encounter_payment_attempts_account_id_id_unique'),
+         ('encounter_payment_attempts', 'encounter_payment_attempts_provider_idempotency_key_unique'),
+         ('encounter_payment_attempts', 'encounter_payment_attempts_state_chk'),
+         ('encounter_payment_attempts', 'encounter_payment_attempts_amount_cents_positive_chk'),
+         ('encounter_payment_attempts', 'encounter_payment_attempts_currency_brl_chk'),
+         ('pix_transactions', 'pix_transactions_account_payment_attempt_fk')
+     ),
+     required_indexes(table_name, index_name) AS (
+       VALUES
+         ('pix_provider_events', 'pix_provider_events_account_received_idx'),
+         ('pix_provider_event_deliveries', 'pix_provider_event_deliveries_claim_idx'),
+         ('pix_provider_event_deliveries', 'pix_provider_event_deliveries_event_idx'),
+         ('account_service_principals', 'account_service_principals_active_purpose_unique'),
+         ('encounter_payment_attempts', 'uidx_encounter_payment_attempts_provider_transaction'),
+         ('pix_transactions', 'uidx_pix_transactions_account_payment_attempt')
+     )
+     SELECT
+       (SELECT COUNT(*) = 6
+          FROM table_state
+         WHERE oid IS NOT NULL)
+       AND (SELECT COALESCE(BOOL_AND(relrowsecurity AND relforcerowsecurity), false)
+              FROM table_state)
+       AND NOT EXISTS (
+             SELECT 1
+               FROM required_policies AS required
+              WHERE NOT EXISTS (
+                SELECT 1
+                  FROM pg_policies AS policy
+                 WHERE policy.schemaname = 'public'
+                   AND policy.tablename = required.table_name
+                   AND policy.policyname = required.policy_name
+                   AND policy.cmd = required.policy_command
+                   AND policy.qual = required.expected_qual
+                   AND policy.with_check = required.expected_with_check
+              )
+           )
+       AND (SELECT COUNT(*) = 6
+              FROM required_privileges AS required
+              JOIN table_state
+                ON table_state.table_name = required.table_name
+             WHERE table_state.oid IS NOT NULL
+               AND has_table_privilege(current_user, table_state.oid, required.privilege_type))
+       AND NOT EXISTS (
+             SELECT 1
+               FROM required_columns AS required
+              WHERE NOT EXISTS (
+                SELECT 1
+                  FROM information_schema.columns AS column_info
+                 WHERE column_info.table_schema = 'public'
+                   AND column_info.table_name = required.table_name
+                   AND column_info.column_name = required.column_name
+                   AND has_column_privilege(
+                     current_user,
+                     format('%I.%I', column_info.table_schema, column_info.table_name),
+                     required.column_name,
+                     'SELECT'
+                   )
+              )
+           )
+       AND NOT EXISTS (
+             SELECT 1
+               FROM required_constraints AS required
+              WHERE NOT EXISTS (
+                SELECT 1
+                  FROM pg_constraint AS constraint_row
+                  JOIN pg_class AS relation ON relation.oid = constraint_row.conrelid
+                  JOIN pg_namespace AS namespace ON namespace.oid = relation.relnamespace
+                 WHERE namespace.nspname = 'public'
+                   AND relation.relname = required.table_name
+                   AND constraint_row.conname = required.constraint_name
+              )
+           )
+       AND NOT EXISTS (
+             SELECT 1
+               FROM required_indexes AS required
+              WHERE NOT EXISTS (
+                SELECT 1
+                  FROM pg_indexes AS index_row
+                 WHERE index_row.schemaname = 'public'
+                   AND index_row.tablename = required.table_name
+                   AND index_row.indexname = required.index_name
+              )
+           ) AS ready`
+  );
+  return result.rows[0]?.ready === true;
+}
+
+async function checkAdvancePaymentsReportSchema(): Promise<boolean> {
+  const result = await getPool().query<{ readonly ready: boolean }>(
+    `SELECT
+       (
+         SELECT COUNT(*) = 2
+                AND COALESCE(BOOL_AND(c.relrowsecurity AND c.relforcerowsecurity), false)
+           FROM pg_class AS c
+           JOIN pg_namespace AS n ON n.oid = c.relnamespace
+          WHERE n.nspname = 'public'
+            AND c.relname = ANY($1::text[])
+       )
+       AND (
+         SELECT COUNT(*) = 11
+           FROM information_schema.columns
+          WHERE table_schema = 'public'
+            AND (
+              (table_name = 'advance_payments'
+               AND column_name = ANY($4::text[]))
+              OR
+              (table_name = 'advance_payment_allocations'
+               AND column_name = ANY($5::text[]))
+            )
+       )
+       AND (
+         SELECT COUNT(*) = 4
+                AND COALESCE(
+                  BOOL_AND(
+                    POSITION('app.current_account_id()' IN
+                      LOWER(COALESCE(qual, '') || ' ' || COALESCE(with_check, ''))) > 0
+                  ),
+                  false
+                )
+           FROM pg_policies
+          WHERE schemaname = 'public'
+            AND policyname = ANY($2::text[])
+            AND tablename = ANY($1::text[])
+       )
+       AND (
+         SELECT COUNT(*) = 3
+           FROM pg_trigger AS t
+           JOIN pg_class AS c ON c.oid = t.tgrelid
+           JOIN pg_namespace AS n ON n.oid = c.relnamespace
+          WHERE n.nspname = 'public'
+            AND c.relname = ANY($1::text[])
+            AND t.tgname = ANY($3::text[])
+            AND NOT t.tgisinternal
+       ) AS ready`,
+    [
+      ADVANCE_PAYMENT_REPORT_TABLES,
+      ADVANCE_PAYMENT_REPORT_POLICIES,
+      ADVANCE_PAYMENT_REPORT_TRIGGERS,
+      ADVANCE_PAYMENT_REPORT_PAYMENT_COLUMNS,
+      ADVANCE_PAYMENT_REPORT_ALLOCATION_COLUMNS
+    ]
+  );
+  return result.rows[0]?.ready === true;
+}
+
 export async function bootstrapWorkerServices(
   options: WorkerBootstrapOptions = {}
 ): Promise<WorkerBootstrapResult> {
@@ -299,6 +598,12 @@ export async function bootstrapWorkerServices(
       const runtimeRole = await checkDatabaseRuntimeRole();
       if (!runtimeRole.safe) {
         throw new Error(`Unsafe PostgreSQL runtime role: ${runtimeRole.detail}`);
+      }
+    }
+    if (options.pixProviderSettlementEnabled === true) {
+      const pixProviderSettlementSchemaReady = await checkPixProviderSettlementSchema();
+      if (!pixProviderSettlementSchemaReady) {
+        throw new Error('Worker PIX provider settlement schema or ACL is not ready');
       }
     }
 
@@ -373,6 +678,11 @@ export async function bootstrapWorkerServices(
       throw new Error('Worker event consumer schema is not ready');
     }
 
+    const advancePaymentsReportSchemaReady = await checkAdvancePaymentsReportSchema();
+    if (!advancePaymentsReportSchemaReady && productionLike) {
+      throw new Error('Worker advance-payment report schema is not ready');
+    }
+
     const webhookDeliverySchema = await getPool().query<{ ready: boolean }>(
       `SELECT
          to_regclass('public.webhooks') IS NOT NULL
@@ -423,52 +733,53 @@ export async function bootstrapWorkerServices(
       ? new WebhooksService({ repository: new DatabaseWebhookRepository(db) })
       : undefined;
 
-    const eventConsumers = eventConsumerSchemaReady && webhookDeliveryExecutor
-      ? (() => {
-          const owners = new OwnersService({
-            ownerRepository: new DatabaseOwnerRepository(db),
-            seedOwners: []
-          });
-          const patients = new PatientsService({
-            owners,
-            patientRepository: new DatabasePatientRepository(db),
-            ownerPatientLinkRepository: new DatabaseOwnerPatientLinkRepository(db),
-            patientMergeRepository: new DatabasePatientMergeRepository(db),
-            seedPatients: [],
-            seedLinks: []
-          });
-          const encounters = new EncountersService({
-            owners,
-            patients,
-            encounterRepository: new DatabaseEncounterRepository(db),
-            encounterTimelineRepository: new DatabaseEncounterTimelineRepository(db),
-            requireUuidIdentifiers: true
-          });
-          const billing = new BillingService(encounters, {
-            repository: new DatabaseBillingRepository()
-          });
-          const encounterFinancial = new EncounterFinancialService(
-            encounters,
-            billing,
-            patients,
-            owners,
-            { repository: new DatabaseEncounterFinancialRepository() }
-          );
-          return createWorkerEventConsumerRuntime({
-            billing,
-            encounterFinancial,
-            pixTransactions: new DatabasePixTransactionRepository(),
-            cardTransactions: new DatabaseCardTransactionRepository(),
-            webhooks: webhookDeliveryExecutor,
-            hydrateAccount: async (accountId) => {
-              await owners.hydrateFromDatabase(accountId);
-              await patients.hydrateFromDatabase(accountId);
-              await encounters.hydrateFromDatabase(accountId);
-              await billing.hydrateFromDatabase(accountId);
-            }
-          });
-        })()
-      : undefined;
+    const eventConsumers =
+      eventConsumerSchemaReady && webhookDeliveryExecutor
+        ? (() => {
+            const owners = new OwnersService({
+              ownerRepository: new DatabaseOwnerRepository(db),
+              seedOwners: []
+            });
+            const patients = new PatientsService({
+              owners,
+              patientRepository: new DatabasePatientRepository(db),
+              ownerPatientLinkRepository: new DatabaseOwnerPatientLinkRepository(db),
+              patientMergeRepository: new DatabasePatientMergeRepository(db),
+              seedPatients: [],
+              seedLinks: []
+            });
+            const encounters = new EncountersService({
+              owners,
+              patients,
+              encounterRepository: new DatabaseEncounterRepository(db),
+              encounterTimelineRepository: new DatabaseEncounterTimelineRepository(db),
+              requireUuidIdentifiers: true
+            });
+            const billing = new BillingService(encounters, {
+              repository: new DatabaseBillingRepository()
+            });
+            const encounterFinancial = new EncounterFinancialService(
+              encounters,
+              billing,
+              patients,
+              owners,
+              { repository: new DatabaseEncounterFinancialRepository() }
+            );
+            return createWorkerEventConsumerRuntime({
+              billing,
+              encounterFinancial,
+              pixTransactions: new DatabasePixTransactionRepository(),
+              cardTransactions: new DatabaseCardTransactionRepository(),
+              webhooks: webhookDeliveryExecutor,
+              hydrateAccount: async (accountId) => {
+                await owners.hydrateFromDatabase(accountId);
+                await patients.hydrateFromDatabase(accountId);
+                await encounters.hydrateFromDatabase(accountId);
+                await billing.hydrateFromDatabase(accountId);
+              }
+            });
+          })()
+        : undefined;
     logger.info('Worker database connection established', {
       detail: health.detail
     });
@@ -482,7 +793,9 @@ export async function bootstrapWorkerServices(
       outboxRepository: new DatabaseOutboxRepository(),
       unitOfWork: deliveryGuaranteesReady ? createTenantUnitOfWork(getPool()) : undefined,
       reportRepository: new DatabaseReportRepository(),
-      reportSources: createDatabaseReportSources(),
+      audit: new AuditService({ auditRepository: new DatabaseAuditRepository(db) }),
+      reportSources: createDatabaseReportSources(advancePaymentsReportSchemaReady),
+      advancePaymentsReportSchemaReady,
       pixPaymentDispatch: createSyntheticPixPaymentDispatchRuntime({
         allowSyntheticProviders: options.allowSyntheticPixProvider === true,
         environment: options.environment,
@@ -492,6 +805,7 @@ export async function bootstrapWorkerServices(
       pixProviderSettlement: createPixProviderSettlementRuntime({
         enabled: options.pixProviderSettlementEnabled === true,
         allowSyntheticProviders: options.allowSyntheticPixProvider === true,
+        environment: options.environment,
         pool: getPool(),
         workerId: options.pixSettlementWorkerId
       }),
@@ -511,11 +825,20 @@ export async function bootstrapWorkerServices(
   }
 }
 
-function createDatabaseReportSources(): AdministrativeExecutiveReportSources {
+function createDatabaseReportSources(
+  advancePaymentsReportSchemaReady = true
+): AdministrativeExecutiveReportSources {
+  const counterSales = new CounterSalesService({
+    repository: new DatabaseCounterSalesRepository()
+  });
+  const payablesRepository = new DatabaseFinancialPayablesRepository();
+  const fiscalRepository = new DatabaseFiscalRepository();
+  const receivablesReportSource = new DatabaseFinancialReceivablesReportSource();
+
   return {
-    commercial: new CounterSalesService({
-      repository: new DatabaseCounterSalesRepository()
-    }),
+    cheques: counterSales,
+    commercial: counterSales,
+    commercialDeletedSales: counterSales,
     financial: new FinancialIncomeStatementService({
       receivables: new DatabaseEncounterFinancialRepository(),
       payables: new DatabaseFinancialPayablesRepository()
@@ -523,9 +846,30 @@ function createDatabaseReportSources(): AdministrativeExecutiveReportSources {
     cash: new CashService({
       repository: new DatabaseCashRepository()
     }),
-    commissions: new CommissionsService({
-      repository: new DatabaseCommissionRepository()
-    })
+    commissions: new DatabaseCommissionCalculationsReportSource(),
+    payables: {
+      listPayables: (accountId, filters) =>
+        payablesRepository.listPayables({
+          accountId,
+          ...(filters?.status ? { status: filters.status } : {})
+        })
+    },
+    ...(advancePaymentsReportSchemaReady
+      ? { advancePayments: new DatabaseAdvancePaymentsReportSource() }
+      : {}),
+    receivables: receivablesReportSource,
+    services: new DatabaseServicesReportSource(),
+    suppliers: new DatabaseFinanceCatalogReportSource(),
+    owners: new DatabaseOwnersReportSource(),
+    patients: new DatabasePatientsReportSource(),
+    inventoryProducts: new DatabaseInventoryProductsReportSource(),
+    inventoryStock: new DatabaseInventoryStockReportSource(),
+    inventoryMovements: new DatabaseInventoryMovementsReportSource(),
+    inventoryInvoices: new DatabaseInventoryInvoicesReportSource(),
+    fiscal: {
+      listNfseDocuments: (accountId, filters) =>
+        new FiscalService(fiscalRepository, accountId).listNfseDocuments(filters)
+    }
   };
 }
 

@@ -1,0 +1,91 @@
+{
+  "record_id": "GATE-CVG-003-PRESCRIPTION-EXECUTION-COMMAND-EVENT-TENANT-ISOLATION-IR-001",
+  "timestamp": "2026-08-29T10:15:56-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-003 bounded account-scoped prescription-execution command and administration-event detail boundary",
+  "scope_ref": "CVG-003-PRESCRIPTION-EXECUTION-COMMAND-EVENT-TENANT-ISOLATION",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The multi-account runtime map and unscoped service methods are confirmed as a clinical cross-tenant detail and command risk; controller pre-checks are not treated as the service authorization boundary.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-003-PRESCRIPTION-EXECUTION-COMMAND-EVENT-TENANT-ISOLATION.md",
+        ".agent/verification.jsonl#VFY-SCOUT-CVG-003-PRESCRIPTION-EXECUTION-COMMAND-EVENT-TENANT-ISOLATION-001",
+        "packages/modules/prescription-executions/src/index.ts",
+        "apps/api/src/routes/prescription-executions-routes.ts",
+        "apps/api/src/runtime.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The gate covers only the application service and HTTP boundary; direct SQL, privileged writers, target RLS and global readiness remain excluded."
+    },
+    {
+      "id": "IR-002",
+      "description": "The authorized correction is limited to requiring principal-derived AccountId for getEvents, execute, suspend, resume and logEvent, forwarding it from the existing routes and migrating first-party callers.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-003-PRESCRIPTION-EXECUTION-COMMAND-EVENT-TENANT-ISOLATION.md",
+        "packages/modules/prescription-executions/src/index.ts",
+        "apps/api/src/routes/prescription-executions-routes.ts",
+        "packages/modules/prescription-executions/src/prescription-executions.test.ts",
+        "apps/api/src/routes/prescription-executions-routes.test.ts",
+        "apps/api/src/canonical-db-runtime.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "No schema, migration, provider, credential, target, production, deployment, external mutation or release action is authorized."
+    },
+    {
+      "id": "IR-003",
+      "description": "Intentional RED tests for missing/foreign account context and principal-account forwarding are the required implementation entry point; GREEN, quality checks and independent review remain pending.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-003-PRESCRIPTION-EXECUTION-COMMAND-EVENT-TENANT-ISOLATION.md",
+        "packages/modules/prescription-executions/src/prescription-executions.test.ts",
+        "apps/api/src/routes/prescription-executions-routes.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The implementation-ready gate does not claim that the correction, regression, coverage, independent review or final bounded gate has passed."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-003-PRESCRIPTION-EXECUTION-COMMAND-EVENT-TENANT-ISOLATION.md",
+    ".agent/authority.jsonl#AUTH-CVG-003-PRESCRIPTION-EXECUTION-COMMAND-EVENT-TENANT-ISOLATION-IR-001",
+    ".agent/verification.jsonl#VFY-SCOUT-CVG-003-PRESCRIPTION-EXECUTION-COMMAND-EVENT-TENANT-ISOLATION-001",
+    "packages/modules/prescription-executions/src/index.ts",
+    "apps/api/src/routes/prescription-executions-routes.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "The corrected code and focused regressions still require execution.",
+    "Independent read-only security/concurrency review is not complete.",
+    "Global parity/readiness, target, provider, operations and release evidence remain open."
+  ],
+  "conditions": [
+    "Preserve the existing PostgreSQL/Vue monolith and package boundaries.",
+    "Do not weaken the AccountId service signatures or reintroduce an unscoped command/event call.",
+    "Do not modify migrations, target infrastructure, providers, credentials or external systems."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via explicit continuation request and original consolidation brief",
+    "scope": "CVG-003 bounded prescription-execution command and administration-event detail tenant isolation",
+    "decision": "Authorize reversible repository-local service, route, first-party caller and test changes that require principal-derived AccountId at the prescription-execution detail and command boundaries; exclude direct SQL, migrations, target, providers, credentials, production, deployment, external mutation and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-003-PRESCRIPTION-EXECUTION-COMMAND-EVENT-TENANT-ISOLATION-IR-001",
+    "expires_or_revalidates": "Revalidate before expanding beyond the application service/HTTP command and detail boundary."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "implementation_status": "READY",
+  "next_action": "Write and execute the intentional RED service and route regressions, then implement the smallest account-scoped command/event correction without global promotion.",
+  "revalidation_triggers": [
+    "New prescription-execution command, event detail or event query path",
+    "Changes to runtime hydration, principal/account propagation, authorization or persistence",
+    "Expansion to direct SQL, migrations, target, provider, credential, production, deployment or release scope"
+  ],
+  "supersedes": null
+}

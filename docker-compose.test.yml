@@ -6,6 +6,10 @@ services:
   postgres-test:
     image: postgres:16-alpine
     restart: 'no'
+    # The monorepo starts several isolated databases concurrently. PostgreSQL
+    # uses shared memory for lock/table state; Docker's 64 MiB default caused
+    # real migrations to fail with ENOSPC and could crash the test server.
+    shm_size: '1gb'
     environment:
       POSTGRES_DB: cvg_his_v2_test
       POSTGRES_USER: postgres

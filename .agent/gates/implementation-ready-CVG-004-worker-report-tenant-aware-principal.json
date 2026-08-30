@@ -1,0 +1,104 @@
+{
+  "record_id": "GATE-CVG-004-WORKER-REPORT-TENANT-AWARE-PRINCIPAL-IR-001",
+  "timestamp": "2026-08-27T07:15:00-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-004 bounded tenant-aware report service-principal resolution and report audit actor integrity",
+  "scope_ref": "CVG-004-WORKER-REPORT-TENANT-AWARE-PRINCIPAL",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The previous bounded worker identity gate explicitly leaves per-account service-principal mapping and report actor/account membership open as R-025 and TD-028.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/gates/verified-CVG-004-WORKER-REPORT-SERVICE-IDENTITY.json",
+        ".agent/artifacts/CVG-004-worker-report-service-identity-2026-08-27.md",
+        "docs/engineering/RISK_REGISTER.md",
+        "docs/engineering/TECHNICAL_DEBT.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This is a bounded residual and does not authorize target or production operations."
+    },
+    {
+      "id": "IR-002",
+      "description": "The existing account_service_principals mapping, service-user discriminator and report audit tables provide additive database primitives; no new provider or external dependency is needed.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/db/migrations/0112_pix_service_principals.sql",
+        "packages/db/src/schema/account_service_principals.ts",
+        "packages/db/migrations/0048_report_engine.sql",
+        "packages/db/migrations/0134_reports_delivery_tenant_integrity.sql"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Provisioning remains operator-owned and is not created by the migration."
+    },
+    {
+      "id": "IR-003",
+      "description": "The write surface is bounded to one additive migration, shared worker identity resolution, two worker entrypoints and focused disposable-PostgreSQL evidence.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-worker-report-tenant-aware-principal.md",
+        "apps/worker/src/index.ts",
+        "apps/worker/src/run-once.ts",
+        "tests/integration/process/worker-run-once-reports.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "No target, deployment, provider or external mutation is in the implementation set."
+    },
+    {
+      "id": "IR-004",
+      "description": "TDD can prove rejection of human, foreign, inactive and unmapped actors, account-composite database integrity, valid persistence and no account-id fallback.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-worker-report-tenant-aware-principal.md",
+        "apps/worker/src/worker-report-identity.test.ts",
+        "tests/integration/database/pix-service-principals.test.ts",
+        "tests/integration/process/worker-run-once-reports.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A single local process does not certify long-lived distributed deployment behavior."
+    },
+    {
+      "id": "IR-005",
+      "description": "The authority explicitly covers reversible repository changes and disposable local verification while retaining the global ERP, parity, target, provider and release gates as open.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/authority.jsonl#AUTH-CVG-004-WORKER-REPORT-TENANT-AWARE-PRINCIPAL-IR-001",
+        ".agent/state.json",
+        ".agent/backlog.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "No production claim or global promotion follows from this gate."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-worker-report-tenant-aware-principal.md",
+    ".agent/authority.jsonl#AUTH-CVG-004-WORKER-REPORT-TENANT-AWARE-PRINCIPAL-IR-001"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "Implementation, disposable PostgreSQL proof and independent security review are not complete at gate creation.",
+    "Operator provisioning, target roles/RLS, continuous distributed runtime and release evidence remain outside this gate."
+  ],
+  "conditions": [
+    "Keep migration additive and fail closed on pre-existing invalid cross-account audit references.",
+    "Do not create users, mappings, secrets or external resources in the migration or tests outside disposable fixtures.",
+    "Do not promote CVG-004, parity, enterprise readiness or release status from this bounded gate."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via the original consolidation brief and bounded task authority",
+    "scope": "CVG-004 bounded tenant-aware report service-principal resolution and report audit actor integrity",
+    "decision": "Authorize one additive repository migration, worker/config/entrypoint resolver changes, focused tests and disposable PostgreSQL/process verification. Exclude provisioning, providers, credentials, target, production, deployment, external mutation and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-WORKER-REPORT-TENANT-AWARE-PRINCIPAL-IR-001"
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "next_action": "Write RED tests before implementation; retain global status IN_PROGRESS/PARTIAL."
+}

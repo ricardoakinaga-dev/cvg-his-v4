@@ -32,6 +32,14 @@ export interface RateLimitIncrementResult {
   readonly blocked: boolean;
 }
 
+export type RateLimiterBackend = 'redis' | 'in-memory';
+
+export interface RateLimiterHealth {
+  readonly healthy: boolean;
+  readonly backend: RateLimiterBackend;
+  readonly detail: string;
+}
+
 /**
  * Store interface for rate limiter backends.
  * Implementations must make increment's counter update and allow/block decision
@@ -39,11 +47,14 @@ export interface RateLimitIncrementResult {
  * RateLimiter never composes them into a read/modify/write sequence.
  */
 export interface RateLimiterStore {
+  readonly backend?: RateLimiterBackend;
   increment(key: string, options: RateLimitIncrementOptions): Promise<RateLimitIncrementResult>;
   get(key: string): Promise<{ count: number; resetAt: number } | undefined>;
   set(key: string, value: { count: number; resetAt: number }): Promise<void>;
   reset(key: string): Promise<void>;
   resetAll(): Promise<void>;
+  healthCheck?(): Promise<RateLimiterHealth>;
+  close?(): Promise<void>;
 }
 
 function buildKey(...components: (string | undefined)[]): string {
@@ -55,6 +66,7 @@ function buildKey(...components: (string | undefined)[]): string {
 // ---------------------------------------------------------------------------
 
 export class InMemoryRateLimiterStore implements RateLimiterStore {
+  readonly backend = 'in-memory' as const;
   private readonly store = new Map<string, { count: number; resetAt: number }>();
 
   async increment(
@@ -97,6 +109,18 @@ export class InMemoryRateLimiterStore implements RateLimiterStore {
   async resetAll(): Promise<void> {
     this.store.clear();
   }
+
+  async healthCheck(): Promise<RateLimiterHealth> {
+    return {
+      healthy: true,
+      backend: this.backend,
+      detail: 'In-memory rate limiter backend is active.'
+    };
+  }
+
+  async close(): Promise<void> {
+    // There are no external resources to release for the in-memory backend.
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -107,6 +131,8 @@ export interface RedisRateLimiterStoreOptions {
   readonly redisUrl: string;
   readonly keyPrefix?: string;
   readonly connectTimeoutMs?: number;
+  /** Maximum time allowed for an established Redis command to reply. */
+  readonly commandTimeoutMs?: number;
   readonly maxReconnectAttempts?: number;
 }
 
@@ -137,9 +163,11 @@ return { count, resetAt, 0 }
 `;
 
 export class RedisRateLimiterStore implements RateLimiterStore {
+  readonly backend = 'redis' as const;
   private readonly redisUrl: string;
   private readonly keyPrefix: string;
   private readonly connectTimeoutMs: number;
+  private readonly commandTimeoutMs: number;
   private readonly maxReconnectAttempts: number;
   private clientPromise: Promise<RedisClient> | undefined;
   private activeOperations = 0;
@@ -152,6 +180,7 @@ export class RedisRateLimiterStore implements RateLimiterStore {
     this.redisUrl = options.redisUrl;
     this.keyPrefix = options.keyPrefix ?? 'rate-limit';
     this.connectTimeoutMs = options.connectTimeoutMs ?? 500;
+    this.commandTimeoutMs = options.commandTimeoutMs ?? 1_000;
     this.maxReconnectAttempts = options.maxReconnectAttempts ?? 1;
   }
 
@@ -212,7 +241,7 @@ export class RedisRateLimiterStore implements RateLimiterStore {
     try {
       client = await this.getClient();
       client.ref();
-      return await operation(client);
+      return await this.withCommandDeadline(operation(client));
     } catch (error) {
       if (client) {
         await this.retireFailedClient(client);
@@ -226,6 +255,22 @@ export class RedisRateLimiterStore implements RateLimiterStore {
         this.drainWaiters.clear();
         await this.disconnectRetiredClients();
       }
+    }
+  }
+
+  private async withCommandDeadline<T>(operation: Promise<T>): Promise<T> {
+    let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+      timeoutHandle = setTimeout(
+        () => reject(new Error('Redis rate limiter command timed out')),
+        this.commandTimeoutMs
+      );
+    });
+
+    try {
+      return await Promise.race([operation, timeout]);
+    } finally {
+      if (timeoutHandle) clearTimeout(timeoutHandle);
     }
   }
 
@@ -256,7 +301,7 @@ export class RedisRateLimiterStore implements RateLimiterStore {
     if (!client.isOpen) return;
     try {
       client.ref();
-      await client.disconnect();
+      await this.withCommandDeadline(Promise.resolve(client.disconnect()));
     } catch {
       // The operation already failed closed. Cleanup must not mask it.
     }
@@ -265,6 +310,17 @@ export class RedisRateLimiterStore implements RateLimiterStore {
   private waitForOperationsToDrain(): Promise<void> {
     if (this.activeOperations === 0) return Promise.resolve();
     return new Promise((resolve) => this.drainWaiters.add(resolve));
+  }
+
+  private async disconnectClientPromise(clientPromise: Promise<RedisClient>): Promise<void> {
+    try {
+      const client = await this.withCommandDeadline(clientPromise);
+      await this.disconnectClient(client);
+    } catch {
+      // The connection attempt itself is already bounded. A late resolution is
+      // still detached and disconnected so a shutdown cannot leak a client.
+      void clientPromise.then((client) => this.disconnectClient(client)).catch(() => undefined);
+    }
   }
 
   async increment(
@@ -338,6 +394,28 @@ export class RedisRateLimiterStore implements RateLimiterStore {
     });
   }
 
+  async healthCheck(): Promise<RateLimiterHealth> {
+    try {
+      await this.execute(async (client) => {
+        const response = await client.ping();
+        if (response !== 'PONG') {
+          throw new Error('Redis rate limiter returned an invalid PING response');
+        }
+      });
+      return {
+        healthy: true,
+        backend: this.backend,
+        detail: 'Redis rate limiter backend is healthy.'
+      };
+    } catch {
+      return {
+        healthy: false,
+        backend: this.backend,
+        detail: 'Redis rate limiter backend is unavailable.'
+      };
+    }
+  }
+
   async close(): Promise<void> {
     if (this.closePromise) return this.closePromise;
 
@@ -347,17 +425,30 @@ export class RedisRateLimiterStore implements RateLimiterStore {
   }
 
   private async closeWhenDrained(): Promise<void> {
-    await this.waitForOperationsToDrain();
-    await this.disconnectRetiredClients();
     const clientPromise = this.clientPromise;
+    try {
+      await this.withCommandDeadline(this.waitForOperationsToDrain());
+    } catch {
+      if (clientPromise) await this.disconnectClientPromise(clientPromise);
+      this.clientPromise = undefined;
+      await this.disconnectRetiredClients();
+      return;
+    }
+
+    await this.disconnectRetiredClients();
     this.clientPromise = undefined;
     if (!clientPromise) return;
 
     try {
-      const client = await clientPromise;
+      const client = await this.withCommandDeadline(clientPromise);
       if (client.isOpen) {
         client.ref();
-        await client.quit();
+        try {
+          await this.withCommandDeadline(Promise.resolve(client.quit()));
+        } catch (error) {
+          await this.disconnectClient(client);
+          throw error;
+        }
       }
     } catch (error) {
       throw new Error('Redis rate limiter close failed', { cause: error as Error });
@@ -413,6 +504,34 @@ export class RateLimiter {
     await this.store.resetAll();
   }
 
+  async healthCheck(): Promise<RateLimiterHealth> {
+    const backend = this.store.backend ?? 'in-memory';
+    if (!this.store.healthCheck) {
+      return {
+        healthy: backend === 'in-memory',
+        backend,
+        detail:
+          backend === 'in-memory'
+            ? 'In-memory rate limiter backend is active.'
+            : 'Rate limiter backend health check is unavailable.'
+      };
+    }
+
+    try {
+      return await this.store.healthCheck();
+    } catch {
+      return {
+        healthy: false,
+        backend,
+        detail: `${backend === 'redis' ? 'Redis' : 'Rate limiter'} backend is unavailable.`
+      };
+    }
+  }
+
+  async close(): Promise<void> {
+    await this.store.close?.();
+  }
+
   private buildCompositeKey(key: RateLimitKey): string {
     const userPart = key.userId ? `u:${key.userId}` : undefined;
     const accountPart =
@@ -439,6 +558,9 @@ export class RateLimiter {
   }
 }
 
-export function createRateLimiter(config: RateLimiterConfig, store?: RateLimiterStore): RateLimiter {
+export function createRateLimiter(
+  config: RateLimiterConfig,
+  store?: RateLimiterStore
+): RateLimiter {
   return new RateLimiter(config, store);
 }

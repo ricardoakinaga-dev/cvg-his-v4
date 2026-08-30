@@ -21,7 +21,7 @@ import {
   hashIdempotencyPayload
 } from '../../../packages/shared/database/src/index.js';
 import { getAdminPool, getTestPool } from '../../db/db-admin.js';
-import { TEST_DB_NAME, TEST_DB_URL } from '../../setup/env.js';
+import { TEST_DB_IS_EPHEMERAL, TEST_DB_NAME, TEST_DB_URL } from '../../setup/env.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const processFixturePath = resolve(
@@ -595,183 +595,183 @@ async function assertReconciled(attempts: number): Promise<void> {
   expect(row?.billingSourceEntityId).toBe(row?.consumptionId);
 }
 
-beforeAll(async () => {
-  await createLoginRole(API_ROLE);
-  await createLoginRole(WORKER_ROLE);
-  const client = await getTestPool().connect();
-  try {
-    await reconcileRuntimeRoles(client, { apiRole: API_ROLE, workerRole: WORKER_ROLE });
-  } finally {
-    client.release();
-  }
-  apiDatabaseUrl = databaseUrlForRole(API_ROLE);
-  workerDatabaseUrl = databaseUrlForRole(WORKER_ROLE);
-});
-
-beforeEach(async () => {
-  await seedFixture();
-  await startRuntime();
-});
-
-afterEach(async () => {
-  await Promise.all(
-    [...activeProcesses].map((process) => process.kill('SIGKILL').catch(() => undefined))
-  );
-  if (server?.listening) {
-    await new Promise<void>((resolveClose, rejectClose) =>
-      server?.close((error) => (error ? rejectClose(error) : resolveClose()))
-    );
-  }
-  server = undefined;
-  baseUrl = '';
-  accessToken = '';
-  await shutdownServices();
-  // TRUNCATE does not invoke the financial guard triggers that intentionally
-  // reject row-by-row deletion of reserved billing items. Each test creates a
-  // fresh tenant/account fixture, so this remains deterministic cleanup.
-  await getTestPool().query('TRUNCATE TABLE accounts CASCADE');
-});
-
-afterAll(async () => {
-  const adminPool = getAdminPool();
-  await adminPool
-    .query(`REVOKE cvg_installer FROM ${quoteIdentifier(API_ROLE)}`)
-    .catch(() => undefined);
-  await adminPool.query(`DROP ROLE IF EXISTS ${quoteIdentifier(API_ROLE)}`).catch(() => undefined);
-  await adminPool
-    .query(`DROP ROLE IF EXISTS ${quoteIdentifier(WORKER_ROLE)}`)
-    .catch(() => undefined);
-});
-
-describe('inpatient domain child-process SIGKILL/takeover boundary', () => {
-  it.each(['after_claim', 'after_domain_command_before_cas'] as const)(
-    'replays the inpatient inventory command after SIGKILL at %s',
-    async (checkpoint) => {
-      const workerA = startDomainProcess({
-        workerId: `domain-a-${checkpoint}`,
-        checkpoint
-      });
-      const readyA = await workerA.waitFor('DOMAIN_READY');
-      expect(Number(readyA.payload.pid)).toBe(workerA.pid);
-      expect(readyA.payload).toMatchObject({
-        currentUser: WORKER_ROLE,
-        rolsuper: false,
-        rolbypassrls: false
-      });
-      const checkpointA = await workerA.waitFor('DOMAIN_CHECKPOINT');
-      expect(checkpointA.payload.checkpoint).toBe(checkpoint);
-      expect(Number(checkpointA.payload.leaseVersion)).toBe(1);
-
-      if (checkpoint === 'after_domain_command_before_cas') {
-        const commandResult = await workerA.waitFor('DOMAIN_COMMAND_RESULT');
-        expect(commandResult.payload).toMatchObject({ httpStatus: 201 });
-        const beforeKill = await getTestPool().query<{ readonly count: number }>(
-          `SELECT COUNT(*)::int AS count FROM inventory_consumptions WHERE account_id = $1`,
-          [fixture.accountId]
-        );
-        expect(beforeKill.rows[0]?.count).toBe(1);
+describe.skipIf(!TEST_DB_IS_EPHEMERAL)(
+  'inpatient domain child-process SIGKILL/takeover boundary',
+  () => {
+    beforeAll(async () => {
+      await createLoginRole(API_ROLE);
+      await createLoginRole(WORKER_ROLE);
+      const client = await getTestPool().connect();
+      try {
+        await reconcileRuntimeRoles(client, { apiRole: API_ROLE, workerRole: WORKER_ROLE });
+      } finally {
+        client.release();
       }
+      apiDatabaseUrl = databaseUrlForRole(API_ROLE);
+      workerDatabaseUrl = databaseUrlForRole(WORKER_ROLE);
+    });
 
-      const killed = await workerA.kill('SIGKILL');
-      expect(killed.signal).toBe('SIGKILL');
-      await waitForLeaseExpiry();
+    beforeEach(async () => {
+      await seedFixture();
+      await startRuntime();
+    });
 
-      const workerB = startDomainProcess({
-        workerId: `domain-b-${checkpoint}`,
-        exitAfterResult: true
-      });
-      const readyB = await workerB.waitFor('DOMAIN_READY');
-      expect(Number(readyB.payload.pid)).toBe(workerB.pid);
-      expect(workerB.pid).not.toBe(workerA.pid);
-      expect(readyB.payload).toMatchObject({
-        currentUser: WORKER_ROLE,
-        rolsuper: false,
-        rolbypassrls: false
-      });
-      const resultB = await workerB.waitFor('DOMAIN_RESULT');
-      expect(resultB.payload).toMatchObject({
-        httpStatus: 201,
-        outboxCompletion: true
-      });
-      expect(await workerB.waitForClose()).toEqual({ code: 0, signal: null });
-      expect(workerB.stderr()).toBe('');
-      await assertReconciled(2);
-    },
-    60_000
-  );
+    afterEach(async () => {
+      await Promise.all(
+        [...activeProcesses].map((process) => process.kill('SIGKILL').catch(() => undefined))
+      );
+      if (server?.listening) {
+        await new Promise<void>((resolveClose, rejectClose) =>
+          server?.close((error) => (error ? rejectClose(error) : resolveClose()))
+        );
+      }
+      server = undefined;
+      baseUrl = '';
+      accessToken = '';
+      await shutdownServices();
+    });
 
-  it.each(['after_claim', 'after_domain_command_before_cas'] as const)(
-    'replays a cross-domain inpatient status command after SIGKILL at %s',
-    async (checkpoint) => {
-      await getTestPool().query(
-        `UPDATE outbox_events
+    afterAll(async () => {
+      const adminPool = getAdminPool();
+      await adminPool
+        .query(`REVOKE cvg_installer FROM ${quoteIdentifier(API_ROLE)}`)
+        .catch(() => undefined);
+      await adminPool
+        .query(`DROP ROLE IF EXISTS ${quoteIdentifier(API_ROLE)}`)
+        .catch(() => undefined);
+      await adminPool
+        .query(`DROP ROLE IF EXISTS ${quoteIdentifier(WORKER_ROLE)}`)
+        .catch(() => undefined);
+    });
+
+    it.each(['after_claim', 'after_domain_command_before_cas'] as const)(
+      'replays the inpatient inventory command after SIGKILL at %s',
+      async (checkpoint) => {
+        const workerA = startDomainProcess({
+          workerId: `domain-a-${checkpoint}`,
+          checkpoint
+        });
+        const readyA = await workerA.waitFor('DOMAIN_READY');
+        expect(Number(readyA.payload.pid)).toBe(workerA.pid);
+        expect(readyA.payload).toMatchObject({
+          currentUser: WORKER_ROLE,
+          rolsuper: false,
+          rolbypassrls: false
+        });
+        const checkpointA = await workerA.waitFor('DOMAIN_CHECKPOINT');
+        expect(checkpointA.payload.checkpoint).toBe(checkpoint);
+        expect(Number(checkpointA.payload.leaseVersion)).toBe(1);
+
+        if (checkpoint === 'after_domain_command_before_cas') {
+          const commandResult = await workerA.waitFor('DOMAIN_COMMAND_RESULT');
+          expect(commandResult.payload).toMatchObject({ httpStatus: 201 });
+          const beforeKill = await getTestPool().query<{ readonly count: number }>(
+            `SELECT COUNT(*)::int AS count FROM inventory_consumptions WHERE account_id = $1`,
+            [fixture.accountId]
+          );
+          expect(beforeKill.rows[0]?.count).toBe(1);
+        }
+
+        const killed = await workerA.kill('SIGKILL');
+        expect(killed.signal).toBe('SIGKILL');
+        await waitForLeaseExpiry();
+
+        const workerB = startDomainProcess({
+          workerId: `domain-b-${checkpoint}`,
+          exitAfterResult: true
+        });
+        const readyB = await workerB.waitFor('DOMAIN_READY');
+        expect(Number(readyB.payload.pid)).toBe(workerB.pid);
+        expect(workerB.pid).not.toBe(workerA.pid);
+        expect(readyB.payload).toMatchObject({
+          currentUser: WORKER_ROLE,
+          rolsuper: false,
+          rolbypassrls: false
+        });
+        const resultB = await workerB.waitFor('DOMAIN_RESULT');
+        expect(resultB.payload).toMatchObject({
+          httpStatus: 201,
+          outboxCompletion: true
+        });
+        expect(await workerB.waitForClose()).toEqual({ code: 0, signal: null });
+        expect(workerB.stderr()).toBe('');
+        await assertReconciled(2);
+      },
+      60_000
+    );
+
+    it.each(['after_claim', 'after_domain_command_before_cas'] as const)(
+      'replays a cross-domain inpatient status command after SIGKILL at %s',
+      async (checkpoint) => {
+        await getTestPool().query(
+          `UPDATE outbox_events
             SET event_type = 'test.inpatient.status.update',
                 payload = $3::jsonb
           WHERE account_id = $1 AND id = $2`,
-        [
-          fixture.accountId,
-          fixture.outboxEventId,
-          JSON.stringify({
-            accountId: fixture.accountId,
-            _meta: { accountId: fixture.accountId },
-            operation: 'inpatient.status.update',
-            stayId: fixture.stayId,
-            status: 'stable',
-            idempotencyKey: fixture.idempotencyKey
-          })
-        ]
-      );
-
-      const workerA = startDomainProcess({
-        workerId: `domain-status-a-${checkpoint}`,
-        checkpoint
-      });
-      await workerA.waitFor('DOMAIN_READY');
-      const checkpointA = await workerA.waitFor('DOMAIN_CHECKPOINT');
-      expect(checkpointA.payload).toMatchObject({
-        checkpoint,
-        leaseVersion: 1
-      });
-
-      if (checkpoint === 'after_domain_command_before_cas') {
-        await expect(workerA.waitFor('DOMAIN_COMMAND_RESULT')).resolves.toMatchObject({
-          payload: { httpStatus: 200 }
-        });
-        const committed = await getTestPool().query<{ readonly status: string }>(
-          `SELECT status FROM inpatient_stays WHERE account_id = $1 AND id = $2`,
-          [fixture.accountId, fixture.stayId]
+          [
+            fixture.accountId,
+            fixture.outboxEventId,
+            JSON.stringify({
+              accountId: fixture.accountId,
+              _meta: { accountId: fixture.accountId },
+              operation: 'inpatient.status.update',
+              stayId: fixture.stayId,
+              status: 'stable',
+              idempotencyKey: fixture.idempotencyKey
+            })
+          ]
         );
-        expect(committed.rows[0]?.status).toBe('stable');
-      }
 
-      const killed = await workerA.kill('SIGKILL');
-      expect(killed.signal).toBe('SIGKILL');
-      await waitForLeaseExpiry();
+        const workerA = startDomainProcess({
+          workerId: `domain-status-a-${checkpoint}`,
+          checkpoint
+        });
+        await workerA.waitFor('DOMAIN_READY');
+        const checkpointA = await workerA.waitFor('DOMAIN_CHECKPOINT');
+        expect(checkpointA.payload).toMatchObject({
+          checkpoint,
+          leaseVersion: 1
+        });
 
-      const workerB = startDomainProcess({
-        workerId: `domain-status-b-${checkpoint}`,
-        exitAfterResult: true
-      });
-      await workerB.waitFor('DOMAIN_READY');
-      const resultB = await workerB.waitFor('DOMAIN_RESULT');
-      expect(resultB.payload).toMatchObject({
-        httpStatus: 200,
-        outboxCompletion: true,
-        leaseLost: false
-      });
-      expect(await workerB.waitForClose()).toEqual({ code: 0, signal: null });
-      expect(workerB.stderr()).toBe('');
+        if (checkpoint === 'after_domain_command_before_cas') {
+          await expect(workerA.waitFor('DOMAIN_COMMAND_RESULT')).resolves.toMatchObject({
+            payload: { httpStatus: 200 }
+          });
+          const committed = await getTestPool().query<{ readonly status: string }>(
+            `SELECT status FROM inpatient_stays WHERE account_id = $1 AND id = $2`,
+            [fixture.accountId, fixture.stayId]
+          );
+          expect(committed.rows[0]?.status).toBe('stable');
+        }
 
-      const reconciled = await getTestPool().query<{
-        readonly stayStatus: string;
-        readonly timelineEvents: number;
-        readonly auditEvents: number;
-        readonly idempotencyRows: number;
-        readonly outboxStatus: string;
-        readonly outboxAttempts: number;
-        readonly outboxLeaseVersion: number;
-      }>(
-        `SELECT
+        const killed = await workerA.kill('SIGKILL');
+        expect(killed.signal).toBe('SIGKILL');
+        await waitForLeaseExpiry();
+
+        const workerB = startDomainProcess({
+          workerId: `domain-status-b-${checkpoint}`,
+          exitAfterResult: true
+        });
+        await workerB.waitFor('DOMAIN_READY');
+        const resultB = await workerB.waitFor('DOMAIN_RESULT');
+        expect(resultB.payload).toMatchObject({
+          httpStatus: 200,
+          outboxCompletion: true,
+          leaseLost: false
+        });
+        expect(await workerB.waitForClose()).toEqual({ code: 0, signal: null });
+        expect(workerB.stderr()).toBe('');
+
+        const reconciled = await getTestPool().query<{
+          readonly stayStatus: string;
+          readonly timelineEvents: number;
+          readonly auditEvents: number;
+          readonly idempotencyRows: number;
+          readonly outboxStatus: string;
+          readonly outboxAttempts: number;
+          readonly outboxLeaseVersion: number;
+        }>(
+          `SELECT
            (SELECT status FROM inpatient_stays
              WHERE account_id = $1 AND id = $2) AS "stayStatus",
            (SELECT COUNT(*)::int FROM clinical_timeline
@@ -787,137 +787,137 @@ describe('inpatient domain child-process SIGKILL/takeover boundary', () => {
            event.lease_version::int AS "outboxLeaseVersion"
          FROM outbox_events event
         WHERE event.account_id = $1 AND event.id = $5`,
-        [
-          fixture.accountId,
-          fixture.stayId,
-          fixture.encounterId,
-          fixture.idempotencyKey,
-          fixture.outboxEventId
-        ]
-      );
-      expect(reconciled.rows[0]).toMatchObject({
-        stayStatus: 'stable',
-        timelineEvents: 1,
-        auditEvents: 1,
-        idempotencyRows: 1,
-        outboxStatus: 'completed',
-        outboxAttempts: 2,
-        outboxLeaseVersion: 2
-      });
-    },
-    60_000
-  );
-
-  it.each([
-    {
-      checkpoint: 'after_claim' as const,
-      label: 'assignment',
-      operation: 'inpatient.beds.assign' as const,
-      endpoint: 'assign-bed',
-      auditAction: 'assign_bed',
-      expectedStatus: 'admitted',
-      timelineEvent: 'never'
-    },
-    {
-      checkpoint: 'after_domain_command_before_cas' as const,
-      label: 'assignment',
-      operation: 'inpatient.beds.assign' as const,
-      endpoint: 'assign-bed',
-      auditAction: 'assign_bed',
-      expectedStatus: 'admitted',
-      timelineEvent: 'never'
-    },
-    {
-      checkpoint: 'after_claim' as const,
-      label: 'transfer',
-      operation: 'inpatient.beds.transfer' as const,
-      endpoint: 'transfer-bed',
-      auditAction: 'transfer_bed',
-      expectedStatus: 'transferred',
-      timelineEvent: 'inpatient_transferred'
-    },
-    {
-      checkpoint: 'after_domain_command_before_cas' as const,
-      label: 'transfer',
-      operation: 'inpatient.beds.transfer' as const,
-      endpoint: 'transfer-bed',
-      auditAction: 'transfer_bed',
-      expectedStatus: 'transferred',
-      timelineEvent: 'inpatient_transferred'
-    }
-  ])(
-    'replays inpatient bed $label after SIGKILL at $checkpoint',
-    async (scenario) => {
-      await configureOutboxCommand({
-        accountId: fixture.accountId,
-        _meta: { accountId: fixture.accountId },
-        operation: scenario.operation,
-        stayId: fixture.stayId,
-        bedId: fixture.targetBedId,
-        sectorId: fixture.sectorId,
-        idempotencyKey: fixture.idempotencyKey
-      });
-
-      const workerA = startDomainProcess({
-        workerId: `domain-${scenario.label}-a-${scenario.checkpoint}`,
-        checkpoint: scenario.checkpoint
-      });
-      await workerA.waitFor('DOMAIN_READY');
-      const checkpointA = await workerA.waitFor('DOMAIN_CHECKPOINT');
-      expect(checkpointA.payload).toMatchObject({
-        checkpoint: scenario.checkpoint,
-        leaseVersion: 1
-      });
-
-      if (scenario.checkpoint === 'after_domain_command_before_cas') {
-        await expect(workerA.waitFor('DOMAIN_COMMAND_RESULT')).resolves.toMatchObject({
-          payload: { httpStatus: 200 }
-        });
-        const committed = await getTestPool().query<{
-          readonly status: string;
-          readonly bedId: string;
-        }>(
-          `SELECT status, bed_id::text AS "bedId"
-             FROM inpatient_stays WHERE account_id = $1 AND id = $2`,
-          [fixture.accountId, fixture.stayId]
+          [
+            fixture.accountId,
+            fixture.stayId,
+            fixture.encounterId,
+            fixture.idempotencyKey,
+            fixture.outboxEventId
+          ]
         );
-        expect(committed.rows[0]).toMatchObject({
-          status: scenario.expectedStatus,
-          bedId: fixture.targetBedId
+        expect(reconciled.rows[0]).toMatchObject({
+          stayStatus: 'stable',
+          timelineEvents: 1,
+          auditEvents: 1,
+          idempotencyRows: 1,
+          outboxStatus: 'completed',
+          outboxAttempts: 2,
+          outboxLeaseVersion: 2
         });
+      },
+      60_000
+    );
+
+    it.each([
+      {
+        checkpoint: 'after_claim' as const,
+        label: 'assignment',
+        operation: 'inpatient.beds.assign' as const,
+        endpoint: 'assign-bed',
+        auditAction: 'assign_bed',
+        expectedStatus: 'admitted',
+        timelineEvent: 'never'
+      },
+      {
+        checkpoint: 'after_domain_command_before_cas' as const,
+        label: 'assignment',
+        operation: 'inpatient.beds.assign' as const,
+        endpoint: 'assign-bed',
+        auditAction: 'assign_bed',
+        expectedStatus: 'admitted',
+        timelineEvent: 'never'
+      },
+      {
+        checkpoint: 'after_claim' as const,
+        label: 'transfer',
+        operation: 'inpatient.beds.transfer' as const,
+        endpoint: 'transfer-bed',
+        auditAction: 'transfer_bed',
+        expectedStatus: 'transferred',
+        timelineEvent: 'inpatient_transferred'
+      },
+      {
+        checkpoint: 'after_domain_command_before_cas' as const,
+        label: 'transfer',
+        operation: 'inpatient.beds.transfer' as const,
+        endpoint: 'transfer-bed',
+        auditAction: 'transfer_bed',
+        expectedStatus: 'transferred',
+        timelineEvent: 'inpatient_transferred'
       }
+    ])(
+      'replays inpatient bed $label after SIGKILL at $checkpoint',
+      async (scenario) => {
+        await configureOutboxCommand({
+          accountId: fixture.accountId,
+          _meta: { accountId: fixture.accountId },
+          operation: scenario.operation,
+          stayId: fixture.stayId,
+          bedId: fixture.targetBedId,
+          sectorId: fixture.sectorId,
+          idempotencyKey: fixture.idempotencyKey
+        });
 
-      const killed = await workerA.kill('SIGKILL');
-      expect(killed.signal).toBe('SIGKILL');
-      await waitForLeaseExpiry();
+        const workerA = startDomainProcess({
+          workerId: `domain-${scenario.label}-a-${scenario.checkpoint}`,
+          checkpoint: scenario.checkpoint
+        });
+        await workerA.waitFor('DOMAIN_READY');
+        const checkpointA = await workerA.waitFor('DOMAIN_CHECKPOINT');
+        expect(checkpointA.payload).toMatchObject({
+          checkpoint: scenario.checkpoint,
+          leaseVersion: 1
+        });
 
-      const workerB = startDomainProcess({
-        workerId: `domain-${scenario.label}-b-${scenario.checkpoint}`,
-        exitAfterResult: true
-      });
-      await workerB.waitFor('DOMAIN_READY');
-      const resultB = await workerB.waitFor('DOMAIN_RESULT');
-      expect(resultB.payload).toMatchObject({
-        httpStatus: 200,
-        outboxCompletion: true,
-        leaseLost: false
-      });
-      expect(await workerB.waitForClose()).toEqual({ code: 0, signal: null });
-      expect(workerB.stderr()).toBe('');
+        if (scenario.checkpoint === 'after_domain_command_before_cas') {
+          await expect(workerA.waitFor('DOMAIN_COMMAND_RESULT')).resolves.toMatchObject({
+            payload: { httpStatus: 200 }
+          });
+          const committed = await getTestPool().query<{
+            readonly status: string;
+            readonly bedId: string;
+          }>(
+            `SELECT status, bed_id::text AS "bedId"
+             FROM inpatient_stays WHERE account_id = $1 AND id = $2`,
+            [fixture.accountId, fixture.stayId]
+          );
+          expect(committed.rows[0]).toMatchObject({
+            status: scenario.expectedStatus,
+            bedId: fixture.targetBedId
+          });
+        }
 
-      const reconciled = await getTestPool().query<{
-        readonly stayStatus: string;
-        readonly stayBedId: string;
-        readonly initialBedStatus: string;
-        readonly targetBedStatus: string;
-        readonly timelineEvents: number;
-        readonly auditEvents: number;
-        readonly idempotencyRows: number;
-        readonly outboxStatus: string;
-        readonly outboxAttempts: number;
-        readonly outboxLeaseVersion: number;
-      }>(
-        `SELECT
+        const killed = await workerA.kill('SIGKILL');
+        expect(killed.signal).toBe('SIGKILL');
+        await waitForLeaseExpiry();
+
+        const workerB = startDomainProcess({
+          workerId: `domain-${scenario.label}-b-${scenario.checkpoint}`,
+          exitAfterResult: true
+        });
+        await workerB.waitFor('DOMAIN_READY');
+        const resultB = await workerB.waitFor('DOMAIN_RESULT');
+        expect(resultB.payload).toMatchObject({
+          httpStatus: 200,
+          outboxCompletion: true,
+          leaseLost: false
+        });
+        expect(await workerB.waitForClose()).toEqual({ code: 0, signal: null });
+        expect(workerB.stderr()).toBe('');
+
+        const reconciled = await getTestPool().query<{
+          readonly stayStatus: string;
+          readonly stayBedId: string;
+          readonly initialBedStatus: string;
+          readonly targetBedStatus: string;
+          readonly timelineEvents: number;
+          readonly auditEvents: number;
+          readonly idempotencyRows: number;
+          readonly outboxStatus: string;
+          readonly outboxAttempts: number;
+          readonly outboxLeaseVersion: number;
+        }>(
+          `SELECT
            (SELECT status FROM inpatient_stays
              WHERE account_id = $1 AND id = $2) AS "stayStatus",
            (SELECT bed_id::text FROM inpatient_stays
@@ -936,115 +936,116 @@ describe('inpatient domain child-process SIGKILL/takeover boundary', () => {
            event.lease_version::int AS "outboxLeaseVersion"
          FROM outbox_events event
         WHERE event.account_id = $1 AND event.id = $10`,
-        [
-          fixture.accountId,
-          fixture.stayId,
-          fixture.initialBedId,
-          fixture.targetBedId,
-          fixture.encounterId,
-          scenario.timelineEvent,
-          scenario.auditAction,
-          `POST /inpatient/${fixture.stayId}/${scenario.endpoint}`,
-          fixture.idempotencyKey,
-          fixture.outboxEventId
-        ]
-      );
-      expect(reconciled.rows[0]).toMatchObject({
-        stayStatus: scenario.expectedStatus,
-        stayBedId: fixture.targetBedId,
-        initialBedStatus: 'available',
-        targetBedStatus: 'occupied',
-        timelineEvents: scenario.timelineEvent === 'never' ? 0 : 1,
-        auditEvents: 1,
-        idempotencyRows: 1,
-        outboxStatus: 'completed',
-        outboxAttempts: 2,
-        outboxLeaseVersion: 2
-      });
-    },
-    60_000
-  );
-
-  it.each(['after_claim', 'after_domain_command_before_cas'] as const)(
-    'fences a stale owner while process A is still alive at %s',
-    async (checkpoint) => {
-      const workerA = startDomainProcess({
-        workerId: `domain-stale-a-${checkpoint}`,
-        checkpoint,
-        pauseUntilSignal: true,
-        exitAfterResult: true
-      });
-      const readyA = await workerA.waitFor('DOMAIN_READY');
-      expect(Number(readyA.payload.pid)).toBe(workerA.pid);
-      expect(readyA.payload).toMatchObject({
-        currentUser: WORKER_ROLE,
-        rolsuper: false,
-        rolbypassrls: false
-      });
-      const checkpointA = await workerA.waitFor('DOMAIN_CHECKPOINT');
-      expect(checkpointA.payload.checkpoint).toBe(checkpoint);
-      expect(Number(checkpointA.payload.leaseVersion)).toBe(1);
-
-      if (checkpoint === 'after_domain_command_before_cas') {
-        await expect(workerA.waitFor('DOMAIN_COMMAND_RESULT')).resolves.toMatchObject({
-          payload: { httpStatus: 201 }
+          [
+            fixture.accountId,
+            fixture.stayId,
+            fixture.initialBedId,
+            fixture.targetBedId,
+            fixture.encounterId,
+            scenario.timelineEvent,
+            scenario.auditAction,
+            `POST /inpatient/${fixture.stayId}/${scenario.endpoint}`,
+            fixture.idempotencyKey,
+            fixture.outboxEventId
+          ]
+        );
+        expect(reconciled.rows[0]).toMatchObject({
+          stayStatus: scenario.expectedStatus,
+          stayBedId: fixture.targetBedId,
+          initialBedStatus: 'available',
+          targetBedStatus: 'occupied',
+          timelineEvents: scenario.timelineEvent === 'never' ? 0 : 1,
+          auditEvents: 1,
+          idempotencyRows: 1,
+          outboxStatus: 'completed',
+          outboxAttempts: 2,
+          outboxLeaseVersion: 2
         });
-      }
+      },
+      60_000
+    );
 
-      await waitForLeaseExpiry();
-      const workerB = startDomainProcess({
-        workerId: `domain-stale-b-${checkpoint}`,
-        exitAfterResult: true
-      });
-      const readyB = await workerB.waitFor('DOMAIN_READY');
-      expect(Number(readyB.payload.pid)).toBe(workerB.pid);
-      expect(workerB.pid).not.toBe(workerA.pid);
-      expect(readyB.payload).toMatchObject({
-        currentUser: WORKER_ROLE,
-        rolsuper: false,
-        rolbypassrls: false
-      });
-      const checkpointB = await workerB.waitFor('DOMAIN_CHECKPOINT');
-      expect(Number(checkpointB.payload.leaseVersion)).toBe(2);
-      const resultB = await workerB.waitFor('DOMAIN_RESULT');
-      expect(resultB.payload).toMatchObject({
-        httpStatus: 201,
-        outboxCompletion: true,
-        leaseLost: false
-      });
-      expect(await workerB.waitForClose()).toEqual({ code: 0, signal: null });
-      expect(workerB.stderr()).toBe('');
-      expect(workerA.child.exitCode).toBeNull();
-      expect(workerA.child.signalCode).toBeNull();
+    it.each(['after_claim', 'after_domain_command_before_cas'] as const)(
+      'fences a stale owner while process A is still alive at %s',
+      async (checkpoint) => {
+        const workerA = startDomainProcess({
+          workerId: `domain-stale-a-${checkpoint}`,
+          checkpoint,
+          pauseUntilSignal: true,
+          exitAfterResult: true
+        });
+        const readyA = await workerA.waitFor('DOMAIN_READY');
+        expect(Number(readyA.payload.pid)).toBe(workerA.pid);
+        expect(readyA.payload).toMatchObject({
+          currentUser: WORKER_ROLE,
+          rolsuper: false,
+          rolbypassrls: false
+        });
+        const checkpointA = await workerA.waitFor('DOMAIN_CHECKPOINT');
+        expect(checkpointA.payload.checkpoint).toBe(checkpoint);
+        expect(Number(checkpointA.payload.leaseVersion)).toBe(1);
 
-      workerA.resume();
-      const resultA = await workerA.waitFor('DOMAIN_RESULT');
-      expect(resultA.payload).toMatchObject({
-        httpStatus: 201,
-        outboxCompletion: false,
-        leaseLost: true
-      });
-      expect(await workerA.waitForClose()).toEqual({ code: 0, signal: null });
-      expect(workerA.stderr()).toBe('');
-
-      const divergentReplay = await requestJson<{ readonly code?: string }>(
-        '/inventory/consumptions',
-        {
-          method: 'POST',
-          headers: { ...authHeaders(), 'idempotency-key': fixture.idempotencyKey },
-          body: JSON.stringify({
-            encounterId: fixture.encounterId,
-            inventoryItemId: fixture.itemId,
-            quantity: 3,
-            sourceEntityType: 'inpatient_stay',
-            sourceEntityId: fixture.stayId
-          })
+        if (checkpoint === 'after_domain_command_before_cas') {
+          await expect(workerA.waitFor('DOMAIN_COMMAND_RESULT')).resolves.toMatchObject({
+            payload: { httpStatus: 201 }
+          });
         }
-      );
-      expect(divergentReplay.status).toBe(409);
-      expect(divergentReplay.body).toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' });
-      await assertReconciled(2);
-    },
-    60_000
-  );
-});
+
+        await waitForLeaseExpiry();
+        const workerB = startDomainProcess({
+          workerId: `domain-stale-b-${checkpoint}`,
+          exitAfterResult: true
+        });
+        const readyB = await workerB.waitFor('DOMAIN_READY');
+        expect(Number(readyB.payload.pid)).toBe(workerB.pid);
+        expect(workerB.pid).not.toBe(workerA.pid);
+        expect(readyB.payload).toMatchObject({
+          currentUser: WORKER_ROLE,
+          rolsuper: false,
+          rolbypassrls: false
+        });
+        const checkpointB = await workerB.waitFor('DOMAIN_CHECKPOINT');
+        expect(Number(checkpointB.payload.leaseVersion)).toBe(2);
+        const resultB = await workerB.waitFor('DOMAIN_RESULT');
+        expect(resultB.payload).toMatchObject({
+          httpStatus: 201,
+          outboxCompletion: true,
+          leaseLost: false
+        });
+        expect(await workerB.waitForClose()).toEqual({ code: 0, signal: null });
+        expect(workerB.stderr()).toBe('');
+        expect(workerA.child.exitCode).toBeNull();
+        expect(workerA.child.signalCode).toBeNull();
+
+        workerA.resume();
+        const resultA = await workerA.waitFor('DOMAIN_RESULT');
+        expect(resultA.payload).toMatchObject({
+          httpStatus: 201,
+          outboxCompletion: false,
+          leaseLost: true
+        });
+        expect(await workerA.waitForClose()).toEqual({ code: 0, signal: null });
+        expect(workerA.stderr()).toBe('');
+
+        const divergentReplay = await requestJson<{ readonly code?: string }>(
+          '/inventory/consumptions',
+          {
+            method: 'POST',
+            headers: { ...authHeaders(), 'idempotency-key': fixture.idempotencyKey },
+            body: JSON.stringify({
+              encounterId: fixture.encounterId,
+              inventoryItemId: fixture.itemId,
+              quantity: 3,
+              sourceEntityType: 'inpatient_stay',
+              sourceEntityId: fixture.stayId
+            })
+          }
+        );
+        expect(divergentReplay.status).toBe(409);
+        expect(divergentReplay.body).toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' });
+        await assertReconciled(2);
+      },
+      60_000
+    );
+  }
+);

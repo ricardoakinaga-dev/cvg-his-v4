@@ -96,7 +96,10 @@
                   <h3>{{ sale.number }}</h3>
                   <p>{{ sale.customer }} · {{ sale.document }}</p>
                 </div>
-                <StatusBadge :label="statusLabel(sale.status)" :variant="statusVariant(sale.status)" />
+                <StatusBadge
+                  :label="statusLabel(sale.status)"
+                  :variant="statusVariant(sale.status)"
+                />
               </div>
 
               <dl class="sale-facts">
@@ -119,8 +122,12 @@
               </dl>
 
               <div class="sale-card__actions">
-                <DsButton size="sm" variant="primary" @click="selectSale(sale.id)">Abrir venda</DsButton>
-                <DsButton size="sm" variant="secondary" tag="a" :to="counterSalePath(sale)">Operar comanda</DsButton>
+                <DsButton size="sm" variant="primary" @click="selectSale(sale.id)"
+                  >Abrir venda</DsButton
+                >
+                <DsButton size="sm" variant="secondary" tag="a" :to="counterSalePath(sale)"
+                  >Operar comanda</DsButton
+                >
               </div>
             </article>
           </div>
@@ -198,7 +205,12 @@
               <div v-if="selectedSale.payments.length === 0" class="sales-empty">
                 Nenhuma pagamento para esta venda
               </div>
-              <div v-for="payment in selectedSale.payments" v-else :key="payment.method" class="payment-grid">
+              <div
+                v-for="payment in selectedSale.payments"
+                v-else
+                :key="payment.method"
+                class="payment-grid"
+              >
                 <span>{{ payment.method }}</span>
                 <span>{{ formatCurrency(payment.amount) }}</span>
               </div>
@@ -207,6 +219,25 @@
             <section class="workbench-section">
               <strong>Observações</strong>
               <p class="notes-box">{{ selectedSale.notes || 'Sem observações registradas.' }}</p>
+            </section>
+
+            <section class="workbench-section" data-testid="sale-cancellation-history">
+              <div class="section-header">
+                <strong>Histórico de cancelamentos</strong>
+                <span>{{ selectedCancellationHistory.length }} registro(s)</span>
+              </div>
+              <div v-if="selectedCancellationHistory.length > 0" class="cancellation-history">
+                <article
+                  v-for="event in selectedCancellationHistory"
+                  :key="event.eventId"
+                  class="cancellation-history__item"
+                >
+                  <strong>Cancelamento em {{ formatDate(event.cancelledAt) }}</strong>
+                  <span>Motivo: {{ event.reason }}</span>
+                  <span>Registrado por: Operador {{ event.cancelledByUserId }}</span>
+                </article>
+              </div>
+              <p v-else class="sales-empty">Nenhum histórico de cancelamento disponível.</p>
             </section>
 
             <section class="total-grid" aria-label="Totais da venda">
@@ -237,7 +268,9 @@
             </section>
 
             <div class="sale-actions">
-              <DsButton variant="secondary" tag="a" :to="counterSalePath(selectedSale)">Abrir comanda</DsButton>
+              <DsButton variant="secondary" tag="a" :to="counterSalePath(selectedSale)"
+                >Abrir comanda</DsButton
+              >
               <DsButton variant="secondary">Salvar</DsButton>
               <DsButton
                 variant="primary"
@@ -251,7 +284,7 @@
               <DsButton
                 variant="danger"
                 :disabled="selectedSale.status === 'cancelled' || Boolean(operatingAction)"
-                @click="cancelSelectedSale"
+                @click="openCancelModal"
               >
                 {{ operatingAction === 'cancel' ? 'Cancelando...' : 'Excluir Venda' }}
               </DsButton>
@@ -267,6 +300,50 @@
         </DsCard>
       </aside>
     </div>
+
+    <DsModal
+      :open="cancelModalOpen"
+      :teleport="false"
+      title="Cancelar venda"
+      size="sm"
+      @close="closeCancelModal"
+    >
+      <div class="cancel-sale-modal">
+        <p v-if="selectedSale" class="cancel-sale-modal__description">
+          Informe o motivo para cancelar a venda {{ selectedSale.number }}. Este registro ficará
+          disponível no histórico da venda.
+        </p>
+        <DsInput
+          id="sale-cancel-reason"
+          v-model="cancelReason"
+          type="textarea"
+          label="Motivo do cancelamento"
+          placeholder="Descreva o motivo do cancelamento"
+          :rows="4"
+          :maxlength="CANCELLATION_REASON_MAX_LENGTH"
+          :error="cancellationReasonError"
+          required
+          @blur="cancelReasonTouched = true"
+        />
+        <p class="cancel-sale-modal__hint">
+          Obrigatório · {{ cancelReason.trim().length }} /
+          {{ CANCELLATION_REASON_MAX_LENGTH }} caracteres
+        </p>
+      </div>
+      <template #footer>
+        <DsButton variant="ghost" :disabled="Boolean(operatingAction)" @click="closeCancelModal">
+          Voltar
+        </DsButton>
+        <DsButton
+          variant="danger"
+          :loading="operatingAction === 'cancel'"
+          :disabled="!canConfirmCancellation"
+          @click="confirmCancelSelectedSale"
+        >
+          {{ operatingAction === 'cancel' ? 'Cancelando...' : 'Confirmar cancelamento' }}
+        </DsButton>
+      </template>
+    </DsModal>
   </div>
 </template>
 
@@ -274,14 +351,23 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import AppPageHeader from '@/components/AppPageHeader.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
-import { counterSalesService, type CounterSaleDetail, type CounterSalePaymentMethod } from '@/services/counterSales';
+import {
+  counterSalesService,
+  type CounterSaleCancellationHistory,
+  type CounterSaleDetail,
+  type CounterSalePaymentMethod
+} from '@/services/counterSales';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
+import DsModal from '@cvg-his-v2/design-system/vue/DsModal.vue';
 import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
 
 type SaleStatus = 'open' | 'closed' | 'cancelled';
+
+const CANCELLATION_REASON_MAX_LENGTH = 500;
+const CANCELLATION_REASON_CONTROL_CHARACTERS = /[\u0000-\u001f\u007f-\u009f]/u;
 
 interface SaleProduct {
   name: string;
@@ -315,6 +401,7 @@ interface ProductSale {
   finalValue: number;
   paidAmount: number;
   balanceDue: number;
+  cancellationHistory: readonly CounterSaleCancellationHistory[];
 }
 
 const sales = ref<ProductSale[]>([]);
@@ -323,6 +410,9 @@ const errorMessage = ref('');
 const actionError = ref('');
 const actionMessage = ref('');
 const operatingAction = ref<'close' | 'cancel' | ''>('');
+const cancelModalOpen = ref(false);
+const cancelReason = ref('');
+const cancelReasonTouched = ref(false);
 
 const filters = ref({
   search: '',
@@ -335,7 +425,10 @@ const selectedSaleId = ref(sales.value[0]?.id ?? '');
 const openSales = computed(() => sales.value.filter((sale) => sale.status === 'open'));
 const closedSales = computed(() => sales.value.filter((sale) => sale.status === 'closed'));
 const totalProducts = computed(() =>
-  sales.value.reduce((sum, sale) => sum + sale.products.reduce((itemSum, item) => itemSum + item.quantity, 0), 0)
+  sales.value.reduce(
+    (sum, sale) => sum + sale.products.reduce((itemSum, item) => itemSum + item.quantity, 0),
+    0
+  )
 );
 const totalFinalFormatted = computed(() =>
   formatCurrency(sales.value.reduce((sum, sale) => sum + sale.finalValue, 0))
@@ -347,7 +440,9 @@ const filteredSales = computed(() => {
     const matchesStatus = status === 'all' || sale.status === status;
     const matchesSearch =
       !search ||
-      normalizeSearch(`${sale.id} ${sale.number} ${sale.posId} ${sale.customer} ${sale.document}`).includes(search);
+      normalizeSearch(
+        `${sale.id} ${sale.number} ${sale.posId} ${sale.customer} ${sale.document}`
+      ).includes(search);
     return matchesStatus && matchesSearch;
   });
 
@@ -358,9 +453,31 @@ const filteredSales = computed(() => {
     return filters.value.order === 'date-asc' ? leftTime - rightTime : rightTime - leftTime;
   });
 });
-const selectedSale = computed(() =>
-  sales.value.find((sale) => sale.id === selectedSaleId.value) ?? null
+const selectedSale = computed(
+  () => sales.value.find((sale) => sale.id === selectedSaleId.value) ?? null
 );
+const selectedCancellationHistory = computed(() => selectedSale.value?.cancellationHistory ?? []);
+const cancellationReasonError = computed(() => {
+  if (!cancelReasonTouched.value) return undefined;
+  const normalizedReason = cancelReason.value.trim();
+  if (CANCELLATION_REASON_CONTROL_CHARACTERS.test(cancelReason.value)) {
+    return 'O motivo do cancelamento não pode conter caracteres de controle.';
+  }
+  if (!normalizedReason) return 'O motivo do cancelamento é obrigatório.';
+  if (normalizedReason.length > CANCELLATION_REASON_MAX_LENGTH) {
+    return `O motivo do cancelamento deve ter no máximo ${CANCELLATION_REASON_MAX_LENGTH} caracteres.`;
+  }
+  return undefined;
+});
+const canConfirmCancellation = computed(() => {
+  const length = cancelReason.value.trim().length;
+  return (
+    !operatingAction.value &&
+    !CANCELLATION_REASON_CONTROL_CHARACTERS.test(cancelReason.value) &&
+    length >= 1 &&
+    length <= CANCELLATION_REASON_MAX_LENGTH
+  );
+});
 const resultsSummary = computed(() => {
   const count = filteredSales.value.length;
   if (count === 0) return 'Mostrando 0 - 0 pág. de 0 resultados';
@@ -371,12 +488,14 @@ const salesFlow = [
   {
     eyebrow: 'Operação',
     title: 'Índice de vendas',
-    description: 'A superfície prioriza busca, status, paginação e abertura manual a partir da comanda.'
+    description:
+      'A superfície prioriza busca, status, paginação e abertura manual a partir da comanda.'
   },
   {
     eyebrow: 'Ficha',
     title: 'Ficha transacional completa',
-    description: 'A venda concentra produtos, observações, pagamentos, impressão e fechamento operacional.'
+    description:
+      'A venda concentra produtos, observações, pagamentos, impressão e fechamento operacional.'
   },
   {
     eyebrow: 'Comercial',
@@ -417,15 +536,47 @@ async function closeSelectedSale() {
   await runSaleOperation('close', selectedSale.value.id, 'Venda fechada com sucesso.');
 }
 
-async function cancelSelectedSale() {
-  if (!selectedSale.value || operatingAction.value) return;
-  await runSaleOperation('cancel', selectedSale.value.id, 'Venda cancelada com sucesso.');
+function openCancelModal() {
+  if (!selectedSale.value || selectedSale.value.status !== 'open' || operatingAction.value) return;
+  cancelReason.value = '';
+  cancelReasonTouched.value = false;
+  cancelModalOpen.value = true;
+}
+
+function closeCancelModal() {
+  if (operatingAction.value) return;
+  cancelModalOpen.value = false;
+  cancelReason.value = '';
+  cancelReasonTouched.value = false;
+}
+
+async function confirmCancelSelectedSale() {
+  const sale = selectedSale.value;
+  if (!sale || operatingAction.value) return;
+
+  cancelReasonTouched.value = true;
+  if (CANCELLATION_REASON_CONTROL_CHARACTERS.test(cancelReason.value)) {
+    actionError.value = 'O motivo do cancelamento não pode conter caracteres de controle.';
+    return;
+  }
+  const reason = cancelReason.value.trim();
+  if (!reason) {
+    actionError.value = 'O motivo do cancelamento é obrigatório.';
+    return;
+  }
+  if (reason.length > CANCELLATION_REASON_MAX_LENGTH) {
+    actionError.value = `O motivo do cancelamento deve ter no máximo ${CANCELLATION_REASON_MAX_LENGTH} caracteres.`;
+    return;
+  }
+
+  await runSaleOperation('cancel', sale.id, 'Venda cancelada com sucesso.', reason);
 }
 
 async function runSaleOperation(
   operation: 'close' | 'cancel',
   saleId: string,
-  successMessage: string
+  successMessage: string,
+  cancellationReason?: string
 ) {
   operatingAction.value = operation;
   actionError.value = '';
@@ -435,7 +586,7 @@ async function runSaleOperation(
     if (operation === 'close') {
       await counterSalesService.close(saleId);
     } else {
-      await counterSalesService.cancel(saleId);
+      await counterSalesService.cancel(saleId, cancellationReason ?? '');
     }
 
     const detail = await counterSalesService.getById(saleId);
@@ -446,6 +597,11 @@ async function runSaleOperation(
     }
     selectedSaleId.value = saleId;
     actionMessage.value = successMessage;
+    if (operation === 'cancel') {
+      cancelModalOpen.value = false;
+      cancelReason.value = '';
+      cancelReasonTouched.value = false;
+    }
   } catch (error) {
     actionError.value =
       error instanceof Error
@@ -462,7 +618,9 @@ async function loadSales() {
 
   try {
     const summaries = await counterSalesService.list({ status: 'all' });
-    const details = await Promise.all(summaries.map((sale) => counterSalesService.getById(sale.id)));
+    const details = await Promise.all(
+      summaries.map((sale) => counterSalesService.getById(sale.id))
+    );
     sales.value = details.map(toProductSale);
   } catch (error) {
     sales.value = [];
@@ -503,7 +661,8 @@ function toProductSale(sale: CounterSaleDetail): ProductSale {
     discountedValue: sale.discountAmount,
     finalValue: sale.total,
     paidAmount: sale.paidAmount,
-    balanceDue: sale.balanceDue
+    balanceDue: sale.balanceDue,
+    cancellationHistory: sale.cancellationHistory ?? []
   };
 }
 
@@ -589,7 +748,11 @@ function toSortableDate(value: string): number {
   padding: 14px;
   border: 1px solid var(--color-border, #e2e8f0);
   border-radius: 16px;
-  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+  background: linear-gradient(
+    180deg,
+    var(--color-surface, #ffffff),
+    var(--color-bg-subtle, #f8fafc)
+  );
 }
 
 .sales-flow-card span,
@@ -711,11 +874,45 @@ dd {
 
 .selection-note,
 .sales-empty,
-.notes-box {
+.notes-box,
+.cancel-sale-modal__description,
+.cancel-sale-modal__hint {
   padding: 12px;
   border-radius: 12px;
   background: var(--color-bg-subtle, #f8fafc);
   color: var(--color-text-secondary, #475569);
+}
+
+.cancel-sale-modal {
+  display: grid;
+  gap: 12px;
+}
+
+.cancel-sale-modal__description,
+.cancel-sale-modal__hint {
+  margin: 0;
+}
+
+.cancel-sale-modal__hint {
+  padding: 0;
+  background: transparent;
+  font-size: 12px;
+}
+
+.cancellation-history {
+  display: grid;
+  gap: 8px;
+}
+
+.cancellation-history__item {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-left: 4px solid var(--color-danger-500, #ef4444);
+  border-radius: 10px;
+  background: var(--color-danger-50, #fef2f2);
+  color: var(--color-text-secondary, #475569);
+  font-size: 13px;
 }
 
 .selection-note {

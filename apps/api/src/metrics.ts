@@ -81,7 +81,7 @@ export const appRedisHealthy = new Gauge({
 
 export const appPersistenceMode = new Gauge({
   name: 'app_persistence_mode',
-  help: 'Persistence mode (1 = database, 0 = in-memory)',
+  help: 'Persistence mode (1 = active mode; database, in-memory or unavailable)',
   labelNames: ['mode'] as const,
   registers: [registry]
 });
@@ -340,11 +340,7 @@ export function updateAppMetrics(options: {
 
   // Reset previous persistence mode labels
   appPersistenceMode.reset();
-  if (options.persistenceMode === 'database') {
-    appPersistenceMode.set({ mode: 'database' }, 1);
-  } else {
-    appPersistenceMode.set({ mode: 'in-memory' }, 1);
-  }
+  appPersistenceMode.set({ mode: options.persistenceMode }, 1);
 
   appRateLimiterMode.reset();
   appRateLimiterMode.set({ mode: options.rateLimiterMode }, 1);

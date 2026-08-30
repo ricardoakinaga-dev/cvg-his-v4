@@ -1,0 +1,85 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-SCHEDULED-PAYABLES-IR-001",
+  "timestamp": "2026-08-27T01:28:05-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-004 bounded tenant-scoped scheduled financial-payables report source through the real worker",
+  "scope_ref": "CVG-004-REPORT-SCHEDULED-PAYABLES",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The scheduled payables gap, bounded contract, owner and explicit exclusions are recorded without promoting CVG-004 or global readiness.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-scheduled-payables.md",
+        ".agent/backlog.json",
+        ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-PAYABLES-IR-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Only the existing financial-payables scheduled read path is authorized; other report families, providers, target and release remain open."
+    },
+    {
+      "id": "IR-002",
+      "description": "The ReportsService catalog and API already define the persisted financial-payables columns, and the worker can use the exported tenant-aware DatabaseFinancialPayablesRepository without an API dependency.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/reports/src/index.ts",
+        "apps/api/src/routes/reports-routes.ts",
+        "packages/modules/financial/src/index.ts",
+        "packages/modules/financial/src/repositories/database-financial.repository.ts",
+        "apps/worker/src/bootstrap.ts",
+        "apps/worker/src/runner.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The worker source composition and process proof are not implemented at gate creation."
+    },
+    {
+      "id": "IR-003",
+      "description": "Focused RED tests can reject the absent worker source, permissive filters, foreign-account output, non-canonical rows and empty-success fallback before implementation.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-scheduled-payables.md",
+        "apps/worker/src/runner.test.ts",
+        "tests/integration/process/worker-run-once-reports.test.ts",
+        "apps/worker/src/jobs/scheduled-report-job.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Implementation, real disposable PostgreSQL execution, independent critique and post-implementation regressions are required before a bounded result."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-report-scheduled-payables.md",
+    "packages/modules/reports/src/index.ts",
+    "apps/api/src/routes/reports-routes.ts",
+    "packages/modules/financial/src/repositories/database-financial.repository.ts",
+    "apps/worker/src/bootstrap.ts",
+    "apps/worker/src/runner.ts",
+    "apps/worker/src/jobs/scheduled-report-job.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "The RED tests, worker source composition, implementation, real process verification and independent critique are not complete at gate creation."
+  ],
+  "conditions": [],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via the original consolidation brief",
+    "scope": "CVG-004 bounded tenant-scoped scheduled financial-payables report source",
+    "decision": "Authorize reversible repository implementation and disposable PostgreSQL/real worker verification of the existing read-only financial-payables schedule. Other report families, payable writes, providers, credentials, target, production, deployment, external mutation and release acceptance remain excluded.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-PAYABLES-IR-001",
+    "expires_or_revalidates": "Revalidate before supporting another scheduled report family, changing payable lifecycle semantics, adding provider delivery, target operations or release acceptance."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "next_action": "Write and run the focused worker RED tests, then implement the smallest tenant-scoped payables source and real run-once proof.",
+  "revalidation_triggers": [
+    "Changes to financial-payables persistence, mapping or API filters",
+    "Changes to worker bootstrap, schedule claiming or report delivery",
+    "Expansion beyond financial-payables scheduled resolution"
+  ],
+  "supersedes": null
+}

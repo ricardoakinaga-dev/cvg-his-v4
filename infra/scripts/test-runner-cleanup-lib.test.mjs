@@ -45,6 +45,7 @@ test('selectOrphanTestProcesses only returns orphan tracked processes in the sam
     { pid: 30, ppid: 1, elapsedSeconds: 600, command: `node ${workspace}/node_modules/vitest/vitest.mjs run --coverage --config vitest.config.ts`, cwd: workspace },
     { pid: 31, ppid: 30, elapsedSeconds: 599, command: `node ${workspace}/child-process.js`, cwd: workspace },
     { pid: 40, ppid: 9999, elapsedSeconds: 300, command: `node ${workspace}/infra/scripts/test-critical-bootstrap.mjs`, cwd: workspace },
+    { pid: 60, ppid: 9998, elapsedSeconds: 300, command: `node --import tsx/esm ${workspace}/apps/api/test-fixtures/api-process.ts`, cwd: workspace },
     { pid: 50, ppid: 1, elapsedSeconds: 400, command: 'node /tmp/other-project/node_modules/vitest/vitest.mjs run', cwd: '/tmp/other-project' }
   ];
 
@@ -52,7 +53,7 @@ test('selectOrphanTestProcesses only returns orphan tracked processes in the sam
 
   assert.deepEqual(
     orphans.map(({ pid }) => pid).sort((a, b) => a - b),
-    [30, 40]
+    [30, 40, 60]
   );
 });
 

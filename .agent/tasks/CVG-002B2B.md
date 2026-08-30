@@ -581,3 +581,113 @@ trabalho é a jornada admissão → handoff/permanência → inventário → alt
 billing → recebimento/ledger/auditoria/outbox com PostgreSQL/RLS, replay,
 concorrência e failpoints. Não promover `VERIFIED`, produção, provider, SPA,
 paridade, WCAG, operações, cobertura ou release.
+
+## Checkpoint executado — composição PIX assinado sintético (26/08/2026)
+
+Resultado local: `PASS_BOUNDED`, confiança `HIGH`, risco residual `HIGH`.
+
+Foi comprovada em PostgreSQL descartável a composição HTTP real → HMAC do
+raw body → recibo/delivery duráveis → processo worker real → service principal
+não interativo → B1 compartilhado → billing/attempt/PIX + receipt/journal/
+audit/outbox/delivery. O primeiro callback retornou `202`, o replay byte a
+byte retornou `202`, e um payload do tenant B assinado com a chave do tenant A
+retornou `400` sem ingress para B. O evento não correlacionado repetiu com
+`PIX_NOT_CORRELATED`; após a correlação, houve uma única liquidação e nenhum
+efeito financeiro no tenant B.
+
+As correções RED/GREEN incluem: remoção de `FOR UPDATE` incompatível com o
+privilégio SELECT-only do papel API; bloqueio fail-closed de `production`,
+`prod`, `staging`, `stage` e `NODE_ENV` production-like para a capacidade
+sintética; lock advisory comum antes da leitura do service principal, com
+barreira determinística PostgreSQL para revogação; readiness de schema/RLS/
+ACL no worker; fixture transacional com row-count/exact cents; e teardown
+destrutivo condicionado a `TEST_DB_EPHEMERAL=1`. O `global-setup` também
+preserva um banco explicitamente não-efêmero: verifica existência/conectividade
+e não executa reset, criação, migrations, seed, grants ou drop; `db-admin`
+recusa reset/criação e o drop é no-op nesse modo.
+
+Evidência fresca: unit HMAC/canonicalização/fingerprint `80/80`, ingress
+PostgreSQL `11/11`, HTTP `14/14`, HTTP→PostgreSQL `2/2`, composição completa
+`1/1`, consumer PostgreSQL `7/7`, matriz independente SIGKILL/restart `8/8`,
+worker `71/71`, API `401/401`, cobertura `1.956 passed / 1 skipped` em
+81,98% statements, 80,08% branches, 88,56% functions e 81,98% lines. API/
+worker typecheck, ESLint, Prettier e `git diff --check` passaram.
+
+O gate `.agent/gates/verified-CVG-002B2B-signed-pix-composition.json` e o
+artefato `.agent/artifacts/CVG-002B2B-signed-pix-composition-2026-08-26.md`
+registram a decisão. A revisão independente final foi executada em leitura
+somente e retornou `PASS_BOUNDED`, sem Critical, High ou Medium remanescente;
+ela confirmou também a proteção do banco explícito, a coluna `created_at` da
+readiness e os predicados/policies/constraints/indexes vinculados.
+
+Este checkpoint não fecha o contrato completo B2B: continuam abertos testes
+dedicados para todos os failpoints B1, composição com dois workers vivos, a
+matriz completa login/cache/MFA, providers reais, target, produção e release.
+Um escritor SQL privilegiado fora dos papéis runtime ainda pode ignorar o
+advisory lock; o protocolo deve ser imposto e revalidado antes da operação
+produtiva. `CVG-002B2B`, `CVG-002` e o programa global permanecem
+`IN_PROGRESS/PARTIAL`. Paridade geral permanece `98/100` (`4/11`), clínica
+`100/100` (`2/3`) e readiness `95/100` (`42 PASS / 3 WARN / 1 FAIL`).
+
+## Verificação bounded — concorrência com dois workers vivos (27/08/2026)
+
+A lacuna de evidência de contenção entre dois workers vivos foi fechada sem
+alterar código de produção, schema ou provider. O novo cenário no arquivo
+`tests/integration/process/pix-provider-settlement-sigkill.test.ts` inicia dois
+processos Node independentes com PIDs distintos: A mantém a lease depois de
+`after_claim_commit`, enquanto B disputa a mesma entrega durável dentro da
+janela válida e deve terminar `idle`. Depois da liberação controlada, A conclui
+o settlement.
+
+O banco PostgreSQL descartável aplicou as migrations `0000`–`0153` e o arquivo
+completo passou `9/9`, exit `0`. O caso confirmou uma claim (`attempts=1`,
+`lease_version=1`), zero efeito enquanto B está concorrendo e uma única prova
+financeira final (`receipt_count=1`, billing/attempt liquidados, PIX completo e
+settlement aplicado). Ambos os processos encerraram sem stderr. A evidência
+detalhada está em
+`.agent/artifacts/CVG-002B2B-live-worker-concurrency-2026-08-27.md`, com gate
+próprio em `.agent/gates/verified-CVG-002B2B-live-worker-contention.json`.
+
+Foi tentada uma revisão independente read-only específica, mas a role
+`reviewer` não iniciou porque o modelo `gpt-5.3-codex` não é suportado pela
+conta ChatGPT ativa. Nenhuma aprovação independente foi inferida; a limitação
+fica registrada e o risco residual permanece `HIGH`.
+
+Esta verificação fecha somente a contenção local de uma entrega/account. O
+contrato B2B ainda exige a matriz completa de failpoints B1, login/cache/MFA,
+writers privilegiados, providers reais, target, operações, paridade,
+acessibilidade, restore/RTO-RPO, CI remoto e release.
+
+## Verificação bounded — SIGKILL em todos os checkpoints internos do B1 (27/08/2026)
+
+A matriz local de recuperação por processo para os dezesseis checkpoints
+internos do B1 foi propagada até o worker e executada em PostgreSQL
+descartável. O RED intencional de `after_inbox_claim` falhou ao aguardar
+`PIX_B1_CHECKPOINT` antes da propagação do callback, comprovando que a nova
+prova detectava a ausência do failpoint em vez de passar silenciosamente.
+
+Depois da implementação mínima, o comando focused passou `16/16` cenários B1
+com `SIGKILL`, takeover após expiração da lease e asserção intermediária de
+rollback. O banco `cvg_his_v2_test_b1_assert_20260827` aplicou migrations
+`0000`–`0153` e validou `181` tabelas, `43` enums e `508` FKs. Antes do
+takeover, cada cenário permaneceu sem receipt, com billing `open`, attempt
+`awaiting_confirmation`, PIX `pending` e settlement `awaiting_payment`; o
+worker B concluiu com `attempts=2`, `lease_version=2` e um único grafo
+financeiro aplicado.
+
+O worker typecheck e suas suítes passaram; a suíte raiz `pnpm test` passou com
+exit `0`; `pnpm test:coverage` passou com `2.034` testes e `1` ignorado, em
+`80,50%` statements/lines, `80,19%` branches e `87,70%` funções. O arquivo
+completo do processo havia passado `25/25` antes da última asserção
+intermediária, que foi uma alteração somente no teste. Nenhuma migration,
+schema ou provider foi alterado.
+
+O gate bounded está em
+`.agent/gates/verified-CVG-002B2B-b1-sigkill-failpoints.json` e o artefato
+detalhado em `.agent/artifacts/CVG-002B2B-b1-sigkill-failpoints-2026-08-27.md`.
+A revisão independente não iniciou porque `gpt-5.3-codex` não é suportado pela
+conta ChatGPT ativa; nenhuma aprovação independente foi inferida. Permanecem
+abertos a matriz de principal/login/cache/MFA, writers privilegiados, providers
+reais, target, restore/RTO-RPO, operações distribuídas, WCAG, LGPD, paridade,
+CI remoto e release. `CVG-002B2B`, `CVG-002` e o programa global continuam
+`IN_PROGRESS/PARTIAL`, com promoção bloqueada.

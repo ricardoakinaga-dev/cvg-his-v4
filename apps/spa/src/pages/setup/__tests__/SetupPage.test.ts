@@ -52,6 +52,10 @@ describe('SetupPage', () => {
     expect(wrapper.get('label[for="setup-clinic"]').text()).toContain('Nome da clínica');
     expect(wrapper.get('label[for="setup-password-confirm"]').text()).toContain('Confirme a senha');
     expect(wrapper.get('#setup-token').attributes('autocomplete')).toBe('off');
+    expect(wrapper.get('#setup-token').attributes('aria-describedby')).toBe('setup-token-hint');
+    expect(wrapper.get('#setup-password').attributes('aria-describedby')).toBe(
+      'setup-password-hint'
+    );
     expect(wrapper.text()).toContain('ao menos 43 caracteres');
   });
 
@@ -204,6 +208,8 @@ describe('SetupPage', () => {
     expect(wrapper.get('[role="alert"]').text()).toContain('Não foi possível concluir');
     expect(wrapper.text()).not.toContain('database host');
     expect((wrapper.get('#setup-token').element as HTMLInputElement).value).toBe('');
+    expect((wrapper.get('#setup-password').element as HTMLInputElement).value).toBe('');
+    expect((wrapper.get('#setup-password-confirm').element as HTMLInputElement).value).toBe('');
     expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeUndefined();
   });
 });

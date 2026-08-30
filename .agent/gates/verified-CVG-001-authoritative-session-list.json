@@ -1,0 +1,120 @@
+{
+  "record_id": "GATE-CVG-001-AUTHORITATIVE-SESSION-LIST-VFY-001",
+  "timestamp": "2026-08-30T06:25:46-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-001 repository-authoritative authenticated-user session listing",
+  "scope_ref": "CVG-001-AUTHORITATIVE-SESSION-LIST",
+  "version": 1,
+  "active_plan": ".agent/plans/premium-enterprise-mvp.md",
+  "active_task": ".agent/tasks/CVG-001-AUTHORITATIVE-SESSION-LIST.md",
+  "criteria": [
+    {
+      "id": "VFY-001",
+      "description": "The authenticated session list reads durable repository state and observes create, refresh and revocation performed by another API instance with deterministic newest-first ordering.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-001-AUTHORITATIVE-SESSION-LIST-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-001-AUTHORITATIVE-SESSION-LIST-REGRESSION-001",
+        "tests/integration/database/auth-session-list-authoritative-postgres.test.ts",
+        "packages/modules/auth/src/index.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The proof uses disposable local PostgreSQL and two local API service instances; it does not certify target topology or remote CI."
+    },
+    {
+      "id": "VFY-002",
+      "description": "The public route preserves the existing permission check, session_list audit action, response envelope and public session semantics.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-001-AUTHORITATIVE-SESSION-LIST-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-001-AUTHORITATIVE-SESSION-LIST-REGRESSION-001",
+        "apps/api/src/routes/auth-routes.ts",
+        "apps/api/src/routes/auth-routes.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This is bounded route evidence and does not certify every authentication endpoint."
+    },
+    {
+      "id": "VFY-003",
+      "description": "The service enforces account/user isolation, deterministic tie ordering, exact public projection, in-memory compatibility and fail-closed repository errors without stale-cache fallback.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-001-AUTHORITATIVE-SESSION-LIST-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-001-AUTHORITATIVE-SESSION-LIST-REGRESSION-001",
+        "packages/modules/auth/src/auth.test.ts",
+        "apps/api/src/server.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The contract covers the session-list boundary only; broader token, MFA and distributed-state semantics remain outside scope."
+    },
+    {
+      "id": "VFY-004",
+      "description": "Focused auth/route/server/PostgreSQL/process regression evidence is green or explicitly environment-skipped, and the compiled API regression remains green.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-001-AUTHORITATIVE-SESSION-LIST-REGRESSION-001",
+        "packages/modules/auth/src/auth.test.ts",
+        "apps/api/src/routes/auth-routes.test.ts",
+        "apps/api/src/server.test.ts",
+        "tests/integration/database/auth-session-list-authoritative-postgres.test.ts",
+        "tests/integration/process/setup-installation-to-session.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The Docker-backed process test was skipped on this host because Docker was unavailable."
+    },
+    {
+      "id": "VFY-005",
+      "description": "Official coverage, typecheck/build, secret, OpenAPI, migration-source, RLS, formatting and diff-hygiene checks meet the bounded quality bar.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-001-AUTHORITATIVE-SESSION-LIST-QUALITY-001",
+        ".agent/artifacts/CVG-001-authoritative-session-list-2026-08-30.md",
+        "packages/modules/auth/src/index.ts",
+        "apps/api/src/routes/auth-routes.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Workspace-local quality evidence does not replace target, provider, production or release acceptance; unrelated global lint failures remain documented."
+    },
+    {
+      "id": "VFY-006",
+      "description": "Independent bounded review approves the final slice and fresh parity evidence explicitly prevents global ERP promotion.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-001-AUTHORITATIVE-SESSION-LIST-REVIEW-001",
+        ".agent/verification.jsonl#VFY-CVG-001-AUTHORITATIVE-SESSION-LIST-GLOBAL-NON-PROMOTION-001",
+        "scripts/check-vetus-parity.mjs",
+        ".agent/tasks/CVG-001-AUTHORITATIVE-SESSION-LIST.md"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "The approval is limited to this repository-local session-list boundary; global ERP, production, target, provider, deployment and release readiness remain unapproved."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-001-AUTHORITATIVE-SESSION-LIST.md",
+    ".agent/artifacts/CVG-001-authoritative-session-list-2026-08-30.md",
+    "packages/modules/auth/src/index.ts",
+    "apps/api/src/routes/auth-routes.ts",
+    "apps/api/src/server.ts",
+    "packages/modules/auth/src/auth.test.ts",
+    "apps/api/src/routes/auth-routes.test.ts",
+    "tests/integration/database/auth-session-list-authoritative-postgres.test.ts"
+  ],
+  "confidence": "MEDIUM",
+  "residual_risk": "HIGH",
+  "decision": "PASS_BOUNDED",
+  "implementation_status": "COMPLETE_BOUNDED",
+  "next_action": "Reconcile the control plane, then return to fresh residual scouting under a new authority. Keep parent CVG-001/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+  "conditions": [
+    "Do not extend this gate to token policy, MFA/WebAuthn/FIDO2, expiry policy, Redis/distributed cache, providers, target roles/RLS, production, deployment, release or global ERP without fresh authority.",
+    "Keep the existing sessions schema, repository and public response contract unchanged.",
+    "Keep parent CVG-001/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
+  ],
+  "authority_ref": ".agent/authority.jsonl#AUTH-CVG-001-AUTHORITATIVE-SESSION-LIST-IR-001",
+  "supersedes": ".agent/gates/implementation-ready-CVG-001-authoritative-session-list.json"
+}

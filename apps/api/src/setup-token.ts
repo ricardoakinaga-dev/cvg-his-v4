@@ -7,9 +7,13 @@
  */
 import { timingSafeEqual } from 'node:crypto';
 
+import {
+  MIN_SETUP_BOOTSTRAP_TOKEN_LENGTH,
+  validateSetupBootstrapToken
+} from '@cvg-his-v2/shared-config';
+
 /** Minimum Base64URL length for 32 random bytes without padding. */
-export const MIN_SETUP_TOKEN_LENGTH = 43;
-const MIN_DISTINCT_TOKEN_CHARACTERS = 8;
+export const MIN_SETUP_TOKEN_LENGTH = MIN_SETUP_BOOTSTRAP_TOKEN_LENGTH;
 
 export interface ResolvedSetupToken {
   readonly token?: string;
@@ -25,17 +29,7 @@ export interface ResolvedSetupToken {
 export function resolveSetupBootstrapToken(configuredToken?: string): ResolvedSetupToken {
   const trimmed = configuredToken?.trim();
   if (trimmed && trimmed.length > 0) {
-    const hasUnsafeWhitespace = /\s/.test(trimmed);
-    const distinctCharacters = new Set(trimmed).size;
-    if (
-      trimmed.length < MIN_SETUP_TOKEN_LENGTH
-      || hasUnsafeWhitespace
-      || distinctCharacters < MIN_DISTINCT_TOKEN_CHARACTERS
-    ) {
-      throw new Error(
-        `SETUP_BOOTSTRAP_TOKEN must contain at least ${MIN_SETUP_TOKEN_LENGTH} characters from a high-entropy secret generator.`
-      );
-    }
+    validateSetupBootstrapToken(trimmed);
     return { token: trimmed, configured: true };
   }
 

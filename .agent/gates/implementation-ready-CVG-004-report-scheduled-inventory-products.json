@@ -1,0 +1,97 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-SCHEDULED-INVENTORY-PRODUCTS-IR-001",
+  "timestamp": "2026-08-28T08:19:19-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-004 bounded tenant-scoped scheduled inventory-products report source through the real worker",
+  "scope_ref": "CVG-004-REPORT-SCHEDULED-INVENTORY-PRODUCTS",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The scheduled inventory-products gap, bounded contract, owner, authority and exclusions are recorded without promoting CVG-004 or global readiness.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-scheduled-inventory-products.md",
+        ".agent/backlog.json",
+        ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-INVENTORY-PRODUCTS-IR-001",
+        ".agent/verification.jsonl#VFY-SCOUT-CVG-004-REPORT-SCHEDULED-INVENTORY-PRODUCTS-001"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "Fresh delegated scouting ranked this as the smallest adjacent functional gap, but the scouts are read-only evidence and not approval; implementation, process proof and independent review remain open."
+    },
+    {
+      "id": "IR-002",
+      "description": "The existing inventory-products catalog/on-demand API expose exactly eight persisted item fields, migration 0062 provides the account-scoped inventory_items relation and RLS rails, and the worker lacks only the scheduled source/branch.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/reports/src/index.ts",
+        "apps/api/src/routes/reports-routes.ts",
+        "packages/modules/inventory/src/index.ts",
+        "packages/modules/inventory/src/repositories/database-inventory.repository.ts",
+        "packages/db/migrations/0062_inventory_runtime_persistence.sql",
+        "apps/worker/src/runner.ts",
+        "apps/worker/src/bootstrap.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The existing inventory service/repository also serves other runtime behavior; the new scheduled source must use an explicit read-only projection and must not broaden those behaviors."
+    },
+    {
+      "id": "IR-003",
+      "description": "Focused RED tests are specified to reject the absent source/branch, permissive filters, foreign-account output, malformed persisted values, non-canonical mapping and overflow before implementation.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-scheduled-inventory-products.md",
+        "packages/modules/inventory/src/inventory.test.ts",
+        "apps/worker/src/runner.test.ts",
+        "tests/integration/process/worker-run-once-reports.test.ts"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "The new source and scheduled assertions are the planned RED contract location; implementation, disposable PostgreSQL execution, security checks, independent review and reconciliation remain required."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-report-scheduled-inventory-products.md",
+    ".agent/backlog.json",
+    ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-INVENTORY-PRODUCTS-IR-001",
+    ".agent/verification.jsonl#VFY-SCOUT-CVG-004-REPORT-SCHEDULED-INVENTORY-PRODUCTS-001",
+    "packages/modules/reports/src/index.ts",
+    "apps/api/src/routes/reports-routes.ts",
+    "packages/modules/inventory/src/index.ts",
+    "packages/modules/inventory/src/repositories/database-inventory.repository.ts",
+    "packages/db/migrations/0062_inventory_runtime_persistence.sql",
+    "apps/worker/src/runner.ts",
+    "apps/worker/src/bootstrap.ts"
+  ],
+  "confidence": "MEDIUM",
+  "gaps": [
+    "The shared inventory-products source, worker branch/bootstrap wiring, RED/GREEN tests and real process proof are not complete at gate creation.",
+    "The report contains persisted operational quantities and unit cost; this gate excludes current-stock derivation, lots, movements, invoices and historical/as-of valuation.",
+    "Independent review, global non-promotion retest and final reconciliation remain required."
+  ],
+  "conditions": [
+    "Keep the result limited to the authenticated tenant-scoped scheduled read path over inventory_items and the exact eight-field catalog contract.",
+    "Do not add migrations, joins, CRUD changes, stock/movement/invoice behavior, valuation, providers, credentials, target, production, deployment, backfill or release acceptance.",
+    "Keep CVG-004/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via explicit continuation request and original consolidation brief",
+    "scope": "CVG-004 bounded tenant-scoped scheduled inventory-products report source through the real worker",
+    "decision": "Authorize only reversible inventory-module and worker implementation plus focused and disposable PostgreSQL/process verification of the existing read-only inventory-products schedule. The source may expose only sku, name, unit, onHandQuantity, reorderLevel, unitCostAmount, createdAt and updatedAt from persisted inventory_items, derive tenant scope from the claimed schedule, apply case-insensitive SKU/name search and strict inclusive UTC createdAt date filters, deterministic name/id order and a 10,000-row bound, and fail closed on missing/foreign/malformed source output. Preserve existing durable schedule execution/export audit and one-shot semantics. Exclude lots, movements, invoices, current-stock derivation, historical/as-of valuation, migrations, CRUD, providers, credentials, target, production, deployment, external mutation, backfill and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-INVENTORY-PRODUCTS-IR-001",
+    "expires_or_revalidates": "Revalidate before changing inventory_items schema/RLS or numeric/timestamp semantics, adding joins/fields/filters, changing worker schedule/audit behavior, adding stock/movement/invoice/valuation behavior, provider delivery, target operations or production behavior."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "next_action": "Write and run the intentional inventory-products source, worker and real process RED tests, then implement the smallest bounded tenant-aware persisted source and PostgreSQL proof.",
+  "revalidation_triggers": [
+    "Changes to inventory_items schema, account RLS/FORCE-RLS or persisted quantity/cost/timestamp semantics",
+    "Changes to worker bootstrap, schedule claiming, report execution/export/audit or one-shot failure behavior",
+    "Expansion beyond scheduled inventory-products or the existing eight-field contract"
+  ],
+  "supersedes": null
+}

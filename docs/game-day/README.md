@@ -24,60 +24,60 @@ Game Day is a planned exercise to validate system resilience by deliberately inj
 
 ### 1. Environment & Timing
 
-| Item | Status | Notes |
-|------|--------|-------|
-| Running on STAGING environment (NOT production) | [ ] | Game days never conducted in production |
-| Scheduled during low-traffic window | [ ] | Recommended: Weekday 10:00-16:00 |
-| No conflicting deployments scheduled | [ ] | Check `#releases` channel |
-| Duration allocated: 2-4 hours | [ ] | Includes setup, experiments, cleanup |
+| Item                                            | Status | Notes                                   |
+| ----------------------------------------------- | ------ | --------------------------------------- |
+| Running on STAGING environment (NOT production) | [ ]    | Game days never conducted in production |
+| Scheduled during low-traffic window             | [ ]    | Recommended: Weekday 10:00-16:00        |
+| No conflicting deployments scheduled            | [ ]    | Check `#releases` channel               |
+| Duration allocated: 2-4 hours                   | [ ]    | Includes setup, experiments, cleanup    |
 
 ### 2. Team Preparation
 
-| Person | Role | Notified |
-|--------|------|----------|
-| Primary experiment conductor | [Name] | [ ] |
-| Secondary / scribe | [Name] | [ ] |
-| On-call engineer (standby) | [Name] | [ ] |
-| Engineering Manager | [Name] | [ ] |
+| Person                       | Role   | Notified |
+| ---------------------------- | ------ | -------- |
+| Primary experiment conductor | [Name] | [ ]      |
+| Secondary / scribe           | [Name] | [ ]      |
+| On-call engineer (standby)   | [Name] | [ ]      |
+| Engineering Manager          | [Name] | [ ]      |
 
 ### 3. Backup & Recovery
 
-| Item | Status | Verified |
-|------|--------|----------|
-| Database backup completed | [ ] | Last backup within 24 hours |
-| Rollback procedure documented | [ ] | Helm rollback commands ready |
-| Data recovery tested (if applicable) | [ ] | Backup restoration verified |
+| Item                                 | Status | Verified                     |
+| ------------------------------------ | ------ | ---------------------------- |
+| Database backup completed            | [ ]    | Last backup within 24 hours  |
+| Rollback procedure documented        | [ ]    | Helm rollback commands ready |
+| Data recovery tested (if applicable) | [ ]    | Backup restoration verified  |
 
 ### 4. Monitoring & Alerts
 
-| Item | Status | Verified |
-|------|--------|----------|
-| Grafana dashboards accessible | [ ] | `grafana.internal/d/api-overview` |
-| PagerDuty alerts working | [ ] | Test alert sent |
-| Chaos metrics visible | [ ] | `chaos_experiment_active`, `chaos_fault_injected_total` |
-| Logging aggregation working | [ ] | Kibana/CloudWatch accessible |
-| Runbooks accessible | [ ] | Linked from this doc |
+| Item                          | Status | Verified                                                |
+| ----------------------------- | ------ | ------------------------------------------------------- |
+| Grafana dashboards accessible | [ ]    | `grafana.internal/d/api-overview`                       |
+| PagerDuty alerts working      | [ ]    | Test alert sent                                         |
+| Chaos metrics visible         | [ ]    | `chaos_experiment_active`, `chaos_fault_injected_total` |
+| Logging aggregation working   | [ ]    | Kibana/CloudWatch accessible                            |
+| Runbooks accessible           | [ ]    | Linked from this doc                                    |
 
 ### 5. Communication
 
-| Action | Status | Done |
-|--------|--------|------|
-| Team notified via `#game-day` channel | [ ] | Posted 24h before |
-| Stakeholders informed of potential impact | [ ] | Even staging can affect demo environments |
-| StatusPage updated to "Degraded" (if needed) | [ ] | Optional for staging |
+| Action                                       | Status | Done                                      |
+| -------------------------------------------- | ------ | ----------------------------------------- |
+| Team notified via `#game-day` channel        | [ ]    | Posted 24h before                         |
+| Stakeholders informed of potential impact    | [ ]    | Even staging can affect demo environments |
+| StatusPage updated to "Degraded" (if needed) | [ ]    | Optional for staging                      |
 
 ### 6. Baseline Metrics
 
 Record these metrics before starting experiments:
 
-| Metric | Baseline Value |
-|--------|----------------|
-| API P99 Latency | _____ ms |
-| API Error Rate | ____ % |
-| Database Connections | _____ / _____ |
-| Redis Connections | _____ / _____ |
-| EventBus DLQ Depth | _____ |
-| Worker Queue Depth | _____ |
+| Metric               | Baseline Value  |
+| -------------------- | --------------- |
+| API P99 Latency      | **\_** ms       |
+| API Error Rate       | \_\_\_\_ %      |
+| Database Connections | **\_** / **\_** |
+| Redis Connections    | **\_** / **\_** |
+| EventBus DLQ Depth   | **\_**          |
+| Worker Queue Depth   | **\_**          |
 
 ---
 
@@ -87,13 +87,13 @@ Record these metrics before starting experiments:
 
 Experiments should be run in this order, from least to most impactful:
 
-| Order | Experiment | Risk Level | Duration | Purpose |
-|-------|------------|------------|----------|---------|
-| 1 | API Latency Spike | Low | 60s | Validate timeout handling |
-| 2 | Network Latency | Medium | 60s | Test async operation resilience |
-| 3 | Redis Failure | Medium | 60s | Verify rate limiter fail-closed behavior |
-| 4 | Worker Failure | Medium | 60s | Check DLQ behavior |
-| 5 | Database Failure | High | 60s | Validate in-memory mode |
+| Order | Experiment        | Risk Level | Duration | Purpose                                  |
+| ----- | ----------------- | ---------- | -------- | ---------------------------------------- |
+| 1     | API Latency Spike | Low        | 60s      | Validate timeout handling                |
+| 2     | Network Latency   | Medium     | 60s      | Test async operation resilience          |
+| 3     | Redis Failure     | Medium     | 60s      | Verify rate limiter fail-closed behavior |
+| 4     | Worker Failure    | Medium     | 60s      | Check DLQ behavior                       |
+| 5     | Database Failure  | High       | 60s      | Validate fail-closed unavailable mode    |
 
 ---
 
@@ -104,6 +104,7 @@ Experiments should be run in this order, from least to most impactful:
 **Purpose:** Validate that clients and API gateway handle slow responses gracefully.
 
 ### Start
+
 ```bash
 curl -X POST http://localhost:3001/chaos/experiments/api-latency/start \
   -H "Content-Type: application/json" \
@@ -111,18 +112,21 @@ curl -X POST http://localhost:3001/chaos/experiments/api-latency/start \
 ```
 
 ### Expected Behavior
+
 - API responses take 2-5 seconds extra
 - Error rate should remain < 1%
 - Health checks should still pass
 - No data loss or corruption
 
 ### Success Criteria
+
 - [ ] API remains responsive during latency injection
 - [ ] No client timeouts observed (or observed and handled gracefully)
 - [ ] Latency returns to normal after experiment stops
 - [ ] Metrics show latency increase: `http_request_duration_seconds_p99` increases
 
 ### Rollback
+
 ```bash
 curl -X POST http://localhost:3001/chaos/experiments/api-latency/stop
 ```
@@ -136,6 +140,7 @@ curl -X POST http://localhost:3001/chaos/experiments/api-latency/stop
 **Purpose:** Simulate network partition affecting EventBus and webhook delivery.
 
 ### Start
+
 ```bash
 curl -X POST http://localhost:3001/chaos/experiments/network-latency/start \
   -H "Content-Type: application/json" \
@@ -143,18 +148,21 @@ curl -X POST http://localhost:3001/chaos/experiments/network-latency/start \
 ```
 
 ### Expected Behavior
+
 - Webhook deliveries delayed by 1-3 seconds
 - EventBus message processing slower
 - DLQ depth may increase if messages retry
 - No immediate client impact (async operations)
 
 ### Success Criteria
+
 - [ ] Webhooks eventually deliver (possibly delayed)
 - [ ] DLQ handles retries correctly
 - [ ] No message loss (DLQ captures failures)
 - [ ] System recovers when latency stops
 
 ### Rollback
+
 ```bash
 curl -X POST http://localhost:3001/chaos/experiments/network-latency/stop
 ```
@@ -168,6 +176,7 @@ curl -X POST http://localhost:3001/chaos/experiments/network-latency/stop
 **Purpose:** Verify rate limiter falls back to in-memory mode correctly.
 
 ### Start
+
 ```bash
 curl -X POST http://localhost:3001/chaos/experiments/redis-failure/start \
   -H "Content-Type: application/json" \
@@ -175,23 +184,27 @@ curl -X POST http://localhost:3001/chaos/experiments/redis-failure/start \
 ```
 
 ### Expected Behavior
+
 - Production-like rate-limited requests fail closed while Redis is unavailable
 - `app_rate_limiter_mode{mode="fail-closed"}` becomes active
 - No per-instance fallback is promoted
 - Recovery returns the mode to `redis` only after shared-backend health returns
 
 ### Success Criteria
+
 - [ ] `app_rate_limiter_mode{mode="fail-closed"}` is observable
 - [ ] Rate-limited requests are rejected without updating `last_used_at`
 - [ ] No local process counter admits traffic during the outage
 - [ ] Mode returns to `redis` only after recovery verification
 
 ### Rollback
+
 ```bash
 curl -X POST http://localhost:3001/chaos/experiments/redis-failure/stop
 ```
 
 ### Observations to Record
+
 - Any increase in database load
 - Any anomalous traffic patterns
 - Time to detect fallback activation
@@ -205,6 +218,7 @@ curl -X POST http://localhost:3001/chaos/experiments/redis-failure/stop
 **Purpose:** Verify worker job failures are captured by DLQ.
 
 ### Start
+
 ```bash
 curl -X POST http://localhost:3001/chaos/experiments/worker-failure/start \
   -H "Content-Type: application/json" \
@@ -212,18 +226,21 @@ curl -X POST http://localhost:3001/chaos/experiments/worker-failure/start \
 ```
 
 ### Expected Behavior
+
 - Some worker jobs fail intermittently
 - DLQ depth increases as failed jobs are captured
 - EventBus retries work correctly
 - No data loss (DLQ preserves messages)
 
 ### Success Criteria
+
 - [ ] DLQ captures failed jobs
 - [ ] Jobs replay correctly after recovery
 - [ ] DLQ depth returns to normal after experiment
 - [ ] No orphan jobs or lost work
 
 ### Rollback
+
 ```bash
 curl -X POST http://localhost:3001/chaos/experiments/worker-failure/stop
 ```
@@ -234,48 +251,62 @@ curl -X POST http://localhost:3001/chaos/experiments/worker-failure/stop
 
 **ID:** `database-failure`
 
-**Purpose:** Validate in-memory fallback mode and data integrity.
+**Purpose:** Validate fail-closed database-unavailability detection and recovery without accepting non-durable writes.
 
 **WARNING:** This is the highest-risk experiment. Ensure all other experiments are complete first.
 
 ### Start
+
 ```bash
 curl -X POST http://localhost:3001/chaos/experiments/database-failure/start \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $CHAOS_ADMIN_TOKEN" \
   -d '{"durationMs": 60000}'
 ```
 
 ### Expected Behavior
-- System switches to in-memory persistence mode
-- `app_persistence_mode{mode="in-memory"}` = 1
-- Read operations work (possibly stale data)
-- Write operations queued in memory (will be lost!)
-- Webhooks and events buffered (may be lost on restart)
+
+- `persistenceMode` becomes `unavailable`
+- `app_persistence_mode{mode="unavailable"}` = 1
+- `/health` returns `200` with `ok=false`; `/ready` returns `503`
+- Clinical and financial writes are rejected before route execution; they are never acknowledged as in-memory writes
+- The API does not claim recovery until PostgreSQL health and readiness are freshly verified
 
 ### Success Criteria
-- [ ] `app_persistence_mode` switches to `in-memory`
-- [ ] API continues serving read requests
-- [ ] No complete system failure
-- [ ] System switches back when experiment ends
-- [ ] **Document any data loss** (expected in this mode)
+
+- [ ] `app_persistence_mode{mode="unavailable"}` is visible
+- [ ] `/health` exposes `ok=false` and `/ready` exposes `503`
+- [ ] No clinical or financial write is accepted outside the database boundary
+- [ ] Recovery is confirmed through fresh PostgreSQL health and readiness checks
 
 ### Observations to Record
-- How quickly was the mode switch detected?
-- What was the error rate during fallback?
+
+- How quickly was the unavailable state detected?
+- What was the error rate during containment?
 - Any specific features that failed completely?
 - Time to recovery after experiment ends
 
 ### Rollback
+
 ```bash
-curl -X POST http://localhost:3001/chaos/experiments/database-failure/stop
+curl -X POST http://localhost:3001/chaos/experiments/database-failure/stop \
+  -H "Authorization: Bearer $CHAOS_ADMIN_TOKEN"
 ```
 
-### Post-Experiment Data Audit
-After stopping the database failure experiment, verify data integrity:
+In `production`, `prod`, `staging` and `stage`, chaos start/stop mutations are
+disabled. Run this experiment only in an explicitly authorized local/test
+game-day runtime; the endpoint must not be used against a production-like
+target.
+
+### Post-Experiment Recovery Audit
+
+After stopping the database failure experiment, verify durable recovery before
+resuming writes:
+
 ```bash
-# Check encounter counts before/after
-# Verify no orphaned records
-# Replay any events from DLQ if needed
+# Verify /ready is 200 and persistenceMode is database
+# Verify a read-only health check and a controlled durable transaction
+# Reconcile any pending durable delivery through its own runbook
 ```
 
 ---
@@ -285,6 +316,7 @@ After stopping the database failure experiment, verify data integrity:
 After all experiments complete:
 
 ### 1. Stop All Active Experiments
+
 ```bash
 # Stop any experiments still running
 for exp in api-latency network-latency redis-failure worker-failure database-failure; do
@@ -297,6 +329,7 @@ curl http://localhost:3001/chaos/experiments | jq '.experiments[].active | any'
 ```
 
 ### 2. Verify System Health
+
 ```bash
 # Check all experiments are stopped
 curl http://localhost:3001/chaos/experiments
@@ -313,6 +346,7 @@ curl http://localhost:3001/ready
 ```
 
 ### 3. Restore Normal Operations
+
 ```bash
 # If any feature flags were changed, restore them
 # If maintenance mode was enabled, disable it
@@ -332,48 +366,52 @@ curl http://localhost:3001/ready
 **Duration:** X hours
 
 ## Executive Summary
+
 [2-3 sentences on overall outcome]
 
 ## Experiments Conducted
 
-| Experiment | Duration | Outcome | Issues Found |
-|------------|----------|---------|--------------|
-| API Latency Spike | mm:ss | ✅ Pass / ⚠️ Warning / ❌ Fail | [Description] |
-| Network Latency | mm:ss | ✅ Pass / ⚠️ Warning / ❌ Fail | [Description] |
-| Redis Failure | mm:ss | ✅ Pass / ⚠️ Warning / ❌ Fail | [Description] |
-| Worker Failure | mm:ss | ✅ Pass / ⚠️ Warning / ❌ Fail | [Description] |
-| Database Failure | mm:ss | ✅ Pass / ⚠️ Warning / ❌ Fail | [Description] |
+| Experiment        | Duration | Outcome                        | Issues Found  |
+| ----------------- | -------- | ------------------------------ | ------------- |
+| API Latency Spike | mm:ss    | ✅ Pass / ⚠️ Warning / ❌ Fail | [Description] |
+| Network Latency   | mm:ss    | ✅ Pass / ⚠️ Warning / ❌ Fail | [Description] |
+| Redis Failure     | mm:ss    | ✅ Pass / ⚠️ Warning / ❌ Fail | [Description] |
+| Worker Failure    | mm:ss    | ✅ Pass / ⚠️ Warning / ❌ Fail | [Description] |
+| Database Failure  | mm:ss    | ✅ Pass / ⚠️ Warning / ❌ Fail | [Description] |
 
 ## Findings
 
 ### What Worked Well
+
 1. [Observation]
 2. [Observation]
 
 ### Issues Discovered
+
 1. **[Severity]** [Issue description]
    - **Impact:** [What was affected]
    - **Root Cause:** [If identified]
    - **Fix:** [Recommendation]
 
 ### Surprises
+
 1. [Unexpected behavior that needs follow-up]
 
 ## Metrics Comparison
 
-| Metric | Pre-Game | Post-Game | Delta |
-|--------|----------|-----------|-------|
-| API P99 Latency | xxx ms | xxx ms | +xx% / -xx% |
-| Error Rate | x.x% | x.x% | +x.xpp / -x.xpp |
-| [Other metric] | xxx | xxx | +/-xxx |
+| Metric          | Pre-Game | Post-Game | Delta           |
+| --------------- | -------- | --------- | --------------- |
+| API P99 Latency | xxx ms   | xxx ms    | +xx% / -xx%     |
+| Error Rate      | x.x%     | x.x%      | +x.xpp / -x.xpp |
+| [Other metric]  | xxx      | xxx       | +/-xxx          |
 
 ## Action Items
 
-| Priority | Action | Owner | Due Date |
-|----------|--------|-------|----------|
-| P1 | [Critical fix] | @name | YYYY-MM-DD |
-| P2 | [Improvement] | @name | YYYY-MM-DD |
-| P3 | [Nice to have] | @name | YYYY-MM-DD |
+| Priority | Action         | Owner | Due Date   |
+| -------- | -------------- | ----- | ---------- |
+| P1       | [Critical fix] | @name | YYYY-MM-DD |
+| P2       | [Improvement]  | @name | YYYY-MM-DD |
+| P3       | [Nice to have] | @name | YYYY-MM-DD |
 
 ## Recommendations
 
@@ -383,11 +421,11 @@ curl http://localhost:3001/ready
 
 ## Sign-Off
 
-| Role | Name | Date |
-|------|------|------|
-| Primary Conductor | | |
-| SRE Lead | | |
-| Engineering Manager | | |
+| Role                | Name | Date |
+| ------------------- | ---- | ---- |
+| Primary Conductor   |      |      |
+| SRE Lead            |      |      |
+| Engineering Manager |      |      |
 
 ## Next Game Day
 

@@ -25,7 +25,7 @@ type AuditAppender = (
 ) => void;
 
 export interface Soc2RoutesHandlers {
-  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
+  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
   appendAudit: AuditAppender;
   logError: (message: string, context: { correlationId: string; error: unknown }) => void;
   abacEngine: AbacEngine;
@@ -76,7 +76,7 @@ export async function handleSoc2Routes(
   } = handlers;
 
   if (pathname === '/soc2/evidence' && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'audit.read');
+    const principal = await requirePrincipal(request, 'audit.read');
     const url = new URL(request.url ?? '/', 'http://localhost');
     const periodStart =
       url.searchParams.get('periodStart')
@@ -121,7 +121,7 @@ export async function handleSoc2Routes(
   }
 
   if (pathname === '/soc2/security-score' && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'audit.read');
+    const principal = await requirePrincipal(request, 'audit.read');
 
     try {
       const score = await calculateSecurityScore(

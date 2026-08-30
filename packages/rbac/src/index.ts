@@ -7,6 +7,7 @@ import {
 
 export * from './permissions.js';
 export { CANONICAL_PERMISSIONS, ROLE_PERMISSIONS };
+export * from './access-control-catalog.js';
 
 export type RbacPrincipal = {
   permissions?: string[];

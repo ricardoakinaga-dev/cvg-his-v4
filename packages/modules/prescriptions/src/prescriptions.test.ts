@@ -16,7 +16,9 @@ const ENCOUNTER_1 = 'enc_001' as EncounterId;
 const ENCOUNTER_2 = 'enc_002' as EncounterId;
 const ACTOR_ID = 'user_doc_01' as UserId;
 
-function createPayload(overrides: Partial<CreatePrescriptionRequest> = {}): CreatePrescriptionRequest {
+function createPayload(
+  overrides: Partial<CreatePrescriptionRequest> = {}
+): CreatePrescriptionRequest {
   return {
     medicalRecordId: 'mr_001',
     encounterId: ENCOUNTER_1,
@@ -137,7 +139,7 @@ describe('PrescriptionsService', () => {
       await rehydrated.hydrateFromDatabase(ACCOUNT_ID);
 
       expect(rehydrated.getById(rx.id).medicationName).toBe('Amoxicilina');
-      expect(rehydrated.listByPatient(PATIENT_1)).toHaveLength(1);
+      expect(rehydrated.listByPatient(PATIENT_1, ACCOUNT_ID)).toHaveLength(1);
     });
 
     it('should roll back memory when repository persistence fails', async () => {
@@ -170,7 +172,7 @@ describe('PrescriptionsService', () => {
 
       await expect(failingService.waitForPersistence()).rejects.toThrow('database unavailable');
       expect(() => failingService.getById(rx.id)).toThrow(NotFoundError);
-      expect(failingService.listByEncounter(ENCOUNTER_1)).toHaveLength(0);
+      expect(failingService.listByEncounter(ENCOUNTER_1, ACCOUNT_ID)).toHaveLength(0);
     });
 
     it('should render a complete printable prescription document', () => {
@@ -233,6 +235,15 @@ describe('PrescriptionsService', () => {
     it('should throw NotFoundError for non-existent id', () => {
       expect(() => service.getById('rx_nonexistent' as PrescriptionId)).toThrow(NotFoundError);
     });
+
+    it('should resolve a prescription only inside its account scope', () => {
+      const created = service.create(ACCOUNT_ID, ACTOR_ID, createPayload());
+
+      expect(service.getByIdForAccount(ACCOUNT_ID, created.id).id).toBe(created.id);
+      expect(() => service.getByIdForAccount('acc_other' as AccountId, created.id)).toThrow(
+        NotFoundError
+      );
+    });
   });
 
   describe('listByEncounter', () => {
@@ -240,14 +251,14 @@ describe('PrescriptionsService', () => {
       service.create(ACCOUNT_ID, ACTOR_ID, createPayload({ medicationName: 'Amoxicilina' }));
       service.create(ACCOUNT_ID, ACTOR_ID, createPayload({ medicationName: 'Dipirona' }));
 
-      const list = service.listByEncounter(ENCOUNTER_1);
+      const list = service.listByEncounter(ENCOUNTER_1, ACCOUNT_ID);
       expect(list.length).toBe(2);
       expect(list.map((r) => r.medicationName)).toContain('Amoxicilina');
       expect(list.map((r) => r.medicationName)).toContain('Dipirona');
     });
 
     it('should return empty list for encounter with no prescriptions', () => {
-      const list = service.listByEncounter(ENCOUNTER_2);
+      const list = service.listByEncounter(ENCOUNTER_2, ACCOUNT_ID);
       expect(list.length).toBe(0);
     });
 
@@ -259,9 +270,31 @@ describe('PrescriptionsService', () => {
         medicationName: 'Omeprazol'
       });
 
-      const list = service.listByEncounter(ENCOUNTER_1);
+      const list = service.listByEncounter(ENCOUNTER_1, ACCOUNT_ID);
       expect(list.length).toBe(1);
       expect(list[0].medicationName).toBe('Amoxicilina');
+    });
+
+    it('should not return prescriptions from another account', () => {
+      service.create(ACCOUNT_ID, ACTOR_ID, createPayload({ medicationName: 'Dipirona' }));
+      service.create(
+        'acc_other' as AccountId,
+        'user_other' as UserId,
+        createPayload({ medicationName: 'Prednisona' })
+      );
+
+      const list = service.listByEncounter(ENCOUNTER_1, ACCOUNT_ID);
+
+      expect(list).toHaveLength(1);
+      expect(list[0].accountId).toBe(ACCOUNT_ID);
+      expect(list[0].medicationName).toBe('Dipirona');
+    });
+
+    it('should fail closed when no account context is supplied', () => {
+      expect(() => service.listByEncounter(ENCOUNTER_1, undefined as never)).toThrow(
+        ValidationError
+      );
+      expect(() => service.listByPatient(PATIENT_1, undefined as never)).toThrow(ValidationError);
     });
   });
 
@@ -269,10 +302,14 @@ describe('PrescriptionsService', () => {
     it('should list prescriptions for a patient', () => {
       service.create(ACCOUNT_ID, ACTOR_ID, createPayload());
       service.create(ACCOUNT_ID, ACTOR_ID, createPayload({ medicationName: 'Omeprazol' }));
-      service.create(ACCOUNT_ID, ACTOR_ID, createPayload({ medicationName: 'Ibuprofeno', patientId: PATIENT_2 }));
+      service.create(
+        ACCOUNT_ID,
+        ACTOR_ID,
+        createPayload({ medicationName: 'Ibuprofeno', patientId: PATIENT_2 })
+      );
 
-      const patient1List = service.listByPatient(PATIENT_1);
-      const patient2List = service.listByPatient(PATIENT_2);
+      const patient1List = service.listByPatient(PATIENT_1, ACCOUNT_ID);
+      const patient2List = service.listByPatient(PATIENT_2, ACCOUNT_ID);
 
       expect(patient1List.length).toBe(2);
       expect(patient2List.length).toBe(1);
@@ -372,9 +409,9 @@ describe('PrescriptionsService', () => {
       const created = service.create(ACCOUNT_ID, ACTOR_ID, createPayload());
       service.archive(created.id, ACTOR_ID, { reason: 'First archive' });
 
-      expect(() =>
-        service.archive(created.id, ACTOR_ID, { reason: 'Second archive' })
-      ).toThrow(ValidationError);
+      expect(() => service.archive(created.id, ACTOR_ID, { reason: 'Second archive' })).toThrow(
+        ValidationError
+      );
     });
 
     it('should throw ValidationError on version mismatch when archiving', () => {

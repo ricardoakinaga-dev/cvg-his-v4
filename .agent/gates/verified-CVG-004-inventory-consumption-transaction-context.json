@@ -1,0 +1,104 @@
+{
+  "record_id": "GATE-CVG-004-INVENTORY-CONSUMPTION-TRANSACTION-CONTEXT-VFY-001",
+  "timestamp": "2026-08-26T10:08:00-03:00",
+  "gate_id": "VERIFIED",
+  "scope": "CVG-004 bounded canonical tenant transaction-context propagation for the inventory consumption fallback",
+  "scope_ref": "CVG-004-INVENTORY-CONSUMPTION-TRANSACTION-CONTEXT",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-001-RED-REPRODUCTION",
+      "description": "The missing context is reproduced by the pre-fix type contract and a fresh critical HTTP run whose inventory consumption returns TRANSACTION_REQUIRED.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-INVENTORY-CONTEXT-RED-001",
+        ".agent/artifacts/CVG-004-inventory-consumption-transaction-context-2026-08-26.md",
+        "e2e/tests/fluxos-criticos.spec.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The failure is bounded to the exercised inventory-consumption fallback path."
+    },
+    {
+      "id": "V-002-CONTEXT-CORRECTION",
+      "description": "Actor/correlation metadata reaches the transaction composition root and the canonical TenantTransactionContext is installed for the database fallback.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-INVENTORY-CONTEXT-UNIT-001",
+        "apps/api/src/helpers/tenant-command.ts",
+        "apps/api/src/server.ts",
+        "apps/api/src/index.ts",
+        "packages/shared/database/src/client.ts",
+        "apps/api/src/routes/tenant-command.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "No schema or migration change was part of this correction."
+    },
+    {
+      "id": "V-003-REGRESSION",
+      "description": "The direct helper, full API package, Flow 7 and full critical HTTP regressions pass on fresh disposable infrastructure; the full SPA suite also passes after the correction.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-INVENTORY-CONTEXT-UNIT-001",
+        ".agent/verification.jsonl#VFY-CVG-004-INVENTORY-CONTEXT-FLOW7-001",
+        ".agent/verification.jsonl#VFY-CVG-004-INVENTORY-CONTEXT-CRITICAL-001",
+        ".agent/verification.jsonl#VFY-CVG-004-INVENTORY-CONTEXT-SPA-001",
+        ".agent/artifacts/CVG-004-inventory-consumption-transaction-context-2026-08-26.md",
+        ".agent/artifacts/CVG-004-access-matrix-e2e-2026-08-26.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "These are local disposable runs and do not certify target operations or the global release bar."
+    },
+    {
+      "id": "V-004-BOUNDARY",
+      "description": "Residual scope, unavailable independent review and global non-claims are explicit; the parent and release gates remain open.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-INVENTORY-CONTEXT-REVIEW-UNAVAILABLE-001",
+        ".agent/verification.jsonl#VFY-CVG-004-INVENTORY-CONTEXT-GLOBAL-RETEST-001",
+        ".agent/tasks/CVG-004-inventory-consumption-transaction-context.md",
+        ".agent/authority.jsonl#AUTH-CVG-004-INVENTORY-CONSUMPTION-TRANSACTION-CONTEXT-IR-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "No independent reviewer approval, production authority or release acceptance is inferred."
+    }
+  ],
+  "evidence": [
+    ".agent/artifacts/CVG-004-inventory-consumption-transaction-context-2026-08-26.md",
+    ".agent/artifacts/CVG-004-access-matrix-e2e-2026-08-26.md",
+    ".agent/tasks/CVG-004-inventory-consumption-transaction-context.md",
+    ".agent/verification.jsonl#VFY-CVG-004-INVENTORY-CONTEXT-FINAL-001",
+    "apps/api/src/helpers/tenant-command.ts",
+    "packages/shared/database/src/client.ts",
+    "e2e/tests/fluxos-criticos.spec.ts",
+    "e2e/spa/tenant-isolation-db.spec.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "The parent CVG-004 parity task remains IN_PROGRESS/PARTIAL.",
+    "The access parity area still lacks all seven profiles and every sensitive administrative operation.",
+    "Target RLS/restore/RTO-RPO, Redis failover, provider homologation, accessibility, operations and release remain open."
+  ],
+  "conditions": [],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner)",
+    "scope": "CVG-004 bounded canonical tenant transaction-context propagation for inventory consumption",
+    "decision": "Record the reversible repository-local repair and disposable PostgreSQL/HTTP verification as bounded evidence. No migration, provider, credential, target, production, deployment, external mutation or release acceptance is authorized.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-INVENTORY-CONSUMPTION-TRANSACTION-CONTEXT-IR-001",
+    "expires_or_revalidates": "Revalidate before expanding to other transaction compositions, target operations or release claims."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "next_action": "Keep CVG-004 IN_PROGRESS/PARTIAL and preserve all global, target, provider, accessibility, operations and release gates open.",
+  "revalidation_triggers": [
+    "Changes to tenant-command fallback metadata or withTenantTransaction composition",
+    "Changes to inventory consumption authorization, audit/outbox or transaction guards",
+    "Expansion to another mutation family or any target/provider/production/release activity"
+  ],
+  "supersedes": null
+}

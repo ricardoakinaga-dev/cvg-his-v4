@@ -56,7 +56,7 @@ export interface PixProviderSettlementRouteHandlers {
   readonly requirePrincipal: (
     request: IncomingMessage,
     permissionCode: string
-  ) => AuthenticatedPrincipal;
+  ) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
 }
 
 function sendJson(response: ServerResponse, statusCode: number, body: unknown): void {
@@ -122,7 +122,7 @@ export async function handlePixProviderSettlementRoutes(
   const { repository, requirePrincipal: rp } = handlers;
 
   if (pathname === '/internal/pix-settlement/deliveries' && request.method === 'GET') {
-    const principal = rp(request, 'audit.read');
+    const principal = await rp(request, 'audit.read');
     if (!repository) {
       sendJson(response, 503, {
         code: 'PIX_SETTLEMENT_DLQ_UNAVAILABLE',
@@ -152,7 +152,7 @@ export async function handlePixProviderSettlementRoutes(
 
   const redriveMatch = pathname.match(/^\/internal\/pix-settlement\/deliveries\/([^/]+)\/redrive$/);
   if (redriveMatch && request.method === 'POST') {
-    const principal = rp(request, 'audit.write');
+    const principal = await rp(request, 'audit.write');
     assertUuid(redriveMatch[1], 'deliveryId');
     if (!repository) {
       sendJson(response, 503, {

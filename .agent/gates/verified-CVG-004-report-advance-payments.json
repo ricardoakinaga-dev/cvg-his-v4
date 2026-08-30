@@ -1,0 +1,108 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-ADVANCE-PAYMENTS-VFY-001",
+  "timestamp": "2026-08-26T14:16:44-03:00",
+  "gate_id": "VERIFIED",
+  "scope": "CVG-004 bounded audited read-only advance-payment report from a canonical persisted minor-unit ledger",
+  "scope_ref": "CVG-004-REPORT-ADVANCE-PAYMENTS",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-001-REPORT-CONTRACT",
+      "description": "The ReportsService catalog, API route and SPA workbench expose the audited advance-payment report with exact persisted columns, authenticated account scope, strict filters, server execution/export and a 10,000-row bound.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-ADVANCE-PAYMENTS-MODULE-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-ADVANCE-PAYMENTS-API-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-ADVANCE-PAYMENTS-SPA-001",
+        "packages/modules/reports/src/index.ts",
+        "apps/api/src/routes/reports-routes.ts",
+        "apps/api/src/repositories/database-advance-payments-report.repository.ts",
+        "apps/spa/src/pages/reports/ReportWorkbenchPage.vue"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This is a read-only report for persisted facts; it does not implement the advance-payment write lifecycle or complete Vetus parity."
+    },
+    {
+      "id": "V-002-LEDGER-INTEGRITY",
+      "description": "The additive canonical migration creates immutable/append-only minor-unit relations with composite tenant ownership, idempotency constraints, over-allocation protection, RLS/FORCE RLS and account policies; a disposable database proves the boundary.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-ADVANCE-PAYMENTS-DB-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-ADVANCE-PAYMENTS-RUNTIME-001",
+        "packages/db/migrations/0148_advance_payments.sql",
+        "packages/db/src/schema/advance_payments.ts",
+        "tests/integration/rls/advance-payments-report-source.test.ts",
+        "apps/api/src/bootstrap.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The PostgreSQL proof uses a disposable local database and does not certify target grants, target restore or production migration execution."
+    },
+    {
+      "id": "V-003-REGRESSION-CONTROLS",
+      "description": "Focused and full repository regressions, coverage, typecheck, lint, security, OpenAPI, RLS, migration-source, deploy-surface, Helm-static and parity-contract controls pass after the slice.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-ADVANCE-PAYMENTS-QUALITY-001",
+        ".agent/artifacts/CVG-004-report-advance-payments-2026-08-26.md",
+        "apps/api/src/routes/reports-routes.test.ts",
+        "apps/spa/src/pages/reports/__tests__/ReportWorkbenchPage.test.ts",
+        "tests/unit/db/advance-payment-migration.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "No report-specific browser E2E contract was available in the repository; the SPA behavior is covered by the focused component contract and build/typecheck."
+    },
+    {
+      "id": "V-004-CRITIQUE-BOUNDARY",
+      "description": "The independent critique findings are addressed, the initial RED and bounded limits are retained, and no parent, parity, readiness or release gate is promoted.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-ADVANCE-PAYMENTS-REVIEW-001",
+        ".agent/tasks/CVG-004-report-advance-payments.md",
+        ".agent/artifacts/CVG-004-report-advance-payments-2026-08-26.md",
+        ".agent/authority.jsonl#AUTH-CVG-004-REPORT-ADVANCE-PAYMENTS-IR-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The critique is engineering evidence and does not constitute production, provider, target or release approval."
+    }
+  ],
+  "evidence": [
+    ".agent/artifacts/CVG-004-report-advance-payments-2026-08-26.md",
+    ".agent/tasks/CVG-004-report-advance-payments.md",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-ADVANCE-PAYMENTS-FINAL-001",
+    "packages/db/migrations/0148_advance_payments.sql",
+    "packages/db/src/schema/advance_payments.ts",
+    "apps/api/src/repositories/database-advance-payments-report.repository.ts",
+    "apps/api/src/routes/reports-routes.ts",
+    "apps/spa/src/pages/reports/ReportWorkbenchPage.vue",
+    "tests/integration/rls/advance-payments-report-source.test.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "CVG-004 parent parity remains IN_PROGRESS/PARTIAL.",
+    "Advance-payment generation, compensation, cancellation/refund and cash/journal integration remain outside this read-only slice.",
+    "Providers, Live Lab, Vetus import, distributed worker failure/observability, remaining reports, target RLS/restore/RTO-RPO, remote CI, accessibility, operations and release remain open."
+  ],
+  "conditions": [],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner)",
+    "scope": "CVG-004 bounded read-only audited advance-payment report from persisted minor-unit facts",
+    "decision": "Record the reversible repository implementation, one additive canonical migration and local API/SPA/disposable-PostgreSQL verification. No write lifecycle, provider, credential, target, production, deployment, external mutation or release acceptance is authorized.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-ADVANCE-PAYMENTS-IR-001",
+    "expires_or_revalidates": "Revalidate before any write endpoint, allocation command, refund/cancellation, cash or journal integration, provider, target operation, production/deployment action or release acceptance."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "next_action": "Keep CVG-004 IN_PROGRESS/PARTIAL. Select the next separately authorized bounded gap; do not promote this result to full Vetus parity, enterprise readiness or release.",
+  "revalidation_triggers": [
+    "Changes to advance-payment persistence, allocation semantics, owner identity or financial subledger rules",
+    "Changes to ReportsService execution/export or report-workbench behavior",
+    "Any write/lifecycle/provider/target/production/release expansion"
+  ],
+  "supersedes": ".agent/gates/implementation-ready-CVG-004-report-advance-payments.json"
+}

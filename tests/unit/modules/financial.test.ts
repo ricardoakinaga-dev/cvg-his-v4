@@ -108,6 +108,32 @@ function createFinancialService(
   return { service, repository, encounter, billingRecord };
 }
 
+class ReversedReceiptHistoryRepository extends InMemoryEncounterFinancialRepository {
+  public replaceCalls = 0;
+
+  public override async listPaymentsByFinancialAccount(): Promise<
+    readonly EncounterReceivablePaymentRecord[]
+  > {
+    return [];
+  }
+
+  public async hasReversedCashReceiptForFinancialAccount(): Promise<boolean> {
+    return true;
+  }
+
+  public override async replaceReceivables(
+    financialAccountId: string,
+    receivables: readonly EncounterReceivableRecord[]
+  ): Promise<void> {
+    this.replaceCalls += 1;
+    await super.replaceReceivables(financialAccountId, receivables);
+  }
+
+  public async listHistoricalPayments(financialAccountId: string) {
+    return super.listPaymentsByFinancialAccount(financialAccountId);
+  }
+}
+
 describe('module-financial / repository', () => {
   it('replaces receivables and clears stale payments for the same financial account', async () => {
     const repository = new InMemoryEncounterFinancialRepository();
@@ -282,6 +308,40 @@ describe('module-financial / repository', () => {
     });
     expect(settled.financialStatus).toBe('paid');
     expect(settled.receivables.every((item) => item.status === 'settled')).toBe(true);
+  });
+
+  it('does not replace a receipt-linked receivable after a cash reversal', async () => {
+    const repository = new ReversedReceiptHistoryRepository();
+    const { service, encounter } = createFinancialService(repository);
+    await service.getSummary(encounter.id);
+    repository.replaceCalls = 0;
+    const account = await repository.findFinancialAccountByEncounter(encounter.id);
+    const receivable = (await repository.listReceivablesByFinancialAccount(account!.id))[0]!;
+    await repository.createPayment({
+      id: 'historical-cash-payment',
+      accountId: encounter.accountId,
+      encounterId: encounter.id,
+      financialAccountId: account!.id,
+      receivableId: receivable.id,
+      amountPaid: 190,
+      paidAt: '2026-04-13T00:01:00.000Z',
+      paidByUserId: 'user_finance' as never,
+      externalReferenceType: 'cash_movement',
+      externalReferenceId: 'cash-movement-history',
+      notes: null,
+      createdAt: '2026-04-13T00:01:00.000Z'
+    });
+
+    const closed = await service.closeEncounterFinancial(encounter.id, 'user_finance' as never, {
+      installments: [{ amount: 190, label: 'Parcela reaberta' }]
+    });
+
+    expect(closed.financialClosed).toBe(true);
+    expect(repository.replaceCalls).toBe(0);
+    expect((await repository.listReceivablesByFinancialAccount(account!.id))[0]?.id).toBe(
+      receivable.id
+    );
+    expect(await repository.listHistoricalPayments(account!.id)).toHaveLength(1);
   });
 
   it('rejects inconsistent installments, per-receivable overpayment and supports searchable receivables', async () => {

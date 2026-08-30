@@ -17,7 +17,7 @@ import {
 export interface AgendaConfigRoutesHandlers {
   audit: AuditService;
   repository: AgendaConfigRepository;
-  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
+  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
   /** Refreshes scheduling's read model after persisted agenda changes. */
   refreshScheduling?: (accountId: string) => Promise<void>;
 }
@@ -202,7 +202,7 @@ export async function handleAgendaConfigRoutes(
   const { audit, repository, requirePrincipal, refreshScheduling } = handlers;
 
   if (pathname === '/availability' && method === 'GET') {
-    const principal = requirePrincipal(request, 'scheduling.read');
+    const principal = await requirePrincipal(request, 'scheduling.read');
     const professionalUserId = url.searchParams.get('professionalUserId') ?? undefined;
     const page = normalizePage(url.searchParams.get('page'), 1);
     const pageSize = normalizePage(url.searchParams.get('pageSize'), 20);
@@ -227,7 +227,7 @@ export async function handleAgendaConfigRoutes(
   }
 
   if (pathname === '/availability' && method === 'POST') {
-    const principal = requirePrincipal(request, 'scheduling.manage');
+    const principal = await requirePrincipal(request, 'scheduling.manage');
     const payload = (await readJsonBody(request)) as Record<string, unknown>;
     const record = await repository.createAvailability(
       parseAvailabilityPayload(payload, principal.user.accountId)
@@ -251,7 +251,7 @@ export async function handleAgendaConfigRoutes(
 
   const availabilityMatch = pathname.match(/^\/availability\/([^/]+)$/);
   if (availabilityMatch && method === 'GET') {
-    const principal = requirePrincipal(request, 'scheduling.read');
+    const principal = await requirePrincipal(request, 'scheduling.read');
     const record = await repository.findAvailabilityById(
       principal.user.accountId,
       availabilityMatch[1]
@@ -263,7 +263,7 @@ export async function handleAgendaConfigRoutes(
   }
 
   if (availabilityMatch && method === 'PATCH') {
-    const principal = requirePrincipal(request, 'scheduling.manage');
+    const principal = await requirePrincipal(request, 'scheduling.manage');
     const current = await repository.findAvailabilityById(
       principal.user.accountId,
       availabilityMatch[1]
@@ -292,7 +292,7 @@ export async function handleAgendaConfigRoutes(
   }
 
   if (availabilityMatch && method === 'DELETE') {
-    const principal = requirePrincipal(request, 'scheduling.manage');
+    const principal = await requirePrincipal(request, 'scheduling.manage');
     const deleted = await repository.deleteAvailability(
       principal.user.accountId,
       availabilityMatch[1]
@@ -307,7 +307,7 @@ export async function handleAgendaConfigRoutes(
   }
 
   if (pathname === '/appointment-types' && method === 'GET') {
-    const principal = requirePrincipal(request, 'scheduling.read');
+    const principal = await requirePrincipal(request, 'scheduling.read');
     const query = (url.searchParams.get('query') ?? url.searchParams.get('q') ?? '').trim().toLowerCase();
     const active = url.searchParams.get('active');
     const page = normalizePage(url.searchParams.get('page'), 1);
@@ -333,7 +333,7 @@ export async function handleAgendaConfigRoutes(
   }
 
   if (pathname === '/appointment-types' && method === 'POST') {
-    const principal = requirePrincipal(request, 'scheduling.manage');
+    const principal = await requirePrincipal(request, 'scheduling.manage');
     const payload = (await readJsonBody(request)) as Record<string, unknown>;
     const record = await repository.createAppointmentType(
       parseAppointmentTypePayload(payload, principal.user.accountId)
@@ -343,7 +343,7 @@ export async function handleAgendaConfigRoutes(
 
   const appointmentTypeMatch = pathname.match(/^\/appointment-types\/([^/]+)$/);
   if (appointmentTypeMatch && method === 'GET') {
-    const principal = requirePrincipal(request, 'scheduling.read');
+    const principal = await requirePrincipal(request, 'scheduling.read');
     const record = await repository.findAppointmentTypeById(
       principal.user.accountId,
       appointmentTypeMatch[1]
@@ -355,7 +355,7 @@ export async function handleAgendaConfigRoutes(
   }
 
   if (appointmentTypeMatch && method === 'PATCH') {
-    const principal = requirePrincipal(request, 'scheduling.manage');
+    const principal = await requirePrincipal(request, 'scheduling.manage');
     const current = await repository.findAppointmentTypeById(
       principal.user.accountId,
       appointmentTypeMatch[1]
@@ -381,7 +381,7 @@ export async function handleAgendaConfigRoutes(
   }
 
   if (appointmentTypeMatch && method === 'DELETE') {
-    const principal = requirePrincipal(request, 'scheduling.manage');
+    const principal = await requirePrincipal(request, 'scheduling.manage');
     const deleted = await repository.deleteAppointmentType(
       principal.user.accountId,
       appointmentTypeMatch[1]

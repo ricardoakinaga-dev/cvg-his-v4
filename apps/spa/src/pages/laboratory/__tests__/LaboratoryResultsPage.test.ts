@@ -50,6 +50,7 @@ describe('LaboratoryResultsPage', () => {
         reason: 'Check-up',
         status: 'resulted',
         resultSummary: 'Hemograma dentro da normalidade',
+        resultValues: [{ parameter: 'pH urinário', value: '6.0' }],
         resultedAt: '2026-04-25T10:00:00.000Z',
         releasedByUserId: 'user-1',
         signedByUserId: 'rt-lab',
@@ -159,6 +160,25 @@ describe('LaboratoryResultsPage', () => {
       finalizedAt: '2026-04-25',
       enteredAt: '2026-04-24',
       body: 'normalidade',
+      closed: true
+    });
+  });
+
+  it('keeps structured-only values visible when filtering the report body', async () => {
+    const wrapper = mount(LaboratoryResultsPage);
+    await flushPromises();
+
+    const searchInputs = wrapper.findAll('input[type="search"]');
+    await searchInputs[4].setValue('urinario');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('diag_laudo_1');
+    expect(laboratoryService.listResults).toHaveBeenLastCalledWith({
+      code: undefined,
+      finalizedAt: undefined,
+      enteredAt: undefined,
+      body: 'urinario',
       closed: true
     });
   });

@@ -1,0 +1,163 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-SCHEDULED-PATIENTS-VFY-001",
+  "timestamp": "2026-08-28T07:21:17-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-004 bounded tenant-scoped scheduled registration-patients report source through the real worker",
+  "scope_ref": "CVG-004-REPORT-SCHEDULED-PATIENTS",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-001-CONTRACT",
+      "description": "The existing registration-patients catalog contract is preserved with exactly eight fields, strict date filters, inclusive UTC dates, deterministic name/id ordering, a 10,000-row bound and explicit exclusions.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-scheduled-patients.md",
+        ".agent/gates/implementation-ready-CVG-004-report-scheduled-patients.json",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-PATIENTS-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-PATIENTS-GREEN-001",
+        "packages/modules/reports/src/index.ts",
+        "apps/api/src/routes/reports-routes.ts",
+        "apps/worker/src/runner.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The contract is bounded to the existing persisted patient fields and does not establish complete Vetus patient/owner-link/clinical parity or any excluded report family."
+    },
+    {
+      "id": "V-002-DATABASE-SOURCE",
+      "description": "The shared patients source uses explicit tenant context and predicate, an explicit patients-only projection, inclusive UTC createdAt bounds, deterministic order, legacy-code/status/sex fallbacks and a fail-closed 10,001-row query limit.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/patients/src/patients-report.ts",
+        "packages/modules/patients/src/patients-report.test.ts",
+        "packages/db/src/schema/patients.ts",
+        "packages/db/migrations/0003_rls_core_tables.sql",
+        "packages/db/migrations/0144_force_rls_tenant_tables.sql",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-PATIENTS-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-PATIENTS-PROCESS-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The source proof is local/disposable; target RLS/runtime roles, production scale and operational database acceptance remain outside this bounded gate."
+    },
+    {
+      "id": "V-003-WORKER-WIRING",
+      "description": "The worker composes the shared patients database source, validates schedule filters and source responses, maps exactly eight fields and retains existing scheduled job, audit and one-shot semantics.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/worker/src/runner.ts",
+        "apps/worker/src/runner.test.ts",
+        "apps/worker/src/bootstrap.ts",
+        "apps/worker/src/run-once.ts",
+        "apps/worker/src/jobs/scheduled-report-job.ts",
+        "apps/worker/package.json",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-PATIENTS-GREEN-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Continuous/distributed worker operations and delivery providers are not certified by this bounded gate."
+    },
+    {
+      "id": "V-004-POSTGRES-PROCESS",
+      "description": "Fresh disposable PostgreSQL process evidence proves two-account run-once isolation, inclusive dates, exact rows, legacy-code and nullable-field fallbacks, durable execution and non-PII audit after formatting.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-PATIENTS-PROCESS-001",
+        "tests/integration/process/worker-run-once-reports.test.ts",
+        "apps/worker/src/run-once.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The process uses disposable local PostgreSQL and mock email; it does not certify target roles, provider delivery, external systems or production behavior."
+    },
+    {
+      "id": "V-005-QUALITY",
+      "description": "Intentional RED/GREEN, focused regressions, builds, coverage, worker regression, secrets, formatting, diff and empty-index hygiene satisfy the bounded repository quality bar.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-PATIENTS-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-PATIENTS-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-PATIENTS-PROCESS-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-PATIENTS-HYGIENE-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Validators are local; remote CI, target operations, external homologation and release acceptance remain open."
+    },
+    {
+      "id": "V-006-INDEPENDENT-REVIEW",
+      "description": "A fresh independent post-GREEN review was attempted but no verdict was obtained; the limitation is retained rather than represented as approval.",
+      "required": true,
+      "status": "CONDITIONAL",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-PATIENTS-REVIEW-UNAVAILABLE-001"
+      ],
+      "confidence": "LOW",
+      "limitations": "Obtain a fresh independent post-remediation review before higher-confidence use or scope expansion."
+    },
+    {
+      "id": "V-007-GLOBAL-NON-PROMOTION",
+      "description": "The bounded result is reconciled without promoting CVG-004, general Vetus parity, clinical parity, enterprise readiness, target operations or release acceptance.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-PATIENTS-GLOBAL-RETEST-001",
+        ".agent/state.json",
+        ".agent/backlog.json",
+        ".gauntlet/state.md",
+        ".gauntlet/progress.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Global parity, clinical parity, enterprise readiness, target operations, provider/fiscal homologation and release acceptance remain open."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-report-scheduled-patients.md",
+    ".agent/artifacts/CVG-004-report-scheduled-patients-2026-08-28.md",
+    ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-PATIENTS-IR-001",
+    "packages/modules/patients/src/patients-report.ts",
+    "packages/modules/patients/src/patients-report.test.ts",
+    "packages/modules/patients/src/index.ts",
+    "apps/worker/src/runner.ts",
+    "apps/worker/src/runner.test.ts",
+    "apps/worker/src/bootstrap.ts",
+    "tests/integration/process/worker-run-once-reports.test.ts",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-PATIENTS-RED-001",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-PATIENTS-GREEN-001",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-PATIENTS-PROCESS-001",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-PATIENTS-REVIEW-UNAVAILABLE-001",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-PATIENTS-GLOBAL-RETEST-001",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-PATIENTS-HYGIENE-001",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-PATIENTS-FINAL-001"
+  ],
+  "confidence": "MEDIUM",
+  "gaps": [
+    "No independent post-GREEN reviewer verdict was available; the limitation is explicit and not treated as approval.",
+    "Disposable local services do not certify target RLS/runtime roles, production scale, provider delivery, distributed operations, remote CI, accessibility, operational LGPD or release acceptance.",
+    "The scheduled registration-patients slice does not establish complete Vetus patient, owner-link or clinical report parity."
+  ],
+  "conditions": [
+    "Keep the result limited to the authenticated tenant-scoped scheduled read path over persisted patients and the exact eight-field contract.",
+    "Obtain a fresh independent post-remediation review before higher-confidence evidence or scope expansion.",
+    "Keep CVG-004/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+    "Revalidate before changing patient schema/RLS, alerts_json metadata semantics, patient lifecycle, owner links/clinical behavior, filters/fields, other registry reports, providers, credentials, target, production, deployment, backfill or release action."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via explicit continuation request and original consolidation brief",
+    "scope": "CVG-004 bounded tenant-scoped scheduled registration-patients report source through the real worker",
+    "decision": "Authorize only the repository-local read-only patients source, worker resolution and disposable two-account verification under the existing schedule/audit semantics. The source may expose only code, name, species, breed, sex, microchip, status and createdAt from persisted patients, derive tenant scope from the claimed schedule, apply strict inclusive UTC createdAt dates, deterministic name/id order and a 10,000-row bound, and fail closed on missing/foreign/malformed source output. Exclude owner joins, clinical/lifecycle behavior, additional PII, migrations, providers, credentials, target, production, deployment, external mutation, backfill and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-PATIENTS-IR-001",
+    "expires_or_revalidates": "Revalidate before changing patients schema/RLS, alerts_json metadata semantics, owner links, patient lifecycle, adding fields/filters/joins, provider delivery, target operations or production behavior."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_BOUNDED",
+  "next_action": "Keep CVG-004/global ERP IN_PROGRESS/PARTIAL with promotion BLOCKED. Obtain a fresh independent review before higher-confidence use or scope expansion; choose any next gap only through fresh scouting and a new implementation-ready authority.",
+  "revalidation_triggers": [
+    "Changes to patients schema, alerts_json metadata representation or tenant RLS/FORCE-RLS policy",
+    "Changes to worker bootstrap, schedule claiming, report execution/export/audit or one-shot failure behavior",
+    "Expansion beyond scheduled registration-patients"
+  ],
+  "supersedes": ".agent/gates/implementation-ready-CVG-004-report-scheduled-patients.json"
+}

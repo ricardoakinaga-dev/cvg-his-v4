@@ -24,7 +24,14 @@ export interface ReportDefinition {
   readonly accountId: AccountId | null;
   readonly title: string;
   readonly description: string;
-  readonly category: 'executive' | 'financial' | 'commercial' | 'clinical' | 'inventory' | 'staff';
+  readonly category:
+    | 'executive'
+    | 'financial'
+    | 'commercial'
+    | 'clinical'
+    | 'inventory'
+    | 'staff'
+    | 'registrations';
   readonly requiredPermission: string;
   readonly supportedFormats: readonly ReportFormat[];
   readonly filterSchema: Record<string, 'string' | 'date' | 'boolean' | 'number'>;
@@ -82,6 +89,18 @@ export interface ReportScheduleSummary {
   readonly updatedAt: string;
 }
 
+export interface ReportScheduleClaim {
+  readonly schedule: ReportScheduleSummary;
+  readonly claimToken: string;
+  readonly claimUntil: string;
+  readonly claimWorkerId: string;
+}
+
+export interface ReportScheduleClaimCapability {
+  readonly scheduleId: string;
+  readonly claimToken: string;
+}
+
 export interface ReportScheduleDeliverySummary {
   readonly id: string;
   readonly accountId: AccountId;
@@ -133,6 +152,7 @@ export interface CreateReportScheduleInput {
 }
 
 export interface RecordReportScheduleExecutionInput {
+  readonly claimToken: string;
   readonly executionId?: string;
   readonly ranAt?: string;
   readonly error?: string | null;
@@ -146,13 +166,28 @@ export interface RecordReportScheduleDeliveriesInput {
   readonly format: ReportFormat;
   readonly deliveredAt?: string;
   readonly error?: string | null;
+  readonly scheduleClaimToken?: string;
 }
 
 export interface ReportRepository {
   saveExecution(execution: ReportExecutionDetail): Promise<void>;
   saveExport(exported: ReportExportSummary): Promise<void>;
+  readonly saveExecutionForScheduleClaim?: (
+    execution: ReportExecutionDetail,
+    scheduleId: string,
+    scheduleClaimToken: string
+  ) => Promise<boolean>;
+  readonly saveExportForScheduleClaim?: (
+    exported: ReportExportSummary,
+    scheduleId: string,
+    scheduleClaimToken: string
+  ) => Promise<boolean>;
   saveSchedule(schedule: ReportScheduleSummary): Promise<void>;
   saveDelivery(delivery: ReportScheduleDeliverySummary): Promise<void>;
+  readonly saveDeliveryForScheduleClaim?: (
+    delivery: ReportScheduleDeliverySummary,
+    scheduleClaimToken: string
+  ) => Promise<boolean>;
   findExecutions(accountId: AccountId): Promise<readonly ReportExecutionDetail[]>;
   findExports(accountId: AccountId): Promise<readonly ReportExportSummary[]>;
   findSchedules(accountId: AccountId): Promise<readonly ReportScheduleSummary[]>;
@@ -163,6 +198,16 @@ export interface ReportRepository {
     workerId: string,
     leaseMs?: number
   ) => Promise<readonly ReportScheduleSummary[]>;
+  readonly claimDueSchedulesWithLease?: (
+    accountId: AccountId,
+    asOf: string,
+    workerId: string,
+    leaseMs?: number
+  ) => Promise<readonly ReportScheduleClaim[]>;
+  readonly saveClaimedSchedule?: (
+    schedule: ReportScheduleSummary,
+    claimToken: string
+  ) => Promise<boolean>;
   readonly claimFailedDeliveries?: (
     accountId: AccountId,
     asOf: string,
@@ -192,6 +237,16 @@ export interface ReportDeliveryProvider {
     readonly recipient: string;
     readonly exported: ReportExportSummary;
   }): Promise<void>;
+}
+
+export class ReportScheduleLeaseLostError extends ValidationError {
+  public readonly scheduleId: string;
+
+  public constructor(scheduleId: string) {
+    super('Report schedule lease was lost', { scheduleId });
+    this.name = 'ReportScheduleLeaseLostError';
+    this.scheduleId = scheduleId;
+  }
 }
 
 const createdAt = '2026-05-28T00:00:00.000Z';
@@ -232,6 +287,63 @@ function seedDefinitions(): readonly ReportDefinition[] {
         { key: 'totalBaseAmount', label: 'Base', type: 'currency' },
         { key: 'totalCommissionAmount', label: 'Comissão', type: 'currency' },
         { key: 'lineCount', label: 'Linhas', type: 'number' }
+      ],
+      createdAt,
+      updatedAt: createdAt
+    },
+    {
+      id: 'scheduling-appointments',
+      accountId: null,
+      title: 'Agendamentos',
+      description:
+        'Agendamentos persistidos por período, situação e contexto operacional da agenda.',
+      category: 'clinical',
+      requiredPermission: 'scheduling.read',
+      supportedFormats: ['json', 'csv', 'xlsx', 'pdf'],
+      filterSchema: {
+        search: 'string',
+        status: 'string',
+        dateFrom: 'date',
+        dateTo: 'date'
+      },
+      columns: [
+        { key: 'appointmentId', label: 'Agendamento', type: 'string' },
+        { key: 'scheduledAt', label: 'Data agendada', type: 'datetime' },
+        { key: 'status', label: 'Status', type: 'status' },
+        { key: 'reason', label: 'Motivo', type: 'string' },
+        { key: 'patientId', label: 'Paciente', type: 'string' },
+        { key: 'ownerId', label: 'Tutor', type: 'string' },
+        { key: 'practitionerStaffId', label: 'Profissional', type: 'string' },
+        { key: 'serviceId', label: 'Serviço', type: 'string' },
+        { key: 'unit', label: 'Unidade', type: 'string' },
+        { key: 'specialty', label: 'Especialidade', type: 'string' },
+        { key: 'resourceLabel', label: 'Recurso', type: 'string' },
+        { key: 'createdAt', label: 'Cadastro', type: 'datetime' },
+        { key: 'updatedAt', label: 'Atualização', type: 'datetime' }
+      ],
+      createdAt,
+      updatedAt: createdAt
+    },
+    {
+      id: 'scheduling-professional-care',
+      accountId: null,
+      title: 'Atendimento por Profissional',
+      description:
+        'Agendamentos persistidos agregados por profissional, situação operacional e serviços distintos.',
+      category: 'staff',
+      requiredPermission: 'staff.read',
+      supportedFormats: ['json', 'csv', 'xlsx', 'pdf'],
+      filterSchema: {
+        dateFrom: 'date',
+        dateTo: 'date'
+      },
+      columns: [
+        { key: 'professional', label: 'Profissional', type: 'string' },
+        { key: 'scheduled', label: 'Agendamentos', type: 'number' },
+        { key: 'completed', label: 'Executados', type: 'number' },
+        { key: 'checkedIn', label: 'Check-in', type: 'number' },
+        { key: 'cancelled', label: 'Cancelados', type: 'number' },
+        { key: 'services', label: 'Serviços distintos', type: 'number' }
       ],
       createdAt,
       updatedAt: createdAt
@@ -302,6 +414,326 @@ function seedDefinitions(): readonly ReportDefinition[] {
       ],
       createdAt,
       updatedAt: createdAt
+    },
+    {
+      id: 'financial-cheques',
+      accountId: null,
+      title: 'Cheques',
+      description:
+        'Pagamentos persistidos com método cheque, vinculados à comanda e sem inferência de lifecycle.',
+      category: 'financial',
+      requiredPermission: 'billing.read',
+      supportedFormats: ['json', 'csv', 'xlsx', 'pdf'],
+      filterSchema: { dateFrom: 'date', dateTo: 'date' },
+      columns: [
+        { key: 'paymentId', label: 'Pagamento', type: 'string' },
+        { key: 'saleNumber', label: 'Comanda', type: 'string' },
+        { key: 'saleStatus', label: 'Status da comanda', type: 'status' },
+        { key: 'counterSaleId', label: 'ID da comanda', type: 'string' },
+        { key: 'reference', label: 'Referência', type: 'string' },
+        { key: 'amount', label: 'Valor', type: 'currency' },
+        { key: 'installments', label: 'Parcelas', type: 'number' },
+        { key: 'recordedAt', label: 'Registrado em', type: 'datetime' },
+        { key: 'notes', label: 'Observações', type: 'string' }
+      ],
+      createdAt,
+      updatedAt: createdAt
+    },
+    {
+      id: 'fiscal-service-invoices',
+      accountId: null,
+      title: 'NF de Serviços Prestados',
+      description:
+        'Documentos NFS-e persistidos por competência, com cliente, serviços, impostos, total e status atual.',
+      category: 'financial',
+      requiredPermission: 'fiscal.read',
+      supportedFormats: ['json', 'csv', 'xlsx', 'pdf'],
+      filterSchema: {
+        search: 'string',
+        status: 'string',
+        dateFrom: 'date',
+        dateTo: 'date'
+      },
+      columns: [
+        { key: 'documentId', label: 'Documento', type: 'string' },
+        { key: 'serie', label: 'Série', type: 'string' },
+        { key: 'numero', label: 'Número', type: 'number' },
+        { key: 'competencia', label: 'Competência', type: 'date' },
+        { key: 'status', label: 'Status', type: 'status' },
+        { key: 'customerName', label: 'Cliente', type: 'string' },
+        { key: 'customerDocument', label: 'Documento do cliente', type: 'string' },
+        { key: 'provider', label: 'Provider fiscal', type: 'string' },
+        { key: 'serviceDescriptions', label: 'Serviços', type: 'string' },
+        { key: 'serviceCodes', label: 'Códigos de serviço', type: 'string' },
+        { key: 'serviceQuantity', label: 'Quantidade', type: 'number' },
+        { key: 'serviceSubtotal', label: 'Subtotal dos serviços', type: 'currency' },
+        { key: 'totalIss', label: 'ISS', type: 'currency' },
+        { key: 'totalPis', label: 'PIS', type: 'currency' },
+        { key: 'totalCofins', label: 'COFINS', type: 'currency' },
+        { key: 'totalCsll', label: 'CSLL', type: 'currency' },
+        { key: 'totalIrrf', label: 'IRRF', type: 'currency' },
+        { key: 'totalInss', label: 'INSS', type: 'currency' },
+        { key: 'totalDocument', label: 'Total do documento', type: 'currency' },
+        { key: 'observations', label: 'Observações', type: 'string' },
+        { key: 'createdAt', label: 'Criado em', type: 'datetime' },
+        { key: 'authorizationCode', label: 'Autorização', type: 'string' }
+      ],
+      createdAt,
+      updatedAt: createdAt
+    },
+    {
+      id: 'financial-advance-payments',
+      accountId: null,
+      title: 'Pagamento Antecipado',
+      description:
+        'Créditos antecipados persistidos por cliente com compensação agregada a partir do subledger.',
+      category: 'financial',
+      requiredPermission: 'billing.read',
+      supportedFormats: ['json', 'csv', 'xlsx', 'pdf'],
+      filterSchema: { search: 'string', status: 'string', dateFrom: 'date', dateTo: 'date' },
+      columns: [
+        { key: 'paymentId', label: 'Pagamento', type: 'string' },
+        { key: 'ownerName', label: 'Cliente', type: 'string' },
+        { key: 'documentId', label: 'Documento', type: 'string' },
+        { key: 'issuedAt', label: 'Emissão', type: 'datetime' },
+        { key: 'originalAmount', label: 'Original', type: 'currency' },
+        { key: 'compensatedAmount', label: 'Compensado', type: 'currency' },
+        { key: 'balance', label: 'Saldo', type: 'currency' },
+        { key: 'origin', label: 'Origem', type: 'string' },
+        { key: 'status', label: 'Status', type: 'status' },
+        { key: 'notes', label: 'Observações', type: 'string' }
+      ],
+      createdAt,
+      updatedAt: createdAt
+    },
+    {
+      id: 'commercial-deleted-sales',
+      accountId: null,
+      title: 'Exclusão de Vendas e Comandas',
+      description:
+        'Snapshot de comandas atualmente canceladas, filtrado pela data de abertura (createdAt), com valores e identificadores operacionais.',
+      category: 'commercial',
+      requiredPermission: 'counter_sale.read',
+      supportedFormats: ['json', 'csv', 'xlsx', 'pdf'],
+      filterSchema: { search: 'string', dateFrom: 'date', dateTo: 'date' },
+      columns: [
+        { key: 'number', label: 'Número', type: 'string' },
+        { key: 'status', label: 'Status', type: 'status' },
+        { key: 'ownerId', label: 'Tutor (ID)', type: 'string' },
+        { key: 'openedByUserId', label: 'Usuário de abertura (ID)', type: 'string' },
+        { key: 'createdAt', label: 'Abertura', type: 'datetime' },
+        { key: 'updatedAt', label: 'Última atualização', type: 'datetime' },
+        { key: 'total', label: 'Total', type: 'currency' },
+        { key: 'discountAmount', label: 'Desconto', type: 'currency' },
+        { key: 'paidAmount', label: 'Pago', type: 'currency' },
+        { key: 'balanceDue', label: 'Saldo', type: 'currency' },
+        { key: 'notes', label: 'Observação', type: 'string' }
+      ],
+      createdAt,
+      updatedAt: createdAt
+    },
+    {
+      id: 'inventory-products',
+      accountId: null,
+      title: 'Relatório de Produtos',
+      description:
+        'Produtos persistidos no estoque com saldo atual, mínimo, custo unitário e datas de cadastro/atualização.',
+      category: 'inventory',
+      requiredPermission: 'inventory.read',
+      supportedFormats: ['json', 'csv', 'xlsx', 'pdf'],
+      filterSchema: { search: 'string', dateFrom: 'date', dateTo: 'date' },
+      columns: [
+        { key: 'sku', label: 'Código', type: 'string' },
+        { key: 'name', label: 'Produto', type: 'string' },
+        { key: 'unit', label: 'Unidade', type: 'string' },
+        { key: 'onHandQuantity', label: 'Saldo', type: 'number' },
+        { key: 'reorderLevel', label: 'Mínimo', type: 'number' },
+        { key: 'unitCostAmount', label: 'Custo unitário', type: 'currency' },
+        { key: 'createdAt', label: 'Cadastro', type: 'datetime' },
+        { key: 'updatedAt', label: 'Atualização', type: 'datetime' }
+      ],
+      createdAt,
+      updatedAt: createdAt
+    },
+    {
+      id: 'inventory-invoices',
+      accountId: null,
+      title: 'Entradas de compras com referência de NF',
+      description:
+        'Compras de estoque persistidas com referência de NF informada, fornecedor e ciclo de recebimento; não é um livro fiscal.',
+      category: 'inventory',
+      requiredPermission: 'inventory.read',
+      supportedFormats: ['json', 'csv', 'xlsx', 'pdf'],
+      filterSchema: {
+        search: 'string',
+        status: 'string',
+        dateFrom: 'date',
+        dateTo: 'date'
+      },
+      columns: [
+        { key: 'purchaseId', label: 'Compra', type: 'string' },
+        { key: 'invoiceNumber', label: 'Referência NF', type: 'string' },
+        { key: 'supplierName', label: 'Fornecedor informado', type: 'string' },
+        { key: 'status', label: 'Status da compra', type: 'status' },
+        { key: 'totalAmount', label: 'Valor comprado', type: 'currency' },
+        { key: 'receivedAmount', label: 'Valor recebido', type: 'currency' },
+        { key: 'payableId', label: 'Conta a pagar', type: 'string' },
+        { key: 'createdByUserId', label: 'Criado por', type: 'string' },
+        { key: 'approvedByUserId', label: 'Aprovado por', type: 'string' },
+        { key: 'createdAt', label: 'Criado em', type: 'datetime' },
+        { key: 'updatedAt', label: 'Atualizado em', type: 'datetime' },
+        { key: 'receivedAt', label: 'Recebido em', type: 'datetime' }
+      ],
+      createdAt,
+      updatedAt: createdAt
+    },
+    {
+      id: 'inventory-stock',
+      accountId: null,
+      title: 'Estoque',
+      description:
+        'Posição atual do estoque persistido com saldo, custo corrente, valor operacional e sinal de reposição.',
+      category: 'inventory',
+      requiredPermission: 'inventory.read',
+      supportedFormats: ['json', 'csv', 'xlsx', 'pdf'],
+      filterSchema: { search: 'string', dateFrom: 'date', dateTo: 'date' },
+      columns: [
+        { key: 'sku', label: 'Código', type: 'string' },
+        { key: 'name', label: 'Produto', type: 'string' },
+        { key: 'unit', label: 'Unidade', type: 'string' },
+        { key: 'onHandQuantity', label: 'Saldo', type: 'number' },
+        { key: 'reorderLevel', label: 'Mínimo', type: 'number' },
+        { key: 'unitCostAmount', label: 'Custo unitário', type: 'currency' },
+        { key: 'stockValue', label: 'Valor estoque', type: 'currency' },
+        { key: 'reorderStatus', label: 'Situação de reposição', type: 'status' },
+        { key: 'createdAt', label: 'Cadastro', type: 'datetime' },
+        { key: 'updatedAt', label: 'Atualização', type: 'datetime' }
+      ],
+      createdAt,
+      updatedAt: createdAt
+    },
+    {
+      id: 'inventory-movements',
+      accountId: null,
+      title: 'Movimentações no Estoque',
+      description:
+        'Ledger persistido de movimentações de estoque com saldo antes/depois, custo e referência operacional.',
+      category: 'inventory',
+      requiredPermission: 'inventory.read',
+      supportedFormats: ['json', 'csv', 'xlsx', 'pdf'],
+      filterSchema: { search: 'string', dateFrom: 'date', dateTo: 'date' },
+      columns: [
+        { key: 'movementId', label: 'Movimento', type: 'string' },
+        { key: 'occurredAt', label: 'Data', type: 'datetime' },
+        { key: 'movementType', label: 'Tipo', type: 'status' },
+        { key: 'sku', label: 'Código', type: 'string' },
+        { key: 'name', label: 'Produto', type: 'string' },
+        { key: 'unit', label: 'Unidade', type: 'string' },
+        { key: 'quantityDelta', label: 'Variação', type: 'number' },
+        { key: 'balanceBefore', label: 'Saldo anterior', type: 'number' },
+        { key: 'balanceAfter', label: 'Saldo posterior', type: 'number' },
+        { key: 'unitCostAmount', label: 'Custo unitário', type: 'currency' },
+        { key: 'reason', label: 'Motivo', type: 'string' },
+        { key: 'reference', label: 'Referência', type: 'string' },
+        { key: 'recordedByUserId', label: 'Usuário', type: 'string' }
+      ],
+      createdAt,
+      updatedAt: createdAt
+    },
+    {
+      id: 'registration-owners',
+      accountId: null,
+      title: 'Clientes',
+      description:
+        'Cadastro persistido de clientes com contato principal, responsabilidade financeira e situação.',
+      category: 'registrations',
+      requiredPermission: 'owners.read',
+      supportedFormats: ['json', 'csv', 'xlsx', 'pdf'],
+      filterSchema: { dateFrom: 'date', dateTo: 'date' },
+      columns: [
+        { key: 'documentId', label: 'Documento', type: 'string' },
+        { key: 'fullName', label: 'Cliente', type: 'string' },
+        { key: 'primaryContact', label: 'Contato principal', type: 'string' },
+        { key: 'city', label: 'Cidade', type: 'string' },
+        { key: 'financialResponsible', label: 'Responsável financeiro', type: 'status' },
+        { key: 'status', label: 'Situação', type: 'status' },
+        { key: 'createdAt', label: 'Cadastro', type: 'datetime' }
+      ],
+      createdAt,
+      updatedAt: createdAt
+    },
+    {
+      id: 'registration-patients',
+      accountId: null,
+      title: 'Animais',
+      description:
+        'Cadastro persistido de animais com identificação, espécie, situação e data de cadastro.',
+      category: 'registrations',
+      requiredPermission: 'patients.read',
+      supportedFormats: ['json', 'csv', 'xlsx', 'pdf'],
+      filterSchema: { dateFrom: 'date', dateTo: 'date' },
+      columns: [
+        { key: 'code', label: 'Código', type: 'string' },
+        { key: 'name', label: 'Animal', type: 'string' },
+        { key: 'species', label: 'Espécie', type: 'string' },
+        { key: 'breed', label: 'Raça', type: 'string' },
+        { key: 'sex', label: 'Sexo', type: 'string' },
+        { key: 'microchip', label: 'Microchip', type: 'string' },
+        { key: 'status', label: 'Situação', type: 'status' },
+        { key: 'createdAt', label: 'Cadastro', type: 'datetime' }
+      ],
+      createdAt,
+      updatedAt: createdAt
+    },
+    {
+      id: 'registration-services',
+      accountId: null,
+      title: 'Serviços',
+      description: 'Cadastro persistido de serviços com código, descrição, preço base e situação.',
+      category: 'registrations',
+      requiredPermission: 'service.read',
+      supportedFormats: ['json', 'csv', 'xlsx', 'pdf'],
+      filterSchema: { dateFrom: 'date', dateTo: 'date' },
+      columns: [
+        { key: 'code', label: 'Código', type: 'string' },
+        { key: 'name', label: 'Serviço', type: 'string' },
+        { key: 'description', label: 'Descrição', type: 'string' },
+        { key: 'basePrice', label: 'Preço base', type: 'currency' },
+        { key: 'status', label: 'Situação', type: 'status' },
+        { key: 'createdAt', label: 'Cadastro', type: 'datetime' }
+      ],
+      createdAt,
+      updatedAt: createdAt
+    },
+    {
+      id: 'registration-suppliers',
+      accountId: null,
+      title: 'Fornecedores e Despesas',
+      description:
+        'Catálogo persistido de fornecedores e despesas com categoria, centro de custo e descrição.',
+      category: 'registrations',
+      requiredPermission: 'billing.read',
+      supportedFormats: ['json', 'csv', 'xlsx', 'pdf'],
+      filterSchema: {
+        search: 'string',
+        category: 'string',
+        costCenterCode: 'string',
+        dateFrom: 'date',
+        dateTo: 'date'
+      },
+      columns: [
+        { key: 'code', label: 'Código', type: 'string' },
+        { key: 'name', label: 'Nome', type: 'string' },
+        { key: 'kind', label: 'Tipo', type: 'string' },
+        { key: 'category', label: 'Categoria', type: 'string' },
+        { key: 'costCenterCode', label: 'Código do centro de custo', type: 'string' },
+        { key: 'costCenterName', label: 'Nome do centro de custo', type: 'string' },
+        { key: 'description', label: 'Descrição', type: 'string' },
+        { key: 'createdAt', label: 'Cadastro', type: 'datetime' },
+        { key: 'updatedAt', label: 'Atualização', type: 'datetime' }
+      ],
+      createdAt,
+      updatedAt: createdAt
     }
   ];
 }
@@ -327,7 +759,7 @@ export class ReportsService {
   readonly #retryOperations = new Map<string, Promise<ReportScheduleDeliverySummary>>();
   readonly #scheduleClaims = new Map<
     string,
-    { readonly workerId: string; readonly claimUntil: number }
+    { readonly claimToken: string; readonly claimWorkerId: string; readonly claimUntil: number }
   >();
 
   public constructor(options?: ReportsServiceOptions | readonly ReportDefinition[]) {
@@ -386,6 +818,34 @@ export class ReportsService {
     requestedByUserId: UserId,
     input: ExecuteReportInput
   ): Promise<ReportExecutionDetail> {
+    return this.executeReport(accountId, requestedByUserId, input);
+  }
+
+  public async executeScheduled(
+    accountId: AccountId,
+    requestedByUserId: UserId,
+    input: ExecuteReportInput,
+    scheduleClaim: ReportScheduleClaimCapability
+  ): Promise<ReportExecutionDetail> {
+    const { schedule, claimToken } = this.requireScheduleClaim(accountId, scheduleClaim);
+    if (schedule.reportId !== input.reportId) {
+      throw new ValidationError('Scheduled report definition does not match its schedule', {
+        scheduleId: schedule.id,
+        reportId: input.reportId
+      });
+    }
+    return this.executeReport(accountId, requestedByUserId, input, {
+      scheduleId: schedule.id,
+      claimToken
+    });
+  }
+
+  private async executeReport(
+    accountId: AccountId,
+    requestedByUserId: UserId,
+    input: ExecuteReportInput,
+    scheduleClaim?: ReportScheduleClaimCapability
+  ): Promise<ReportExecutionDetail> {
     const definition = this.getDefinition(accountId, input.reportId);
     const filters = normalizeFilters(input.filters ?? {});
     const rows = input.rows.map((row) => normalizeRow(definition, row));
@@ -403,9 +863,34 @@ export class ReportsService {
       columns: definition.columns,
       rows
     };
-    this.#executions.set(execution.id, execution);
-    await this.#repository?.saveExecution(execution);
+    await this.persistExecution(execution, scheduleClaim);
     return execution;
+  }
+
+  private async persistExecution(
+    execution: ReportExecutionDetail,
+    scheduleClaim?: ReportScheduleClaimCapability
+  ): Promise<void> {
+    if (scheduleClaim) {
+      if (this.#repository) {
+        if (!this.#repository.saveExecutionForScheduleClaim) {
+          throw new ValidationError(
+            'Scheduled report execution requires a fenced repository implementation'
+          );
+        }
+        const saved = await this.#repository.saveExecutionForScheduleClaim(
+          execution,
+          scheduleClaim.scheduleId,
+          scheduleClaim.claimToken
+        );
+        if (!saved) throw new ReportScheduleLeaseLostError(scheduleClaim.scheduleId);
+      } else {
+        this.assertScheduleClaim(scheduleClaim.scheduleId, scheduleClaim.claimToken);
+      }
+    } else {
+      await this.#repository?.saveExecution(execution);
+    }
+    this.#executions.set(execution.id, execution);
   }
 
   public listExecutions(accountId: AccountId): readonly ReportExecutionSummary[] {
@@ -428,6 +913,38 @@ export class ReportsService {
     exportedByUserId: UserId,
     executionId: string,
     format: ReportFormat
+  ): Promise<ReportExportSummary> {
+    return this.exportReport(accountId, exportedByUserId, executionId, format);
+  }
+
+  public async exportScheduled(
+    accountId: AccountId,
+    exportedByUserId: UserId,
+    executionId: string,
+    format: ReportFormat,
+    scheduleClaim: ReportScheduleClaimCapability
+  ): Promise<ReportExportSummary> {
+    const { schedule, claimToken } = this.requireScheduleClaim(accountId, scheduleClaim);
+    const execution = this.getExecution(accountId, executionId);
+    if (execution.reportId !== schedule.reportId || format !== schedule.format) {
+      throw new ValidationError('Scheduled report export does not match its schedule', {
+        scheduleId: schedule.id,
+        executionId,
+        format
+      });
+    }
+    return this.exportReport(accountId, exportedByUserId, executionId, format, {
+      scheduleId: schedule.id,
+      claimToken
+    });
+  }
+
+  private async exportReport(
+    accountId: AccountId,
+    exportedByUserId: UserId,
+    executionId: string,
+    format: ReportFormat,
+    scheduleClaim?: ReportScheduleClaimCapability
   ): Promise<ReportExportSummary> {
     const execution = this.getExecution(accountId, executionId);
     const definition = this.getDefinition(accountId, execution.reportId);
@@ -452,9 +969,34 @@ export class ReportsService {
       exportedByUserId,
       exportedAt
     };
-    this.#exports.set(result.id, result);
-    await this.#repository?.saveExport(result);
+    await this.persistExport(result, scheduleClaim);
     return result;
+  }
+
+  private async persistExport(
+    exported: ReportExportSummary,
+    scheduleClaim?: ReportScheduleClaimCapability
+  ): Promise<void> {
+    if (scheduleClaim) {
+      if (this.#repository) {
+        if (!this.#repository.saveExportForScheduleClaim) {
+          throw new ValidationError(
+            'Scheduled report export requires a fenced repository implementation'
+          );
+        }
+        const saved = await this.#repository.saveExportForScheduleClaim(
+          exported,
+          scheduleClaim.scheduleId,
+          scheduleClaim.claimToken
+        );
+        if (!saved) throw new ReportScheduleLeaseLostError(scheduleClaim.scheduleId);
+      } else {
+        this.assertScheduleClaim(scheduleClaim.scheduleId, scheduleClaim.claimToken);
+      }
+    } else {
+      await this.#repository?.saveExport(exported);
+    }
+    this.#exports.set(exported.id, exported);
   }
 
   public getExport(accountId: AccountId, exportId: string): ReportExportSummary {
@@ -520,12 +1062,31 @@ export class ReportsService {
       .sort((left, right) => left.nextRunAt.localeCompare(right.nextRunAt));
   }
 
+  /**
+   * Compatibility view for callers that only need schedule summaries.
+   * Callers that finalize a claim must use claimDueSchedulesWithLease to retain the token.
+   */
   public async claimDueSchedules(
     accountId: AccountId,
     asOf = nowIso(),
     workerId = 'reports-worker',
     leaseMs = 120_000
   ): Promise<readonly ReportScheduleSummary[]> {
+    if (this.#repository?.claimDueSchedules && !this.#repository.claimDueSchedulesWithLease) {
+      const claimed = await this.#repository.claimDueSchedules(accountId, asOf, workerId, leaseMs);
+      for (const schedule of claimed) this.#schedules.set(schedule.id, schedule);
+      return claimed;
+    }
+    const claimed = await this.claimDueSchedulesWithLease(accountId, asOf, workerId, leaseMs);
+    return claimed.map(({ schedule }) => schedule);
+  }
+
+  public async claimDueSchedulesWithLease(
+    accountId: AccountId,
+    asOf = nowIso(),
+    workerId = 'reports-worker',
+    leaseMs = 120_000
+  ): Promise<readonly ReportScheduleClaim[]> {
     const asOfTime = new Date(asOf).getTime();
     if (Number.isNaN(asOfTime)) {
       throw new ValidationError('asOf must be a valid ISO date', { asOf });
@@ -534,24 +1095,47 @@ export class ReportsService {
       throw new ValidationError('workerId and leaseMs are required for report schedule claims');
     }
 
-    if (this.#repository?.claimDueSchedules) {
-      const claimed = await this.#repository.claimDueSchedules(
+    if (this.#repository) {
+      if (!this.#repository.claimDueSchedulesWithLease || !this.#repository.saveClaimedSchedule) {
+        throw new ValidationError(
+          'Report schedule claims require a fenced repository implementation'
+        );
+      }
+      const claimed = await this.#repository.claimDueSchedulesWithLease(
         accountId,
         asOf,
         workerId.trim(),
         leaseMs
       );
-      for (const schedule of claimed) this.#schedules.set(schedule.id, schedule);
+      for (const claim of claimed) {
+        this.#schedules.set(claim.schedule.id, claim.schedule);
+        this.#scheduleClaims.set(claim.schedule.id, {
+          claimToken: claim.claimToken,
+          claimUntil: new Date(claim.claimUntil).getTime(),
+          claimWorkerId: claim.claimWorkerId
+        });
+      }
       return claimed;
     }
 
-    const claimUntil = asOfTime + leaseMs;
-    const claimed: ReportScheduleSummary[] = [];
+    const claimStartedAt = Date.now();
+    const claimUntil = new Date(claimStartedAt + leaseMs).toISOString();
+    const claimed: ReportScheduleClaim[] = [];
     for (const schedule of this.listDueSchedules(accountId, asOf)) {
       const existing = this.#scheduleClaims.get(schedule.id);
-      if (existing && existing.claimUntil > asOfTime) continue;
-      this.#scheduleClaims.set(schedule.id, { workerId: workerId.trim(), claimUntil });
-      claimed.push(schedule);
+      if (existing && existing.claimUntil > claimStartedAt) continue;
+      const claim = {
+        schedule,
+        claimToken: createCorrelationId('rep_sched_claim'),
+        claimUntil,
+        claimWorkerId: workerId.trim()
+      };
+      this.#scheduleClaims.set(schedule.id, {
+        claimToken: claim.claimToken,
+        claimUntil: claimStartedAt + leaseMs,
+        claimWorkerId: claim.claimWorkerId
+      });
+      claimed.push(claim);
     }
     return claimed;
   }
@@ -626,6 +1210,8 @@ export class ReportsService {
     if (!schedule || schedule.accountId !== accountId) {
       throw new NotFoundError('Report schedule not found', { scheduleId });
     }
+    const claimToken = typeof input.claimToken === 'string' ? input.claimToken.trim() : '';
+    if (!claimToken) throw new ReportScheduleLeaseLostError(scheduleId);
 
     const ranAt = input.ranAt ?? nowIso();
     const updated: ReportScheduleSummary = {
@@ -636,9 +1222,21 @@ export class ReportsService {
       lastError: input.error ?? null,
       updatedAt: ranAt
     };
+
+    if (this.#repository) {
+      if (!this.#repository.saveClaimedSchedule) {
+        throw new ValidationError(
+          'Report schedule execution requires a fenced repository implementation'
+        );
+      }
+      const saved = await this.#repository.saveClaimedSchedule(updated, claimToken);
+      if (!saved) throw new ReportScheduleLeaseLostError(scheduleId);
+    } else {
+      this.assertScheduleClaim(scheduleId, claimToken);
+    }
+
     this.#schedules.set(updated.id, updated);
     this.#scheduleClaims.delete(updated.id);
-    await this.#repository?.saveSchedule(updated);
     return updated;
   }
 
@@ -651,6 +1249,12 @@ export class ReportsService {
     if (!schedule || schedule.accountId !== accountId) {
       throw new NotFoundError('Report schedule not found', { scheduleId });
     }
+    const scheduleClaimToken =
+      typeof input.scheduleClaimToken === 'string' ? input.scheduleClaimToken.trim() : '';
+    if (input.scheduleClaimToken !== undefined && !scheduleClaimToken) {
+      throw new ReportScheduleLeaseLostError(scheduleId);
+    }
+    if (scheduleClaimToken) this.assertScheduleClaim(scheduleId, scheduleClaimToken);
 
     const deliveredAt = input.deliveredAt ?? nowIso();
     const recipients = normalizeRecipients(input.recipients);
@@ -670,7 +1274,7 @@ export class ReportsService {
     }));
 
     for (const delivery of deliveries) {
-      await this.persistDelivery(delivery);
+      await this.persistDelivery(delivery, undefined, scheduleClaimToken || undefined);
     }
 
     return deliveries;
@@ -767,7 +1371,8 @@ export class ReportsService {
     recipients: readonly string[],
     deliveredAt?: string,
     existingDeliveryId?: string,
-    claimToken?: string
+    claimToken?: string,
+    scheduleClaimToken?: string
   ): Promise<{
     readonly deliveries: readonly ReportScheduleDeliverySummary[];
     readonly failures: readonly { readonly recipient: string; readonly error: string }[];
@@ -799,7 +1404,18 @@ export class ReportsService {
         deliveryId: existingDeliveryId
       });
     }
+    const normalizedScheduleClaimToken =
+      typeof scheduleClaimToken === 'string' ? scheduleClaimToken.trim() : '';
+    if (scheduleClaimToken !== undefined && !normalizedScheduleClaimToken) {
+      throw new ReportScheduleLeaseLostError(scheduleId);
+    }
+    if (claimToken && normalizedScheduleClaimToken) {
+      throw new ValidationError('Report delivery cannot combine schedule and retry claim tokens');
+    }
     if (claimToken) this.assertDeliveryClaim(existingDeliveryId ?? '', claimToken);
+    if (normalizedScheduleClaimToken) {
+      this.assertScheduleClaim(scheduleId, normalizedScheduleClaimToken);
+    }
 
     const deliveries: ReportScheduleDeliverySummary[] = [];
     const failures: Array<{ readonly recipient: string; readonly error: string }> = [];
@@ -822,11 +1438,14 @@ export class ReportsService {
         // Record the stable delivery identity before leaving the database
         // boundary. If the process dies while the provider request is in
         // flight, the next worker can discover and retry this row safely.
-        await this.persistDelivery(delivery);
+        await this.persistDelivery(delivery, undefined, normalizedScheduleClaimToken || undefined);
       }
       let providerFailed = false;
       let providerError: string | null = null;
       try {
+        if (normalizedScheduleClaimToken) {
+          this.assertScheduleClaim(scheduleId, normalizedScheduleClaimToken);
+        }
         if (!this.#deliveryProvider) {
           throw new Error('No report delivery provider is configured');
         }
@@ -855,7 +1474,7 @@ export class ReportsService {
           deliveredAt: attemptAt,
           error: failureMessage
         };
-        await this.persistDelivery(failed, claimToken);
+        await this.persistDelivery(failed, claimToken, normalizedScheduleClaimToken || undefined);
         deliveries.push(failed);
         failures.push({ recipient, error: failureMessage });
         continue;
@@ -870,7 +1489,7 @@ export class ReportsService {
         deliveredAt: attemptAt,
         error: null
       };
-      await this.persistDelivery(sent, claimToken);
+      await this.persistDelivery(sent, claimToken, normalizedScheduleClaimToken || undefined);
       deliveries.push(sent);
     }
     return { deliveries, failures };
@@ -971,9 +1590,28 @@ export class ReportsService {
 
   private async persistDelivery(
     delivery: ReportScheduleDeliverySummary,
-    claimToken?: string
+    claimToken?: string,
+    scheduleClaimToken?: string
   ): Promise<void> {
-    if (claimToken) {
+    if (claimToken && scheduleClaimToken) {
+      throw new ValidationError('Report delivery cannot combine schedule and retry claim tokens');
+    }
+    if (scheduleClaimToken) {
+      if (this.#repository) {
+        if (!this.#repository.saveDeliveryForScheduleClaim) {
+          throw new ValidationError(
+            'Scheduled report delivery requires a fenced repository implementation'
+          );
+        }
+        const saved = await this.#repository.saveDeliveryForScheduleClaim(
+          delivery,
+          scheduleClaimToken
+        );
+        if (!saved) throw new ReportScheduleLeaseLostError(delivery.scheduleId);
+      } else {
+        this.assertScheduleClaim(delivery.scheduleId, scheduleClaimToken);
+      }
+    } else if (claimToken) {
       if (this.#repository?.saveClaimedDelivery) {
         const saved = await this.#repository.saveClaimedDelivery(delivery, claimToken);
         if (!saved) {
@@ -999,6 +1637,31 @@ export class ReportsService {
       new Date(claim.claimUntil).getTime() <= Date.now()
     ) {
       throw new ValidationError('Report delivery retry lease was lost', { deliveryId });
+    }
+  }
+
+  private requireScheduleClaim(
+    accountId: AccountId,
+    capability: ReportScheduleClaimCapability
+  ): { readonly schedule: ReportScheduleSummary; readonly claimToken: string } {
+    const scheduleId =
+      typeof capability?.scheduleId === 'string' ? capability.scheduleId.trim() : '';
+    const claimToken =
+      typeof capability?.claimToken === 'string' ? capability.claimToken.trim() : '';
+    if (!scheduleId || !claimToken) throw new ReportScheduleLeaseLostError(scheduleId);
+
+    const schedule = this.#schedules.get(scheduleId);
+    if (!schedule || schedule.accountId !== accountId) {
+      throw new ReportScheduleLeaseLostError(scheduleId);
+    }
+    this.assertScheduleClaim(schedule.id, claimToken);
+    return { schedule, claimToken };
+  }
+
+  private assertScheduleClaim(scheduleId: string, claimToken: string): void {
+    const claim = this.#scheduleClaims.get(scheduleId);
+    if (!claim || claim.claimToken !== claimToken || claim.claimUntil <= Date.now()) {
+      throw new ReportScheduleLeaseLostError(scheduleId);
     }
   }
 
@@ -1052,6 +1715,101 @@ export class DatabaseReportRepository implements ReportRepository {
     });
   }
 
+  async saveExecutionForScheduleClaim(
+    execution: ReportExecutionDetail,
+    scheduleId: string,
+    scheduleClaimToken: string
+  ): Promise<boolean> {
+    return withTenantQuery(getPool(), async (client) => {
+      const result = await client.query(
+        `WITH active_schedule_claim AS (
+           SELECT 1
+             FROM report_schedules
+            WHERE account_id = $2
+              AND id = $12
+              AND claim_token = $13
+              AND claim_until > clock_timestamp()
+            FOR UPDATE
+         )
+         INSERT INTO report_executions (
+           id, account_id, report_id, requested_by_user_id, status, filters, row_count,
+           generated_at, expires_at, columns, rows
+         )
+         SELECT $1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9, $10::jsonb, $11::jsonb
+           FROM active_schedule_claim
+         ON CONFLICT (account_id, id) DO UPDATE SET
+           report_id = EXCLUDED.report_id,
+           requested_by_user_id = EXCLUDED.requested_by_user_id,
+           status = EXCLUDED.status,
+           filters = EXCLUDED.filters,
+           row_count = EXCLUDED.row_count,
+           generated_at = EXCLUDED.generated_at,
+           expires_at = EXCLUDED.expires_at,
+           columns = EXCLUDED.columns,
+           rows = EXCLUDED.rows
+         WHERE report_executions.account_id = EXCLUDED.account_id
+           AND EXISTS (
+             SELECT 1
+               FROM report_schedules
+              WHERE account_id = EXCLUDED.account_id
+                AND id = $12
+                AND claim_token = $13
+                AND claim_until > clock_timestamp()
+           )
+         RETURNING id`,
+        [...executionParams(execution), scheduleId, scheduleClaimToken]
+      );
+      return result.rowCount === 1;
+    });
+  }
+
+  async saveExportForScheduleClaim(
+    exported: ReportExportSummary,
+    scheduleId: string,
+    scheduleClaimToken: string
+  ): Promise<boolean> {
+    return withTenantQuery(getPool(), async (client) => {
+      const result = await client.query(
+        `WITH active_schedule_claim AS (
+           SELECT 1
+             FROM report_schedules
+            WHERE account_id = $2
+              AND id = $11
+              AND claim_token = $12
+              AND claim_until > clock_timestamp()
+            FOR UPDATE
+         )
+         INSERT INTO report_exports (
+           id, account_id, execution_id, format, filename, content_type, content,
+           content_encoding, exported_by_user_id, exported_at
+         )
+         SELECT $1, $2, $3, $4, $5, $6, $8, $7, $9, $10
+           FROM active_schedule_claim
+         ON CONFLICT (account_id, id) DO UPDATE SET
+           execution_id = EXCLUDED.execution_id,
+           format = EXCLUDED.format,
+           filename = EXCLUDED.filename,
+           content_type = EXCLUDED.content_type,
+           content = EXCLUDED.content,
+           content_encoding = EXCLUDED.content_encoding,
+           exported_by_user_id = EXCLUDED.exported_by_user_id,
+           exported_at = EXCLUDED.exported_at
+         WHERE report_exports.account_id = EXCLUDED.account_id
+           AND EXISTS (
+             SELECT 1
+               FROM report_schedules
+              WHERE account_id = EXCLUDED.account_id
+                AND id = $11
+                AND claim_token = $12
+                AND claim_until > clock_timestamp()
+           )
+         RETURNING id`,
+        [...exportParams(exported), scheduleId, scheduleClaimToken]
+      );
+      return result.rowCount === 1;
+    });
+  }
+
   async saveSchedule(schedule: ReportScheduleSummary): Promise<void> {
     await withTenantQuery(getPool(), async (client) => {
       await client.query(
@@ -1080,6 +1838,49 @@ export class DatabaseReportRepository implements ReportRepository {
     });
   }
 
+  async saveClaimedSchedule(schedule: ReportScheduleSummary, claimToken: string): Promise<boolean> {
+    return withTenantQuery(getPool(), async (client) => {
+      const result = await client.query(
+        `UPDATE report_schedules
+            SET name = $3,
+                frequency = $4,
+                format = $5,
+                filters = $6::jsonb,
+                recipients = $7::jsonb,
+                is_active = $8,
+                next_run_at = $9,
+                last_run_at = $10,
+                last_execution_id = $11,
+                last_error = $12,
+                updated_at = $13,
+                claim_token = NULL,
+                claim_until = NULL,
+                claim_worker_id = NULL
+          WHERE id = $1
+            AND account_id = $2
+            AND claim_token = $14
+            AND claim_until > clock_timestamp()`,
+        [
+          schedule.id,
+          schedule.accountId,
+          schedule.name,
+          schedule.frequency,
+          schedule.format,
+          JSON.stringify(schedule.filters),
+          JSON.stringify(schedule.recipients),
+          schedule.isActive,
+          new Date(schedule.nextRunAt),
+          schedule.lastRunAt ? new Date(schedule.lastRunAt) : null,
+          schedule.lastExecutionId,
+          schedule.lastError,
+          new Date(schedule.updatedAt),
+          claimToken
+        ]
+      );
+      return result.rowCount === 1;
+    });
+  }
+
   async saveDelivery(delivery: ReportScheduleDeliverySummary): Promise<void> {
     await withTenantQuery(getPool(), async (client) => {
       await client.query(
@@ -1098,6 +1899,51 @@ export class DatabaseReportRepository implements ReportRepository {
         WHERE report_schedule_deliveries.account_id = EXCLUDED.account_id`,
         deliveryParams(delivery)
       );
+    });
+  }
+
+  async saveDeliveryForScheduleClaim(
+    delivery: ReportScheduleDeliverySummary,
+    scheduleClaimToken: string
+  ): Promise<boolean> {
+    return withTenantQuery(getPool(), async (client) => {
+      const result = await client.query(
+        `WITH active_schedule_claim AS (
+           SELECT 1
+             FROM report_schedules
+            WHERE account_id = $2
+              AND id = $3
+              AND claim_token = $12
+              AND claim_until > clock_timestamp()
+           FOR UPDATE
+         )
+         INSERT INTO report_schedule_deliveries (
+           id, account_id, schedule_id, execution_id, export_id, recipient, status, format,
+           delivered_at, error, created_at
+         )
+         SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+           FROM active_schedule_claim
+         ON CONFLICT (id) DO UPDATE SET
+           execution_id = EXCLUDED.execution_id,
+           export_id = EXCLUDED.export_id,
+           recipient = EXCLUDED.recipient,
+           status = EXCLUDED.status,
+           format = EXCLUDED.format,
+           delivered_at = EXCLUDED.delivered_at,
+           error = EXCLUDED.error
+         WHERE report_schedule_deliveries.account_id = EXCLUDED.account_id
+           AND EXISTS (
+             SELECT 1
+               FROM report_schedules
+              WHERE account_id = EXCLUDED.account_id
+                AND id = EXCLUDED.schedule_id
+                AND claim_token = $12
+                AND claim_until > clock_timestamp()
+           )
+         RETURNING id`,
+        [...deliveryParams(delivery), scheduleClaimToken]
+      );
+      return result.rowCount === 1;
     });
   }
 
@@ -1120,7 +1966,8 @@ export class DatabaseReportRepository implements ReportRepository {
                 claim_worker_id = NULL
           WHERE account_id = $1
             AND id = $2
-            AND claim_token = $10`,
+            AND claim_token = $10
+            AND claim_until > clock_timestamp()`,
         [
           delivery.accountId,
           delivery.id,
@@ -1186,12 +2033,12 @@ export class DatabaseReportRepository implements ReportRepository {
     });
   }
 
-  async claimDueSchedules(
+  async claimDueSchedulesWithLease(
     accountId: AccountId,
     asOf: string,
     workerId: string,
     leaseMs = 120_000
-  ): Promise<readonly ReportScheduleSummary[]> {
+  ): Promise<readonly ReportScheduleClaim[]> {
     return withTenantQuery(getPool(), async (client) => {
       const result = await client.query(
         `WITH due AS (
@@ -1200,14 +2047,14 @@ export class DatabaseReportRepository implements ReportRepository {
             WHERE account_id = $1
               AND is_active = TRUE
               AND next_run_at <= $2
-              AND (claim_until IS NULL OR claim_until <= CURRENT_TIMESTAMP)
+            AND (claim_until IS NULL OR claim_until <= clock_timestamp())
             ORDER BY next_run_at ASC, id ASC
             LIMIT 25
             FOR UPDATE SKIP LOCKED
          )
          UPDATE report_schedules AS schedules
-            SET claim_token = $3,
-                claim_until = CURRENT_TIMESTAMP + ($4 * INTERVAL '1 millisecond'),
+           SET claim_token = $3 || ':' || schedules.id,
+                claim_until = clock_timestamp() + ($4 * INTERVAL '1 millisecond'),
                 claim_worker_id = $5,
                 updated_at = CURRENT_TIMESTAMP
            FROM due
@@ -1215,8 +2062,18 @@ export class DatabaseReportRepository implements ReportRepository {
          RETURNING schedules.*`,
         [accountId, asOf, createCorrelationId('rep_claim'), leaseMs, workerId]
       );
-      return result.rows.map(mapSchedule);
+      return result.rows.map(mapScheduleClaim);
     });
+  }
+
+  async claimDueSchedules(
+    accountId: AccountId,
+    asOf: string,
+    workerId: string,
+    leaseMs = 120_000
+  ): Promise<readonly ReportScheduleSummary[]> {
+    const claimed = await this.claimDueSchedulesWithLease(accountId, asOf, workerId, leaseMs);
+    return claimed.map(({ schedule }) => schedule);
   }
 
   async findExecutions(accountId: AccountId): Promise<readonly ReportExecutionDetail[]> {
@@ -1490,6 +2347,15 @@ function mapDeliveryClaim(row: Record<string, unknown>): ReportScheduleDeliveryC
   };
 }
 
+function mapScheduleClaim(row: Record<string, unknown>): ReportScheduleClaim {
+  return {
+    schedule: mapSchedule(row),
+    claimToken: String(row.claim_token),
+    claimUntil: dateIso(row.claim_until),
+    claimWorkerId: String(row.claim_worker_id)
+  };
+}
+
 function mapSchedule(row: Record<string, unknown>): ReportScheduleSummary {
   return {
     id: row.id as string,
@@ -1523,7 +2389,8 @@ function toCsv(columns: readonly ReportColumn[], rows: readonly Record<string, u
 function csvCell(value: unknown): string {
   if (value === null || value === undefined) return '';
   const rawText = String(value);
-  const text = typeof value === 'string' && /^[=+\-@]/.test(rawText) ? `'${rawText}` : rawText;
+  const text =
+    typeof value === 'string' && /^[\t\r\n ]*[=+\-@]/.test(rawText) ? `'${rawText}` : rawText;
   return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 

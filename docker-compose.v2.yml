@@ -172,6 +172,12 @@ services:
       - cvg_his_v2_storage:/srv/cvg-his-v2/storage
     ports:
       - '3003:3001'
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -fsS http://127.0.0.1:3001/ready >/dev/null || exit 1']
+      interval: 10s
+      timeout: 3s
+      retries: 20
+      start_period: 15s
 
   cvg-his-v2-worker:
     build:
@@ -185,6 +191,7 @@ services:
       DATABASE_URL: postgres://${POSTGRES_WORKER_USER:-cvg_worker}:${POSTGRES_WORKER_PASSWORD:-${POSTGRES_RUNTIME_PASSWORD}}@postgres:5432/${POSTGRES_DB:-cvg_his_v2}
       DATABASE_REQUIRE_RLS_ROLE: '1'
       WORKER_ACCOUNT_IDS: ${WORKER_ACCOUNT_IDS:?WORKER_ACCOUNT_IDS is required}
+      WORKER_REPORTS_USER_ID: ${WORKER_REPORTS_USER_ID:?WORKER_REPORTS_USER_ID is required}
       WORKER_INTERVAL_MS: ${WORKER_INTERVAL_MS:-5000}
       OTEL_ENABLED: ${OTEL_ENABLED:-false}
       OTEL_SERVICE_NAME: ${WORKER_OTEL_SERVICE_NAME:-cvg-his-v2-worker}

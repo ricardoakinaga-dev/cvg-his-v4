@@ -20,8 +20,13 @@ describe('marketing permission catalog migration', () => {
 
   it('keeps the local seed catalog aligned with the migration', () => {
     const seed = readFileSync(resolve(root, 'packages/db/src/seed.ts'), 'utf8');
+    const catalog = readFileSync(
+      resolve(root, 'packages/rbac/src/access-control-catalog.ts'),
+      'utf8'
+    );
 
-    expect(seed).toContain("key: 'marketing.read'");
-    expect(seed).toContain("key: 'marketing.manage'");
+    expect(seed).toContain('DB_ACCESS_CONTROL_PERMISSION_SEEDS');
+    expect(catalog).toContain("key: 'marketing.read'");
+    expect(catalog).toContain("key: 'marketing.manage'");
   });
 });

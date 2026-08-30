@@ -40,15 +40,15 @@
 
 ### 2.1 API Metrics (`/metrics`)
 
-| Métrica | Tipo | Labels | Descrição |
-|---------|------|--------|-----------|
-| `http_requests_total` | Counter | `method`, `route`, `status_code` | Total de requisições HTTP |
-| `http_request_duration_seconds` | Histogram | `method`, `route`, `status_code` | Duração de requisições (buckets: 5ms-10s) |
-| `http_errors_total` | Counter | `status_category` | Erros HTTP por categoria (4xx, 5xx) |
-| `app_uptime_seconds` | Gauge | — | Uptime da aplicação |
-| `app_active_requests` | Gauge | — | Requisições em processamento |
-| `app_database_healthy` | Gauge | — | Saúde do banco (1=ok, 0=fail) |
-| `app_persistence_mode` | Gauge | `mode` | Modo de persistência (database/in-memory) |
+| Métrica                         | Tipo      | Labels                           | Descrição                                             |
+| ------------------------------- | --------- | -------------------------------- | ----------------------------------------------------- |
+| `http_requests_total`           | Counter   | `method`, `route`, `status_code` | Total de requisições HTTP                             |
+| `http_request_duration_seconds` | Histogram | `method`, `route`, `status_code` | Duração de requisições (buckets: 5ms-10s)             |
+| `http_errors_total`             | Counter   | `status_category`                | Erros HTTP por categoria (4xx, 5xx)                   |
+| `app_uptime_seconds`            | Gauge     | —                                | Uptime da aplicação                                   |
+| `app_active_requests`           | Gauge     | —                                | Requisições em processamento                          |
+| `app_database_healthy`          | Gauge     | —                                | Saúde do banco (1=ok, 0=fail)                         |
+| `app_persistence_mode`          | Gauge     | `mode`                           | Modo de persistência (database/in-memory/unavailable) |
 
 ### 2.2 Default Metrics (Node.js)
 
@@ -58,26 +58,27 @@ CPU, memory, event loop, GC, handles, requests in flight, etc.
 
 ## 3. SLOs Definidos
 
-| SLO | Target | Window | Alert | Critical |
-|-----|--------|--------|-------|----------|
-| P95 Latency | 200ms | 5min | 250ms | 300ms |
-| P99 Latency | 500ms | 5min | 600ms | 800ms |
-| Availability | 99.5% | 1h | 99.0% | 98.0% |
-| Error Rate | 0.1% | 5min | 0.5% | 1.0% |
+| SLO          | Target | Window | Alert | Critical |
+| ------------ | ------ | ------ | ----- | -------- |
+| P95 Latency  | 200ms  | 5min   | 250ms | 300ms    |
+| P99 Latency  | 500ms  | 5min   | 600ms | 800ms    |
+| Availability | 99.5%  | 1h     | 99.0% | 98.0%    |
+| Error Rate   | 0.1%   | 5min   | 0.5%  | 1.0%     |
 
 Ref: `apps/api/src/slos.ts`
 
 ## 3.1 Capacidades criticas amarradas a SLO, alerta e dashboard
 
-| Capacidade critica | Fonte primaria | SLO/alerta principal | Evidencia operacional |
-|---|---|---|---|
-| Disponibilidade da API | `/health`, `/ready`, `/metrics` | `api-availability`, `CVG_HIS_API_SLO_Availability_*` | dashboard + probes |
-| Latencia operacional | `/metrics`, `/slos` | `api-latency-p95`, `api-latency-p99` | dashboard + relatorio SLO |
-| Taxa de erro 5xx | `/metrics`, `/slos` | `api-error-rate`, `CVG_HIS_API_SLO_ErrorRate_*` | dashboard + alertas |
-| Saude do banco | `/ready`, Prometheus gauge | `CVG_HIS_DB_Unhealthy` | readiness + alert |
-| Runtime em memoria indevido | `/health`, Prometheus gauge | `CVG_HIS_API_InMemoryMode` | health + alert |
-| Liveness da aplicacao | `/health`, `/live` | `CVG_HIS_API_Liveness_Failing` | probe + alert |
-| PIX settlement DLQ | `/internal/pix-settlement/deliveries`, worker metric | `CVG_HIS_PIX_Settlement_ReconciliationRequired` | painel DLQ + [runbook](../../docs/runbooks/pix-settlement-dlq.md) |
+| Capacidade critica                | Fonte primaria                                       | SLO/alerta principal                                 | Evidencia operacional                                             |
+| --------------------------------- | ---------------------------------------------------- | ---------------------------------------------------- | ----------------------------------------------------------------- |
+| Disponibilidade da API            | `/health`, `/ready`, `/metrics`                      | `api-availability`, `CVG_HIS_API_SLO_Availability_*` | dashboard + probes                                                |
+| Latencia operacional              | `/metrics`, `/slos`                                  | `api-latency-p95`, `api-latency-p99`                 | dashboard + relatorio SLO                                         |
+| Taxa de erro 5xx                  | `/metrics`, `/slos`                                  | `api-error-rate`, `CVG_HIS_API_SLO_ErrorRate_*`      | dashboard + alertas                                               |
+| Saude do banco                    | `/ready`, Prometheus gauge                           | `CVG_HIS_DB_Unhealthy`                               | readiness + alert                                                 |
+| Persistência durável indisponível | `/ready`, Prometheus gauge                           | `CVG_HIS_API_DatabasePersistenceUnavailable`         | readiness + alert                                                 |
+| Runtime em memoria explícito      | `/health`, Prometheus gauge                          | `CVG_HIS_API_InMemoryMode`                           | health + alert                                                    |
+| Liveness da aplicacao             | `/live`                                              | `CVG_HIS_API_Liveness_Failing`                       | probe + alert                                                     |
+| PIX settlement DLQ                | `/internal/pix-settlement/deliveries`, worker metric | `CVG_HIS_PIX_Settlement_ReconciliationRequired`      | painel DLQ + [runbook](../../docs/runbooks/pix-settlement-dlq.md) |
 
 ---
 
@@ -97,14 +98,14 @@ Ref: `apps/api/src/slos.ts`
 
 ### 4.2 Variáveis de ambiente
 
-| Variável | Descrição | Exemplo |
-|----------|-----------|---------|
-| `OTEL_ENABLED` | Habilita OTel SDK | `true` |
-| `OTEL_SERVICE_NAME` | Nome do serviço | `cvg-api` |
-| `OTEL_ENVIRONMENT` | Ambiente | `production` |
-| `OTLP_TRACES_ENDPOINT` | Endpoint OTLP | `http://otel-collector:4318/v1/traces` |
-| `OTLP_PROTOCOL` | Protocolo | `http/protobuf` |
-| `OTLP_HEADERS` | Headers auth | `Authorization=Bearer xxx` |
+| Variável               | Descrição         | Exemplo                                |
+| ---------------------- | ----------------- | -------------------------------------- |
+| `OTEL_ENABLED`         | Habilita OTel SDK | `true`                                 |
+| `OTEL_SERVICE_NAME`    | Nome do serviço   | `cvg-api`                              |
+| `OTEL_ENVIRONMENT`     | Ambiente          | `production`                           |
+| `OTLP_TRACES_ENDPOINT` | Endpoint OTLP     | `http://otel-collector:4318/v1/traces` |
+| `OTLP_PROTOCOL`        | Protocolo         | `http/protobuf`                        |
+| `OTLP_HEADERS`         | Headers auth      | `Authorization=Bearer xxx`             |
 
 ### 4.3 Subir stack de observabilidade local
 
@@ -113,6 +114,7 @@ docker compose --profile observability up -d otel-collector prometheus grafana
 ```
 
 Portas:
+
 - OTEL collector: `4318`
 - Prometheus: `9090`
 - Grafana: `3005`
@@ -162,16 +164,16 @@ Arquivo: `infra/observability/grafana/cvg-his-v2-api-dashboard.json`
 
 ### Painéis
 
-| Painel | Tipo | Query |
-|--------|------|-------|
-| API P95 Latency | Stat | P95 latency em ms |
-| API Error Rate | Stat | Taxa de 5xx |
-| API Availability | Stat | Disponibilidade 1h |
-| Latency Distribution | Timeseries | P50/P95/P99 (5m) |
-| Request Rate by Status | Timeseries | req/s por status code |
-| Latency P95 by Endpoint | Timeseries | Por rota normalizada |
-| Error Budget Remaining | Stat | Budget 30d |
-| Error Budget Burn Rate | Stat | Taxa de consumo |
+| Painel                  | Tipo       | Query                 |
+| ----------------------- | ---------- | --------------------- |
+| API P95 Latency         | Stat       | P95 latency em ms     |
+| API Error Rate          | Stat       | Taxa de 5xx           |
+| API Availability        | Stat       | Disponibilidade 1h    |
+| Latency Distribution    | Timeseries | P50/P95/P99 (5m)      |
+| Request Rate by Status  | Timeseries | req/s por status code |
+| Latency P95 by Endpoint | Timeseries | Por rota normalizada  |
+| Error Budget Remaining  | Stat       | Budget 30d            |
+| Error Budget Burn Rate  | Stat       | Taxa de consumo       |
 
 ### Importar dashboard
 
@@ -185,28 +187,29 @@ Arquivo: `infra/observability/grafana/cvg-his-v2-api-dashboard.json`
 
 Arquivo: `infra/observability/prometheus-alerts.yml`
 
-| Alerta | Severidade | Condição |
-|--------|------------|----------|
-| `CVG_HIS_API_Down` | Critical | Nenhum request em 5min |
-| `CVG_HIS_API_HighErrorRate` | Critical | >5% erros 5xx em 5min |
-| `CVG_HIS_DB_Unhealthy` | Critical | DB unreachable |
-| `CVG_HIS_API_Liveness_Failing` | Critical | Probe failing |
-| `CVG_HIS_API_HighLatency` | Warning | P95 > 1s |
-| `CVG_HIS_API_InMemoryMode` | Warning | In-memory > 5min |
-| `CVG_HIS_API_HighClientErrorRate` | Warning | >10% erros 4xx |
-| `CVG_HIS_PIX_Settlement_ReconciliationRequired` | Critical | Backlog PIX terminal atual maior que zero |
+| Alerta                                          | Severidade | Condição                                  |
+| ----------------------------------------------- | ---------- | ----------------------------------------- |
+| `CVG_HIS_API_Down`                              | Critical   | Nenhum request em 5min                    |
+| `CVG_HIS_API_HighErrorRate`                     | Critical   | >5% erros 5xx em 5min                     |
+| `CVG_HIS_DB_Unhealthy`                          | Critical   | DB unreachable                            |
+| `CVG_HIS_API_Liveness_Failing`                  | Critical   | Probe failing                             |
+| `CVG_HIS_API_HighLatency`                       | Warning    | P95 > 1s                                  |
+| `CVG_HIS_API_DatabasePersistenceUnavailable`    | Critical   | Persistence unavailable                   |
+| `CVG_HIS_API_InMemoryMode`                      | Warning    | Explicit in-memory > 5min                 |
+| `CVG_HIS_API_HighClientErrorRate`               | Warning    | >10% erros 4xx                            |
+| `CVG_HIS_PIX_Settlement_ReconciliationRequired` | Critical   | Backlog PIX terminal atual maior que zero |
 
 ---
 
 ## 8. health e readiness endpoints
 
-| Endpoint | Descrição |
-|----------|-----------|
-| `GET /health` | Liveness probe |
-| `GET /ready` | Readiness probe |
-| `GET /live` | Alias para health |
-| `GET /metrics` | Prometheus metrics |
-| `GET /slos` | Relatório SLO (error budget, burn rate) |
+| Endpoint       | Descrição                                        |
+| -------------- | ------------------------------------------------ |
+| `GET /health`  | Resumo de saúde; transporte 200 mesmo degradado  |
+| `GET /ready`   | Readiness probe (200/503)                        |
+| `GET /live`    | Liveness-only probe (200 enquanto processo vivo) |
+| `GET /metrics` | Prometheus metrics                               |
+| `GET /slos`    | Relatório SLO (error budget, burn rate)          |
 
 ---
 

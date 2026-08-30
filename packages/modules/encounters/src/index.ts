@@ -223,7 +223,10 @@ export class EncountersService {
     accountId: AccountId,
     patientId: PatientId,
     ownerId: OwnerId
-  ): { readonly patient: ReturnType<PatientsService['getOrThrow']>; readonly owner: ReturnType<OwnersService['getOrThrow']> } {
+  ): {
+    readonly patient: ReturnType<PatientsService['getOrThrow']>;
+    readonly owner: ReturnType<OwnersService['getOrThrow']>;
+  } {
     const patient = this.#patients.getOrThrow(patientId);
     const owner = this.#owners.getOrThrow(ownerId);
     if (patient.accountId !== accountId || owner.accountId !== accountId) {
@@ -265,7 +268,9 @@ export class EncountersService {
       );
     }
 
-    const existingActive = this.listActive().find((encounter) => encounter.patientId === patientId);
+    const existingActive = this.listActive().find(
+      (encounter) => encounter.accountId === accountId && encounter.patientId === patientId
+    );
     if (existingActive) {
       throw new ConflictError('Patient already has an active encounter', {
         encounterId: existingActive.id
@@ -441,6 +446,7 @@ export class EncountersService {
     }
     this.#assertActiveParticipants(current.accountId, current.patientId, current.ownerId);
     const reopenReason = requireNonEmptyString(reason, 'reason');
+    const previousTimeline = [...(this.#timeline.get(encounterId) ?? [])];
     const updated: EncounterSummary = {
       ...current,
       status: 'reception',
@@ -460,7 +466,10 @@ export class EncountersService {
         () =>
           this.#encounterRepository!.updateForReopen?.(updated) ??
           this.#encounterRepository!.update(updated),
-        () => this.#encounters.set(encounterId, current)
+        () => {
+          this.#encounters.set(encounterId, current);
+          this.#timeline.set(encounterId, previousTimeline);
+        }
       );
     }
     if (this.#onEncounterStatusChanged) {

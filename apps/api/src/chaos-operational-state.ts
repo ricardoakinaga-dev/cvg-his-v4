@@ -43,7 +43,8 @@ const CHAOS_EXPERIMENT_DESCRIPTORS: Record<string, ChaosExperimentDescriptor> = 
       path: 'packages/chaos/src/runbooks/database-failure-runbook.md'
     },
     indicators: ['app_database_healthy', 'app_persistence_mode'],
-    summary: 'Forca o runtime operacional para modo in-memory e expõe o banco como indisponivel.'
+    summary:
+      'Marks database persistence unavailable, blocks readiness and requires containment before recovery.'
   },
   [REDIS_FAILURE_ID]: {
     runbook: {
@@ -75,11 +76,14 @@ const CHAOS_EXPERIMENT_DESCRIPTORS: Record<string, ChaosExperimentDescriptor> = 
       path: 'packages/chaos/src/runbooks/incident-response.md'
     },
     indicators: ['readiness', 'worker dependency'],
-    summary: 'Marca a trilha operacional do worker como degradada para treinar resposta a falhas de consumo.'
+    summary:
+      'Marca a trilha operacional do worker como degradada para treinar resposta a falhas de consumo.'
   }
 };
 
-export function describeChaosExperiment(experimentId: string): ChaosExperimentDescriptor | undefined {
+export function describeChaosExperiment(
+  experimentId: string
+): ChaosExperimentDescriptor | undefined {
   return CHAOS_EXPERIMENT_DESCRIPTORS[experimentId];
 }
 
@@ -88,6 +92,11 @@ export function resolveOperationalRuntimeState(input: {
   readonly activeExperimentIds: readonly string[];
   readonly runtimeDistributedStateEnabled: boolean;
   readonly redisUrl?: string;
+  /** Actual backend probe result. Omitted only for backwards-compatible pure-state callers. */
+  readonly redisHealth?: {
+    readonly healthy: boolean;
+    readonly detail: string;
+  };
 }): OperationalRuntimeState {
   const active = new Set(input.activeExperimentIds);
   const databaseFailureActive = active.has(DATABASE_FAILURE_ID);
@@ -95,10 +104,10 @@ export function resolveOperationalRuntimeState(input: {
   const workerFailureActive = active.has(WORKER_FAILURE_ID);
   const redisConfigured = typeof input.redisUrl === 'string' && input.redisUrl.length > 0;
 
-  const persistenceMode = databaseFailureActive
+  const persistenceMode: PersistenceMode = databaseFailureActive
     ? input.appState.persistenceMode === 'not-initialized'
       ? 'not-initialized'
-      : 'in-memory'
+      : 'unavailable'
     : input.appState.persistenceMode;
 
   const databaseHealthy = databaseFailureActive ? false : input.appState.databaseHealthy;
@@ -111,17 +120,17 @@ export function resolveOperationalRuntimeState(input: {
     ? `Simulated worker failure via chaos experiment "${WORKER_FAILURE_ID}".`
     : input.appState.workerDetail;
 
-  const redisHealthy = redisConfigured && !redisFailureActive;
+  const redisHealthy =
+    redisConfigured && !redisFailureActive && (input.redisHealth?.healthy ?? true);
   const distributedStateReady =
     !input.runtimeDistributedStateEnabled || (redisConfigured && redisHealthy);
 
-  const productionReady = (
-    input.appState.productionReady
-    && databaseHealthy
-    && workerReady
-    && persistenceMode === 'database'
-    && distributedStateReady
-  );
+  const productionReady =
+    input.appState.productionReady &&
+    databaseHealthy &&
+    workerReady &&
+    persistenceMode === 'database' &&
+    distributedStateReady;
 
   const rateLimiterMode: RateLimiterMode = !input.runtimeDistributedStateEnabled
     ? 'in-memory'
@@ -133,7 +142,9 @@ export function resolveOperationalRuntimeState(input: {
   if (redisConfigured && input.runtimeDistributedStateEnabled) {
     redisDetail = redisFailureActive
       ? `Simulated Redis failure via chaos experiment "${REDIS_FAILURE_ID}".`
-      : 'Redis wired and healthy for distributed runtime state.';
+      : input.redisHealth?.healthy === false
+        ? input.redisHealth.detail
+        : 'Redis wired and healthy for distributed runtime state.';
   } else if (redisConfigured) {
     redisDetail = 'Redis configured, but distributed runtime state is disabled.';
   }

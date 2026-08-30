@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'vitest';
 
 import { ConflictError, NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
+import { runWithTenantContext } from '@cvg-his-v2/tenant-context';
 
 import { InMemoryProcurementRepository, InventoryService, ProcurementService } from './index.js';
 
@@ -17,17 +18,362 @@ function createService() {
   } as never);
 }
 
+test('InventoryService lists bounded persisted items with defensive tenant and filter checks', async () => {
+  const sourceCalls: Array<{ accountId: string; filters: Record<string, unknown> }> = [];
+  const ownItem = {
+    id: 'inv-report-1' as never,
+    accountId: 'acc_report' as never,
+    sku: 'MED-001',
+    name: 'Dipirona',
+    unit: 'un',
+    onHandQuantity: 4,
+    reorderLevel: 5,
+    unitCostAmount: 12.5,
+    createdAt: '2026-05-10T00:00:00.000Z',
+    updatedAt: '2026-05-10T01:00:00.000Z'
+  };
+  const service = new InventoryService({ getOrThrow() {} } as never, [], {
+    repository: {
+      async createItem() {},
+      async updateItem() {},
+      async findItemById() {
+        return null;
+      },
+      async findAllItems(accountId, filters) {
+        sourceCalls.push({ accountId, filters: { ...(filters ?? {}) } });
+        return [
+          ownItem,
+          { ...ownItem, id: 'inv-report-foreign' as never, accountId: 'acc_foreign' as never },
+          { ...ownItem, id: 'inv-report-search-miss' as never, sku: 'OTHER-001' },
+          { ...ownItem, id: 'inv-report-date-miss' as never, createdAt: '2026-06-01T00:00:00.000Z' }
+        ];
+      },
+      async createConsumption() {},
+      async findConsumptions() {
+        return [];
+      },
+      async createStockMovement() {},
+      async findStockMovements() {
+        return [];
+      }
+    }
+  });
+
+  const items = await service.listPersistedItems('acc_report' as never, {
+    search: 'med-001',
+    dateFrom: '2026-05-01',
+    dateTo: '2026-05-31',
+    limit: 10_001
+  });
+
+  assert.deepEqual(items, [ownItem]);
+  assert.deepEqual(sourceCalls, [
+    {
+      accountId: 'acc_report',
+      filters: {
+        search: 'med-001',
+        dateFrom: '2026-05-01',
+        dateTo: '2026-05-31',
+        limit: 10_001
+      }
+    }
+  ]);
+});
+
+test('InventoryService validates persisted report filter boundaries', async () => {
+  const sourceCalls: Array<{ accountId: string; filters: Record<string, unknown> }> = [];
+  const service = new InventoryService({ getOrThrow() {} } as never, [], {
+    repository: {
+      async createItem() {},
+      async updateItem() {},
+      async findItemById() {
+        return null;
+      },
+      async findAllItems(accountId, filters) {
+        sourceCalls.push({ accountId, filters: { ...(filters ?? {}) } });
+        return [];
+      },
+      async createConsumption() {},
+      async findConsumptions() {
+        return [];
+      },
+      async createStockMovement() {},
+      async findStockMovements() {
+        return [];
+      }
+    }
+  });
+
+  assert.deepEqual(
+    await service.listPersistedItems('acc_report' as never, { dateFrom: '', dateTo: '' }),
+    []
+  );
+  assert.deepEqual(sourceCalls, [{ accountId: 'acc_report', filters: {} }]);
+
+  await assert.rejects(
+    () => service.listPersistedItems('acc_report' as never, { search: 'x'.repeat(201) }),
+    /at most 200 characters/
+  );
+  await assert.rejects(
+    () => service.listPersistedItems('acc_report' as never, { dateFrom: '2026-02-30' }),
+    /ISO calendar date/
+  );
+  await assert.rejects(
+    () =>
+      service.listPersistedItems('acc_report' as never, {
+        dateFrom: '2026-06-01',
+        dateTo: '2026-05-31'
+      }),
+    /before or equal/
+  );
+  await assert.rejects(
+    () => service.listPersistedItems('acc_report' as never, { limit: 0 }),
+    /between 1 and 10001/
+  );
+});
+
+test('InventoryService lists persisted movement ledger rows with a same-account item join', async () => {
+  const sourceCalls: Array<{ accountId: string; filters: Record<string, unknown> }> = [];
+  const service = new InventoryService({ getOrThrow() {} } as never, [], {
+    repository: {
+      stockMovementsEnabled: true,
+      async createItem() {},
+      async updateItem() {},
+      async findItemById() {
+        return null;
+      },
+      async findAllItems() {
+        return [
+          {
+            id: 'item-own',
+            accountId: 'acc_report',
+            sku: 'MED-001',
+            name: 'Dipirona',
+            unit: 'ampola',
+            onHandQuantity: 8,
+            reorderLevel: 2,
+            unitCostAmount: 12.5,
+            createdAt: '2026-05-01T00:00:00.000Z',
+            updatedAt: '2026-05-10T00:00:00.000Z'
+          }
+        ];
+      },
+      async createConsumption() {},
+      async findConsumptions() {
+        return [];
+      },
+      async createStockMovement() {},
+      async findStockMovements() {
+        return [];
+      },
+      async findStockMovementReportRows(accountId: string, filters?: Record<string, unknown>) {
+        sourceCalls.push({ accountId, filters: { ...(filters ?? {}) } });
+        return [
+          {
+            movement: {
+              id: 'movement-own',
+              accountId: 'acc_report',
+              inventoryItemId: 'item-own',
+              movementType: 'consumption',
+              quantityDelta: -2,
+              balanceBefore: 10,
+              balanceAfter: 8,
+              unitCostAmount: 12.5,
+              reason: 'Consumo assistencial',
+              reference: 'encounter-1',
+              recordedByUserId: 'user-1',
+              createdAt: '2026-05-10T10:00:00.000Z'
+            },
+            sku: 'MED-001',
+            name: 'Dipirona',
+            unit: 'ampola'
+          },
+          {
+            movement: {
+              id: 'movement-a',
+              accountId: 'acc_report',
+              inventoryItemId: 'item-own',
+              movementType: 'adjustment',
+              quantityDelta: 1,
+              balanceBefore: 7,
+              balanceAfter: 8,
+              unitCostAmount: 12.5,
+              reason: 'Ajuste',
+              reference: 'adjustment-1',
+              recordedByUserId: 'user-1',
+              createdAt: '2026-05-10T10:00:00.000Z'
+            },
+            sku: 'MED-001',
+            name: 'Dipirona',
+            unit: 'ampola'
+          }
+        ];
+      }
+    } as never
+  });
+
+  const rows = await service.listPersistedStockMovementReportRows('acc_report' as never, {
+    search: ' med-001 ',
+    dateFrom: '2026-05-01',
+    dateTo: '2026-05-31',
+    limit: 10_001
+  });
+
+  assert.deepEqual(rows, [
+    {
+      movement: {
+        id: 'movement-a',
+        accountId: 'acc_report',
+        inventoryItemId: 'item-own',
+        movementType: 'adjustment',
+        quantityDelta: 1,
+        balanceBefore: 7,
+        balanceAfter: 8,
+        unitCostAmount: 12.5,
+        reason: 'Ajuste',
+        reference: 'adjustment-1',
+        recordedByUserId: 'user-1',
+        createdAt: '2026-05-10T10:00:00.000Z'
+      },
+      sku: 'MED-001',
+      name: 'Dipirona',
+      unit: 'ampola'
+    },
+    {
+      movement: {
+        id: 'movement-own',
+        accountId: 'acc_report',
+        inventoryItemId: 'item-own',
+        movementType: 'consumption',
+        quantityDelta: -2,
+        balanceBefore: 10,
+        balanceAfter: 8,
+        unitCostAmount: 12.5,
+        reason: 'Consumo assistencial',
+        reference: 'encounter-1',
+        recordedByUserId: 'user-1',
+        createdAt: '2026-05-10T10:00:00.000Z'
+      },
+      sku: 'MED-001',
+      name: 'Dipirona',
+      unit: 'ampola'
+    }
+  ]);
+  assert.deepEqual(sourceCalls, [
+    {
+      accountId: 'acc_report',
+      filters: {
+        search: 'med-001',
+        dateFrom: '2026-05-01',
+        dateTo: '2026-05-31',
+        limit: 10_001
+      }
+    }
+  ]);
+});
+
+test('InventoryService fails closed when a persisted movement has no same-account item', async () => {
+  const service = new InventoryService({ getOrThrow() {} } as never, [], {
+    repository: {
+      stockMovementsEnabled: true,
+      async createItem() {},
+      async updateItem() {},
+      async findItemById() {
+        return null;
+      },
+      async findAllItems() {
+        return [];
+      },
+      async createConsumption() {},
+      async findConsumptions() {
+        return [];
+      },
+      async createStockMovement() {},
+      async findStockMovements() {
+        return [];
+      },
+      async findStockMovementReportRows() {
+        return [
+          {
+            movement: {
+              id: 'movement-orphan',
+              accountId: 'acc_report',
+              inventoryItemId: 'item-missing',
+              movementType: 'outbound',
+              quantityDelta: -1,
+              balanceBefore: 2,
+              balanceAfter: 1,
+              unitCostAmount: 10,
+              reason: 'Saída',
+              recordedByUserId: 'user-1',
+              createdAt: '2026-05-10T10:00:00.000Z'
+            },
+            sku: null,
+            name: null,
+            unit: null
+          }
+        ];
+      }
+    } as never
+  });
+
+  await assert.rejects(
+    () => service.listPersistedStockMovementReportRows('acc_report' as never),
+    /missing same-account item/
+  );
+});
+
+test('InventoryService fails closed for disabled persisted movement ledgers', async () => {
+  const service = new InventoryService({ getOrThrow() {} } as never, [], {
+    repository: {
+      stockMovementsEnabled: false,
+      async createItem() {},
+      async updateItem() {},
+      async findItemById() {
+        return null;
+      },
+      async findAllItems() {
+        return [];
+      },
+      async createConsumption() {},
+      async findConsumptions() {
+        return [];
+      },
+      async createStockMovement() {},
+      async findStockMovements() {
+        return [];
+      }
+    } as never
+  });
+
+  await assert.rejects(
+    () => service.listPersistedStockMovementReportRows('acc_report' as never),
+    /database-backed stock movement source/
+  );
+});
+
+test('InventoryService fails closed for persisted inventory reports without a repository', async () => {
+  await assert.rejects(
+    () => createService().listPersistedItems('acc_cvg_demo' as never, { limit: 10_001 }),
+    /database-backed inventory source/
+  );
+});
+
 test('InventoryService consume decrements stock and records consumption', async () => {
   const service = createService();
 
   const initialItem = service.getItemOrThrow('inv_dipyrone' as never, 'acc_cvg_demo' as never);
-  const consumption = await service.consume('nurse_1' as never, {
-    encounterId: 'encounter_1',
-    inventoryItemId: 'inv_dipyrone',
-    quantity: 2,
-    sourceEntityType: 'encounter',
-    sourceEntityId: 'encounter_1'
-  }, 'acc_cvg_demo' as never);
+  const consumption = await service.consume(
+    'nurse_1' as never,
+    {
+      encounterId: 'encounter_1',
+      inventoryItemId: 'inv_dipyrone',
+      quantity: 2,
+      sourceEntityType: 'encounter',
+      sourceEntityId: 'encounter_1'
+    },
+    'acc_cvg_demo' as never
+  );
 
   const updatedItem = service.getItemOrThrow('inv_dipyrone' as never, 'acc_cvg_demo' as never);
   assert.equal(consumption.quantity, 2);
@@ -40,13 +386,17 @@ test('InventoryService rejects consumption when stock is insufficient', async ()
 
   await assert.rejects(
     () =>
-      service.consume('nurse_1' as never, {
-        encounterId: 'encounter_1',
-        inventoryItemId: 'inv_catheter',
-        quantity: 999,
-        sourceEntityType: 'encounter',
-        sourceEntityId: 'encounter_1'
-      }, 'acc_cvg_demo' as never),
+      service.consume(
+        'nurse_1' as never,
+        {
+          encounterId: 'encounter_1',
+          inventoryItemId: 'inv_catheter',
+          quantity: 999,
+          sourceEntityType: 'encounter',
+          sourceEntityId: 'encounter_1'
+        },
+        'acc_cvg_demo' as never
+      ),
     ConflictError
   );
 });
@@ -63,20 +413,28 @@ test('InventoryService getItemOrThrow rejects unknown item', () => {
 test('InventoryService listConsumptions filters by encounter', async () => {
   const service = createService();
 
-  await service.consume('nurse_1' as never, {
-    encounterId: 'encounter_1',
-    inventoryItemId: 'inv_dipyrone',
-    quantity: 1,
-    sourceEntityType: 'encounter',
-    sourceEntityId: 'encounter_1'
-  }, 'acc_cvg_demo' as never);
-  await service.consume('nurse_1' as never, {
-    encounterId: 'encounter_2',
-    inventoryItemId: 'inv_gauze',
-    quantity: 1,
-    sourceEntityType: 'encounter',
-    sourceEntityId: 'encounter_2'
-  }, 'acc_cvg_demo' as never);
+  await service.consume(
+    'nurse_1' as never,
+    {
+      encounterId: 'encounter_1',
+      inventoryItemId: 'inv_dipyrone',
+      quantity: 1,
+      sourceEntityType: 'encounter',
+      sourceEntityId: 'encounter_1'
+    },
+    'acc_cvg_demo' as never
+  );
+  await service.consume(
+    'nurse_1' as never,
+    {
+      encounterId: 'encounter_2',
+      inventoryItemId: 'inv_gauze',
+      quantity: 1,
+      sourceEntityType: 'encounter',
+      sourceEntityId: 'encounter_2'
+    },
+    'acc_cvg_demo' as never
+  );
 
   assert.equal(service.listConsumptions().length, 2);
   assert.equal(service.listConsumptions('encounter_1').length, 1);
@@ -91,13 +449,17 @@ test('InventoryService listLots reflects tracked lot balances after consumption'
     .filter((lot) => lot.inventoryItemId === 'inv_dipyrone')
     .reduce((sum, lot) => sum + lot.quantity, 0);
 
-  await service.consume('nurse_1' as never, {
-    encounterId: 'encounter_1',
-    inventoryItemId: 'inv_dipyrone',
-    quantity: 3,
-    sourceEntityType: 'encounter',
-    sourceEntityId: 'encounter_1'
-  }, 'acc_cvg_demo' as never);
+  await service.consume(
+    'nurse_1' as never,
+    {
+      encounterId: 'encounter_1',
+      inventoryItemId: 'inv_dipyrone',
+      quantity: 3,
+      sourceEntityType: 'encounter',
+      sourceEntityId: 'encounter_1'
+    },
+    'acc_cvg_demo' as never
+  );
 
   const afterLots = service
     .listLots('acc_cvg_demo' as never)
@@ -118,28 +480,28 @@ test('InventoryService listLots reflects tracked lot balances after consumption'
 test('InventoryService reserves by FEFO and supports consume, return and release transitions', async () => {
   const service = createService();
 
-  const allocations = await service.reserve(
-    'acc_cvg_demo' as never,
-    'manager_1' as never,
-    {
-      inventoryItemId: 'inv_dipyrone',
-      quantity: 12,
-      sourceEntityType: 'encounter',
-      sourceEntityId: 'encounter_1',
-      reference: 'RX-001'
-    }
-  );
+  const allocations = await service.reserve('acc_cvg_demo' as never, 'manager_1' as never, {
+    inventoryItemId: 'inv_dipyrone',
+    quantity: 12,
+    sourceEntityType: 'encounter',
+    sourceEntityId: 'encounter_1',
+    reference: 'RX-001'
+  });
 
   assert.equal(allocations.length, 2);
   assert.equal(allocations[0]?.lotNumber, 'DIP-240318-A');
   assert.equal(allocations[0]?.quantity, 10.08);
   assert.equal(
-    service.listLots('acc_cvg_demo' as never)
+    service
+      .listLots('acc_cvg_demo' as never)
       .filter((lot) => lot.inventoryItemId === 'inv_dipyrone')
       .reduce((sum, lot) => sum + (lot.reservedQuantity ?? 0), 0),
     12
   );
-  assert.equal(service.getItemOrThrow('inv_dipyrone' as never, 'acc_cvg_demo' as never).onHandQuantity, 24);
+  assert.equal(
+    service.getItemOrThrow('inv_dipyrone' as never, 'acc_cvg_demo' as never).onHandQuantity,
+    24
+  );
 
   const consumed = await service.consumeReservation(
     'acc_cvg_demo' as never,
@@ -170,7 +532,8 @@ test('InventoryService reserves by FEFO and supports consume, return and release
   );
   assert.equal(released.status, 'released');
   assert.equal(
-    service.listLots('acc_cvg_demo' as never)
+    service
+      .listLots('acc_cvg_demo' as never)
       .filter((lot) => lot.inventoryItemId === 'inv_dipyrone')
       .reduce((sum, lot) => sum + (lot.reservedQuantity ?? 0), 0),
     0
@@ -181,12 +544,16 @@ test('InventoryService creates audited stock adjustments and rejects negative ba
   const service = createService();
   const before = service.getItemOrThrow('inv_gauze' as never, 'acc_cvg_demo' as never);
 
-  const movement = await service.createStockAdjustment('acc_cvg_demo' as never, 'manager_1' as never, {
-    inventoryItemId: 'inv_gauze',
-    quantityDelta: 5,
-    reason: 'Inventario rotativo',
-    reference: 'INV-2026-001'
-  });
+  const movement = await service.createStockAdjustment(
+    'acc_cvg_demo' as never,
+    'manager_1' as never,
+    {
+      inventoryItemId: 'inv_gauze',
+      quantityDelta: 5,
+      reason: 'Inventario rotativo',
+      reference: 'INV-2026-001'
+    }
+  );
 
   const after = service.getItemOrThrow('inv_gauze' as never, 'acc_cvg_demo' as never);
   assert.equal(after.onHandQuantity, before.onHandQuantity + 5);
@@ -432,12 +799,16 @@ test('InventoryService rejects assistive consumption across accounts before chan
 
   await assert.rejects(
     () =>
-      service.consume('user_a' as never, {
-        encounterId: 'enc_a',
-        inventoryItemId: 'inv_b',
-        quantity: 1,
-        sourceEntityType: 'encounter'
-      }, 'account_a' as never),
+      service.consume(
+        'user_a' as never,
+        {
+          encounterId: 'enc_a',
+          inventoryItemId: 'inv_b',
+          quantity: 1,
+          sourceEntityType: 'encounter'
+        },
+        'account_a' as never
+      ),
     NotFoundError
   );
   assert.equal(service.getItemOrThrow('inv_b' as never, 'account_b' as never).onHandQuantity, 10);
@@ -467,7 +838,9 @@ test('InventoryService receives inbound stock with lot metadata and weighted cos
   });
 
   const after = service.getItemOrThrow('inv_gauze' as never, 'acc_cvg_demo' as never);
-  const lot = service.listLots('acc_cvg_demo' as never).find((item) => item.lotNumber === 'GAZ-NEW-01');
+  const lot = service
+    .listLots('acc_cvg_demo' as never)
+    .find((item) => item.lotNumber === 'GAZ-NEW-01');
   assert.equal(movement.movementType, 'inbound');
   assert.equal(after.onHandQuantity, before.onHandQuantity + 10);
   assert.equal(lot?.quantity, 10);
@@ -478,48 +851,93 @@ test('InventoryService receives inbound stock with lot metadata and weighted cos
 test('ProcurementService approves and receives a purchase partially until it is complete', async () => {
   const inventory = createService();
   const procurement = new ProcurementService(inventory);
-  const before = inventory.getItemOrThrow('inv_catheter' as never, 'acc_cvg_demo' as never).onHandQuantity;
+  const before = inventory.getItemOrThrow(
+    'inv_catheter' as never,
+    'acc_cvg_demo' as never
+  ).onHandQuantity;
   const created = await procurement.createPurchase('acc_cvg_demo' as never, 'buyer_1' as never, {
     supplierName: 'CatMed',
     invoiceNumber: 'NF-2026-001',
-    lines: [{
-      inventoryItemId: 'inv_catheter',
-      quantity: 6,
-      unitCostAmount: 9.5,
-      lotNumber: 'CAT-NEW-01',
-      location: 'Recebimento'
-    }]
+    lines: [
+      {
+        inventoryItemId: 'inv_catheter',
+        quantity: 6,
+        unitCostAmount: 9.5,
+        lotNumber: 'CAT-NEW-01',
+        location: 'Recebimento'
+      }
+    ]
   });
-  const approved = await procurement.approvePurchase('acc_cvg_demo' as never, 'manager_1' as never, created.id);
-  const partial = await procurement.receivePurchase('acc_cvg_demo' as never, 'warehouse_1' as never, created.id, {
-    lines: [{ lineId: approved.lines[0]!.id, quantity: 2 }]
-  });
+  const approved = await procurement.approvePurchase(
+    'acc_cvg_demo' as never,
+    'manager_1' as never,
+    created.id
+  );
+  const partial = await procurement.receivePurchase(
+    'acc_cvg_demo' as never,
+    'warehouse_1' as never,
+    created.id,
+    {
+      lines: [{ lineId: approved.lines[0]!.id, quantity: 2 }]
+    }
+  );
   assert.equal(partial.status, 'partially_received');
   assert.equal(partial.lines[0]?.receivedQuantity, 2);
-  const complete = await procurement.receivePurchase('acc_cvg_demo' as never, 'warehouse_1' as never, created.id, {
-    lines: [{ lineId: approved.lines[0]!.id, quantity: 4 }]
-  });
+  const complete = await procurement.receivePurchase(
+    'acc_cvg_demo' as never,
+    'warehouse_1' as never,
+    created.id,
+    {
+      lines: [{ lineId: approved.lines[0]!.id, quantity: 4 }]
+    }
+  );
   assert.equal(complete.status, 'received');
   assert.equal(complete.receivedAmount, 57);
-  assert.equal(inventory.getItemOrThrow('inv_catheter' as never, 'acc_cvg_demo' as never).onHandQuantity, before + 6);
+  assert.equal(
+    inventory.getItemOrThrow('inv_catheter' as never, 'acc_cvg_demo' as never).onHandQuantity,
+    before + 6
+  );
 });
 
 test('ProcurementService transfers FEFO stock between locations and preserves global balance', async () => {
   const inventory = createService();
   const procurement = new ProcurementService(inventory);
-  const before = inventory.getItemOrThrow('inv_dipyrone' as never, 'acc_cvg_demo' as never).onHandQuantity;
-  const transfer = await procurement.createTransfer('acc_cvg_demo' as never, 'warehouse_1' as never, {
-    inventoryItemId: 'inv_dipyrone',
-    quantity: 2,
-    fromLocation: 'Farmacia fria A1',
-    toLocation: 'Farmacia fria B1',
-    reference: 'TR-001'
-  });
+  const before = inventory.getItemOrThrow(
+    'inv_dipyrone' as never,
+    'acc_cvg_demo' as never
+  ).onHandQuantity;
+  const transfer = await procurement.createTransfer(
+    'acc_cvg_demo' as never,
+    'warehouse_1' as never,
+    {
+      inventoryItemId: 'inv_dipyrone',
+      quantity: 2,
+      fromLocation: 'Farmacia fria A1',
+      toLocation: 'Farmacia fria B1',
+      reference: 'TR-001'
+    }
+  );
   assert.equal(transfer.status, 'completed');
   assert.equal(transfer.quantity, 2);
-  assert.equal(inventory.getItemOrThrow('inv_dipyrone' as never, 'acc_cvg_demo' as never).onHandQuantity, before);
-  assert.equal(inventory.listStockMovements('acc_cvg_demo' as never, 'inv_dipyrone').slice(0, 2).map((movement) => movement.movementType).sort().join(','), 'inbound,outbound');
-  assert.equal(inventory.listLots('acc_cvg_demo' as never).some((lot) => lot.location === 'Farmacia fria B1' && lot.quantity === 2), true);
+  assert.equal(
+    inventory.getItemOrThrow('inv_dipyrone' as never, 'acc_cvg_demo' as never).onHandQuantity,
+    before
+  );
+  assert.equal(
+    inventory
+      .listStockMovements('acc_cvg_demo' as never, 'inv_dipyrone')
+      .slice(0, 2)
+      .map((movement) => movement.movementType)
+      .sort()
+      .join(','),
+    'inbound,outbound'
+  );
+  assert.equal(
+    inventory
+      .listLots('acc_cvg_demo' as never)
+      .some((lot) => lot.location === 'Farmacia fria B1' && lot.quantity === 2),
+    true
+  );
 });
 
 test('ProcurementService rejects invalid purchase transitions and tenant access', async () => {
@@ -528,73 +946,89 @@ test('ProcurementService rejects invalid purchase transitions and tenant access'
 
   await procurement.hydrateFromDatabase('acc_cvg_demo' as never);
   await assert.rejects(
-    () => procurement.createPurchase('acc_cvg_demo' as never, 'buyer_1' as never, {
-      supplierName: 'Fornecedor',
-      lines: []
-    }),
+    () =>
+      procurement.createPurchase('acc_cvg_demo' as never, 'buyer_1' as never, {
+        supplierName: 'Fornecedor',
+        lines: []
+      }),
     ValidationError
   );
   await assert.rejects(
-    () => procurement.createPurchase('acc_cvg_demo' as never, 'buyer_1' as never, {
-      supplierName: ' ',
-      lines: [{
-        inventoryItemId: 'inv_gauze',
-        quantity: 1,
-        unitCostAmount: 0,
-        lotNumber: 'GAZ-VALIDATION'
-      }]
-    }),
+    () =>
+      procurement.createPurchase('acc_cvg_demo' as never, 'buyer_1' as never, {
+        supplierName: ' ',
+        lines: [
+          {
+            inventoryItemId: 'inv_gauze',
+            quantity: 1,
+            unitCostAmount: 0,
+            lotNumber: 'GAZ-VALIDATION'
+          }
+        ]
+      }),
     ValidationError
   );
 
   const draft = await procurement.createPurchase('acc_cvg_demo' as never, 'buyer_1' as never, {
     supplierName: 'Fornecedor',
-    lines: [{
-      inventoryItemId: 'inv_gauze',
-      quantity: 2,
-      unitCostAmount: 3,
-      lotNumber: 'GAZ-LIFECYCLE'
-    }]
+    lines: [
+      {
+        inventoryItemId: 'inv_gauze',
+        quantity: 2,
+        unitCostAmount: 3,
+        lotNumber: 'GAZ-LIFECYCLE'
+      }
+    ]
   });
   assert.equal(procurement.listPurchases('acc_cvg_demo' as never).length, 1);
   assert.equal(procurement.listPurchases('account_other' as never).length, 0);
-  assert.throws(
-    () => procurement.getPurchase('account_other' as never, draft.id),
-    NotFoundError
-  );
+  assert.throws(() => procurement.getPurchase('account_other' as never, draft.id), NotFoundError);
   await assert.rejects(
-    () => procurement.receivePurchase('acc_cvg_demo' as never, 'warehouse_1' as never, draft.id, { lines: [] }),
+    () =>
+      procurement.receivePurchase('acc_cvg_demo' as never, 'warehouse_1' as never, draft.id, {
+        lines: []
+      }),
     ConflictError
   );
 
-  const approved = await procurement.approvePurchase('acc_cvg_demo' as never, 'manager_1' as never, draft.id);
+  const approved = await procurement.approvePurchase(
+    'acc_cvg_demo' as never,
+    'manager_1' as never,
+    draft.id
+  );
   await assert.rejects(
     () => procurement.approvePurchase('acc_cvg_demo' as never, 'manager_1' as never, draft.id),
     ConflictError
   );
   await assert.rejects(
-    () => procurement.receivePurchase('acc_cvg_demo' as never, 'warehouse_1' as never, approved.id, { lines: [] }),
+    () =>
+      procurement.receivePurchase('acc_cvg_demo' as never, 'warehouse_1' as never, approved.id, {
+        lines: []
+      }),
     ValidationError
   );
   await assert.rejects(
-    () => procurement.receivePurchase('acc_cvg_demo' as never, 'warehouse_1' as never, approved.id, {
-      lines: [{ lineId: 'purchase-line-missing', quantity: 1 }]
-    }),
+    () =>
+      procurement.receivePurchase('acc_cvg_demo' as never, 'warehouse_1' as never, approved.id, {
+        lines: [{ lineId: 'purchase-line-missing', quantity: 1 }]
+      }),
     NotFoundError
   );
   await assert.rejects(
-    () => procurement.receivePurchase('acc_cvg_demo' as never, 'warehouse_1' as never, approved.id, {
-      lines: [{ lineId: approved.lines[0]!.id, quantity: 3 }]
-    }),
+    () =>
+      procurement.receivePurchase('acc_cvg_demo' as never, 'warehouse_1' as never, approved.id, {
+        lines: [{ lineId: approved.lines[0]!.id, quantity: 3 }]
+      }),
     ConflictError
   );
 
   const cancelled = await procurement.cancelPurchase('acc_cvg_demo' as never, approved.id);
   assert.equal(cancelled.status, 'cancelled');
   await assert.rejects(
-    () => procurement.receivePurchase('acc_cvg_demo' as never, 'warehouse_1' as never, approved.id, {
-      lines: [{ lineId: approved.lines[0]!.id, quantity: 1 }]
-    }),
+    () =>
+      procurement.receivePurchase('acc_cvg_demo' as never, 'warehouse_1' as never, approved.id, {
+        lines: [{ lineId: approved.lines[0]!.id, quantity: 1 }]
+      }),
     ConflictError
   );
 });
@@ -604,27 +1038,33 @@ test('ProcurementService rejects duplicate receipt lines before changing stock',
   const procurement = new ProcurementService(inventory);
   const created = await procurement.createPurchase('acc_cvg_demo' as never, 'buyer_1' as never, {
     supplierName: 'Fornecedor de recebimento',
-    lines: [{
-      inventoryItemId: 'inv_gauze',
-      quantity: 4,
-      unitCostAmount: 3,
-      lotNumber: 'GAZ-DUPLICATE-RECEIPT'
-    }]
+    lines: [
+      {
+        inventoryItemId: 'inv_gauze',
+        quantity: 4,
+        unitCostAmount: 3,
+        lotNumber: 'GAZ-DUPLICATE-RECEIPT'
+      }
+    ]
   });
   const approved = await procurement.approvePurchase(
     'acc_cvg_demo' as never,
     'manager_1' as never,
     created.id
   );
-  const before = inventory.getItemOrThrow('inv_gauze' as never, 'acc_cvg_demo' as never).onHandQuantity;
+  const before = inventory.getItemOrThrow(
+    'inv_gauze' as never,
+    'acc_cvg_demo' as never
+  ).onHandQuantity;
 
   await assert.rejects(
-    () => procurement.receivePurchase('acc_cvg_demo' as never, 'warehouse_1' as never, approved.id, {
-      lines: [
-        { lineId: approved.lines[0]!.id, quantity: 1 },
-        { lineId: approved.lines[0]!.id, quantity: 1 }
-      ]
-    }),
+    () =>
+      procurement.receivePurchase('acc_cvg_demo' as never, 'warehouse_1' as never, approved.id, {
+        lines: [
+          { lineId: approved.lines[0]!.id, quantity: 1 },
+          { lineId: approved.lines[0]!.id, quantity: 1 }
+        ]
+      }),
     ValidationError
   );
 
@@ -640,27 +1080,33 @@ test('ProcurementService validates every receipt line before applying any inboun
   const procurement = new ProcurementService(inventory);
   const created = await procurement.createPurchase('acc_cvg_demo' as never, 'buyer_1' as never, {
     supplierName: 'Fornecedor de recebimento',
-    lines: [{
-      inventoryItemId: 'inv_gauze',
-      quantity: 4,
-      unitCostAmount: 3,
-      lotNumber: 'GAZ-MIXED-RECEIPT'
-    }]
+    lines: [
+      {
+        inventoryItemId: 'inv_gauze',
+        quantity: 4,
+        unitCostAmount: 3,
+        lotNumber: 'GAZ-MIXED-RECEIPT'
+      }
+    ]
   });
   const approved = await procurement.approvePurchase(
     'acc_cvg_demo' as never,
     'manager_1' as never,
     created.id
   );
-  const before = inventory.getItemOrThrow('inv_gauze' as never, 'acc_cvg_demo' as never).onHandQuantity;
+  const before = inventory.getItemOrThrow(
+    'inv_gauze' as never,
+    'acc_cvg_demo' as never
+  ).onHandQuantity;
 
   await assert.rejects(
-    () => procurement.receivePurchase('acc_cvg_demo' as never, 'warehouse_1' as never, approved.id, {
-      lines: [
-        { lineId: approved.lines[0]!.id, quantity: 1 },
-        { lineId: 'purchase-line-does-not-exist', quantity: 1 }
-      ]
-    }),
+    () =>
+      procurement.receivePurchase('acc_cvg_demo' as never, 'warehouse_1' as never, approved.id, {
+        lines: [
+          { lineId: approved.lines[0]!.id, quantity: 1 },
+          { lineId: 'purchase-line-does-not-exist', quantity: 1 }
+        ]
+      }),
     NotFoundError
   );
 
@@ -676,28 +1122,37 @@ test('ProcurementService requires an invoice number before receiving stock', asy
   const procurement = new ProcurementService(inventory);
   const created = await procurement.createPurchase('acc_cvg_demo' as never, 'buyer_1' as never, {
     supplierName: 'Fornecedor sem NF',
-    lines: [{
-      inventoryItemId: 'inv_gauze',
-      quantity: 2,
-      unitCostAmount: 3,
-      lotNumber: 'GAZ-NF-REQUIRED'
-    }]
+    lines: [
+      {
+        inventoryItemId: 'inv_gauze',
+        quantity: 2,
+        unitCostAmount: 3,
+        lotNumber: 'GAZ-NF-REQUIRED'
+      }
+    ]
   });
   const approved = await procurement.approvePurchase(
     'acc_cvg_demo' as never,
     'manager_1' as never,
     created.id
   );
-  const before = inventory.getItemOrThrow('inv_gauze' as never, 'acc_cvg_demo' as never).onHandQuantity;
+  const before = inventory.getItemOrThrow(
+    'inv_gauze' as never,
+    'acc_cvg_demo' as never
+  ).onHandQuantity;
 
   await assert.rejects(
-    () => procurement.receivePurchase('acc_cvg_demo' as never, 'warehouse_1' as never, approved.id, {
-      lines: [{ lineId: approved.lines[0]!.id, quantity: 1 }]
-    }),
+    () =>
+      procurement.receivePurchase('acc_cvg_demo' as never, 'warehouse_1' as never, approved.id, {
+        lines: [{ lineId: approved.lines[0]!.id, quantity: 1 }]
+      }),
     ValidationError
   );
 
-  assert.equal(inventory.getItemOrThrow('inv_gauze' as never, 'acc_cvg_demo' as never).onHandQuantity, before);
+  assert.equal(
+    inventory.getItemOrThrow('inv_gauze' as never, 'acc_cvg_demo' as never).onHandQuantity,
+    before
+  );
   assert.equal(procurement.getPurchase('acc_cvg_demo' as never, approved.id).status, 'approved');
 });
 
@@ -709,12 +1164,14 @@ test('ProcurementService persists and rehydrates purchases and transfers', async
     supplierName: 'Fornecedor Persistente',
     invoiceNumber: 'NF-REHYDRATE',
     payableId: 'payable-1',
-    lines: [{
-      inventoryItemId: 'inv_gauze',
-      quantity: 1,
-      unitCostAmount: 2,
-      lotNumber: 'GAZ-REHYDRATE'
-    }]
+    lines: [
+      {
+        inventoryItemId: 'inv_gauze',
+        quantity: 1,
+        unitCostAmount: 2,
+        lotNumber: 'GAZ-REHYDRATE'
+      }
+    ]
   });
   const transfer = await writer.createTransfer('acc_cvg_demo' as never, 'warehouse_1' as never, {
     inventoryItemId: 'inv_dipyrone',
@@ -731,9 +1188,197 @@ test('ProcurementService persists and rehydrates purchases and transfers', async
   assert.equal(reader.listTransfers('account_other' as never).length, 0);
 });
 
+test('ProcurementService reads bounded purchase-entry report rows from the persisted source', async () => {
+  const sourceCalls: Array<{ accountId: string; filters: Record<string, unknown> }> = [];
+  const persistedRow = {
+    purchaseId: 'purchase-report-1',
+    accountId: 'acc_report',
+    invoiceNumber: 'NF-2026-001',
+    supplierName: 'Fornecedor Persistente',
+    status: 'approved',
+    totalAmount: 125,
+    receivedAmount: 0,
+    payableId: 'payable-1',
+    createdByUserId: 'buyer-1',
+    approvedByUserId: 'manager-1',
+    createdAt: '2026-05-10T10:00:00.000Z',
+    updatedAt: '2026-05-10T11:00:00.000Z',
+    receivedAt: null
+  };
+  const procurement = new ProcurementService(createService(), {
+    repository: {
+      async findPurchaseReportRows(accountId: string, filters?: Record<string, unknown>) {
+        sourceCalls.push({ accountId, filters: { ...(filters ?? {}) } });
+        return [
+          persistedRow,
+          {
+            ...persistedRow,
+            purchaseId: 'purchase-received',
+            status: 'received',
+            receivedAmount: 125,
+            receivedAt: '2026-05-20T12:00:00.000Z'
+          },
+          { ...persistedRow, purchaseId: 'purchase-foreign', accountId: 'acc_other' },
+          { ...persistedRow, purchaseId: 'purchase-before', createdAt: '2026-04-30T23:59:59.000Z' },
+          { ...persistedRow, purchaseId: 'purchase-after', createdAt: '2026-06-01T00:00:00.000Z' },
+          { ...persistedRow, purchaseId: 'purchase-search-miss', supplierName: 'Outra empresa' }
+        ];
+      }
+    } as never
+  });
+
+  const rows = await procurement.listPersistedPurchaseReportRows('acc_report' as never, {
+    search: ' Fornecedor ',
+    status: 'approved',
+    dateFrom: '2026-05-01',
+    dateTo: '2026-05-31',
+    limit: 10_001
+  });
+
+  assert.deepEqual(rows, [persistedRow]);
+  assert.deepEqual(sourceCalls, [
+    {
+      accountId: 'acc_report',
+      filters: {
+        search: 'Fornecedor',
+        status: 'approved',
+        dateFrom: '2026-05-01',
+        dateTo: '2026-05-31',
+        limit: 10_001
+      }
+    }
+  ]);
+
+  const allRows = await procurement.listPersistedPurchaseReportRows('acc_report' as never);
+  assert.deepEqual(
+    allRows.map((row) => row.purchaseId),
+    [
+      'purchase-after',
+      'purchase-received',
+      'purchase-report-1',
+      'purchase-search-miss',
+      'purchase-before'
+    ]
+  );
+  assert.deepEqual(sourceCalls[1], {
+    accountId: 'acc_report',
+    filters: { limit: 10_001 }
+  });
+});
+
+test('ProcurementService fails closed for missing, invalid and cross-tenant purchase report sources', async () => {
+  const inMemoryProcurement = new ProcurementService(createService(), {
+    repository: new InMemoryProcurementRepository()
+  });
+  await assert.rejects(
+    () => inMemoryProcurement.listPersistedPurchaseReportRows('acc_report' as never),
+    /database-backed purchase source/
+  );
+
+  const invalidCollectionProcurement = new ProcurementService(createService(), {
+    repository: {
+      async findPurchaseReportRows() {
+        return null;
+      }
+    }
+  } as never);
+  await assert.rejects(
+    () => invalidCollectionProcurement.listPersistedPurchaseReportRows('acc_report' as never),
+    /invalid row collection/
+  );
+
+  const invalidRowProcurement = new ProcurementService(createService(), {
+    repository: {
+      async findPurchaseReportRows() {
+        return [null];
+      }
+    }
+  } as never);
+  await assert.rejects(
+    () => invalidRowProcurement.listPersistedPurchaseReportRows('acc_report' as never),
+    /invalid row/
+  );
+
+  const tenantMismatchProcurement = new ProcurementService(createService(), {
+    repository: {
+      async findPurchaseReportRows() {
+        return [];
+      }
+    }
+  } as never);
+  await assert.rejects(
+    () =>
+      runWithTenantContext(
+        {
+          tenantId: 'tenant-other' as never,
+          accountId: 'acc_other' as never,
+          correlationId: 'corr-inventory-purchase-report-tenant'
+        },
+        () => tenantMismatchProcurement.listPersistedPurchaseReportRows('acc_report' as never)
+      ),
+    /does not match tenant context/
+  );
+});
+
+test('ProcurementService validates purchase report filter and source field boundaries', async () => {
+  const sourceCalls: string[] = [];
+  const procurement = new ProcurementService(createService(), {
+    repository: {
+      async findPurchaseReportRows() {
+        sourceCalls.push('read');
+        return [];
+      }
+    }
+  } as never);
+
+  const invalidFilters = [
+    { search: 'x'.repeat(201) },
+    { dateFrom: '2026-02-30' },
+    { dateFrom: '2026-06-01', dateTo: '2026-05-31' },
+    { status: 'unknown' },
+    { limit: 0 },
+    { limit: 10_002 }
+  ] as const;
+  for (const filters of invalidFilters) {
+    await assert.rejects(() =>
+      procurement.listPersistedPurchaseReportRows('acc_report' as never, filters as never)
+    );
+  }
+  assert.deepEqual(sourceCalls, []);
+
+  const malformedAmountProcurement = new ProcurementService(createService(), {
+    repository: {
+      async findPurchaseReportRows() {
+        return [
+          {
+            purchaseId: 'purchase-invalid-amount',
+            accountId: 'acc_report',
+            invoiceNumber: 'NF-INVALID',
+            supplierName: 'Fornecedor',
+            status: 'approved',
+            totalAmount: 10,
+            receivedAmount: 11,
+            payableId: null,
+            createdByUserId: 'buyer-1',
+            approvedByUserId: null,
+            createdAt: '2026-05-10T10:00:00.000Z',
+            updatedAt: '2026-05-10T10:00:00.000Z',
+            receivedAt: null
+          }
+        ];
+      }
+    }
+  } as never);
+  await assert.rejects(
+    () => malformedAmountProcurement.listPersistedPurchaseReportRows('acc_report' as never),
+    /invalid row/
+  );
+});
+
 test('ProcurementService creates a linked payable when an approved purchase has no payable', async () => {
   const inventory = createService();
-  const created: Array<{ readonly totalAmount: number; readonly sourceExpenseId?: string | null }> = [];
+  const created: Array<{ readonly totalAmount: number; readonly sourceExpenseId?: string | null }> =
+    [];
   const procurement = new ProcurementService(inventory, {
     payableGateway: {
       async createPayable(_accountId, _userId, input) {
@@ -746,14 +1391,20 @@ test('ProcurementService creates a linked payable when an approved purchase has 
   const draft = await procurement.createPurchase('acc_cvg_demo' as never, 'buyer_1' as never, {
     supplierName: 'Fornecedor Integrado',
     invoiceNumber: 'NF-INTEGRATED',
-    lines: [{
-      inventoryItemId: 'inv_gauze',
-      quantity: 2,
-      unitCostAmount: 5,
-      lotNumber: 'GAZ-INTEGRATED'
-    }]
+    lines: [
+      {
+        inventoryItemId: 'inv_gauze',
+        quantity: 2,
+        unitCostAmount: 5,
+        lotNumber: 'GAZ-INTEGRATED'
+      }
+    ]
   });
-  const approved = await procurement.approvePurchase('acc_cvg_demo' as never, 'manager_1' as never, draft.id);
+  const approved = await procurement.approvePurchase(
+    'acc_cvg_demo' as never,
+    'manager_1' as never,
+    draft.id
+  );
 
   assert.equal(approved.payableId, 'payable-purchase-1');
   assert.equal(created.length, 1);
@@ -781,12 +1432,14 @@ test('ProcurementService keeps payable linkage and purchase approval inside one 
 
   const draft = await procurement.createPurchase('acc_cvg_demo' as never, 'buyer_1' as never, {
     supplierName: 'Fornecedor Transacional',
-    lines: [{
-      inventoryItemId: 'inv_gauze',
-      quantity: 2,
-      unitCostAmount: 5,
-      lotNumber: 'GAZ-TRANSACTION'
-    }]
+    lines: [
+      {
+        inventoryItemId: 'inv_gauze',
+        quantity: 2,
+        unitCostAmount: 5,
+        lotNumber: 'GAZ-TRANSACTION'
+      }
+    ]
   });
   const approved = await procurement.approvePurchase(
     'acc_cvg_demo' as never,
@@ -814,19 +1467,26 @@ test('ProcurementService restores the draft purchase when the transaction rolls 
     }
   } as never);
 
-  const draft = await procurement.createPurchase('acc_cvg_demo' as never, 'buyer_rollback' as never, {
-    supplierName: 'Fornecedor Rollback',
-    lines: [{
-      inventoryItemId: 'inv_gauze',
-      quantity: 2,
-      unitCostAmount: 5,
-      lotNumber: 'GAZ-ROLLBACK'
-    }]
-  });
+  const draft = await procurement.createPurchase(
+    'acc_cvg_demo' as never,
+    'buyer_rollback' as never,
+    {
+      supplierName: 'Fornecedor Rollback',
+      lines: [
+        {
+          inventoryItemId: 'inv_gauze',
+          quantity: 2,
+          unitCostAmount: 5,
+          lotNumber: 'GAZ-ROLLBACK'
+        }
+      ]
+    }
+  );
 
   rollback = true;
   await assert.rejects(
-    () => procurement.approvePurchase('acc_cvg_demo' as never, 'manager_rollback' as never, draft.id),
+    () =>
+      procurement.approvePurchase('acc_cvg_demo' as never, 'manager_rollback' as never, draft.id),
     /transaction rolled back/
   );
 

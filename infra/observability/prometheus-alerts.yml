@@ -101,6 +101,15 @@ groups:
           summary: 'Banco de dados da API CVG-HIS-V2 está unreachable'
           description: 'O banco de dados não está respondendo há mais de 1 minuto.'
 
+      - alert: CVG_HIS_API_DatabasePersistenceUnavailable
+        expr: app_persistence_mode{mode="unavailable"} == 1
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Persistência durável da API CVG-HIS-V2 indisponível'
+          description: 'O banco está indisponível; a API mantém readiness fechado e rejeita mutações duráveis até a recuperação verificada.'
+
       - alert: CVG_HIS_API_InMemoryMode
         expr: app_persistence_mode{mode="in-memory"} == 1 and app_uptime_seconds > 300
         for: 5m
@@ -108,7 +117,7 @@ groups:
           severity: warning
         annotations:
           summary: 'API CVG-HIS-V2 rodando em modo in-memory'
-          description: 'API está em fallback in-memory há mais de 5 minutos. Dados serão perdidos em restart.'
+          description: 'API está em modo in-memory explícito há mais de 5 minutos; isso é permitido apenas em desenvolvimento/teste e não representa persistência de produção.'
 
       - alert: CVG_HIS_PIX_Settlement_ReconciliationRequired
         expr: max(worker_pix_provider_settlement_reconciliation_required) > 0

@@ -128,7 +128,11 @@ describe('router convergence', () => {
   it('adds concrete placeholder routes for the new menu items that do not have modules yet', () => {
     expect(findChildRoute('packages')?.name).toBe('Packages');
     expect(findChildRoute('queue')?.alias).toEqual(
-      expect.arrayContaining(['/esteira', '/atendimento/esteira', '/atendimento/atendimentos/esteira'])
+      expect.arrayContaining([
+        '/esteira',
+        '/atendimento/esteira',
+        '/atendimento/atendimentos/esteira'
+      ])
     );
     expect(findChildRoute('exam-orders')?.alias).toEqual(
       expect.arrayContaining([
@@ -182,7 +186,9 @@ describe('router convergence', () => {
     );
     expect(findChildRoute('laboratory/report-types/new')?.name).toBe('LaboratoryReportTypeNew');
     expect(findChildRoute('laboratory/report-types/:id')?.name).toBe('LaboratoryReportTypeDetail');
-    expect(findChildRoute('laboratory/report-types/:id/edit')?.name).toBe('LaboratoryReportTypeEdit');
+    expect(findChildRoute('laboratory/report-types/:id/edit')?.name).toBe(
+      'LaboratoryReportTypeEdit'
+    );
     expect(findChildRoute('laboratory/orders')?.alias).toEqual(
       expect.arrayContaining([
         '/laboratorio/exames',
@@ -248,6 +254,10 @@ describe('router convergence', () => {
         '/compras-de-estoque'
       ])
     );
+    expect(findChildRoute('inventory/purchases/:purchaseId')?.name).toBe('InventoryPurchaseDetail');
+    expect(findChildRoute('inventory/purchases/:purchaseId')?.meta?.breadcrumbParent).toBe(
+      'Compras'
+    );
     expect(findChildRoute('inventory/price-adjustments')?.meta?.title).toBe('Reajuste de Preços');
     expect(findChildRoute('inventory/price-adjustments')?.meta?.breadcrumbParent).toBe('Estoque');
     expect(findChildRoute('inventory/price-adjustments')?.alias).toEqual(
@@ -273,7 +283,12 @@ describe('router convergence', () => {
     expect(findChildRoute('products')?.meta?.title).toBe('Produtos');
     expect(findChildRoute('products')?.meta?.breadcrumbParent).toBe('Cadastros');
     expect(findChildRoute('products')?.alias).toEqual(
-      expect.arrayContaining(['/produtos', '/estoque/produtos', '/estoque/cadastros/produtos', '/cadastros/produtos'])
+      expect.arrayContaining([
+        '/produtos',
+        '/estoque/produtos',
+        '/estoque/cadastros/produtos',
+        '/cadastros/produtos'
+      ])
     );
     expect(findChildRoute('products/new')?.alias).toEqual(
       expect.arrayContaining(['/produtos/novo', '/estoque/cadastros/produtos/novo'])
@@ -311,7 +326,11 @@ describe('router convergence', () => {
     );
     expect(findChildRoute('manufacturers')?.meta?.title).toBe('Fabricantes');
     expect(findChildRoute('manufacturers')?.alias).toEqual(
-      expect.arrayContaining(['/fabricantes', '/estoque/fabricantes', '/estoque/cadastros/fabricantes'])
+      expect.arrayContaining([
+        '/fabricantes',
+        '/estoque/fabricantes',
+        '/estoque/cadastros/fabricantes'
+      ])
     );
     expect(findChildRoute('product-groups')?.meta?.title).toBe('Grupos de Produto');
     expect(findChildRoute('product-groups')?.alias).toEqual(
@@ -343,8 +362,12 @@ describe('router convergence', () => {
         '/estoque/cadastros/unidades-de-medida'
       ])
     );
-    expect(findChildRoute('products/:id')?.alias).toEqual(expect.arrayContaining(['/produtos/:id']));
-    expect(findChildRoute('products/:id/edit')?.alias).toEqual(expect.arrayContaining(['/produtos/:id/editar']));
+    expect(findChildRoute('products/:id')?.alias).toEqual(
+      expect.arrayContaining(['/produtos/:id'])
+    );
+    expect(findChildRoute('products/:id/edit')?.alias).toEqual(
+      expect.arrayContaining(['/produtos/:id/editar'])
+    );
     expect(findChildRoute('inventory/transfers')?.meta?.title).toBe('Transferência entre Estoques');
     expect(findChildRoute('inventory/transfers')?.meta?.breadcrumbParent).toBe('Estoque');
     expect(findChildRoute('inventory/transfers')?.alias).toEqual(
@@ -385,10 +408,7 @@ describe('router convergence', () => {
     expect(findChildRoute('inventory/price-audit')?.meta?.title).toBe('Auditoria de Preços');
     expect(findChildRoute('finance/accounts-payable')?.meta?.breadcrumbParent).toBe('Financeiro');
     expect(findChildRoute('finance/accounts-payable')?.alias).toEqual(
-      expect.arrayContaining([
-        '/financeiro/controles/contas-a-pagar',
-        '/contas-a-pagar'
-      ])
+      expect.arrayContaining(['/financeiro/controles/contas-a-pagar', '/contas-a-pagar'])
     );
     expect(findChildRoute('finance/advance-payments')?.meta?.title).toBe('Pagamento Antecipado');
     expect(findChildRoute('finance/advance-payments')?.alias).toEqual(
@@ -408,31 +428,19 @@ describe('router convergence', () => {
     );
     expect(findChildRoute('finance/cheques')?.meta?.title).toBe('Cheques');
     expect(findChildRoute('finance/cheques')?.alias).toEqual(
-      expect.arrayContaining([
-        '/financeiro/controles/cheques',
-        '/cheques'
-      ])
+      expect.arrayContaining(['/financeiro/controles/cheques', '/cheques'])
     );
     expect(findChildRoute('finance/cash-flow')?.meta?.title).toBe('Fluxo de Caixa');
     expect(findChildRoute('finance/cash-flow')?.alias).toEqual(
-      expect.arrayContaining([
-        '/financeiro/controles/fluxo-de-caixa',
-        '/fluxo-de-caixa'
-      ])
+      expect.arrayContaining(['/financeiro/controles/fluxo-de-caixa', '/fluxo-de-caixa'])
     );
     expect(findChildRoute('dashboards/curve-abc-clients')?.meta?.title).toBe('Curva ABC Clientes');
     expect(findChildRoute('dashboards/curve-abc-clients')?.alias).toEqual(
-      expect.arrayContaining([
-        '/financeiro/controles/curva-abc-clientes',
-        '/curva-abc-clientes'
-      ])
+      expect.arrayContaining(['/financeiro/controles/curva-abc-clientes', '/curva-abc-clientes'])
     );
     expect(findChildRoute('dashboards/curve-abc')?.meta?.title).toBe('Curva ABC Produtos');
     expect(findChildRoute('dashboards/curve-abc')?.alias).toEqual(
-      expect.arrayContaining([
-        '/financeiro/controles/curva-abc-produtos',
-        '/curva-abc-produtos'
-      ])
+      expect.arrayContaining(['/financeiro/controles/curva-abc-produtos', '/curva-abc-produtos'])
     );
     expect(findChildRoute('dashboards/multifilial')?.meta?.title).toBe('DashBoard do Multifilial');
     expect(findChildRoute('dashboards/multifilial')?.alias).toEqual(
@@ -451,10 +459,7 @@ describe('router convergence', () => {
     );
     expect(findChildRoute('finance/timeline')?.meta?.title).toBe('Linha do Tempo');
     expect(findChildRoute('finance/timeline')?.alias).toEqual(
-      expect.arrayContaining([
-        '/financeiro/controles/linha-do-tempo',
-        '/linha-do-tempo'
-      ])
+      expect.arrayContaining(['/financeiro/controles/linha-do-tempo', '/linha-do-tempo'])
     );
     expect(findChildRoute('finance/split')?.meta?.title).toBe('Configuração do Split');
     expect(findChildRoute('finance/split')?.alias).toEqual(
@@ -552,7 +557,9 @@ describe('router convergence', () => {
     expect(findChildRoute('marketing/sms')?.meta?.breadcrumbParent).toBe('Marketing');
     expect(findChildRoute('notifications')?.meta?.title).toBe('Campanhas de SMS Marketing');
     expect(findChildRoute('notifications')?.meta?.breadcrumb).toBe('Campanhas de SMS Marketing');
-    expect(findChildRoute('marketing/vaccine-email')?.meta?.title).toBe('Layout de Email de Vacina');
+    expect(findChildRoute('marketing/vaccine-email')?.meta?.title).toBe(
+      'Layout de Email de Vacina'
+    );
     expect(findChildRoute('marketing/vaccine-email')?.meta?.breadcrumbParent).toBe('Marketing');
     expect(findChildRoute('marketing/sms-settings')?.meta?.title).toBe('Configurações de SMS');
     expect(findChildRoute('marketing/sms-settings')?.meta?.breadcrumbParent).toBe('Marketing');
@@ -561,7 +568,9 @@ describe('router convergence', () => {
     expect(findChildRoute('vaccines-dewormers')?.meta?.breadcrumbParent).toBe('Atendimento');
     expect(findChildRoute('responsibility-terms')?.meta?.title).toBe('Termos de Responsabilidade');
     expect(findChildRoute('customer-groups')?.meta?.title).toBe('Grupos de Clientes');
-    expect(findChildRoute('laboratory/hemogram-reference-values')?.meta?.title).toBe('Vlr. Ref. Hemograma');
+    expect(findChildRoute('laboratory/hemogram-reference-values')?.meta?.title).toBe(
+      'Vlr. Ref. Hemograma'
+    );
     expect(findChildRoute('laboratory/hemogram-reference-values')?.alias).toEqual(
       expect.arrayContaining([
         '/vlr-ref-hemograma',
@@ -569,10 +578,18 @@ describe('router convergence', () => {
         '/laboratorio/cadastros/vlr-ref-hemograma'
       ])
     );
-    expect(findChildRoute('laboratory/hemogram-reference-values/new')?.name).toBe('LaboratoryHemogramReferenceValueNew');
-    expect(findChildRoute('laboratory/hemogram-reference-values/:id')?.name).toBe('LaboratoryHemogramReferenceValueDetail');
-    expect(findChildRoute('laboratory/hemogram-reference-values/:id/edit')?.name).toBe('LaboratoryHemogramReferenceValueEdit');
-    expect(findChildRoute('laboratory/biochemistry-reference-values')?.meta?.title).toBe('Vlr. Ref. Bioquímico');
+    expect(findChildRoute('laboratory/hemogram-reference-values/new')?.name).toBe(
+      'LaboratoryHemogramReferenceValueNew'
+    );
+    expect(findChildRoute('laboratory/hemogram-reference-values/:id')?.name).toBe(
+      'LaboratoryHemogramReferenceValueDetail'
+    );
+    expect(findChildRoute('laboratory/hemogram-reference-values/:id/edit')?.name).toBe(
+      'LaboratoryHemogramReferenceValueEdit'
+    );
+    expect(findChildRoute('laboratory/biochemistry-reference-values')?.meta?.title).toBe(
+      'Vlr. Ref. Bioquímico'
+    );
     expect(findChildRoute('laboratory/biochemistry-reference-values')?.alias).toEqual(
       expect.arrayContaining([
         '/vlr-ref-bioquimico',
@@ -580,9 +597,15 @@ describe('router convergence', () => {
         '/laboratorio/cadastros/vlr-ref-bioquimico'
       ])
     );
-    expect(findChildRoute('laboratory/biochemistry-reference-values/new')?.name).toBe('LaboratoryBiochemistryReferenceValueNew');
-    expect(findChildRoute('laboratory/biochemistry-reference-values/:id')?.name).toBe('LaboratoryBiochemistryReferenceValueDetail');
-    expect(findChildRoute('laboratory/biochemistry-reference-values/:id/edit')?.name).toBe('LaboratoryBiochemistryReferenceValueEdit');
+    expect(findChildRoute('laboratory/biochemistry-reference-values/new')?.name).toBe(
+      'LaboratoryBiochemistryReferenceValueNew'
+    );
+    expect(findChildRoute('laboratory/biochemistry-reference-values/:id')?.name).toBe(
+      'LaboratoryBiochemistryReferenceValueDetail'
+    );
+    expect(findChildRoute('laboratory/biochemistry-reference-values/:id/edit')?.name).toBe(
+      'LaboratoryBiochemistryReferenceValueEdit'
+    );
   });
 
   it('uses concrete routes for cadastro auxiliary animal catalogs', () => {
@@ -604,7 +627,9 @@ describe('router convergence', () => {
 
     expect(speciesRoute?.name).toBe('Species');
     expect(speciesRoute?.meta?.breadcrumbParent).toBe('Cadastros');
-    expect(speciesRoute?.alias).toEqual(expect.arrayContaining(['/especies', '/cadastros/especies']));
+    expect(speciesRoute?.alias).toEqual(
+      expect.arrayContaining(['/especies', '/cadastros/especies'])
+    );
     expect(findChildRoute('species/new')?.name).toBe('SpeciesNew');
     expect(findChildRoute('species/:id')?.name).toBe('SpeciesDetail');
     expect(findChildRoute('species/:id/edit')?.name).toBe('SpeciesEdit');
@@ -615,7 +640,9 @@ describe('router convergence', () => {
     expect(coatColorsRoute?.name).toBe('CoatColors');
     expect(coatColorsRoute?.meta?.title).toBe('Cores/Pelagens');
     expect(coatColorsRoute?.meta?.breadcrumbParent).toBe('Cadastros');
-    expect(coatColorsRoute?.alias).toEqual(expect.arrayContaining(['/cores', '/pelagens', '/cadastros/cores']));
+    expect(coatColorsRoute?.alias).toEqual(
+      expect.arrayContaining(['/cores', '/pelagens', '/cadastros/cores'])
+    );
     expect(findChildRoute('coat-colors/new')?.name).toBe('CoatColorNew');
     expect(findChildRoute('coat-colors/:id')?.name).toBe('CoatColorDetail');
     expect(findChildRoute('coat-colors/:id/edit')?.name).toBe('CoatColorEdit');
@@ -628,7 +655,9 @@ describe('router convergence', () => {
     expect(customerGroupsRoute?.component).toBeTruthy();
     expect(customerGroupsRoute?.meta?.title).toBe('Grupos de Clientes');
     expect(customerGroupsRoute?.meta?.breadcrumbParent).toBe('Cadastros');
-    expect(customerGroupsRoute?.alias).toEqual(expect.arrayContaining(['/grupos-de-clientes', '/cadastros/grupos-de-clientes']));
+    expect(customerGroupsRoute?.alias).toEqual(
+      expect.arrayContaining(['/grupos-de-clientes', '/cadastros/grupos-de-clientes'])
+    );
     expect(findChildRoute('customer-groups/new')?.name).toBe('CustomerGroupNew');
     expect(findChildRoute('customer-groups/:id')?.name).toBe('CustomerGroupDetail');
     expect(findChildRoute('customer-groups/:id/edit')?.name).toBe('CustomerGroupEdit');
@@ -642,7 +671,9 @@ describe('router convergence', () => {
     expect(loyaltyRoute?.component).not.toBe(findChildRoute('breeds')?.component);
     expect(loyaltyRoute?.meta?.title).toBe('Resgate de Pontos');
     expect(loyaltyRoute?.meta?.breadcrumbParent).toBe('Atendimento');
-    expect(loyaltyRoute?.alias).toEqual(expect.arrayContaining(['/fidelidade', '/atendimento/fidelidade']));
+    expect(loyaltyRoute?.alias).toEqual(
+      expect.arrayContaining(['/fidelidade', '/atendimento/fidelidade'])
+    );
   });
 
   it('uses concrete routes for beta price tables and point-of-sale sync', () => {
@@ -715,7 +746,11 @@ describe('router convergence', () => {
     expect(packagesRoute?.meta?.title).toBe('Pacotes');
     expect(packagesRoute?.meta?.breadcrumbParent).toBe('Atendimento');
     expect(packagesRoute?.alias).toEqual(
-      expect.arrayContaining(['/pacotes', '/atendimento/pacotes', '/atendimento/atendimentos/pacotes'])
+      expect.arrayContaining([
+        '/pacotes',
+        '/atendimento/pacotes',
+        '/atendimento/atendimentos/pacotes'
+      ])
     );
   });
 
@@ -727,48 +762,102 @@ describe('router convergence', () => {
     expect(findChildRoute('reports/dre')?.meta?.breadcrumbParent).toBe('Relatórios Financeiros');
     expect(findChildRoute('reports/dre')?.alias).toEqual(['/relatorios/financeiros/dre']);
     expect(findChildRoute('reports/packages')?.meta?.title).toBe('Pacotes');
-    expect(findChildRoute('reports/packages')?.meta?.breadcrumbParent).toBe('Relatórios Financeiros');
+    expect(findChildRoute('reports/packages')?.meta?.breadcrumbParent).toBe(
+      'Relatórios Financeiros'
+    );
     expect(findChildRoute('reports/packages')?.alias).toEqual(['/relatorios/financeiros/pacotes']);
     expect(findChildRoute('reports/accounts-receivable')?.meta?.title).toBe('Contas a Receber');
-    expect(findChildRoute('reports/accounts-receivable')?.meta?.breadcrumbParent).toBe('Relatórios Financeiros');
-    expect(findChildRoute('reports/accounts-receivable')?.alias).toEqual(['/relatorios/financeiros/contas-a-receber']);
+    expect(findChildRoute('reports/accounts-receivable')?.meta?.breadcrumbParent).toBe(
+      'Relatórios Financeiros'
+    );
+    expect(findChildRoute('reports/accounts-receivable')?.alias).toEqual([
+      '/relatorios/financeiros/contas-a-receber'
+    ]);
     expect(findChildRoute('reports/received-accounts')?.meta?.title).toBe('Contas Recebidas');
-    expect(findChildRoute('reports/received-accounts')?.meta?.breadcrumbParent).toBe('Relatórios Financeiros');
-    expect(findChildRoute('reports/received-accounts')?.alias).toEqual(['/relatorios/financeiros/contas-recebidas']);
+    expect(findChildRoute('reports/received-accounts')?.meta?.breadcrumbParent).toBe(
+      'Relatórios Financeiros'
+    );
+    expect(findChildRoute('reports/received-accounts')?.alias).toEqual([
+      '/relatorios/financeiros/contas-recebidas'
+    ]);
     expect(findChildRoute('reports/accounts-payable')?.meta?.title).toBe('Contas a Pagar');
-    expect(findChildRoute('reports/accounts-payable')?.meta?.breadcrumbParent).toBe('Relatórios Financeiros');
-    expect(findChildRoute('reports/accounts-payable')?.alias).toEqual(['/relatorios/financeiros/contas-a-pagar']);
+    expect(findChildRoute('reports/accounts-payable')?.meta?.breadcrumbParent).toBe(
+      'Relatórios Financeiros'
+    );
+    expect(findChildRoute('reports/accounts-payable')?.alias).toEqual([
+      '/relatorios/financeiros/contas-a-pagar'
+    ]);
     expect(findChildRoute('reports/paid-accounts')?.meta?.title).toBe('Contas Pagas');
-    expect(findChildRoute('reports/paid-accounts')?.meta?.breadcrumbParent).toBe('Relatórios Financeiros');
-    expect(findChildRoute('reports/paid-accounts')?.alias).toEqual(['/relatorios/financeiros/contas-pagas']);
+    expect(findChildRoute('reports/paid-accounts')?.meta?.breadcrumbParent).toBe(
+      'Relatórios Financeiros'
+    );
+    expect(findChildRoute('reports/paid-accounts')?.alias).toEqual([
+      '/relatorios/financeiros/contas-pagas'
+    ]);
     expect(findChildRoute('reports/cheques')?.meta?.title).toBe('Cheques');
-    expect(findChildRoute('reports/cheques')?.meta?.breadcrumbParent).toBe('Relatórios Financeiros');
+    expect(findChildRoute('reports/cheques')?.meta?.breadcrumbParent).toBe(
+      'Relatórios Financeiros'
+    );
     expect(findChildRoute('reports/cheques')?.alias).toEqual(['/relatorios/financeiros/cheques']);
     expect(findChildRoute('reports/advance-payments')?.meta?.title).toBe('Pagamento Antecipado');
-    expect(findChildRoute('reports/advance-payments')?.meta?.breadcrumbParent).toBe('Relatórios Financeiros');
-    expect(findChildRoute('reports/advance-payments')?.alias).toEqual(['/relatorios/financeiros/pagamento-antecipado']);
+    expect(findChildRoute('reports/advance-payments')?.meta?.breadcrumbParent).toBe(
+      'Relatórios Financeiros'
+    );
+    expect(findChildRoute('reports/advance-payments')?.alias).toEqual([
+      '/relatorios/financeiros/pagamento-antecipado'
+    ]);
     expect(findChildRoute('reports/accounts')?.meta?.title).toBe('Contas');
     expect(findChildRoute('reports/sales')?.meta?.title).toBe('Comandas/Vendas');
-    expect(findChildRoute('reports/sales')?.meta?.breadcrumbParent).toBe('Relatórios de Atendimentos');
-    expect(findChildRoute('reports/sales')?.alias).toEqual(['/relatorios/atendimentos/comandas-vendas']);
-    expect(findChildRoute('reports/produced-items')?.meta?.title).toBe('Produtos/Serviços Produzidos');
-    expect(findChildRoute('reports/produced-items')?.meta?.breadcrumbParent).toBe('Relatórios de Atendimentos');
-    expect(findChildRoute('reports/produced-items')?.alias).toEqual(['/relatorios/atendimentos/produtos-servicos-produzidos']);
+    expect(findChildRoute('reports/sales')?.meta?.breadcrumbParent).toBe(
+      'Relatórios de Atendimentos'
+    );
+    expect(findChildRoute('reports/sales')?.alias).toEqual([
+      '/relatorios/atendimentos/comandas-vendas'
+    ]);
+    expect(findChildRoute('reports/produced-items')?.meta?.title).toBe(
+      'Produtos/Serviços Produzidos'
+    );
+    expect(findChildRoute('reports/produced-items')?.meta?.breadcrumbParent).toBe(
+      'Relatórios de Atendimentos'
+    );
+    expect(findChildRoute('reports/produced-items')?.alias).toEqual([
+      '/relatorios/atendimentos/produtos-servicos-produzidos'
+    ]);
     expect(findChildRoute('reports/financial')?.meta?.title).toBe('Fluxo de Caixa');
-    expect(findChildRoute('reports/financial')?.meta?.breadcrumbParent).toBe('Relatórios Financeiros');
-    expect(findChildRoute('reports/financial')?.alias).toEqual(['/relatorios/financeiros/fluxo-de-caixa']);
+    expect(findChildRoute('reports/financial')?.meta?.breadcrumbParent).toBe(
+      'Relatórios Financeiros'
+    );
+    expect(findChildRoute('reports/financial')?.alias).toEqual([
+      '/relatorios/financeiros/fluxo-de-caixa'
+    ]);
     expect(findChildRoute('reports/production')?.meta?.title).toBe('Produção');
-    expect(findChildRoute('reports/production')?.meta?.breadcrumbParent).toBe('Relatórios de Atendimentos');
-    expect(findChildRoute('reports/production')?.alias).toEqual(['/relatorios/atendimentos/producao']);
+    expect(findChildRoute('reports/production')?.meta?.breadcrumbParent).toBe(
+      'Relatórios de Atendimentos'
+    );
+    expect(findChildRoute('reports/production')?.alias).toEqual([
+      '/relatorios/atendimentos/producao'
+    ]);
     expect(findChildRoute('reports/appointments')?.meta?.title).toBe('Agenda');
-    expect(findChildRoute('reports/appointments')?.meta?.breadcrumbParent).toBe('Relatórios de Atendimentos');
-    expect(findChildRoute('reports/appointments')?.alias).toEqual(['/relatorios/atendimentos/agenda']);
-    expect(findChildRoute('reports/professional-care')?.meta?.title).toBe('Atendimento por Profissional');
-    expect(findChildRoute('reports/professional-care')?.meta?.breadcrumbParent).toBe('Relatórios de Atendimentos');
-    expect(findChildRoute('reports/professional-care')?.alias).toEqual(['/relatorios/atendimentos/atendimento-por-profissional']);
+    expect(findChildRoute('reports/appointments')?.meta?.breadcrumbParent).toBe(
+      'Relatórios de Atendimentos'
+    );
+    expect(findChildRoute('reports/appointments')?.alias).toEqual([
+      '/relatorios/atendimentos/agenda'
+    ]);
+    expect(findChildRoute('reports/professional-care')?.meta?.title).toBe(
+      'Atendimento por Profissional'
+    );
+    expect(findChildRoute('reports/professional-care')?.meta?.breadcrumbParent).toBe(
+      'Relatórios de Atendimentos'
+    );
+    expect(findChildRoute('reports/professional-care')?.alias).toEqual([
+      '/relatorios/atendimentos/atendimento-por-profissional'
+    ]);
     expect(findChildRoute('reports/nf')?.meta?.title).toBe('Relatório de NF de Serviços Prestados');
     expect(findChildRoute('reports/nf')?.meta?.breadcrumbParent).toBe('Relatórios Personalizados');
-    expect(findChildRoute('reports/nf')?.alias).toEqual(['/relatorios/personalizados/relatorio-de-nf-de-servicos-prestados']);
+    expect(findChildRoute('reports/nf')?.alias).toEqual([
+      '/relatorios/personalizados/relatorio-de-nf-de-servicos-prestados'
+    ]);
     expect(findChildRoute('dashboards/financial')?.meta?.breadcrumbParent).toBe('Financeiro');
     expect(findChildRoute('dashboards/financial')?.meta?.title).toBe('Dashboard Financeiro');
     expect(findChildRoute('finance/timeline')?.meta?.title).toBe('Linha do Tempo');
@@ -785,36 +874,80 @@ describe('router convergence', () => {
     expect(findChildRoute('banks')?.meta?.title).toBe('Bancos');
     expect(findChildRoute('dashboards/curve-abc')?.meta?.title).toBe('Curva ABC Produtos');
     expect(findChildRoute('dashboards/multifilial')?.meta?.title).toBe('DashBoard do Multifilial');
-    expect(findChildRoute('reports/audit/appointments')?.meta?.title).toBe('Auditoria de Agendamentos');
-    expect(findChildRoute('reports/audit/appointments')?.alias).toEqual(['/relatorios/auditoria/agendamentos']);
-    expect(findChildRoute('reports/cash-drawer')?.alias).toEqual(['/relatorios/financeiros/gaveta']);
+    expect(findChildRoute('reports/audit/appointments')?.meta?.title).toBe(
+      'Auditoria de Agendamentos'
+    );
+    expect(findChildRoute('reports/audit/appointments')?.alias).toEqual([
+      '/relatorios/auditoria/agendamentos'
+    ]);
+    expect(findChildRoute('reports/cash-drawer')?.alias).toEqual([
+      '/relatorios/financeiros/gaveta'
+    ]);
     expect(findChildRoute('reports/registers/services')?.meta?.title).toBe('Serviços');
-    expect(findChildRoute('reports/registers/services')?.meta?.breadcrumbParent).toBe('Relatórios de Cadastros');
-    expect(findChildRoute('reports/registers/services')?.alias).toEqual(['/relatorios/cadastros/servicos']);
+    expect(findChildRoute('reports/registers/services')?.meta?.breadcrumbParent).toBe(
+      'Relatórios de Cadastros'
+    );
+    expect(findChildRoute('reports/registers/services')?.alias).toEqual([
+      '/relatorios/cadastros/servicos'
+    ]);
     expect(findChildRoute('reports/registers/owners')?.meta?.title).toBe('Clientes');
-    expect(findChildRoute('reports/registers/owners')?.meta?.breadcrumbParent).toBe('Relatórios de Cadastros');
-    expect(findChildRoute('reports/registers/owners')?.alias).toEqual(['/relatorios/cadastros/clientes']);
+    expect(findChildRoute('reports/registers/owners')?.meta?.breadcrumbParent).toBe(
+      'Relatórios de Cadastros'
+    );
+    expect(findChildRoute('reports/registers/owners')?.alias).toEqual([
+      '/relatorios/cadastros/clientes'
+    ]);
     expect(findChildRoute('reports/registers/patients')?.meta?.title).toBe('Animais');
-    expect(findChildRoute('reports/registers/patients')?.meta?.breadcrumbParent).toBe('Relatórios de Cadastros');
-    expect(findChildRoute('reports/registers/patients')?.alias).toEqual(['/relatorios/cadastros/animais']);
+    expect(findChildRoute('reports/registers/patients')?.meta?.breadcrumbParent).toBe(
+      'Relatórios de Cadastros'
+    );
+    expect(findChildRoute('reports/registers/patients')?.alias).toEqual([
+      '/relatorios/cadastros/animais'
+    ]);
     expect(findChildRoute('reports/registers/suppliers')?.meta?.title).toBe('Fornecedores');
-    expect(findChildRoute('reports/registers/suppliers')?.meta?.breadcrumbParent).toBe('Relatórios de Cadastros');
-    expect(findChildRoute('reports/registers/suppliers')?.alias).toEqual(['/relatorios/cadastros/fornecedores']);
-    expect(findChildRoute('reports/deleted-sales-counter-sales')?.meta?.title).toBe('Exclusão de Vendas e Comandas');
-    expect(findChildRoute('reports/deleted-sales-counter-sales')?.meta?.breadcrumbParent).toBe('Relatórios de Cadastros');
-    expect(findChildRoute('reports/deleted-sales-counter-sales')?.alias).toEqual(['/relatorios/cadastros/exclusao-de-vendas-e-comandas']);
+    expect(findChildRoute('reports/registers/suppliers')?.meta?.breadcrumbParent).toBe(
+      'Relatórios de Cadastros'
+    );
+    expect(findChildRoute('reports/registers/suppliers')?.alias).toEqual([
+      '/relatorios/cadastros/fornecedores'
+    ]);
+    expect(findChildRoute('reports/deleted-sales-counter-sales')?.meta?.title).toBe(
+      'Exclusão de Vendas e Comandas'
+    );
+    expect(findChildRoute('reports/deleted-sales-counter-sales')?.meta?.breadcrumbParent).toBe(
+      'Relatórios de Cadastros'
+    );
+    expect(findChildRoute('reports/deleted-sales-counter-sales')?.alias).toEqual([
+      '/relatorios/cadastros/exclusao-de-vendas-e-comandas'
+    ]);
     expect(findChildRoute('reports/inventory')?.meta?.title).toBe('Estoque');
-    expect(findChildRoute('reports/inventory')?.meta?.breadcrumbParent).toBe('Relatórios de Estoque');
+    expect(findChildRoute('reports/inventory')?.meta?.breadcrumbParent).toBe(
+      'Relatórios de Estoque'
+    );
     expect(findChildRoute('reports/inventory')?.alias).toEqual(['/relatorios/estoque/estoque']);
-    expect(findChildRoute('reports/inventory-movements')?.meta?.title).toBe('Movimentações no Estoque');
-    expect(findChildRoute('reports/inventory-movements')?.meta?.breadcrumbParent).toBe('Relatórios de Estoque');
-    expect(findChildRoute('reports/inventory-movements')?.alias).toEqual(['/relatorios/estoque/movimentacoes-no-estoque']);
+    expect(findChildRoute('reports/inventory-movements')?.meta?.title).toBe(
+      'Movimentações no Estoque'
+    );
+    expect(findChildRoute('reports/inventory-movements')?.meta?.breadcrumbParent).toBe(
+      'Relatórios de Estoque'
+    );
+    expect(findChildRoute('reports/inventory-movements')?.alias).toEqual([
+      '/relatorios/estoque/movimentacoes-no-estoque'
+    ]);
     expect(findChildRoute('reports/inventory-invoices')?.meta?.title).toBe('Entrada de NF');
-    expect(findChildRoute('reports/inventory-invoices')?.meta?.breadcrumbParent).toBe('Relatórios de Estoque');
-    expect(findChildRoute('reports/inventory-invoices')?.alias).toEqual(['/relatorios/estoque/entrada-de-nf']);
+    expect(findChildRoute('reports/inventory-invoices')?.meta?.breadcrumbParent).toBe(
+      'Relatórios de Estoque'
+    );
+    expect(findChildRoute('reports/inventory-invoices')?.alias).toEqual([
+      '/relatorios/estoque/entrada-de-nf'
+    ]);
     expect(findChildRoute('reports/inventory-products')?.meta?.title).toBe('Relatório de Produtos');
-    expect(findChildRoute('reports/inventory-products')?.meta?.breadcrumbParent).toBe('Relatórios de Estoque');
-    expect(findChildRoute('reports/inventory-products')?.alias).toEqual(['/relatorios/estoque/relatorio-de-produtos']);
+    expect(findChildRoute('reports/inventory-products')?.meta?.breadcrumbParent).toBe(
+      'Relatórios de Estoque'
+    );
+    expect(findChildRoute('reports/inventory-products')?.alias).toEqual([
+      '/relatorios/estoque/relatorio-de-produtos'
+    ]);
     expect(findChildRoute('rh/professions')?.meta?.title).toBe('Profissões');
   });
 });

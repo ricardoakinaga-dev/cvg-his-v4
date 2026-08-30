@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { test } from 'vitest';
+import { test, vi } from 'vitest';
 
 import { ConflictError, NotFoundError } from '@cvg-his-v2/shared-errors';
 import type { AccountId, UserId } from '@cvg-his-v2/shared-types';
@@ -36,17 +36,13 @@ test('CounterSalesService open creates a sale with correct fields', async () => 
 
 test('CounterSalesService open preserves the clinical context of the episode', async () => {
   const service = createService();
-  const sale = await service.open(
-    ACCOUNT_ID,
-    USER_ID,
-    {
-      ownerId: 'owner-1',
-      patientId: 'patient-1',
-      encounterId: 'encounter-1',
-      queueEntryId: 'queue-1',
-      billingRecordId: 'billing-1'
-    } as never
-  );
+  const sale = await service.open(ACCOUNT_ID, USER_ID, {
+    ownerId: 'owner-1',
+    patientId: 'patient-1',
+    encounterId: 'encounter-1',
+    queueEntryId: 'queue-1',
+    billingRecordId: 'billing-1'
+  } as never);
 
   assert.equal((sale as unknown as { patientId: string | null }).patientId, 'patient-1');
   assert.equal((sale as unknown as { encounterId: string | null }).encounterId, 'encounter-1');
@@ -546,11 +542,15 @@ test('CounterSalesService close creates one immutable receipt in the same bounda
   await service.addPayment(sale.id, { method: 'pix', amount: 100 });
 
   const closed = await service.close(sale.id, USER_ID);
-  const receipt = (closed as unknown as { receipt?: {
-    counterSaleId: string;
-    amount: number;
-    currency: string;
-  } }).receipt;
+  const receipt = (
+    closed as unknown as {
+      receipt?: {
+        counterSaleId: string;
+        amount: number;
+        currency: string;
+      };
+    }
+  ).receipt;
 
   assert.ok(receipt);
   assert.equal(receipt.counterSaleId, sale.id);
@@ -582,7 +582,12 @@ test('CounterSalesService invokes close effects before returning the closed sale
 test('CounterSalesService cancel works on open sale', async () => {
   const service = createService();
   const sale = await service.open(ACCOUNT_ID, USER_ID);
-  const cancelled = await service.cancel(sale.id);
+  const cancelled = await service.cancel(sale.id, {
+    accountId: ACCOUNT_ID,
+    cancelledByUserId: USER_ID,
+    reason: 'Teste de cancelamento',
+    correlationId: 'counter-sale-test-cancel'
+  });
   assert.equal(cancelled.status, 'cancelled');
 });
 
@@ -592,7 +597,16 @@ test('CounterSalesService cancel rejects closed sale', async () => {
   await service.addItem(sale.id, { itemType: 'product', nameSnapshot: 'Item', unitPrice: 10 });
   await service.addPayment(sale.id, { method: 'cash', amount: 10 });
   await service.close(sale.id, USER_ID);
-  await assert.rejects(() => service.cancel(sale.id), ConflictError);
+  await assert.rejects(
+    () =>
+      service.cancel(sale.id, {
+        accountId: ACCOUNT_ID,
+        cancelledByUserId: USER_ID,
+        reason: 'Teste de cancelamento fechado',
+        correlationId: 'counter-sale-test-cancel-closed'
+      }),
+    ConflictError
+  );
 });
 
 test('CounterSalesService does not reopen a sale after its immutable receipt exists', async () => {
@@ -608,7 +622,12 @@ test('CounterSalesService list filters by status', async () => {
   const service = createService();
   const s1 = await service.open(ACCOUNT_ID, USER_ID);
   const s2 = await service.open(ACCOUNT_ID, USER_ID);
-  await service.cancel(s2.id);
+  await service.cancel(s2.id, {
+    accountId: ACCOUNT_ID,
+    cancelledByUserId: USER_ID,
+    reason: 'Filtro de status',
+    correlationId: 'counter-sale-test-cancel-filter'
+  });
   const open = service.list(ACCOUNT_ID, { status: 'open' });
   const cancelled = service.list(ACCOUNT_ID, { status: 'cancelled' });
   assert.equal(open.length, 1);
@@ -621,6 +640,162 @@ test('CounterSalesService list filters by search', async () => {
   await service.open(ACCOUNT_ID, USER_ID, { notes: 'Cliente Maria' });
   const results = service.list(ACCOUNT_ID, { search: 'joao' });
   assert.equal(results.length, 1);
+});
+
+test('CounterSalesService lists report sales from the fresh persisted repository source', async () => {
+  const persistedSale = {
+    id: 'sale-persisted-1',
+    accountId: ACCOUNT_ID,
+    number: 'CS-000901',
+    ownerId: 'owner-1',
+    patientId: null,
+    encounterId: null,
+    queueEntryId: null,
+    billingRecordId: null,
+    status: 'cancelled' as const,
+    subtotal: 250,
+    discountAmount: 25,
+    total: 225,
+    paidAmount: 0,
+    balanceDue: 225,
+    notes: 'Cancelada',
+    openedByUserId: USER_ID,
+    closedByUserId: null,
+    closedAt: null,
+    createdAt: '2026-05-10T10:00:00.000Z',
+    updatedAt: '2026-05-10T10:30:00.000Z'
+  } satisfies CounterSaleRecord;
+  const outsidePeriodSale = {
+    ...persistedSale,
+    id: 'sale-persisted-2',
+    number: 'CS-000902',
+    createdAt: '2026-06-10T10:00:00.000Z'
+  } satisfies CounterSaleRecord;
+  const calls: Array<{ accountId: AccountId; filters: Record<string, string | number> }> = [];
+  const service = new CounterSalesService({
+    repository: {
+      async findByAccountId(
+        accountId: AccountId,
+        filters?: {
+          status?: string;
+          search?: string;
+          ownerId?: string;
+          dateFrom?: string;
+          dateTo?: string;
+          limit?: number;
+        }
+      ) {
+        calls.push({ accountId, filters: (filters ?? {}) as Record<string, string | number> });
+        return [persistedSale, outsidePeriodSale];
+      }
+    } as never
+  });
+
+  const result = await service.listPersisted(ACCOUNT_ID, {
+    status: 'cancelled',
+    search: 'CS-000901',
+    dateFrom: '2026-05-01',
+    dateTo: '2026-05-31'
+  });
+
+  assert.deepEqual(result, [persistedSale]);
+  assert.deepEqual(calls, [
+    {
+      accountId: ACCOUNT_ID,
+      filters: {
+        status: 'cancelled',
+        search: 'CS-000901',
+        dateFrom: '2026-05-01',
+        dateTo: '2026-05-31',
+        limit: 10_001
+      }
+    }
+  ]);
+});
+
+test('CounterSalesService lists persisted check-payment report facts by account', async () => {
+  const service = createService();
+  const accountB = 'acc_test_002' as AccountId;
+  const saleA = await service.open(ACCOUNT_ID, USER_ID);
+  await service.addItem(saleA.id, {
+    itemType: 'service',
+    nameSnapshot: 'Consulta',
+    unitPrice: 110
+  });
+  await service.addPayment(saleA.id, {
+    method: 'check',
+    amount: 100,
+    reference: 'CHK-A',
+    notes: 'Texto que não deve virar vencimento'
+  });
+  await service.addPayment(saleA.id, { method: 'credit_card', amount: 10, reference: 'CARD-A' });
+
+  const saleB = await service.open(accountB, USER_ID);
+  await service.addItem(saleB.id, { itemType: 'service', nameSnapshot: 'Consulta', unitPrice: 80 });
+  await service.addPayment(saleB.id, { method: 'check', amount: 80, reference: 'CHK-B' });
+
+  const rows = await service.listChequePayments(ACCOUNT_ID);
+  assert.equal(rows.length, 1);
+  assert.deepEqual(rows[0], {
+    id: rows[0]?.id,
+    accountId: ACCOUNT_ID,
+    counterSaleId: saleA.id,
+    saleNumber: saleA.number,
+    saleStatus: 'open',
+    method: 'check',
+    amount: 100,
+    installments: 1,
+    reference: 'CHK-A',
+    notes: 'Texto que não deve virar vencimento',
+    createdAt: rows[0]?.createdAt
+  });
+});
+
+test('CounterSalesService includes the final millisecond of a cheque payment date range', async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date('2026-05-31T23:59:59.999Z'));
+  try {
+    const service = createService();
+    const sale = await service.open(ACCOUNT_ID, USER_ID);
+    await service.addItem(sale.id, {
+      itemType: 'service',
+      nameSnapshot: 'Consulta',
+      unitPrice: 25
+    });
+    await service.addPayment(sale.id, { method: 'check', amount: 25, reference: 'CHK-END' });
+
+    const rows = await service.listChequePayments(ACCOUNT_ID, {
+      dateFrom: '2026-05-31',
+      dateTo: '2026-05-31'
+    });
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0]?.reference, 'CHK-END');
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test('CounterSalesService rejects an oversized cheque report before snapshotting it', async () => {
+  const rows = Array.from({ length: 10_001 }, (_, index) => ({
+    id: `payment-${index}`,
+    accountId: ACCOUNT_ID,
+    counterSaleId: `sale-${index}`,
+    saleNumber: `CS-${index}`,
+    saleStatus: 'open' as const,
+    method: 'check' as const,
+    amount: 1,
+    installments: 1,
+    reference: `CHK-${index}`,
+    notes: null,
+    createdAt: '2026-05-01T00:00:00.000Z'
+  }));
+  const service = new CounterSalesService({
+    repository: {
+      listChequePayments: async () => rows
+    } as never
+  });
+
+  await assert.rejects(() => service.listChequePayments(ACCOUNT_ID), /maximum supported row count/);
 });
 
 test('CounterSalesService getItems returns items for sale', async () => {
@@ -645,7 +820,12 @@ test('CounterSalesService getPayments returns payments for sale', async () => {
 test('CounterSalesService addItem rejects on non-open sale', async () => {
   const service = createService();
   const sale = await service.open(ACCOUNT_ID, USER_ID);
-  await service.cancel(sale.id);
+  await service.cancel(sale.id, {
+    accountId: ACCOUNT_ID,
+    cancelledByUserId: USER_ID,
+    reason: 'Teste de venda cancelada',
+    correlationId: 'counter-sale-test-cancel-open'
+  });
   await assert.rejects(
     () => service.addItem(sale.id, { itemType: 'product', nameSnapshot: 'X', unitPrice: 10 }),
     ConflictError

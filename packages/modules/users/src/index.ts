@@ -329,6 +329,39 @@ export class UsersService {
     return user;
   }
 
+  /**
+   * Refreshes an interactive principal by id without ever indexing a service,
+   * inactive or login-disabled user in the interactive cache.
+   */
+  public async resolveInteractiveById(
+    userId: UserId,
+    accountId?: AccountId
+  ): Promise<UserRecord | undefined> {
+    if (!this.#repository) {
+      const cached = this.#users.get(userId);
+      if (!cached || (accountId && cached.accountId !== accountId)) return undefined;
+      if (!isInteractiveHumanUser(cached)) {
+        this.#removeUser(userId);
+        return undefined;
+      }
+      return cached;
+    }
+
+    const repositoryUser = await this.#repository.findById(userId, accountId);
+    if (!repositoryUser || (accountId && repositoryUser.accountId !== accountId)) {
+      this.#removeUser(userId);
+      return undefined;
+    }
+
+    const user = await this.#materializeInteractiveUser(repositoryUser);
+    if (!user) {
+      this.#removeUser(userId);
+      return undefined;
+    }
+    this.#indexRepositoryUser(user);
+    return user;
+  }
+
   public async verifyPassword(user: UserRecord, password: string): Promise<boolean> {
     const isValid = await comparePassword(password, user.passwordHash);
     if (!isValid || !LEGACY_SHA256_PATTERN.test(user.passwordHash)) {

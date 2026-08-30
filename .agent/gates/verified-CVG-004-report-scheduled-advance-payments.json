@@ -1,0 +1,150 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-SCHEDULED-ADVANCE-PAYMENTS-VFY-001",
+  "timestamp": "2026-08-27T03:04:07-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-004 bounded tenant-scoped scheduled financial-advance-payments report resolution through the real worker",
+  "scope_ref": "CVG-004-REPORT-SCHEDULED-ADVANCE-PAYMENTS",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-001-SHARED-CANONICAL-SOURCE",
+      "description": "The persisted advance-payment report source is shared through the financial module boundary, remains compatible with the API repository surface and is composed by the worker without an app-to-app dependency.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-ADVANCE-PAYMENTS-GREEN-001",
+        "packages/modules/financial/src/advance-payments-report.ts",
+        "packages/modules/financial/src/index.ts",
+        "apps/api/src/repositories/advance-payments-report-source.ts",
+        "apps/api/src/repositories/database-advance-payments-report.repository.ts",
+        "apps/worker/src/bootstrap.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The source proof uses disposable local PostgreSQL; target deployment and runtime-role topology remain outside this gate."
+    },
+    {
+      "id": "V-002-WORKER-FILTERS-MAPPING-BOUND",
+      "description": "The worker validates strict status/search/date filters before querying, applies an inclusive dateTo, rejects more than 10,000 rows and maps exactly the ten financial-advance-payments catalog columns.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-ADVANCE-PAYMENTS-GREEN-001",
+        "apps/worker/src/runner.ts",
+        "apps/worker/src/runner.test.ts",
+        "tests/integration/rls/advance-payments-report-source.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Wildcard escaping and session-timezone semantics remain adjacent hardening items; the bounded contract follows the existing API source semantics."
+    },
+    {
+      "id": "V-003-BOOTSTRAP-SCHEMA-FAIL-CLOSED",
+      "description": "Worker bootstrap checks the required advance-payment tables, source columns, FORCE RLS, tenant predicates and immutable/over-allocation triggers, composes the source only when ready and fails closed in production-like environments.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-ADVANCE-PAYMENTS-PROCESS-001",
+        "apps/worker/src/bootstrap.ts",
+        "packages/db/migrations/0148_advance_payments.sql",
+        "tests/integration/rls/advance-payments-report-source.test.ts"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "The readiness probe does not fully assert every ACL, function and deployed runtime-role property, and no explicit incomplete-schema bootstrap fixture was added."
+    },
+    {
+      "id": "V-004-REAL-WORKER-RLS-PROOF",
+      "description": "A fresh due schedule executes in a real one-shot worker against disposable PostgreSQL with two accounts, exact allocation-derived output, inclusive date-boundary coverage and negative status/search/date/tenant fixtures.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-ADVANCE-PAYMENTS-PROCESS-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-ADVANCE-PAYMENTS-RLS-001",
+        "tests/integration/process/worker-run-once-reports.test.ts",
+        "tests/integration/rls/advance-payments-report-source.test.ts",
+        "apps/worker/src/run-once.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Disposable PostgreSQL and a NOBYPASSRLS local connection do not certify the target TCP endpoint, deployed grants or production execution."
+    },
+    {
+      "id": "V-005-QUALITY-REGRESSION",
+      "description": "The intentional RED is retained and the corrected worker/module/API, coverage, typecheck, security, static contracts, formatting and diff-hygiene rails pass.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-ADVANCE-PAYMENTS-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-ADVANCE-PAYMENTS-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-ADVANCE-PAYMENTS-QUALITY-001",
+        ".agent/artifacts/CVG-004-report-scheduled-advance-payments-2026-08-27.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Coverage follows the repository's designated exclusions; remote CI, browser/accessibility, operations and release acceptance remain outside this gate."
+    },
+    {
+      "id": "V-006-INDEPENDENT-REVIEW-CONDITION",
+      "description": "An independent post-implementation read-only review inspected the bounded implementation and returned a conditional bounded result without a Critical finding; its residuals remain explicit.",
+      "required": true,
+      "status": "CONDITIONAL",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-ADVANCE-PAYMENTS-REVIEW-001",
+        ".agent/tasks/CVG-004-report-scheduled-advance-payments.md",
+        ".agent/artifacts/CVG-004-report-scheduled-advance-payments-2026-08-27.md"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "Hubble's review is conditional rather than unconditional approval; actor fallback, audit semantics, duplicate API projection, bootstrap completeness and edge-test gaps remain bounded follow-up items."
+    },
+    {
+      "id": "V-007-GLOBAL-NON-PROMOTION",
+      "description": "The scheduled advance-payment result is reconciled without promoting CVG-004, strict Vetus parity, clinical parity, enterprise readiness or release acceptance.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-ADVANCE-PAYMENTS-GLOBAL-RETEST-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-ADVANCE-PAYMENTS-FINAL-001",
+        ".agent/state.json",
+        ".agent/backlog.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "General parity remains 98/100 with 4/11 verified, clinical parity 100/100 with 2/3 verified, and enterprise readiness 95/100 with 42 PASS / 3 WARN / 1 FAIL."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-report-scheduled-advance-payments.md",
+    ".agent/artifacts/CVG-004-report-scheduled-advance-payments-2026-08-27.md",
+    ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-ADVANCE-PAYMENTS-IR-001",
+    "packages/modules/financial/src/advance-payments-report.ts",
+    "apps/worker/src/runner.ts",
+    "apps/worker/src/bootstrap.ts",
+    "tests/integration/process/worker-run-once-reports.test.ts",
+    "tests/integration/rls/advance-payments-report-source.test.ts"
+  ],
+  "confidence": "MEDIUM",
+  "gaps": [
+    "The independent review is conditional, so this gate is not unconditional post-fix approval.",
+    "Worker actor fallback, scheduled audit semantics, duplicate API read projection and complete bootstrap ACL/function/runtime-role assertions remain adjacent residuals.",
+    "Disposable local PostgreSQL does not certify target TCP/RLS/FORCE-RLS, deployed roles, providers, distributed operations or release behavior.",
+    "Other scheduled report families, global parity, clinical parity, enterprise readiness, accessibility, remote CI and backup/restore remain open."
+  ],
+  "conditions": [
+    "Keep this result limited to the tenant-scoped read-only financial-advance-payments scheduled source.",
+    "Resolve or explicitly accept the Hubble residuals before broadening scheduled worker scope or treating the gate as higher confidence.",
+    "Revalidate before changing advance-payment schema/allocation semantics, schedule execution/delivery, provider/target behavior, credentials, production or release scope."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via the bounded advance-payment scheduled-report authority record",
+    "scope": "CVG-004 bounded tenant-scoped scheduled financial-advance-payments report source",
+    "decision": "Authorize reversible financial-module/API compatibility, worker/bootstrap/test implementation and disposable PostgreSQL verification of the existing read-only schedule. Exclude advance writes/refunds, other report families, providers, credentials, target, production, deployment, external mutation and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-ADVANCE-PAYMENTS-IR-001",
+    "expires_or_revalidates": "Revalidate before another scheduled report family, advance lifecycle change, provider delivery, target operation, production/deployment action or release acceptance."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_BOUNDED",
+  "next_action": "Keep CVG-004 and the global program IN_PROGRESS/PARTIAL; retain the Hubble conditions, preserve other report families and do not promote this result to parity, readiness or release.",
+  "revalidation_triggers": [
+    "Changes to advance-payment schema, allocation derivation, report filters or catalog columns",
+    "Changes to worker schedule claiming, report execution/export/delivery, actor identity or audit semantics",
+    "Expansion to another report family, provider, target, credential, production, deployment or release action"
+  ],
+  "supersedes": ".agent/gates/implementation-ready-CVG-004-report-scheduled-advance-payments.json"
+}

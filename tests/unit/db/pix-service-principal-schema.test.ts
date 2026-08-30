@@ -69,4 +69,29 @@ describe('PIX service principal Drizzle schema', () => {
       'account_service_principals_purpose_chk'
     );
   });
+
+  it('extends the purpose allowlist for scheduled report actors without provisioning rows', () => {
+    const migration = readFileSync(
+      resolve(
+        process.cwd(),
+        'packages/db/migrations/0152_report_service_principal_tenant_integrity.sql'
+      ),
+      'utf8'
+    );
+
+    expect(migration).toContain("'report-execution'");
+    expect(migration).toContain("'pix-settlement'");
+    expect(migration).toMatch(/FOREIGN KEY \(account_id, requested_by_user_id\)/);
+    expect(migration).toMatch(/FOREIGN KEY \(account_id, exported_by_user_id\)/);
+    expect(migration).toMatch(/FOREIGN KEY \(account_id, created_by_user_id\)/);
+    expect(migration).toContain('assert_report_actor_integrity');
+    expect(migration).toContain('principal.is_active');
+    expect(migration).toContain('principal.interactive_login_enabled');
+    expect(migration).toContain("actor_kind = 'service'");
+    expect(migration).toContain('FOR UPDATE');
+    expect(migration).toContain('report_executions_actor_integrity_trigger');
+    expect(migration).toContain('report_exports_actor_integrity_trigger');
+    expect(migration).toContain('report_schedules_actor_integrity_trigger');
+    expect(migration).not.toMatch(/INSERT\s+INTO\s+(users|account_service_principals)/i);
+  });
 });

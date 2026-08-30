@@ -54,8 +54,15 @@ test('FiscalService filters ICMS, IPI, PIS, COFINS, PIS/COFINS and NFS-e tables 
   const ipiRows = await service.listIpiTables({ search: '3,25' });
   const pisRows = await service.listPisTables({ search: '0,65' });
   const cofinsRows = await service.listCofinsTables({ search: '7,6' });
-  const pisCofinsRows = await service.listPisCofinsRules({ regime: 'lucro_real', appliesTo: 'servico' });
-  const nfseLayouts = await service.listNfseLayouts({ search: 'ISS SP', state: 'SP', active: true });
+  const pisCofinsRows = await service.listPisCofinsRules({
+    regime: 'lucro_real',
+    appliesTo: 'servico'
+  });
+  const nfseLayouts = await service.listNfseLayouts({
+    search: 'ISS SP',
+    state: 'SP',
+    active: true
+  });
 
   assert.ok(icmsRows.length > 0);
   assert.ok(icmsRows.every((row) => `${row.code} ${row.description}`.includes('18')));
@@ -70,7 +77,11 @@ test('FiscalService filters ICMS, IPI, PIS, COFINS, PIS/COFINS and NFS-e tables 
   assert.ok(pisCofinsRows.every((row) => row.appliesTo === 'servico'));
   assert.ok(nfseLayouts.length > 0);
   assert.ok(nfseLayouts.every((row) => row.state === 'SP' && row.active));
-  assert.ok(nfseLayouts.every((row) => `${row.city} ${row.provider} ${row.municipalityCode}`.includes('ISS SP')));
+  assert.ok(
+    nfseLayouts.every((row) =>
+      `${row.city} ${row.provider} ${row.municipalityCode}`.includes('ISS SP')
+    )
+  );
 });
 
 test('FiscalService creates and updates simple ICMS table entries', async () => {
@@ -474,10 +485,16 @@ test('FiscalService persists the NFS-e lifecycle through the tenant repository',
   const accountId = 'account-nfse-test' as AccountId;
   const documents: PersistedNfseDocument[] = [];
   const repository = {
-    listNfseDocuments: async (filters: { status?: PersistedNfseDocument['status']; customerSearch?: string }) =>
+    listNfseDocuments: async (filters: {
+      status?: PersistedNfseDocument['status'];
+      customerSearch?: string;
+    }) =>
       documents
         .filter((document) => !filters.status || document.status === filters.status)
-        .filter((document) => !filters.customerSearch || document.customer.name.includes(filters.customerSearch))
+        .filter(
+          (document) =>
+            !filters.customerSearch || document.customer.name.includes(filters.customerSearch)
+        )
         .map((document) => ({ ...document })),
     findNfseDocument: async (_account: AccountId, id: string) =>
       documents.find((document) => document.id === id) ?? null,
@@ -493,30 +510,33 @@ test('FiscalService persists the NFS-e lifecycle through the tenant repository',
     }
   } as unknown as DatabaseFiscalRepository;
 
-  const createDocument = async (service: FiscalService) => service.createNfseDocument({
-    numero: 9021,
-    provider: 'abrasf',
-    customer: {
-      type: 'cnpj',
-      document: '12.345.678/0001-90',
-      name: 'Tenant Persistente'
-    },
-    services: [{
-      description: 'Consulta veterinária',
-      codigoServico: '0407',
-      cnae: '7500-1/00',
-      quantity: 1,
-      unitValue: 180,
-      totalValue: 180,
-      issRate: 0.05,
-      issValue: 9,
-      pisValue: 0,
-      cofinsValue: 0,
-      csllValue: 0,
-      irrfValue: 0,
-      inssValue: 0
-    }]
-  });
+  const createDocument = async (service: FiscalService) =>
+    service.createNfseDocument({
+      numero: 9021,
+      provider: 'abrasf',
+      customer: {
+        type: 'cnpj',
+        document: '12.345.678/0001-90',
+        name: 'Tenant Persistente'
+      },
+      services: [
+        {
+          description: 'Consulta veterinária',
+          codigoServico: '0407',
+          cnae: '7500-1/00',
+          quantity: 1,
+          unitValue: 180,
+          totalValue: 180,
+          issRate: 0.05,
+          issValue: 9,
+          pisValue: 0,
+          cofinsValue: 0,
+          csllValue: 0,
+          irrfValue: 0,
+          inssValue: 0
+        }
+      ]
+    });
 
   const firstService = new FiscalService(repository, accountId, { allowNfseSimulation: true });
   const created = await createDocument(firstService);
@@ -528,10 +548,16 @@ test('FiscalService persists the NFS-e lifecycle through the tenant repository',
   assert.equal(issued?.status, 'issued');
   assert.equal((await secondService.getNfseDocument(created.id))?.status, 'issued');
 
-  const cancelled = await secondService.cancelNfseDocument(created.id, { reason: 'cancelamento de teste' });
+  const cancelled = await secondService.cancelNfseDocument(created.id, {
+    reason: 'cancelamento de teste'
+  });
   assert.equal(cancelled?.status, 'cancelled');
   assert.equal(
-    (await new FiscalService(repository, accountId, { allowNfseSimulation: true }).getNfseDocument(created.id))?.status,
+    (
+      await new FiscalService(repository, accountId, { allowNfseSimulation: true }).getNfseDocument(
+        created.id
+      )
+    )?.status,
     'cancelled'
   );
 });
@@ -544,44 +570,146 @@ test('FiscalService keeps the non-database NFS-e fallback isolated by account', 
     allowNfseSimulation: true
   });
 
-  const create = (name: string, numero: number) => firstAccount.createNfseDocument({
-    numero,
-    customer: { type: 'cpf', document: `${numero}`.padStart(11, '0'), name },
-    services: [{
-      description: 'Consulta tenant scoped',
-      codigoServico: '0407',
-      cnae: '7500-1/00',
-      quantity: 1,
-      unitValue: 100,
-      totalValue: 100,
-      issRate: 0.05,
-      issValue: 5,
-      pisValue: 0,
-      cofinsValue: 0,
-      csllValue: 0
-    }]
-  });
+  const create = (name: string, numero: number) =>
+    firstAccount.createNfseDocument({
+      numero,
+      customer: { type: 'cpf', document: `${numero}`.padStart(11, '0'), name },
+      services: [
+        {
+          description: 'Consulta tenant scoped',
+          codigoServico: '0407',
+          cnae: '7500-1/00',
+          quantity: 1,
+          unitValue: 100,
+          totalValue: 100,
+          issRate: 0.05,
+          issValue: 5,
+          pisValue: 0,
+          cofinsValue: 0,
+          csllValue: 0
+        }
+      ]
+    });
 
   const firstDocument = await create('Cliente fiscal A', 9401);
   await secondAccount.createNfseDocument({
     numero: 9402,
     customer: { type: 'cpf', document: '94020000000', name: 'Cliente fiscal B' },
-    services: [{
-      description: 'Consulta tenant scoped',
-      codigoServico: '0407',
-      cnae: '7500-1/00',
-      quantity: 1,
-      unitValue: 100,
-      totalValue: 100,
-      issRate: 0.05,
-      issValue: 5,
-      pisValue: 0,
-      cofinsValue: 0,
-      csllValue: 0
-    }]
+    services: [
+      {
+        description: 'Consulta tenant scoped',
+        codigoServico: '0407',
+        cnae: '7500-1/00',
+        quantity: 1,
+        unitValue: 100,
+        totalValue: 100,
+        issRate: 0.05,
+        issValue: 5,
+        pisValue: 0,
+        cofinsValue: 0,
+        csllValue: 0
+      }
+    ]
   });
 
   assert.equal((await firstAccount.listNfseDocuments()).length, 1);
   assert.equal((await secondAccount.listNfseDocuments()).length, 1);
-  assert.equal((await secondAccount.getNfseDocument(firstDocument.id)), null);
+  assert.equal(await secondAccount.getNfseDocument(firstDocument.id), null);
+});
+
+test('FiscalService filters persisted NFS-e documents by report search and competence', async () => {
+  const accountId = 'account-nfse-report' as AccountId;
+  const documents: PersistedNfseDocument[] = [
+    {
+      id: 'nfse-report-2',
+      serie: '001',
+      numero: 2,
+      competencia: '2026-06-10',
+      issuer: {} as PersistedNfseDocument['issuer'],
+      customer: { type: 'cpf', document: '222', name: 'Cliente fora' },
+      services: [],
+      subtotal: 10,
+      totalIss: 0,
+      totalPis: 0,
+      totalCofins: 0,
+      totalCsll: 0,
+      totalDocument: 10,
+      createdAt: '2026-06-10T10:00:00.000Z',
+      status: 'issued',
+      provider: 'abrasf',
+      municipalityCode: '3550308',
+      apiUrl: 'https://example.invalid/nfse',
+      environment: 'homologacao'
+    },
+    {
+      id: 'nfse-report-1',
+      serie: '001',
+      numero: 1,
+      competencia: '2026-05-10',
+      issuer: {} as PersistedNfseDocument['issuer'],
+      customer: { type: 'cpf', document: '111', name: 'Cliente relatório' },
+      services: [
+        {
+          description: 'Consulta relatório',
+          codigoServico: '0407',
+          cnae: '7500-1/00',
+          quantity: 1,
+          unitValue: 100,
+          totalValue: 100,
+          issRate: 0.05,
+          issValue: 5,
+          pisValue: 0,
+          cofinsValue: 0,
+          csllValue: 0
+        }
+      ],
+      subtotal: 100,
+      totalIss: 5,
+      totalPis: 0,
+      totalCofins: 0,
+      totalCsll: 0,
+      totalDocument: 105,
+      createdAt: '2026-05-10T10:00:00.000Z',
+      status: 'draft',
+      provider: 'abrasf',
+      municipalityCode: '3550308',
+      apiUrl: 'https://example.invalid/nfse',
+      environment: 'homologacao'
+    }
+  ];
+  const repository = {
+    listNfseDocuments: async (filters: {
+      status?: PersistedNfseDocument['status'];
+      search?: string;
+      competenciaFrom?: string;
+      competenciaTo?: string;
+      limit?: number;
+    }) =>
+      documents
+        .filter((document) => !filters.status || document.status === filters.status)
+        .filter(
+          (document) => !filters.competenciaFrom || document.competencia >= filters.competenciaFrom
+        )
+        .filter(
+          (document) => !filters.competenciaTo || document.competencia <= filters.competenciaTo
+        )
+        .filter(
+          (document) =>
+            !filters.search ||
+            JSON.stringify(document).toLowerCase().includes(filters.search.toLowerCase())
+        )
+        .slice(0, filters.limit ?? documents.length),
+    findNfseDocument: async () => null
+  } as unknown as DatabaseFiscalRepository;
+  const service = new FiscalService(repository, accountId);
+
+  const rows = await service.listNfseDocuments({
+    search: 'relatório',
+    competenciaFrom: '2026-05-01',
+    competenciaTo: '2026-05-31',
+    limit: 1
+  });
+
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0]?.id, 'nfse-report-1');
 });

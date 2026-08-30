@@ -68,12 +68,14 @@ export const vetusParityContract = Object.freeze([
       api: ['apps/api/src/routes/laboratory-routes.ts'],
       persistence: [
         'packages/db/migrations/0053_laboratory_result_release_signature.sql',
-        'packages/db/migrations/0132_laboratory_order_workflow.sql'
+        'packages/db/migrations/0132_laboratory_order_workflow.sql',
+        'packages/db/migrations/0145_laboratory_structured_result_values.sql'
       ],
       tests: [
         'apps/api/src/routes/laboratory-routes.test.ts',
         'packages/modules/diagnostics/src/laboratory-postgres.integration.test.ts',
-        'apps/spa/src/pages/laboratory/__tests__/LaboratoryOrdersPage.test.ts'
+        'apps/spa/src/pages/laboratory/__tests__/LaboratoryOrdersPage.test.ts',
+        'tests/integration/process/public-laboratory-structured-results.test.ts'
       ],
       e2e: [
         'e2e/tests/fluxo-exames.spec.ts',
@@ -81,8 +83,7 @@ export const vetusParityContract = Object.freeze([
       ]
     },
     blockers: [
-      'Provider externo e homologacao laboratorial continuam pendentes.',
-      'Resultado analitico especializado ainda possui superficie sem integracao de servico.'
+      'Provider externo e homologacao laboratorial continuam pendentes; a prova local agora cobre o fluxo publico de resultado analitico estruturado, mas nao substitui conectores Live Lab nem a homologacao externa.'
     ]
   },
   {
@@ -125,7 +126,7 @@ export const vetusParityContract = Object.freeze([
         'tests/integration/database/fiscal-nfse-provider-postgres.test.ts',
         'tests/unit/fiscal/nfse-emitter.test.ts'
       ],
-      e2e: []
+      e2e: ['e2e/spa/service-invoices-report-flow.spec.ts']
     },
     blockers: [
       'Homologacao com sandbox/provedor municipal real, certificados e ciclo de rejeicao permanece pendente.',
@@ -230,22 +231,28 @@ export const vetusParityContract = Object.freeze([
       persistence: [
         'packages/db/migrations/0048_report_engine.sql',
         'packages/db/migrations/0134_reports_delivery_tenant_integrity.sql',
-        'packages/db/migrations/0143_reports_delivery_leases.sql'
+        'packages/db/migrations/0143_reports_delivery_leases.sql',
+        'packages/db/migrations/0146_finance_catalogs.sql'
       ],
       tests: [
         'packages/modules/reports/src/reports.test.ts',
+        'apps/api/src/routes/reports-routes.test.ts',
         'tests/integration/database/reports-delivery-postgres.test.ts',
+        'tests/integration/database/counter-sales-payment-authority-postgres.test.ts',
         'tests/integration/process/worker-run-once-reports.test.ts',
+        'tests/integration/rls/finance-catalog-isolation.test.ts',
         'apps/spa/src/pages/reports/__tests__/ReportWorkbenchPage.test.ts',
         'apps/spa/src/utils/report-export.test.ts'
       ],
       e2e: [
         'e2e/spa/enterprise-surfaces-gate.spec.ts',
-        'e2e/tests/fluxo-marketing-relatorios.spec.ts'
+        'e2e/tests/fluxo-marketing-relatorios.spec.ts',
+        'e2e/spa/deleted-sales-report-flow.spec.ts',
+        'e2e/spa/service-invoices-report-flow.spec.ts'
       ]
     },
     blockers: [
-      'Relatorios Vetus de cheques, pagamento antecipado, cadastros e personalizados ainda nao possuem exportacao operacional completa.',
+      'O relatorio de vendas/comandas excluidas agora possui apenas um snapshot bounded de comandas atualmente canceladas, filtrado por data de abertura e exportavel server-side; isso nao fecha o historico de cancelamento nem a paridade Vetus. Relatorios Vetus de cheques, pagamento antecipado e personalizados ainda nao possuem exportacao operacional completa; o cadastro de fornecedores foi fechado apenas como exportacao bounded do catalogo persistido, nao como fornecedor master completo.',
       'O workbench exporta CSV do recorte carregado para auditoria, financeiro, atendimento e estoque, incluindo contas a pagar, contas pagas, contas a receber e contas recebidas respaldadas pelos subledgers; ainda falta cobertura completa das trilhas Vetus restantes e do worker de entregas agendadas.'
     ]
   },
@@ -268,11 +275,15 @@ export const vetusParityContract = Object.freeze([
         'apps/api/src/routes/lgpd-routes.test.ts',
         'apps/spa/src/pages/access-control/__tests__/AccessControlPage.test.ts'
       ],
-      e2e: ['e2e/tests/fluxos-criticos.spec.ts', 'e2e/spa/tenant-isolation-db.spec.ts']
+      e2e: [
+        'e2e/tests/fluxos-criticos.spec.ts',
+        'e2e/spa/tenant-isolation-db.spec.ts',
+        'e2e/spa/access-role-matrix-db.spec.ts'
+      ]
     },
     blockers: [
-      'Ainda falta uma matriz E2E completa de autorizacao por papel, tenant e operacoes administrativas sensiveis; o ambiente desta rodada nao tinha as credenciais admin_b exigidas pelo spec.',
-      'O gate em PostgreSQL real prova isolamento de tenant e os fluxos criticos cobrem login, autorizacao e auditoria, mas falta aceite operacional completo de LGPD e governanca.'
+      'A rodada PostgreSQL/SPA agora prova os sete perfis, MFA, endpoints sensiveis, flags, DSR, governanca e isolamento entre tenants; o aceite operacional externo de LGPD e governanca continua pendente.',
+      'O gate local nao substitui homologacao de politicas, evidencias de retencao e mascaramento em um tenant-alvo nem a aprovacao operacional de acesso privilegiado.'
     ]
   },
   {
@@ -287,15 +298,22 @@ export const vetusParityContract = Object.freeze([
       api: ['apps/api/src/routes/webhooks-routes.ts'],
       persistence: [
         'packages/db/migrations/0009_webhook_tables.sql',
-        'packages/db/migrations/0098_vetus_import_logs.sql'
+        'packages/db/migrations/0098_vetus_import_logs.sql',
+        'packages/db/migrations/0102_vetus_import_batches.sql',
+        'packages/db/migrations/0149_vetus_import_request_fingerprints.sql'
       ],
-      tests: ['packages/modules/webhooks/src/webhooks.test.ts'],
-      e2e: ['e2e/spa/webhook-flow.spec.ts']
+      tests: [
+        'packages/modules/webhooks/src/webhooks.test.ts',
+        'tests/integration/process/public-api-worker-event-chain.test.ts',
+        'apps/api/src/routes/vetus-import-routes.test.ts',
+        'tests/integration/database/vetus-import-http-postgres.test.ts'
+      ],
+      e2e: ['e2e/spa/webhook-flow.spec.ts', 'e2e/spa/vetus-import-flow.spec.ts']
     },
     blockers: [
       'Live Pet e Live Lab nao possuem conectores equivalentes comprovados.',
-      'Os consumidores locais de pagamentos, faturamento e webhooks estao registrados; ainda falta E2E de processamento e observabilidade do worker em ambiente distribuido.',
-      'Importacao Vetus nao tem E2E de idempotencia, reconciliacao, rejeitados e rollback.'
+      'Os consumidores locais de pagamentos, faturamento e webhooks estao registrados e existe prova local da cadeia publica em um processo descartavel; ainda falta E2E de processamento e observabilidade do worker em ambiente distribuido.',
+      'A importacao Vetus agora possui prova bounded HTTP -> PostgreSQL em duas instancias para fingerprint normalizado, idempotencia, conflito 409, rejeitados, retomada, rollback, concorrencia e isolamento entre tenants, alem de E2E browser -> API -> PostgreSQL no runner local seedado; ainda falta homologacao do importador contra a operacao/provedor Vetus alvo e observabilidade distribuida.'
     ]
   }
 ]);

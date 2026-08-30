@@ -318,4 +318,86 @@ describe('reports delivery persistence on PostgreSQL', () => {
     expect(retried.status).toBe('sent');
     expect(calls).toEqual([failedDelivery.id, failedDelivery.id]);
   });
+
+  it('rejects retry finalization after lease expiry before takeover', async () => {
+    const repository = new DatabaseReportRepository();
+    const provider = {
+      deliver: async () => {
+        throw new Error('controlled expiry failure');
+      }
+    };
+    const service = new ReportsService({ repository, deliveryProvider: provider });
+    const schedule = await command(ACCOUNT_ID, USER_ID, () =>
+      service.createSchedule(ACCOUNT_ID, USER_ID, {
+        reportId: 'administrative-executive',
+        name: 'Expired retry before takeover',
+        frequency: 'daily',
+        format: 'csv',
+        recipients: ['expired-before-takeover@cvg.local']
+      })
+    );
+    const execution = await command(ACCOUNT_ID, USER_ID, () =>
+      service.execute(ACCOUNT_ID, USER_ID, {
+        reportId: schedule.reportId,
+        rows: [{ domain: 'reports', metric: 'Expiry', value: 1, status: 'tracked' }]
+      })
+    );
+    const exported = await command(ACCOUNT_ID, USER_ID, () =>
+      service.exportExecution(ACCOUNT_ID, USER_ID, execution.id, 'csv')
+    );
+    const firstAttempt = await command(ACCOUNT_ID, USER_ID, () =>
+      service.deliverExport(ACCOUNT_ID, schedule.id, execution.id, exported, schedule.recipients)
+    );
+    const failedDelivery = firstAttempt.deliveries[0];
+    expect(failedDelivery?.status).toBe('failed');
+    if (!failedDelivery) throw new Error('failed delivery fixture was not created');
+
+    const retryWorker = new ReportsService({ repository, deliveryProvider: provider });
+    await command(ACCOUNT_ID, USER_ID, () => retryWorker.hydrateFromDatabase(ACCOUNT_ID));
+    const claimAsOf = new Date().toISOString();
+    const [claim] = await command(ACCOUNT_ID, USER_ID, () =>
+      retryWorker.claimFailedScheduleDeliveries(
+        ACCOUNT_ID,
+        'reports-expiry-before-takeover',
+        claimAsOf,
+        1,
+        60_000
+      )
+    );
+    expect(claim).toBeDefined();
+
+    await pool.query(
+      `UPDATE report_schedule_deliveries
+          SET claim_until = now() - interval '1 second'
+        WHERE account_id = $1 AND id = $2`,
+      [ACCOUNT_ID, failedDelivery.id]
+    );
+
+    const staleFinalization = await command(ACCOUNT_ID, USER_ID, () =>
+      repository.saveClaimedDelivery(
+        {
+          ...failedDelivery,
+          status: 'sent',
+          deliveredAt: new Date().toISOString(),
+          error: null
+        },
+        claim!.claimToken
+      )
+    );
+
+    expect(staleFinalization).toBe(false);
+    const persisted = await pool.query(
+      `SELECT status, error, execution_id, export_id, claim_token
+         FROM report_schedule_deliveries
+        WHERE account_id = $1 AND id = $2`,
+      [ACCOUNT_ID, failedDelivery.id]
+    );
+    expect(persisted.rows[0]).toMatchObject({
+      status: 'failed',
+      error: 'controlled expiry failure',
+      execution_id: execution.id,
+      export_id: exported.id,
+      claim_token: claim!.claimToken
+    });
+  });
 });

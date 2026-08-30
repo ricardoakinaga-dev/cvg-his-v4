@@ -10,7 +10,11 @@ const USER_ID = 'user_001' as never;
 describe('CounterSalesService coverage guard', () => {
   it('closes product sale consuming inventory and recording only cash-like payments', async () => {
     const inventoryCalls: Array<{ codeSnapshot: string; quantity: number }> = [];
-    const cashMovements: Array<{ methodRef: string | null; amount: number; runningBalance: number }> = [];
+    const cashMovements: Array<{
+      methodRef: string | null;
+      amount: number;
+      runningBalance: number;
+    }> = [];
 
     const service = new CounterSalesService({
       inventoryService: {
@@ -261,16 +265,22 @@ describe('CounterSalesService coverage guard', () => {
     expect(summary.type).toBe('summary');
     expect((summary.data as { grossRevenue: number }).grossRevenue).toBe(120);
     expect((sales.data as { closedSales: number }).closedSales).toBe(1);
-    expect((payments.data as { byMethod: Array<{ method: string; total: number }> }).byMethod).toEqual([
+    expect(
+      (payments.data as { byMethod: Array<{ method: string; total: number }> }).byMethod
+    ).toEqual([
       { method: 'pix', count: 1, total: 80 },
       { method: 'cash', count: 1, total: 40 }
     ]);
-    expect((products.data as { products: Array<{ name: string; revenue: number }> }).products[0]).toEqual({
+    expect(
+      (products.data as { products: Array<{ name: string; revenue: number }> }).products[0]
+    ).toEqual({
       name: 'Dipirona',
       quantity: 2,
       revenue: 40
     });
-    expect((services.data as { services: Array<{ name: string; revenue: number }> }).services[0]).toEqual({
+    expect(
+      (services.data as { services: Array<{ name: string; revenue: number }> }).services[0]
+    ).toEqual({
       name: 'Consulta',
       quantity: 1,
       revenue: 80
@@ -311,7 +321,12 @@ describe('CounterSalesService coverage guard', () => {
     const service = new CounterSalesService();
 
     const cancelledSale = await service.open(ACCOUNT_ID, USER_ID, { notes: 'cancelavel' });
-    const cancelled = await service.cancel(cancelledSale.id);
+    const cancelled = await service.cancel(cancelledSale.id, {
+      accountId: ACCOUNT_ID,
+      cancelledByUserId: USER_ID,
+      reason: 'Cliente desistiu',
+      correlationId: 'counter-sale-unit-cancel'
+    });
 
     expect(cancelled.status).toBe('cancelled');
 

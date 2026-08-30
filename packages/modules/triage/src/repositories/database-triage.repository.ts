@@ -14,11 +14,17 @@ export interface TriageRepository {
   create(record: TriageSummary): Promise<void>;
   update(record: TriageSummary): Promise<void>;
   createVersion(version: TriageVersionSummary): Promise<void>;
-  findById(id: TriageRecordId): Promise<TriageSummary | null>;
-  findByEncounterId(encounterId: EncounterId): Promise<readonly TriageSummary[]>;
-  findByAccountId(accountId?: AccountId): Promise<readonly TriageSummary[]>;
-  findVersionsByTriageId(triageId: TriageRecordId): Promise<readonly TriageVersionSummary[]>;
-  findVersionsByAccountId(accountId?: AccountId): Promise<readonly TriageVersionSummary[]>;
+  findById(id: TriageRecordId, accountId: AccountId): Promise<TriageSummary | null>;
+  findByEncounterId(
+    encounterId: EncounterId,
+    accountId: AccountId
+  ): Promise<readonly TriageSummary[]>;
+  findByAccountId(accountId: AccountId): Promise<readonly TriageSummary[]>;
+  findVersionsByTriageId(
+    triageId: TriageRecordId,
+    accountId: AccountId
+  ): Promise<readonly TriageVersionSummary[]>;
+  findVersionsByAccountId(accountId: AccountId): Promise<readonly TriageVersionSummary[]>;
 }
 
 export class DatabaseTriageRepository implements TriageRepository {
@@ -55,7 +61,7 @@ export class DatabaseTriageRepository implements TriageRepository {
                 alerts_json = $5,
                 destination = $6,
                 triaged_at = $7
-          WHERE id = $1`,
+          WHERE id = $1 AND account_id = $8`,
         [
           record.id,
           record.priority,
@@ -63,7 +69,8 @@ export class DatabaseTriageRepository implements TriageRepository {
           record.initialNotes ?? null,
           JSON.stringify(record.alerts),
           record.destination ?? null,
-          new Date(record.updatedAt)
+          new Date(record.updatedAt),
+          record.accountId
         ]
       );
     });
@@ -89,53 +96,59 @@ export class DatabaseTriageRepository implements TriageRepository {
     });
   }
 
-  async findById(id: TriageRecordId): Promise<TriageSummary | null> {
+  async findById(id: TriageRecordId, accountId: AccountId): Promise<TriageSummary | null> {
     return withTenantQuery(getPool(), async (client) => {
-      const result = await client.query('SELECT * FROM triage_records WHERE id = $1', [id]);
+      const result = await client.query(
+        'SELECT * FROM triage_records WHERE id = $1 AND account_id = $2',
+        [id, accountId]
+      );
       if (result.rows.length === 0) return null;
       return this.mapRow(result.rows[0]);
     });
   }
 
-  async findByEncounterId(encounterId: EncounterId): Promise<readonly TriageSummary[]> {
-    return withTenantQuery(getPool(), async (client) => {
-      const result = await client.query('SELECT * FROM triage_records WHERE encounter_id = $1', [
-        encounterId
-      ]);
-      return result.rows.map((r: Record<string, unknown>) => this.mapRow(r));
-    });
-  }
-
-  async findByAccountId(accountId?: AccountId): Promise<readonly TriageSummary[]> {
-    return withTenantQuery(getPool(), async (client) => {
-      const result = accountId
-        ? await client.query(
-            'SELECT * FROM triage_records WHERE account_id = $1 ORDER BY created_at DESC',
-            [accountId]
-          )
-        : await client.query('SELECT * FROM triage_records ORDER BY created_at DESC');
-      return result.rows.map((r: Record<string, unknown>) => this.mapRow(r));
-    });
-  }
-
-  async findVersionsByTriageId(triageId: TriageRecordId): Promise<readonly TriageVersionSummary[]> {
+  async findByEncounterId(
+    encounterId: EncounterId,
+    accountId: AccountId
+  ): Promise<readonly TriageSummary[]> {
     return withTenantQuery(getPool(), async (client) => {
       const result = await client.query(
-        'SELECT * FROM triage_record_versions WHERE triage_id = $1 ORDER BY created_at DESC',
-        [triageId]
+        'SELECT * FROM triage_records WHERE encounter_id = $1 AND account_id = $2',
+        [encounterId, accountId]
+      );
+      return result.rows.map((r: Record<string, unknown>) => this.mapRow(r));
+    });
+  }
+
+  async findByAccountId(accountId: AccountId): Promise<readonly TriageSummary[]> {
+    return withTenantQuery(getPool(), async (client) => {
+      const result = await client.query(
+        'SELECT * FROM triage_records WHERE account_id = $1 ORDER BY created_at DESC',
+        [accountId]
+      );
+      return result.rows.map((r: Record<string, unknown>) => this.mapRow(r));
+    });
+  }
+
+  async findVersionsByTriageId(
+    triageId: TriageRecordId,
+    accountId: AccountId
+  ): Promise<readonly TriageVersionSummary[]> {
+    return withTenantQuery(getPool(), async (client) => {
+      const result = await client.query(
+        'SELECT * FROM triage_record_versions WHERE triage_id = $1 AND account_id = $2 ORDER BY created_at DESC',
+        [triageId, accountId]
       );
       return result.rows.map((row: Record<string, unknown>) => this.mapVersionRow(row));
     });
   }
 
-  async findVersionsByAccountId(accountId?: AccountId): Promise<readonly TriageVersionSummary[]> {
+  async findVersionsByAccountId(accountId: AccountId): Promise<readonly TriageVersionSummary[]> {
     return withTenantQuery(getPool(), async (client) => {
-      const result = accountId
-        ? await client.query(
-            'SELECT * FROM triage_record_versions WHERE account_id = $1 ORDER BY created_at DESC',
-            [accountId]
-          )
-        : await client.query('SELECT * FROM triage_record_versions ORDER BY created_at DESC');
+      const result = await client.query(
+        'SELECT * FROM triage_record_versions WHERE account_id = $1 ORDER BY created_at DESC',
+        [accountId]
+      );
       return result.rows.map((row: Record<string, unknown>) => this.mapVersionRow(row));
     });
   }
@@ -153,7 +166,9 @@ export class DatabaseTriageRepository implements TriageRepository {
       destination: (row.destination as TriageSummary['destination']) ?? 'observation',
       triagedByUserId: row.triaged_by as unknown as UserId,
       createdAt: new Date(row.created_at as string).toISOString(),
-      updatedAt: new Date(row.updated_at as string).toISOString()
+      // The persisted schema has no updated_at column. triaged_at is updated
+      // by update() and therefore is the authoritative last-change timestamp.
+      updatedAt: new Date(row.triaged_at as string).toISOString()
     };
   }
 

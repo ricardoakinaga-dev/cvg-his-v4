@@ -86,7 +86,12 @@ test.describe('Visual Regression — List Pages', () => {
         timeout: 15000
       });
       await keepCanonicalTableRows(page, [patient.id]);
-      await normalizeMetricValues(page, '.overview-metric__value, .summary-card__value', ['00', '00', '00', '00']);
+      await normalizeMetricValues(page, '.overview-metric__value, .summary-card__value', [
+        '00',
+        '00',
+        '00',
+        '00'
+      ]);
       await normalizePatientsTable(page);
 
       await stabilizeVisual(page, pageProfiles.listPage);
@@ -116,9 +121,11 @@ test.describe('Visual Regression — List Pages', () => {
         .click();
 
       const canonicalCard = page.locator('.timeline-item', { hasText: 'Luna' }).first();
-      await expect(canonicalCard, 'Visual appointment must be created through the API').toBeVisible({
-        timeout: 15000
-      });
+      await expect(canonicalCard, 'Visual appointment must be created through the API').toBeVisible(
+        {
+          timeout: 15000
+        }
+      );
 
       await waitForPageSettled(page, {
         contentSelector: '.appointments-cockpit__layout',
@@ -398,11 +405,21 @@ test.describe('Visual Regression — Theme and Responsive Shell', () => {
     });
 
     test('counter sales page', async ({ page }) => {
-      await capturePageVisual(page, '/counter-sales', '.counter-sales-page', 'counter-sales-page-dark.png');
+      await capturePageVisual(
+        page,
+        '/counter-sales',
+        '.counter-sales-page',
+        'counter-sales-page-dark.png'
+      );
     });
 
     test('reception gateway page', async ({ page }) => {
-      await capturePageVisual(page, '/reception', '.reception-gateway-page', 'reception-gateway-page-dark.png');
+      await capturePageVisual(
+        page,
+        '/reception',
+        '.reception-gateway-page',
+        'reception-gateway-page-dark.png'
+      );
     });
 
     test('queue page', async ({ page }) => {
@@ -788,7 +805,9 @@ async function createVisualEncounter(
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to create visual encounter: ${response.status} ${await response.text()}`);
+    throw new Error(
+      `Failed to create visual encounter: ${response.status} ${await response.text()}`
+    );
   }
 
   return (await response.json()) as { id: string };
@@ -805,7 +824,9 @@ async function createVisualBillingEstimate(token: string, encounterId: string): 
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to create visual billing estimate: ${response.status} ${await response.text()}`);
+    throw new Error(
+      `Failed to create visual billing estimate: ${response.status} ${await response.text()}`
+    );
   }
 }
 
@@ -834,7 +855,9 @@ async function createVisualAppointment(
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to create visual appointment: ${response.status} ${await response.text()}`);
+    throw new Error(
+      `Failed to create visual appointment: ${response.status} ${await response.text()}`
+    );
   }
 
   const appointment = (await response.json()) as { id: string };
@@ -876,8 +899,9 @@ async function stubVisualSchedulingOverview(page: Page, appointmentId: string): 
         status: 'active'
       }
     ];
-    const referenceDate = new URL(route.request().url()).searchParams.get('referenceDate')
-      ?? new Date().toISOString().slice(0, 10);
+    const referenceDate =
+      new URL(route.request().url()).searchParams.get('referenceDate') ??
+      new Date().toISOString().slice(0, 10);
     const blocks = professionals.map((professional, index) => ({
       id: `visual-block-${index}`,
       accountId: 'visual-account',
@@ -944,7 +968,10 @@ async function navigateTo(page: Page, route: string): Promise<void> {
   await page.waitForLoadState('networkidle');
 }
 
-async function normalizeVisualText(page: Page, replacements: Record<string, string>): Promise<void> {
+async function normalizeVisualText(
+  page: Page,
+  replacements: Record<string, string>
+): Promise<void> {
   await page.evaluate((entries) => {
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     let node = walker.nextNode();
@@ -1009,16 +1036,19 @@ async function normalizePatientIdentifiers(page: Page): Promise<void> {
 }
 
 async function keepCanonicalTableRows(page: Page, allowedIds: readonly string[]): Promise<void> {
-  await page.evaluate((ids) => {
-    const records = Array.from(document.querySelectorAll('tbody tr, .owner-card, .patient-card'));
-    for (const record of records) {
-      const html = record.innerHTML;
-      const keep = ids.some((id) => html.includes(id));
-      if (!keep) {
-        record.remove();
+  await page.evaluate(
+    (ids) => {
+      const records = Array.from(document.querySelectorAll('tbody tr, .owner-card, .patient-card'));
+      for (const record of records) {
+        const html = record.innerHTML;
+        const keep = ids.some((id) => html.includes(id));
+        if (!keep) {
+          record.remove();
+        }
       }
-    }
-  }, [...allowedIds]);
+    },
+    [...allowedIds]
+  );
 }
 
 async function clearDynamicTableRows(page: Page): Promise<void> {
@@ -1038,14 +1068,24 @@ async function normalizeEmptyState(
       if (!container) return;
 
       const actionHtml = action
-        ? '<button class="secondary small" type="button" style="margin-top:12px;">' + action + '</button>'
+        ? '<button class="secondary small" type="button" style="margin-top:12px;">' +
+          action +
+          '</button>'
         : '';
-      const hintHtml = hint ? '<div class="empty-state-hint" style="margin-top:8px;font-size:0.8rem;color:var(--ink-muted);">' + hint + '</div>' : '';
+      const hintHtml = hint
+        ? '<div class="empty-state-hint" style="margin-top:8px;font-size:0.8rem;color:var(--ink-muted);">' +
+          hint +
+          '</div>'
+        : '';
 
       container.innerHTML =
         '<div class="empty-state" style="padding:56px 20px;">' +
-        '<div class="empty-state-icon" style="font-size:3.25rem;opacity:0.6;">' + icon + '</div>' +
-        '<div class="empty-state-text" style="font-size:1rem;font-weight:600;color:var(--ink);">' + text + '</div>' +
+        '<div class="empty-state-icon" style="font-size:3.25rem;opacity:0.6;">' +
+        icon +
+        '</div>' +
+        '<div class="empty-state-text" style="font-size:1rem;font-weight:600;color:var(--ink);">' +
+        text +
+        '</div>' +
         hintHtml +
         actionHtml +
         '</div>';
@@ -1110,7 +1150,9 @@ async function normalizeBillingOverview(page: Page): Promise<void> {
 
 async function normalizeOwnersTable(page: Page): Promise<void> {
   await page.evaluate(() => {
-    const ownerCards = Array.from(document.querySelectorAll<HTMLElement>('.owners-list-page .owner-card'));
+    const ownerCards = Array.from(
+      document.querySelectorAll<HTMLElement>('.owners-list-page .owner-card')
+    );
     const resultSummary = document.querySelector<HTMLElement>('.owners-list-page__section-head p');
     if (resultSummary) resultSummary.textContent = 'Mostrando 1 - 1 de 1 resultados';
 
@@ -1123,7 +1165,8 @@ async function normalizeOwnersTable(page: Page): Promise<void> {
 
       card.querySelectorAll<HTMLElement>('.fact-row').forEach((fact) => {
         const label = fact.querySelector<HTMLElement>('.fact-row__label')?.textContent?.trim();
-        const value = fact.querySelector<HTMLElement>('.fact-row__label')?.nextElementSibling as HTMLElement | null;
+        const value = fact.querySelector<HTMLElement>('.fact-row__label')
+          ?.nextElementSibling as HTMLElement | null;
         if (!value) return;
 
         const replacementByLabel: Record<string, string> = {
@@ -1143,7 +1186,9 @@ async function normalizeOwnersTable(page: Page): Promise<void> {
       { name: 'Joao Souza', document: 'TUTOR-002', contact: '(11) 97777-2222', status: 'Ativo' }
     ];
 
-    const rows = Array.from(document.querySelectorAll<HTMLTableRowElement>('.owners-list-page tbody tr'));
+    const rows = Array.from(
+      document.querySelectorAll<HTMLTableRowElement>('.owners-list-page tbody tr')
+    );
     rows.forEach((row, index) => {
       const preset = presets[index];
       if (!preset) return;
@@ -1167,7 +1212,9 @@ async function normalizeOwnersTable(page: Page): Promise<void> {
 
 async function normalizePatientsTable(page: Page): Promise<void> {
   await page.evaluate(() => {
-    const patientCards = Array.from(document.querySelectorAll<HTMLElement>('.patients-list-page .patient-card'));
+    const patientCards = Array.from(
+      document.querySelectorAll<HTMLElement>('.patients-list-page .patient-card')
+    );
     patientCards.forEach((card) => {
       const name = card.querySelector<HTMLElement>('.patient-card__name');
       if (name) name.textContent = 'Luna';
@@ -1184,7 +1231,9 @@ async function normalizePatientsTable(page: Page): Promise<void> {
     const featuredMeta = document.querySelector<HTMLElement>('.featured-patient__meta');
     if (featuredMeta) featuredMeta.textContent = 'Canina · SRD · Maria Silva';
 
-    const rows = Array.from(document.querySelectorAll<HTMLTableRowElement>('.patients-list-page tbody tr'));
+    const rows = Array.from(
+      document.querySelectorAll<HTMLTableRowElement>('.patients-list-page tbody tr')
+    );
     rows.forEach((row) => {
       const cells = row.querySelectorAll<HTMLTableCellElement>('td');
       if (cells[0]) cells[0].innerHTML = '<strong>Luna</strong><span class="muted"><br>SRD</span>';
@@ -1224,9 +1273,12 @@ async function stubEmptyCollection(page: Page, path: string): Promise<void> {
     }
 
     const normalizedPath = (value: string) => value.replace(/\/$/, '') || '/';
+    const targetPath = normalizedPath(path);
+    const apiPath = normalizedPath(`/api${targetPath}`);
+    const requestPath = normalizedPath(url.pathname);
     if (
       route.request().method() === 'GET' &&
-      normalizedPath(url.pathname) === normalizedPath(path)
+      (requestPath === targetPath || requestPath === apiPath)
     ) {
       await route.fulfill({
         status: 200,

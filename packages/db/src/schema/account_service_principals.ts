@@ -19,7 +19,9 @@ export const accountServicePrincipals = pgTable(
   {
     id: uuid('id').defaultRandom().primaryKey(),
     accountId: uuid('account_id').notNull(),
-    purpose: varchar('purpose', { length: 64 }).$type<'pix-settlement'>().notNull(),
+    purpose: varchar('purpose', { length: 64 })
+      .$type<'pix-settlement' | 'report-execution'>()
+      .notNull(),
     userId: uuid('user_id').notNull(),
     isActive: boolean('is_active').notNull().default(true),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -45,7 +47,7 @@ export const accountServicePrincipals = pgTable(
     ),
     purposeChk: check(
       'account_service_principals_purpose_chk',
-      sql`${table.purpose} = 'pix-settlement'`
+      sql`${table.purpose} in ('pix-settlement', 'report-execution')`
     )
   })
 );

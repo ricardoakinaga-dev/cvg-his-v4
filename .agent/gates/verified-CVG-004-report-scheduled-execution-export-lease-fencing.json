@@ -1,0 +1,132 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-SCHEDULED-EXECUTION-EXPORT-LEASE-FENCING-VFY-001",
+  "timestamp": "2026-08-30T02:42:31-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-004 scheduled-report execution and export persistence fencing by the schedule lease",
+  "scope_ref": "CVG-004-REPORT-SCHEDULED-EXECUTION-EXPORT-LEASE-FENCING",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "VFY-001",
+      "description": "ReportsService exposes explicit scheduled execution/export capabilities while generic on-demand APIs remain compatible; summary-only legacy schedule claim adapters remain usable.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-EXECUTION-EXPORT-LEASE-FENCING-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-EXECUTION-EXPORT-LEASE-FENCING-REVIEW-001",
+        "packages/modules/reports/src/index.ts",
+        "packages/modules/reports/src/reports.test.ts",
+        "apps/worker/src/jobs/scheduled-report-job.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Tokenless schedule finalization remains intentionally fail-closed; only callers that need summary-only legacy claims retain the old adapter path."
+    },
+    {
+      "id": "VFY-002",
+      "description": "In-memory scheduled execution/export persistence fails closed for stale or invalid claims and updates local artifact maps only after persistence acceptance.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-EXECUTION-EXPORT-LEASE-FENCING-GREEN-001",
+        "packages/modules/reports/src/index.ts",
+        "packages/modules/reports/src/reports.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The proof is repository-local and does not certify distributed clock behavior."
+    },
+    {
+      "id": "VFY-003",
+      "description": "PostgreSQL scheduled execution/export writes require account, schedule, matching active claim token and unexpired lease, serialize the schedule-row check, reject stale writes and refresh deterministic rows for the current holder.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-EXECUTION-EXPORT-LEASE-FENCING-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-EXECUTION-EXPORT-LEASE-FENCING-REGRESSION-001",
+        "tests/integration/database/reports-scheduled-execution-export-lease-fencing-postgres.test.ts",
+        "packages/modules/reports/src/index.ts",
+        "packages/db/migrations/0142_reports_schedule_claims.sql"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The disposable PostgreSQL proof does not certify production topology, target runtime roles or distributed clock quality."
+    },
+    {
+      "id": "VFY-004",
+      "description": "The scheduled worker propagates the schedule capability through execution and export before delivery/finalization; lease loss avoids stale processing while the previously closed delivery-row fence remains intact.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-EXECUTION-EXPORT-LEASE-FENCING-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-DELIVERY-LEASE-FENCING-FINAL-V2-001",
+        "apps/worker/src/jobs/scheduled-report-job.ts",
+        "apps/worker/src/jobs/scheduled-report-job.test.ts",
+        ".agent/gates/verified-CVG-004-report-scheduled-delivery-lease-fencing-v2.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "External provider side effects, retry idempotency and lease renewal remain outside this gate."
+    },
+    {
+      "id": "VFY-005",
+      "description": "TDD, focused and workspace regression evidence passes for ReportsService, worker, PostgreSQL, API, official coverage, full typecheck and full build.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-EXECUTION-EXPORT-LEASE-FENCING-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-EXECUTION-EXPORT-LEASE-FENCING-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-EXECUTION-EXPORT-LEASE-FENCING-REGRESSION-001",
+        ".agent/artifacts/CVG-004-report-scheduled-execution-export-lease-fencing-2026-08-30.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The broad recursive integration invocation was not used as the bounded proof because its wrapper did not accept the file filter; the exact disposable PostgreSQL file and the official coverage/API/workspace commands completed successfully."
+    },
+    {
+      "id": "VFY-006",
+      "description": "Secret, OpenAPI, migration-source, RLS, formatting and diff validators pass; the fresh parity audit keeps parent/global ERP explicitly non-promoted.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-EXECUTION-EXPORT-LEASE-FENCING-QUALITY-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-EXECUTION-EXPORT-LEASE-FENCING-GLOBAL-NON-PROMOTION-001",
+        ".agent/artifacts/CVG-004-report-scheduled-execution-export-lease-fencing-2026-08-30.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Static local checks do not replace external homologation, target operations, production controls, release evidence or global parity proof."
+    },
+    {
+      "id": "VFY-007",
+      "description": "The independent bounded review found no Critical or High issue; the legacy summary adapter and concurrency-proof gaps were addressed, while delivery/retry and target-role observations remain explicit non-claims.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-EXECUTION-EXPORT-LEASE-FENCING-REVIEW-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-EXECUTION-EXPORT-LEASE-FENCING-REGRESSION-001",
+        "packages/modules/reports/src/reports.test.ts",
+        "tests/integration/database/reports-scheduled-execution-export-lease-fencing-postgres.test.ts",
+        ".agent/tasks/CVG-004-report-scheduled-execution-export-lease-fencing.md"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "The review and remediation are bounded to repository-local behavior; provider partial-delivery races, target/RLS-role proof and tokenless finalization compatibility are not certified."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-report-scheduled-execution-export-lease-fencing.md",
+    ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-EXECUTION-EXPORT-LEASE-FENCING-IR-001",
+    ".agent/artifacts/CVG-004-report-scheduled-execution-export-lease-fencing-2026-08-30.md",
+    "packages/modules/reports/src/index.ts",
+    "packages/modules/reports/src/reports.test.ts",
+    "apps/worker/src/jobs/scheduled-report-job.ts",
+    "apps/worker/src/jobs/scheduled-report-job.test.ts",
+    "tests/integration/database/reports-scheduled-execution-export-lease-fencing-postgres.test.ts"
+  ],
+  "confidence": "MEDIUM",
+  "residual_risk": "HIGH",
+  "decision": "PASS_BOUNDED",
+  "implementation_status": "COMPLETE_BOUNDED",
+  "next_action": "Close this bounded execution/export task, reconcile the control plane, then return to fresh residual scouting under a new authority. Keep parent CVG-004/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+  "conditions": [
+    "Do not extend this gate to provider idempotency/cancellation, delivery retry redesign, lease renewal, target-role/RLS proof, production, deployment, release or global ERP without fresh authority.",
+    "Keep the existing delivery-row gate closed and unchanged.",
+    "Keep parent CVG-004/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
+  ],
+  "authority_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-EXECUTION-EXPORT-LEASE-FENCING-IR-001",
+  "supersedes": ".agent/gates/implementation-ready-CVG-004-report-scheduled-execution-export-lease-fencing.json"
+}

@@ -334,6 +334,12 @@ export interface OwnerSummary {
   readonly updatedAt: string;
 }
 
+export interface MasterSearchOwnerResult {
+  readonly id: OwnerId;
+  readonly fullName: string;
+  readonly status: 'active' | 'inactive';
+}
+
 export interface PatientSummary {
   readonly id: PatientId;
   readonly accountId: AccountId;
@@ -860,6 +866,14 @@ export interface SurgeryCaseSummary {
   readonly updatedAt: string;
 }
 
+export interface LaboratoryResultValue {
+  readonly parameter: string;
+  readonly value: string;
+  readonly unit?: string;
+  readonly reference?: string;
+  readonly outOfRange?: boolean;
+}
+
 export interface DiagnosticOrderSummary {
   readonly id: DiagnosticOrderId;
   readonly accountId: AccountId;
@@ -872,6 +886,7 @@ export interface DiagnosticOrderSummary {
   readonly collectedAt?: string;
   readonly collectedByUserId?: string;
   readonly resultSummary?: string;
+  readonly resultValues?: readonly LaboratoryResultValue[];
   readonly resultAttachmentId?: string;
   readonly resultedAt?: string;
   readonly releasedByUserId?: string;

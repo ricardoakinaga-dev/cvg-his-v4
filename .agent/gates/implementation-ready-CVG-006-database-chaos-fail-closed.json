@@ -1,0 +1,87 @@
+{
+  "record_id": "GATE-CVG-006-DATABASE-CHAOS-FAIL-CLOSED-IR-001",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope_ref": "CVG-006-DATABASE-CHAOS-FAIL-CLOSED",
+  "version": 1,
+  "confidence": "HIGH",
+  "residual_risk": "CRITICAL",
+  "decision": "PASS",
+  "next_action": "Write and execute the intentional RED tests, then implement the minimal unavailable persistence state, fail-closed health contract, production-like chaos mutation guard and runbook corrections.",
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The database-chaos safety gap, owner, bounded resources and explicit exclusions are recorded without promoting CVG-006 or global readiness.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-006-DATABASE-CHAOS-FAIL-CLOSED.md",
+        ".agent/tasks/CVG-006.md",
+        ".agent/instruction-scope.md",
+        ".agent/authority.jsonl#AUTH-CVG-006-DATABASE-CHAOS-FAIL-CLOSED-IR-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Only reversible repository changes and local unit/API/static verification are authorized; real database failure, target operations, providers, credentials, deployment and release remain excluded."
+    },
+    {
+      "id": "IR-002",
+      "description": "The current database-failure experiment and operational state explicitly map a simulated database outage to in-memory persistence, while the HTTP chaos mutation surface has no production-like guard.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/chaos/src/experiments/database-failure.ts",
+        "apps/api/src/chaos-operational-state.ts",
+        "apps/api/src/server.ts",
+        "apps/api/src/routes/health-routes.ts",
+        "apps/api/src/metrics.ts",
+        "docs/game-day/README.md",
+        "packages/chaos/src/runbooks/database-failure-runbook.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Bootstrap already refuses in-memory fallback for production-like database initialization; this gate covers the independent chaos-state and HTTP mutation gap."
+    },
+    {
+      "id": "IR-003",
+      "description": "The acceptance contract is testable through pure state, health/metrics/API tests, a production-like rejection case and a static runbook/OpenAPI contract.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-006-DATABASE-CHAOS-FAIL-CLOSED.md",
+        "tests/unit/api/chaos-operational-state.test.ts",
+        "tests/unit/observability/metrics.test.ts",
+        "apps/api/src/server.test.ts",
+        "apps/api/src/health.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Fresh RED/GREEN execution, full regressions and independent review are required before bounded verification."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-006-DATABASE-CHAOS-FAIL-CLOSED.md",
+    "packages/chaos/src/experiments/database-failure.ts",
+    "apps/api/src/chaos-operational-state.ts",
+    "apps/api/src/server.ts",
+    "apps/api/src/routes/health-routes.ts",
+    "apps/api/src/metrics.ts",
+    "docs/game-day/README.md",
+    "packages/chaos/src/runbooks/database-failure-runbook.md"
+  ],
+  "gaps": [
+    "The RED tests, implementation, regressions and independent critique are not complete at gate creation."
+  ],
+  "conditions": [],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via the original consolidation brief",
+    "scope": "CVG-006 bounded database-chaos fail-closed state, health, metrics, HTTP guard and runbook contract",
+    "decision": "Authorize reversible repository implementation and local unit/API/static verification only. Exclude real database failure, target, provider, credentials, production mutation, deployment, external mutation and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-006-DATABASE-CHAOS-FAIL-CLOSED-IR-001",
+    "expires_or_revalidates": "Revalidate before removing local in-memory bootstrap, adding database failover/recovery automation, changing target operations or claiming production readiness."
+  },
+  "revalidation_triggers": [
+    "Changes to bootstrap persistence fallback policy",
+    "Changes to chaos endpoint authorization or experiment registration",
+    "Changes to health or persistence-mode public contracts",
+    "Any real target, database, provider, deployment or release operation"
+  ]
+}

@@ -18,20 +18,38 @@ export interface TenantCommandInput<T> {
   readonly operation: string;
   readonly payload: JsonValue;
   readonly command: () => Promise<T>;
+  /** Runs inside the tenant transaction before idempotency lookup or replay. */
+  readonly beforeIdempotency?: () => Promise<void>;
+  /** Runs after the owned transaction has rolled back so hot caches can be rehydrated. */
+  readonly onRollback?: () => Promise<void>;
+  /** Runs after the owned transaction has committed so hot caches reflect durable state. */
+  readonly onCommit?: () => Promise<void>;
 }
 
 export type TenantCommandRunner = <T>(input: TenantCommandInput<T>) => Promise<T>;
 
+export interface TenantTransactionMetadata {
+  readonly actorUserId: string;
+  readonly correlationId: string;
+}
+
 export function createTenantCommandRunner(options: {
   readonly environment: string;
   readonly unitOfWork?: TenantUnitOfWork;
-  readonly transaction?: <T>(accountId: string, command: () => Promise<T>) => Promise<T>;
+  readonly transaction?: <T>(
+    accountId: string,
+    command: () => Promise<T>,
+    metadata: TenantTransactionMetadata
+  ) => Promise<T>;
 }): TenantCommandRunner {
   return async <T>(input: TenantCommandInput<T>): Promise<T> => {
     // Route-specific wrappers can be used by direct route tests and by the
     // HTTP dispatcher. Once the dispatcher owns the transaction, do not try
     // to acquire a second idempotency record on the same connection.
-    if (getDatabaseTransactionScope()) return input.command();
+    if (getDatabaseTransactionScope()) {
+      await input.beforeIdempotency?.();
+      return input.command();
+    }
 
     const idempotencyKey = input.idempotencyKey ?? readIdempotencyKey(input.request);
     if (idempotencyKey && idempotencyKey.length > 255) {
@@ -41,14 +59,35 @@ export function createTenantCommandRunner(options: {
       throw new ValidationError('Idempotency-Key header is required for mutating commands');
     }
     if (!options.unitOfWork || !idempotencyKey) {
-      if (options.transaction) {
-        return options.transaction(input.accountId, input.command);
+      let result: T;
+      try {
+        if (options.transaction) {
+          result = await options.transaction(
+            input.accountId,
+            async () => {
+              await input.beforeIdempotency?.();
+              return input.command();
+            },
+            {
+              actorUserId: input.actorUserId,
+              correlationId: input.correlationId
+            }
+          );
+        } else {
+          await input.beforeIdempotency?.();
+          result = await input.command();
+        }
+      } catch (error) {
+        await runRollbackRecovery(input);
+        throw error;
       }
-      return input.command();
+      await runCommitRecovery(input);
+      return result;
     }
 
+    let execution: { readonly value: JsonValue; readonly replayed: boolean };
     try {
-      const execution = await options.unitOfWork.execute(
+      execution = await options.unitOfWork.execute(
         {
           accountId: input.accountId,
           actorUserId: input.actorUserId,
@@ -60,10 +99,15 @@ export function createTenantCommandRunner(options: {
         async () => {
           const value = await input.command();
           return (value === undefined ? null : value) as unknown as JsonValue;
-        }
+        },
+        input.beforeIdempotency
+          ? async () => {
+              await input.beforeIdempotency!();
+            }
+          : undefined
       );
-      return execution.value as unknown as T;
     } catch (error) {
+      await runRollbackRecovery(input);
       if (
         error instanceof IdempotencyConflictError ||
         error instanceof IdempotencyInProgressError
@@ -72,7 +116,35 @@ export function createTenantCommandRunner(options: {
       }
       throw error;
     }
+    await runCommitRecovery(input);
+    return execution.value as unknown as T;
   };
+}
+
+async function runRollbackRecovery<T>(input: TenantCommandInput<T>): Promise<void> {
+  if (!input.onRollback) return;
+  try {
+    await input.onRollback();
+  } catch {
+    throw new AppError(
+      'TENANT_COMMAND_RECOVERY_FAILED',
+      'Tenant command recovery failed; privileged access is temporarily unavailable',
+      503
+    );
+  }
+}
+
+async function runCommitRecovery<T>(input: TenantCommandInput<T>): Promise<void> {
+  if (!input.onCommit) return;
+  try {
+    await input.onCommit();
+  } catch {
+    throw new AppError(
+      'TENANT_COMMAND_COMMIT_RECOVERY_FAILED',
+      'Tenant command committed but its authorization state could not be refreshed',
+      503
+    );
+  }
 }
 
 function readIdempotencyKey(request: IncomingMessage): string | undefined {

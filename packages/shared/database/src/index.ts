@@ -48,6 +48,7 @@ export {
   type TransactionalOutboxInput
 } from './tenant-unit-of-work.js';
 export {
+  acquireTenantAuthorizationLock,
   getDatabaseTransactionScope,
   runWithoutDatabaseTransactionScope,
   type DatabaseTransactionScope

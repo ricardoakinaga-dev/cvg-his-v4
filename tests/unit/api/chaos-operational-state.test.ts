@@ -4,7 +4,13 @@ import {
   resolveOperationalRuntimeState,
   type OperationalRuntimeState
 } from '../../../apps/api/src/chaos-operational-state.js';
-import { DATABASE_FAILURE_ID, REDIS_FAILURE_ID, WORKER_FAILURE_ID, API_LATENCY_ID, NETWORK_LATENCY_ID } from '@cvg-his-v2/chaos';
+import {
+  DATABASE_FAILURE_ID,
+  REDIS_FAILURE_ID,
+  WORKER_FAILURE_ID,
+  API_LATENCY_ID,
+  NETWORK_LATENCY_ID
+} from '@cvg-his-v2/chaos';
 import type { AppState } from '../../../apps/api/src/app-state.js';
 
 function createMockAppState(overrides: Partial<AppState> = {}): AppState {
@@ -29,7 +35,8 @@ describe('chaos-operational-state', () => {
       expect(descriptor).toBeDefined();
       expect(descriptor?.runbook.title).toBe('Database Failure Runbook');
       expect(descriptor?.indicators).toContain('app_database_healthy');
-      expect(descriptor?.summary).toContain('in-memory');
+      expect(descriptor?.summary).toContain('unavailable');
+      expect(descriptor?.summary).not.toContain('in-memory');
     });
 
     it('returns descriptor for REDIS_FAILURE_ID', () => {
@@ -104,7 +111,7 @@ describe('chaos-operational-state', () => {
       expect(result.databaseDetail).toContain(DATABASE_FAILURE_ID);
     });
 
-    it('sets persistenceMode to in-memory when DATABASE_FAILURE_ID is active', () => {
+    it('sets persistenceMode to unavailable when DATABASE_FAILURE_ID is active', () => {
       const appState = createMockAppState({
         persistenceMode: 'database'
       });
@@ -114,10 +121,10 @@ describe('chaos-operational-state', () => {
         appState
       });
 
-      expect(result.persistenceMode).toBe('in-memory');
+      expect(result.persistenceMode).toBe('unavailable');
     });
 
-    it('keeps not-initialized persistenceMode when DATABASE_FAILURE_ID is active and mode is not-initialized', () => {
+    it('does not invent a persistence mode before initialization', () => {
       const appState = createMockAppState({
         persistenceMode: 'not-initialized'
       });
@@ -128,6 +135,18 @@ describe('chaos-operational-state', () => {
       });
 
       expect(result.persistenceMode).toBe('not-initialized');
+    });
+
+    it('never advertises in-memory persistence while database failure is active', () => {
+      const result = resolveOperationalRuntimeState({
+        ...baseInput,
+        activeExperimentIds: [DATABASE_FAILURE_ID],
+        appState: createMockAppState({ persistenceMode: 'in-memory' })
+      });
+
+      expect(result.persistenceMode).toBe('unavailable');
+      expect(result.persistenceMode).not.toBe('in-memory');
+      expect(result.productionReady).toBe(false);
     });
 
     it('blocks productionReady when database is degraded', () => {
@@ -223,7 +242,9 @@ describe('chaos-operational-state', () => {
       });
 
       expect(result.rateLimiterMode).toBe('in-memory');
-      expect(result.redisDetail).toBe('Redis configured, but distributed runtime state is disabled.');
+      expect(result.redisDetail).toBe(
+        'Redis configured, but distributed runtime state is disabled.'
+      );
     });
 
     it('fails closed when distributed state is enabled without a redis backend', () => {
@@ -247,7 +268,9 @@ describe('chaos-operational-state', () => {
         appState
       });
 
-      expect(result.redisDetail).toBe('Redis configured, but distributed runtime state is disabled.');
+      expect(result.redisDetail).toBe(
+        'Redis configured, but distributed runtime state is disabled.'
+      );
     });
 
     it('combines multiple experiment effects correctly', () => {
@@ -265,7 +288,7 @@ describe('chaos-operational-state', () => {
       expect(result.databaseHealthy).toBe(false);
       expect(result.workerReady).toBe(false);
       expect(result.productionReady).toBe(false);
-      expect(result.persistenceMode).toBe('in-memory');
+      expect(result.persistenceMode).toBe('unavailable');
     });
 
     it('returns activeExperimentIds in result', () => {

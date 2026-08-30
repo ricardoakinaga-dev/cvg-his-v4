@@ -17,7 +17,10 @@ import { readJsonBody, readJsonBodyOrEmpty } from '../helpers/common.js';
 export interface PrescriptionRoutesHandlers {
   prescriptions: PrescriptionsService;
   audit: AuditService;
-  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
+  requirePrincipal: (
+    request: IncomingMessage,
+    permissionCode: string
+  ) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
 }
 
 function json(response: ServerResponse, statusCode: number, payload: unknown): true {
@@ -51,7 +54,7 @@ export async function handlePrescriptionRoutes(
 
   const documentMatch = pathname.match(/^\/prescriptions\/([^/]+)\/document$/);
   if (documentMatch && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'prescriptions.read');
+    const principal = await requirePrincipal(request, 'prescriptions.read');
     const prescriptionId = requireNonEmptyString(documentMatch[1], 'prescriptionId');
     getOwnedPrescription(prescriptionId, principal.user.accountId);
     const payload = await readJsonBody(request);
@@ -74,16 +77,25 @@ export async function handlePrescriptionRoutes(
 
   // GET /prescriptions
   if (pathname === '/prescriptions' && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'prescriptions.read');
+    const principal = await requirePrincipal(request, 'prescriptions.read');
     const url = new URL(request.url ?? pathname, 'http://localhost');
-    const patientId = url.searchParams.get('patientId') ?? undefined;
-    const encounterId = url.searchParams.get('encounterId') ?? undefined;
+    const patientIdParam = url.searchParams.get('patientId');
+    const encounterIdParam = url.searchParams.get('encounterId');
+    const patientId =
+      patientIdParam === null ? undefined : requireNonEmptyString(patientIdParam, 'patientId');
+    const encounterId =
+      encounterIdParam === null
+        ? undefined
+        : requireNonEmptyString(encounterIdParam, 'encounterId');
 
     let items;
     if (encounterId) {
-      items = prescriptions.listByEncounter(encounterId as never);
+      items = prescriptions.listByEncounter(
+        encounterId as never,
+        principal.user.accountId as never
+      );
     } else if (patientId) {
-      items = prescriptions.listByPatient(patientId as never);
+      items = prescriptions.listByPatient(patientId as never, principal.user.accountId as never);
     } else {
       items = prescriptions.listByAccount(principal.user.accountId as never);
     }
@@ -105,7 +117,7 @@ export async function handlePrescriptionRoutes(
 
   // POST /prescriptions
   if (pathname === '/prescriptions' && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'prescriptions.write');
+    const principal = await requirePrincipal(request, 'prescriptions.write');
     const payload = (await readJsonBody(request)) as CreatePrescriptionRequest;
     const rx = prescriptions.create(principal.user.accountId, principal.user.id, payload);
     await prescriptions.waitForPersistence();
@@ -128,7 +140,7 @@ export async function handlePrescriptionRoutes(
   const idMatch = pathname.match(/^\/prescriptions\/([^/]+)$/);
   const signMatch = pathname.match(/^\/prescriptions\/([^/]+)\/sign$/);
   if (signMatch && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'prescriptions.write');
+    const principal = await requirePrincipal(request, 'prescriptions.write');
     const prescriptionId = requireNonEmptyString(signMatch[1], 'prescriptionId');
     getOwnedPrescription(prescriptionId, principal.user.accountId);
     const payload = (await readJsonBodyOrEmpty(request)) as { expectedVersion?: number };
@@ -153,7 +165,7 @@ export async function handlePrescriptionRoutes(
   }
   const revisionsMatch = pathname.match(/^\/prescriptions\/([^/]+)\/revisions$/);
   if (revisionsMatch && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'prescriptions.read');
+    const principal = await requirePrincipal(request, 'prescriptions.read');
     const prescriptionId = requireNonEmptyString(revisionsMatch[1], 'prescriptionId');
     getOwnedPrescription(prescriptionId, principal.user.accountId);
     return json(response, 200, {
@@ -165,7 +177,7 @@ export async function handlePrescriptionRoutes(
 
     // GET /prescriptions/:id
     if (request.method === 'GET') {
-      const principal = requirePrincipal(request, 'prescriptions.read');
+      const principal = await requirePrincipal(request, 'prescriptions.read');
       const rx = getOwnedPrescription(prescriptionId, principal.user.accountId);
 
       appendAudit(audit, {
@@ -185,7 +197,7 @@ export async function handlePrescriptionRoutes(
 
     // PATCH /prescriptions/:id
     if (request.method === 'PATCH') {
-      const principal = requirePrincipal(request, 'prescriptions.write');
+      const principal = await requirePrincipal(request, 'prescriptions.write');
       getOwnedPrescription(prescriptionId, principal.user.accountId);
       const payload = (await readJsonBody(request)) as UpdatePrescriptionRequest;
       const rx = prescriptions.update(prescriptionId as never, principal.user.id, payload);
@@ -208,7 +220,7 @@ export async function handlePrescriptionRoutes(
 
     // DELETE /prescriptions/:id
     if (request.method === 'DELETE') {
-      const principal = requirePrincipal(request, 'prescriptions.write');
+      const principal = await requirePrincipal(request, 'prescriptions.write');
       getOwnedPrescription(prescriptionId, principal.user.accountId);
       const payload = (await readJsonBody(request)) as ArchivePrescriptionRequest;
       const rx = prescriptions.archive(prescriptionId as never, principal.user.id, payload);

@@ -31,6 +31,22 @@ export const createCounterSaleBodySchema = z.object({
   notes: z.string().max(2000).transform(trim).optional().nullable()
 });
 
+export const cancelCounterSaleBodySchema = z
+  .object({
+    reason: z
+      .string()
+      .refine((value) => !/[\u0000-\u001f\u007f-\u009f]/u.test(value), {
+        message: 'reason cannot contain control characters'
+      })
+      .transform(trim)
+      .pipe(z.string().min(1).max(500))
+  })
+  .strict();
+
+export const counterSaleCancellationHeadersSchema = z.object({
+  'idempotency-key': z.string().trim().min(1).max(255)
+});
+
 export const counterSaleResponseSchema = z.object({
   id: uuidSchema,
   accountId: uuidSchema,
@@ -50,6 +66,28 @@ export const counterSaleResponseSchema = z.object({
   updatedAt: z.coerce.date()
 });
 
+export const counterSaleCancellationHistoryResponseSchema = z.object({
+  eventId: uuidSchema,
+  accountId: uuidSchema,
+  counterSaleId: uuidSchema,
+  cancelledByUserId: uuidSchema,
+  cancelledAt: z.coerce.date(),
+  reason: z
+    .string()
+    .refine((value) => !/[\u0000-\u001f\u007f-\u009f]/u.test(value), {
+      message: 'reason cannot contain control characters'
+    })
+    .pipe(z.string().min(1).max(500)),
+  correlationId: z.string().min(1).max(255)
+});
+
+export const counterSaleDetailResponseSchema = counterSaleResponseSchema.extend({
+  items: z.array(z.unknown()),
+  payments: z.array(z.unknown()),
+  receipt: z.unknown().nullable(),
+  cancellationHistory: z.array(counterSaleCancellationHistoryResponseSchema)
+});
+
 export const listCounterSalesQuerySchema = paginationQuerySchema.merge(searchQuerySchema).merge(
   z.object({
     status: counterSaleStatusSchema.optional(),
@@ -61,7 +99,9 @@ export const listCounterSalesResponseSchema =
   createPaginatedResponseSchema(counterSaleResponseSchema);
 
 export type CreateCounterSaleBody = z.infer<typeof createCounterSaleBodySchema>;
+export type CancelCounterSaleBody = z.infer<typeof cancelCounterSaleBodySchema>;
 export type CounterSaleResponse = z.infer<typeof counterSaleResponseSchema>;
+export type CounterSaleDetailResponse = z.infer<typeof counterSaleDetailResponseSchema>;
 export type ListCounterSalesQuery = z.infer<typeof listCounterSalesQuerySchema>;
 export type ListCounterSalesResponse = z.infer<typeof listCounterSalesResponseSchema>;
 
@@ -149,7 +189,7 @@ export const counterSalesContract = {
     method: 'GET' as const,
     path: '/counter-sales/:id',
     params: idParamSchema,
-    responses: { 200: counterSaleResponseSchema }
+    responses: { 200: counterSaleDetailResponseSchema }
   },
   list: {
     method: 'GET' as const,
@@ -167,6 +207,8 @@ export const counterSalesContract = {
     method: 'POST' as const,
     path: '/counter-sales/:id/cancel',
     params: idParamSchema,
+    headers: counterSaleCancellationHeadersSchema,
+    body: cancelCounterSaleBodySchema,
     responses: { 200: counterSaleResponseSchema }
   },
   reopen: {

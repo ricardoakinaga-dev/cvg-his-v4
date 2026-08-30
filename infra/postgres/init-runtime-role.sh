@@ -45,6 +45,7 @@ provision_role() {
   psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" \
     --set=runtime_user="$role_name" \
     --set=runtime_password="$role_password" \
+    --set=worker_user="$POSTGRES_WORKER_USER" \
     --set=db_name="$POSTGRES_DB" <<'SQL'
 SELECT format(
   'CREATE ROLE %I LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS PASSWORD %L',
@@ -92,6 +93,17 @@ JOIN pg_namespace AS namespace ON namespace.oid = class.relnamespace
 WHERE namespace.nspname = 'public'
   AND class.relkind IN ('r', 'p')
   AND class.relrowsecurity
+\gexec
+
+-- Provider ingress is an append-only ledger. Runtime roles may insert rows
+-- and update workflow fields guarded by the database trigger, but cannot
+-- delete historical provider facts or truncate the ledger.
+SELECT format(
+  'REVOKE DELETE, TRUNCATE ON TABLE public.%I FROM %I',
+  'laboratory_result_imports',
+  :'runtime_user'
+)
+WHERE to_regclass('public.laboratory_result_imports') IS NOT NULL;
 \gexec
 
 -- Installer/governance mutations stay API/installer-only; the worker keeps
@@ -169,6 +181,22 @@ JOIN pg_namespace AS namespace ON namespace.oid = procedure.pronamespace
 WHERE namespace.nspname = 'app'
   AND procedure.proname = 'assert_encounter_cash_receipt_consistent'
   AND pg_catalog.oidvectortypes(procedure.proargtypes) = 'uuid, boolean'
+\gexec
+
+SELECT format('GRANT EXECUTE ON FUNCTION %s TO %I', procedure.oid::regprocedure, :'runtime_user')
+FROM pg_proc AS procedure
+JOIN pg_namespace AS namespace ON namespace.oid = procedure.pronamespace
+WHERE namespace.nspname = 'app'
+  AND procedure.proname = 'assert_encounter_non_cash_receipt_consistent'
+  AND pg_catalog.oidvectortypes(procedure.proargtypes) = 'uuid'
+\gexec
+
+SELECT format('GRANT EXECUTE ON FUNCTION %s TO %I', procedure.oid::regprocedure, :'runtime_user')
+FROM pg_proc AS procedure
+JOIN pg_namespace AS namespace ON namespace.oid = procedure.pronamespace
+WHERE namespace.nspname = 'app'
+  AND procedure.proname = 'assert_one_active_encounter_cash_receipt'
+  AND pg_catalog.oidvectortypes(procedure.proargtypes) = 'uuid, uuid'
 \gexec
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 SQL
@@ -252,6 +280,8 @@ FROM (
     ('sessions'),
     ('mfa_credentials'),
     ('auth_mfa_login_challenges'),
+    ('auth_webauthn_credentials'),
+    ('auth_webauthn_challenges'),
     ('api_keys'),
     ('api_key_usage'),
     ('api_key_rate_limits')
@@ -269,6 +299,8 @@ FROM (
     ('sessions', 'SELECT, INSERT, UPDATE, DELETE'),
     ('mfa_credentials', 'SELECT, INSERT, UPDATE, DELETE'),
     ('auth_mfa_login_challenges', 'SELECT, INSERT, UPDATE'),
+    ('auth_webauthn_credentials', 'SELECT, INSERT, UPDATE, DELETE'),
+    ('auth_webauthn_challenges', 'SELECT, INSERT, UPDATE'),
     ('api_keys', 'SELECT, INSERT, UPDATE, DELETE'),
     ('api_key_usage', 'SELECT, INSERT'),
     ('api_key_rate_limits', 'SELECT, INSERT, UPDATE')
@@ -287,7 +319,7 @@ WHERE to_regclass('public.users') IS NOT NULL
   AND EXISTS (
     SELECT 1
     FROM pg_attribute
-    WHERE attrelid = 'public.users'::regclass
+    WHERE attrelid = to_regclass('public.users')
       AND attname IN ('principal_kind', 'interactive_login_enabled')
     GROUP BY attrelid
     HAVING count(*) = 2

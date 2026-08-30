@@ -14,6 +14,37 @@ import type {
 } from '@cvg-his-v2/shared-types';
 import { requireAccountId } from '@cvg-his-v2/tenant-context';
 
+const ACTIVE_ENCOUNTER_UNIQUE_CONSTRAINT = 'uidx_encounters_one_active_per_patient';
+
+function isActiveEncounterUniqueViolation(error: unknown, seen = new Set<object>()): boolean {
+  if (typeof error !== 'object' || error === null || seen.has(error)) {
+    return false;
+  }
+  seen.add(error);
+
+  const databaseError = error as {
+    readonly code?: unknown;
+    readonly constraint?: unknown;
+    readonly cause?: unknown;
+  };
+  if (
+    databaseError.code === '23505' &&
+    databaseError.constraint === ACTIVE_ENCOUNTER_UNIQUE_CONSTRAINT
+  ) {
+    return true;
+  }
+
+  return isActiveEncounterUniqueViolation(databaseError.cause, seen);
+}
+
+function mapEncounterPersistenceError(error: unknown, patientId: PatientId): unknown {
+  if (isActiveEncounterUniqueViolation(error)) {
+    return new ConflictError('Patient already has an active encounter', { patientId });
+  }
+
+  return error;
+}
+
 export interface EncounterRepository {
   create(encounter: EncounterSummary): Promise<void>;
   update(encounter: EncounterSummary): Promise<void>;
@@ -42,45 +73,49 @@ export class DatabaseEncounterRepository implements EncounterRepository {
     if (encounter.accountId !== accountId) {
       throw new Error('Encounter account does not match tenant context');
     }
-    const result = await this.#db.execute(sql`
-      INSERT INTO encounters (
-        id, account_id, owner_id, patient_id, status, opened_by_user_id,
-        closed_by_user_id, opened_at, closed_at, close_reason, reason,
-        created_at, updated_at
-      )
-      SELECT
-        ${encounter.id},
-        ${encounter.accountId},
-        ${encounter.ownerId},
-        ${encounter.patientId},
-        ${encounter.status === 'closed' ? 'closed' : 'open'},
-        ${encounter.createdByUserId},
-        ${encounter.status === 'closed' ? encounter.createdByUserId : null},
-        ${new Date(encounter.openedAt)},
-        ${encounter.closedAt ? new Date(encounter.closedAt) : null},
-        ${encounter.closeReason ?? null},
-        ${encounter.reason},
-        ${new Date(encounter.openedAt)},
-        ${new Date(encounter.updatedAt)}
-      WHERE ${sql`EXISTS (
-        SELECT 1 FROM owners owner_record
-         WHERE owner_record.id = ${encounter.ownerId}
-           AND owner_record.account_id = ${accountId}
-           AND COALESCE(owner_record.address_json ->> 'status', 'active') = 'active'
-      )`}
-        AND ${sql`EXISTS (
-        SELECT 1 FROM patients patient_record
-         WHERE patient_record.id = ${encounter.patientId}
-           AND patient_record.account_id = ${accountId}
-           AND COALESCE(patient_record.alerts_json ->> 'status', 'active') = 'active'
-      )`}
-      RETURNING id
-    `);
-    if (result.rowCount !== 1) {
-      throw new ConflictError('Cannot open an encounter for an inactive owner or patient', {
-        ownerId: encounter.ownerId,
-        patientId: encounter.patientId
-      });
+    try {
+      const result = await this.#db.execute(sql`
+        INSERT INTO encounters (
+          id, account_id, owner_id, patient_id, status, opened_by_user_id,
+          closed_by_user_id, opened_at, closed_at, close_reason, reason,
+          created_at, updated_at
+        )
+        SELECT
+          ${encounter.id},
+          ${encounter.accountId},
+          ${encounter.ownerId},
+          ${encounter.patientId},
+          ${encounter.status === 'closed' ? 'closed' : 'open'},
+          ${encounter.createdByUserId},
+          ${encounter.status === 'closed' ? encounter.createdByUserId : null},
+          ${new Date(encounter.openedAt)},
+          ${encounter.closedAt ? new Date(encounter.closedAt) : null},
+          ${encounter.closeReason ?? null},
+          ${encounter.reason},
+          ${new Date(encounter.openedAt)},
+          ${new Date(encounter.updatedAt)}
+        WHERE ${sql`EXISTS (
+          SELECT 1 FROM owners owner_record
+           WHERE owner_record.id = ${encounter.ownerId}
+             AND owner_record.account_id = ${accountId}
+             AND COALESCE(owner_record.address_json ->> 'status', 'active') = 'active'
+        )`}
+          AND ${sql`EXISTS (
+          SELECT 1 FROM patients patient_record
+           WHERE patient_record.id = ${encounter.patientId}
+             AND patient_record.account_id = ${accountId}
+             AND COALESCE(patient_record.alerts_json ->> 'status', 'active') = 'active'
+        )`}
+        RETURNING id
+      `);
+      if (result.rowCount !== 1) {
+        throw new ConflictError('Cannot open an encounter for an inactive owner or patient', {
+          ownerId: encounter.ownerId,
+          patientId: encounter.patientId
+        });
+      }
+    } catch (error) {
+      throw mapEncounterPersistenceError(error, encounter.patientId);
     }
   }
 
@@ -89,17 +124,21 @@ export class DatabaseEncounterRepository implements EncounterRepository {
     if (encounter.accountId !== accountId) {
       throw new Error('Encounter account does not match tenant context');
     }
-    await this.#db
-      .update(encounters)
-      .set({
-        status: encounter.status === 'closed' ? 'closed' : 'open',
-        closedByUserId: encounter.status === 'closed' ? encounter.createdByUserId : null,
-        closedAt: encounter.closedAt ? new Date(encounter.closedAt) : null,
-        closeReason: encounter.closeReason ?? null,
-        reason: encounter.reason,
-        updatedAt: new Date(encounter.updatedAt)
-      })
-      .where(and(eq(encounters.id, encounter.id), eq(encounters.accountId, accountId)));
+    try {
+      await this.#db
+        .update(encounters)
+        .set({
+          status: encounter.status === 'closed' ? 'closed' : 'open',
+          closedByUserId: encounter.status === 'closed' ? encounter.createdByUserId : null,
+          closedAt: encounter.closedAt ? new Date(encounter.closedAt) : null,
+          closeReason: encounter.closeReason ?? null,
+          reason: encounter.reason,
+          updatedAt: new Date(encounter.updatedAt)
+        })
+        .where(and(eq(encounters.id, encounter.id), eq(encounters.accountId, accountId)));
+    } catch (error) {
+      throw mapEncounterPersistenceError(error, encounter.patientId);
+    }
   }
 
   public async updateForReopen(encounter: EncounterSummary): Promise<void> {
@@ -108,36 +147,40 @@ export class DatabaseEncounterRepository implements EncounterRepository {
       throw new Error('Encounter account does not match tenant context');
     }
 
-    const result = await this.#db.execute(sql`
-      UPDATE encounters
-         SET status = 'open',
-             closed_by_user_id = NULL,
-             closed_at = NULL,
-             close_reason = NULL,
-             reason = ${encounter.reason},
-             updated_at = ${new Date(encounter.updatedAt)}
-       WHERE id = ${encounter.id}
-         AND account_id = ${accountId}
-         AND EXISTS (
-           SELECT 1 FROM owners owner_record
-            WHERE owner_record.id = ${encounter.ownerId}
-              AND owner_record.account_id = ${accountId}
-              AND COALESCE(owner_record.address_json ->> 'status', 'active') = 'active'
-         )
-         AND EXISTS (
-           SELECT 1 FROM patients patient_record
-            WHERE patient_record.id = ${encounter.patientId}
-              AND patient_record.account_id = ${accountId}
-              AND COALESCE(patient_record.alerts_json ->> 'status', 'active') = 'active'
-         )
-       RETURNING id
-    `);
-    if (result.rowCount !== 1) {
-      throw new ConflictError('Cannot reopen an encounter for an inactive owner or patient', {
-        ownerId: encounter.ownerId,
-        patientId: encounter.patientId,
-        encounterId: encounter.id
-      });
+    try {
+      const result = await this.#db.execute(sql`
+        UPDATE encounters
+           SET status = 'open',
+               closed_by_user_id = NULL,
+               closed_at = NULL,
+               close_reason = NULL,
+               reason = ${encounter.reason},
+               updated_at = ${new Date(encounter.updatedAt)}
+         WHERE id = ${encounter.id}
+           AND account_id = ${accountId}
+           AND EXISTS (
+             SELECT 1 FROM owners owner_record
+              WHERE owner_record.id = ${encounter.ownerId}
+                AND owner_record.account_id = ${accountId}
+                AND COALESCE(owner_record.address_json ->> 'status', 'active') = 'active'
+           )
+           AND EXISTS (
+             SELECT 1 FROM patients patient_record
+              WHERE patient_record.id = ${encounter.patientId}
+                AND patient_record.account_id = ${accountId}
+                AND COALESCE(patient_record.alerts_json ->> 'status', 'active') = 'active'
+           )
+         RETURNING id
+      `);
+      if (result.rowCount !== 1) {
+        throw new ConflictError('Cannot reopen an encounter for an inactive owner or patient', {
+          ownerId: encounter.ownerId,
+          patientId: encounter.patientId,
+          encounterId: encounter.id
+        });
+      }
+    } catch (error) {
+      throw mapEncounterPersistenceError(error, encounter.patientId);
     }
   }
 

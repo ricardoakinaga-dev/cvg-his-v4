@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import { index, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 import { accounts } from './accounts.js';
@@ -37,6 +38,9 @@ export const encounters = pgTable(
       table.accountId,
       table.id
     ),
+    activePatientUnique: uniqueIndex('uidx_encounters_one_active_per_patient')
+      .on(table.accountId, table.patientId)
+      .where(sql`${table.status} <> 'closed'`),
     patientIdIdx: index('idx_encounters_patient_id').on(table.patientId),
     accountStatusIdx: index('idx_encounters_account_status').on(table.accountId, table.status)
   })

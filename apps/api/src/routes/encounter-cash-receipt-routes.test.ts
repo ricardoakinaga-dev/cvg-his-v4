@@ -88,14 +88,21 @@ function principal(): AuthenticatedPrincipal {
       refreshExpiresAt: now,
       active: true
     },
-    access: { roleCodes: ['finance'], permissionCodes: ['billing.read', 'billing.manage'], capabilities: [] }
+    access: {
+      roleCodes: ['finance'],
+      permissionCodes: ['billing.read', 'billing.manage'],
+      capabilities: []
+    }
   };
 }
 
-function postRequest(includeIdempotencyKey = true, body: unknown = {
-  cashRegisterId: registerId,
-  expectedAmount: 125.5
-}): never {
+function postRequest(
+  includeIdempotencyKey = true,
+  body: unknown = {
+    cashRegisterId: registerId,
+    expectedAmount: 125.5
+  }
+): never {
   return {
     method: 'POST',
     headers: includeIdempotencyKey ? { 'idempotency-key': 'receipt-request-1' } : {},
@@ -137,7 +144,10 @@ test('cash receipt POST requires idempotency and creates the receipt through the
 
   assert.equal(handled, true);
   assert.equal(response.statusCode, 201);
-  assert.equal(response.headers.get('location'), `/encounters/${encounterId}/cash-receipts/${receiptId}`);
+  assert.equal(
+    response.headers.get('location'),
+    `/encounters/${encounterId}/cash-receipts/${receiptId}`
+  );
   assert.deepEqual(response.bodyJson(), receipt);
   assert.equal(calls[0], 'billing.manage');
   assert.deepEqual(calls[1], {
@@ -196,36 +206,47 @@ test('cash receipt POST executes the command through the tenant transaction runn
 test('cash receipt POST rejects requests without an idempotency key before execution', async () => {
   let executed = false;
   await assert.rejects(
-    () => handleEncounterCashReceiptRoutes(
-      `/encounters/${encounterId}/cash-receipts`,
-      postRequest(false),
-      new MockResponse() as never,
-      {
-        ...auditHandlers(),
-        command: { execute: async () => { executed = true; return receipt; } } as never,
-        repository: {} as never,
-        requirePrincipal: () => principal()
-      }
-    ),
+    () =>
+      handleEncounterCashReceiptRoutes(
+        `/encounters/${encounterId}/cash-receipts`,
+        postRequest(false),
+        new MockResponse() as never,
+        {
+          ...auditHandlers(),
+          command: {
+            execute: async () => {
+              executed = true;
+              return receipt;
+            }
+          } as never,
+          repository: {} as never,
+          requirePrincipal: () => principal()
+        }
+      ),
     ValidationError
   );
   assert.equal(executed, false);
 });
 
 test('cash receipt POST rejects non-object and unknown input fields at the boundary', async () => {
-  for (const body of [null, [], { cashRegisterId: registerId, expectedAmount: 125.5, method: 'pix' }]) {
+  for (const body of [
+    null,
+    [],
+    { cashRegisterId: registerId, expectedAmount: 125.5, method: 'pix' }
+  ]) {
     await assert.rejects(
-      () => handleEncounterCashReceiptRoutes(
-        `/encounters/${encounterId}/cash-receipts`,
-        postRequest(true, body),
-        new MockResponse() as never,
-        {
-          ...auditHandlers(),
-          command: { execute: async () => receipt } as never,
-          repository: {} as never,
-          requirePrincipal: () => principal()
-        }
-      ),
+      () =>
+        handleEncounterCashReceiptRoutes(
+          `/encounters/${encounterId}/cash-receipts`,
+          postRequest(true, body),
+          new MockResponse() as never,
+          {
+            ...auditHandlers(),
+            command: { execute: async () => receipt } as never,
+            repository: {} as never,
+            requirePrincipal: () => principal()
+          }
+        ),
       ValidationError
     );
   }
@@ -234,28 +255,30 @@ test('cash receipt POST rejects non-object and unknown input fields at the bound
 test('cash receipt GET is tenant scoped and does not reveal a missing receipt', async () => {
   const calls: unknown[] = [];
   await assert.rejects(
-    () => handleEncounterCashReceiptRoutes(
-      `/encounters/${encounterId}/cash-receipts/${receiptId}`,
-      { method: 'GET', headers: {} } as never,
-      new MockResponse() as never,
-      {
-        ...auditHandlers(),
-        command: {} as never,
-        repository: {
-          async findById(...args: [string, string, string]) {
-            calls.push(args);
-            return null;
+    () =>
+      handleEncounterCashReceiptRoutes(
+        `/encounters/${encounterId}/cash-receipts/${receiptId}`,
+        { method: 'GET', headers: {} } as never,
+        new MockResponse() as never,
+        {
+          ...auditHandlers(),
+          command: {} as never,
+          repository: {
+            async findById(...args: [string, string, string]) {
+              calls.push(args);
+              return null;
+            }
+          } as never,
+          requirePrincipal(_request, permissionCode) {
+            calls.push(permissionCode);
+            return principal();
           }
-        } as never,
-        requirePrincipal(_request, permissionCode) {
-          calls.push(permissionCode);
-          return principal();
         }
-      }
-    ),
-    (error: unknown) => error instanceof AppError
-      && error.code === 'CASH_RECEIPT_NOT_FOUND'
-      && error.statusCode === 404
+      ),
+    (error: unknown) =>
+      error instanceof AppError &&
+      error.code === 'CASH_RECEIPT_NOT_FOUND' &&
+      error.statusCode === 404
   );
 
   assert.deepEqual(calls, ['billing.read', [accountId, encounterId, receiptId]]);
@@ -297,20 +320,109 @@ test('cash receipt GET collection recovers the unique receipt by encounter', asy
 
 test('received encounters require an explicit reversal before reopen or delete operations', async () => {
   await assert.rejects(
-    () => assertEncounterHasNoCashReceipt(
-      { findByEncounter: async () => receipt } as never,
+    () =>
+      assertEncounterHasNoCashReceipt(
+        { findByEncounter: async () => receipt } as never,
+        accountId,
+        encounterId
+      ),
+    (error: unknown) =>
+      error instanceof AppError &&
+      error.code === 'CASH_RECEIPT_REVERSAL_REQUIRED' &&
+      error.statusCode === 409
+  );
+  await assert.doesNotReject(() =>
+    assertEncounterHasNoCashReceipt(
+      { findByEncounter: async () => null } as never,
       accountId,
       encounterId
-    ),
-    (error: unknown) => error instanceof AppError
-      && error.code === 'CASH_RECEIPT_REVERSAL_REQUIRED'
-      && error.statusCode === 409
+    )
   );
-  await assert.doesNotReject(() => assertEncounterHasNoCashReceipt(
-    { findByEncounter: async () => null } as never,
+});
+
+test('cash receipt reversal POST requires billing.manage, idempotency and delegates the tenant account', async () => {
+  const calls: unknown[] = [];
+  const response = new MockResponse();
+  const reversal = {
+    id: '00000000-0000-0000-0000-000000000011',
     accountId,
-    encounterId
-  ));
+    receiptId,
+    encounterId,
+    amount: 125.5,
+    currency: 'BRL',
+    reason: 'Correção de caixa'
+  };
+  const handled = await handleEncounterCashReceiptRoutes(
+    `/encounters/${encounterId}/cash-receipts/${receiptId}/reverse`,
+    {
+      method: 'POST',
+      headers: { 'idempotency-key': 'reversal-request-1' },
+      [Symbol.asyncIterator]: async function* () {
+        yield Buffer.from(JSON.stringify({ reason: '  Correção de caixa  ' }));
+      }
+    } as never,
+    response as never,
+    {
+      ...auditHandlers(),
+      command: {} as never,
+      reversalCommand: {
+        async execute(input: unknown) {
+          calls.push(input);
+          return reversal;
+        }
+      } as never,
+      repository: {} as never,
+      requirePrincipal(_request, permissionCode) {
+        calls.push(permissionCode);
+        return principal();
+      }
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 201);
+  assert.deepEqual(response.bodyJson(), reversal);
+  assert.deepEqual(calls, [
+    'billing.manage',
+    { accountId, encounterId, receiptId, actorUserId, reason: 'Correção de caixa' }
+  ]);
+});
+
+test('cash receipt reversal POST rejects missing idempotency and unknown fields before execution', async () => {
+  for (const [headers, body] of [
+    [{}, { reason: 'Correção' }],
+    [{ 'idempotency-key': 'reversal-request-1' }, { reason: 'Correção', amount: 1 }]
+  ] as const) {
+    let executed = false;
+    await assert.rejects(
+      () =>
+        handleEncounterCashReceiptRoutes(
+          `/encounters/${encounterId}/cash-receipts/${receiptId}/reverse`,
+          {
+            method: 'POST',
+            headers,
+            [Symbol.asyncIterator]: async function* () {
+              yield Buffer.from(JSON.stringify(body));
+            }
+          } as never,
+          new MockResponse() as never,
+          {
+            ...auditHandlers(),
+            command: {} as never,
+            reversalCommand: {
+              execute: async () => {
+                executed = true;
+                return {};
+              }
+            } as never,
+            repository: {} as never,
+            requirePrincipal: () => principal()
+          }
+        ),
+      ValidationError
+    );
+    assert.equal(executed, false);
+  }
 });
 
 test('unrelated routes are ignored', async () => {

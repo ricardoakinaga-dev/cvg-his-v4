@@ -23,6 +23,8 @@ import type {
 } from '@cvg-his-v2/shared-types';
 import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
 import { requireEnum, requirePositiveNumber } from '@cvg-his-v2/shared-validation';
+import { getTenantContext } from '@cvg-his-v2/tenant-context';
+import type { InventoryStockMovementReportSourceRow } from './repositories/database-inventory.repository.js';
 
 function createSeedItems(): InventoryItemSummary[] {
   const createdAt = '2026-03-25T00:00:00.000Z';
@@ -205,9 +207,11 @@ function buildLotsForItem(item: InventoryItemSummary): InventoryLotSummary[] {
   ];
 }
 
-import type {
-  InventoryLotReservationUpdate,
-  InventoryRepository
+import {
+  MAX_INVENTORY_ITEM_READ_ROWS,
+  type InventoryItemListFilters,
+  type InventoryLotReservationUpdate,
+  type InventoryRepository
 } from './repositories/database-inventory.repository.js';
 
 export interface InventoryServiceOptions {
@@ -232,6 +236,115 @@ export interface InventoryTransferRequest {
   readonly fromLocation: string;
   readonly toLocation: string;
   readonly reference?: string | null;
+}
+
+export interface InventoryStockMovementReportRow {
+  readonly movement: InventoryStockMovementSummary;
+  readonly sku: string;
+  readonly name: string;
+  readonly unit: string;
+}
+
+function normalizePersistedItemFilters(
+  filters: InventoryItemListFilters
+): InventoryItemListFilters {
+  const search = filters.search?.trim();
+  if (search && search.length > 200) {
+    throw new ValidationError('Inventory item search must have at most 200 characters', {
+      search
+    });
+  }
+
+  const normalizeDate = (value: string | undefined, field: string): string | undefined => {
+    if (value === undefined || value === '') return undefined;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      throw new ValidationError(`${field} must be an ISO calendar date`, { value });
+    }
+    const date = new Date(`${value}T00:00:00.000Z`);
+    if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) {
+      throw new ValidationError(`${field} must be an ISO calendar date`, { value });
+    }
+    return value;
+  };
+
+  const dateFrom = normalizeDate(filters.dateFrom, 'dateFrom');
+  const dateTo = normalizeDate(filters.dateTo, 'dateTo');
+  if (dateFrom && dateTo && dateFrom > dateTo) {
+    throw new ValidationError('dateFrom must be before or equal to dateTo', { dateFrom, dateTo });
+  }
+  if (
+    filters.limit !== undefined &&
+    (!Number.isSafeInteger(filters.limit) ||
+      filters.limit < 1 ||
+      filters.limit > MAX_INVENTORY_ITEM_READ_ROWS)
+  ) {
+    throw new ValidationError('Inventory item read limit must be between 1 and 10001', {
+      limit: filters.limit
+    });
+  }
+
+  return {
+    ...(search ? { search } : {}),
+    ...(dateFrom ? { dateFrom } : {}),
+    ...(dateTo ? { dateTo } : {}),
+    ...(filters.limit === undefined ? {} : { limit: filters.limit })
+  };
+}
+
+const inventoryStockMovementTypes: readonly InventoryStockMovementSummary['movementType'][] = [
+  'adjustment',
+  'inbound',
+  'outbound',
+  'transfer',
+  'consumption'
+];
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isInventoryStockMovementReportSourceRow(
+  value: unknown
+): value is InventoryStockMovementReportSourceRow {
+  if (!isRecord(value) || !isInventoryStockMovement(value.movement)) return false;
+  return (
+    (value.sku === null || typeof value.sku === 'string') &&
+    (value.name === null || typeof value.name === 'string') &&
+    (value.unit === null || typeof value.unit === 'string')
+  );
+}
+
+function isInventoryStockMovement(value: unknown): value is InventoryStockMovementSummary {
+  if (!isRecord(value)) return false;
+  return (
+    typeof value.id === 'string' &&
+    typeof value.accountId === 'string' &&
+    typeof value.inventoryItemId === 'string' &&
+    typeof value.movementType === 'string' &&
+    inventoryStockMovementTypes.includes(
+      value.movementType as InventoryStockMovementSummary['movementType']
+    ) &&
+    typeof value.quantityDelta === 'number' &&
+    Number.isFinite(value.quantityDelta) &&
+    typeof value.balanceBefore === 'number' &&
+    Number.isFinite(value.balanceBefore) &&
+    typeof value.balanceAfter === 'number' &&
+    Number.isFinite(value.balanceAfter) &&
+    typeof value.unitCostAmount === 'number' &&
+    Number.isFinite(value.unitCostAmount) &&
+    typeof value.reason === 'string' &&
+    (value.reference === undefined ||
+      value.reference === null ||
+      typeof value.reference === 'string') &&
+    typeof value.recordedByUserId === 'string' &&
+    typeof value.createdAt === 'string' &&
+    !Number.isNaN(Date.parse(value.createdAt))
+  );
+}
+
+function compareInventoryMovementIds(left: string, right: string): number {
+  if (left === right) return 0;
+  return left < right ? -1 : 1;
 }
 
 export class InventoryService {
@@ -260,6 +373,134 @@ export class InventoryService {
 
   public get persistenceMode(): 'database' | 'in-memory' {
     return this.#repository ? 'database' : 'in-memory';
+  }
+
+  public get stockMovementsPersistenceMode(): 'database' | 'disabled' {
+    return this.#repository &&
+      this.#repository.stockMovementsEnabled !== false &&
+      typeof this.#repository.findStockMovementReportRows === 'function'
+      ? 'database'
+      : 'disabled';
+  }
+
+  public async listPersistedItems(
+    accountId: AccountId,
+    filters: InventoryItemListFilters = {}
+  ): Promise<readonly InventoryItemSummary[]> {
+    if (!this.#repository) {
+      throw new ValidationError(
+        'Inventory product report requires a database-backed inventory source'
+      );
+    }
+    const activeAccountId = getTenantContext()?.accountId;
+    if (activeAccountId && activeAccountId !== accountId) {
+      throw new ValidationError('Inventory source account does not match tenant context', {
+        accountId
+      });
+    }
+
+    const normalizedFilters = normalizePersistedItemFilters(filters);
+    const items = await this.#repository.findAllItems(accountId, normalizedFilters);
+    const search = normalizedFilters.search?.toLowerCase();
+    const filtered = items.filter((item) => {
+      if (item.accountId !== accountId) return false;
+      if (normalizedFilters.dateFrom && item.createdAt.slice(0, 10) < normalizedFilters.dateFrom) {
+        return false;
+      }
+      if (normalizedFilters.dateTo && item.createdAt.slice(0, 10) > normalizedFilters.dateTo) {
+        return false;
+      }
+      if (
+        search &&
+        !item.sku.toLowerCase().includes(search) &&
+        !item.name.toLowerCase().includes(search)
+      ) {
+        return false;
+      }
+      return true;
+    });
+
+    return normalizedFilters.limit === undefined
+      ? filtered
+      : filtered.slice(0, normalizedFilters.limit);
+  }
+
+  public async listPersistedStockMovementReportRows(
+    accountId: AccountId,
+    filters: InventoryItemListFilters = {}
+  ): Promise<readonly InventoryStockMovementReportRow[]> {
+    if (this.stockMovementsPersistenceMode !== 'database') {
+      throw new ValidationError(
+        'Inventory movement report requires a database-backed stock movement source'
+      );
+    }
+    const activeAccountId = getTenantContext()?.accountId;
+    if (activeAccountId && activeAccountId !== accountId) {
+      throw new ValidationError('Inventory movement source account does not match tenant context', {
+        accountId
+      });
+    }
+
+    const repository = this.#repository;
+    if (!repository?.findStockMovementReportRows) {
+      throw new ValidationError(
+        'Inventory movement report requires a source-bounded database movement query'
+      );
+    }
+
+    const normalizedFilters = normalizePersistedItemFilters(filters);
+    const sourceFilters: InventoryItemListFilters = {
+      ...normalizedFilters,
+      limit: normalizedFilters.limit ?? MAX_INVENTORY_ITEM_READ_ROWS
+    };
+    const sourceRows = await repository.findStockMovementReportRows(accountId, sourceFilters);
+    if (!Array.isArray(sourceRows)) {
+      throw new ValidationError('Inventory movement source returned an invalid row collection');
+    }
+    const search = normalizedFilters.search?.toLowerCase();
+    const rows: InventoryStockMovementReportRow[] = [];
+    for (const sourceRow of sourceRows as readonly InventoryStockMovementReportSourceRow[]) {
+      if (!isInventoryStockMovementReportSourceRow(sourceRow)) {
+        throw new ValidationError('Inventory movement source returned an invalid row');
+      }
+      if (sourceRow.movement.accountId !== accountId) continue;
+      if (
+        typeof sourceRow.sku !== 'string' ||
+        typeof sourceRow.name !== 'string' ||
+        typeof sourceRow.unit !== 'string'
+      ) {
+        throw new ValidationError('Inventory movement references a missing same-account item', {
+          movementId: sourceRow.movement.id,
+          inventoryItemId: sourceRow.movement.inventoryItemId,
+          accountId
+        });
+      }
+
+      const occurredOn = sourceRow.movement.createdAt.slice(0, 10);
+      if (normalizedFilters.dateFrom && occurredOn < normalizedFilters.dateFrom) continue;
+      if (normalizedFilters.dateTo && occurredOn > normalizedFilters.dateTo) continue;
+      if (
+        search &&
+        !sourceRow.sku.toLowerCase().includes(search) &&
+        !sourceRow.name.toLowerCase().includes(search)
+      ) {
+        continue;
+      }
+      rows.push({
+        movement: sourceRow.movement,
+        sku: sourceRow.sku,
+        name: sourceRow.name,
+        unit: sourceRow.unit
+      });
+    }
+
+    rows.sort(
+      (left, right) =>
+        right.movement.createdAt.localeCompare(left.movement.createdAt) ||
+        compareInventoryMovementIds(left.movement.id, right.movement.id)
+    );
+
+    return normalizedFilters.limit === undefined ? rows : rows.slice(0, normalizedFilters.limit);
   }
 
   private replaceLotsForItem(item: InventoryItemSummary): void {
@@ -1333,8 +1574,46 @@ export { createSeedItems };
 
 export {
   DatabaseInventoryRepository,
+  MAX_INVENTORY_ITEM_READ_ROWS,
+  type InventoryItemListFilters,
+  type InventoryStockMovementReportSourceRow,
   type InventoryRepository
 } from './repositories/database-inventory.repository.js';
+
+export {
+  DatabaseInventoryProductsReportSource,
+  MAX_INVENTORY_PRODUCTS_REPORT_ROWS,
+  type InventoryProductsReportFilters,
+  type InventoryProductsReportRow,
+  type InventoryProductsReportSource
+} from './inventory-products-report.js';
+
+export {
+  DatabaseInventoryStockReportSource,
+  MAX_INVENTORY_STOCK_REPORT_ROWS,
+  type InventoryStockReportReorderStatus,
+  type InventoryStockReportFilters,
+  type InventoryStockReportRow,
+  type InventoryStockReportSource
+} from './inventory-stock-report.js';
+
+export {
+  DatabaseInventoryMovementsReportSource,
+  MAX_INVENTORY_MOVEMENTS_REPORT_ROWS,
+  type InventoryMovementsReportFilters,
+  type InventoryMovementsReportRow,
+  type InventoryMovementsReportSource,
+  type InventoryMovementsReportSourceReader
+} from './inventory-movements-report.js';
+
+export {
+  DatabaseInventoryInvoicesReportSource,
+  MAX_INVENTORY_INVOICES_REPORT_ROWS,
+  type InventoryInvoicesReportFilters,
+  type InventoryInvoicesReportRow,
+  type InventoryInvoicesReportSource,
+  type InventoryInvoicesReportSourceReader
+} from './inventory-invoices-report.js';
 
 export {
   DatabaseProcurementRepository,
@@ -1342,6 +1621,8 @@ export {
   ProcurementService,
   type CreateInventoryPurchaseInput,
   type InventoryPurchaseLineSummary,
+  type InventoryPurchaseReportFilters,
+  type InventoryPurchaseReportSourceRow,
   type InventoryPurchaseStatus,
   type InventoryPurchaseSummary,
   type InventoryTransferStatus,

@@ -1,0 +1,182 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-INVENTORY-MOVEMENTS-VFY-001",
+  "timestamp": "2026-08-28T02:39:00-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-004 bounded on-demand server-backed inventory movement ledger report and audited export",
+  "scope_ref": "CVG-004-REPORT-INVENTORY-MOVEMENTS",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-001-CONTRACT",
+      "description": "The catalog, permissions, raw ledger grain, strict filters, deterministic order, exact thirteen-field contract, row bound and explicit non-promotion exclusions are implemented and covered.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-inventory-movements.md",
+        ".agent/authority.jsonl#AUTH-CVG-004-REPORT-INVENTORY-MOVEMENTS-IR-001",
+        "packages/modules/reports/src/index.ts",
+        "packages/modules/reports/src/reports.test.ts",
+        "apps/api/src/routes/reports-routes.ts",
+        "apps/spa/src/pages/reports/ReportWorkbenchPage.vue",
+        "apps/spa/src/pages/reports/__tests__/ReportWorkbenchPage.test.ts",
+        "docs/vetus/guides/2026-04-24-relatorio-relatorios-estoque.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The Vetus corpus establishes the report surface but not an authoritative dynamic-executor schema; this gate certifies only the frozen local thirteen-field raw-ledger contract."
+    },
+    {
+      "id": "V-002-DATABASE-SOURCE",
+      "description": "The source is a bounded parameterized tenant-scoped query over persisted movements joined to same-account persisted items, with inclusive dates, search, deterministic ordering, missing-join fail-closed behavior and overflow detection.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/db/migrations/0052_inventory_stock_movements.sql",
+        "packages/db/migrations/0062_inventory_runtime_persistence.sql",
+        "packages/modules/inventory/src/repositories/database-inventory.repository.ts",
+        "packages/modules/inventory/src/index.ts",
+        "packages/modules/inventory/src/inventory.test.ts",
+        "tests/integration/database/inventory-stock-report-postgres.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-MOVEMENTS-DB-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The source is limited to current persisted movement and item facts. It does not certify target roles/RLS, production scale, historical reconstruction, lots, invoices or valuation."
+    },
+    {
+      "id": "V-003-API-RBAC-EXPORT",
+      "description": "The API enforces billing.read plus inventory.read, derives account from the authenticated principal, validates source and output shape, fails closed for disabled/in-memory sources and keeps execution, audit and export on durable ReportsService.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/api/src/routes/reports-routes.ts",
+        "apps/api/src/routes/reports-routes.test.ts",
+        "packages/modules/reports/src/index.ts",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-MOVEMENTS-FOCUSED-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-MOVEMENTS-DB-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This local route gate does not authorize fiscal writes, external providers, scheduled delivery, credentials, target operations or release acceptance."
+    },
+    {
+      "id": "V-004-SPA-SERVER-CONTRACT",
+      "description": "The Reports Workbench forwards strict filters, consumes and validates the authenticated server execution, renders raw movement fields and does not hydrate local inventory, lots or consumptions for this report.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/spa/src/pages/reports/ReportWorkbenchPage.vue",
+        "apps/spa/src/pages/reports/__tests__/ReportWorkbenchPage.test.ts",
+        "e2e/spa/inventory-movements-report-flow.spec.ts",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-MOVEMENTS-E2E-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-MOVEMENTS-FOCUSED-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Browser evidence is local and disposable; it does not certify production browser policy, accessibility acceptance or deployed assets."
+    },
+    {
+      "id": "V-005-POSTGRES-E2E",
+      "description": "Disposable PostgreSQL proof confirms two-account isolation, inclusive date/search behavior, same-timestamp deterministic order, raw signed ledger fields, durable execution/export/audit and real 10,001-row overflow rejection before execution persistence.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "tests/integration/database/inventory-stock-report-postgres.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-MOVEMENTS-DB-001",
+        "e2e/spa/inventory-movements-report-flow.spec.ts",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-MOVEMENTS-E2E-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The proof uses disposable local PostgreSQL/Redis and a local authenticated browser runner; it does not certify target RLS/roles, backup/restore, RTO/RPO, continuous workers or production operations."
+    },
+    {
+      "id": "V-006-QUALITY",
+      "description": "Intentional RED/GREEN, focused and full regressions, builds, coverage, static/security checks, formatting, diff and empty-index hygiene satisfy the repository quality bar.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-MOVEMENTS-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-MOVEMENTS-FOCUSED-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-MOVEMENTS-DB-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-MOVEMENTS-HYGIENE-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-MOVEMENTS-HYGIENE-002"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Coverage and validators are local; remote CI, target operations, external homologation, production and release acceptance remain open."
+    },
+    {
+      "id": "V-007-INDEPENDENT-REVIEW",
+      "description": "Fresh independent read-only review after all remediation found no scoped CRITICAL, HIGH or MEDIUM implementation finding.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-MOVEMENTS-REVIEW-PEIRCE-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-MOVEMENTS-REVIEW-HARVEY-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-MOVEMENTS-REVIEW-POINCARE-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-MOVEMENTS-REVIEW-FINAL-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Approval is bounded to this local report/export slice and does not authorize global ERP, target, production or release acceptance."
+    },
+    {
+      "id": "V-008-GLOBAL-NON-PROMOTION",
+      "description": "The bounded result is reconciled without promoting CVG-004, general Vetus parity, clinical parity, enterprise readiness, target operations or release acceptance.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/state.json",
+        ".agent/backlog.json",
+        ".gauntlet/state.md",
+        ".gauntlet/progress.md",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-MOVEMENTS-FINAL-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-MOVEMENTS-FINAL-002"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Global Vetus parity remains 4/11 verified, clinical parity 2/3 and enterprise readiness 95/100 with 42 PASS, 3 WARN and 1 FAIL; promotion remains blocked."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-report-inventory-movements.md",
+    ".agent/artifacts/CVG-004-report-inventory-movements-2026-08-28.md",
+    ".agent/authority.jsonl#AUTH-CVG-004-REPORT-INVENTORY-MOVEMENTS-IR-001",
+    "packages/db/migrations/0052_inventory_stock_movements.sql",
+    "packages/db/migrations/0062_inventory_runtime_persistence.sql",
+    "packages/modules/inventory/src/repositories/database-inventory.repository.ts",
+    "packages/modules/inventory/src/index.ts",
+    "packages/modules/reports/src/index.ts",
+    "apps/api/src/routes/reports-routes.ts",
+    "apps/spa/src/pages/reports/ReportWorkbenchPage.vue",
+    "tests/integration/database/inventory-stock-report-postgres.test.ts",
+    "e2e/spa/inventory-movements-report-flow.spec.ts",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-MOVEMENTS-E2E-001",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-MOVEMENTS-REVIEW-FINAL-001",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-MOVEMENTS-FINAL-001",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-MOVEMENTS-FINAL-002",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-MOVEMENTS-HYGIENE-002"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "Exact Vetus dynamic-executor columns, filters and grain remain unverified.",
+    "The report is limited to current persisted inventory_stock_movements and same-account inventory_items facts; lots, consumptions, invoices/NF, historical/as-of semantics and historical valuation remain open.",
+    "Disposable local services and browser runner do not certify target RLS/roles, backup/restore, RTO/RPO, Redis operations, remote CI, accessibility, operational LGPD, providers, production or release acceptance."
+  ],
+  "conditions": [
+    "Keep the result limited to authenticated tenant-scoped on-demand reads/exports of the persisted movement ledger and same-account item facts with the exact thirteen-field contract.",
+    "Keep billing.read as the Reports Workbench baseline and inventory.read as the additive report permission; revalidate before changing the access model.",
+    "Revalidate before adding lots, consumption reconstruction, invoice/NF semantics, history, valuation, scheduled delivery, providers, credentials, target, production, deployment, backfill or release activity."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via the original consolidation brief and explicit continuation request",
+    "scope": "CVG-004 bounded on-demand server-backed inventory movement ledger report/export",
+    "decision": "Authorize only the raw tenant-scoped persisted movement ledger projection and its audited on-demand Reports Workbench execution/export. Exclude lots, consumptions, inventory-invoices/NF semantics, scheduled delivery, historical/as-of valuation, inferred production or business meaning beyond stored movement type, providers, fiscal writes, credentials, target, production, deployment, backfill and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-INVENTORY-MOVEMENTS-IR-001",
+    "expires_or_revalidates": "Revalidate before adding invoice/NF-entry semantics, lot or consumption reconstruction, business interpretation, scheduled delivery, writes, providers, credentials, target, production, deployment or release activity."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_BOUNDED",
+  "next_action": "Keep CVG-004 and the global ERP IN_PROGRESS/PARTIAL with promotion BLOCKED; select the next gap only through fresh scouting and a new implementation-ready authority. Keep inventory-invoices blocked pending safe source/document semantics.",
+  "revalidation_triggers": [
+    "Changes to inventory_stock_movements or inventory_items schema, tenant joins, movement meanings or report authorization",
+    "Changes to ReportsService execution/export/audit or Report Workbench behavior",
+    "Expansion beyond current persisted movement/item facts to lots, consumptions, invoices, history, valuation, schedules, providers, credentials, target, production, deployment, backfill or release action"
+  ],
+  "supersedes": ".agent/gates/implementation-ready-CVG-004-report-inventory-movements.json"
+}

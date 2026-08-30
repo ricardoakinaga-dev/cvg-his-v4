@@ -21,6 +21,7 @@ import type {
   InpatientDailyChargeWorklistItem,
   InpatientStayId,
   InpatientStaySummary,
+  AccountId,
   UserId,
   SectorId,
   BedId
@@ -40,7 +41,6 @@ import type {
   InpatientDailyChargeRepository
 } from './repositories/database-inpatient.repository.js';
 import { SectorBedService } from './sector-bed.service.js';
-import type { SectorBedServiceOptions } from './sector-bed.service.js';
 
 export type {
   InpatientStayRepository,
@@ -285,7 +285,7 @@ export class InpatientService {
           stay.bedId &&
           !this.#stayRepository?.createWithBedOccupation
         ) {
-          await this.#sectorBedService.setBedOccupied(stay.bedId);
+          await this.#sectorBedService.setBedOccupied(stay.accountId, stay.bedId);
         }
       },
       async () => {
@@ -298,7 +298,7 @@ export class InpatientService {
           stay.bedId &&
           !this.#stayRepository?.createWithBedOccupation
         ) {
-          await this.#sectorBedService.setBedAvailable(stay.bedId);
+          await this.#sectorBedService.setBedAvailable(stay.accountId, stay.bedId);
         }
       }
     );
@@ -307,9 +307,10 @@ export class InpatientService {
 
   public async assignBed(
     stayId: InpatientStayId,
-    payload: AssignBedRequest
+    payload: AssignBedRequest,
+    accountId: AccountId
   ): Promise<InpatientStaySummary> {
-    const stay = this.getOrThrow(stayId);
+    const stay = this.getOrThrow(stayId, accountId);
 
     if (stay.status === 'discharged') {
       throw new ValidationError('Cannot assign bed to discharged stay');
@@ -319,7 +320,10 @@ export class InpatientService {
     let assignedSector: Awaited<ReturnType<SectorBedService['getSectorOrThrow']>> | undefined;
     const atomicBedTransition = Boolean(this.#stayRepository?.updateWithBedTransition);
     if (this.#sectorBedService) {
-      const bed = await this.#sectorBedService.getBedOrThrow(payload.bedId as BedId);
+      const bed = await this.#sectorBedService.getBedOrThrow(
+        stay.accountId,
+        payload.bedId as BedId
+      );
       if (bed.sectorId !== payload.sectorId) {
         throw new ValidationError('Bed does not belong to the specified sector');
       }
@@ -327,13 +331,16 @@ export class InpatientService {
         throw new ValidationError('Bed is already occupied');
       }
       if (!atomicBedTransition) {
-        await this.#sectorBedService.setBedOccupied(payload.bedId as BedId);
+        await this.#sectorBedService.setBedOccupied(stay.accountId, payload.bedId as BedId);
         if (stay.bedId) {
-          await this.#sectorBedService.setBedAvailable(stay.bedId);
+          await this.#sectorBedService.setBedAvailable(stay.accountId, stay.bedId);
         }
       }
       assignedBed = bed;
-      assignedSector = await this.#sectorBedService.getSectorOrThrow(payload.sectorId as SectorId);
+      assignedSector = await this.#sectorBedService.getSectorOrThrow(
+        stay.accountId,
+        payload.sectorId as SectorId
+      );
     }
 
     const now = nowIso();
@@ -358,8 +365,8 @@ export class InpatientService {
       async () => {
         this.#stays.set(stayId, stay);
         if (this.#sectorBedService && !atomicBedTransition) {
-          await this.#sectorBedService.setBedAvailable(payload.bedId as BedId);
-          if (stay.bedId) await this.#sectorBedService.setBedOccupied(stay.bedId);
+          await this.#sectorBedService.setBedAvailable(stay.accountId, payload.bedId as BedId);
+          if (stay.bedId) await this.#sectorBedService.setBedOccupied(stay.accountId, stay.bedId);
         }
       }
     );
@@ -369,9 +376,10 @@ export class InpatientService {
 
   public async transferBed(
     stayId: InpatientStayId,
-    payload: AssignBedRequest
+    payload: AssignBedRequest,
+    accountId: AccountId
   ): Promise<InpatientStaySummary> {
-    const stay = this.getOrThrow(stayId);
+    const stay = this.getOrThrow(stayId, accountId);
 
     if (stay.status === 'discharged') {
       throw new ValidationError('Cannot transfer bed for discharged stay');
@@ -385,7 +393,10 @@ export class InpatientService {
     let assignedSector: Awaited<ReturnType<SectorBedService['getSectorOrThrow']>> | undefined;
     const atomicBedTransition = Boolean(this.#stayRepository?.updateWithBedTransition);
     if (this.#sectorBedService) {
-      const bed = await this.#sectorBedService.getBedOrThrow(payload.bedId as BedId);
+      const bed = await this.#sectorBedService.getBedOrThrow(
+        stay.accountId,
+        payload.bedId as BedId
+      );
       if (bed.sectorId !== payload.sectorId) {
         throw new ValidationError('Bed does not belong to the specified sector');
       }
@@ -393,13 +404,16 @@ export class InpatientService {
         throw new ValidationError('Bed is already occupied');
       }
       if (!atomicBedTransition) {
-        await this.#sectorBedService.setBedOccupied(payload.bedId as BedId);
+        await this.#sectorBedService.setBedOccupied(stay.accountId, payload.bedId as BedId);
         if (stay.bedId) {
-          await this.#sectorBedService.setBedAvailable(stay.bedId);
+          await this.#sectorBedService.setBedAvailable(stay.accountId, stay.bedId);
         }
       }
       assignedBed = bed;
-      assignedSector = await this.#sectorBedService.getSectorOrThrow(payload.sectorId as SectorId);
+      assignedSector = await this.#sectorBedService.getSectorOrThrow(
+        stay.accountId,
+        payload.sectorId as SectorId
+      );
     }
 
     const now = nowIso();
@@ -427,8 +441,8 @@ export class InpatientService {
       async () => {
         this.#stays.set(stayId, stay);
         if (this.#sectorBedService && !atomicBedTransition) {
-          await this.#sectorBedService.setBedAvailable(payload.bedId as BedId);
-          if (stay.bedId) await this.#sectorBedService.setBedOccupied(stay.bedId);
+          await this.#sectorBedService.setBedAvailable(stay.accountId, payload.bedId as BedId);
+          if (stay.bedId) await this.#sectorBedService.setBedOccupied(stay.accountId, stay.bedId);
         }
       }
     );
@@ -457,9 +471,9 @@ export class InpatientService {
     });
   }
 
-  public getOrThrow(stayId: InpatientStayId): InpatientStaySummary {
+  public getOrThrow(stayId: InpatientStayId, accountId: AccountId): InpatientStaySummary {
     const stay = this.#stays.get(stayId);
-    if (!stay) {
+    if (!stay || stay.accountId !== accountId) {
       throw new NotFoundError('Inpatient stay not found', { stayId });
     }
 
@@ -470,11 +484,40 @@ export class InpatientService {
     this.#stays.set(stay.id, { ...stay });
   }
 
+  public removeStayCache(stayId: InpatientStayId): void {
+    this.#stays.delete(stayId);
+    this.#progress.delete(stayId);
+    this.#occurrences.delete(stayId);
+    this.#dailyCharges.delete(stayId);
+  }
+
+  public restoreDailyChargesCache(
+    stayId: InpatientStayId,
+    charges: readonly InpatientDailyChargeSummary[]
+  ): void {
+    this.#dailyCharges.set(stayId, [...charges]);
+  }
+
+  public restoreProgressCache(
+    stayId: InpatientStayId,
+    progress: readonly InpatientProgressSummary[]
+  ): void {
+    this.#progress.set(stayId, [...progress]);
+  }
+
+  public restoreOccurrencesCache(
+    stayId: InpatientStayId,
+    occurrences: readonly InpatientOccurrenceSummary[]
+  ): void {
+    this.#occurrences.set(stayId, [...occurrences]);
+  }
+
   public addProgress(
     actorUserId: UserId,
-    payload: AddInpatientProgressRequest
+    payload: AddInpatientProgressRequest,
+    accountId: AccountId
   ): InpatientProgressSummary {
-    const stay = this.getOrThrow(payload.stayId as never);
+    const stay = this.getOrThrow(payload.stayId as never, accountId);
 
     if (stay.status === 'discharged') {
       throw new ValidationError('Cannot add progress to discharged stay');
@@ -500,16 +543,20 @@ export class InpatientService {
     return progress;
   }
 
-  public listProgress(stayId: InpatientStayId): readonly InpatientProgressSummary[] {
-    this.getOrThrow(stayId);
+  public listProgress(
+    stayId: InpatientStayId,
+    accountId: AccountId
+  ): readonly InpatientProgressSummary[] {
+    this.getOrThrow(stayId, accountId);
     return [...(this.#progress.get(stayId) ?? [])];
   }
 
   public addOccurrence(
     actorUserId: UserId,
-    payload: AddInpatientOccurrenceRequest
+    payload: AddInpatientOccurrenceRequest,
+    accountId: AccountId
   ): InpatientOccurrenceSummary {
-    const stay = this.getOrThrow(payload.stayId as never);
+    const stay = this.getOrThrow(payload.stayId as never, accountId);
 
     if (stay.status === 'discharged') {
       throw new ValidationError('Cannot add occurrence to discharged stay');
@@ -538,16 +585,20 @@ export class InpatientService {
     return occurrence;
   }
 
-  public listOccurrences(stayId: InpatientStayId): readonly InpatientOccurrenceSummary[] {
-    this.getOrThrow(stayId);
+  public listOccurrences(
+    stayId: InpatientStayId,
+    accountId: AccountId
+  ): readonly InpatientOccurrenceSummary[] {
+    this.getOrThrow(stayId, accountId);
     return [...(this.#occurrences.get(stayId) ?? [])];
   }
 
   public createDailyCharge(
     actorUserId: UserId,
-    payload: CreateInpatientDailyChargeRequest
+    payload: CreateInpatientDailyChargeRequest,
+    accountId: AccountId
   ): InpatientDailyChargeSummary {
-    const stay = this.getOrThrow(payload.stayId as never);
+    const stay = this.getOrThrow(payload.stayId as never, accountId);
 
     if (stay.status === 'discharged') {
       throw new ValidationError('Cannot create daily charge for discharged stay');
@@ -589,8 +640,11 @@ export class InpatientService {
     return dailyCharge;
   }
 
-  public listDailyCharges(stayId: InpatientStayId): readonly InpatientDailyChargeSummary[] {
-    this.getOrThrow(stayId);
+  public listDailyCharges(
+    stayId: InpatientStayId,
+    accountId: AccountId
+  ): readonly InpatientDailyChargeSummary[] {
+    this.getOrThrow(stayId, accountId);
     return [...(this.#dailyCharges.get(stayId) ?? [])];
   }
 
@@ -623,9 +677,10 @@ export class InpatientService {
   public markDailyChargeBilled(
     stayId: InpatientStayId,
     chargeId: InpatientDailyChargeId,
-    payload?: MarkInpatientDailyChargeBilledRequest
+    payload: MarkInpatientDailyChargeBilledRequest | undefined,
+    accountId: AccountId
   ): InpatientDailyChargeSummary {
-    this.getOrThrow(stayId);
+    this.getOrThrow(stayId, accountId);
     const charges = this.#dailyCharges.get(stayId) ?? [];
     const charge = charges.find((item) => item.id === chargeId);
 
@@ -674,9 +729,10 @@ export class InpatientService {
 
   public updateStatus(
     stayId: InpatientStayId,
-    payload: UpdateInpatientStatusRequest
+    payload: UpdateInpatientStatusRequest,
+    accountId: AccountId
   ): InpatientStaySummary {
-    const stay = this.getOrThrow(stayId);
+    const stay = this.getOrThrow(stayId, accountId);
 
     if (!this.isValidTransition(stay.status, payload.status)) {
       throw new Error(`Invalid status transition from '${stay.status}' to '${payload.status}'`);
@@ -724,7 +780,7 @@ export class InpatientService {
           );
         } else {
           if (this.#sectorBedService && releaseBed) {
-            await this.#sectorBedService.setBedAvailable(releaseBed);
+            await this.#sectorBedService.setBedAvailable(stay.accountId, releaseBed);
           }
           await this.updateStay(updated);
         }
@@ -737,7 +793,7 @@ export class InpatientService {
           stay.bedId &&
           (payload.status === 'discharged' || payload.status === 'transferred')
         ) {
-          await this.#sectorBedService.setBedOccupied(stay.bedId);
+          await this.#sectorBedService.setBedOccupied(stay.accountId, stay.bedId);
         }
       }
     );
@@ -763,7 +819,7 @@ export class InpatientService {
         return left.bed.localeCompare(right.bed);
       })
       .map((stay) => {
-        const latestProgress = this.listProgress(stay.id)[0];
+        const latestProgress = this.listProgress(stay.id, stay.accountId)[0];
         const requiresAttention =
           stay.status === 'transferred' ||
           (latestProgress?.note.toLowerCase().includes('urg') ?? false) ||

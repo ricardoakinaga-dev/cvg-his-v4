@@ -17,7 +17,11 @@ import {
 } from '@cvg-his-v2/shared-validation';
 
 import type { TriageRepository } from './repositories/database-triage.repository.js';
-import type { TriageVersionId, TriageVersionSummary } from './version-types.js';
+import type {
+  TriageVersionId,
+  TriageVersionSnapshot,
+  TriageVersionSummary
+} from './version-types.js';
 
 export interface TriageServiceOptions {
   readonly repository?: TriageRepository;
@@ -25,6 +29,33 @@ export interface TriageServiceOptions {
 
 const ALLOWED_PRIORITIES = ['low', 'medium', 'high', 'critical'] as const;
 const ALLOWED_DESTINATIONS = ['in_care', 'observation'] as const;
+
+function requireAccountId(accountId: AccountId): AccountId {
+  return requireNonEmptyString(accountId as string, 'accountId') as AccountId;
+}
+
+function cloneTriageSummary(record: TriageSummary): TriageSummary {
+  return {
+    ...record,
+    alerts: [...record.alerts]
+  };
+}
+
+function cloneTriageSnapshot(snapshot: TriageVersionSnapshot): TriageVersionSnapshot {
+  return {
+    ...snapshot,
+    alerts: [...snapshot.alerts]
+  };
+}
+
+function cloneTriageVersion(version: TriageVersionSummary): TriageVersionSummary {
+  return {
+    ...version,
+    changedFields: [...version.changedFields],
+    previousSnapshot: cloneTriageSnapshot(version.previousSnapshot),
+    nextSnapshot: cloneTriageSnapshot(version.nextSnapshot)
+  };
+}
 
 export class TriageService {
   readonly #encounters: EncountersService;
@@ -41,47 +72,73 @@ export class TriageService {
     return this.#repository ? 'database' : 'in-memory';
   }
 
-  public async hydrateFromDatabase(accountId?: AccountId): Promise<void> {
+  public async hydrateFromDatabase(accountId: AccountId): Promise<void> {
+    const scopedAccountId = requireAccountId(accountId);
     if (!this.#repository) return;
-    const records = await this.#repository.findByAccountId(accountId);
+    const records = await this.#repository.findByAccountId(scopedAccountId);
     for (const record of records) {
-      this.#records.set(record.id, record);
+      if (record.accountId === scopedAccountId) {
+        this.#records.set(record.id, record);
+      }
     }
-    const versions = await this.#repository.findVersionsByAccountId(accountId);
+    const versions = await this.#repository.findVersionsByAccountId(scopedAccountId);
     for (const version of versions) {
+      if (version.accountId !== scopedAccountId) continue;
       const existing = this.#versionsByTriageId.get(version.triageId) ?? [];
-      existing.push(version);
+      if (existing.some((candidate) => candidate.id === version.id)) continue;
       this.#versionsByTriageId.set(
         version.triageId,
-        existing.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        [...existing, version].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
       );
     }
   }
 
-  public list(encounterId?: EncounterId): readonly TriageSummary[] {
-    return Array.from(this.#records.values()).filter(
-      (record) => !encounterId || record.encounterId === encounterId
-    );
+  public list(accountId: AccountId, encounterId?: EncounterId): readonly TriageSummary[] {
+    const scopedAccountId = requireAccountId(accountId);
+    const scopedEncounterId =
+      encounterId === undefined
+        ? undefined
+        : (requireNonEmptyString(encounterId as string, 'encounterId') as EncounterId);
+    return Array.from(this.#records.values())
+      .filter(
+        (record) =>
+          record.accountId === scopedAccountId &&
+          (!scopedEncounterId || record.encounterId === scopedEncounterId)
+      )
+      .map(cloneTriageSummary);
   }
 
-  public getOrThrow(triageId: TriageRecordId): TriageSummary {
+  public getOrThrow(triageId: TriageRecordId, accountId: AccountId): TriageSummary {
+    const scopedAccountId = requireAccountId(accountId);
     const record = this.#records.get(triageId);
-    if (!record) {
+    if (!record || record.accountId !== scopedAccountId) {
       throw new NotFoundError('Triage record not found', { triageId });
     }
-    return record;
+    return cloneTriageSummary(record);
   }
 
-  public listVersions(triageId: TriageRecordId): readonly TriageVersionSummary[] {
-    return this.#versionsByTriageId.get(triageId) ?? [];
+  public listVersions(
+    triageId: TriageRecordId,
+    accountId: AccountId
+  ): readonly TriageVersionSummary[] {
+    const scopedAccountId = requireAccountId(accountId);
+    this.getOrThrow(triageId, scopedAccountId);
+    return (this.#versionsByTriageId.get(triageId) ?? [])
+      .filter((version) => version.accountId === scopedAccountId)
+      .map(cloneTriageVersion);
   }
 
   public async createTriage(
     actorUserId: UserId,
-    payload: CreateTriageRequest
+    payload: CreateTriageRequest,
+    accountId: AccountId
   ): Promise<TriageSummary> {
+    const scopedAccountId = requireAccountId(accountId);
     const encounterId = requireNonEmptyString(payload.encounterId, 'encounterId') as EncounterId;
     const encounter = this.#encounters.getOrThrow(encounterId);
+    if (encounter.accountId !== scopedAccountId) {
+      throw new NotFoundError('Encounter not found', { encounterId });
+    }
     const patientId = requireNonEmptyString(payload.patientId, 'patientId') as PatientId;
     if (patientId !== encounter.patientId) {
       throw new ValidationError('Triage patientId must match encounter patientId', {
@@ -90,7 +147,7 @@ export class TriageService {
         encounterPatientId: encounter.patientId
       });
     }
-    const existing = this.list(encounterId)[0];
+    const existing = this.list(scopedAccountId, encounterId)[0];
     if (existing) {
       throw new ConflictError('Encounter already has an initial triage', {
         triageId: existing.id
@@ -100,7 +157,7 @@ export class TriageService {
     const now = nowIso();
     const record: TriageSummary = {
       id: createCorrelationId('triage') as TriageRecordId,
-      accountId: encounter.accountId,
+      accountId: scopedAccountId,
       encounterId,
       patientId: encounter.patientId,
       priority: requireEnum(payload.priority, 'priority', ALLOWED_PRIORITIES),
@@ -113,19 +170,20 @@ export class TriageService {
       updatedAt: now
     };
 
-    this.#records.set(record.id, record);
     if (this.#repository) {
       await this.#repository.create(record);
     }
-    return record;
+    this.#records.set(record.id, record);
+    return cloneTriageSummary(record);
   }
 
   public async updateTriage(
     triageId: TriageRecordId,
     payload: UpdateTriageRequest,
+    accountId: AccountId,
     actorUserId?: UserId
   ): Promise<TriageSummary> {
-    const current = this.getOrThrow(triageId);
+    const current = this.getOrThrow(triageId, accountId);
     const encounter = this.#encounters.getOrThrow(current.encounterId);
     if (encounter.status === 'closed') {
       throw new ConflictError('Closed encounters do not allow triage updates', {
@@ -195,14 +253,25 @@ export class TriageService {
       createdAt: updated.updatedAt
     };
 
+    const previousVersions = this.#versionsByTriageId.get(updated.id);
     this.#records.set(updated.id, updated);
     const versions = this.#versionsByTriageId.get(updated.id) ?? [];
     this.#versionsByTriageId.set(updated.id, [version, ...versions]);
     if (this.#repository) {
-      await this.#repository.update(updated);
-      await this.#repository.createVersion(version);
+      try {
+        await this.#repository.update(updated);
+        await this.#repository.createVersion(version);
+      } catch (error) {
+        this.#records.set(current.id, current);
+        if (previousVersions) {
+          this.#versionsByTriageId.set(updated.id, previousVersions);
+        } else {
+          this.#versionsByTriageId.delete(updated.id);
+        }
+        throw error;
+      }
     }
-    return updated;
+    return cloneTriageSummary(updated);
   }
 }
 

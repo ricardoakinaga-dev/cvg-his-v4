@@ -52,8 +52,12 @@ class MockResponse extends Writable {
     return this.#headers.get(name.toLowerCase());
   }
 
+  bodyText(): string {
+    return Buffer.concat(this.#chunks).toString('utf8');
+  }
+
   bodyJson<T>(): T {
-    return JSON.parse(Buffer.concat(this.#chunks).toString('utf8')) as T;
+    return JSON.parse(this.bodyText()) as T;
   }
 }
 
@@ -170,6 +174,20 @@ test('handleAuthRoutes returns the current authenticated session payload', async
 test('handleAuthRoutes returns the current user session list', async () => {
   const principal = createPrincipal();
   const response = new MockResponse();
+  const persistedSession = {
+    ...principal.session,
+    roleCodes: ['admin'],
+    refreshNonce: 'refresh-nonce-must-not-leak',
+    revokedAt: undefined
+  };
+  let auditEntry:
+    | {
+        action: string;
+        entityId: string;
+        payloadSummary: string;
+        correlationId: string;
+      }
+    | undefined;
 
   const handled = await handleAuthRoutes(
     '/auth/sessions',
@@ -178,7 +196,73 @@ test('handleAuthRoutes returns the current user session list', async () => {
     'corr-auth-sessions',
     {
       auth: {
-        listSessionsForUser: () => [principal.session]
+        listSessionsForUserAuthoritative: async () => [persistedSession]
+      } as never,
+      authRateLimiter: {} as never,
+      logger: { error: () => {} },
+      appName: 'test-app',
+      featureFlags: {
+        authOidcEnabled: false,
+        authWebauthnEnabled: false
+      },
+      webauthnChallenges: new Map(),
+      webauthnChallengeTtlMs: DEFAULT_WEBAUTHN_CHALLENGE_TTL_MS,
+      oidcConfig: null,
+      oidcStateStore: createInMemoryOidcStateStore(),
+      oidcStateTtlMs: 60_000,
+      requirePrincipal: () => principal,
+      appendAudit: (
+        _actorId,
+        _accountId,
+        _module,
+        action,
+        _entityType,
+        entityId,
+        payloadSummary,
+        _riskLevel,
+        correlationId
+      ) => {
+        auditEntry = { action, entityId, payloadSummary, correlationId };
+      }
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(response.bodyJson(), { items: [principal.session] });
+  assert.deepEqual(auditEntry, {
+    action: 'session_list',
+    entityId: principal.session.sessionId,
+    payloadSummary: 'Listed 1 sessions',
+    correlationId: 'corr-auth-sessions'
+  });
+});
+
+test('handleAuthRoutes prefers the authoritative session list when available', async () => {
+  const principal = createPrincipal();
+  const response = new MockResponse();
+  const persistedSession = {
+    ...principal.session,
+    roleCodes: ['admin'],
+    refreshNonce: 'refresh-nonce-must-not-leak',
+    revokedAt: '2026-08-30T12:00:00.000Z'
+  };
+  let authoritativeCall: { userId: string; correlationId: string } | undefined;
+
+  const handled = await handleAuthRoutes(
+    '/auth/sessions',
+    { method: 'GET', url: '/auth/sessions', headers: {} } as never,
+    response as never,
+    'corr-auth-authoritative-sessions',
+    {
+      auth: {
+        listSessionsForUserAuthoritative: async (userId: string, correlationId: string) => {
+          authoritativeCall = { userId, correlationId };
+          return [persistedSession];
+        },
+        listSessionsForUser: () => {
+          throw new Error('stale cache path must not be used');
+        }
       } as never,
       authRateLimiter: {} as never,
       logger: { error: () => {} },
@@ -199,7 +283,55 @@ test('handleAuthRoutes returns the current user session list', async () => {
 
   assert.equal(handled, true);
   assert.equal(response.statusCode, 200);
+  assert.deepEqual(authoritativeCall, {
+    userId: principal.user.id,
+    correlationId: 'corr-auth-authoritative-sessions'
+  });
   assert.deepEqual(response.bodyJson(), { items: [principal.session] });
+});
+
+test('handleAuthRoutes propagates authoritative session-list failures without stale response or audit', async () => {
+  const principal = createPrincipal();
+  const response = new MockResponse();
+  let auditCalls = 0;
+
+  await assert.rejects(
+    () =>
+      handleAuthRoutes(
+        '/auth/sessions',
+        { method: 'GET', url: '/auth/sessions', headers: {} } as never,
+        response as never,
+        'corr-auth-authoritative-sessions-failure',
+        {
+          auth: {
+            listSessionsForUserAuthoritative: async () => {
+              throw new Error('session repository unavailable');
+            }
+          } as never,
+          authRateLimiter: {} as never,
+          logger: { error: () => {} },
+          appName: 'test-app',
+          featureFlags: {
+            authOidcEnabled: false,
+            authWebauthnEnabled: false
+          },
+          webauthnChallenges: new Map(),
+          webauthnChallengeTtlMs: DEFAULT_WEBAUTHN_CHALLENGE_TTL_MS,
+          oidcConfig: null,
+          oidcStateStore: createInMemoryOidcStateStore(),
+          oidcStateTtlMs: 60_000,
+          requirePrincipal: () => principal,
+          appendAudit: () => {
+            auditCalls += 1;
+          }
+        }
+      ),
+    /session repository unavailable/
+  );
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.bodyText(), '');
+  assert.equal(auditCalls, 0);
 });
 
 test('handleAuthRoutes ignores unrelated routes', async () => {
@@ -280,7 +412,10 @@ test('handleAuthRoutes POST /auth/login returns a session on success', async () 
   assert.equal(handled, true);
   assert.equal(response.statusCode, 200);
   assert.equal(response.getHeader('x-ratelimit-limit'), '5');
-  assert.equal(response.bodyJson<{ accessToken: string; refreshToken?: string }>().accessToken, 'token-1');
+  assert.equal(
+    response.bodyJson<{ accessToken: string; refreshToken?: string }>().accessToken,
+    'token-1'
+  );
   assert.equal(response.bodyJson<{ refreshToken?: string }>().refreshToken, undefined);
   assert.match(String(response.getHeader('set-cookie')), /cvg_his_refresh=refresh-1/);
   assert.match(String(response.getHeader('set-cookie')), /HttpOnly/);
@@ -306,7 +441,7 @@ test('login rate limiting normalizes the username and cannot be bypassed by chan
     appendAudit: () => {}
   };
 
-  for (const [index, username] of ['admin', ' admin '] .entries()) {
+  for (const [index, username] of ['admin', ' admin '].entries()) {
     const response = new MockResponse();
     await handleAuthRoutes(
       '/auth/login',
@@ -328,7 +463,7 @@ test('login rate limiting normalizes the username and cannot be bypassed by chan
   }
 });
 
-test('login rate limiting does not share an IP-only bucket across distinct users', async () => {
+test('login rate limiting enforces an IP bucket across distinct users', async () => {
   const authRateLimiter = createSingleAttemptRateLimiter();
   const handlers = {
     auth: {
@@ -365,7 +500,7 @@ test('login rate limiting does not share an IP-only bucket across distinct users
       handlers
     );
 
-    assert.equal(response.statusCode, 200);
+    assert.equal(response.statusCode, username === 'admin' ? 200 : 429);
   }
 });
 
@@ -418,11 +553,7 @@ test('public MFA enrollment delegates tenant-scoped start and confirm operations
   const handlers = {
     auth: {
       mfaService: {},
-      beginMfaEnrollment: async (
-        challengeId: string,
-        issuer: string,
-        correlationId: string
-      ) => {
+      beginMfaEnrollment: async (challengeId: string, issuer: string, correlationId: string) => {
         calls.push({ operation: 'begin', challengeId, value: `${issuer}:${correlationId}` });
         return {
           secret: 'TESTSECRET',
@@ -430,11 +561,7 @@ test('public MFA enrollment delegates tenant-scoped start and confirm operations
           recoveryCodes: ['AAAA-BBBB']
         };
       },
-      confirmMfaEnrollment: async (
-        challengeId: string,
-        token: string,
-        correlationId: string
-      ) => {
+      confirmMfaEnrollment: async (challengeId: string, token: string, correlationId: string) => {
         calls.push({ operation: 'confirm', challengeId, value: `${token}:${correlationId}` });
         return {
           accessToken: 'access-token',
@@ -556,7 +683,10 @@ test('handleAuthRoutes POST /auth/refresh consumes the HttpOnly refresh cookie a
   assert.equal(handled, true);
   assert.equal(response.statusCode, 200);
   assert.equal(receivedRefreshToken, 'refresh-cookie');
-  assert.equal(response.bodyJson<{ accessToken: string; refreshToken?: string }>().accessToken, 'access-rotated');
+  assert.equal(
+    response.bodyJson<{ accessToken: string; refreshToken?: string }>().accessToken,
+    'access-rotated'
+  );
   assert.equal(response.bodyJson<{ refreshToken?: string }>().refreshToken, undefined);
   assert.match(String(response.getHeader('set-cookie')), /cvg_his_refresh=refresh-rotated/);
 });
@@ -578,7 +708,11 @@ test('handleAuthRoutes POST /auth/refresh returns session-not-found without a co
     response as never,
     'corr-auth-refresh-missing-cookie',
     {
-      auth: { refresh: async () => { throw new Error('must not be called'); } } as never,
+      auth: {
+        refresh: async () => {
+          throw new Error('must not be called');
+        }
+      } as never,
       authRateLimiter: {} as never,
       logger: { error: () => {} },
       appName: 'test-app',
@@ -1074,4 +1208,127 @@ test('handleAuthRoutes POST /auth/mfa/webauthn/assert rejects expired authentica
   assert.equal(response.statusCode, 400);
   assert.equal(response.bodyJson<{ code: string }>().code, 'CHALLENGE_EXPIRED');
   assert.equal(verifyCalled, false);
+});
+
+test('handleAuthRoutes uses account-scoped durable WebAuthn challenge state', async () => {
+  const principal = createPrincipal();
+  const response = new MockResponse();
+  let issuedKey: { accountId: string; userId: string; purpose: string } | undefined;
+  let generatedScope: string[] | undefined;
+
+  const handled = await handleAuthRoutes(
+    '/auth/mfa/webauthn/setup',
+    {
+      method: 'GET',
+      url: '/auth/mfa/webauthn/setup',
+      headers: { 'x-rp-id': 'cvg.local' },
+      socket: { remoteAddress: '127.0.0.1' }
+    } as never,
+    response as never,
+    'corr-auth-webauthn-durable-setup',
+    {
+      auth: {} as never,
+      authRateLimiter: {} as never,
+      logger: { error: () => {} },
+      appName: 'test-app',
+      featureFlags: {
+        authOidcEnabled: false,
+        authWebauthnEnabled: true
+      },
+      webauthnService: {
+        generateRegistrationOptions: async (...args: unknown[]) => {
+          generatedScope = args.slice(0, 2) as string[];
+          return { publicKeyOptions: {}, challenge: 'durable-challenge' };
+        }
+      } as never,
+      webauthnChallengeStore: {
+        issue: async (input: { key: typeof issuedKey }) => {
+          issuedKey = input.key;
+        }
+      } as never,
+      webauthnChallenges: new Map(),
+      webauthnChallengeTtlMs: DEFAULT_WEBAUTHN_CHALLENGE_TTL_MS,
+      oidcConfig: null,
+      oidcStateStore: createInMemoryOidcStateStore(),
+      oidcStateTtlMs: 60_000,
+      requirePrincipal: () => principal,
+      appendAudit: () => {}
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(generatedScope, [principal.user.accountId, principal.user.id]);
+  assert.deepEqual(issuedKey, {
+    accountId: principal.user.accountId,
+    userId: principal.user.id,
+    purpose: 'registration'
+  });
+});
+
+test('handleAuthRoutes consumes the durable assertion challenge with principal account scope', async () => {
+  const principal = createPrincipal();
+  const response = new MockResponse();
+  let consumedKey: { accountId: string; userId: string; purpose: string } | undefined;
+  let verificationScope: string[] | undefined;
+
+  const handled = await handleAuthRoutes(
+    '/auth/mfa/webauthn/assert',
+    {
+      method: 'POST',
+      url: '/auth/mfa/webauthn/assert',
+      headers: {},
+      socket: { remoteAddress: '127.0.0.1' },
+      [Symbol.asyncIterator]: async function* () {
+        yield Buffer.from(
+          JSON.stringify({
+            credentialId: 'cred-1',
+            authenticatorData: 'auth-data',
+            clientDataJSON: 'client-data',
+            signature: 'signature'
+          })
+        );
+      }
+    } as never,
+    response as never,
+    'corr-auth-webauthn-durable-assert',
+    {
+      auth: {} as never,
+      authRateLimiter: {} as never,
+      logger: { error: () => {} },
+      appName: 'test-app',
+      featureFlags: {
+        authOidcEnabled: false,
+        authWebauthnEnabled: true
+      },
+      webauthnService: {
+        verifyAuthentication: async (...args: unknown[]) => {
+          verificationScope = args.slice(0, 3) as string[];
+          return { success: true };
+        }
+      } as never,
+      webauthnChallengeStore: {
+        consume: async (key: typeof consumedKey) => {
+          consumedKey = key;
+          return { ok: true, challenge: 'durable-challenge' };
+        }
+      } as never,
+      webauthnChallenges: new Map(),
+      webauthnChallengeTtlMs: DEFAULT_WEBAUTHN_CHALLENGE_TTL_MS,
+      oidcConfig: null,
+      oidcStateStore: createInMemoryOidcStateStore(),
+      oidcStateTtlMs: 60_000,
+      requirePrincipal: () => principal,
+      appendAudit: () => {}
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(consumedKey, {
+    accountId: principal.user.accountId,
+    userId: principal.user.id,
+    purpose: 'authentication'
+  });
+  assert.deepEqual(verificationScope, [principal.user.accountId, principal.user.id, 'cred-1']);
 });

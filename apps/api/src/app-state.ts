@@ -1,4 +1,4 @@
-export type PersistenceMode = 'database' | 'in-memory' | 'not-initialized';
+export type PersistenceMode = 'database' | 'in-memory' | 'unavailable' | 'not-initialized';
 
 export interface AppState {
   persistenceMode: PersistenceMode;

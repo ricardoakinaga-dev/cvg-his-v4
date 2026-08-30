@@ -1,0 +1,82 @@
+{
+  "record_id": "GATE-CVG-004-FINANCIAL-CASH-RECEIPT-REVERSAL-IR-001",
+  "timestamp": "2026-08-26T23:15:05-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-004 bounded append-only reversal of a full BRL encounter cash receipt",
+  "scope_ref": "CVG-004-FINANCIAL-CASH-RECEIPT-REVERSAL",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001-SCOPE-AUTHORITY",
+      "description": "The bounded write scope, owner, authority, risk and non-claims are recorded without promoting CVG-004 or global readiness.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-financial-cash-receipt-reversal.md",
+        ".agent/authority.jsonl#AUTH-CVG-004-FINANCIAL-CASH-RECEIPT-REVERSAL-IR-001",
+        ".agent/backlog.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Only local full-BRL cash receipt reversal is authorized; provider and target behavior remain excluded."
+    },
+    {
+      "id": "IR-002-CANONICAL-PRIMITIVES",
+      "description": "The existing cash receipt command, tenant unit of work, account-scoped audit/outbox, balanced journal and cash-register primitives provide a concrete implementation seam.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/api/src/encounter-cash-receipt-repository.ts",
+        "apps/api/src/commands/encounter-cash-receipt.ts",
+        "apps/api/src/helpers/tenant-command.ts",
+        "packages/shared/database/src/tenant-unit-of-work.ts",
+        "packages/db/migrations/0108_encounter_cash_receipts.sql"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The reversal migration and implementation are not complete at gate creation."
+    },
+    {
+      "id": "IR-003-TESTABLE-CONTRACT",
+      "description": "Focused RED tests can cover strict command/route validation, atomic inverse artifacts, immutable history, RLS, concurrency, idempotency and a later receipt.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-financial-cash-receipt-reversal.md",
+        "tests/integration/database/encounter-cash-receipt-command.test.ts",
+        "tests/integration/database/encounter-cash-receipts.test.ts",
+        "apps/api/src/routes/encounter-cash-receipt-routes.test.ts",
+        "tests/unit/api/encounter-cash-receipt-command.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A bounded result requires fresh RED/GREEN, PostgreSQL, regression, review and final control-plane evidence."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-financial-cash-receipt-reversal.md",
+    "apps/api/src/encounter-cash-receipt-repository.ts",
+    "packages/db/migrations/0108_encounter_cash_receipts.sql",
+    "packages/shared/database/src/tenant-unit-of-work.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "The additive schema, repository, command, API route, cache recovery, tests and post-implementation review are not complete.",
+    "Provider refunds, chargebacks, bank settlement, target operations, production and release remain out of scope."
+  ],
+  "conditions": [],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner)",
+    "scope": "CVG-004 bounded append-only reversal of a full BRL encounter cash receipt",
+    "decision": "Authorize one additive local migration and reversible authenticated API/repository implementation with tenant UoW/idempotency, compensating cash/journal artifacts, append-only history, financial projection reopening and audit/outbox evidence. Exclude providers, credentials, target, production, deployment and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-FINANCIAL-CASH-RECEIPT-REVERSAL-IR-001",
+    "expires_or_revalidates": "Revalidate before adding non-cash/provider refunds, chargebacks, bank settlement, target operation, production/deployment action or release acceptance."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "next_action": "Write focused RED tests before implementing the additive reversal schema and command path; retain the old settlement proof and all global blockers.",
+  "revalidation_triggers": [
+    "Any PIX/card/bank provider refund or chargeback behavior",
+    "Any non-cash receipt, journal account-plan or fiscal integration change",
+    "Any target, credential, production, deployment or release expansion"
+  ]
+}

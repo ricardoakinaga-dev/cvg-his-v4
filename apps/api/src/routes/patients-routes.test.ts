@@ -5,7 +5,7 @@ import test from 'node:test';
 import { EncountersService } from '@cvg-his-v2/module-encounters';
 import { OwnersService } from '@cvg-his-v2/module-owners';
 import { PatientsService } from '@cvg-his-v2/module-patients';
-import { NotFoundError } from '@cvg-his-v2/shared-errors';
+import { ForbiddenError, NotFoundError } from '@cvg-his-v2/shared-errors';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 
 import { handlePatientsRoutes } from './patients-routes.js';
@@ -142,6 +142,93 @@ test('handlePatientsRoutes GET /master-search returns cross-registry results', a
   assert.equal(payload.patients[0]?.id, 'patient_luna');
 });
 
+test('handlePatientsRoutes GET /master-search requires owner-read permission before returning owners', async () => {
+  const owners = new OwnersService();
+  const patients = new PatientsService({ owners });
+  const requiredPermissions: string[] = [];
+
+  await assert.rejects(
+    () =>
+      handlePatientsRoutes(
+        '/master-search',
+        new MockRequest({ method: 'GET', url: '/master-search?q=luna' }) as never,
+        new MockResponse() as never,
+        'corr-patients-master-search-owner-read',
+        {
+          patients,
+          owners,
+          audit: { write: () => {} } as never,
+          requirePrincipal: (_request, permissionCode) => {
+            requiredPermissions.push(permissionCode);
+            if (permissionCode === 'owners.read') {
+              throw new ForbiddenError('Missing owners.read permission');
+            }
+            return createPrincipal();
+          }
+        }
+      ),
+    ForbiddenError
+  );
+
+  assert.deepEqual(requiredPermissions, ['patients.read', 'owners.read']);
+});
+
+test('handlePatientsRoutes GET /master-search preserves results when both read permissions are present', async () => {
+  const response = new MockResponse();
+  const requiredPermissions: string[] = [];
+
+  const handled = await handlePatientsRoutes(
+    '/master-search',
+    new MockRequest({ method: 'GET', url: '/master-search?q=luna' }) as never,
+    response as never,
+    'corr-patients-master-search-both-reads',
+    {
+      patients: createPatientsService(),
+      audit: { write: () => {} } as never,
+      requirePrincipal: (_request, permissionCode) => {
+        requiredPermissions.push(permissionCode);
+        return createPrincipal();
+      }
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(requiredPermissions, ['patients.read', 'owners.read']);
+  assert.equal(
+    response.bodyJson<{ patients: Array<{ id: string }> }>().patients[0]?.id,
+    'patient_luna'
+  );
+});
+
+test('handlePatientsRoutes GET /master-search minimizes owner results to navigation fields', async () => {
+  const response = new MockResponse();
+
+  const handled = await handlePatientsRoutes(
+    '/master-search',
+    new MockRequest({ method: 'GET', url: '/master-search?q=maria' }) as never,
+    response as never,
+    'corr-patients-master-search-owner-minimal',
+    {
+      patients: createPatientsService(),
+      audit: { write: () => {} } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 200);
+  const payload = response.bodyJson<{
+    owners: Array<Record<string, unknown>>;
+  }>();
+  assert.deepEqual(Object.keys(payload.owners[0] ?? {}).sort(), ['fullName', 'id', 'status']);
+  assert.deepEqual(payload.owners[0], {
+    id: 'owner_maria_silva',
+    fullName: 'Maria Silva',
+    status: 'active'
+  });
+});
+
 test('handlePatientsRoutes GET /patients searches by tutor document and phone', async () => {
   const documentResponse = new MockResponse();
 
@@ -163,7 +250,10 @@ test('handlePatientsRoutes GET /patients searches by tutor document and phone', 
   assert.equal(handled, true);
   assert.equal(documentResponse.statusCode, 200);
   const documentPayload = documentResponse.bodyJson<{ items: Array<{ id: string }> }>();
-  assert.equal(documentPayload.items.some((item) => item.id === 'patient_luna'), true);
+  assert.equal(
+    documentPayload.items.some((item) => item.id === 'patient_luna'),
+    true
+  );
 
   const phoneResponse = new MockResponse();
   await handlePatientsRoutes(
@@ -182,7 +272,10 @@ test('handlePatientsRoutes GET /patients searches by tutor document and phone', 
   );
 
   const phonePayload = phoneResponse.bodyJson<{ items: Array<{ id: string }> }>();
-  assert.equal(phonePayload.items.some((item) => item.id === 'patient_luna'), true);
+  assert.equal(
+    phonePayload.items.some((item) => item.id === 'patient_luna'),
+    true
+  );
 });
 
 test('handlePatientsRoutes GET /owner-patient-links filters links by owner', async () => {
@@ -247,13 +340,17 @@ test('handlePatientsRoutes POST /owner-patient-links creates a new relationship'
 test('handlePatientsRoutes GET /patients/:id/summary returns owner snapshot and recent encounters', async () => {
   const response = new MockResponse();
   const { owners, patients, encounters } = createRegistryServices();
-  const encounter = encounters.openEncounter('acc_cvg_demo' as never, 'user-1' as never, {
-    ownerId: 'owner_maria_silva',
-    patientId: 'patient_luna',
-    visitType: 'scheduled',
-    origin: 'schedule',
-    reason: 'Consulta anual'
-  } as never);
+  const encounter = encounters.openEncounter(
+    'acc_cvg_demo' as never,
+    'user-1' as never,
+    {
+      ownerId: 'owner_maria_silva',
+      patientId: 'patient_luna',
+      visitType: 'scheduled',
+      origin: 'schedule',
+      reason: 'Consulta anual'
+    } as never
+  );
 
   const handled = await handlePatientsRoutes(
     '/patients/patient_luna/summary',
@@ -359,9 +456,9 @@ test('handlePatientsRoutes hides patients from another account', async () => {
     routeHandlers
   );
   assert.equal(
-    listResponse.bodyJson<{ items: Array<{ id: string }> }>().items.some(
-      (patient) => patient.id === foreignPatient.id
-    ),
+    listResponse
+      .bodyJson<{ items: Array<{ id: string }> }>()
+      .items.some((patient) => patient.id === foreignPatient.id),
     false
   );
 

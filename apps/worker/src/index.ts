@@ -28,15 +28,21 @@ import {
 import { refreshWorkerAccounts } from './account-discovery.js';
 import { runPixPaymentDispatchTick } from './jobs/local-pix-payment-dispatch-provider.js';
 import { runPixProviderSettlementTick } from './jobs/pix-provider-settlement-consumer.js';
+import {
+  resolveWorkerReportServicePrincipal,
+  resolveWorkerReportsUserId
+} from './worker-report-identity.js';
 
 const config = loadWorkerConfig(process.env);
 const logger = createLogger(config.appName);
 let workerObservabilityShutdown: (() => Promise<void>) | null = null;
+let workerHealthServer: ReturnType<typeof createServer> | undefined;
+let workerShutdownRequested = false;
+let workerShutdownPromise: Promise<void> | undefined;
 const configuredWorkerAccountId = process.env.WORKER_ACCOUNT_ID?.trim();
 const ACCOUNT_REFRESH_INTERVAL_MS = 60_000;
 const PIX_SETTLEMENT_DLQ_REFRESH_INTERVAL_MS = 15_000;
-const webhookWorkerId =
-  process.env.WORKER_INSTANCE_ID?.trim() || `webhook-worker-${process.pid}`;
+const webhookWorkerId = process.env.WORKER_INSTANCE_ID?.trim() || `webhook-worker-${process.pid}`;
 
 const workerState = {
   startedAt: new Date().toISOString(),
@@ -49,7 +55,37 @@ const workerState = {
   persistenceMode: 'in-memory' as 'database' | 'in-memory'
 };
 
+async function closeWorkerHealthServer(): Promise<void> {
+  const server = workerHealthServer;
+  if (!server?.listening) return;
+
+  await new Promise<void>((resolve, reject) => {
+    server.close((error) => (error ? reject(error) : resolve()));
+  });
+}
+
+async function shutdownWorkerRuntime(): Promise<void> {
+  workerShutdownPromise ??= (async () => {
+    await closeWorkerHealthServer();
+    if (workerObservabilityShutdown) {
+      await workerObservabilityShutdown();
+    }
+    await shutdownWorkerServices();
+    logger.info('worker runtime shutdown complete');
+  })();
+  await workerShutdownPromise;
+}
+
+function requestWorkerShutdown(signal: NodeJS.Signals): void {
+  workerShutdownRequested = true;
+  logger.info('worker shutdown requested; finishing current tick', { signal });
+}
+
+process.on('SIGTERM', () => requestWorkerShutdown('SIGTERM'));
+process.on('SIGINT', () => requestWorkerShutdown('SIGINT'));
+
 async function main() {
+  const configuredWorkerReportsUserId = resolveWorkerReportsUserId(config.workerReportsUserId);
   const observability = await startWorkerObservability({
     enabled: config.otelEnabled,
     serviceName: config.otelServiceName,
@@ -60,20 +96,7 @@ async function main() {
     otlpHeaders: config.otlpHeaders
   });
   workerObservabilityShutdown = observability.shutdown;
-
-  const shutdownObservability = () =>
-    observability.shutdown().catch((error) => {
-      logger.error('failed to shutdown worker observability', {
-        error: error instanceof Error ? error.message : String(error)
-      });
-    });
-
-  process.once('SIGTERM', () => {
-    void shutdownObservability().finally(() => process.exit(0));
-  });
-  process.once('SIGINT', () => {
-    void shutdownObservability().finally(() => process.exit(0));
-  });
+  if (workerShutdownRequested) return;
 
   const bootstrap = await bootstrapWorkerServices({
     databaseUrl: config.databaseUrl,
@@ -83,6 +106,7 @@ async function main() {
     pixProviderSettlementEnabled: process.env.WORKER_PIX_SETTLEMENT_ENABLED === '1',
     pixSettlementWorkerId: process.env.WORKER_INSTANCE_ID
   });
+  if (workerShutdownRequested) return;
   workerState.databaseHealthy = bootstrap.databaseHealthy;
   workerState.persistenceMode = bootstrap.notificationRepository ? 'database' : 'in-memory';
 
@@ -164,6 +188,7 @@ async function main() {
   };
 
   await refreshAccounts(false);
+  if (workerShutdownRequested) return;
 
   const refreshPixSettlementDlqBacklog = async (): Promise<void> => {
     const pixProviderSettlement = bootstrap.pixProviderSettlement;
@@ -187,8 +212,9 @@ async function main() {
   };
 
   await refreshPixSettlementDlqBacklog();
+  if (workerShutdownRequested) return;
 
-  const healthServer = createServer(async (req, res) => {
+  workerHealthServer = createServer(async (req, res) => {
     res.setHeader('content-type', 'application/json');
     if (req.url === '/health') {
       const payload = {
@@ -203,6 +229,7 @@ async function main() {
           lastTickAt: workerState.lastTickAt,
           lastError: workerState.lastError,
           initialized: true,
+          draining: workerShutdownRequested,
           requiredEventBusConsumers: PRODUCTION_EVENT_CONSUMERS,
           registeredEventBusConsumers: eventBus.consumerNames,
           deliveryGuaranteesReady: Boolean(bootstrap.unitOfWork),
@@ -211,16 +238,16 @@ async function main() {
             bootstrap.webhookDeliveryExecutor && bootstrap.webhookDeliverySchemaReady
           )
         }),
-          worker: {
+        worker: {
           startedAt: workerState.startedAt,
           lastTickDurationMs: workerState.lastTickDurationMs,
           errors: workerState.errors,
           memory: process.memoryUsage(),
-            uptime: process.uptime(),
-            pixProviderSettlementEnabled: Boolean(bootstrap.pixProviderSettlement),
-            webhookDeliveryExecutorReady: Boolean(
-              bootstrap.webhookDeliveryExecutor && bootstrap.webhookDeliverySchemaReady
-            )
+          uptime: process.uptime(),
+          pixProviderSettlementEnabled: Boolean(bootstrap.pixProviderSettlement),
+          webhookDeliveryExecutorReady: Boolean(
+            bootstrap.webhookDeliveryExecutor && bootstrap.webhookDeliverySchemaReady
+          )
         }
       };
       res.writeHead(200);
@@ -245,6 +272,7 @@ async function main() {
         lastTickAt: workerState.lastTickAt,
         lastError: workerState.lastError,
         initialized: true,
+        draining: workerShutdownRequested,
         requiredEventBusConsumers: PRODUCTION_EVENT_CONSUMERS,
         registeredEventBusConsumers: eventBus.consumerNames,
         deliveryGuaranteesReady: Boolean(bootstrap.unitOfWork),
@@ -265,6 +293,7 @@ async function main() {
         lastTickAt: workerState.lastTickAt,
         lastError: workerState.lastError,
         initialized: true,
+        draining: workerShutdownRequested,
         requiredEventBusConsumers: PRODUCTION_EVENT_CONSUMERS,
         registeredEventBusConsumers: eventBus.consumerNames,
         deliveryGuaranteesReady: Boolean(bootstrap.unitOfWork),
@@ -309,11 +338,11 @@ async function main() {
     }
   });
 
-  healthServer.listen(config.healthPort, () => {
+  workerHealthServer.listen(config.healthPort, () => {
     logger.info('worker health endpoint listening', { port: config.healthPort });
   });
 
-  while (true) {
+  while (!workerShutdownRequested) {
     const correlationId = createCorrelationId('worker');
     const tickStart = Date.now();
     let isolatedTickError: string | null = null;
@@ -448,7 +477,7 @@ async function main() {
           () =>
             runWithTenantContext(tenantContext, () =>
               runEventBusTick(logger, tickContext, eventBus)
-          )
+            )
         );
 
         const webhookDeliveryExecutor = bootstrap.webhookDeliveryExecutor;
@@ -481,24 +510,38 @@ async function main() {
             'worker.database_healthy': workerState.databaseHealthy
           },
           async () => {
-            await runWithTenantContext(
-              {
-                tenantId: accountId,
+            try {
+              const workerReportsUserId = await resolveWorkerReportServicePrincipal(
                 accountId,
-                correlationId
-              },
-              () =>
-                runScheduledReportsTick(
-                  logger,
-                  {
-                    ...tickContext,
-                    accountId: accountId as never,
-                    runAsUserId: (process.env.WORKER_REPORTS_USER_ID?.trim() || accountId) as never
-                  },
-                  reports,
-                  bootstrap.reportSources
-                )
-            );
+                configuredWorkerReportsUserId
+              );
+              await runWithTenantContext(
+                {
+                  tenantId: accountId,
+                  accountId,
+                  correlationId
+                },
+                () =>
+                  runScheduledReportsTick(
+                    logger,
+                    {
+                      ...tickContext,
+                      accountId: accountId as never,
+                      runAsUserId: workerReportsUserId
+                    },
+                    reports,
+                    bootstrap.reportSources,
+                    bootstrap.audit
+                  )
+              );
+            } catch (error) {
+              isolatedTickError = error instanceof Error ? error.message : String(error);
+              workerState.errors++;
+              logger.error('worker scheduled report tick failed', {
+                accountId,
+                error: isolatedTickError
+              });
+            }
           }
         );
       }
@@ -512,7 +555,9 @@ async function main() {
       workerState.lastError = error instanceof Error ? error.message : String(error);
       logger.error('worker tick failed', { error: workerState.lastError });
     }
-    await sleep(config.intervalMs);
+    if (!workerShutdownRequested) {
+      await sleep(config.intervalMs);
+    }
   }
 }
 
@@ -526,8 +571,5 @@ main()
     process.exitCode = 1;
   })
   .finally(async () => {
-    if (workerObservabilityShutdown) {
-      await workerObservabilityShutdown();
-    }
-    await shutdownWorkerServices();
+    await shutdownWorkerRuntime();
   });

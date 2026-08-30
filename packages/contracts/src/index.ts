@@ -30,6 +30,7 @@ export * from './exams.js';
 export * from './integration.js';
 export * from './products.js';
 export * from './services.js';
+export * from './counterSales.js';
 
 /**
  * ==========================================
@@ -38,10 +39,7 @@ export * from './services.js';
  */
 
 import { appointmentsContract } from './appointments.js';
-import {
-  availabilityContract,
-  typeConfigContract
-} from './agendaConfig.js';
+import { availabilityContract, typeConfigContract } from './agendaConfig.js';
 import { ownersContract } from './owners.js';
 import { patientsContract } from './patients.js';
 import { encounterBillingContract } from './encounterBilling.js';
@@ -51,6 +49,7 @@ import { examOrdersContract, examResultsContract } from './exams.js';
 import { integrationContract } from './integration.js';
 import { productsContract } from './products.js';
 import { servicesContract } from './services.js';
+import { counterSalesContract } from './counterSales.js';
 
 /**
  * Complete API contract definition
@@ -68,7 +67,8 @@ export const apiContract = {
   examResults: examResultsContract,
   integration: integrationContract,
   products: productsContract,
-  services: servicesContract
+  services: servicesContract,
+  counterSales: counterSalesContract
 } as const;
 
 export type ApiContract = typeof apiContract;
@@ -413,21 +413,87 @@ export const contractEndpoints = [
   },
 
   // Exam Orders
-  { domain: 'examOrders', operation: 'create', method: 'POST', path: '/exam-orders', description: 'Create exam order' },
-  { domain: 'examOrders', operation: 'getById', method: 'GET', path: '/exam-orders/:id', description: 'Get exam order by ID' },
-  { domain: 'examOrders', operation: 'list', method: 'GET', path: '/exam-orders', description: 'List exam orders' },
-  { domain: 'examOrders', operation: 'update', method: 'PATCH', path: '/exam-orders/:id', description: 'Update exam order' },
+  {
+    domain: 'examOrders',
+    operation: 'create',
+    method: 'POST',
+    path: '/exam-orders',
+    description: 'Create exam order'
+  },
+  {
+    domain: 'examOrders',
+    operation: 'getById',
+    method: 'GET',
+    path: '/exam-orders/:id',
+    description: 'Get exam order by ID'
+  },
+  {
+    domain: 'examOrders',
+    operation: 'list',
+    method: 'GET',
+    path: '/exam-orders',
+    description: 'List exam orders'
+  },
+  {
+    domain: 'examOrders',
+    operation: 'update',
+    method: 'PATCH',
+    path: '/exam-orders/:id',
+    description: 'Update exam order'
+  },
 
   // Exam Results
-  { domain: 'examResults', operation: 'create', method: 'POST', path: '/exam-results', description: 'Create exam result' },
-  { domain: 'examResults', operation: 'getById', method: 'GET', path: '/exam-results/:id', description: 'Get exam result by ID' },
-  { domain: 'examResults', operation: 'list', method: 'GET', path: '/exam-results', description: 'List exam results' },
-  { domain: 'examResults', operation: 'update', method: 'PATCH', path: '/exam-results/:id', description: 'Update exam result' },
+  {
+    domain: 'examResults',
+    operation: 'create',
+    method: 'POST',
+    path: '/exam-results',
+    description: 'Create exam result'
+  },
+  {
+    domain: 'examResults',
+    operation: 'getById',
+    method: 'GET',
+    path: '/exam-results/:id',
+    description: 'Get exam result by ID'
+  },
+  {
+    domain: 'examResults',
+    operation: 'list',
+    method: 'GET',
+    path: '/exam-results',
+    description: 'List exam results'
+  },
+  {
+    domain: 'examResults',
+    operation: 'update',
+    method: 'PATCH',
+    path: '/exam-results/:id',
+    description: 'Update exam result'
+  },
 
   // Integration (R3.7)
-  { domain: 'integration', operation: 'startEncounterFromAppointment', method: 'POST', path: '/appointments/:id/start-encounter', description: 'Start encounter from appointment' },
-  { domain: 'integration', operation: 'createExamOrderFromEncounter', method: 'POST', path: '/encounters/:id/exam-orders', description: 'Create exam order from encounter' },
-  { domain: 'integration', operation: 'getEncounterIntegratedSummary', method: 'GET', path: '/encounters/:id/summary', description: 'Get integrated encounter summary' },
+  {
+    domain: 'integration',
+    operation: 'startEncounterFromAppointment',
+    method: 'POST',
+    path: '/appointments/:id/start-encounter',
+    description: 'Start encounter from appointment'
+  },
+  {
+    domain: 'integration',
+    operation: 'createExamOrderFromEncounter',
+    method: 'POST',
+    path: '/encounters/:id/exam-orders',
+    description: 'Create exam order from encounter'
+  },
+  {
+    domain: 'integration',
+    operation: 'getEncounterIntegratedSummary',
+    method: 'GET',
+    path: '/encounters/:id/summary',
+    description: 'Get integrated encounter summary'
+  },
 
   // Services
   {

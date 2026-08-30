@@ -33,7 +33,7 @@ export interface MarketingRoutesHandlers {
   whatsAppProvider?: WhatsAppProviderService;
   marketingProviderMode?: MarketingProviderMode;
   audit: AuditService;
-  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
+  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
 }
 
 function json(response: ServerResponse, statusCode: number, payload: unknown): true {
@@ -160,7 +160,7 @@ export async function handleMarketingRoutes(
   const url = new URL(request.url ?? pathname, 'http://localhost');
 
   if (pathname === '/marketing/consent' && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'marketing.read');
+    const principal = await requirePrincipal(request, 'marketing.read');
     const ownerId = parseOwnerId(url.searchParams.get('ownerId'));
     const consent = await marketing.getConsent(principal.user.accountId, ownerId);
     return json(response, 200, { consent });
@@ -172,7 +172,7 @@ export async function handleMarketingRoutes(
       ? 'granted'
       : null;
   if (consentAction && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'marketing.manage');
+    const principal = await requirePrincipal(request, 'marketing.manage');
     const payload = await readJsonBody(request);
     if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
       throw new ValidationError('consent payload is required');
@@ -199,14 +199,14 @@ export async function handleMarketingRoutes(
   }
 
   if (pathname === '/marketing/segments' && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'marketing.read');
+    const principal = await requirePrincipal(request, 'marketing.read');
     return json(response, 200, {
       items: marketing.listSegments(principal.user.accountId)
     });
   }
 
   if (pathname === '/marketing/segments' && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'marketing.manage');
+    const principal = await requirePrincipal(request, 'marketing.manage');
     const payload = await readJsonBody(request) as CreateMarketingSegmentInput;
     const segment = await marketing.createSegment(principal.user.accountId, principal.user.id, payload);
     appendAudit(audit, {
@@ -224,14 +224,14 @@ export async function handleMarketingRoutes(
   }
 
   if (pathname === '/marketing/templates' && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'marketing.read');
+    const principal = await requirePrincipal(request, 'marketing.read');
     return json(response, 200, {
       items: marketing.listTemplates(principal.user.accountId, parseChannel(url.searchParams.get('channel')))
     });
   }
 
   if (pathname === '/marketing/templates' && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'marketing.manage');
+    const principal = await requirePrincipal(request, 'marketing.manage');
     const payload = await readJsonBody(request) as CreateMarketingTemplateInput;
     const template = await marketing.createTemplate(principal.user.accountId, principal.user.id, payload);
     appendAudit(audit, {
@@ -249,7 +249,7 @@ export async function handleMarketingRoutes(
   }
 
   if (pathname === '/marketing/settings' && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'marketing.read');
+    const principal = await requirePrincipal(request, 'marketing.read');
     const key = parseSettingKey(url.searchParams.get('key'));
     const setting = await marketing.getSetting(principal.user.accountId, key);
     return json(response, 200, { setting });
@@ -257,7 +257,7 @@ export async function handleMarketingRoutes(
 
   const settingMatch = pathname.match(/^\/marketing\/settings\/([^/]+)$/);
   if (settingMatch && request.method === 'PATCH') {
-    const principal = requirePrincipal(request, 'marketing.manage');
+    const principal = await requirePrincipal(request, 'marketing.manage');
     const key = parseSettingKey(decodeURIComponent(settingMatch[1] ?? ''));
     const payload = parseSettingPayload(await readJsonBody(request), key);
     const setting = await marketing.saveSetting(principal.user.accountId, principal.user.id, payload);
@@ -276,14 +276,14 @@ export async function handleMarketingRoutes(
   }
 
   if (pathname === '/marketing/campaigns' && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'marketing.read');
+    const principal = await requirePrincipal(request, 'marketing.read');
     return json(response, 200, {
       items: marketing.listCampaigns(principal.user.accountId, parseCampaignStatus(url.searchParams.get('status')))
     });
   }
 
   if (pathname === '/marketing/campaigns' && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'marketing.manage');
+    const principal = await requirePrincipal(request, 'marketing.manage');
     const rawPayload = await readJsonBody(request);
     if (!rawPayload || typeof rawPayload !== 'object' || Array.isArray(rawPayload)) {
       throw new ValidationError('campaign payload is required');
@@ -309,7 +309,7 @@ export async function handleMarketingRoutes(
 
   const scheduleCampaignId = parseCampaignId(pathname, '/schedule');
   if (scheduleCampaignId && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'marketing.manage');
+    const principal = await requirePrincipal(request, 'marketing.manage');
     const campaign = await marketing.scheduleCampaign(principal.user.accountId, principal.user.id, scheduleCampaignId);
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -327,7 +327,7 @@ export async function handleMarketingRoutes(
 
   const dispatchCampaignId = parseCampaignId(pathname, '/dispatch');
   if (dispatchCampaignId && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'marketing.manage');
+    const principal = await requirePrincipal(request, 'marketing.manage');
     const rawPayload = await readJsonBody(request);
     if (!rawPayload || typeof rawPayload !== 'object' || Array.isArray(rawPayload)) {
       throw new ValidationError('dispatch payload is required');
@@ -358,7 +358,7 @@ export async function handleMarketingRoutes(
 
   const retryDeliveryId = parseDeliveryId(pathname);
   if (retryDeliveryId && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'marketing.manage');
+    const principal = await requirePrincipal(request, 'marketing.manage');
     const delivery = await marketing.retryDelivery(
       principal.user.accountId,
       principal.user.id,
@@ -386,7 +386,7 @@ export async function handleMarketingRoutes(
 
   const deliveriesCampaignId = parseCampaignId(pathname, '/deliveries');
   if (deliveriesCampaignId && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'marketing.read');
+    const principal = await requirePrincipal(request, 'marketing.read');
     return json(response, 200, {
       items: marketing.listDeliveries(principal.user.accountId, deliveriesCampaignId)
     });

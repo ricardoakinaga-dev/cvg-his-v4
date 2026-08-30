@@ -23,7 +23,7 @@ export interface MlRoutesHandlers {
   telemetry?: MlTelemetryService;
   audit: AuditService;
   featureFlags?: ApiFeatureFlagsSnapshot;
-  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
+  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
 }
 
 function json(response: ServerResponse, statusCode: number, payload: unknown): true {
@@ -48,7 +48,7 @@ export async function handleMlRoutes(
   handlers: MlRoutesHandlers
 ): Promise<boolean> {
   if (pathname === '/ml/report' && request.method === 'GET') {
-    const principal = handlers.requirePrincipal(request, 'scheduling.read');
+    const principal = await handlers.requirePrincipal(request, 'scheduling.read');
     const report = handlers.telemetry?.getReport({
       accountId: principal.user.accountId,
       appointments: handlers.scheduling.listAppointments(principal.user.accountId),
@@ -94,7 +94,7 @@ export async function handleMlRoutes(
     if (handlers.featureFlags?.mlOcrFiscalEnabled === false) {
       return json(response, 404, { error: 'feature_disabled', message: 'OCR fiscal is disabled' });
     }
-    const principal = handlers.requirePrincipal(request, 'fiscal.read');
+    const principal = await handlers.requirePrincipal(request, 'fiscal.read');
     const body = (await readJsonBody(request)) as { rawText?: string; documentName?: string };
     const preview = handlers.ocrFiscal.preview({
       rawText: String(body.rawText ?? ''),
@@ -118,7 +118,7 @@ export async function handleMlRoutes(
     if (handlers.featureFlags?.mlForecastingEnabled === false) {
       return json(response, 404, { error: 'feature_disabled', message: 'Demand forecasting is disabled' });
     }
-    const principal = handlers.requirePrincipal(request, 'scheduling.read');
+    const principal = await handlers.requirePrincipal(request, 'scheduling.read');
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const rawHorizonDays = url.searchParams.get('horizonDays');
     const rawReferenceDate = url.searchParams.get('referenceDate');
@@ -158,7 +158,7 @@ export async function handleMlRoutes(
     if (handlers.featureFlags?.mlAnomalyDetectionEnabled === false) {
       return json(response, 404, { error: 'feature_disabled', message: 'Anomaly detection is disabled' });
     }
-    const principal = handlers.requirePrincipal(request, 'diagnostics.read');
+    const principal = await handlers.requirePrincipal(request, 'diagnostics.read');
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const examType = url.searchParams.get('examType') ?? undefined;
     const [orders, referenceValues] = await Promise.all([
@@ -195,7 +195,7 @@ export async function handleMlRoutes(
     if (handlers.featureFlags?.mlAnomalyDetectionEnabled === false) {
       return json(response, 404, { error: 'feature_disabled', message: 'Anomaly detection is disabled' });
     }
-    const principal = handlers.requirePrincipal(request, 'diagnostics.manage');
+    const principal = await handlers.requirePrincipal(request, 'diagnostics.manage');
     const body = (await readJsonBody(request)) as {
       orderId?: string;
       disposition?: 'confirmed' | 'dismissed';

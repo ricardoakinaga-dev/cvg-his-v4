@@ -13,7 +13,10 @@ import type { TenantCommandInput, TenantCommandRunner } from '../helpers/tenant-
 export interface CounterSalesRoutesHandlers {
   counterSales: CounterSalesService;
   audit: AuditService;
-  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
+  requirePrincipal: (
+    request: IncomingMessage,
+    permissionCode: string
+  ) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
   runCommand?: TenantCommandRunner;
 }
 
@@ -82,16 +85,8 @@ function parseSettlementPayload(value: unknown): {
         throw new ValidationError(`payments[${index}] must be a JSON object`);
       }
       const payment = value as Readonly<Record<string, unknown>>;
-      const allowedFields = new Set([
-        'method',
-        'amount',
-        'installments',
-        'reference',
-        'notes'
-      ]);
-      const unknownPaymentField = Object.keys(payment).find(
-        (field) => !allowedFields.has(field)
-      );
+      const allowedFields = new Set(['method', 'amount', 'installments', 'reference', 'notes']);
+      const unknownPaymentField = Object.keys(payment).find((field) => !allowedFields.has(field));
       if (unknownPaymentField) {
         throw new ValidationError(`Unknown field 'payments[${index}].${unknownPaymentField}'`);
       }
@@ -118,7 +113,9 @@ function parseSettlementPayload(value: unknown): {
         installments < 1 ||
         installments > 120
       ) {
-        throw new ValidationError(`payments[${index}].installments must be an integer from 1 to 120`);
+        throw new ValidationError(
+          `payments[${index}].installments must be an integer from 1 to 120`
+        );
       }
 
       const reference = payment.reference ?? null;
@@ -130,7 +127,9 @@ function parseSettlementPayload(value: unknown): {
         throw new ValidationError(`payments[${index}].reference and notes must be strings or null`);
       }
       if (typeof reference === 'string' && reference.length > 255) {
-        throw new ValidationError(`payments[${index}].reference must contain at most 255 characters`);
+        throw new ValidationError(
+          `payments[${index}].reference must contain at most 255 characters`
+        );
       }
       if (typeof notes === 'string' && notes.length > 2000) {
         throw new ValidationError(`payments[${index}].notes must contain at most 2000 characters`);
@@ -145,6 +144,30 @@ function parseSettlementPayload(value: unknown): {
       };
     })
   };
+}
+
+function parseCancellationPayload(value: unknown): { readonly reason: string } {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new ValidationError('Cancellation body must be a JSON object');
+  }
+
+  const payload = value as Readonly<Record<string, unknown>>;
+  const unknownField = Object.keys(payload).find((field) => field !== 'reason');
+  if (unknownField) throw new ValidationError(`Unknown field '${unknownField}'`);
+
+  if (typeof payload.reason !== 'string') {
+    throw new ValidationError('reason is required');
+  }
+
+  if (/[\u0000-\u001f\u007f-\u009f]/u.test(payload.reason)) {
+    throw new ValidationError('reason cannot contain control characters');
+  }
+  const reason = payload.reason.trim();
+  if (reason.length === 0 || reason.length > 500) {
+    throw new ValidationError('reason must contain 1 to 500 characters');
+  }
+
+  return { reason };
 }
 
 function parsePaymentIdempotencyKey(request: IncomingMessage): string | undefined {
@@ -173,12 +196,13 @@ export async function handleCounterSalesRoutes(
   }
 
   const { counterSales, audit, requirePrincipal } = handlers;
-  const runCommand = handlers.runCommand ?? (async <T>(input: TenantCommandInput<T>) => input.command());
+  const runCommand =
+    handlers.runCommand ?? (async <T>(input: TenantCommandInput<T>) => input.command());
   const method = request.method ?? 'GET';
   const url = new URL(request.url ?? pathname, 'http://localhost');
 
   if (pathname === '/admin/commercial-dashboard' && method === 'GET') {
-    const principal = requirePrincipal(request, 'counter_sale.read');
+    const principal = await requirePrincipal(request, 'counter_sale.read');
     const dateFrom = url.searchParams.get('dateFrom') ?? undefined;
     const dateTo = url.searchParams.get('dateTo') ?? undefined;
     const dashboard = await counterSales.getCommercialDashboard(
@@ -203,7 +227,7 @@ export async function handleCounterSalesRoutes(
   }
 
   if (pathname === '/counter-sales' && method === 'GET') {
-    const principal = requirePrincipal(request, 'counter_sale.read');
+    const principal = await requirePrincipal(request, 'counter_sale.read');
     const search = url.searchParams.get('search') ?? undefined;
     const status = url.searchParams.get('status') ?? undefined;
     const ownerId = url.searchParams.get('ownerId') ?? undefined;
@@ -233,7 +257,7 @@ export async function handleCounterSalesRoutes(
   }
 
   if (pathname === '/counter-sales' && method === 'POST') {
-    const principal = requirePrincipal(request, 'counter_sale.write');
+    const principal = await requirePrincipal(request, 'counter_sale.write');
     const payload = (await readJsonBody(request).catch(() => ({}))) as {
       ownerId?: string | null;
       patientId?: string | null;
@@ -257,14 +281,15 @@ export async function handleCounterSalesRoutes(
       correlationId,
       operation: 'counter_sale.open',
       payload: openPayload as unknown as JsonValue,
-      command: () => counterSales.open(principal.user.accountId, principal.user.id, {
-      ownerId: payload.ownerId,
-      patientId: payload.patientId,
-      encounterId: payload.encounterId,
-      queueEntryId: payload.queueEntryId,
-      billingRecordId: payload.billingRecordId,
-      notes: payload.notes
-      })
+      command: () =>
+        counterSales.open(principal.user.accountId, principal.user.id, {
+          ownerId: payload.ownerId,
+          patientId: payload.patientId,
+          encounterId: payload.encounterId,
+          queueEntryId: payload.queueEntryId,
+          billingRecordId: payload.billingRecordId,
+          notes: payload.notes
+        })
     });
 
     appendAudit(audit, {
@@ -284,8 +309,11 @@ export async function handleCounterSalesRoutes(
 
   const saleMatch = pathname.match(/^\/counter-sales\/([^/]+)$/);
   if (saleMatch && method === 'GET') {
-    const principal = requirePrincipal(request, 'counter_sale.read');
-    const sale = counterSales.getOrThrow(saleMatch[1]);
+    const principal = await requirePrincipal(request, 'counter_sale.read');
+    const sale =
+      typeof counterSales.getByIdForAccount === 'function'
+        ? await counterSales.getByIdForAccount(principal.user.accountId, saleMatch[1])
+        : counterSales.getOrThrow(saleMatch[1]);
     if (sale.accountId !== principal.user.accountId) {
       throw new AuthenticationError('Counter sale not found for current account');
     }
@@ -306,13 +334,17 @@ export async function handleCounterSalesRoutes(
       ...sale,
       items: counterSales.getItems(sale.id, principal.user.accountId),
       payments: counterSales.getPayments(sale.id),
-      receipt: counterSales.getReceipt(sale.id) ?? null
+      receipt: counterSales.getReceipt(sale.id) ?? null,
+      cancellationHistory: await counterSales.listCancellationHistory(
+        principal.user.accountId,
+        sale.id
+      )
     });
   }
 
   const addItemMatch = pathname.match(/^\/counter-sales\/([^/]+)\/items$/);
   if (addItemMatch && method === 'POST') {
-    const principal = requirePrincipal(request, 'counter_sale.write');
+    const principal = await requirePrincipal(request, 'counter_sale.write');
     const saleId = addItemMatch[1];
     const sale = counterSales.getOrThrow(saleId);
     if (sale.accountId !== principal.user.accountId) {
@@ -364,7 +396,7 @@ export async function handleCounterSalesRoutes(
 
   const updateItemMatch = pathname.match(/^\/counter-sales\/([^/]+)\/items\/([^/]+)$/);
   if (updateItemMatch && method === 'PATCH') {
-    const principal = requirePrincipal(request, 'counter_sale.write');
+    const principal = await requirePrincipal(request, 'counter_sale.write');
     const sale = counterSales.getOrThrow(updateItemMatch[1]);
     if (sale.accountId !== principal.user.accountId) {
       throw new AuthenticationError('Counter sale not found for current account');
@@ -405,7 +437,7 @@ export async function handleCounterSalesRoutes(
   }
 
   if (updateItemMatch && method === 'DELETE') {
-    const principal = requirePrincipal(request, 'counter_sale.write');
+    const principal = await requirePrincipal(request, 'counter_sale.write');
     const sale = counterSales.getOrThrow(updateItemMatch[1]);
     if (sale.accountId !== principal.user.accountId) {
       throw new AuthenticationError('Counter sale not found for current account');
@@ -442,7 +474,7 @@ export async function handleCounterSalesRoutes(
 
   const paymentMatch = pathname.match(/^\/counter-sales\/([^/]+)\/payments$/);
   if (paymentMatch && method === 'POST') {
-    const principal = requirePrincipal(request, 'counter_sale.write');
+    const principal = await requirePrincipal(request, 'counter_sale.write');
     const sale = counterSales.getOrThrow(paymentMatch[1]);
     if (sale.accountId !== principal.user.accountId) {
       throw new AuthenticationError('Counter sale not found for current account');
@@ -484,7 +516,7 @@ export async function handleCounterSalesRoutes(
 
   const settleMatch = pathname.match(/^\/counter-sales\/([^/]+)\/settle$/);
   if (settleMatch && method === 'POST') {
-    const principal = requirePrincipal(request, 'counter_sale.write');
+    const principal = await requirePrincipal(request, 'counter_sale.write');
     const saleId = settleMatch[1];
     const sale = counterSales.getOrThrow(saleId);
     if (sale.accountId !== principal.user.accountId) {
@@ -516,14 +548,39 @@ export async function handleCounterSalesRoutes(
   }
 
   if (transitionMatch && method === 'POST') {
-    const principal = requirePrincipal(request, 'counter_sale.write');
-    const sale = counterSales.getOrThrow(transitionMatch[1]);
+    const principal = await requirePrincipal(request, 'counter_sale.write');
+    const saleId = transitionMatch[1];
+    const action = transitionMatch[2];
+
+    if (action === 'cancel') {
+      const { reason } = parseCancellationPayload(await readJsonBody(request));
+      const updatedSale = await runCommand({
+        request,
+        accountId: principal.user.accountId,
+        actorUserId: principal.user.id,
+        correlationId,
+        operation: 'counter_sale.cancel',
+        payload: { saleId, reason },
+        command: () =>
+          counterSales.cancel(saleId, {
+            accountId: principal.user.accountId,
+            cancelledByUserId: principal.user.id,
+            reason,
+            correlationId
+          }),
+        onCommit:
+          counterSales.persistenceMode === 'database' &&
+          typeof audit.refreshFromDatabase === 'function'
+            ? () => audit.refreshFromDatabase(principal.user.accountId)
+            : undefined
+      });
+      return json(response, 200, updatedSale);
+    }
+
+    const sale = counterSales.getOrThrow(saleId);
     if (sale.accountId !== principal.user.accountId) {
       throw new AuthenticationError('Counter sale not found for current account');
     }
-
-    const saleId = transitionMatch[1];
-    const action = transitionMatch[2];
 
     if (action === 'close') {
       const result = await runCommand({
@@ -547,30 +604,6 @@ export async function handleCounterSalesRoutes(
         correlationId
       });
       return json(response, 200, { ...result.sale, receipt: result.receipt });
-    }
-
-    if (action === 'cancel') {
-      const updatedSale = await runCommand({
-        request,
-        accountId: principal.user.accountId,
-        actorUserId: principal.user.id,
-        correlationId,
-        operation: 'counter_sale.cancel',
-        payload: { saleId },
-        command: () => counterSales.cancel(saleId)
-      });
-      appendAudit(audit, {
-        actorId: principal.user.id,
-        accountId: principal.user.accountId,
-        module: 'counter-sales',
-        action: 'cancel',
-        entityType: 'counter-sale',
-        entityId: updatedSale.id,
-        payloadSummary: `Counter sale ${updatedSale.number} cancelled`,
-        riskLevel: 'high',
-        correlationId
-      });
-      return json(response, 200, updatedSale);
     }
 
     const updatedSale = await runCommand({

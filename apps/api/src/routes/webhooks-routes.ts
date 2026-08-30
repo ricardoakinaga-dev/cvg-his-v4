@@ -10,20 +10,16 @@ import { readJsonBody } from '../helpers/common.js';
 import { appendAudit } from '../helpers/audit-helper.js';
 import type { CreateWebhookRequest, UpdateWebhookRequest } from '@cvg-his-v2/shared-contracts';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
-import type { UserSummary, WebhookSummary } from '@cvg-his-v2/shared-types';
-
-// Principal result type (duplicated from server.ts to avoid tight coupling)
-export interface PrincipalResult {
-  user: UserSummary;
-  access: { permissions: readonly string[] };
-}
+import type { AuthenticatedPrincipal, WebhookSummary } from '@cvg-his-v2/shared-types';
 
 // Webhooks route handlers interface
 export interface WebhooksHandlers {
   webhooks: WebhooksService;
   audit: AuditService;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  requirePrincipal: (request: IncomingMessage, permission: string) => any;
+  requirePrincipal: (
+    request: IncomingMessage,
+    permission: string
+  ) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
 }
 
 type PublicWebhookSummary = Omit<WebhookSummary, 'secret'>;
@@ -77,7 +73,7 @@ export async function handleWebhooksRoutes(
 
   // GET /webhooks — list all webhooks for account
   if (isWebhookCollectionPath(pathname) && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'webhooks.read');
+    const principal = await requirePrincipal(request, 'webhooks.read');
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const filters = {
       url: normalizeSearch(url.searchParams.get('url') ?? url.searchParams.get('description')),
@@ -93,7 +89,7 @@ export async function handleWebhooksRoutes(
 
   // POST /webhooks — register new webhook
   if (isWebhookCollectionPath(pathname) && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'webhooks.manage');
+    const principal = await requirePrincipal(request, 'webhooks.manage');
     const payload = (await readJsonBody(request)) as CreateWebhookRequest;
     const webhook = await webhooks.register(principal.user.id, principal.user.accountId, payload);
     appendAudit(audit, {
@@ -116,7 +112,7 @@ export async function handleWebhooksRoutes(
   // GET /webhooks/{webhookId} — get single webhook
   if (pathname.match(/^\/webhooks\/[^/]+$/) && request.method === 'GET') {
     const webhookId = pathname.split('/')[2];
-    const principal = requirePrincipal(request, 'webhooks.read');
+    const principal = await requirePrincipal(request, 'webhooks.read');
     const webhook = webhooks.get(principal.user.accountId, webhookId as never);
     const wh = await webhook;
     if (!wh || wh.accountId !== principal.user.accountId) {
@@ -136,7 +132,7 @@ export async function handleWebhooksRoutes(
   // PATCH /webhooks/{webhookId} — update webhook
   if (pathname.match(/^\/webhooks\/[^/]+$/) && request.method === 'PATCH') {
     const webhookId = requireNonEmptyString(pathname.split('/')[2], 'webhookId');
-    const principal = requirePrincipal(request, 'webhooks.manage');
+    const principal = await requirePrincipal(request, 'webhooks.manage');
     const body = readJsonBody(request) as Promise<UpdateWebhookRequest>;
     return body.then(async (payload) => {
       const existing = await webhooks.get(principal.user.accountId, webhookId as never);
@@ -170,7 +166,7 @@ export async function handleWebhooksRoutes(
   // DELETE /webhooks/{webhookId} — delete webhook
   if (pathname.match(/^\/webhooks\/[^/]+$/) && request.method === 'DELETE') {
     const webhookId = requireNonEmptyString(pathname.split('/')[2], 'webhookId');
-    const principal = requirePrincipal(request, 'webhooks.manage');
+    const principal = await requirePrincipal(request, 'webhooks.manage');
     return (async () => {
       const existing = await webhooks.get(principal.user.accountId, webhookId as never);
       if (!existing || existing.accountId !== principal.user.accountId) {
@@ -206,7 +202,7 @@ export async function handleWebhooksRoutes(
     request.method === 'GET'
   ) {
     const webhookId = requireNonEmptyString(pathname.split('/')[2], 'webhookId');
-    const principal = requirePrincipal(request, 'webhooks.read');
+    const principal = await requirePrincipal(request, 'webhooks.read');
     return (async () => {
       const existing = await webhooks.get(principal.user.accountId, webhookId as never);
       if (!existing || existing.accountId !== principal.user.accountId) {
@@ -228,7 +224,7 @@ export async function handleWebhooksRoutes(
   // GET /webhooks/{webhookId}/deliveries/stats — delivery statistics for a webhook
   if (pathname.match(/^\/webhooks\/[^/]+\/deliveries\/stats$/) && request.method === 'GET') {
     const webhookId = requireNonEmptyString(pathname.split('/')[2], 'webhookId');
-    const principal = requirePrincipal(request, 'webhooks.read');
+    const principal = await requirePrincipal(request, 'webhooks.read');
     return (async () => {
       const existing = await webhooks.get(principal.user.accountId, webhookId as never);
       if (!existing || existing.accountId !== principal.user.accountId) {
@@ -255,7 +251,7 @@ export async function handleWebhooksRoutes(
     const parts = pathname.split('/');
     const webhookId = requireNonEmptyString(parts[2], 'webhookId');
     const deliveryId = requireNonEmptyString(parts[4], 'deliveryId');
-    const principal = requirePrincipal(request, 'webhooks.manage');
+    const principal = await requirePrincipal(request, 'webhooks.manage');
     return (async () => {
       const result = await webhooks.retestDelivery(
         webhookId as never,
@@ -296,7 +292,7 @@ export async function handleWebhooksRoutes(
   if (pathname.match(/^\/webhooks\/[^/]+\/deliveries\/[^/]+$/) && request.method === 'GET') {
     const webhookId = requireNonEmptyString(pathname.split('/')[2], 'webhookId');
     const deliveryId = requireNonEmptyString(pathname.split('/')[4], 'deliveryId');
-    const principal = requirePrincipal(request, 'webhooks.read');
+    const principal = await requirePrincipal(request, 'webhooks.read');
     return (async () => {
       const webhook = await webhooks.get(principal.user.accountId, webhookId as never);
       if (!webhook || webhook.accountId !== principal.user.accountId) {
@@ -330,7 +326,7 @@ export async function handleWebhooksRoutes(
     request.method === 'POST'
   ) {
     const webhookId = requireNonEmptyString(pathname.split('/')[2], 'webhookId');
-    const principal = requirePrincipal(request, 'webhooks.manage');
+    const principal = await requirePrincipal(request, 'webhooks.manage');
     return (async () => {
       const result = await webhooks.test(webhookId as never, principal.user.accountId as never);
       if (!result) {

@@ -1,0 +1,116 @@
+{
+  "record_id": "GATE-CVG-004-WORKER-REPORT-TENANT-AWARE-PRINCIPAL-VERIFIED-001",
+  "timestamp": "2026-08-27T09:18:00-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-004 tenant-aware worker report service-principal resolution and report audit actor integrity",
+  "scope_ref": "CVG-004-WORKER-REPORT-TENANT-AWARE-PRINCIPAL",
+  "version": 2,
+  "decision": "PASS_BOUNDED",
+  "confidence": "HIGH",
+  "residual_risk": "HIGH",
+  "criteria": [
+    {
+      "id": "VB-001",
+      "description": "Migration 0152 extends the existing service-principal purpose allowlist without provisioning users or mapping rows.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/db/migrations/0152_report_service_principal_tenant_integrity.sql",
+        "packages/db/src/schema/account_service_principals.ts",
+        "tests/unit/db/pix-service-principal-schema.test.ts"
+      ],
+      "limitations": "Provisioning remains operator-owned and was not performed."
+    },
+    {
+      "id": "VB-002",
+      "description": "Report execution, export and schedule actors are constrained to the owning account and service-principal state is rechecked at persistence time.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/db/migrations/0152_report_service_principal_tenant_integrity.sql",
+        "tests/integration/database/pix-service-principals.test.ts",
+        "tests/integration/database/worker-report-service-principal.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-004-WORKER-REPORT-TENANT-AWARE-PRINCIPAL-DB-002"
+      ],
+      "limitations": "Local disposable PostgreSQL proves the migration and trigger contract; target ownership/grants remain open."
+    },
+    {
+      "id": "VB-003",
+      "description": "The worker resolves only an active, non-interactive report service principal mapped to the current account and fails closed otherwise.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/worker/src/worker-report-identity.ts",
+        "apps/worker/src/index.ts",
+        "apps/worker/src/run-once.ts",
+        "apps/worker/src/worker-report-identity.test.ts"
+      ],
+      "limitations": "The supported topology is one valid mapping per worker/account; multi-account mapping design is not included."
+    },
+    {
+      "id": "VB-004",
+      "description": "Focused, process and regression evidence proves valid persistence, invalid-actor rejection, no execution on rejection and explicit export actor propagation.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "tests/integration/process/worker-run-once-reports.test.ts",
+        "tests/integration/process/runtime-lifecycle.test.ts",
+        "tests/integration/process/worker-runtime-entrypoint.test.ts",
+        "tests/integration/process/public-api-worker-event-chain.test.ts",
+        "tests/integration/process/pix-provider-webhook-settlement-e2e.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-004-WORKER-REPORT-TENANT-AWARE-PRINCIPAL-PROCESS-002"
+      ],
+      "limitations": "This does not certify long-lived multi-process continuous-worker behavior."
+    },
+    {
+      "id": "VB-005",
+      "description": "Full local regression, coverage, build, typecheck, lint, security and static contract rails remain green.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-WORKER-REPORT-TENANT-AWARE-PRINCIPAL-QUALITY-002",
+        ".agent/verification.jsonl#VFY-CVG-004-WORKER-REPORT-TENANT-AWARE-PRINCIPAL-GLOBAL-002",
+        ".agent/verification.jsonl#VFY-CVG-004-WORKER-REPORT-TENANT-AWARE-PRINCIPAL-HYGIENE-002"
+      ],
+      "limitations": "Helm rendering with the binary, remote CI, target runtime and release acceptance remain unverified."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-worker-report-tenant-aware-principal.md",
+    ".agent/artifacts/CVG-004-worker-report-tenant-aware-principal-2026-08-27.md",
+    ".agent/authority.jsonl#AUTH-CVG-004-WORKER-REPORT-TENANT-AWARE-PRINCIPAL-IR-001",
+    ".agent/verification.jsonl#VFY-CVG-004-WORKER-REPORT-TENANT-AWARE-PRINCIPAL-REVIEW-002",
+    ".agent/verification.jsonl#VFY-CVG-004-WORKER-REPORT-TENANT-AWARE-PRINCIPAL-DB-002",
+    ".agent/verification.jsonl#VFY-CVG-004-WORKER-REPORT-TENANT-AWARE-PRINCIPAL-QUALITY-002",
+    ".agent/verification.jsonl#VFY-CVG-004-WORKER-REPORT-TENANT-AWARE-PRINCIPAL-GLOBAL-002",
+    ".agent/verification.jsonl#VFY-CVG-004-WORKER-REPORT-TENANT-AWARE-PRINCIPAL-FINAL-002"
+  ],
+  "review": {
+    "status": "CONDITIONAL",
+    "evidence_refs": [
+      ".agent/verification.jsonl#VFY-CVG-004-WORKER-REPORT-TENANT-AWARE-PRINCIPAL-REVIEW-001",
+      ".agent/verification.jsonl#VFY-CVG-004-WORKER-REPORT-TENANT-AWARE-PRINCIPAL-REVIEW-002"
+    ],
+    "summary": "The independent reviews remain conditional, not approvals. The first review's HIGH fixture/configuration and MEDIUM cleanup, persistence-lock and multi-account findings were corrected and retested. The follow-up review found missing persistence checks for active service-user state and actor type; migration 0152 now locks and validates those fields, with inactive-service and human-mapped rejection covered by disposable PostgreSQL 9/9. Worker-role/RLS process proof remains an explicit non-claim and the one-worker/account operating constraint remains explicit.",
+    "approval": false
+  },
+  "global_status": {
+    "program": "IN_PROGRESS",
+    "verification": "PARTIAL",
+    "vetus_parity": "98/100; 4/11 verified",
+    "clinical_parity": "100/100; 2/3 verified",
+    "enterprise_readiness": "95/100; 42 PASS / 3 WARN / 1 FAIL",
+    "promotion": "BLOCKED"
+  },
+  "conditions": [
+    "Provision one active non-interactive report service principal mapping per worker/account before enabling scheduled reports.",
+    "Do not create users, mappings, credentials or external resources through this migration or gate.",
+    "Obtain separate authority before designing multi-account actor configuration or changing report audit semantics.",
+    "Do not promote CVG-004, parity, enterprise readiness or release status from this bounded result."
+  ],
+  "non_claims": [
+    "No target RLS/ownership or production role evidence",
+    "No distributed continuous-worker failure/observability evidence",
+    "No provider, homologation, remote-CI, accessibility, restore or release evidence"
+  ]
+}

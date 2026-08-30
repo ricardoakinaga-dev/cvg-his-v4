@@ -76,7 +76,8 @@ export interface TenantUnitOfWork {
   execute<T extends JsonValue>(
     context: TenantUnitOfWorkExecutionContext,
     requestPayload: JsonValue,
-    command: (transaction: TenantTransactionContext) => Promise<T>
+    command: (transaction: TenantTransactionContext) => Promise<T>,
+    beforeIdempotency?: (transaction: TenantTransactionContext) => Promise<void>
   ): Promise<TenantUnitOfWorkResult<T>>;
 }
 
@@ -402,7 +403,8 @@ export function createTenantUnitOfWork(pool: Pool): TenantUnitOfWork {
     async execute<T extends JsonValue>(
       context: TenantUnitOfWorkExecutionContext,
       requestPayload: JsonValue,
-      command: (transaction: TenantTransactionContext) => Promise<T>
+      command: (transaction: TenantTransactionContext) => Promise<T>,
+      beforeIdempotency?: (transaction: TenantTransactionContext) => Promise<void>
     ): Promise<TenantUnitOfWorkResult<T>> {
       if (getDatabaseTransactionScope()) {
         throw new Error('Nested idempotent unit of work commands are not supported');
@@ -413,6 +415,16 @@ export function createTenantUnitOfWork(pool: Pool): TenantUnitOfWork {
         pool,
         context.accountId,
         async (client) => {
+          const activeScope = getDatabaseTransactionScope();
+          const transaction = createTransactionContext(
+            client,
+            context,
+            () => activeScope?.isActive() === true
+          );
+          if (beforeIdempotency) {
+            await tenantTransactionStorage.run(transaction, () => beforeIdempotency(transaction));
+          }
+
           const inserted = await client.query<IdempotencyRow>(
             `INSERT INTO idempotency_requests
              (account_id, operation, idempotency_key, request_hash, status)
@@ -440,12 +452,6 @@ export function createTenantUnitOfWork(pool: Pool): TenantUnitOfWork {
           }
           if (inserted.rowCount !== 1) throw new IdempotencyInProgressError();
 
-          const activeScope = getDatabaseTransactionScope();
-          const transaction = createTransactionContext(
-            client,
-            context,
-            () => activeScope?.isActive() === true
-          );
           const value = await tenantTransactionStorage.run(transaction, () => command(transaction));
           const serialized = canonicalize(value);
           if (Buffer.byteLength(serialized, 'utf8') > MAX_RESPONSE_BYTES) {

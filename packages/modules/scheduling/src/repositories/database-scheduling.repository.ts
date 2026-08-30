@@ -1,5 +1,5 @@
 import { getPool } from '@cvg-his-v2/shared-database';
-import { ConflictError, NotFoundError } from '@cvg-his-v2/shared-errors';
+import { ConflictError, NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
 import { withTenantQuery } from '@cvg-his-v2/tenant-context';
 import type { PoolClient } from 'pg';
 import type {
@@ -17,6 +17,16 @@ import type {
   StaffId
 } from '@cvg-his-v2/shared-types';
 
+export const MAX_SCHEDULING_APPOINTMENT_REPORT_READ_ROWS = 10_001;
+
+export interface SchedulingAppointmentReportFilters {
+  readonly search?: string;
+  readonly status?: SchedulingAppointmentSummary['status'];
+  readonly dateFrom?: string;
+  readonly dateTo?: string;
+  readonly limit?: number;
+}
+
 export interface SchedulingRepository {
   createAppointment(appointment: SchedulingAppointmentSummary): Promise<void>;
   updateAppointment(
@@ -25,6 +35,10 @@ export interface SchedulingRepository {
   ): Promise<void>;
   findAppointmentById(id: AppointmentId): Promise<SchedulingAppointmentSummary | null>;
   findAllAppointments(accountId?: AccountId): Promise<readonly SchedulingAppointmentSummary[]>;
+  findAppointmentReportRows?(
+    accountId: AccountId,
+    filters?: SchedulingAppointmentReportFilters
+  ): Promise<readonly SchedulingAppointmentSummary[]>;
   createQueueEntry(entry: QueueEntrySummary): Promise<void>;
   persistCheckIn?(
     entry: QueueEntrySummary,
@@ -94,10 +108,10 @@ export class DatabaseSchedulingRepository implements SchedulingRepository {
         ]
       );
       if (result.rowCount !== 1) {
-        throw new ConflictError(
-          'Cannot schedule an appointment for an inactive owner or patient',
-          { ownerId: appointment.ownerId, patientId: appointment.patientId }
-        );
+        throw new ConflictError('Cannot schedule an appointment for an inactive owner or patient', {
+          ownerId: appointment.ownerId,
+          patientId: appointment.patientId
+        });
       }
       return result;
     });
@@ -190,7 +204,9 @@ export class DatabaseSchedulingRepository implements SchedulingRepository {
     });
   }
 
-  async findAllAppointments(accountId?: AccountId): Promise<readonly SchedulingAppointmentSummary[]> {
+  async findAllAppointments(
+    accountId?: AccountId
+  ): Promise<readonly SchedulingAppointmentSummary[]> {
     return withTenantQuery(getPool(), async (client) => {
       const result = accountId
         ? await client.query(
@@ -205,6 +221,75 @@ export class DatabaseSchedulingRepository implements SchedulingRepository {
              ORDER BY start_at ASC`
           );
       return result.rows.map((r: Record<string, unknown>) => this.mapAppointment(r));
+    });
+  }
+
+  async findAppointmentReportRows(
+    accountId: AccountId,
+    filters: SchedulingAppointmentReportFilters = {}
+  ): Promise<readonly SchedulingAppointmentSummary[]> {
+    const conditions: string[] = [
+      'appointment.account_id = $1',
+      'appointment.account_id = app.current_account_id()'
+    ];
+    const params: unknown[] = [accountId];
+    const parameter = (value: unknown): string => {
+      params.push(value);
+      return `$${params.length}`;
+    };
+
+    if (filters.status) {
+      conditions.push(
+        `appointment.status = ANY(${parameter(databaseStatusesForReport(filters.status))}::appointment_status[])`
+      );
+    }
+    if (filters.search?.trim()) {
+      const pattern = `%${escapeIlikePattern(filters.search.trim())}%`;
+      const searchParameter = parameter(pattern);
+      conditions.push(
+        `(appointment.id::text ILIKE ${searchParameter} ESCAPE E'\\\\' OR
+          appointment.patient_id::text ILIKE ${searchParameter} ESCAPE E'\\\\' OR
+          appointment.owner_id::text ILIKE ${searchParameter} ESCAPE E'\\\\' OR
+          appointment.practitioner_staff_id::text ILIKE ${searchParameter} ESCAPE E'\\\\' OR
+          appointment.service_id::text ILIKE ${searchParameter} ESCAPE E'\\\\' OR
+          COALESCE(appointment.reason, '') ILIKE ${searchParameter} ESCAPE E'\\\\' OR
+          COALESCE(appointment.unit, '') ILIKE ${searchParameter} ESCAPE E'\\\\' OR
+          COALESCE(appointment.specialty, '') ILIKE ${searchParameter} ESCAPE E'\\\\' OR
+          COALESCE(appointment.resource_label, '') ILIKE ${searchParameter} ESCAPE E'\\\\')`
+      );
+    }
+    if (filters.dateFrom) {
+      conditions.push(
+        `appointment.start_at >= (${parameter(filters.dateFrom)}::date AT TIME ZONE 'UTC')`
+      );
+    }
+    if (filters.dateTo) {
+      conditions.push(
+        `appointment.start_at < ((${parameter(filters.dateTo)}::date + INTERVAL '1 day') AT TIME ZONE 'UTC')`
+      );
+    }
+
+    const limit = filters.limit ?? MAX_SCHEDULING_APPOINTMENT_REPORT_READ_ROWS;
+    if (
+      !Number.isSafeInteger(limit) ||
+      limit < 1 ||
+      limit > MAX_SCHEDULING_APPOINTMENT_REPORT_READ_ROWS
+    ) {
+      throw new ValidationError('Appointments report read limit must be between 1 and 10001', {
+        limit
+      });
+    }
+
+    return withTenantQuery(getPool(), async (client) => {
+      const result = await client.query(
+        `SELECT appointment.*
+           FROM appointments AS appointment
+          WHERE ${conditions.join(' AND ')}
+          ORDER BY appointment.start_at ASC, appointment.id ASC
+          LIMIT ${parameter(limit)}`,
+        params
+      );
+      return result.rows.map((row: Record<string, unknown>) => this.mapAppointment(row));
     });
   }
 
@@ -360,7 +445,9 @@ export class DatabaseSchedulingRepository implements SchedulingRepository {
 
   async findQueueEntryById(id: QueueEntryId): Promise<QueueEntrySummary | null> {
     return withTenantQuery(getPool(), async (client) => {
-      const result = await client.query('SELECT * FROM scheduling_queue_entries WHERE id = $1', [id]);
+      const result = await client.query('SELECT * FROM scheduling_queue_entries WHERE id = $1', [
+        id
+      ]);
       if (result.rows.length === 0) return null;
       return this.mapQueueEntry(result.rows[0]);
     });
@@ -465,10 +552,7 @@ export class DatabaseSchedulingRepository implements SchedulingRepository {
     });
   }
 
-  private async insertQueueEntry(
-    client: PoolClient,
-    entry: QueueEntrySummary
-  ): Promise<void> {
+  private async insertQueueEntry(client: PoolClient, entry: QueueEntrySummary): Promise<void> {
     const result = await client.query(
       `INSERT INTO scheduling_queue_entries
          (id, account_id, patient_id, owner_id, appointment_id, encounter_id, entry_type,
@@ -564,24 +648,19 @@ export class DatabaseSchedulingRepository implements SchedulingRepository {
       checkedInAt: new Date(row.checked_in_at as string).toISOString(),
       calledAt: row.called_at ? new Date(row.called_at as string).toISOString() : undefined,
       currentSector: (row.current_sector as string | null) ?? undefined,
-      currentResponsibleUserId:
-        (row.current_responsible_user_id as UserId | null) ?? undefined,
-      currentResponsibleStaffId:
-        (row.current_responsible_staff_id as StaffId | null) ?? undefined,
+      currentResponsibleUserId: (row.current_responsible_user_id as UserId | null) ?? undefined,
+      currentResponsibleStaffId: (row.current_responsible_staff_id as StaffId | null) ?? undefined,
       nextSector: (row.next_sector as string | null) ?? undefined,
       operationalStatus:
         (row.operational_status as QueueEntrySummary['operationalStatus'] | null) ?? undefined,
       clinicalStatus:
         (row.clinical_status as QueueEntrySummary['clinicalStatus'] | null) ?? undefined,
-      billingStatus:
-        (row.billing_status as QueueEntrySummary['billingStatus'] | null) ?? undefined,
-      handoffStatus:
-        (row.handoff_status as QueueEntrySummary['handoffStatus'] | null) ?? undefined,
+      billingStatus: (row.billing_status as QueueEntrySummary['billingStatus'] | null) ?? undefined,
+      handoffStatus: (row.handoff_status as QueueEntrySummary['handoffStatus'] | null) ?? undefined,
       lastTransferredAt: row.last_transferred_at
         ? new Date(row.last_transferred_at as string).toISOString()
         : undefined,
-      lastTransferredByUserId:
-        (row.last_transferred_by_user_id as UserId | null) ?? undefined,
+      lastTransferredByUserId: (row.last_transferred_by_user_id as UserId | null) ?? undefined,
       createdAt: new Date(row.created_at as string).toISOString(),
       updatedAt: new Date(row.updated_at as string).toISOString()
     };
@@ -597,8 +676,9 @@ export class DatabaseSchedulingRepository implements SchedulingRepository {
       toSector: row.to_sector as string,
       sentByUserId: row.sent_by_user_id as UserId,
       sentAt: new Date(row.sent_at as string).toISOString(),
-      status: (row.status as QueueTransferSummary['status'] | null)
-        ?? (row.received_at ? 'received' : 'sent'),
+      status:
+        (row.status as QueueTransferSummary['status'] | null) ??
+        (row.received_at ? 'received' : 'sent'),
       receivedByUserId: (row.received_by_user_id as UserId | null) ?? undefined,
       receivedAt: row.received_at ? new Date(row.received_at as string).toISOString() : undefined,
       responsibleUserId: (row.responsible_user_id as UserId | null) ?? undefined,
@@ -707,6 +787,19 @@ function appointmentEnd(appointment: SchedulingAppointmentSummary): Date {
   const startAt = new Date(appointment.scheduledAt);
   const durationMinutes = appointment.durationMinutes ?? 30;
   return new Date(startAt.getTime() + durationMinutes * 60_000);
+}
+
+function databaseStatusesForReport(
+  status: SchedulingAppointmentSummary['status']
+): readonly NonNullable<SchedulingAppointmentSummary['canonicalStatus']>[] {
+  if (status === 'scheduled') return ['scheduled', 'confirmed'];
+  if (status === 'checked_in') return ['checked_in', 'in_progress'];
+  if (status === 'completed') return ['completed'];
+  return ['cancelled', 'no_show'];
+}
+
+function escapeIlikePattern(value: string): string {
+  return value.replace(/[\\%_]/g, '\\$&');
 }
 
 function appointmentDuration(startAt: unknown, endAt: unknown): number {

@@ -28,6 +28,11 @@ export interface SecretDescriptor {
 
 export interface SecretsManagerConfig {
   readonly vaultEnabled: boolean;
+  /**
+   * Runtime environment used to decide whether an incomplete Vault setup may
+   * fall back to process.env. Production-like environments fail closed.
+   */
+  readonly environment?: string;
   readonly vaultUrl?: string;
   readonly vaultRoleId?: string;
   readonly vaultSecretId?: string;

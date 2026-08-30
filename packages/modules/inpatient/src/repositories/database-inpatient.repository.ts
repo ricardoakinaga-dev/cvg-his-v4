@@ -68,7 +68,9 @@ export class DatabaseInpatientStayRepository implements InpatientStayRepository 
     if (stay.accountId !== accountId) {
       throw new Error('Inpatient stay account does not match tenant context');
     }
-    await this.#db.insert(inpatientStays).values(this.toInsert(stay));
+    await withTenantTransaction(accountId, async (database) => {
+      await database.insert(inpatientStays).values(this.toInsert(stay));
+    });
   }
 
   public async createWithBedOccupation(stay: InpatientStaySummary): Promise<void> {
@@ -131,24 +133,26 @@ export class DatabaseInpatientStayRepository implements InpatientStayRepository 
     if (stay.accountId !== accountId) {
       throw new Error('Inpatient stay account does not match tenant context');
     }
-    await this.#db
-      .update(inpatientStays)
-      .set({
-        status: stay.status,
-        unit: stay.unit,
-        ward: stay.ward,
-        bed: stay.bed,
-        sectorId: stay.sectorId ?? null,
-        bedId: stay.bedId ?? null,
-        dischargedAt: stay.dischargedAt ? new Date(stay.dischargedAt) : null,
-        dischargeReason: stay.dischargeReason ?? null,
-        transferToUnit: stay.transferToUnit ?? null,
-        transferToWard: stay.transferToWard ?? null,
-        transferToSectorId: stay.transferToSectorId ?? null,
-        transferToBedId: stay.transferToBedId ?? null,
-        updatedAt: new Date(stay.updatedAt)
-      })
-      .where(and(eq(inpatientStays.id, stay.id), eq(inpatientStays.accountId, accountId)));
+    await withTenantTransaction(accountId, async (database) => {
+      await database
+        .update(inpatientStays)
+        .set({
+          status: stay.status,
+          unit: stay.unit,
+          ward: stay.ward,
+          bed: stay.bed,
+          sectorId: stay.sectorId ?? null,
+          bedId: stay.bedId ?? null,
+          dischargedAt: stay.dischargedAt ? new Date(stay.dischargedAt) : null,
+          dischargeReason: stay.dischargeReason ?? null,
+          transferToUnit: stay.transferToUnit ?? null,
+          transferToWard: stay.transferToWard ?? null,
+          transferToSectorId: stay.transferToSectorId ?? null,
+          transferToBedId: stay.transferToBedId ?? null,
+          updatedAt: new Date(stay.updatedAt)
+        })
+        .where(and(eq(inpatientStays.id, stay.id), eq(inpatientStays.accountId, accountId)));
+    });
   }
 
   public async updateWithBedTransition(
@@ -230,43 +234,49 @@ export class DatabaseInpatientStayRepository implements InpatientStayRepository 
 
   public async findById(id: InpatientStayId): Promise<InpatientStaySummary | null> {
     const accountId = requireAccountId();
-    const result = await this.#db
-      .select()
-      .from(inpatientStays)
-      .where(and(eq(inpatientStays.id, id), eq(inpatientStays.accountId, accountId)))
-      .limit(1);
+    return withTenantTransaction(accountId, async (database) => {
+      const result = await database
+        .select()
+        .from(inpatientStays)
+        .where(and(eq(inpatientStays.id, id), eq(inpatientStays.accountId, accountId)))
+        .limit(1);
 
-    if (result.length === 0) {
-      return null;
-    }
+      if (result.length === 0) {
+        return null;
+      }
 
-    return this.mapRowToStay(result[0]);
+      return this.mapRowToStay(result[0]);
+    });
   }
 
   public async findByEncounterId(
     encounterId: EncounterId
   ): Promise<readonly InpatientStaySummary[]> {
     const accountId = requireAccountId();
-    const result = await this.#db
-      .select()
-      .from(inpatientStays)
-      .where(
-        and(eq(inpatientStays.encounterId, encounterId), eq(inpatientStays.accountId, accountId))
-      );
+    return withTenantTransaction(accountId, async (database) => {
+      const result = await database
+        .select()
+        .from(inpatientStays)
+        .where(
+          and(eq(inpatientStays.encounterId, encounterId), eq(inpatientStays.accountId, accountId))
+        );
 
-    return result.map((row) => this.mapRowToStay(row));
+      return result.map((row) => this.mapRowToStay(row));
+    });
   }
 
   public async findByAccountId(accountId: AccountId): Promise<readonly InpatientStaySummary[]> {
     if (accountId !== requireAccountId()) {
       throw new Error('Inpatient stay account does not match tenant context');
     }
-    const result = await this.#db
-      .select()
-      .from(inpatientStays)
-      .where(eq(inpatientStays.accountId, accountId))
-      .orderBy(desc(inpatientStays.admittedAt));
-    return result.map((row) => this.mapRowToStay(row));
+    return withTenantTransaction(accountId, async (database) => {
+      const result = await database
+        .select()
+        .from(inpatientStays)
+        .where(eq(inpatientStays.accountId, accountId))
+        .orderBy(desc(inpatientStays.admittedAt));
+      return result.map((row) => this.mapRowToStay(row));
+    });
   }
 
   private mapRowToStay(row: typeof inpatientStays.$inferSelect): InpatientStaySummary {
@@ -307,34 +317,40 @@ export class DatabaseInpatientProgressRepository implements InpatientProgressRep
     if (progress.accountId !== accountId) {
       throw new Error('Inpatient progress account does not match tenant context');
     }
-    await this.#db.insert(inpatientProgress).values({
-      id: progress.id,
-      accountId: progress.accountId,
-      stayId: progress.stayId,
-      encounterId: progress.encounterId,
-      note: progress.note,
-      authoredByUserId: progress.authoredByUserId,
-      createdAt: new Date(progress.createdAt)
+    await withTenantTransaction(accountId, async (database) => {
+      await database.insert(inpatientProgress).values({
+        id: progress.id,
+        accountId: progress.accountId,
+        stayId: progress.stayId,
+        encounterId: progress.encounterId,
+        note: progress.note,
+        authoredByUserId: progress.authoredByUserId,
+        createdAt: new Date(progress.createdAt)
+      });
     });
   }
 
   public async findByStayId(stayId: InpatientStayId): Promise<readonly InpatientProgressSummary[]> {
     const accountId = requireAccountId();
-    const result = await this.#db
-      .select()
-      .from(inpatientProgress)
-      .where(and(eq(inpatientProgress.stayId, stayId), eq(inpatientProgress.accountId, accountId)))
-      .orderBy(desc(inpatientProgress.createdAt));
+    return withTenantTransaction(accountId, async (database) => {
+      const result = await database
+        .select()
+        .from(inpatientProgress)
+        .where(
+          and(eq(inpatientProgress.stayId, stayId), eq(inpatientProgress.accountId, accountId))
+        )
+        .orderBy(desc(inpatientProgress.createdAt));
 
-    return result.map((row) => ({
-      id: row.id as InpatientProgressId,
-      accountId: row.accountId as AccountId,
-      stayId: row.stayId as InpatientStayId,
-      encounterId: row.encounterId as EncounterId,
-      note: row.note,
-      authoredByUserId: row.authoredByUserId as UserId,
-      createdAt: row.createdAt.toISOString()
-    }));
+      return result.map((row) => ({
+        id: row.id as InpatientProgressId,
+        accountId: row.accountId as AccountId,
+        stayId: row.stayId as InpatientStayId,
+        encounterId: row.encounterId as EncounterId,
+        note: row.note,
+        authoredByUserId: row.authoredByUserId as UserId,
+        createdAt: row.createdAt.toISOString()
+      }));
+    });
   }
 }
 
@@ -350,17 +366,19 @@ export class DatabaseInpatientOccurrenceRepository implements InpatientOccurrenc
     if (occurrence.accountId !== accountId) {
       throw new Error('Inpatient occurrence account does not match tenant context');
     }
-    await this.#db.insert(inpatientOccurrences).values({
-      id: occurrence.id,
-      accountId: occurrence.accountId,
-      stayId: occurrence.stayId,
-      encounterId: occurrence.encounterId,
-      type: occurrence.type,
-      severity: occurrence.severity,
-      title: occurrence.title,
-      description: occurrence.description,
-      authoredByUserId: occurrence.authoredByUserId,
-      createdAt: new Date(occurrence.createdAt)
+    await withTenantTransaction(accountId, async (database) => {
+      await database.insert(inpatientOccurrences).values({
+        id: occurrence.id,
+        accountId: occurrence.accountId,
+        stayId: occurrence.stayId,
+        encounterId: occurrence.encounterId,
+        type: occurrence.type,
+        severity: occurrence.severity,
+        title: occurrence.title,
+        description: occurrence.description,
+        authoredByUserId: occurrence.authoredByUserId,
+        createdAt: new Date(occurrence.createdAt)
+      });
     });
   }
 
@@ -368,25 +386,30 @@ export class DatabaseInpatientOccurrenceRepository implements InpatientOccurrenc
     stayId: InpatientStayId
   ): Promise<readonly InpatientOccurrenceSummary[]> {
     const accountId = requireAccountId();
-    const result = await this.#db
-      .select()
-      .from(inpatientOccurrences)
-      .where(
-        and(eq(inpatientOccurrences.stayId, stayId), eq(inpatientOccurrences.accountId, accountId))
-      );
+    return withTenantTransaction(accountId, async (database) => {
+      const result = await database
+        .select()
+        .from(inpatientOccurrences)
+        .where(
+          and(
+            eq(inpatientOccurrences.stayId, stayId),
+            eq(inpatientOccurrences.accountId, accountId)
+          )
+        );
 
-    return result.map((row) => ({
-      id: row.id as InpatientOccurrenceId,
-      accountId: row.accountId as AccountId,
-      stayId: row.stayId as InpatientStayId,
-      encounterId: row.encounterId as EncounterId,
-      type: row.type as InpatientOccurrenceSummary['type'],
-      severity: row.severity as InpatientOccurrenceSummary['severity'],
-      title: row.title,
-      description: row.description,
-      authoredByUserId: row.authoredByUserId as UserId,
-      createdAt: row.createdAt.toISOString()
-    }));
+      return result.map((row) => ({
+        id: row.id as InpatientOccurrenceId,
+        accountId: row.accountId as AccountId,
+        stayId: row.stayId as InpatientStayId,
+        encounterId: row.encounterId as EncounterId,
+        type: row.type as InpatientOccurrenceSummary['type'],
+        severity: row.severity as InpatientOccurrenceSummary['severity'],
+        title: row.title,
+        description: row.description,
+        authoredByUserId: row.authoredByUserId as UserId,
+        createdAt: row.createdAt.toISOString()
+      }));
+    });
   }
 }
 
@@ -402,22 +425,24 @@ export class DatabaseInpatientDailyChargeRepository implements InpatientDailyCha
     if (charge.accountId !== accountId) {
       throw new Error('Inpatient daily charge account does not match tenant context');
     }
-    await this.#db.insert(inpatientDailyCharges).values({
-      id: charge.id,
-      accountId: charge.accountId,
-      stayId: charge.stayId,
-      encounterId: charge.encounterId,
-      patientId: charge.patientId,
-      description: charge.description,
-      chargeDate: charge.chargeDate,
-      quantity: charge.quantity.toString(),
-      unitAmount: charge.unitAmount.toString(),
-      totalAmount: charge.totalAmount.toString(),
-      status: charge.status,
-      billingRecordId: charge.billingRecordId ?? null,
-      createdByUserId: charge.createdByUserId,
-      createdAt: new Date(charge.createdAt),
-      updatedAt: new Date(charge.updatedAt)
+    await withTenantTransaction(accountId, async (database) => {
+      await database.insert(inpatientDailyCharges).values({
+        id: charge.id,
+        accountId: charge.accountId,
+        stayId: charge.stayId,
+        encounterId: charge.encounterId,
+        patientId: charge.patientId,
+        description: charge.description,
+        chargeDate: charge.chargeDate,
+        quantity: charge.quantity.toString(),
+        unitAmount: charge.unitAmount.toString(),
+        totalAmount: charge.totalAmount.toString(),
+        status: charge.status,
+        billingRecordId: charge.billingRecordId ?? null,
+        createdByUserId: charge.createdByUserId,
+        createdAt: new Date(charge.createdAt),
+        updatedAt: new Date(charge.updatedAt)
+      });
     });
   }
 
@@ -426,48 +451,55 @@ export class DatabaseInpatientDailyChargeRepository implements InpatientDailyCha
     if (charge.accountId !== accountId) {
       throw new Error('Inpatient daily charge account does not match tenant context');
     }
-    await this.#db
-      .update(inpatientDailyCharges)
-      .set({
-        status: charge.status,
-        billingRecordId: charge.billingRecordId ?? null,
-        updatedAt: new Date(charge.updatedAt)
-      })
-      .where(
-        and(eq(inpatientDailyCharges.id, charge.id), eq(inpatientDailyCharges.accountId, accountId))
-      );
+    await withTenantTransaction(accountId, async (database) => {
+      await database
+        .update(inpatientDailyCharges)
+        .set({
+          status: charge.status,
+          billingRecordId: charge.billingRecordId ?? null,
+          updatedAt: new Date(charge.updatedAt)
+        })
+        .where(
+          and(
+            eq(inpatientDailyCharges.id, charge.id),
+            eq(inpatientDailyCharges.accountId, accountId)
+          )
+        );
+    });
   }
 
   public async findByStayId(
     stayId: InpatientStayId
   ): Promise<readonly InpatientDailyChargeSummary[]> {
     const accountId = requireAccountId();
-    const result = await this.#db
-      .select()
-      .from(inpatientDailyCharges)
-      .where(
-        and(
-          eq(inpatientDailyCharges.stayId, stayId),
-          eq(inpatientDailyCharges.accountId, accountId)
-        )
-      );
+    return withTenantTransaction(accountId, async (database) => {
+      const result = await database
+        .select()
+        .from(inpatientDailyCharges)
+        .where(
+          and(
+            eq(inpatientDailyCharges.stayId, stayId),
+            eq(inpatientDailyCharges.accountId, accountId)
+          )
+        );
 
-    return result.map((row) => ({
-      id: row.id as InpatientDailyChargeId,
-      accountId: row.accountId as AccountId,
-      stayId: row.stayId as InpatientStayId,
-      encounterId: row.encounterId as EncounterId,
-      patientId: row.patientId as PatientId,
-      description: row.description,
-      chargeDate: row.chargeDate,
-      quantity: Number(row.quantity),
-      unitAmount: Number(row.unitAmount),
-      totalAmount: Number(row.totalAmount),
-      status: row.status as InpatientDailyChargeSummary['status'],
-      billingRecordId: row.billingRecordId ? (row.billingRecordId as BillingRecordId) : undefined,
-      createdByUserId: row.createdByUserId as UserId,
-      createdAt: row.createdAt.toISOString(),
-      updatedAt: row.updatedAt.toISOString()
-    }));
+      return result.map((row) => ({
+        id: row.id as InpatientDailyChargeId,
+        accountId: row.accountId as AccountId,
+        stayId: row.stayId as InpatientStayId,
+        encounterId: row.encounterId as EncounterId,
+        patientId: row.patientId as PatientId,
+        description: row.description,
+        chargeDate: row.chargeDate,
+        quantity: Number(row.quantity),
+        unitAmount: Number(row.unitAmount),
+        totalAmount: Number(row.totalAmount),
+        status: row.status as InpatientDailyChargeSummary['status'],
+        billingRecordId: row.billingRecordId ? (row.billingRecordId as BillingRecordId) : undefined,
+        createdByUserId: row.createdByUserId as UserId,
+        createdAt: row.createdAt.toISOString(),
+        updatedAt: row.updatedAt.toISOString()
+      }));
+    });
   }
 }

@@ -37,7 +37,7 @@ const triggerFunction = 'receipt_concurrency_pause_fn_' + suffix;
 const amountInventory = 80;
 const amountDaily = 180;
 const amountTotal = amountInventory + amountDaily;
-const receiptOperation = 'POST /encounters/' + encounterA + '/cash-receipts';
+const receiptOperation = 'encounter.cash-receipt.create';
 
 let firstApi: ApiProcess | undefined;
 let secondApi: ApiProcess | undefined;

@@ -77,6 +77,13 @@ export interface MedicalRecordsServiceOptions {
   readonly entryRevisionRepository?: EntryRevisionRepository;
 }
 
+export interface MedicalRecordEncounterSnapshot {
+  readonly encounterId: EncounterId;
+  readonly record?: MedicalRecordSummary;
+  readonly entries: readonly ClinicalEntrySummary[];
+  readonly timeline: readonly ClinicalTimelineEventSummary[];
+}
+
 export class MedicalRecordsService {
   readonly #encounters: EncountersService;
   readonly #patients: PatientsService;
@@ -164,6 +171,34 @@ export class MedicalRecordsService {
       this.#entries.set(record.id, nextEntries.get(record.id) ?? []);
       this.#timeline.set(record.id, nextTimeline.get(record.id) ?? []);
     }
+  }
+
+  public snapshotEncounter(encounterId: EncounterId): MedicalRecordEncounterSnapshot {
+    const recordId = this.#recordByEncounterId.get(encounterId);
+    const record = recordId ? this.#records.get(recordId) : undefined;
+    return {
+      encounterId,
+      ...(record ? { record: { ...record } } : {}),
+      entries: record ? [...(this.#entries.get(record.id) ?? [])] : [],
+      timeline: record ? [...(this.#timeline.get(record.id) ?? [])] : []
+    };
+  }
+
+  public restoreEncounterSnapshot(snapshot: MedicalRecordEncounterSnapshot): void {
+    const currentRecordId = this.#recordByEncounterId.get(snapshot.encounterId);
+    if (currentRecordId && currentRecordId !== snapshot.record?.id) {
+      this.#recordByEncounterId.delete(snapshot.encounterId);
+      this.#records.delete(currentRecordId);
+      this.#entries.delete(currentRecordId);
+      this.#timeline.delete(currentRecordId);
+    }
+    if (!snapshot.record) {
+      return;
+    }
+    this.#records.set(snapshot.record.id, { ...snapshot.record });
+    this.#recordByEncounterId.set(snapshot.encounterId, snapshot.record.id);
+    this.#entries.set(snapshot.record.id, [...snapshot.entries]);
+    this.#timeline.set(snapshot.record.id, [...snapshot.timeline]);
   }
 
   #enqueuePersist(operation: () => Promise<void>, rollback?: () => void): void {

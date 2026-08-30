@@ -1,0 +1,94 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-PROFESSIONAL-CARE-PERSISTED-IR-001",
+  "timestamp": "2026-08-29T21:30:00-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-004 persisted professional-care aggregate through the Reports Workbench",
+  "scope_ref": "CVG-004-REPORT-PROFESSIONAL-CARE-PERSISTED",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The repository-local professional-care gap, exact six-field aggregate contract, authority, owner and exclusions are recorded without reopening the appointments slice or promoting CVG-004/global readiness.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-professional-care-persisted.md",
+        ".agent/backlog.json",
+        ".agent/authority.jsonl#AUTH-CVG-004-REPORT-PROFESSIONAL-CARE-PERSISTED-IR-001",
+        ".agent/verification.jsonl#VFY-SCOUT-CVG-004-REPORT-PROFESSIONAL-CARE-PERSISTED-001"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "This is bounded integrator selection and implementation readiness, not implementation success, independent review, global readiness or release approval."
+    },
+    {
+      "id": "IR-002",
+      "description": "The current professional-care Workbench branch reads the process-local appointmentService and aggregates client-side, while persisted appointments, tenant rails, the scheduling report source and the ReportsService execution/export/audit seam already exist; no verified gate covers this aggregate conversion.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/spa/src/pages/reports/ReportWorkbenchPage.vue",
+        "apps/spa/src/pages/reports/__tests__/ReportWorkbenchPage.test.ts",
+        "packages/modules/scheduling/src/index.ts",
+        "packages/modules/scheduling/src/repositories/database-scheduling.repository.ts",
+        "packages/modules/reports/src/index.ts",
+        "apps/api/src/routes/reports-routes.ts",
+        "packages/db/src/schema/appointments.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Source inspection does not prove the future aggregate semantics, database behavior, export behavior or browser behavior."
+    },
+    {
+      "id": "IR-003",
+      "description": "A bounded TDD and verification plan is frozen for persisted appointment aggregation, staff permission, tenant isolation, normalized status counts, distinct services, unassigned grouping, overflow and SPA server execution/export.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-professional-care-persisted.md",
+        "packages/modules/scheduling/src/scheduling.test.ts",
+        "packages/modules/reports/src/reports.test.ts",
+        "apps/api/src/routes/reports-routes.test.ts",
+        "apps/spa/src/pages/reports/__tests__/ReportWorkbenchPage.test.ts",
+        "tests/integration/database"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "RED/GREEN execution, PostgreSQL proof, regression, quality, review and final reconciliation remain open after this gate."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-report-professional-care-persisted.md",
+    ".agent/authority.jsonl#AUTH-CVG-004-REPORT-PROFESSIONAL-CARE-PERSISTED-IR-001",
+    ".agent/verification.jsonl#VFY-SCOUT-CVG-004-REPORT-PROFESSIONAL-CARE-PERSISTED-001",
+    "apps/spa/src/pages/reports/ReportWorkbenchPage.vue",
+    "apps/spa/src/pages/reports/__tests__/ReportWorkbenchPage.test.ts",
+    "packages/modules/scheduling/src/index.ts",
+    "packages/modules/reports/src/index.ts",
+    "apps/api/src/routes/reports-routes.ts",
+    "packages/db/src/schema/appointments.ts"
+  ],
+  "confidence": "MEDIUM",
+  "gaps": [
+    "Implementation, TDD RED/GREEN, PostgreSQL, route, SPA, regression, quality and review evidence remain open.",
+    "Professional display names, patient/owner joins, commission and clinical productivity semantics remain explicitly excluded.",
+    "Parent CVG-004, global Vetus/clinical parity, target, production, provider and release gates remain open."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via explicit continuation and local read-only residual reconciliation",
+    "scope": "Repository-local persisted professional-care aggregate source, catalog/API/runtime seam, SPA caller and bounded tests",
+    "decision": "Authorize only the exact six-field account-scoped aggregate over persisted appointments, staff.read permission, normalized status counts, distinct services, unassigned grouping, 10,001-row bound and server execution/export/audit. Exclude names/joins, commissions, clinical semantics, queue/encounter, writes, workers, providers, target, production, deployment and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-PROFESSIONAL-CARE-PERSISTED-IR-001",
+    "expires_or_revalidates": "Revalidate before adding display-name joins, changing aggregate semantics, touching appointment writes/encounters/commissions or entering target/production/deployment/release scope."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "implementation_status": "IMPLEMENTATION_READY",
+  "next_action": "Write and run intentional RED tests before implementing the persisted professional-care aggregate. Keep the closed appointments report unchanged and parent/global ERP IN_PROGRESS/PARTIAL with promotion BLOCKED.",
+  "revalidation_triggers": [
+    "Changing the six-field aggregate grain or normalized status semantics",
+    "Adding professional display names, patient/owner joins, commissions or clinical productivity semantics",
+    "Changing appointment writes, queue/encounter lifecycle or scheduled workers",
+    "Changing ReportsService authorization, export or audit persistence",
+    "Changing target, production, deployment, backup/restore or release boundaries"
+  ]
+}

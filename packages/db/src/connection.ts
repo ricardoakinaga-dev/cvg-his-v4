@@ -10,8 +10,10 @@ export type { Pool } from 'pg';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-config({ path: resolve(__dirname, '../../../.env') });
-config();
+if (process.env.CVG_CRITICAL_PROCESS_RUNNER !== '1') {
+  config({ path: resolve(__dirname, '../../../.env') });
+  config();
+}
 
 const databaseUrl = process.env.DATABASE_URL;
 

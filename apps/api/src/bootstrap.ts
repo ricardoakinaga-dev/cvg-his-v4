@@ -113,7 +113,13 @@ import { DatabaseStaffRepository, DatabaseStaffTimeOffRepository } from '@cvg-hi
 import { DatabaseUsersRepository } from '@cvg-his-v2/module-users';
 import { DatabaseTriageRepository } from '@cvg-his-v2/module-triage';
 import { DatabaseAccessControlRepository } from '@cvg-his-v2/module-access-control';
-import { DatabaseMfaRepository } from '@cvg-his-v2/module-mfa';
+import {
+  DatabaseMfaRepository,
+  DatabaseWebAuthnChallengeStore,
+  DatabaseWebAuthnRepository,
+  InMemoryWebAuthnChallengeStore,
+  InMemoryWebAuthnRepository
+} from '@cvg-his-v2/module-mfa';
 import type { MfaRepository } from '@cvg-his-v2/module-mfa';
 import { DatabaseConsentRepository, DatabaseDsrRepository } from '@cvg-his-v2/module-lgpd';
 import type { ConsentRepository, DsrRepository } from '@cvg-his-v2/module-lgpd';
@@ -163,10 +169,13 @@ import type { PersistenceMode } from './app-state.js';
 import { DatabasePixTransactionRepository } from './pix-transaction-repository.js';
 import { DatabaseCardTransactionRepository } from './card-transaction-repository.js';
 import { DatabaseEncounterCashReceiptRepository } from './encounter-cash-receipt-repository.js';
+import { DatabaseEncounterCashReceiptReversalRepository } from './encounter-cash-receipt-reversal-repository.js';
 import { DatabaseEncounterPixPaymentAttemptRepository } from './encounter-pix-payment-attempt-repository.js';
 import { DatabasePixProviderSettlementDlqRepository } from './pix-provider-settlement-dlq-repository.js';
 import type { PixProviderSettlementDlqRepository } from './routes/pix-provider-settlement-routes.js';
 import { DatabasePrescriptionRepository } from './repositories/database-prescription.repository.js';
+import { DatabaseFinanceCatalogRepository } from './repositories/database-finance-catalog.repository.js';
+import { DatabaseAdvancePaymentsReportRepository } from './repositories/database-advance-payments-report.repository.js';
 
 export interface BootstrapOptions {
   databaseUrl?: string;
@@ -240,6 +249,136 @@ async function databaseTableExists(tableName: string): Promise<boolean> {
   return result.rows[0]?.exists === true;
 }
 
+export interface AdvancePaymentSchemaTableSnapshot {
+  readonly tableName: string;
+  readonly rowSecurity: boolean;
+  readonly forceRowSecurity: boolean;
+}
+
+export interface AdvancePaymentSchemaPolicySnapshot {
+  readonly tableName: string;
+  readonly policyName: string;
+  readonly usesAccountContext: boolean;
+}
+
+export interface AdvancePaymentSchemaTriggerSnapshot {
+  readonly tableName: string;
+  readonly triggerName: string;
+}
+
+export interface AdvancePaymentSchemaSnapshot {
+  readonly tables: readonly AdvancePaymentSchemaTableSnapshot[];
+  readonly policies: readonly AdvancePaymentSchemaPolicySnapshot[];
+  readonly triggers: readonly AdvancePaymentSchemaTriggerSnapshot[];
+}
+
+const requiredAdvancePaymentTables = ['advance_payments', 'advance_payment_allocations'] as const;
+
+const requiredAdvancePaymentPolicies = [
+  ['advance_payments', 'advance_payments_tenant_select'],
+  ['advance_payments', 'advance_payments_tenant_insert'],
+  ['advance_payment_allocations', 'advance_payment_allocations_tenant_select'],
+  ['advance_payment_allocations', 'advance_payment_allocations_tenant_insert']
+] as const;
+
+const requiredAdvancePaymentTriggers = [
+  ['advance_payments', 'advance_payments_immutability_trigger'],
+  ['advance_payment_allocations', 'advance_payment_allocations_immutability_trigger'],
+  ['advance_payment_allocations', 'advance_payment_allocations_prevent_overallocation']
+] as const;
+
+export function hasRequiredAdvancePaymentSchema(snapshot: AdvancePaymentSchemaSnapshot): boolean {
+  const tables = new Map(snapshot.tables.map((table) => [table.tableName, table]));
+  const policies = new Set(
+    snapshot.policies
+      .filter((policy) => policy.usesAccountContext)
+      .map((policy) => `${policy.tableName}:${policy.policyName}`)
+  );
+  const triggers = new Set(
+    snapshot.triggers.map((trigger) => `${trigger.tableName}:${trigger.triggerName}`)
+  );
+
+  return (
+    requiredAdvancePaymentTables.every((tableName) => {
+      const table = tables.get(tableName);
+      return table?.rowSecurity === true && table.forceRowSecurity === true;
+    }) &&
+    requiredAdvancePaymentPolicies.every(([tableName, policyName]) =>
+      policies.has(`${tableName}:${policyName}`)
+    ) &&
+    requiredAdvancePaymentTriggers.every(([tableName, triggerName]) =>
+      triggers.has(`${tableName}:${triggerName}`)
+    )
+  );
+}
+
+async function databaseAdvancePaymentsSchemaReady(): Promise<boolean> {
+  const [tableResult, policyResult, triggerResult] = await Promise.all([
+    getPool().query<{
+      readonly table_name: string;
+      readonly row_security: boolean;
+      readonly force_row_security: boolean;
+    }>(
+      `SELECT c.relname AS table_name,
+              c.relrowsecurity AS row_security,
+              c.relforcerowsecurity AS force_row_security
+         FROM pg_class AS c
+         JOIN pg_namespace AS n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public'
+          AND c.relname = ANY($1::text[])`,
+      [requiredAdvancePaymentTables]
+    ),
+    getPool().query<{
+      readonly table_name: string;
+      readonly policy_name: string;
+      readonly qual: string | null;
+      readonly with_check: string | null;
+    }>(
+      `SELECT tablename AS table_name,
+              policyname AS policy_name,
+              qual,
+              with_check
+         FROM pg_policies
+        WHERE schemaname = 'public'
+          AND tablename = ANY($1::text[])`,
+      [requiredAdvancePaymentTables]
+    ),
+    getPool().query<{
+      readonly table_name: string;
+      readonly trigger_name: string;
+    }>(
+      `SELECT c.relname AS table_name,
+              t.tgname AS trigger_name
+         FROM pg_trigger AS t
+         JOIN pg_class AS c ON c.oid = t.tgrelid
+         JOIN pg_namespace AS n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public'
+          AND c.relname = ANY($1::text[])
+          AND NOT t.tgisinternal`,
+      [requiredAdvancePaymentTables]
+    )
+  ]);
+
+  return hasRequiredAdvancePaymentSchema({
+    tables: tableResult.rows.map((row) => ({
+      tableName: row.table_name,
+      rowSecurity: row.row_security,
+      forceRowSecurity: row.force_row_security
+    })),
+    policies: policyResult.rows.map((row) => ({
+      tableName: row.table_name,
+      policyName: row.policy_name,
+      usesAccountContext: /app\.current_account_id\(\)/i.test(
+        `${row.qual ?? ''} ${row.with_check ?? ''}`
+      )
+    })),
+    triggers: triggerResult.rows.map((row) => ({
+      tableName: row.table_name,
+      triggerName: row.trigger_name
+    }))
+  });
+}
+
 async function databaseFunctionExists(signature: string): Promise<boolean> {
   const result = await getPool().query<{ exists: boolean }>(
     'SELECT to_regprocedure($1) IS NOT NULL AS exists',
@@ -254,6 +393,38 @@ export const mfaCredentialRequiredColumns = [
   'user_id',
   'setup_expires_at',
   'secret_key_version'
+] as const;
+
+export const webAuthnCredentialRequiredColumns = [
+  'credential_id',
+  'account_id',
+  'user_id',
+  'public_key',
+  'counter',
+  'device_type',
+  'created_at',
+  'last_used_at'
+] as const;
+
+export const webAuthnChallengeRequiredColumns = [
+  'account_id',
+  'user_id',
+  'purpose',
+  'challenge',
+  'expires_at',
+  'consumed_at',
+  'created_at'
+] as const;
+
+export const laboratoryProviderIngressRequiredColumns = [
+  'account_id',
+  'external_result_id',
+  'provider_code',
+  'schema_version',
+  'signature_key_id',
+  'payload_fingerprint',
+  'observed_at',
+  'status'
 ] as const;
 
 export function hasRequiredDatabaseColumns(
@@ -369,6 +540,7 @@ export const productionDatabaseRepositoryKeys = [
   'commissions',
   'packages',
   'reports',
+  'advancePayments',
   'inventory',
   'procurement',
   'scheduling',
@@ -384,6 +556,8 @@ export const productionDatabaseRepositoryKeys = [
   'staffTimeOff',
   'mfa',
   'mfaLoginChallenge',
+  'webauthn',
+  'webauthnChallenge',
   'consent',
   'dsr',
   'marketing',
@@ -396,6 +570,7 @@ export const productionDatabaseRepositoryKeys = [
   'pixTransaction',
   'cardTransaction',
   'encounterCashReceipt',
+  'encounterCashReceiptReversal',
   'encounterPixPaymentAttempt'
 ] as const satisfies readonly (keyof RuntimeRepositories)[];
 
@@ -950,6 +1125,8 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
     attachment: new InMemoryAttachmentRepository(),
     notification: new InMemoryNotificationRepository() as NotificationRepository,
     webhook: new InMemoryWebhookRepository(),
+    webauthn: new InMemoryWebAuthnRepository(),
+    webauthnChallenge: new InMemoryWebAuthnChallengeStore(),
     agendaConfig: new InMemoryAgendaConfigRepository()
   };
 
@@ -1032,6 +1209,7 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
         (await databaseTableExists('report_executions')) &&
         (await databaseTableExists('report_exports')) &&
         (await databaseTableExists('report_schedules'));
+      const advancePaymentsTablesReady = await databaseAdvancePaymentsSchemaReady();
       const marketingTablesReady =
         (await databaseTableExists('marketing_segments')) &&
         (await databaseTableExists('marketing_templates')) &&
@@ -1079,6 +1257,9 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
       ).every(Boolean);
       const catalogTablesReady =
         (await databaseTableExists('products')) && (await databaseTableExists('services'));
+      const financeCatalogTablesReady =
+        (await databaseTableExists('finance_cost_centers')) &&
+        (await databaseTableExists('finance_expense_catalog_items'));
       const cashTablesReady =
         (await databaseTableExists('cash_registers')) &&
         (await databaseTableExists('cash_movements'));
@@ -1142,6 +1323,18 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
         (await databaseTableExists('mfa_credentials')) &&
         (await databaseTableHasColumns('mfa_credentials', mfaCredentialRequiredColumns));
       const mfaLoginChallengesReady = await databaseTableExists('auth_mfa_login_challenges');
+      const webAuthnCredentialsReady =
+        (await databaseTableExists('auth_webauthn_credentials')) &&
+        (await databaseTableHasColumns(
+          'auth_webauthn_credentials',
+          webAuthnCredentialRequiredColumns
+        ));
+      const webAuthnChallengesReady =
+        (await databaseTableExists('auth_webauthn_challenges')) &&
+        (await databaseTableHasColumns(
+          'auth_webauthn_challenges',
+          webAuthnChallengeRequiredColumns
+        ));
       const outboxTablesReady = await databaseTableExists('outbox_events');
       const pixTablesReady = await databaseTableExists('pix_transactions');
       const cardTablesReady = await databaseTableExists('card_transactions');
@@ -1151,11 +1344,16 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
         (await databaseFunctionExists(
           'app.redrive_pix_provider_event_delivery(uuid,uuid,uuid,text,text)'
         ));
-      const encounterCashReceiptsReady = await databaseTableExists('encounter_cash_receipts');
+      const encounterCashReceiptsReady =
+        (await databaseTableExists('encounter_cash_receipts')) &&
+        (await databaseTableExists('encounter_cash_receipt_reversals'));
       const encounterPixPaymentAttemptsReady = await databaseTableExists(
         'encounter_payment_attempts'
       );
-      const laboratoryResultImportsReady = await databaseTableExists('laboratory_result_imports');
+      const laboratoryResultImportsReady = await databaseTableHasColumns(
+        'laboratory_result_imports',
+        laboratoryProviderIngressRequiredColumns
+      );
 
       results.repositories = {
         session: new DatabaseSessionRepository(db),
@@ -1215,6 +1413,9 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
         commissions: commissionsTablesReady ? new DatabaseCommissionRepository() : undefined,
         packages: packagesTablesReady ? new DatabasePackageRepository() : undefined,
         reports: reportsTablesReady ? new DatabaseReportRepository() : undefined,
+        advancePayments: advancePaymentsTablesReady
+          ? new DatabaseAdvancePaymentsReportRepository()
+          : undefined,
         marketing: marketingTablesReady ? new DatabaseMarketingRepository() : undefined,
         encounterFinancial: encounterFinancialTablesReady
           ? new DatabaseEncounterFinancialRepository()
@@ -1236,6 +1437,9 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
         accessControl: accessControlTablesReady ? new DatabaseAccessControlRepository() : undefined,
         products: catalogTablesReady ? new DatabaseProductsRepository() : undefined,
         services: catalogTablesReady ? new DatabaseServicesRepository() : undefined,
+        financeCatalog: financeCatalogTablesReady
+          ? new DatabaseFinanceCatalogRepository()
+          : undefined,
         counterSales: counterSalesTablesReady ? new DatabaseCounterSalesRepository() : undefined,
         quotes: quotesTablesReady ? new DatabaseQuotesRepository() : undefined,
         cash: cashTablesReady ? new DatabaseCashRepository() : undefined,
@@ -1244,6 +1448,10 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
         mfa: mfaTablesReady ? new DatabaseMfaRepository(db) : undefined,
         mfaLoginChallenge: mfaLoginChallengesReady
           ? new DatabaseMfaLoginChallengeRepository(db)
+          : undefined,
+        webauthn: webAuthnCredentialsReady ? new DatabaseWebAuthnRepository(db) : undefined,
+        webauthnChallenge: webAuthnChallengesReady
+          ? new DatabaseWebAuthnChallengeStore(db)
           : undefined,
         consent: consentTablesReady ? new DatabaseConsentRepository(db) : undefined,
         dsr: consentTablesReady ? new DatabaseDsrRepository(db) : undefined,
@@ -1254,6 +1462,9 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
         cardTransaction: cardTablesReady ? new DatabaseCardTransactionRepository() : undefined,
         encounterCashReceipt: encounterCashReceiptsReady
           ? new DatabaseEncounterCashReceiptRepository()
+          : undefined,
+        encounterCashReceiptReversal: encounterCashReceiptsReady
+          ? new DatabaseEncounterCashReceiptReversalRepository()
           : undefined,
         encounterPixPaymentAttempt: encounterPixPaymentAttemptsReady
           ? new DatabaseEncounterPixPaymentAttemptRepository()
@@ -1281,6 +1492,7 @@ export async function bootstrapServices(options: BootstrapOptions = {}): Promise
         commissionsPersistence: commissionsTablesReady ? 'database' : 'in-memory',
         packagesPersistence: packagesTablesReady ? 'database' : 'in-memory',
         reportsPersistence: reportsTablesReady ? 'database' : 'in-memory',
+        advancePaymentsPersistence: advancePaymentsTablesReady ? 'database' : 'disabled',
         marketingPersistence: marketingTablesReady ? 'database' : 'in-memory',
         financialPayablesPersistence: financialPayablesReady ? 'database' : 'in-memory',
         inventoryStockMovementsPersistence: inventoryStockMovementsReady ? 'database' : 'disabled',
@@ -1323,5 +1535,6 @@ export async function shutdownServices(): Promise<void> {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     logger.error('Error closing database', { error: message });
+    throw error instanceof Error ? error : new Error('Failed to close database connection');
   }
 }

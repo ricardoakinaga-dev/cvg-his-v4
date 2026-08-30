@@ -1,0 +1,171 @@
+{
+  "record_id": "GATE-CVG-004-FINANCIAL-CASH-RECEIPT-REVERSAL-VFY-001",
+  "timestamp": "2026-08-27T01:10:55-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-004 bounded authenticated append-only reversal of a full BRL encounter cash receipt",
+  "scope_ref": "CVG-004-FINANCIAL-CASH-RECEIPT-REVERSAL",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-001-COMMAND-AUTHORIZATION",
+      "description": "The reversal command validates UUIDs, bounded reason and idempotency, derives tenant and actor from the authenticated principal, and rechecks billing.manage inside the tenant transaction before idempotency lookup or replay.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-FINANCIAL-CASH-RECEIPT-REVERSAL-GREEN-001",
+        "apps/api/src/commands/encounter-cash-receipt-reversal.ts",
+        "apps/api/src/routes/encounter-cash-receipt-routes.ts",
+        "apps/api/src/helpers/tenant-command.ts",
+        "packages/shared/database/src/tenant-unit-of-work.ts",
+        "tests/unit/http-command-helpers.test.ts",
+        "tests/integration/database/encounter-cash-receipt-http-postgres.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The proof is local HTTP/application execution; target identity infrastructure and remote authorization stores remain outside scope."
+    },
+    {
+      "id": "V-002-ATOMIC-FINANCIAL-GRAPH",
+      "description": "One tenant transaction locks and validates the complete original full-BRL settlement, inserts the reversal row, withdrawal and inverse balanced journal, updates projections and appends audit/outbox evidence.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-FINANCIAL-CASH-RECEIPT-REVERSAL-GREEN-001",
+        "apps/api/src/encounter-cash-receipt-reversal-repository.ts",
+        "packages/modules/financial/src/index.ts",
+        "tests/integration/database/encounter-cash-receipt-command.test.ts",
+        "tests/integration/database/encounter-cash-receipts.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Provider refunds, bank reconciliation, fiscal cancellation and non-cash settlement are explicitly excluded."
+    },
+    {
+      "id": "V-003-IMMUTABILITY-CONSISTENCY",
+      "description": "The original settlement remains immutable; the reversal graph is protected against row, cash-movement, journal-entry and journal-line mutation; active receipt uniqueness, register timing and consistency checks remain enforced.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-FINANCIAL-CASH-RECEIPT-REVERSAL-GREEN-001",
+        "packages/db/migrations/0150_encounter_cash_receipt_reversals.sql",
+        "tests/unit/db/encounter-cash-receipt-reversal-migration.test.ts",
+        "tests/integration/database/encounter-cash-receipt-command.test.ts",
+        "tests/integration/database/encounter-cash-receipts.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Direct privileged SQL outside the tested runtime-role path remains an operational control and target-environment acceptance item."
+    },
+    {
+      "id": "V-004-TENANT-RLS-ROLE-SAFETY",
+      "description": "The reversal ledger and composite artifact relationships are tenant-scoped with RLS; fresh migrations apply cleanly; API and worker receive required settlement-helper EXECUTE privileges while PUBLIC does not.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-FINANCIAL-CASH-RECEIPT-REVERSAL-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-004-FINANCIAL-CASH-RECEIPT-REVERSAL-QUALITY-001",
+        "packages/db/migrations/0150_encounter_cash_receipt_reversals.sql",
+        "packages/db/src/runtime-role-policy.ts",
+        "packages/db/src/reconcile-runtime-roles.ts",
+        "infra/postgres/init-runtime-role.sh",
+        "infra/helm/cvg-his-v2/templates/postgres-runtime-role-configmap.yaml",
+        "tests/integration/rls/encounter-cash-receipts-rls.test.ts",
+        "tests/integration/rls/runtime-role-sensitive-acl.test.ts",
+        "tests/unit/infra/runtime-role-grants.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The runtime-role proof uses disposable local PostgreSQL; target TCP/RLS/FORCE-RLS and deployed role topology remain open."
+    },
+    {
+      "id": "V-005-FINANCIAL-HISTORY-RECOVERY",
+      "description": "Reversal reopens current billing/financial/receivable projections while preserving historical receipt/payment relationships, keeps the encounter closed until explicit reopen, and permits a later cash receipt.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-FINANCIAL-CASH-RECEIPT-REVERSAL-GREEN-001",
+        "packages/modules/financial/src/index.ts",
+        "packages/modules/financial/src/repositories/database-financial.repository.ts",
+        "tests/integration/database/encounter-cash-receipt-http-postgres.test.ts",
+        "tests/integration/database/encounter-cash-receipt-command.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The bounded proof covers the full-BRL cash path only; broader financial settlement and close/reopen policy remain open."
+    },
+    {
+      "id": "V-006-QUALITY-REGRESSION",
+      "description": "TDD RED history is retained and the corrected focused suite, fresh database suite, full API regression, builds, typechecks, lint, formatting, security and coverage pass.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-FINANCIAL-CASH-RECEIPT-REVERSAL-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-004-FINANCIAL-CASH-RECEIPT-REVERSAL-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-004-FINANCIAL-CASH-RECEIPT-REVERSAL-QUALITY-001",
+        ".agent/artifacts/CVG-004-financial-cash-receipt-reversal-2026-08-27.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Official coverage excludes the repository's designated database integration exclusions; remote CI and critical browser E2E are not claimed by this gate."
+    },
+    {
+      "id": "V-007-INDEPENDENT-REVIEW",
+      "description": "A fresh independent read-only post-fix review finds no Critical, High, Medium or Low blocker within the bounded slice.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-FINANCIAL-CASH-RECEIPT-REVERSAL-REVIEW-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The review is static/read-only and does not replace target execution, provider homologation or operational acceptance."
+    },
+    {
+      "id": "V-008-GLOBAL-NON-PROMOTION",
+      "description": "The bounded result is reconciled without promoting the parent program, strict Vetus parity, clinical parity, enterprise readiness or release acceptance.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-FINANCIAL-CASH-RECEIPT-REVERSAL-GLOBAL-RETEST-001",
+        ".agent/verification.jsonl#VFY-CVG-004-FINANCIAL-CASH-RECEIPT-REVERSAL-FINAL-001",
+        ".agent/state.json",
+        ".agent/backlog.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Global parity remains 98/100 with 4/11 verified, clinical parity 100/100 with 2/3 verified, and enterprise readiness 95/100 with 42 PASS / 3 WARN / 1 FAIL."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-financial-cash-receipt-reversal.md",
+    ".agent/artifacts/CVG-004-financial-cash-receipt-reversal-2026-08-27.md",
+    ".agent/authority.jsonl#AUTH-CVG-004-FINANCIAL-CASH-RECEIPT-REVERSAL-IR-001",
+    "apps/api/src/encounter-cash-receipt-reversal-repository.ts",
+    "apps/api/src/commands/encounter-cash-receipt-reversal.ts",
+    "apps/api/src/routes/encounter-cash-receipt-routes.ts",
+    "packages/db/migrations/0150_encounter_cash_receipt_reversals.sql",
+    "tests/integration/database/encounter-cash-receipt-command.test.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "Disposable local PostgreSQL does not certify target TCP/RLS/FORCE-RLS or production runtime-role topology.",
+    "Provider refunds, chargebacks, bank reconciliation, fiscal cancellation and non-cash reversal remain out of scope.",
+    "Browser acceptance, remote CI, distributed worker failure/observability, accessibility, operations, backup/restore, RTO/RPO and release acceptance remain open.",
+    "Global Vetus and clinical parity remain partial/open; the enterprise readiness check retains one strict-parity FAIL and three external-operation WARNs."
+  ],
+  "conditions": [
+    "Keep the source settlement graph and reversal graph append-only.",
+    "Retain tenant-scoped authorization, idempotency and runtime role grants before extending this path.",
+    "Revalidate before adding non-cash/provider refunds, target operation, production/deployment action or release acceptance."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via the current CVG-004 authority record",
+    "scope": "CVG-004 bounded append-only reversal of a full BRL encounter cash receipt",
+    "decision": "Authorize one additive local migration and reversible authenticated API/repository implementation with tenant UoW/idempotency, compensating cash/journal artifacts, append-only history, financial projection reopening and audit/outbox evidence. Exclude providers, credentials, target, production, deployment and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-FINANCIAL-CASH-RECEIPT-REVERSAL-IR-001",
+    "expires_or_revalidates": "Revalidate before adding non-cash/provider refunds, chargebacks, bank settlement, target operation, production/deployment action or release acceptance."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_BOUNDED",
+  "next_action": "Keep CVG-004 and the global program IN_PROGRESS/PARTIAL; continue only with a separately authorized implementation-ready gap and do not promote this bounded result to parity, readiness or release.",
+  "revalidation_triggers": [
+    "Any PIX/card/bank/provider refund or chargeback behavior",
+    "Any non-cash receipt, cash-register policy, journal account-plan or fiscal integration change",
+    "Any target, credential, production, deployment, external mutation or release action"
+  ],
+  "supersedes": ".agent/gates/implementation-ready-CVG-004-financial-cash-receipt-reversal.json"
+}

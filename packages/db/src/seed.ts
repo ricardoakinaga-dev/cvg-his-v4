@@ -1,11 +1,18 @@
 import { and, eq, inArray } from 'drizzle-orm';
 
+import {
+  DB_ACCESS_CONTROL_PERMISSION_SEEDS,
+  DB_ACCESS_CONTROL_ROLE_PERMISSION_MAP,
+  DB_ACCESS_CONTROL_ROLE_SEEDS
+} from './access-control-seeds.js';
 import { closeDbConnection, db } from './connection.js';
 import {
   accounts,
   permissions,
   rolePermissions,
   roles,
+  professions,
+  staff,
   tenants,
   units,
   userRoles,
@@ -34,216 +41,21 @@ type SeedAdminCredentials = {
   readonly roleName?: string;
 };
 
-// Role seeds now use AccessControlService codes (not @cvg-his/rbac codes)
-// This eliminates the dual RBAC divergence between seed and enforcement
-const roleSeeds = [
-  { name: 'admin', description: 'Acesso administrativo completo.' },
-  { name: 'veterinarian', description: 'Perfil de medico veterinario.' },
-  { name: 'nurse', description: 'Perfil de enfermagem.' },
-  { name: 'reception', description: 'Perfil de recepcao.' },
-  { name: 'finance', description: 'Perfil financeiro e faturamento.' },
-  { name: 'inventory', description: 'Perfil de gestao de estoque.' },
-  { name: 'auditor', description: 'Perfil de auditoria.' }
-];
-
-// Permission seeds now use AccessControlService codes (plural nouns + read/manage)
-// This eliminates the dual RBAC divergence between seed and enforcement
-const permissionSeeds = [
-  { key: 'auth.session.read', description: 'Permite leitura da propria sessao.' },
-  { key: 'users.read', description: 'Permite leitura de usuarios do sistema.' },
-  { key: 'users.manage', description: 'Permite criar e gerenciar usuarios.' },
-  { key: 'staff.read', description: 'Permite leitura de membros da equipe.' },
-  { key: 'staff.manage', description: 'Permite gerenciar membros da equipe.' },
-  { key: 'access.read', description: 'Permite leitura de roles e permissoes.' },
-  { key: 'audit.read', description: 'Permite leitura de trilhas de auditoria.' },
-  { key: 'audit.write', description: 'Permite gravar eventos de auditoria.' },
-  { key: 'owners.read', description: 'Permite leitura de cadastros de proprietarios.' },
-  { key: 'owners.manage', description: 'Permite criar e alterar cadastros de proprietarios.' },
-  { key: 'patients.read', description: 'Permite leitura de cadastros clinicos de pacientes.' },
-  {
-    key: 'patients.manage',
-    description: 'Permite criar e alterar cadastros clinicos de pacientes.'
-  },
-  { key: 'scheduling.read', description: 'Permite leitura de agendamentos e fila.' },
-  { key: 'scheduling.manage', description: 'Permite gerenciar agendamentos e fila.' },
-  { key: 'encounters.read', description: 'Permite leitura de atendimentos e casos clinicos.' },
-  {
-    key: 'encounters.manage',
-    description: 'Permite abertura e atualizacao de atendimentos clinicos.'
-  },
-  { key: 'triage.read', description: 'Permite leitura de triagens.' },
-  { key: 'triage.manage', description: 'Permite registrar e gerenciar triagens.' },
-  { key: 'medical-records.read', description: 'Permite leitura de prontuarios e notas clinicas.' },
-  {
-    key: 'medical-records.manage',
-    description: 'Permite criar e editar notas clinicas e prontuarios.'
-  },
-  { key: 'attachments.read', description: 'Permite leitura de anexos e documentos clinicos.' },
-  { key: 'attachments.manage', description: 'Permite upload e vinculo de documentos clinicos.' },
-  { key: 'inpatient.read', description: 'Permite leitura de internacoes ativas e historicas.' },
-  { key: 'inpatient.manage', description: 'Permite admitir e transferir internacoes.' },
-  { key: 'surgery.read', description: 'Permite leitura de casos cirurgicos.' },
-  { key: 'surgery.manage', description: 'Permite gerenciar casos cirurgicos.' },
-  { key: 'diagnostics.read', description: 'Permite leitura de ordens e resultados de exames.' },
-  {
-    key: 'diagnostics.manage',
-    description: 'Permite criar ordens de exame e registrar resultados.'
-  },
-  { key: 'billing.read', description: 'Permite leitura de registros de cobranca.' },
-  { key: 'billing.manage', description: 'Permite criar e gerenciar itens de cobranca.' },
-  { key: 'inventory.read', description: 'Permite leitura de itens de estoque.' },
-  { key: 'inventory.manage', description: 'Permite registrar consumo de estoque.' },
-  { key: 'prescriptions.read', description: 'Permite leitura de prescricoes clinicas.' },
-  { key: 'prescriptions.write', description: 'Permite criar e alterar prescricoes clinicas.' },
-  {
-    key: 'prescription-executions.read',
-    description: 'Permite leitura da execucao de prescricoes.'
-  },
-  {
-    key: 'prescription-executions.manage',
-    description: 'Permite gerenciar a execucao de prescricoes.'
-  },
-  { key: 'discharges.read', description: 'Permite leitura de altas clinicas.' },
-  { key: 'discharges.manage', description: 'Permite gerenciar altas clinicas.' },
-  { key: 'fiscal.read', description: 'Permite leitura de configuracoes fiscais.' },
-  { key: 'fiscal.manage', description: 'Permite gerenciar configuracoes fiscais.' },
-  {
-    key: 'marketing.read',
-    description: 'Permite leitura de audiencias, campanhas e entregas de marketing.'
-  },
-  {
-    key: 'marketing.manage',
-    description: 'Permite gerenciar consentimentos, campanhas e entregas de marketing.'
-  },
-  { key: 'product.read', description: 'Permite leitura do cadastro de produtos.' },
-  { key: 'product.write', description: 'Permite gerenciar o cadastro de produtos.' },
-  {
-    key: 'service.read',
-    description: 'Permite leitura dos cadastros auxiliares e servicos.'
-  },
-  {
-    key: 'service.write',
-    description: 'Permite gerenciar cadastros auxiliares e servicos.'
-  },
-  { key: 'counter_sale.read', description: 'Permite leitura de vendas de balcao.' },
-  { key: 'counter_sale.write', description: 'Permite gerenciar vendas de balcao.' },
-  { key: 'quote.read', description: 'Permite leitura de orcamentos.' },
-  { key: 'quote.write', description: 'Permite gerenciar orcamentos.' },
-  { key: 'webhooks.read', description: 'Permite leitura de webhooks.' },
-  { key: 'webhooks.manage', description: 'Permite gerenciar webhooks.' },
-  { key: 'integrations.read', description: 'Permite leitura de integracoes.' },
-  { key: 'integrations.manage', description: 'Permite gerenciar integracoes.' },
-  { key: 'api_keys.manage', description: 'Permite gerenciar chaves de API.' },
-  { key: 'notifications.read', description: 'Permite leitura de notificacoes operacionais.' },
-  { key: 'notifications.manage', description: 'Permite criar e processar notificacoes.' }
-];
-
-// Role-permission mapping aligned with AccessControlService vocabulary
-const rolePermissionMap: Record<string, string[]> = {
-  admin: permissionSeeds.map((p) => p.key),
-  veterinarian: [
-    'auth.session.read',
-    'audit.read',
-    'audit.write',
-    'owners.read',
-    'patients.read',
-    'patients.manage',
-    'scheduling.read',
-    'scheduling.manage',
-    'encounters.read',
-    'encounters.manage',
-    'triage.read',
-    'triage.manage',
-    'medical-records.read',
-    'medical-records.manage',
-    'attachments.read',
-    'attachments.manage',
-    'inpatient.read',
-    'inpatient.manage',
-    'surgery.read',
-    'surgery.manage',
-    'diagnostics.read',
-    'diagnostics.manage',
-    'billing.read',
-    'notifications.read'
-  ],
-  nurse: [
-    'auth.session.read',
-    'audit.read',
-    'owners.read',
-    'patients.read',
-    'scheduling.read',
-    'encounters.read',
-    'encounters.manage',
-    'triage.read',
-    'triage.manage',
-    'medical-records.read',
-    'medical-records.manage',
-    'attachments.read',
-    'attachments.manage',
-    'inpatient.read',
-    'inpatient.manage',
-    'surgery.read',
-    'diagnostics.read',
-    'diagnostics.manage',
-    'billing.read',
-    'inventory.read',
-    'inventory.manage',
-    'notifications.read'
-  ],
-  reception: [
-    'auth.session.read',
-    'owners.read',
-    'owners.manage',
-    'patients.read',
-    'patients.manage',
-    'scheduling.read',
-    'scheduling.manage',
-    'encounters.read',
-    'encounters.manage',
-    'triage.read',
-    'triage.manage',
-    'medical-records.read',
-    'attachments.read',
-    'inpatient.read',
-    'billing.read',
-    'notifications.read'
-  ],
-  finance: [
-    'auth.session.read',
-    'audit.read',
-    'owners.read',
-    'patients.read',
-    'encounters.read',
-    'medical-records.read',
-    'billing.read',
-    'billing.manage',
-    'notifications.read'
-  ],
-  inventory: [
-    'auth.session.read',
-    'encounters.read',
-    'inventory.read',
-    'inventory.manage',
-    'notifications.read'
-  ],
-  auditor: [
-    'auth.session.read',
-    'audit.read',
-    'owners.read',
-    'patients.read',
-    'encounters.read',
-    'triage.read',
-    'medical-records.read',
-    'attachments.read',
-    'inpatient.read',
-    'surgery.read',
-    'diagnostics.read',
-    'billing.read',
-    'inventory.read',
-    'notifications.read'
-  ]
+type SeedLaboratorySigner = {
+  readonly id: string;
+  readonly fullName: string;
 };
+
+const SEED_LABORATORY_PROFESSION = {
+  code: 'VET-RESPONSAVEL',
+  name: 'Medico veterinario responsavel',
+  description: 'Profissao tecnica usada pelo principal clinico do ambiente seed.'
+} as const;
+
+const roleSeeds = DB_ACCESS_CONTROL_ROLE_SEEDS;
+const permissionSeeds = DB_ACCESS_CONTROL_PERMISSION_SEEDS;
+const rolePermissionMap = DB_ACCESS_CONTROL_ROLE_PERMISSION_MAP;
+
 
 async function ensureAccountAndUnit(
   options: AccountUnitSeedOptions
@@ -387,13 +199,13 @@ async function seedAdminUser(
   accountId: string,
   unitId: string,
   credentials?: SeedAdminCredentials
-): Promise<void> {
+): Promise<string | null> {
   const adminEmail = credentials?.email ?? process.env.ADMIN_EMAIL;
   const adminPassword = credentials?.password ?? process.env.ADMIN_PASSWORD;
 
   if (!adminEmail || !adminPassword) {
     console.info('ADMIN_EMAIL/ADMIN_PASSWORD nao definidos. Seed de usuario admin foi pulado.');
-    return;
+    return null;
   }
 
   await db
@@ -402,7 +214,9 @@ async function seedAdminUser(
       accountId,
       unitId,
       username:
-        credentials?.username?.trim() || process.env.ADMIN_USERNAME?.trim() || adminEmail.split('@')[0]!,
+        credentials?.username?.trim() ||
+        process.env.ADMIN_USERNAME?.trim() ||
+        adminEmail.split('@')[0]!,
       email: adminEmail,
       passwordHash: await hashSeedPassword(adminPassword),
       fullName: credentials?.fullName ?? 'Administrador Seed'
@@ -424,7 +238,7 @@ async function seedAdminUser(
 
   if (!adminUser || !adminRole) {
     console.warn(`Nao foi possivel vincular usuario ${adminEmail} ao role ${roleName}.`);
-    return;
+    return null;
   }
 
   await db
@@ -434,6 +248,79 @@ async function seedAdminUser(
       roleId: adminRole.id
     })
     .onConflictDoNothing({ target: [userRoles.userId, userRoles.roleId] });
+
+  if (roleName === 'admin') {
+    await ensureSeedLaboratorySigner(accountId, {
+      id: adminUser.id,
+      fullName: credentials?.fullName ?? 'Administrador Seed'
+    });
+  }
+
+  return adminUser.id;
+}
+
+async function ensureSeedLaboratorySigner(
+  accountId: string,
+  user: SeedLaboratorySigner
+): Promise<void> {
+  await db
+    .insert(professions)
+    .values({
+      accountId,
+      code: SEED_LABORATORY_PROFESSION.code,
+      name: SEED_LABORATORY_PROFESSION.name,
+      description: SEED_LABORATORY_PROFESSION.description,
+      isActive: true
+    })
+    .onConflictDoUpdate({
+      target: [professions.accountId, professions.code],
+      set: {
+        name: SEED_LABORATORY_PROFESSION.name,
+        description: SEED_LABORATORY_PROFESSION.description,
+        isActive: true,
+        updatedAt: new Date()
+      }
+    });
+
+  const [profession] = await db
+    .select({ id: professions.id })
+    .from(professions)
+    .where(
+      and(
+        eq(professions.accountId, accountId),
+        eq(professions.code, SEED_LABORATORY_PROFESSION.code)
+      )
+    )
+    .limit(1);
+
+  if (!profession) {
+    throw new Error(`Failed to ensure seed laboratory profession for account ${accountId}`);
+  }
+
+  await db
+    .insert(staff)
+    .values({
+      accountId,
+      userId: user.id,
+      employeeCode: 'SEED-VET-001',
+      fullName: user.fullName,
+      department: 'Clinica',
+      jobTitle: 'Medico veterinario',
+      professionId: profession.id,
+      isActive: true
+    })
+    .onConflictDoUpdate({
+      target: [staff.accountId, staff.employeeCode],
+      set: {
+        userId: user.id,
+        fullName: user.fullName,
+        department: 'Clinica',
+        jobTitle: 'Medico veterinario',
+        professionId: profession.id,
+        isActive: true,
+        updatedAt: new Date()
+      }
+    });
 }
 
 async function runSeed(): Promise<void> {

@@ -42,7 +42,7 @@ export interface CompanySectorPersistence {
 
 export interface CompanySectorHandlers {
   audit: AuditService;
-  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
+  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
   store?: CompanySectorPersistence;
 }
 
@@ -250,7 +250,7 @@ export async function handleCompanySectorsRoutes(
   }
 
   if (collectionPaths.has(pathname) && request.method === 'GET') {
-    const principal = handlers.requirePrincipal(request, 'inventory.read');
+    const principal = await handlers.requirePrincipal(request, 'inventory.read');
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const items = await store.list(principal.user.accountId, {
       search: url.searchParams.get('search') ?? url.searchParams.get('q') ?? undefined,
@@ -272,7 +272,7 @@ export async function handleCompanySectorsRoutes(
   }
 
   if (collectionPaths.has(pathname) && request.method === 'POST') {
-    const principal = handlers.requirePrincipal(request, 'inventory.manage');
+    const principal = await handlers.requirePrincipal(request, 'inventory.manage');
     const payload = normalizePayload((await readJsonBody(request)) as Partial<CompanySectorPayload>);
     const validationError = validatePayload(payload);
     if (validationError) {
@@ -294,7 +294,7 @@ export async function handleCompanySectorsRoutes(
   }
 
   if (sectorId && request.method === 'PATCH') {
-    const principal = handlers.requirePrincipal(request, 'inventory.manage');
+    const principal = await handlers.requirePrincipal(request, 'inventory.manage');
     const payload = normalizePayload((await readJsonBody(request)) as Partial<CompanySectorPayload>);
     const validationError = validatePayload(payload);
     if (validationError) {
@@ -323,7 +323,7 @@ export async function handleCompanySectorsRoutes(
   }
 
   if (sectorId && request.method === 'DELETE') {
-    const principal = handlers.requirePrincipal(request, 'inventory.manage');
+    const principal = await handlers.requirePrincipal(request, 'inventory.manage');
     try {
       const item = await store.remove(principal.user.accountId, sectorId);
       appendAudit(handlers.audit, {

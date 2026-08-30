@@ -1,0 +1,83 @@
+{
+  "record_id": "GATE-CVG-002B2B-LEGACY-PIX-SETTLEMENT-BARRIER-IR-001",
+  "timestamp": "2026-08-27T13:29:00-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-002B2B bounded fail-closed barrier for legacy PIX confirmation settlement",
+  "scope_ref": "CVG-002B2B-LEGACY-PIX-SETTLEMENT-BARRIER",
+  "version": 1,
+  "confidence": "HIGH",
+  "residual_risk": "CRITICAL",
+  "decision": "PASS",
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The legacy PIX consumer can fabricate an amount-zero transaction or settle an attempt-linked transaction outside B1, and the bounded owner, resources and exclusions are recorded.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-002B2B-LEGACY-PIX-SETTLEMENT-BARRIER.md",
+        ".agent/tasks/CVG-002B2B.md",
+        "packages/modules/event-consumers/src/payments.consumer.ts",
+        "apps/api/src/routes/payments-routes.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The risk is established by repository evidence; no implementation or runtime proof is claimed at gate creation."
+    },
+    {
+      "id": "IR-002",
+      "description": "The smallest safe boundary is the shared payment event consumer: require an authoritative no-attempt transaction, validate all tenant and billing invariants before mutation, and preserve the dedicated signed provider flow.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/event-consumers/src/payments.consumer.ts",
+        "packages/modules/payments/src/pix-transaction-repository.ts",
+        "apps/worker/src/consumer-composition.ts",
+        "tests/integration/database/pix-provider-settlement-consumer.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The dedicated pix.payment.confirmed.v1 worker path remains outside this slice and must retain its existing contract."
+    },
+    {
+      "id": "IR-003",
+      "description": "Focused RED/GREEN consumer tests and event-bus adapter assertions can prove no create/no update/no settlement on invalid legacy events while retaining valid legacy settlement.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-002B2B-LEGACY-PIX-SETTLEMENT-BARRIER.md",
+        "apps/api/src/consumers/payments.consumer.test.ts",
+        "packages/modules/event-consumers/src/event-consumers.test.ts",
+        "packages/modules/event-bus/src/event-bus.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Fresh RED/GREEN execution, package regressions, independent review and bounded reconciliation are required before verification."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-002B2B-LEGACY-PIX-SETTLEMENT-BARRIER.md",
+    "packages/modules/event-consumers/src/payments.consumer.ts",
+    "packages/modules/payments/src/pix-transaction-repository.ts",
+    "apps/worker/src/consumer-composition.ts"
+  ],
+  "gaps": [
+    "The rejecting RED tests, minimal fail-closed implementation, runtime/database proof and independent review are not complete at gate creation."
+  ],
+  "conditions": [
+    "Do not remove the legacy consumer or change the dedicated pix.payment.confirmed.v1 protocol; reject only unsupported or incoherent legacy confirmations before writes."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via the original consolidation brief",
+    "scope": "CVG-002B2B bounded legacy PIX settlement barrier",
+    "decision": "Authorize reversible repository implementation, focused consumer/event-bus tests and disposable PostgreSQL verification of fail-closed legacy PIX settlement. Preserve valid no-attempt legacy compatibility and the dedicated B1 provider flow. Exclude schema, providers, credentials, target, production, deployment, external mutation and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-002B2B-LEGACY-PIX-SETTLEMENT-BARRIER-IR-001",
+    "expires_or_revalidates": "Revalidate before changing the B1 primitive, dedicated pix.payment.confirmed.v1 worker flow, removing legacy compatibility, altering schema or operating target/production."
+  },
+  "revalidation_triggers": [
+    "Changes to PixTransactionRecord.paymentAttemptId or its repository semantics",
+    "Changes to payment.pix.confirmed producers or PaymentsEventHandlers registration",
+    "Changes to the dedicated pix.payment.confirmed.v1 settlement worker",
+    "Any provider, target, production, deployment or release operation"
+  ],
+  "next_action": "Write and run the intentional RED consumer contract, then implement the minimal authoritative/no-attempt and pre-write validation barrier."
+}

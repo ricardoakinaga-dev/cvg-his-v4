@@ -14,6 +14,9 @@ const DEFAULT_PROXY_API_TARGET = 'http://localhost:3001';
 const DEFAULT_ACCESS_TOKEN_TTL_SECONDS = 900;
 const DEFAULT_REFRESH_TOKEN_TTL_SECONDS = 604800;
 const MIN_SECRET_LENGTH = 32;
+export const MIN_SETUP_BOOTSTRAP_TOKEN_LENGTH = 43;
+const MIN_SETUP_BOOTSTRAP_TOKEN_DISTINCT_CHARACTERS = 8;
+const MAX_SETUP_BOOTSTRAP_TOKEN_REPEATING_PERIOD = 8;
 const DEFAULT_OTLP_PROTOCOL = 'http/protobuf';
 const DEFAULT_LOCAL_CORS_ALLOWED_ORIGINS = [
   'http://127.0.0.1:3000',
@@ -30,27 +33,22 @@ const DEFAULT_LOCAL_CORS_ALLOWED_ORIGINS = [
   'http://localhost:5173'
 ] as const;
 
-const environmentSchema = z.enum([
-  'development',
-  'test',
-  'staging',
-  'production',
-  'prod',
-  'stage'
-]);
+const environmentSchema = z.enum(['development', 'test', 'staging', 'production', 'prod', 'stage']);
 
 const portSchema = z.coerce.number().int().min(1).max(65535);
 const positiveNumberSchema = z.coerce.number().int().positive();
 const nonEmptyStringSchema = z.string().trim().min(1);
 const optionalNonEmptyStringSchema = nonEmptyStringSchema.optional();
-const optionalUrlSchema = z
-  .string()
-  .trim()
-  .url()
-  .optional();
+const optionalUrlSchema = z.string().trim().url().optional();
 const booleanStringSchema = z
   .union([z.boolean(), z.enum(['1', '0', 'true', 'false'])])
   .transform((value) => value === true || value === '1' || value === 'true');
+
+// Report actors must use the same RFC 4122 textual contract at configuration
+// time and at the worker entrypoint boundary. The nil UUID is intentionally
+// excluded because it cannot identify a persisted user/service principal.
+export const WORKER_REPORTS_USER_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const INSECURE_SECRETS = [
   'cvg-his-v2-phase-3-dev-secret',
@@ -72,93 +70,591 @@ export interface ConfigFieldDescriptor {
 }
 
 export const API_CONFIG_FIELDS: readonly ConfigFieldDescriptor[] = [
-  { app: 'api', key: 'NODE_ENV', required: false, defaultValue: 'development', description: 'Runtime environment.' },
-  { app: 'api', key: 'APP_NAME', required: false, defaultValue: DEFAULT_API_APP_NAME, description: 'Service name used in logs and health responses.' },
-  { app: 'api', key: 'PORT', required: false, defaultValue: String(DEFAULT_API_PORT), description: 'HTTP listen port for the API server.' },
-  { app: 'api', key: 'HOST', required: false, defaultValue: DEFAULT_HOST, description: 'HTTP bind host for the API server.' },
-  { app: 'api', key: 'CORS_ALLOWED_ORIGINS', required: false, defaultValue: DEFAULT_LOCAL_CORS_ALLOWED_ORIGINS.join(','), description: 'Comma-separated allowlist of allowed browser origins. Required explicitly in production-like environments.' },
-  { app: 'api', key: 'TRUSTED_PROXY_CIDRS', required: false, description: 'Comma-separated proxy IPs/CIDRs allowed to supply X-Forwarded-For and X-Forwarded-Proto.' },
-  { app: 'api', key: 'AUTH_SECRET', required: false, defaultValue: INSECURE_DEFAULT_SECRET, sensitive: true, description: 'JWT/session secret. Required to be strong in production-like environments.' },
-  { app: 'api', key: 'AUTH_ACCESS_TOKEN_TTL_SECONDS', required: false, defaultValue: String(DEFAULT_ACCESS_TOKEN_TTL_SECONDS), description: 'Access token TTL in seconds.' },
-  { app: 'api', key: 'AUTH_REFRESH_TOKEN_TTL_SECONDS', required: false, defaultValue: String(DEFAULT_REFRESH_TOKEN_TTL_SECONDS), description: 'Refresh token TTL in seconds.' },
-  { app: 'api', key: 'AUTH_RATE_LIMIT_MAX_REQUESTS', required: false, defaultValue: '10', description: 'Maximum auth requests accepted per rate-limit window.' },
-  { app: 'api', key: 'AUTH_RATE_LIMIT_WINDOW_MS', required: false, defaultValue: String(15 * 60 * 1000), description: 'Auth rate-limit window in milliseconds.' },
-  { app: 'api', key: 'OTEL_ENABLED', required: false, defaultValue: 'false', description: 'Enable OpenTelemetry SDK bootstrap for this service.' },
-  { app: 'api', key: 'OTEL_SERVICE_NAME', required: false, defaultValue: DEFAULT_API_APP_NAME, description: 'Service name exported to OpenTelemetry resources.' },
-  { app: 'api', key: 'OTEL_EXPORTER_OTLP_PROTOCOL', required: false, defaultValue: DEFAULT_OTLP_PROTOCOL, description: 'OTLP transport protocol. Current foundation supports http/protobuf.' },
-  { app: 'api', key: 'OTEL_EXPORTER_OTLP_TRACES_ENDPOINT', required: false, description: 'Trace exporter endpoint for OTLP/HTTP.' },
-  { app: 'api', key: 'OTEL_EXPORTER_OTLP_HEADERS', required: false, sensitive: true, description: 'Comma-separated OTLP headers in key=value format.' },
-  { app: 'api', key: 'DATABASE_URL', required: false, description: 'Database connection string. Required in production-like environments; optional only for local/test degraded mode.' },
-  { app: 'api', key: 'FILE_STORAGE_PATH', required: false, defaultValue: DEFAULT_FILE_STORAGE_PATH, description: 'Base directory for attachment storage.' },
-  { app: 'api', key: 'ATTACHMENT_SCANNER_HOST', required: false, description: 'ClamAV host used to scan clinical uploads in production-like environments.' },
-  { app: 'api', key: 'ATTACHMENT_SCANNER_PORT', required: false, defaultValue: '3310', description: 'ClamAV TCP port used for INSTREAM scanning.' },
-  { app: 'api', key: 'ATTACHMENT_SCANNER_TIMEOUT_MS', required: false, defaultValue: '5000', description: 'Maximum time allowed for an attachment security verdict.' },
-  { app: 'api', key: 'ATTACHMENT_STORAGE_S3_ENDPOINT', required: false, description: 'Private S3/MinIO endpoint for durable clinical attachments.' },
-  { app: 'api', key: 'ATTACHMENT_STORAGE_S3_BUCKET', required: false, description: 'Private bucket used for clinical attachments.' },
-  { app: 'api', key: 'ATTACHMENT_STORAGE_S3_ACCESS_KEY', required: false, sensitive: true, description: 'S3 access key for the attachment bucket.' },
-  { app: 'api', key: 'ATTACHMENT_STORAGE_S3_SECRET_KEY', required: false, sensitive: true, description: 'S3 secret key for the attachment bucket.' },
-  { app: 'api', key: 'ATTACHMENT_STORAGE_S3_REGION', required: false, defaultValue: 'us-east-1', description: 'S3 signing region.' },
-  { app: 'api', key: 'ATTACHMENT_STORAGE_S3_PATH_STYLE', required: false, defaultValue: 'true', description: 'Use path-style addressing for MinIO-compatible endpoints.' },
-  { app: 'api', key: 'ENABLE_MFA', required: false, defaultValue: 'false', description: 'Enable MFA runtime wiring in the API.' },
-  { app: 'api', key: 'MFA_SECRET_ENCRYPTION_KEY', required: false, sensitive: true, description: 'Encryption key used when MFA is enabled.' },
-  { app: 'api', key: 'MFA_SECRET_ENCRYPTION_KEY_VERSION', required: false, description: 'Version label written with newly encrypted MFA credentials.' },
-  { app: 'api', key: 'MFA_SECRET_ENCRYPTION_KEYRING_JSON', required: false, sensitive: true, description: 'JSON object mapping retained MFA key versions to decryption keys during rotation.' },
-  { app: 'api', key: 'FEATURE_FLAGS_PROVIDER', required: false, defaultValue: 'env', description: 'Feature flag provider type. Currently supports "env" (bootstrap/development mode).' },
-  { app: 'api', key: 'API_FEATURE_FLAGS', required: false, description: 'Comma-separated list of explicitly enabled feature flag keys for the API. Example: "auth.oidc.enabled,auth.webauthn.enabled".' },
-  { app: 'api', key: 'RUNTIME_DISTRIBUTED_STATE_ENABLED', required: false, defaultValue: 'false', description: 'When true, enables distributed runtime state (Redis-backed session, encounter timeline, etc.).' },
-  { app: 'api', key: 'PAGARME_API_KEY', required: false, sensitive: true, description: 'Pagar.me API key for PIX payments. When set, PagarMePixAdapter is used instead of LocalPixPaymentGateway.' },
-  { app: 'api', key: 'PAGARME_PIX_KEY', required: false, description: 'Pagar.me PIX key (chave Pix) for QR code generation. Required when PAGARME_API_KEY is set.' },
-  { app: 'api', key: 'PIX_MOCK_MODE', required: false, defaultValue: 'false', description: 'When true, forces LocalPixPaymentGateway (mock) even if PAGARME_API_KEY and PAGARME_PIX_KEY are set. Default: false (PagarMe is the default provider).' },
-  { app: 'api', key: 'PIX_SYNTHETIC_WEBHOOK_ENABLED', required: false, defaultValue: 'false', description: 'Explicitly enables the local synthetic PIX webhook capability in development/test only; must remain false in production-like environments.' },
-  { app: 'api', key: 'PIX_WEBHOOK_KEYRING_JSON', required: false, sensitive: true, description: 'Account-bound synthetic PIX webhook keyring. Required only when the explicit synthetic capability is enabled; secrets are canonical base64 values of at least 32 bytes.' },
-  { app: 'api', key: 'NFSE_PROVIDER', required: false, defaultValue: 'abrasf', description: 'Municipal NFS-e provider adapter.' },
-  { app: 'api', key: 'NFSE_API_URL', required: false, description: 'Municipal NFS-e endpoint used outside simulation mode.' },
-  { app: 'api', key: 'NFSE_API_KEY', required: false, sensitive: true, description: 'Municipal NFS-e API credential.' },
-  { app: 'api', key: 'NFSE_MUNICIPALITY_CODE', required: false, description: 'IBGE municipality code used by the NFS-e provider.' },
-  { app: 'api', key: 'NFSE_CERTIFICATE_BASE64', required: false, sensitive: true, description: 'Base64 encoded PFX/PEM certificate for signed NFS-e requests.' },
-  { app: 'api', key: 'NFSE_ISSUER_JSON', required: false, sensitive: true, description: 'JSON document with the NFS-e issuer registration and address.' },
-  { app: 'api', key: 'NFSE_REGIME', required: false, defaultValue: 'simples_nacional', description: 'Tax regime used by the NFS-e emitter.' },
-  { app: 'api', key: 'RESEND_API_KEY', required: false, sensitive: true, description: 'Resend API key for transactional email provider.' },
-  { app: 'api', key: 'EMAIL_FROM', required: false, defaultValue: 'noreply@cvg-his.local', description: 'Default sender used by the transactional email provider.' },
-  { app: 'api', key: 'EMAIL_MOCK_MODE', required: false, defaultValue: 'false', description: 'When true, forces LocalEmailGateway even if RESEND_API_KEY is set. Default: false (Resend is the default provider when configured).' },
-  { app: 'api', key: 'SMS_API_KEY', required: false, sensitive: true, description: 'Twilio-compatible API key for transactional SMS provider.' },
-  { app: 'api', key: 'SMS_FROM', required: false, defaultValue: 'CVGHIS', description: 'Default sender used by the SMS provider.' },
-  { app: 'api', key: 'SMS_MOCK_MODE', required: false, defaultValue: 'false', description: 'When true, forces LocalSmsGateway even if SMS_API_KEY is set.' },
-  { app: 'api', key: 'GOOGLE_CALENDAR_ACCESS_TOKEN', required: false, sensitive: true, description: 'Bearer token used for outbound Google Calendar sync.' },
-  { app: 'api', key: 'GOOGLE_CALENDAR_CALENDAR_ID', required: false, description: 'Google Calendar identifier used for outbound appointment sync.' },
-  { app: 'api', key: 'GOOGLE_CALENDAR_MOCK_MODE', required: false, defaultValue: 'false', description: 'When true, forces LocalGoogleCalendarGateway even if Google Calendar credentials are set.' },
-  { app: 'api', key: 'REDIS_URL', required: false, description: 'Redis connection URL for distributed rate limiting. When set, the auth rate limiter uses Redis backend instead of in-memory.' },
-  { app: 'api', key: 'VAULT_ENABLED', required: false, defaultValue: 'false', description: 'When true, enables HashiCorp Vault AppRole bootstrap for managed secrets.' },
+  {
+    app: 'api',
+    key: 'NODE_ENV',
+    required: false,
+    defaultValue: 'development',
+    description: 'Runtime environment.'
+  },
+  {
+    app: 'api',
+    key: 'APP_NAME',
+    required: false,
+    defaultValue: DEFAULT_API_APP_NAME,
+    description: 'Service name used in logs and health responses.'
+  },
+  {
+    app: 'api',
+    key: 'PORT',
+    required: false,
+    defaultValue: String(DEFAULT_API_PORT),
+    description: 'HTTP listen port for the API server.'
+  },
+  {
+    app: 'api',
+    key: 'HOST',
+    required: false,
+    defaultValue: DEFAULT_HOST,
+    description: 'HTTP bind host for the API server.'
+  },
+  {
+    app: 'api',
+    key: 'CORS_ALLOWED_ORIGINS',
+    required: false,
+    defaultValue: DEFAULT_LOCAL_CORS_ALLOWED_ORIGINS.join(','),
+    description:
+      'Comma-separated allowlist of allowed browser origins. Required explicitly in production-like environments.'
+  },
+  {
+    app: 'api',
+    key: 'TRUSTED_PROXY_CIDRS',
+    required: false,
+    description:
+      'Comma-separated proxy IPs/CIDRs allowed to supply X-Forwarded-For and X-Forwarded-Proto.'
+  },
+  {
+    app: 'api',
+    key: 'AUTH_SECRET',
+    required: false,
+    defaultValue: INSECURE_DEFAULT_SECRET,
+    sensitive: true,
+    description: 'JWT/session secret. Required to be strong in production-like environments.'
+  },
+  {
+    app: 'api',
+    key: 'AUTH_ACCESS_TOKEN_TTL_SECONDS',
+    required: false,
+    defaultValue: String(DEFAULT_ACCESS_TOKEN_TTL_SECONDS),
+    description: 'Access token TTL in seconds.'
+  },
+  {
+    app: 'api',
+    key: 'AUTH_REFRESH_TOKEN_TTL_SECONDS',
+    required: false,
+    defaultValue: String(DEFAULT_REFRESH_TOKEN_TTL_SECONDS),
+    description: 'Refresh token TTL in seconds.'
+  },
+  {
+    app: 'api',
+    key: 'AUTH_RATE_LIMIT_MAX_REQUESTS',
+    required: false,
+    defaultValue: '10',
+    description: 'Maximum auth requests accepted per rate-limit window.'
+  },
+  {
+    app: 'api',
+    key: 'AUTH_RATE_LIMIT_WINDOW_MS',
+    required: false,
+    defaultValue: String(15 * 60 * 1000),
+    description: 'Auth rate-limit window in milliseconds.'
+  },
+  {
+    app: 'api',
+    key: 'OTEL_ENABLED',
+    required: false,
+    defaultValue: 'false',
+    description: 'Enable OpenTelemetry SDK bootstrap for this service.'
+  },
+  {
+    app: 'api',
+    key: 'OTEL_SERVICE_NAME',
+    required: false,
+    defaultValue: DEFAULT_API_APP_NAME,
+    description: 'Service name exported to OpenTelemetry resources.'
+  },
+  {
+    app: 'api',
+    key: 'OTEL_EXPORTER_OTLP_PROTOCOL',
+    required: false,
+    defaultValue: DEFAULT_OTLP_PROTOCOL,
+    description: 'OTLP transport protocol. Current foundation supports http/protobuf.'
+  },
+  {
+    app: 'api',
+    key: 'OTEL_EXPORTER_OTLP_TRACES_ENDPOINT',
+    required: false,
+    description: 'Trace exporter endpoint for OTLP/HTTP.'
+  },
+  {
+    app: 'api',
+    key: 'OTEL_EXPORTER_OTLP_HEADERS',
+    required: false,
+    sensitive: true,
+    description: 'Comma-separated OTLP headers in key=value format.'
+  },
+  {
+    app: 'api',
+    key: 'DATABASE_URL',
+    required: false,
+    description:
+      'Database connection string. Required in production-like environments; optional only for local/test degraded mode.'
+  },
+  {
+    app: 'api',
+    key: 'FILE_STORAGE_PATH',
+    required: false,
+    defaultValue: DEFAULT_FILE_STORAGE_PATH,
+    description: 'Base directory for attachment storage.'
+  },
+  {
+    app: 'api',
+    key: 'ATTACHMENT_SCANNER_HOST',
+    required: false,
+    description: 'ClamAV host used to scan clinical uploads in production-like environments.'
+  },
+  {
+    app: 'api',
+    key: 'ATTACHMENT_SCANNER_PORT',
+    required: false,
+    defaultValue: '3310',
+    description: 'ClamAV TCP port used for INSTREAM scanning.'
+  },
+  {
+    app: 'api',
+    key: 'ATTACHMENT_SCANNER_TIMEOUT_MS',
+    required: false,
+    defaultValue: '5000',
+    description: 'Maximum time allowed for an attachment security verdict.'
+  },
+  {
+    app: 'api',
+    key: 'ATTACHMENT_STORAGE_S3_ENDPOINT',
+    required: false,
+    description: 'Private S3/MinIO endpoint for durable clinical attachments.'
+  },
+  {
+    app: 'api',
+    key: 'ATTACHMENT_STORAGE_S3_BUCKET',
+    required: false,
+    description: 'Private bucket used for clinical attachments.'
+  },
+  {
+    app: 'api',
+    key: 'ATTACHMENT_STORAGE_S3_ACCESS_KEY',
+    required: false,
+    sensitive: true,
+    description: 'S3 access key for the attachment bucket.'
+  },
+  {
+    app: 'api',
+    key: 'ATTACHMENT_STORAGE_S3_SECRET_KEY',
+    required: false,
+    sensitive: true,
+    description: 'S3 secret key for the attachment bucket.'
+  },
+  {
+    app: 'api',
+    key: 'ATTACHMENT_STORAGE_S3_REGION',
+    required: false,
+    defaultValue: 'us-east-1',
+    description: 'S3 signing region.'
+  },
+  {
+    app: 'api',
+    key: 'ATTACHMENT_STORAGE_S3_PATH_STYLE',
+    required: false,
+    defaultValue: 'true',
+    description: 'Use path-style addressing for MinIO-compatible endpoints.'
+  },
+  {
+    app: 'api',
+    key: 'ENABLE_MFA',
+    required: false,
+    defaultValue: 'false',
+    description: 'Enable MFA runtime wiring in the API.'
+  },
+  {
+    app: 'api',
+    key: 'MFA_SECRET_ENCRYPTION_KEY',
+    required: false,
+    sensitive: true,
+    description: 'Encryption key used when MFA is enabled.'
+  },
+  {
+    app: 'api',
+    key: 'MFA_SECRET_ENCRYPTION_KEY_VERSION',
+    required: false,
+    description: 'Version label written with newly encrypted MFA credentials.'
+  },
+  {
+    app: 'api',
+    key: 'MFA_SECRET_ENCRYPTION_KEYRING_JSON',
+    required: false,
+    sensitive: true,
+    description: 'JSON object mapping retained MFA key versions to decryption keys during rotation.'
+  },
+  {
+    app: 'api',
+    key: 'FEATURE_FLAGS_PROVIDER',
+    required: false,
+    defaultValue: 'env',
+    description:
+      'Feature flag provider type. Currently supports "env" (bootstrap/development mode).'
+  },
+  {
+    app: 'api',
+    key: 'API_FEATURE_FLAGS',
+    required: false,
+    description:
+      'Comma-separated list of explicitly enabled feature flag keys for the API. Example: "auth.oidc.enabled,auth.webauthn.enabled".'
+  },
+  {
+    app: 'api',
+    key: 'RUNTIME_DISTRIBUTED_STATE_ENABLED',
+    required: false,
+    defaultValue: 'false',
+    description:
+      'When true, enables distributed runtime state (Redis-backed session, encounter timeline, etc.).'
+  },
+  {
+    app: 'api',
+    key: 'PAGARME_API_KEY',
+    required: false,
+    sensitive: true,
+    description:
+      'Pagar.me API key for PIX payments. When set, PagarMePixAdapter is used instead of LocalPixPaymentGateway.'
+  },
+  {
+    app: 'api',
+    key: 'PAGARME_PIX_KEY',
+    required: false,
+    description:
+      'Pagar.me PIX key (chave Pix) for QR code generation. Required when PAGARME_API_KEY is set.'
+  },
+  {
+    app: 'api',
+    key: 'PIX_MOCK_MODE',
+    required: false,
+    defaultValue: 'false',
+    description:
+      'When true, forces LocalPixPaymentGateway (mock) even if PAGARME_API_KEY and PAGARME_PIX_KEY are set. Default: false (PagarMe is the default provider).'
+  },
+  {
+    app: 'api',
+    key: 'PIX_SYNTHETIC_WEBHOOK_ENABLED',
+    required: false,
+    defaultValue: 'false',
+    description:
+      'Explicitly enables the local synthetic PIX webhook capability in development/test only; must remain false in production-like environments.'
+  },
+  {
+    app: 'api',
+    key: 'PIX_WEBHOOK_KEYRING_JSON',
+    required: false,
+    sensitive: true,
+    description:
+      'Account-bound synthetic PIX webhook keyring. Required only when the explicit synthetic capability is enabled; secrets are canonical base64 values of at least 32 bytes.'
+  },
+  {
+    app: 'api',
+    key: 'LABORATORY_PROVIDER_KEYRING_JSON',
+    required: false,
+    sensitive: true,
+    description:
+      'Account-bound local equipment-bridge HMAC keyring. Development/test only; secrets are canonical base64 values of at least 32 bytes.'
+  },
+  {
+    app: 'api',
+    key: 'NFSE_PROVIDER',
+    required: false,
+    defaultValue: 'abrasf',
+    description: 'Municipal NFS-e provider adapter.'
+  },
+  {
+    app: 'api',
+    key: 'NFSE_API_URL',
+    required: false,
+    description: 'Municipal NFS-e endpoint used outside simulation mode.'
+  },
+  {
+    app: 'api',
+    key: 'NFSE_API_KEY',
+    required: false,
+    sensitive: true,
+    description: 'Municipal NFS-e API credential.'
+  },
+  {
+    app: 'api',
+    key: 'NFSE_MUNICIPALITY_CODE',
+    required: false,
+    description: 'IBGE municipality code used by the NFS-e provider.'
+  },
+  {
+    app: 'api',
+    key: 'NFSE_CERTIFICATE_BASE64',
+    required: false,
+    sensitive: true,
+    description: 'Base64 encoded PFX/PEM certificate for signed NFS-e requests.'
+  },
+  {
+    app: 'api',
+    key: 'NFSE_ISSUER_JSON',
+    required: false,
+    sensitive: true,
+    description: 'JSON document with the NFS-e issuer registration and address.'
+  },
+  {
+    app: 'api',
+    key: 'NFSE_REGIME',
+    required: false,
+    defaultValue: 'simples_nacional',
+    description: 'Tax regime used by the NFS-e emitter.'
+  },
+  {
+    app: 'api',
+    key: 'RESEND_API_KEY',
+    required: false,
+    sensitive: true,
+    description: 'Resend API key for transactional email provider.'
+  },
+  {
+    app: 'api',
+    key: 'EMAIL_FROM',
+    required: false,
+    defaultValue: 'noreply@cvg-his.local',
+    description: 'Default sender used by the transactional email provider.'
+  },
+  {
+    app: 'api',
+    key: 'EMAIL_MOCK_MODE',
+    required: false,
+    defaultValue: 'false',
+    description:
+      'When true, forces LocalEmailGateway even if RESEND_API_KEY is set. Default: false (Resend is the default provider when configured).'
+  },
+  {
+    app: 'api',
+    key: 'SMS_API_KEY',
+    required: false,
+    sensitive: true,
+    description: 'Twilio-compatible API key for transactional SMS provider.'
+  },
+  {
+    app: 'api',
+    key: 'SMS_FROM',
+    required: false,
+    defaultValue: 'CVGHIS',
+    description: 'Default sender used by the SMS provider.'
+  },
+  {
+    app: 'api',
+    key: 'SMS_MOCK_MODE',
+    required: false,
+    defaultValue: 'false',
+    description: 'When true, forces LocalSmsGateway even if SMS_API_KEY is set.'
+  },
+  {
+    app: 'api',
+    key: 'GOOGLE_CALENDAR_ACCESS_TOKEN',
+    required: false,
+    sensitive: true,
+    description: 'Bearer token used for outbound Google Calendar sync.'
+  },
+  {
+    app: 'api',
+    key: 'GOOGLE_CALENDAR_CALENDAR_ID',
+    required: false,
+    description: 'Google Calendar identifier used for outbound appointment sync.'
+  },
+  {
+    app: 'api',
+    key: 'GOOGLE_CALENDAR_MOCK_MODE',
+    required: false,
+    defaultValue: 'false',
+    description:
+      'When true, forces LocalGoogleCalendarGateway even if Google Calendar credentials are set.'
+  },
+  {
+    app: 'api',
+    key: 'REDIS_URL',
+    required: false,
+    description:
+      'Redis connection URL for distributed rate limiting. When set, the auth rate limiter uses Redis backend instead of in-memory.'
+  },
+  {
+    app: 'api',
+    key: 'VAULT_ENABLED',
+    required: false,
+    defaultValue: 'false',
+    description: 'When true, enables HashiCorp Vault AppRole bootstrap for managed secrets.'
+  },
   { app: 'api', key: 'VAULT_URL', required: false, description: 'Base URL of the Vault server.' },
-  { app: 'api', key: 'VAULT_ROLE_ID', required: false, sensitive: true, description: 'Vault AppRole role_id used by the API bootstrap.' },
-  { app: 'api', key: 'VAULT_SECRET_ID', required: false, sensitive: true, description: 'Vault AppRole secret_id used by the API bootstrap.' },
-  { app: 'api', key: 'VAULT_NAMESPACE', required: false, description: 'Optional Vault Enterprise namespace header.' },
-  { app: 'api', key: 'VAULT_SECRET_PATH_PREFIX', required: false, defaultValue: 'secret/data/cvg-his-v2', description: 'Vault KV-v2 path prefix used for managed application secrets.' },
-  { app: 'api', key: 'SETUP_BOOTSTRAP_TOKEN', required: false, sensitive: true, description: 'High-entropy operator secret required to enable first-run setup. Setup mutation fails closed when unset; generate with a cryptographic secret generator and never log it.' }
+  {
+    app: 'api',
+    key: 'VAULT_ROLE_ID',
+    required: false,
+    sensitive: true,
+    description: 'Vault AppRole role_id used by the API bootstrap.'
+  },
+  {
+    app: 'api',
+    key: 'VAULT_SECRET_ID',
+    required: false,
+    sensitive: true,
+    description: 'Vault AppRole secret_id used by the API bootstrap.'
+  },
+  {
+    app: 'api',
+    key: 'VAULT_NAMESPACE',
+    required: false,
+    description: 'Optional Vault Enterprise namespace header.'
+  },
+  {
+    app: 'api',
+    key: 'VAULT_SECRET_PATH_PREFIX',
+    required: false,
+    defaultValue: 'secret/data/cvg-his-v2',
+    description: 'Vault KV-v2 path prefix used for managed application secrets.'
+  },
+  {
+    app: 'api',
+    key: 'SETUP_BOOTSTRAP_TOKEN',
+    required: false,
+    sensitive: true,
+    description:
+      'High-entropy operator secret required to enable first-run setup. Setup mutation fails closed when unset; generate with a cryptographic secret generator and never log it.'
+  }
 ];
 
 export const WORKER_CONFIG_FIELDS: readonly ConfigFieldDescriptor[] = [
-  { app: 'worker', key: 'NODE_ENV', required: false, defaultValue: 'development', description: 'Runtime environment.' },
-  { app: 'worker', key: 'APP_NAME', required: false, defaultValue: DEFAULT_WORKER_APP_NAME, description: 'Service name used in logs and metrics.' },
-  { app: 'worker', key: 'WORKER_INTERVAL_MS', required: false, defaultValue: String(DEFAULT_WORKER_INTERVAL_MS), description: 'Polling interval for worker ticks.' },
-  { app: 'worker', key: 'WORKER_HEALTH_PORT', required: false, defaultValue: String(DEFAULT_WORKER_HEALTH_PORT), description: 'Listen port for the worker health endpoint.' },
-  { app: 'worker', key: 'OTEL_ENABLED', required: false, defaultValue: 'false', description: 'Enable OpenTelemetry SDK bootstrap for this service.' },
-  { app: 'worker', key: 'OTEL_SERVICE_NAME', required: false, defaultValue: DEFAULT_WORKER_APP_NAME, description: 'Service name exported to OpenTelemetry resources.' },
-  { app: 'worker', key: 'OTEL_EXPORTER_OTLP_PROTOCOL', required: false, defaultValue: DEFAULT_OTLP_PROTOCOL, description: 'OTLP transport protocol. Current foundation supports http/protobuf.' },
-  { app: 'worker', key: 'OTEL_EXPORTER_OTLP_TRACES_ENDPOINT', required: false, description: 'Trace exporter endpoint for OTLP/HTTP.' },
-  { app: 'worker', key: 'OTEL_EXPORTER_OTLP_HEADERS', required: false, sensitive: true, description: 'Comma-separated OTLP headers in key=value format.' },
-  { app: 'worker', key: 'DATABASE_URL', required: false, description: 'Database connection string. Required in production-like environments; optional only for local/test degraded mode.' },
-  { app: 'worker', key: 'FEATURE_FLAGS_PROVIDER', required: false, defaultValue: 'env', description: 'Feature flag provider type. Currently supports "env" (bootstrap/development mode).' },
-  { app: 'worker', key: 'WORKER_FEATURE_FLAGS', required: false, description: 'Comma-separated list of explicitly enabled feature flag keys for the worker. Example: "runtime.distributed_state.enabled,notifications.whatsapp.provider_enabled".' }
+  {
+    app: 'worker',
+    key: 'NODE_ENV',
+    required: false,
+    defaultValue: 'development',
+    description: 'Runtime environment.'
+  },
+  {
+    app: 'worker',
+    key: 'APP_NAME',
+    required: false,
+    defaultValue: DEFAULT_WORKER_APP_NAME,
+    description: 'Service name used in logs and metrics.'
+  },
+  {
+    app: 'worker',
+    key: 'WORKER_INTERVAL_MS',
+    required: false,
+    defaultValue: String(DEFAULT_WORKER_INTERVAL_MS),
+    description: 'Polling interval for worker ticks.'
+  },
+  {
+    app: 'worker',
+    key: 'WORKER_HEALTH_PORT',
+    required: false,
+    defaultValue: String(DEFAULT_WORKER_HEALTH_PORT),
+    description: 'Listen port for the worker health endpoint.'
+  },
+  {
+    app: 'worker',
+    key: 'OTEL_ENABLED',
+    required: false,
+    defaultValue: 'false',
+    description: 'Enable OpenTelemetry SDK bootstrap for this service.'
+  },
+  {
+    app: 'worker',
+    key: 'OTEL_SERVICE_NAME',
+    required: false,
+    defaultValue: DEFAULT_WORKER_APP_NAME,
+    description: 'Service name exported to OpenTelemetry resources.'
+  },
+  {
+    app: 'worker',
+    key: 'OTEL_EXPORTER_OTLP_PROTOCOL',
+    required: false,
+    defaultValue: DEFAULT_OTLP_PROTOCOL,
+    description: 'OTLP transport protocol. Current foundation supports http/protobuf.'
+  },
+  {
+    app: 'worker',
+    key: 'OTEL_EXPORTER_OTLP_TRACES_ENDPOINT',
+    required: false,
+    description: 'Trace exporter endpoint for OTLP/HTTP.'
+  },
+  {
+    app: 'worker',
+    key: 'OTEL_EXPORTER_OTLP_HEADERS',
+    required: false,
+    sensitive: true,
+    description: 'Comma-separated OTLP headers in key=value format.'
+  },
+  {
+    app: 'worker',
+    key: 'DATABASE_URL',
+    required: false,
+    description:
+      'Database connection string. Required in production-like environments; optional only for local/test degraded mode.'
+  },
+  {
+    app: 'worker',
+    key: 'WORKER_REPORTS_USER_ID',
+    required: false,
+    description:
+      'Explicit UUID user/service principal used as the audit actor for scheduled report execution. Required in production-like environments; never falls back to an account ID.'
+  },
+  {
+    app: 'worker',
+    key: 'FEATURE_FLAGS_PROVIDER',
+    required: false,
+    defaultValue: 'env',
+    description:
+      'Feature flag provider type. Currently supports "env" (bootstrap/development mode).'
+  },
+  {
+    app: 'worker',
+    key: 'WORKER_FEATURE_FLAGS',
+    required: false,
+    description:
+      'Comma-separated list of explicitly enabled feature flag keys for the worker. Example: "runtime.distributed_state.enabled,notifications.whatsapp.provider_enabled".'
+  }
 ];
 
 export const SPA_CONFIG_FIELDS: readonly ConfigFieldDescriptor[] = [
-  { app: 'spa', key: 'NODE_ENV', required: false, defaultValue: 'development', description: 'Runtime environment used by Vite and the client bundle.' },
-  { app: 'spa', key: 'PORT', required: false, defaultValue: String(DEFAULT_WEB_PORT), description: 'Dev server port used by Vite.' },
-  { app: 'spa', key: 'VITE_APP_NAME', required: false, defaultValue: 'CVG HIS V2', description: 'Display name of the SPA.' },
-  { app: 'spa', key: 'VITE_API_BASE_URL', required: false, defaultValue: '', description: 'API origin or prefix. Accepts same-origin empty value, origin URL or `/api`-style prefix.' },
-  { app: 'spa', key: 'VITE_PROXY_API_TARGET', required: false, defaultValue: DEFAULT_PROXY_API_TARGET, description: 'Proxy target for local Vite development.' },
-  { app: 'spa', key: 'VITE_DISABLE_PWA', required: false, defaultValue: '0', description: 'Disable service worker/PWA registration when set to 1/true.' }
+  {
+    app: 'spa',
+    key: 'NODE_ENV',
+    required: false,
+    defaultValue: 'development',
+    description: 'Runtime environment used by Vite and the client bundle.'
+  },
+  {
+    app: 'spa',
+    key: 'PORT',
+    required: false,
+    defaultValue: String(DEFAULT_WEB_PORT),
+    description: 'Dev server port used by Vite.'
+  },
+  {
+    app: 'spa',
+    key: 'VITE_APP_NAME',
+    required: false,
+    defaultValue: 'CVG HIS V2',
+    description: 'Display name of the SPA.'
+  },
+  {
+    app: 'spa',
+    key: 'VITE_API_BASE_URL',
+    required: false,
+    defaultValue: '',
+    description:
+      'API origin or prefix. Accepts same-origin empty value, origin URL or `/api`-style prefix.'
+  },
+  {
+    app: 'spa',
+    key: 'VITE_PROXY_API_TARGET',
+    required: false,
+    defaultValue: DEFAULT_PROXY_API_TARGET,
+    description: 'Proxy target for local Vite development.'
+  },
+  {
+    app: 'spa',
+    key: 'VITE_DISABLE_PWA',
+    required: false,
+    defaultValue: '0',
+    description: 'Disable service worker/PWA registration when set to 1/true.'
+  }
 ];
 
 export interface ApiAppConfig {
@@ -203,6 +699,7 @@ export interface ApiAppConfig {
   readonly pixMockMode?: boolean;
   readonly pixSyntheticWebhookEnabled: boolean;
   readonly pixProviderWebhookKeyringJson?: string;
+  readonly laboratoryProviderKeyringJson?: string;
   readonly nfseProvider?: string;
   readonly nfseApiUrl?: string;
   readonly nfseApiKey?: string;
@@ -250,6 +747,7 @@ export interface WorkerAppConfig {
   readonly otlpTracesEndpoint?: string;
   readonly otlpHeaders: Readonly<Record<string, string>>;
   readonly databaseUrl?: string;
+  readonly workerReportsUserId?: string;
   readonly featureFlagsProvider: string;
   readonly workerFeatureFlags: readonly string[];
 }
@@ -276,6 +774,39 @@ function validateSecret(secret: string, environment: string): void {
       );
     }
   }
+}
+
+export function validateSetupBootstrapToken(configuredToken: string): void {
+  const token = configuredToken.trim();
+  const hasUnsafeWhitespace = /\s/.test(token);
+  const distinctCharacters = new Set(token).size;
+
+  if (
+    token.length < MIN_SETUP_BOOTSTRAP_TOKEN_LENGTH ||
+    hasUnsafeWhitespace ||
+    distinctCharacters < MIN_SETUP_BOOTSTRAP_TOKEN_DISTINCT_CHARACTERS ||
+    hasShortRepeatingPeriod(token)
+  ) {
+    throw new Error(
+      `SETUP_BOOTSTRAP_TOKEN must contain at least ${MIN_SETUP_BOOTSTRAP_TOKEN_LENGTH} characters from a high-entropy secret generator.`
+    );
+  }
+}
+
+function hasShortRepeatingPeriod(token: string): boolean {
+  const maxPeriod = Math.min(
+    MAX_SETUP_BOOTSTRAP_TOKEN_REPEATING_PERIOD,
+    Math.floor(token.length / 2)
+  );
+
+  for (let period = 1; period <= maxPeriod; period += 1) {
+    if (token.length % period !== 0) continue;
+
+    const pattern = token.slice(0, period);
+    if (pattern.repeat(token.length / period) === token) return true;
+  }
+
+  return false;
 }
 
 function validateCorsOrigin(origin: string): string {
@@ -346,17 +877,13 @@ function parseOtlpHeaders(value?: string): Readonly<Record<string, string>> {
 
     const separatorIndex = trimmedEntry.indexOf('=');
     if (separatorIndex <= 0 || separatorIndex === trimmedEntry.length - 1) {
-      throw new Error(
-        'OTEL_EXPORTER_OTLP_HEADERS must use comma-separated key=value pairs'
-      );
+      throw new Error('OTEL_EXPORTER_OTLP_HEADERS must use comma-separated key=value pairs');
     }
 
     const key = trimmedEntry.slice(0, separatorIndex).trim();
     const headerValue = trimmedEntry.slice(separatorIndex + 1).trim();
     if (key.length === 0 || headerValue.length === 0) {
-      throw new Error(
-        'OTEL_EXPORTER_OTLP_HEADERS must use comma-separated key=value pairs'
-      );
+      throw new Error('OTEL_EXPORTER_OTLP_HEADERS must use comma-separated key=value pairs');
     }
 
     headers[key] = headerValue;
@@ -388,9 +915,7 @@ function validateOtelConfig(input: {
   }
 
   if (input.OTEL_ENABLED && !input.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT) {
-    throw new Error(
-      'OTEL_EXPORTER_OTLP_TRACES_ENDPOINT is required when OTEL_ENABLED=true'
-    );
+    throw new Error('OTEL_EXPORTER_OTLP_TRACES_ENDPOINT is required when OTEL_ENABLED=true');
   }
 }
 
@@ -508,6 +1033,7 @@ const apiEnvSchema = z
     PIX_MOCK_MODE: booleanStringSchema.default(false),
     PIX_SYNTHETIC_WEBHOOK_ENABLED: booleanStringSchema.default(false),
     PIX_WEBHOOK_KEYRING_JSON: optionalNonEmptyStringSchema,
+    LABORATORY_PROVIDER_KEYRING_JSON: optionalNonEmptyStringSchema,
     NFSE_PROVIDER: nonEmptyStringSchema.default('abrasf'),
     NFSE_API_URL: optionalUrlSchema,
     NFSE_API_KEY: optionalNonEmptyStringSchema,
@@ -573,6 +1099,14 @@ const apiEnvSchema = z
         message: 'PIX_WEBHOOK_KEYRING_JSON is required when PIX_SYNTHETIC_WEBHOOK_ENABLED=true'
       });
     }
+
+    if (isProductionEnvironment(value.NODE_ENV) && value.LABORATORY_PROVIDER_KEYRING_JSON) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['LABORATORY_PROVIDER_KEYRING_JSON'],
+        message: 'LABORATORY_PROVIDER_KEYRING_JSON must be unset in production-like environments'
+      });
+    }
   });
 
 const workerEnvSchema = z
@@ -587,6 +1121,10 @@ const workerEnvSchema = z
     OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: optionalUrlSchema,
     OTEL_EXPORTER_OTLP_HEADERS: optionalNonEmptyStringSchema,
     DATABASE_URL: optionalUrlSchema,
+    WORKER_REPORTS_USER_ID: z.preprocess(
+      (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+      z.string().trim().regex(WORKER_REPORTS_USER_ID_PATTERN).optional()
+    ),
     FEATURE_FLAGS_PROVIDER: nonEmptyStringSchema.default('env'),
     WORKER_FEATURE_FLAGS: optionalNonEmptyStringSchema
   })
@@ -598,6 +1136,13 @@ const workerEnvSchema = z
         message: 'DATABASE_URL is required in production-like environments'
       });
     }
+    if (isProductionEnvironment(value.NODE_ENV) && !value.WORKER_REPORTS_USER_ID) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['WORKER_REPORTS_USER_ID'],
+        message: 'WORKER_REPORTS_USER_ID is required in production-like environments'
+      });
+    }
   });
 
 const spaClientEnvBaseSchema = z.object({
@@ -607,32 +1152,35 @@ const spaClientEnvBaseSchema = z.object({
   VITE_DISABLE_PWA: booleanStringSchema.default(false)
 });
 
-function validateSpaApiBaseUrl(
-  value: { VITE_API_BASE_URL: string },
-  ctx: z.RefinementCtx
-): void {
+function validateSpaApiBaseUrl(value: { VITE_API_BASE_URL: string }, ctx: z.RefinementCtx): void {
   if (!isValidSpaApiBaseUrl(value.VITE_API_BASE_URL)) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['VITE_API_BASE_URL'],
-      message: 'VITE_API_BASE_URL must be empty, an absolute http(s) URL, or a relative path starting with "/"'
+      message:
+        'VITE_API_BASE_URL must be empty, an absolute http(s) URL, or a relative path starting with "/"'
     });
   }
 }
 
 const spaClientEnvSchema = spaClientEnvBaseSchema.superRefine(validateSpaApiBaseUrl);
 
-const spaViteEnvSchema = spaClientEnvBaseSchema.extend({
-  PORT: portSchema.default(DEFAULT_WEB_PORT),
-  HOST: nonEmptyStringSchema.default(DEFAULT_HOST),
-  VITE_PROXY_API_TARGET: z.string().trim().url().default(DEFAULT_PROXY_API_TARGET)
-}).superRefine(validateSpaApiBaseUrl);
+const spaViteEnvSchema = spaClientEnvBaseSchema
+  .extend({
+    PORT: portSchema.default(DEFAULT_WEB_PORT),
+    HOST: nonEmptyStringSchema.default(DEFAULT_HOST),
+    VITE_PROXY_API_TARGET: z.string().trim().url().default(DEFAULT_PROXY_API_TARGET)
+  })
+  .superRefine(validateSpaApiBaseUrl);
 
 export function loadApiConfig(env: NodeJS.ProcessEnv): ApiAppConfig {
   const parsed = parseConfig('api', apiEnvSchema, env);
   validateSecret(parsed.AUTH_SECRET, parsed.NODE_ENV);
   for (const previousSecret of parseSecretList(parsed.AUTH_SECRET_PREVIOUS)) {
     validateSecret(previousSecret, parsed.NODE_ENV);
+  }
+  if (parsed.SETUP_BOOTSTRAP_TOKEN) {
+    validateSetupBootstrapToken(parsed.SETUP_BOOTSTRAP_TOKEN);
   }
   validateOtelConfig(parsed);
 
@@ -678,6 +1226,7 @@ export function loadApiConfig(env: NodeJS.ProcessEnv): ApiAppConfig {
     pixMockMode: parsed.PIX_MOCK_MODE,
     pixSyntheticWebhookEnabled: parsed.PIX_SYNTHETIC_WEBHOOK_ENABLED,
     pixProviderWebhookKeyringJson: parsed.PIX_WEBHOOK_KEYRING_JSON,
+    laboratoryProviderKeyringJson: parsed.LABORATORY_PROVIDER_KEYRING_JSON,
     nfseProvider: parsed.NFSE_PROVIDER,
     nfseApiUrl: parsed.NFSE_API_URL,
     nfseApiKey: parsed.NFSE_API_KEY,
@@ -768,6 +1317,7 @@ export function loadWorkerConfig(env: NodeJS.ProcessEnv): WorkerAppConfig {
     otlpTracesEndpoint: parsed.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT,
     otlpHeaders: parseOtlpHeaders(parsed.OTEL_EXPORTER_OTLP_HEADERS),
     databaseUrl: parsed.DATABASE_URL,
+    workerReportsUserId: parsed.WORKER_REPORTS_USER_ID,
     featureFlagsProvider: parsed.FEATURE_FLAGS_PROVIDER,
     workerFeatureFlags: parseFeatureFlagKeys(parsed.WORKER_FEATURE_FLAGS)
   };

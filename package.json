@@ -63,8 +63,9 @@
     "test:coverage": "vitest run --coverage --config vitest.config.ts --exclude 'tests/integration/database/**' --exclude 'tests/integration/factories.test.ts' --exclude 'tests/integration/db-schema.test.ts' --exclude 'tests/integration/foundational.test.ts' --exclude 'tests/integration/rls/rls-lgpd.test.ts' --exclude 'tests/integration/rls/rls-text-based-tables.test.ts' --exclude 'tests/integration/rls/rls-isolation.test.ts' --exclude 'tests/integration/webhook-persistence.test.ts' --exclude 'tests/integration/mfa/mfa-persistence.test.ts'",
     "test:e2e": "npx playwright test e2e/tests/fluxos-criticos.spec.ts --config playwright.config.ts",
     "test:e2e:spa": "bash -lc 'fuser -k 3111/tcp 3112/tcp 2>/dev/null || true; npx playwright test --config playwright-spa.config.ts'",
+    "test:e2e:spa:setup": "bash -lc 'fuser -k 3111/tcp 3112/tcp 2>/dev/null || true; npx playwright test --config playwright-spa.config.ts e2e/spa/setup-wizard-accessibility.spec.ts'",
     "test:e2e:spa:360": "bash -lc 'fuser -k 3111/tcp 3112/tcp 2>/dev/null || true; npx playwright test --config playwright-spa.config.ts e2e/spa/master-search-360-reception.spec.ts e2e/spa/master-search-360-mobile.spec.ts'",
-    "test:e2e:spa:enterprise": "bash -lc 'fuser -k 3111/tcp 3112/tcp 2>/dev/null || true; npx playwright test --config playwright-spa.config.ts e2e/spa/master-search-360-reception.spec.ts e2e/spa/master-search-360-mobile.spec.ts e2e/spa/enterprise-surfaces-gate.spec.ts'",
+    "test:e2e:spa:enterprise": "bash -lc 'fuser -k 3111/tcp 3112/tcp 2>/dev/null || true; npx playwright test --config playwright-spa.config.ts e2e/spa/master-search-360-reception.spec.ts e2e/spa/master-search-360-mobile.spec.ts e2e/spa/enterprise-surfaces-gate.spec.ts e2e/spa/setup-wizard-accessibility.spec.ts e2e/spa/vetus-import-flow.spec.ts e2e/spa/deleted-sales-report-flow.spec.ts e2e/spa/inventory-products-report-flow.spec.ts'",
     "readiness:enterprise": "node scripts/check-enterprise-readiness.mjs",
     "test:e2e:spa:headed": "npx playwright test --config playwright-spa.config.ts --headed",
     "test:e2e:spa:docker": "bash infra/scripts/run-e2e-spa.sh",
@@ -83,6 +84,7 @@
     "ops:backup:check": "node --test infra/scripts/validate-backup-restore.test.mjs && node infra/scripts/validate-backup-restore.mjs",
     "ops:restore:fixture": "node infra/scripts/create-restore-drill-fixture.mjs",
     "ops:restore:drill:fixture": "node infra/scripts/run-restore-drill-fixture.mjs",
+    "ops:restore:drill:fixture:representative": "RESTORE_FIXTURE_PROFILE=representative node infra/scripts/run-restore-drill-fixture.mjs",
     "ops:restore:drill:v2": "bash infra/scripts/restore-drill-v2.sh",
     "staging:bootstrap": "node infra/scripts/bootstrap-local.mjs",
     "staging:check": "node infra/scripts/check-staging.mjs",
@@ -93,7 +95,7 @@
     "governance:audit": "node scripts/generate-audit-governance-evidence.mjs",
     "governance:lgpd": "node scripts/generate-lgpd-governance-evidence.mjs",
     "governance:observability": "node scripts/generate-observability-governance-evidence.mjs",
-    "security:secrets": "secretlint --secretlintrc .secretlintrc.json --secretlintignore .secretlintignore \".github/**/*.{yml,yaml}\" \"apps/**/*.{ts,tsx,js,jsx,mjs,cjs,vue}\" \"packages/**/*.{ts,tsx,js,jsx,mjs,cjs}\" \"infra/**/*.{ts,js,mjs,cjs,yml,yaml}\" \"scripts/**/*.{ts,js,mjs,cjs}\" \"docker-compose*.yml\"",
+    "security:secrets": "secretlint --secretlintrc .secretlintrc.json --secretlintignore .secretlintignore \".github/**/*.{yml,yaml}\" \"apps/**/*.{ts,tsx,js,jsx,mjs,cjs,vue}\" \"packages/**/*.{ts,tsx,js,jsx,mjs,cjs}\" \"infra/**/*.{ts,js,mjs,cjs,ps1,yml,yaml}\" \"scripts/**/*.{ts,js,mjs,cjs}\" \"docker-compose*.yml\"",
     "security:enterprise": "node scripts/run-security-audit.mjs",
     "security:evidence": "node scripts/generate-security-evidence.mjs",
     "cutover:check": "node infra/scripts/check-cutover-readiness.mjs",
@@ -101,8 +103,10 @@
     "deploy:rehearsal:local": "node infra/scripts/cutover-rehearsal-local.mjs",
     "deploy:cutover:v2": "bash infra/scripts/cutover-v2.sh",
     "validate:openapi": "node scripts/validate-openapi.js",
+    "validate:migration-source": "node scripts/check-migration-source-of-truth.mjs",
     "validate:rls": "tsx scripts/validate-rls-coverage.ts",
     "validate:helm": "node infra/scripts/validate-helm.mjs",
+    "validate:deploy-surface": "node scripts/check-deploy-surface-of-truth.mjs",
     "vetus:parity": "node scripts/check-vetus-parity.mjs",
     "vetus:parity:audit": "node scripts/check-vetus-parity.mjs --report-only",
     "vetus:parity:test": "node --test scripts/vetus-parity-audit.test.mjs",
@@ -110,28 +114,29 @@
     "rc:evidence": "node scripts/generate-enterprise-rc-evidence.mjs",
     "rc:evidence:strict": "node scripts/generate-enterprise-rc-evidence.mjs --strict"
   },
-  "description": "Monorepo do sistema HIS veterinário versão 2, construido em padrão Enterprise.",
+  "description": "Monorepo CVG-HIS V4 — HIS veterinário Enterprise; namespaces V2 permanecem compatibilidade de runtime.",
   "main": "index.js",
   "directories": {
     "doc": "docs"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ricardoakinaga-dev/cvg-his-v2.git"
+    "url": "git+https://github.com/ricardoakinaga-dev/cvg-his-v4.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/ricardoakinaga-dev/cvg-his-v2/issues"
+    "url": "https://github.com/ricardoakinaga-dev/cvg-his-v4/issues"
   },
-  "homepage": "https://github.com/ricardoakinaga-dev/cvg-his-v2#readme",
+  "homepage": "https://github.com/ricardoakinaga-dev/cvg-his-v4#readme",
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "drizzle-orm": "^0.38.4",
     "pg": "^8.13.1"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.2",
     "@playwright/test": "^1.58.2",
     "@secretlint/secretlint-rule-preset-recommend": "^11.6.0",
     "@types/node": "^22.13.5",

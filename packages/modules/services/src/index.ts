@@ -159,3 +159,10 @@ export {
   type ServicesRepository,
   type ServiceRecord
 } from './repositories/database-services.repository.js';
+export {
+  DatabaseServicesReportSource,
+  MAX_SERVICES_REPORT_ROWS,
+  type ServicesReportFilters,
+  type ServicesReportRow,
+  type ServicesReportSource
+} from './services-report.js';

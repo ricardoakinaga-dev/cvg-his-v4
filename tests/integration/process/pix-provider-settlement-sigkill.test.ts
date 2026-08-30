@@ -7,10 +7,10 @@ import { randomUUID } from 'node:crypto';
 
 import { Pool, type PoolClient } from 'pg';
 
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 
 import { getAdminPool, getTestPool } from '../../db/db-admin.js';
-import { TEST_DB_NAME, TEST_DB_URL } from '../../setup/env.js';
+import { TEST_DB_IS_EPHEMERAL, TEST_DB_NAME, TEST_DB_URL } from '../../setup/env.js';
 import { reconcileRuntimeRoles } from '../../../packages/db/src/reconcile-runtime-roles.js';
 import {
   createPixSettlementProcessFixture,
@@ -30,6 +30,25 @@ const CHECKPOINTS = [
   'after_applied_cas'
 ] as const;
 type Checkpoint = (typeof CHECKPOINTS)[number];
+const B1_CHECKPOINTS = [
+  'after_inbox_claim',
+  'after_financial_account_insert',
+  'after_receivable_insert',
+  'after_receivable_settlement',
+  'after_receivable_payment_insert',
+  'after_financial_account_settlement',
+  'after_billing_settlement',
+  'after_pix_settlement',
+  'after_pix_staging',
+  'after_attempt_confirmed_pending_apply',
+  'after_attempt_settlement',
+  'after_journal_entry_insert',
+  'after_journal_lines_insert',
+  'after_proof_insert',
+  'after_audit_append',
+  'after_outbox_append'
+] as const;
+type B1Checkpoint = (typeof B1_CHECKPOINTS)[number];
 
 const suffix = randomUUID().replaceAll('-', '');
 const apiRole = `pix_settlement_process_api_${suffix}`;
@@ -83,6 +102,7 @@ function startWorkerProcess(options: {
   readonly accountId: string;
   readonly workerId: string;
   readonly checkpoint?: Checkpoint;
+  readonly b1Checkpoint?: B1Checkpoint;
   readonly leaseMs: number;
   readonly waitForRelease?: boolean;
   readonly exitAfterResult?: boolean;
@@ -101,6 +121,7 @@ function startWorkerProcess(options: {
       PIX_SETTLEMENT_WORKER_ID: options.workerId,
       PIX_SETTLEMENT_LEASE_MS: String(options.leaseMs),
       PIX_SETTLEMENT_CHECKPOINT: options.checkpoint ?? '',
+      PIX_SETTLEMENT_B1_CHECKPOINT: options.b1Checkpoint ?? '',
       PIX_SETTLEMENT_HEALTH_PORT: '0',
       PIX_SETTLEMENT_WAIT_FOR_RELEASE: options.waitForRelease ? '1' : '0',
       PIX_SETTLEMENT_EXIT_AFTER_RESULT: options.exitAfterResult ? '1' : '0'
@@ -304,11 +325,8 @@ async function assertRoleCannotMutateForbiddenPixArtifacts(
   }
 }
 
-beforeEach(async () => {
-  await getTestPool().query('TRUNCATE TABLE accounts CASCADE');
-});
-
 beforeAll(async () => {
+  if (!TEST_DB_IS_EPHEMERAL) return;
   const adminPool = getAdminPool();
   await adminPool.query(
     `CREATE ROLE ${quoteIdentifier(apiRole)} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS PASSWORD '${rolePassword}'`
@@ -328,6 +346,7 @@ beforeAll(async () => {
 }, 120_000);
 
 afterEach(async () => {
+  if (!TEST_DB_IS_EPHEMERAL) return;
   await Promise.all(
     [...activeProcesses].map((processHandle) =>
       processHandle.kill('SIGKILL').catch(() => undefined)
@@ -336,6 +355,7 @@ afterEach(async () => {
 });
 
 afterAll(async () => {
+  if (!TEST_DB_IS_EPHEMERAL) return;
   const pool = getTestPool();
   await pool
     .query(
@@ -355,319 +375,457 @@ afterAll(async () => {
     .catch(() => undefined);
 });
 
-describe('PIX settlement independent-process SIGKILL/restart matrix', () => {
-  it('runs the real settlement PID as the reconciled worker role', async () => {
-    const fixture = await createPixSettlementProcessFixture();
-    await makePixSettlementProcessFixtureReady(fixture);
-    const worker = startWorkerProcess({
-      accountId: fixture.accountId,
-      workerId: 'runtime-role-red',
-      leaseMs: 60_000,
-      exitAfterResult: true
-    });
-    const ready = await worker.waitFor('PIX_READY');
-    expect(ready.payload.databaseUser).toBe(workerRole);
-    const result = (await worker.waitFor('PIX_RESULT')).payload.result as {
-      readonly status: string;
-      readonly deliveryId?: string;
-      readonly failureCode?: string;
-      readonly failureClass?: string;
-    };
-    expect(result.status, JSON.stringify(result)).toBe('applied');
-    expect(result).toMatchObject({
-      status: 'applied',
-      deliveryId: fixture.deliveryId
-    });
-    expect(await worker.waitForClose()).toEqual({ code: 0, signal: null });
-  }, 60_000);
+// Every fixture owns a fresh random account and all worker assertions are
+// tenant-scoped. Keeping those accounts isolated avoids a schema-wide
+// TRUNCATE before every case while preserving the process/role boundaries
+// this suite is meant to verify.
+describe.skipIf(!TEST_DB_IS_EPHEMERAL)(
+  'PIX settlement independent-process SIGKILL/restart matrix',
+  () => {
+    it('runs the real settlement PID as the reconciled worker role', async () => {
+      const fixture = await createPixSettlementProcessFixture();
+      await makePixSettlementProcessFixtureReady(fixture);
+      const worker = startWorkerProcess({
+        accountId: fixture.accountId,
+        workerId: 'runtime-role-red',
+        leaseMs: 60_000,
+        exitAfterResult: true
+      });
+      const ready = await worker.waitFor('PIX_READY');
+      expect(ready.payload.databaseUser).toBe(workerRole);
+      const result = (await worker.waitFor('PIX_RESULT')).payload.result as {
+        readonly status: string;
+        readonly deliveryId?: string;
+        readonly failureCode?: string;
+        readonly failureClass?: string;
+      };
+      expect(result.status, JSON.stringify(result)).toBe('applied');
+      expect(result).toMatchObject({
+        status: 'applied',
+        deliveryId: fixture.deliveryId
+      });
+      expect(await worker.waitForClose()).toEqual({ code: 0, signal: null });
+    }, 60_000);
 
-  it('keeps real worker settlement isolated by account under the runtime role', async () => {
-    const fixtureA = await createPixSettlementProcessFixture();
-    const fixtureB = await createPixSettlementProcessFixture();
-    await makePixSettlementProcessFixtureReady(fixtureA);
-    await makePixSettlementProcessFixtureReady(fixtureB);
+    it('keeps real worker settlement isolated by account under the runtime role', async () => {
+      const fixtureA = await createPixSettlementProcessFixture();
+      const fixtureB = await createPixSettlementProcessFixture();
+      await makePixSettlementProcessFixtureReady(fixtureA);
+      await makePixSettlementProcessFixtureReady(fixtureB);
 
-    const workerA = startWorkerProcess({
-      accountId: fixtureA.accountId,
-      workerId: 'runtime-role-isolation-a',
-      leaseMs: 60_000,
-      exitAfterResult: true
-    });
-    const readyA = await workerA.waitFor('PIX_READY');
-    expect(readyA.payload.databaseUser).toBe(workerRole);
-    expect((await workerA.waitFor('PIX_RESULT')).payload.result).toMatchObject({
-      status: 'applied',
-      deliveryId: fixtureA.deliveryId
-    });
-    expect(await workerA.waitForClose()).toEqual({ code: 0, signal: null });
-    expect(await readSettlementState(fixtureA)).toMatchObject({
-      delivery_state: 'applied',
-      receipt_count: '1'
-    });
-    expect(await readSettlementState(fixtureB)).toMatchObject({
-      delivery_state: 'pending',
-      receipt_count: '0'
-    });
+      const workerA = startWorkerProcess({
+        accountId: fixtureA.accountId,
+        workerId: 'runtime-role-isolation-a',
+        leaseMs: 60_000,
+        exitAfterResult: true
+      });
+      const readyA = await workerA.waitFor('PIX_READY');
+      expect(readyA.payload.databaseUser).toBe(workerRole);
+      expect((await workerA.waitFor('PIX_RESULT')).payload.result).toMatchObject({
+        status: 'applied',
+        deliveryId: fixtureA.deliveryId
+      });
+      expect(await workerA.waitForClose()).toEqual({ code: 0, signal: null });
+      expect(await readSettlementState(fixtureA)).toMatchObject({
+        delivery_state: 'applied',
+        receipt_count: '1'
+      });
+      expect(await readSettlementState(fixtureB)).toMatchObject({
+        delivery_state: 'pending',
+        receipt_count: '0'
+      });
 
-    const workerB = startWorkerProcess({
-      accountId: fixtureB.accountId,
-      workerId: 'runtime-role-isolation-b',
-      leaseMs: 60_000,
-      exitAfterResult: true
-    });
-    expect((await workerB.waitFor('PIX_READY')).payload.databaseUser).toBe(workerRole);
-    expect((await workerB.waitFor('PIX_RESULT')).payload.result).toMatchObject({
-      status: 'applied',
-      deliveryId: fixtureB.deliveryId
-    });
-    expect(await workerB.waitForClose()).toEqual({ code: 0, signal: null });
-    expect(await readSettlementState(fixtureB)).toMatchObject({
-      delivery_state: 'applied',
-      receipt_count: '1'
-    });
-  }, 60_000);
+      const workerB = startWorkerProcess({
+        accountId: fixtureB.accountId,
+        workerId: 'runtime-role-isolation-b',
+        leaseMs: 60_000,
+        exitAfterResult: true
+      });
+      expect((await workerB.waitFor('PIX_READY')).payload.databaseUser).toBe(workerRole);
+      expect((await workerB.waitFor('PIX_RESULT')).payload.result).toMatchObject({
+        status: 'applied',
+        deliveryId: fixtureB.deliveryId
+      });
+      expect(await workerB.waitForClose()).toEqual({ code: 0, signal: null });
+      expect(await readSettlementState(fixtureB)).toMatchObject({
+        delivery_state: 'applied',
+        receipt_count: '1'
+      });
+    }, 60_000);
 
-  it('keeps receipt mutation worker-denied and delivery mutation API-denied', async () => {
-    const fixture = await createPixSettlementProcessFixture();
-    await assertRoleCannotMutateForbiddenPixArtifacts(
-      workerRole,
-      fixture.accountId,
-      async (pool) => {
-        const identity = await pool.query<{
-          readonly database_user: string;
-          readonly bypass_rls: boolean;
-        }>(
-          `SELECT current_user AS database_user,
+    it('keeps receipt mutation worker-denied and delivery mutation API-denied', async () => {
+      const fixture = await createPixSettlementProcessFixture();
+      await assertRoleCannotMutateForbiddenPixArtifacts(
+        workerRole,
+        fixture.accountId,
+        async (pool) => {
+          const identity = await pool.query<{
+            readonly database_user: string;
+            readonly bypass_rls: boolean;
+          }>(
+            `SELECT current_user AS database_user,
                 (SELECT rolbypassrls FROM pg_roles WHERE rolname = current_user) AS bypass_rls`
-        );
-        expect(identity.rows[0]).toEqual({ database_user: workerRole, bypass_rls: false });
-        const requiredSettlementFunction = await pool.query<{ readonly allowed: boolean }>(
-          `SELECT has_function_privilege(
+          );
+          expect(identity.rows[0]).toEqual({ database_user: workerRole, bypass_rls: false });
+          const requiredSettlementFunction = await pool.query<{ readonly allowed: boolean }>(
+            `SELECT has_function_privilege(
                   current_user,
                   'app.assert_encounter_non_cash_receipt_consistent(uuid)',
                   'EXECUTE'
                 ) AS allowed`
-        );
-        expect(requiredSettlementFunction.rows[0]).toEqual({ allowed: true });
-        await pool.query('SAVEPOINT worker_receipt_update');
-        await expect(
-          pool.query('UPDATE pix_provider_events SET received_at = received_at WHERE id = $1', [
-            randomUUID()
-          ])
-        ).rejects.toThrow(/permission denied/i);
-        await pool.query('ROLLBACK TO SAVEPOINT worker_receipt_update');
-        await pool.query('SAVEPOINT worker_receipt_insert');
-        await expect(
-          pool.query(
-            `INSERT INTO pix_provider_events (
+          );
+          expect(requiredSettlementFunction.rows[0]).toEqual({ allowed: true });
+          await pool.query('SAVEPOINT worker_receipt_update');
+          await expect(
+            pool.query('UPDATE pix_provider_events SET received_at = received_at WHERE id = $1', [
+              randomUUID()
+            ])
+          ).rejects.toThrow(/permission denied/i);
+          await pool.query('ROLLBACK TO SAVEPOINT worker_receipt_update');
+          await pool.query('SAVEPOINT worker_receipt_insert');
+          await expect(
+            pool.query(
+              `INSERT INTO pix_provider_events (
              account_id, provider_event_id, event_type, payment_attempt_id,
              provider_transaction_id, amount_cents, currency, confirmed_at,
              body_fingerprint, claims_fingerprint, correlation_id
            ) VALUES ($1, 'worker-forbidden', 'pix.payment.confirmed.v1', $2,
              'worker-forbidden-tx', 1, 'BRL', clock_timestamp(), $3, $4, 'worker-forbidden')`,
-            [fixture.accountId, fixture.attemptId, 'a'.repeat(64), 'b'.repeat(64)]
-          )
-        ).rejects.toThrow(/permission denied/i);
-        await pool.query('ROLLBACK TO SAVEPOINT worker_receipt_insert');
-      }
-    );
-    await assertRoleCannotMutateForbiddenPixArtifacts(apiRole, fixture.accountId, async (pool) => {
-      await pool.query('SAVEPOINT api_delivery_update');
-      await expect(
-        pool.query('UPDATE pix_provider_event_deliveries SET attempts = attempts WHERE id = $1', [
-          fixture.deliveryId
-        ])
-      ).rejects.toThrow(/permission denied/i);
-      await pool.query('ROLLBACK TO SAVEPOINT api_delivery_update');
-    });
-  }, 60_000);
+              [fixture.accountId, fixture.attemptId, 'a'.repeat(64), 'b'.repeat(64)]
+            )
+          ).rejects.toThrow(/permission denied/i);
+          await pool.query('ROLLBACK TO SAVEPOINT worker_receipt_insert');
+        }
+      );
+      await assertRoleCannotMutateForbiddenPixArtifacts(
+        apiRole,
+        fixture.accountId,
+        async (pool) => {
+          await pool.query('SAVEPOINT api_delivery_update');
+          await expect(
+            pool.query(
+              'UPDATE pix_provider_event_deliveries SET attempts = attempts WHERE id = $1',
+              [fixture.deliveryId]
+            )
+          ).rejects.toThrow(/permission denied/i);
+          await pool.query('ROLLBACK TO SAVEPOINT api_delivery_update');
+        }
+      );
+    }, 60_000);
 
-  it.each(CHECKPOINTS)(
-    'recovers after SIGKILL at %s',
-    async (checkpoint) => {
+    it.each(CHECKPOINTS)(
+      'recovers after SIGKILL at %s',
+      async (checkpoint) => {
+        const fixture = await createPixSettlementProcessFixture();
+        await makePixSettlementProcessFixtureReady(fixture);
+        // Keep enough headroom for a cold Node/tsx process and PostgreSQL locks;
+        // the stale-fence test below still uses the short lease deliberately.
+        const leaseMs = 2_000;
+        const workerA = startWorkerProcess({
+          accountId: fixture.accountId,
+          workerId: `sigkill-a-${checkpoint}`,
+          checkpoint,
+          leaseMs
+        });
+        const readyA = await workerA.waitFor('PIX_READY');
+        expect(workerA.pid).toBe(Number(readyA.payload.pid));
+        const healthPort = Number(readyA.payload.port);
+        expect((await waitForHttp(healthPort, '/ready')).status).toBe(200);
+        expect((await waitForHttp(healthPort, '/metrics')).status).toBe(200);
+
+        const checkpointEvent = await workerA.waitFor('PIX_CHECKPOINT');
+        expect(checkpointEvent.payload.checkpoint).toBe(checkpoint);
+        expect(Number(checkpointEvent.payload.pid)).toBe(workerA.pid);
+
+        if (checkpoint === 'after_applied_cas') {
+          const stateAtCheckpoint = await readSettlementState(fixture);
+          expect(stateAtCheckpoint?.receipt_count).toBe('1');
+          expect(stateAtCheckpoint?.delivery_state).toBe('applied');
+        } else {
+          const stateAtCheckpoint = await readSettlementState(fixture);
+          expect(stateAtCheckpoint?.delivery_state).toBe('processing');
+        }
+
+        const killed = await workerA.kill('SIGKILL');
+        expect(killed.signal).toBe('SIGKILL');
+
+        if (checkpoint !== 'after_applied_cas') {
+          await waitForLeaseExpiry(fixture);
+        }
+
+        const workerB = startWorkerProcess({
+          accountId: fixture.accountId,
+          workerId: `sigkill-b-${checkpoint}`,
+          leaseMs,
+          exitAfterResult: true
+        });
+        const readyB = await workerB.waitFor('PIX_READY');
+        expect(Number(readyB.payload.pid)).toBe(workerB.pid);
+        expect(workerB.pid).not.toBe(workerA.pid);
+        expect((await waitForHttp(Number(readyB.payload.port), '/ready')).status).toBe(200);
+        expect((await waitForHttp(Number(readyB.payload.port), '/metrics')).status).toBe(200);
+        const resultEvent = await workerB.waitFor('PIX_RESULT');
+        const result = resultEvent.payload.result as {
+          readonly status: string;
+          readonly deliveryId?: string;
+        };
+        if (checkpoint === 'after_applied_cas') {
+          expect(result.status).toBe('idle');
+        } else {
+          expect(result).toMatchObject({ status: 'applied', deliveryId: fixture.deliveryId });
+        }
+        const closedB = await workerB.waitForClose();
+        expect(closedB).toEqual({ code: 0, signal: null });
+        expect(workerB.stderr()).toBe('');
+
+        const workerC = startWorkerProcess({
+          accountId: fixture.accountId,
+          workerId: `sigkill-c-${checkpoint}`,
+          leaseMs,
+          exitAfterResult: true
+        });
+        await workerC.waitFor('PIX_READY');
+        const idleAfterRestart = await workerC.waitFor('PIX_RESULT');
+        expect(idleAfterRestart.payload.result).toMatchObject({ status: 'idle' });
+        expect(await workerC.waitForClose()).toEqual({ code: 0, signal: null });
+        expect(workerC.stderr()).toBe('');
+
+        const finalState = await readSettlementState(fixture);
+        expect(finalState).toMatchObject({
+          delivery_state: 'applied',
+          attempts: checkpoint === 'after_applied_cas' ? 1 : 2,
+          lease_version: checkpoint === 'after_applied_cas' ? '1' : '2',
+          receipt_count: '1',
+          billing_status: 'settled',
+          attempt_state: 'settled',
+          pix_status: 'completed',
+          pix_settlement_status: 'applied'
+        });
+      },
+      60_000
+    );
+
+    it('observes a live stale process after takeover and fences it before B1', async () => {
       const fixture = await createPixSettlementProcessFixture();
       await makePixSettlementProcessFixtureReady(fixture);
-      // Keep enough headroom for a cold Node/tsx process and PostgreSQL locks;
-      // the stale-fence test below still uses the short lease deliberately.
-      const leaseMs = 2_000;
       const workerA = startWorkerProcess({
         accountId: fixture.accountId,
-        workerId: `sigkill-a-${checkpoint}`,
-        checkpoint,
-        leaseMs
+        workerId: 'stale-process-a',
+        checkpoint: 'after_claim_commit',
+        leaseMs: 300,
+        waitForRelease: true,
+        exitAfterResult: true
       });
       const readyA = await workerA.waitFor('PIX_READY');
-      expect(workerA.pid).toBe(Number(readyA.payload.pid));
-      const healthPort = Number(readyA.payload.port);
-      expect((await waitForHttp(healthPort, '/ready')).status).toBe(200);
-      expect((await waitForHttp(healthPort, '/metrics')).status).toBe(200);
-
-      const checkpointEvent = await workerA.waitFor('PIX_CHECKPOINT');
-      expect(checkpointEvent.payload.checkpoint).toBe(checkpoint);
-      expect(Number(checkpointEvent.payload.pid)).toBe(workerA.pid);
-
-      if (checkpoint === 'after_applied_cas') {
-        const stateAtCheckpoint = await readSettlementState(fixture);
-        expect(stateAtCheckpoint?.receipt_count).toBe('1');
-        expect(stateAtCheckpoint?.delivery_state).toBe('applied');
-      } else {
-        const stateAtCheckpoint = await readSettlementState(fixture);
-        expect(stateAtCheckpoint?.delivery_state).toBe('processing');
-      }
-
-      const killed = await workerA.kill('SIGKILL');
-      expect(killed.signal).toBe('SIGKILL');
-
-      if (checkpoint !== 'after_applied_cas') {
-        await waitForLeaseExpiry(fixture);
-      }
+      expect(Number(readyA.payload.pid)).toBe(workerA.pid);
+      const checkpointA = await workerA.waitFor('PIX_CHECKPOINT');
+      expect(checkpointA.payload).toMatchObject({
+        checkpoint: 'after_claim_commit',
+        leaseVersion: 1,
+        pid: workerA.pid
+      });
+      await waitForLeaseExpiry(fixture);
+      expect(() => process.kill(workerA.pid, 0)).not.toThrow();
 
       const workerB = startWorkerProcess({
         accountId: fixture.accountId,
-        workerId: `sigkill-b-${checkpoint}`,
-        leaseMs,
+        workerId: 'stale-process-b',
+        checkpoint: 'after_claim_commit',
+        leaseMs: 60_000,
+        waitForRelease: true,
         exitAfterResult: true
       });
       const readyB = await workerB.waitFor('PIX_READY');
       expect(Number(readyB.payload.pid)).toBe(workerB.pid);
       expect(workerB.pid).not.toBe(workerA.pid);
-      expect((await waitForHttp(Number(readyB.payload.port), '/ready')).status).toBe(200);
-      expect((await waitForHttp(Number(readyB.payload.port), '/metrics')).status).toBe(200);
-      const resultEvent = await workerB.waitFor('PIX_RESULT');
-      const result = resultEvent.payload.result as {
-        readonly status: string;
-        readonly deliveryId?: string;
-      };
-      if (checkpoint === 'after_applied_cas') {
-        expect(result.status).toBe('idle');
-      } else {
-        expect(result).toMatchObject({ status: 'applied', deliveryId: fixture.deliveryId });
-      }
-      const closedB = await workerB.waitForClose();
-      expect(closedB).toEqual({ code: 0, signal: null });
+      const checkpointB = await workerB.waitFor('PIX_CHECKPOINT');
+      expect(checkpointB.payload).toMatchObject({
+        checkpoint: 'after_claim_commit',
+        leaseVersion: 2,
+        pid: workerB.pid
+      });
+      expect(
+        workerB
+          .events()
+          .filter((event) => event.event === 'PIX_CHECKPOINT_OBSERVED')
+          .map((event) => event.payload.checkpoint)
+      ).toEqual(['after_claim_commit']);
+      expect(await readSettlementState(fixture)).toMatchObject({
+        delivery_state: 'processing',
+        attempts: 2,
+        lease_version: '2',
+        receipt_count: '0'
+      });
+
+      workerA.release();
+      await workerA.waitFor('PIX_RELEASED');
+      const staleResult = await workerA.waitFor('PIX_RESULT');
+      expect(staleResult.payload.result).toMatchObject({
+        status: 'lease_lost',
+        deliveryId: fixture.deliveryId
+      });
+      expect(
+        workerA
+          .events()
+          .filter((event) => event.event === 'PIX_CHECKPOINT_OBSERVED')
+          .map((event) => event.payload.checkpoint)
+      ).toEqual(['after_claim_commit']);
+      expect(await workerA.waitForClose()).toEqual({ code: 0, signal: null });
+      expect(workerA.stderr()).toBe('');
+
+      workerB.release();
+      await workerB.waitFor('PIX_RELEASED');
+      const appliedResult = await workerB.waitFor('PIX_RESULT');
+      expect(appliedResult.payload.result).toMatchObject({
+        status: 'applied',
+        deliveryId: fixture.deliveryId
+      });
+      // Once released, B must still traverse B1 and the final CAS exactly once.
+      expect(
+        workerB
+          .events()
+          .filter((event) => event.event === 'PIX_CHECKPOINT_OBSERVED')
+          .map((event) => event.payload.checkpoint)
+      ).toEqual(['after_claim_commit', 'before_b1', 'after_b1_before_cas', 'after_applied_cas']);
+      expect(await workerB.waitForClose()).toEqual({ code: 0, signal: null });
       expect(workerB.stderr()).toBe('');
 
-      const workerC = startWorkerProcess({
-        accountId: fixture.accountId,
-        workerId: `sigkill-c-${checkpoint}`,
-        leaseMs,
-        exitAfterResult: true
-      });
-      await workerC.waitFor('PIX_READY');
-      const idleAfterRestart = await workerC.waitFor('PIX_RESULT');
-      expect(idleAfterRestart.payload.result).toMatchObject({ status: 'idle' });
-      expect(await workerC.waitForClose()).toEqual({ code: 0, signal: null });
-      expect(workerC.stderr()).toBe('');
-
-      const finalState = await readSettlementState(fixture);
-      expect(finalState).toMatchObject({
+      expect(await readSettlementState(fixture)).toMatchObject({
         delivery_state: 'applied',
-        attempts: checkpoint === 'after_applied_cas' ? 1 : 2,
-        lease_version: checkpoint === 'after_applied_cas' ? '1' : '2',
+        attempts: 2,
+        lease_version: '2',
         receipt_count: '1',
         billing_status: 'settled',
         attempt_state: 'settled',
         pix_status: 'completed',
         pix_settlement_status: 'applied'
       });
-    },
-    60_000
-  );
+    }, 60_000);
 
-  it('observes a live stale process after takeover and fences it before B1', async () => {
-    const fixture = await createPixSettlementProcessFixture();
-    await makePixSettlementProcessFixtureReady(fixture);
-    const workerA = startWorkerProcess({
-      accountId: fixture.accountId,
-      workerId: 'stale-process-a',
-      checkpoint: 'after_claim_commit',
-      leaseMs: 300,
-      waitForRelease: true,
-      exitAfterResult: true
-    });
-    const readyA = await workerA.waitFor('PIX_READY');
-    expect(Number(readyA.payload.pid)).toBe(workerA.pid);
-    const checkpointA = await workerA.waitFor('PIX_CHECKPOINT');
-    expect(checkpointA.payload).toMatchObject({
-      checkpoint: 'after_claim_commit',
-      leaseVersion: 1,
-      pid: workerA.pid
-    });
-    await waitForLeaseExpiry(fixture);
-    expect(() => process.kill(workerA.pid, 0)).not.toThrow();
+    it('allows one live worker to claim while a concurrent live worker remains idle', async () => {
+      const fixture = await createPixSettlementProcessFixture();
+      await makePixSettlementProcessFixtureReady(fixture);
 
-    const workerB = startWorkerProcess({
-      accountId: fixture.accountId,
-      workerId: 'stale-process-b',
-      checkpoint: 'after_claim_commit',
-      leaseMs: 60_000,
-      waitForRelease: true,
-      exitAfterResult: true
-    });
-    const readyB = await workerB.waitFor('PIX_READY');
-    expect(Number(readyB.payload.pid)).toBe(workerB.pid);
-    expect(workerB.pid).not.toBe(workerA.pid);
-    const checkpointB = await workerB.waitFor('PIX_CHECKPOINT');
-    expect(checkpointB.payload).toMatchObject({
-      checkpoint: 'after_claim_commit',
-      leaseVersion: 2,
-      pid: workerB.pid
-    });
-    expect(
-      workerB
-        .events()
-        .filter((event) => event.event === 'PIX_CHECKPOINT_OBSERVED')
-        .map((event) => event.payload.checkpoint)
-    ).toEqual(['after_claim_commit']);
-    expect(await readSettlementState(fixture)).toMatchObject({
-      delivery_state: 'processing',
-      attempts: 2,
-      lease_version: '2',
-      receipt_count: '0'
-    });
+      const workerA = startWorkerProcess({
+        accountId: fixture.accountId,
+        workerId: 'concurrent-live-a',
+        checkpoint: 'after_claim_commit',
+        leaseMs: 5_000,
+        waitForRelease: true,
+        exitAfterResult: true
+      });
+      const readyA = await workerA.waitFor('PIX_READY');
+      const checkpointA = await workerA.waitFor('PIX_CHECKPOINT');
+      expect(Number(readyA.payload.pid)).toBe(workerA.pid);
+      expect(checkpointA.payload).toMatchObject({
+        checkpoint: 'after_claim_commit',
+        leaseVersion: 1,
+        pid: workerA.pid
+      });
 
-    workerA.release();
-    await workerA.waitFor('PIX_RELEASED');
-    const staleResult = await workerA.waitFor('PIX_RESULT');
-    expect(staleResult.payload.result).toMatchObject({
-      status: 'lease_lost',
-      deliveryId: fixture.deliveryId
-    });
-    expect(
-      workerA
-        .events()
-        .filter((event) => event.event === 'PIX_CHECKPOINT_OBSERVED')
-        .map((event) => event.payload.checkpoint)
-    ).toEqual(['after_claim_commit']);
-    expect(await workerA.waitForClose()).toEqual({ code: 0, signal: null });
-    expect(workerA.stderr()).toBe('');
+      const workerB = startWorkerProcess({
+        accountId: fixture.accountId,
+        workerId: 'concurrent-live-b',
+        leaseMs: 5_000,
+        exitAfterResult: true
+      });
+      const readyB = await workerB.waitFor('PIX_READY');
+      expect(Number(readyB.payload.pid)).toBe(workerB.pid);
+      expect(workerB.pid).not.toBe(workerA.pid);
+      expect((await workerB.waitFor('PIX_RESULT')).payload.result).toMatchObject({
+        status: 'idle'
+      });
+      expect(await workerB.waitForClose()).toEqual({ code: 0, signal: null });
+      expect(workerB.stderr()).toBe('');
 
-    workerB.release();
-    await workerB.waitFor('PIX_RELEASED');
-    const appliedResult = await workerB.waitFor('PIX_RESULT');
-    expect(appliedResult.payload.result).toMatchObject({
-      status: 'applied',
-      deliveryId: fixture.deliveryId
-    });
-    // Once released, B must still traverse B1 and the final CAS exactly once.
-    expect(
-      workerB
-        .events()
-        .filter((event) => event.event === 'PIX_CHECKPOINT_OBSERVED')
-        .map((event) => event.payload.checkpoint)
-    ).toEqual(['after_claim_commit', 'before_b1', 'after_b1_before_cas', 'after_applied_cas']);
-    expect(await workerB.waitForClose()).toEqual({ code: 0, signal: null });
-    expect(workerB.stderr()).toBe('');
+      expect(await readSettlementState(fixture)).toMatchObject({
+        delivery_state: 'processing',
+        attempts: 1,
+        lease_version: '1',
+        receipt_count: '0'
+      });
 
-    expect(await readSettlementState(fixture)).toMatchObject({
-      delivery_state: 'applied',
-      attempts: 2,
-      lease_version: '2',
-      receipt_count: '1',
-      billing_status: 'settled',
-      attempt_state: 'settled',
-      pix_status: 'completed',
-      pix_settlement_status: 'applied'
-    });
-  }, 60_000);
-});
+      workerA.release();
+      await workerA.waitFor('PIX_RELEASED');
+      expect((await workerA.waitFor('PIX_RESULT')).payload.result).toMatchObject({
+        status: 'applied',
+        deliveryId: fixture.deliveryId
+      });
+      expect(await workerA.waitForClose()).toEqual({ code: 0, signal: null });
+      expect(workerA.stderr()).toBe('');
+
+      expect(await readSettlementState(fixture)).toMatchObject({
+        delivery_state: 'applied',
+        attempts: 1,
+        lease_version: '1',
+        receipt_count: '1',
+        billing_status: 'settled',
+        attempt_state: 'settled',
+        pix_status: 'completed',
+        pix_settlement_status: 'applied'
+      });
+    }, 60_000);
+
+    it.each(B1_CHECKPOINTS)(
+      'recovers after SIGKILL at B1 internal checkpoint %s',
+      async (checkpoint) => {
+        const fixture = await createPixSettlementProcessFixture();
+        await makePixSettlementProcessFixtureReady(fixture);
+        const leaseMs = 2_000;
+        const workerA = startWorkerProcess({
+          accountId: fixture.accountId,
+          workerId: `b1-sigkill-a-${checkpoint}`,
+          b1Checkpoint: checkpoint,
+          leaseMs
+        });
+        const readyA = await workerA.waitFor('PIX_READY');
+        expect(Number(readyA.payload.pid)).toBe(workerA.pid);
+        const checkpointEvent = await workerA.waitFor('PIX_B1_CHECKPOINT');
+        expect(checkpointEvent.payload).toMatchObject({
+          checkpoint,
+          pid: workerA.pid
+        });
+
+        const killed = await workerA.kill('SIGKILL');
+        expect(killed.signal).toBe('SIGKILL');
+        await waitForLeaseExpiry(fixture);
+        expect(await readSettlementState(fixture)).toMatchObject({
+          delivery_state: 'processing',
+          attempts: 1,
+          lease_version: '1',
+          receipt_count: '0',
+          billing_status: 'open',
+          attempt_state: 'awaiting_confirmation',
+          pix_status: 'pending',
+          pix_settlement_status: 'awaiting_payment'
+        });
+
+        const workerB = startWorkerProcess({
+          accountId: fixture.accountId,
+          workerId: `b1-sigkill-b-${checkpoint}`,
+          leaseMs,
+          exitAfterResult: true
+        });
+        await workerB.waitFor('PIX_READY');
+        expect((await workerB.waitFor('PIX_RESULT')).payload.result).toMatchObject({
+          status: 'applied',
+          deliveryId: fixture.deliveryId
+        });
+        expect(await workerB.waitForClose()).toEqual({ code: 0, signal: null });
+        expect(workerB.stderr()).toBe('');
+
+        expect(await readSettlementState(fixture)).toMatchObject({
+          delivery_state: 'applied',
+          attempts: 2,
+          lease_version: '2',
+          receipt_count: '1',
+          billing_status: 'settled',
+          attempt_state: 'settled',
+          pix_status: 'completed',
+          pix_settlement_status: 'applied'
+        });
+      },
+      60_000
+    );
+  }
+);

@@ -20,7 +20,7 @@ export interface OwnersRoutesHandlers {
   patients?: PatientsService;
   encounters?: EncountersService;
   audit: AuditService;
-  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
+  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
   enforceAbac?: (
     actionCode: string,
     principal: AuthenticatedPrincipal,
@@ -56,7 +56,7 @@ export async function handleOwnersRoutes(
 
   // GET /owners - List owners
   if (pathname === '/owners' && method === 'GET') {
-    const principal = requirePrincipal(request, 'owners.read');
+    const principal = await requirePrincipal(request, 'owners.read');
     if (sectorCode) {
       enforceAbac?.(
         'owners.read',
@@ -105,7 +105,7 @@ export async function handleOwnersRoutes(
 
   // POST /owners - Create owner
   if (pathname === '/owners' && method === 'POST') {
-    const principal = requirePrincipal(request, 'owners.manage');
+    const principal = await requirePrincipal(request, 'owners.manage');
     if (sectorCode) {
       enforceAbac?.(
         'owners.manage',
@@ -144,7 +144,7 @@ export async function handleOwnersRoutes(
     if (!match) return false;
     if (!patients || !encounters) return false;
 
-    const principal = requirePrincipal(request, 'owners.read');
+    const principal = await requirePrincipal(request, 'owners.read');
     const ownerId = match[1];
     const owner = owners.getOrThrow(ownerId as never);
     if (owner.accountId !== principal.user.accountId) {
@@ -196,7 +196,7 @@ export async function handleOwnersRoutes(
     const match = pathname.match(/^\/owners\/([^/]+)$/);
     if (!match) return false;
 
-    const principal = requirePrincipal(request, 'owners.read');
+    const principal = await requirePrincipal(request, 'owners.read');
     const ownerId = match[1];
     if (sectorCode) {
       enforceAbac?.(
@@ -237,7 +237,7 @@ export async function handleOwnersRoutes(
     const match = pathname.match(/^\/owners\/([^/]+)$/);
     if (!match) return false;
 
-    const principal = requirePrincipal(request, 'owners.manage');
+    const principal = await requirePrincipal(request, 'owners.manage');
     const ownerId = match[1];
     if (sectorCode) {
       enforceAbac?.(
@@ -281,7 +281,7 @@ export async function handleOwnersRoutes(
     const match = pathname.match(/^\/owners\/([^/]+)$/);
     if (!match) return false;
 
-    const principal = requirePrincipal(request, 'owners.manage');
+    const principal = await requirePrincipal(request, 'owners.manage');
     const ownerId = match[1];
     if (sectorCode) {
       enforceAbac?.(

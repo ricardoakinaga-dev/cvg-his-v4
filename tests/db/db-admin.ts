@@ -5,10 +5,13 @@ let adminPool: Pool | null = null;
 let testPool: Pool | null = null;
 const RESET_RETRY_ATTEMPTS = 10;
 const RESET_RETRY_DELAY_MS = 250;
+const TEST_CLUSTER_SETUP_LOCK = 'cvg_his_v2:test-cluster-setup';
 
 export function getAdminPool(): Pool {
   if (!adminPool) {
-    adminPool = new Pool({ connectionString: ADMIN_DB_URL, max: 2 });
+    // Setup may hold the per-database and cluster-wide advisory locks while
+    // issuing one additional administrative query.
+    adminPool = new Pool({ connectionString: ADMIN_DB_URL, max: 4 });
   }
   return adminPool;
 }
@@ -31,6 +34,11 @@ export async function ensureTestDatabase(): Promise<void> {
   const client = getAdminPool();
   const result = await client.query('SELECT 1 FROM pg_database WHERE datname = $1', [TEST_DB_NAME]);
   if (result.rowCount === 0) {
+    if (!TEST_DB_IS_EPHEMERAL) {
+      throw new Error(
+        `[test-db] Explicit database ${TEST_DB_NAME} does not exist; refusing to create it`
+      );
+    }
     await client.query(`CREATE DATABASE "${TEST_DB_NAME}"`);
     console.log(`[test-db] Created database ${TEST_DB_NAME}`);
   }
@@ -45,6 +53,23 @@ export async function withTestDatabaseLock<T>(callback: () => Promise<T>): Promi
     return await callback();
   } finally {
     await client.query('SELECT pg_advisory_unlock(hashtext($1))', [lockKey]);
+    client.release();
+  }
+}
+
+/**
+ * Migrations also reconcile PostgreSQL cluster-scoped roles. Ephemeral test
+ * databases are isolated by name, but they still share those roles, so setup
+ * must serialize that part across Vitest package processes.
+ */
+export async function withTestClusterSetupLock<T>(callback: () => Promise<T>): Promise<T> {
+  const client = await getAdminPool().connect();
+
+  try {
+    await client.query('SELECT pg_advisory_lock(hashtext($1))', [TEST_CLUSTER_SETUP_LOCK]);
+    return await callback();
+  } finally {
+    await client.query('SELECT pg_advisory_unlock(hashtext($1))', [TEST_CLUSTER_SETUP_LOCK]);
     client.release();
   }
 }
@@ -77,6 +102,11 @@ async function waitForDatabaseState(
 }
 
 export async function resetTestDatabase(): Promise<void> {
+  if (!TEST_DB_IS_EPHEMERAL) {
+    throw new Error(
+      `[test-db] Refusing to reset explicit database ${TEST_DB_NAME}; use an ephemeral test database`
+    );
+  }
   await closeTestPool();
   const client = getAdminPool();
   try {

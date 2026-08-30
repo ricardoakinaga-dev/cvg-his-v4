@@ -1,0 +1,89 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-IR-002",
+  "timestamp": "2026-08-28T23:45:00-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-004 bounded tenant-scoped scheduled inventory purchase-entry report through the real worker",
+  "scope_ref": "CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES",
+  "version": 2,
+  "criteria": [
+    {
+      "id": "IR-002-RESELECTED",
+      "description": "The deferred scheduled inventory-invoices gap is deliberately reselected after the critical-process runner closure, with the exact twelve-field operational contract and non-fiscal exclusions frozen.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-scheduled-inventory-invoices.md",
+        ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-IR-002",
+        ".agent/verification.jsonl#VFY-SCOUT-CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-002"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This gate authorizes implementation and verification only; it does not claim the scheduled path is implemented or globally verified."
+    },
+    {
+      "id": "IR-002-PERSISTED-SOURCE",
+      "description": "The existing DatabaseProcurementRepository.findPurchaseReportRows contract reads persisted inventory_purchases headers with non-empty stored invoice references and exposes the twelve-field operational projection; no in-memory or line/lot fallback is authorized.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-inventory-invoices.md",
+        ".agent/gates/verified-CVG-004-report-inventory-invoices.json",
+        "packages/modules/inventory/src/procurement.ts",
+        "packages/db/migrations/0085_inventory_procurement.sql",
+        "apps/api/src/routes/reports-routes.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The on-demand source is already bounded, but the scheduled worker adapter and process proof remain pending."
+    },
+    {
+      "id": "IR-002-LOCAL-PROOF",
+      "description": "Focused source/worker tests and a disposable two-account run-once process can prove tenant isolation, persisted-reference filtering, strict filters, exact output, row bound, durable schedule identity and non-PII audit without external credentials.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-scheduled-inventory-invoices.md",
+        "packages/modules/inventory/src/inventory-invoices-report.test.ts",
+        "apps/worker/src/runner.test.ts",
+        "tests/integration/process/worker-run-once-reports.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "RED, GREEN, process, review, regression and final evidence must be produced under this gate."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-report-scheduled-inventory-invoices.md",
+    ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-IR-002",
+    ".agent/gates/implementation-ready-CVG-004-report-scheduled-inventory-invoices.json",
+    ".agent/gates/verified-CVG-004-report-inventory-invoices.json",
+    "packages/modules/inventory/src/procurement.ts",
+    "apps/worker/src/runner.ts",
+    "apps/worker/src/bootstrap.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "The dedicated scheduled source, resolver branch, bootstrap wiring, process evidence, independent review and final reconciliation do not yet exist for this reselection."
+  ],
+  "conditions": [
+    "Begin with intentional TDD RED before adding the new source or worker branch.",
+    "Keep global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+    "Do not add fiscal semantics, line/lot reconstruction, API/SPA behavior, providers, credentials, target, production, deployment or release scope."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via explicit continuation of the consolidation request",
+    "scope": "CVG-004 bounded tenant-scoped scheduled inventory purchase-entry report through the real worker",
+    "decision": "Authorize only reversible inventory-module and worker implementation plus focused and disposable PostgreSQL/process verification of the existing inventory-invoices operational purchase-reference projection. Preserve the exact twelve fields, explicit account context/predicate, stored non-empty invoice reference, search/status/date filters, deterministic order, 10,000-row guard, durable schedule semantics and non-PII audit. Exclude fiscal issuance, tax/CFOP, line/lot reconstruction, API/SPA changes, providers, credentials, target, production, deployment, backfill and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-IR-002",
+    "expires_or_revalidates": "Revalidate before adding fiscal semantics, line/lot joins, new fields, API/SPA behavior, provider/target work, mutations or release acceptance."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "selection_status": "SELECTED",
+  "next_action": "Write and execute intentional RED for the scheduled source, worker resolver/bootstrap and disposable process proof; preserve global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+  "revalidation_triggers": [
+    "Changes to inventory purchase persistence, invoice-reference semantics or report grain/filters",
+    "Expansion into fiscal document lifecycle, line/lot/movement semantics, API/SPA behavior or other report families",
+    "Any provider, credential, target, production, deployment or release activity"
+  ],
+  "supersedes": ".agent/gates/implementation-ready-CVG-004-report-scheduled-inventory-invoices.json"
+}

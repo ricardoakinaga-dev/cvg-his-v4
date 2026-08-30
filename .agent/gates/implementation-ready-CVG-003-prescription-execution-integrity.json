@@ -1,0 +1,87 @@
+{
+  "record_id": "GATE-CVG-003-PRESCRIPTION-EXECUTION-INTEGRITY-IR-001",
+  "timestamp": "2026-08-27T14:45:00-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-003 bounded clinical integrity of prescription execution creation and state transitions",
+  "scope_ref": "CVG-003-PRESCRIPTION-EXECUTION-INTEGRITY",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "Independent clinical review identified free-form execution creation, missing signed-prescription relation checks, non-atomic execution/event persistence and absent database CAS as a high-risk local gap.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-003-PRESCRIPTION-EXECUTION-INTEGRITY.md",
+        "packages/modules/prescription-executions/src/index.ts",
+        "packages/modules/prescription-executions/src/repositories/database-prescription-execution.repository.ts",
+        "apps/api/src/routes/prescription-executions-routes.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The worker crash/restart matrix was reviewed separately and remains a distinct bounded/open operational gate."
+    },
+    {
+      "id": "IR-002",
+      "description": "The authorized correction is limited to the prescription source invariant, account/patient/encounter and medication coherence, expected-version CAS, compound execution/event persistence and focused composition/tests.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-003-PRESCRIPTION-EXECUTION-INTEGRITY.md",
+        "packages/db/migrations/0082_clinical_runtime_persistence.sql",
+        "packages/modules/prescriptions/src/index.ts",
+        "packages/shared/contracts/src/index.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "No provider, credential, target, deployment, external-system or release mutation is authorized."
+    },
+    {
+      "id": "IR-003",
+      "description": "The implementation must begin with explicit RED regressions and may be promoted only after focused, API and disposable PostgreSQL verification plus independent review.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/prescription-executions/src/prescription-executions.test.ts",
+        "apps/api/src/routes/prescription-executions-routes.test.ts",
+        "tests/integration/prescription-executions-api.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Green evidence, quality rails and final reconciliation are still required."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-003-PRESCRIPTION-EXECUTION-INTEGRITY.md",
+    "packages/modules/prescription-executions/src/index.ts",
+    "packages/modules/prescription-executions/src/repositories/database-prescription-execution.repository.ts",
+    "apps/api/src/routes/prescription-executions-routes.ts",
+    "packages/db/migrations/0082_clinical_runtime_persistence.sql"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "No RED/GREEN evidence has been executed for this new contract yet.",
+    "Independent final review, PostgreSQL concurrency/failure proof and global non-promotion retest remain pending.",
+    "Clinical parity, target/provider/operations, accessibility, restore and release gates remain open."
+  ],
+  "conditions": [
+    "Preserve the existing Vue/PostgreSQL modular monolith and canonical database source.",
+    "Do not weaken tenant context, signed-prescription or CAS preconditions.",
+    "Do not modify production, target, provider, credential, deployment or external state."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via the original consolidation brief",
+    "scope": "CVG-003 bounded prescription-execution clinical integrity",
+    "decision": "Authorize reversible repository implementation, focused API tests and disposable PostgreSQL verification of signed-prescription linkage, optimistic concurrency and atomic execution/event persistence; exclude target, providers, credentials, production, deployment, external mutation and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-003-PRESCRIPTION-EXECUTION-INTEGRITY-IR-001",
+    "expires_or_revalidates": "Revalidate before expanding beyond this execution/event boundary."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "next_action": "Write RED tests first, implement the smallest vertical correction, obtain independent review and reconcile a bounded result without promoting CVG-003 or global readiness.",
+  "revalidation_triggers": [
+    "New prescription/execution/event writer or clinical-entry signing path",
+    "Changes to tenant UoW, audit/outbox, hydration or canonical migrations",
+    "Any target, provider, credential, deployment or release scope expansion"
+  ],
+  "supersedes": null
+}

@@ -16,6 +16,8 @@ export interface VetusImportSummary {
   readonly accountId: string;
   readonly sourceSystem: string;
   readonly sourceReference: string | null;
+  /** Internal SHA-256 fingerprint used to reject divergent source replays. */
+  readonly requestHash: string | null;
   readonly status: VetusImportStatus;
   readonly ownerId: string;
   readonly ownerName: string;
@@ -32,6 +34,8 @@ export interface VetusImportBatchSummary {
   readonly accountId: string;
   readonly sourceSystem: string;
   readonly sourceReference: string | null;
+  /** Internal SHA-256 fingerprint used to reject divergent source replays. */
+  readonly requestHash: string | null;
   readonly status: VetusImportBatchStatus;
   readonly totalCount: number;
   readonly importedCount: number;
@@ -89,6 +93,7 @@ function mapRow(row: Record<string, unknown>): VetusImportSummary {
     accountId: row.account_id as string,
     sourceSystem: row.source_system as string,
     sourceReference: (row.source_reference as string | null) ?? null,
+    requestHash: (row.request_hash as string | null) ?? null,
     status: row.status as VetusImportStatus,
     ownerId: row.owner_id as string,
     ownerName: row.owner_name as string,
@@ -113,6 +118,7 @@ function mapBatch(row: Record<string, unknown>): VetusImportBatchSummary {
     accountId: row.account_id as string,
     sourceSystem: row.source_system as string,
     sourceReference: (row.source_reference as string | null) ?? null,
+    requestHash: (row.request_hash as string | null) ?? null,
     status: row.status as VetusImportBatchStatus,
     totalCount: Number(row.total_count),
     importedCount: Number(row.imported_count),
@@ -245,10 +251,15 @@ export class DatabaseVetusImportLogRepository implements VetusImportLogRepositor
     sourceReference: string
   ): Promise<VetusImportSummary | null> {
     return withTenantQueryExplicit(getPool(), accountId, async (client) => {
+      await client.query(
+        `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`,
+        [`cvg-his-v4:vetus-import:${accountId}:${sourceSystem}:${sourceReference}`]
+      );
       const result = await client.query(
         `SELECT * FROM vetus_import_logs
          WHERE account_id = $1 AND source_system = $2 AND source_reference = $3
-         LIMIT 1`,
+         LIMIT 1
+         FOR UPDATE`,
         [accountId, sourceSystem, sourceReference]
       );
       return result.rows.length === 0
@@ -261,15 +272,16 @@ export class DatabaseVetusImportLogRepository implements VetusImportLogRepositor
     return withTenantQueryExplicit(getPool(), summary.accountId, async (client) => {
       const result = await client.query(
         `INSERT INTO vetus_import_logs (
-          id, account_id, source_system, source_reference, status, owner_id, owner_name,
+          id, account_id, source_system, source_reference, request_hash, status, owner_id, owner_name,
           patient_id, patient_name, imported_by_user_id, reviewed_by, imported_at, summary
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
         RETURNING *`,
         [
           summary.id,
           summary.accountId,
           summary.sourceSystem,
           summary.sourceReference,
+          summary.requestHash,
           summary.status,
           summary.ownerId,
           summary.ownerName,
@@ -313,10 +325,15 @@ export class DatabaseVetusImportLogRepository implements VetusImportLogRepositor
     sourceReference: string
   ): Promise<VetusImportBatchSummary | null> {
     return withTenantQueryExplicit(getPool(), accountId, async (client) => {
+      await client.query(
+        `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`,
+        [`cvg-his-v4:vetus-import-batch:${accountId}:${sourceSystem}:${sourceReference}`]
+      );
       const result = await client.query(
         `SELECT * FROM vetus_import_batches
          WHERE account_id = $1 AND source_system = $2 AND source_reference = $3
-         LIMIT 1`,
+         LIMIT 1
+         FOR UPDATE`,
         [accountId, sourceSystem, sourceReference]
       );
       return result.rows.length === 0 ? null : mapBatch(result.rows[0] as Record<string, unknown>);
@@ -327,16 +344,17 @@ export class DatabaseVetusImportLogRepository implements VetusImportLogRepositor
     return withTenantQueryExplicit(getPool(), batch.accountId, async (client) => {
       const result = await client.query(
         `INSERT INTO vetus_import_batches (
-          id, account_id, source_system, source_reference, status, total_count,
+          id, account_id, source_system, source_reference, request_hash, status, total_count,
           imported_count, linked_count, rejected_count, rolled_back_count,
           created_by_user_id, created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
         RETURNING *`,
         [
           batch.id,
           batch.accountId,
           batch.sourceSystem,
           batch.sourceReference,
+          batch.requestHash,
           batch.status,
           batch.totalCount,
           batch.importedCount,

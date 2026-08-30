@@ -1,0 +1,143 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-SERVICE-INVOICES-VFY-001",
+  "timestamp": "2026-08-27T21:24:23-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-004 bounded persisted NFS-e service-invoice report and audited export",
+  "scope_ref": "CVG-004-REPORT-SERVICE-INVOICES",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-001-CONTRACT",
+      "description": "Catalog, permission, filters, persisted document columns, read-only semantics and explicit non-claims are implemented and covered.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/reports/src/index.ts",
+        "packages/modules/reports/src/reports.test.ts",
+        "apps/spa/src/pages/reports/ReportWorkbenchPage.vue",
+        "apps/spa/src/pages/reports/__tests__/ReportWorkbenchPage.test.ts",
+        ".agent/tasks/CVG-004-report-service-invoices.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The legacy Vetus dynamic executor does not expose exact columns, filters or grain in the available evidence."
+    },
+    {
+      "id": "V-002-DATABASE",
+      "description": "The persisted FiscalService/repository source applies account context, strict competence/search filters, literal wildcard semantics, deterministic ordering and fail-closed bounds.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/db/migrations/0097_fiscal_nfse_tenant_persistence.sql",
+        "packages/modules/fiscal/src/database-fiscal.repository.ts",
+        "packages/modules/fiscal/src/service.ts",
+        "packages/modules/fiscal/src/fiscal.test.ts",
+        "tests/integration/database/fiscal-nfse-provider-postgres.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SERVICE-INVOICES-DB-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "PostgreSQL evidence is disposable local evidence and does not certify target grants, scale or managed operations."
+    },
+    {
+      "id": "V-003-API-RBAC-EXPORT",
+      "description": "On-demand execution, export and execution/export reads enforce Reports and definition permissions; the report rejects in-memory fiscal sources and uses the existing audited export path.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/api/src/routes/reports-routes.ts",
+        "apps/api/src/routes/reports-routes.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SERVICE-INVOICES-FOCUSED-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Local route evidence does not authorize fiscal writes, provider calls or external delivery."
+    },
+    {
+      "id": "V-004-WORKER",
+      "description": "Scheduled fiscal-service-invoices resolution is wired through the worker bootstrap to the same tenant-scoped persisted FiscalService contract.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/worker/src/runner.ts",
+        "apps/worker/src/bootstrap.ts",
+        "apps/worker/src/runner.test.ts",
+        "tests/integration/process/worker-run-once-reports.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SERVICE-INVOICES-WORKER-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The selected process proof is one-shot and local; continuous distributed delivery and observability remain open."
+    },
+    {
+      "id": "V-005-POSTGRES-E2E",
+      "description": "Disposable PostgreSQL and the official authenticated browser runner prove persisted filtered execution and audited CSV export.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "tests/integration/database/fiscal-nfse-provider-postgres.test.ts",
+        "e2e/spa/service-invoices-report-flow.spec.ts",
+        "infra/scripts/run-e2e-spa.sh",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SERVICE-INVOICES-E2E-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The proof is local with disposable services and does not certify target or provider behavior."
+    },
+    {
+      "id": "V-006-QUALITY",
+      "description": "Focused regression, full coverage, builds, deterministic validators, formatting, secrets and diff hygiene remain within the repository bar.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/artifacts/CVG-004-report-service-invoices-2026-08-27.md",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SERVICE-INVOICES-FOCUSED-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SERVICE-INVOICES-GLOBAL-RETEST-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SERVICE-INVOICES-HYGIENE-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Global parity, clinical parity and external homologation gates intentionally remain open."
+    },
+    {
+      "id": "V-007-INDEPENDENT-REVIEW",
+      "description": "A fresh read-only independent review confirms that the five remediation findings are closed without promotion inference.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [".agent/verification.jsonl#VFY-CVG-004-REPORT-SERVICE-INVOICES-REVIEW-001"],
+      "confidence": "HIGH",
+      "limitations": "Approval is limited to this local bounded slice."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-report-service-invoices.md",
+    ".agent/artifacts/CVG-004-report-service-invoices-2026-08-27.md",
+    "packages/modules/fiscal/src/database-fiscal.repository.ts",
+    "packages/modules/fiscal/src/service.ts",
+    "packages/modules/reports/src/index.ts",
+    "apps/api/src/routes/reports-routes.ts",
+    "apps/api/src/routes/fiscal-routes.ts",
+    "apps/worker/src/runner.ts",
+    "apps/worker/src/bootstrap.ts",
+    "apps/spa/src/pages/reports/ReportWorkbenchPage.vue",
+    "tests/integration/database/fiscal-nfse-provider-postgres.test.ts",
+    "tests/integration/process/worker-run-once-reports.test.ts",
+    "e2e/spa/service-invoices-report-flow.spec.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "CVG-004 and the global ERP remain IN_PROGRESS/PARTIAL; remaining report families and exact Vetus parity are open.",
+    "Fiscal issuance/cancellation/provider/municipality homologation, external credentials, commercial reconciliation, target operations, backup/restore/RTO-RPO, distributed worker observability, accessibility, LGPD operations, remote CI, deployment and release remain open."
+  ],
+  "conditions": [
+    "Keep this report limited to persisted NFS-e document facts and competence; do not infer issuance, cancellation event history, payment or commercial linkage.",
+    "Revalidate before adding fiscal writes, provider/municipality calls, credentials, exact external Vetus parity, target, production, deployment or release scope."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via the original consolidation brief",
+    "scope": "CVG-004 bounded persisted NFS-e service-invoice report and audited export",
+    "decision": "Authorize only tenant-scoped persisted fiscal_nfse_documents read execution/export through FiscalService and ReportsService plus disposable local verification; exclude fiscal writes, issuance, cancellation, provider/municipality calls, credentials, commercial reconciliation, external Vetus, target, production, deployment, backfill and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SERVICE-INVOICES-IR-001",
+    "expires_or_revalidates": "Revalidate before any excluded fiscal, provider, external, target, credential, production, deployment or release activity."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_BOUNDED",
+  "next_action": "Keep CVG-004 and the global ERP IN_PROGRESS/PARTIAL. Select the next gap only through fresh scouting and a new implementation-ready authority; do not promote.",
+  "supersedes": ".agent/gates/implementation-ready-CVG-004-report-service-invoices.json"
+}

@@ -1,0 +1,78 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-SCHEDULED-ADVANCE-PAYMENTS-IR-001",
+  "timestamp": "2026-08-27T02:17:02-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-004 bounded tenant-scoped scheduled financial-advance-payments report source through the real worker",
+  "scope_ref": "CVG-004-REPORT-SCHEDULED-ADVANCE-PAYMENTS",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The missing scheduled advance-payment path, bounded contract, owner and exclusions are recorded without promoting CVG-004 or global readiness.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-scheduled-advance-payments.md",
+        ".agent/backlog.json",
+        ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-ADVANCE-PAYMENTS-IR-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Only the scheduled read path for persisted advance-payment facts is authorized; write lifecycle, providers, target and release remain open."
+    },
+    {
+      "id": "IR-002",
+      "description": "The ReportsService catalog and API already define the persisted advance-payment report, while the worker lacks a source; the canonical source can be moved behind the existing financial module boundary without an app-to-app dependency.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/reports/src/index.ts",
+        "apps/api/src/routes/reports-routes.ts",
+        "apps/api/src/repositories/database-advance-payments-report.repository.ts",
+        "packages/modules/financial/src/index.ts",
+        "apps/worker/src/runner.ts",
+        "apps/worker/src/bootstrap.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Source extraction, worker composition and real process proof are not implemented at gate creation."
+    },
+    {
+      "id": "IR-003",
+      "description": "Focused RED tests can reject the absent worker source, permissive filters, oversized results, empty-success fallback and divergent API/worker source boundaries before implementation.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-scheduled-advance-payments.md",
+        "apps/worker/src/runner.test.ts",
+        "tests/integration/process/worker-run-once-reports.test.ts",
+        "packages/modules/financial/src/financial.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Implementation, fresh disposable PostgreSQL process evidence, independent critique and post-implementation regressions are required before a bounded result."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-report-scheduled-advance-payments.md",
+    "packages/modules/reports/src/index.ts",
+    "apps/api/src/routes/reports-routes.ts",
+    "apps/api/src/repositories/database-advance-payments-report.repository.ts",
+    "apps/worker/src/runner.ts",
+    "apps/worker/src/bootstrap.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "The RED tests, source extraction, worker implementation, real process proof, independent critique and global retest are not complete at gate creation."
+  ],
+  "conditions": [],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via the original consolidation brief",
+    "scope": "CVG-004 bounded tenant-scoped scheduled financial-advance-payments report source",
+    "decision": "Authorize reversible repository implementation, financial-module source sharing and disposable PostgreSQL/real worker verification of the existing read-only financial-advance-payments schedule. Exclude advance writes/refunds, other report families, providers, credentials, target, production, deployment, external mutation and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-ADVANCE-PAYMENTS-IR-001",
+    "expires_or_revalidates": "Revalidate before supporting another scheduled report source, changing advance-payment lifecycle semantics, adding delivery/provider behavior, target operations or release acceptance."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "next_action": "Write and run the focused worker/module RED tests, then implement the smallest shared source and real run-once proof."
+}

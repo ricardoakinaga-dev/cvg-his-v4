@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import {
   API_GLOBAL_TABLE_MUTATIONS,
   API_SENSITIVE_TABLE_PRIVILEGES,
+  RUNTIME_APPEND_ONLY_TABLES,
   RUNTIME_INSTALLER_MUTATIONS,
   RUNTIME_SENSITIVE_TABLES,
   RUNTIME_SETTLEMENT_FUNCTIONS,
@@ -41,6 +42,24 @@ const pixSettlementSearchPathMigration = readFileSync(
 );
 
 describe('runtime PostgreSQL role grants', () => {
+  it('binds the worker role variable before generating scoped revocations', () => {
+    const shellScript = roleScripts.find(
+      ({ path }) => path === 'infra/postgres/init-runtime-role.sh'
+    );
+    const provisionRole = shellScript?.content.slice(
+      shellScript.content.indexOf('provision_role()'),
+      shellScript.content.indexOf('provision_role "$POSTGRES_RUNTIME_USER"')
+    );
+    expect(provisionRole).toContain('--set=worker_user="$POSTGRES_WORKER_USER"');
+  });
+
+  it('keeps optional table checks safe before the schema exists', () => {
+    for (const script of roleScripts) {
+      expect(script.content).not.toContain("attrelid = 'public.users'::regclass");
+      expect(script.content).toContain("attrelid = to_regclass('public.users')");
+    }
+  });
+
   it('preserves the exact API mutations used by global repositories', () => {
     const requiredGrants = [
       "('roles', 'INSERT')",
@@ -149,12 +168,36 @@ describe('runtime PostgreSQL role grants', () => {
     }
   });
 
+  it('removes delete and truncate from the laboratory ingress ledger for runtime roles', () => {
+    expect(RUNTIME_APPEND_ONLY_TABLES).toEqual(['laboratory_result_imports']);
+    for (const script of roleScripts) {
+      const broadGrant = script.content.indexOf(
+        'GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.%I'
+      );
+      const ledgerRevoke = script.content.indexOf('REVOKE DELETE, TRUNCATE');
+      expect(ledgerRevoke, `${script.path} must revoke after broad RLS grants`).toBeGreaterThan(
+        broadGrant
+      );
+      expect(script.content.slice(ledgerRevoke)).toContain('laboratory_result_imports');
+    }
+    const reconcilerBroadGrant = runtimeReconciler.indexOf(
+      'GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.%I'
+    );
+    const reconcilerLedgerRevoke = runtimeReconciler.indexOf('REVOKE DELETE, TRUNCATE');
+    expect(reconcilerLedgerRevoke).toBeGreaterThan(reconcilerBroadGrant);
+    const appendOnlyPolicy = runtimeReconciler.indexOf('RUNTIME_APPEND_ONLY_TABLES');
+    expect(appendOnlyPolicy).toBeGreaterThan(-1);
+    expect(reconcilerLedgerRevoke).toBeGreaterThan(appendOnlyPolicy);
+  });
+
   it('defines the API auth/user contract without allowing service-principal mapping mutation', () => {
     expect(API_SENSITIVE_TABLE_PRIVILEGES).toEqual([
       { tableName: 'users', privileges: 'SELECT, INSERT, UPDATE' },
       { tableName: 'sessions', privileges: 'SELECT, INSERT, UPDATE, DELETE' },
       { tableName: 'mfa_credentials', privileges: 'SELECT, INSERT, UPDATE, DELETE' },
       { tableName: 'auth_mfa_login_challenges', privileges: 'SELECT, INSERT, UPDATE' },
+      { tableName: 'auth_webauthn_credentials', privileges: 'SELECT, INSERT, UPDATE, DELETE' },
+      { tableName: 'auth_webauthn_challenges', privileges: 'SELECT, INSERT, UPDATE' },
       { tableName: 'api_keys', privileges: 'SELECT, INSERT, UPDATE, DELETE' },
       { tableName: 'api_key_usage', privileges: 'SELECT, INSERT' },
       { tableName: 'api_key_rate_limits', privileges: 'SELECT, INSERT, UPDATE' }
@@ -171,6 +214,8 @@ describe('runtime PostgreSQL role grants', () => {
       'sessions',
       'mfa_credentials',
       'auth_mfa_login_challenges',
+      'auth_webauthn_credentials',
+      'auth_webauthn_challenges',
       'api_keys',
       'api_key_usage',
       'api_key_rate_limits'
@@ -227,7 +272,9 @@ describe('runtime PostgreSQL role grants', () => {
       'account_service_principals',
       'sessions',
       'mfa_credentials',
-      'auth_mfa_login_challenges'
+      'auth_mfa_login_challenges',
+      'auth_webauthn_credentials',
+      'auth_webauthn_challenges'
     ];
     for (const script of roleScripts) {
       for (const tableName of forbiddenWorkerDml) {
@@ -275,17 +322,23 @@ describe('runtime PostgreSQL role grants', () => {
       {
         functionName: 'assert_encounter_non_cash_receipt_consistent',
         argumentTypes: 'uuid'
+      },
+      {
+        functionName: 'assert_one_active_encounter_cash_receipt',
+        argumentTypes: 'uuid, uuid'
       }
     ]);
     expect(runtimeReconciler).toContain('RUNTIME_SETTLEMENT_FUNCTIONS');
 
     for (const script of roleScripts) {
-      expect(script.content, `${script.path} must grant the cash consistency helper`).toContain(
-        'assert_encounter_cash_receipt_consistent'
-      );
-      expect(script.content).toMatch(
-        /pg_catalog\.oidvectortypes\((?:p|procedure)\.proargtypes\) = 'uuid, boolean'/
-      );
+      for (const functionGrant of RUNTIME_SETTLEMENT_FUNCTIONS) {
+        expect(script.content, `${script.path} must grant ${functionGrant.functionName}`).toContain(
+          functionGrant.functionName
+        );
+        expect(script.content).toContain(
+          `pg_catalog.oidvectortypes(${script.path.includes('init-runtime') ? 'procedure' : 'p'}.proargtypes) = '${functionGrant.argumentTypes}'`
+        );
+      }
     }
     expect(settlementSearchPathMigration).toContain(
       'ALTER FUNCTION app.assert_encounter_cash_receipt_consistent(uuid, boolean)'

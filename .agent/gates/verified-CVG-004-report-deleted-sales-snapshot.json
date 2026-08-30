@@ -1,0 +1,125 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-DELETED-SALES-SNAPSHOT-VFY-001",
+  "timestamp": "2026-08-27T20:18:00-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-004 bounded persisted cancelled counter-sale snapshot and audited export",
+  "scope_ref": "CVG-004-REPORT-DELETED-SALES-SNAPSHOT",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-001-CONTRACT",
+      "description": "Catalog, permission, persisted columns and explicit createdAt/non-claims are implemented and covered.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/reports/src/index.ts",
+        "packages/modules/reports/src/reports.test.ts",
+        "apps/spa/src/pages/reports/ReportWorkbenchPage.vue",
+        ".agent/tasks/CVG-004-report-deleted-sales-snapshot.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The current schema has no durable cancellation event, actor, reason or cancellation timestamp."
+    },
+    {
+      "id": "V-002-DATABASE",
+      "description": "The authoritative Counter Sales repository applies parameterized tenant/status/search/date filters, deterministic ordering and a fail-closed bounded read.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/counter-sales/src/index.ts",
+        "packages/modules/counter-sales/src/repositories/database-counter-sales.repository.ts",
+        "packages/modules/counter-sales/src/counter-sales.test.ts",
+        "tests/integration/database/counter-sales-payment-authority-postgres.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-DELETED-SALES-SNAPSHOT-DB-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "PostgreSQL proof is disposable local evidence and does not certify target roles/RLS or operational scale."
+    },
+    {
+      "id": "V-003-API-RBAC-EXPORT",
+      "description": "Report execution, export and execution/export reads enforce the Reports boundary and definition permission before persistence/access, with formula-safe CSV.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/api/src/routes/reports-routes.ts",
+        "apps/api/src/routes/reports-routes.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-DELETED-SALES-SNAPSHOT-FOCUSED-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The route proof is local and does not authorize provider delivery or external operations."
+    },
+    {
+      "id": "V-004-BROWSER-E2E",
+      "description": "The official Docker SPA runner proves authenticated creation/cancellation, persisted search and audited CSV export.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "e2e/spa/deleted-sales-report-flow.spec.ts",
+        "infra/scripts/run-e2e-spa.sh",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-DELETED-SALES-SNAPSHOT-E2E-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-DELETED-SALES-SNAPSHOT-POST-FORMAT-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This is a fresh local PostgreSQL/Redis/browser composition only."
+    },
+    {
+      "id": "V-005-QUALITY",
+      "description": "Focused tests, workspace regression, coverage, builds, validators, secrets and diff hygiene remain green.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/artifacts/CVG-004-report-deleted-sales-snapshot-2026-08-27.md",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-DELETED-SALES-SNAPSHOT-FOCUSED-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-DELETED-SALES-SNAPSHOT-POST-FORMAT-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-DELETED-SALES-SNAPSHOT-GLOBAL-RETEST-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-DELETED-SALES-SNAPSHOT-HYGIENE-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Global non-promotion gates intentionally remain open."
+    },
+    {
+      "id": "V-006-INDEPENDENT-REVIEW",
+      "description": "A fresh independent review approves the bounded contract after remediation without promotion inference.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-DELETED-SALES-SNAPSHOT-REVIEW-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Approval is restricted to this local bounded slice."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-report-deleted-sales-snapshot.md",
+    ".agent/artifacts/CVG-004-report-deleted-sales-snapshot-2026-08-27.md",
+    "packages/modules/counter-sales/src/index.ts",
+    "packages/modules/counter-sales/src/repositories/database-counter-sales.repository.ts",
+    "packages/modules/reports/src/index.ts",
+    "apps/api/src/routes/reports-routes.ts",
+    "apps/spa/src/pages/reports/ReportWorkbenchPage.vue",
+    "tests/integration/database/counter-sales-payment-authority-postgres.test.ts",
+    "e2e/spa/deleted-sales-report-flow.spec.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "CVG-004 and the global ERP remain IN_PROGRESS/PARTIAL; remaining Reports families and administrative availability are open.",
+    "Cancellation history, fiscal/service-invoices wiring, external Vetus/provider/target behavior, production, deployment, restore/RTO-RPO, accessibility, LGPD operations, remote CI and release remain open."
+  ],
+  "conditions": [
+    "Keep the period labeled as counter-sale opening date (createdAt) and do not infer cancellation facts.",
+    "Revalidate before adding cancellation history, fiscal/service-invoices source wiring or external/target/provider/production/deployment/release scope."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner)",
+    "scope": "CVG-004 bounded on-demand cancelled counter-sale snapshot and audited export",
+    "decision": "Authorize only tenant-scoped persisted counter_sales status, strict filters, existing ReportsService execution/export and disposable local verification; exclude cancellation-history inference, service-invoices, migrations, providers, credentials, target, production, deployment, external Vetus operation, backfill and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-DELETED-SALES-SNAPSHOT-IR-001",
+    "expires_or_revalidates": "Revalidate before adding cancellation history, fiscal report wiring, external Vetus comparison, target/provider/credential/production/deployment or release activity."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_BOUNDED",
+  "next_action": "Keep CVG-004 and the global ERP IN_PROGRESS/PARTIAL; select the next gap only through fresh scouting and a new implementation-ready authority. Do not promote.",
+  "supersedes": ".agent/gates/implementation-ready-CVG-004-report-deleted-sales-snapshot.json"
+}

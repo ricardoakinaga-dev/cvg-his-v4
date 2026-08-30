@@ -1,0 +1,97 @@
+{
+  "record_id": "GATE-CVG-003-PATIENT-MASTER-SEARCH-OWNER-READ-BOUNDARY-IR-001",
+  "timestamp": "2026-08-30T07:08:31-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-003 /master-search owner-read permission composition",
+  "scope_ref": "CVG-003-PATIENT-MASTER-SEARCH-OWNER-READ-BOUNDARY",
+  "version": 1,
+  "active_plan": ".agent/plans/premium-enterprise-mvp.md",
+  "active_task": ".agent/tasks/CVG-003-PATIENT-MASTER-SEARCH-OWNER-READ-BOUNDARY.md",
+  "verification_state": "PARTIAL",
+  "next_gate": "TDD_RED",
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "Fresh residual evidence identifies that /master-search authorizes patients.read while returning owner records protected by a separate owners.read permission.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/authority.jsonl#AUTH-CVG-003-PATIENT-MASTER-SEARCH-OWNER-READ-BOUNDARY-IR-001",
+        ".agent/verification.jsonl#VFY-SCOUT-CVG-003-PATIENT-MASTER-SEARCH-OWNER-READ-BOUNDARY-001",
+        "apps/api/src/routes/patients-routes.ts",
+        "packages/rbac/src/access-control-catalog.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Repository-local authorization evidence; no target or production claim."
+    },
+    {
+      "id": "IR-002",
+      "description": "The existing route callback can enforce a second permission without changing the response envelope, account filter, audit event or registry search behavior.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/api/src/routes/patients-routes.ts",
+        "apps/api/src/routes/patients-routes.test.ts",
+        "apps/api/src/server.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The implementation must preserve the existing authenticated principal and avoid unrelated route changes."
+    },
+    {
+      "id": "IR-003",
+      "description": "The smallest safe boundary is a route-level owners.read check with deny/allow tests; no catalog, schema, projection or CRUD change is required.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/authority.jsonl#AUTH-CVG-003-PATIENT-MASTER-SEARCH-OWNER-READ-BOUNDARY-IR-001",
+        ".agent/tasks/CVG-003-PATIENT-MASTER-SEARCH-BOUNDARY.md",
+        "packages/modules/patients/src/index.ts"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "Any data minimization, CRUD, RLS or adjacent registry change requires fresh authority."
+    },
+    {
+      "id": "IR-004",
+      "description": "The frozen quality bar requires intentional RED, focused/API regression, typecheck/build, coverage/static/security checks and independent review before bounded closure.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-003-PATIENT-MASTER-SEARCH-OWNER-READ-BOUNDARY.md",
+        ".agent/backlog.json",
+        ".gauntlet/state.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Implementation and verification evidence remain open until TDD RED/GREEN and review are complete."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-003-PATIENT-MASTER-SEARCH-OWNER-READ-BOUNDARY.md",
+    ".agent/authority.jsonl#AUTH-CVG-003-PATIENT-MASTER-SEARCH-OWNER-READ-BOUNDARY-IR-001",
+    "apps/api/src/routes/patients-routes.ts",
+    "apps/api/src/routes/patients-routes.test.ts",
+    "packages/rbac/src/access-control-catalog.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "Intentional RED/GREEN, regression, quality, independent review and final reconciliation remain open.",
+    "Other owner/patient routes, data minimization, RLS, providers, target, production, deployment, release and global ERP behavior remain out of scope."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via explicit continuation, direct local reconciliation and one independent read-only residual scout",
+    "scope": "Repository-local authorization boundary for owner data returned by GET /master-search",
+    "decision": "Authorize only the second owners.read authorization check and focused deny/allow tests for /master-search; preserve existing payload, filtering and audit behavior.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-003-PATIENT-MASTER-SEARCH-OWNER-READ-BOUNDARY-IR-001",
+    "expires_or_revalidates": "Revalidate before changing other registry routes, data projections, schema/RLS, providers or any target/production/deployment/release/global parity surface."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "implementation_status": "IMPLEMENTATION_READY",
+  "next_action": "Write and run intentional RED proving a patients.read-only principal cannot use /master-search, then implement the smallest route-level owners.read check. Keep parent CVG-003/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+  "revalidation_triggers": [
+    "Changing owner/patient CRUD or response projection/redaction",
+    "Changing schema, RLS, providers, target, production, deployment, release or global parity behavior"
+  ],
+  "supersedes": null
+}

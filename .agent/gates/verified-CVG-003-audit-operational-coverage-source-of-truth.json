@@ -1,0 +1,164 @@
+{
+  "record_id": "GATE-CVG-003-AUDIT-OPERATIONAL-COVERAGE-SOURCE-OF-TRUTH-VFY-001",
+  "timestamp": "2026-08-29T17:21:00-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-003 durable repository-backed source of truth for GET /audit/operational-coverage",
+  "scope_ref": "CVG-003-AUDIT-OPERATIONAL-COVERAGE-SOURCE-OF-TRUTH",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "VFY-001",
+      "description": "Repository mode derives operational coverage from the complete committed account snapshot returned by listForCacheRefresh, excluding stale cache-only events and avoiding the default 100-row page.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/audit/src/index.ts",
+        "packages/modules/audit/src/repositories/database-audit.repository.ts",
+        ".agent/verification.jsonl#VFY-CVG-003-AUDIT-OPERATIONAL-COVERAGE-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-003-AUDIT-OPERATIONAL-COVERAGE-INTEGRATION-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This certifies the selected local repository boundary, not a multi-replica target deployment."
+    },
+    {
+      "id": "VFY-002",
+      "description": "A configured repository without a complete snapshot capability or with a failed snapshot read fails closed through AuditCoverageUnavailableError, and the HTTP route maps the failure to sanitized 503 AUDIT_COVERAGE_UNAVAILABLE.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/audit/src/index.ts",
+        "apps/api/src/routes/access-control-routes.ts",
+        "apps/api/src/routes/access-control-audit-events.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-003-AUDIT-OPERATIONAL-COVERAGE-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-003-AUDIT-OPERATIONAL-COVERAGE-GREEN-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The error boundary is proven in local module and route tests; external error aggregation is outside scope."
+    },
+    {
+      "id": "VFY-003",
+      "description": "The route preserves principal-derived account scope, audit.read authorization, report JSON compatibility, pre-read snapshot timing and awaited metadata-only success auditing.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/api/src/routes/access-control-routes.ts",
+        "apps/api/src/routes/access-control-audit-events.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-003-AUDIT-OPERATIONAL-COVERAGE-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-003-AUDIT-OPERATIONAL-COVERAGE-REGRESSION-FINAL-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This gate does not generalize the route contract to unrelated audit/log/trace/export routes."
+    },
+    {
+      "id": "VFY-004",
+      "description": "Live disposable PostgreSQL and runtime restart evidence prove deterministic complete snapshots, historical legacy identity compatibility and committed-state visibility after a fresh runtime.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/gates/verified-CVG-003-audit-operational-coverage-legacy-rls.json",
+        ".agent/verification.jsonl#VFY-CVG-003-AUDIT-OPERATIONAL-COVERAGE-INTEGRATION-001",
+        ".agent/verification.jsonl#VFY-CVG-003-AUDIT-OPERATIONAL-COVERAGE-LEGACY-RLS-FINAL-001",
+        "tests/integration/database/audit-cursor-pagination-postgres.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The RLS child gate is a separate bounded gate reconciled as a dependency; target migration state is not claimed."
+    },
+    {
+      "id": "VFY-005",
+      "description": "TDD, module, API and build regressions pass: intentional RED was recorded, audit module passed 27/27, focused route passed 14/14, runtime restart passed 1/1 and the final full API passed 496/496.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-AUDIT-OPERATIONAL-COVERAGE-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-003-AUDIT-OPERATIONAL-COVERAGE-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-003-AUDIT-OPERATIONAL-COVERAGE-INTEGRATION-001",
+        ".agent/verification.jsonl#VFY-CVG-003-AUDIT-OPERATIONAL-COVERAGE-REGRESSION-FINAL-001",
+        ".agent/verification.jsonl#VFY-CVG-003-AUDIT-OPERATIONAL-COVERAGE-LEGACY-RLS-REGRESSION-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Local regressions do not replace remote CI or release acceptance."
+    },
+    {
+      "id": "VFY-006",
+      "description": "Coverage and quality gates pass with official workspace coverage above the required threshold and green RLS, migration-source, OpenAPI, secret, formatting and diff checks.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-AUDIT-OPERATIONAL-COVERAGE-LEGACY-RLS-QUALITY-001",
+        ".agent/artifacts/CVG-003-audit-operational-coverage-source-of-truth-2026-08-29.md",
+        "coverage/coverage-final.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Workspace-local quality evidence does not certify target accessibility, operations or backup/recovery."
+    },
+    {
+      "id": "VFY-007",
+      "description": "Independent review of the final source-of-truth implementation and its restricted-role RLS dependency returned APPROVE with no in-scope findings.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-AUDIT-OPERATIONAL-COVERAGE-LEGACY-RLS-REVIEW-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Review approval is bounded to the selected repository slice."
+    },
+    {
+      "id": "VFY-008",
+      "description": "Global non-promotion is preserved after parent/child reconciliation: ERP remains IN_PROGRESS/PARTIAL, Vetus parity is 4/11, clinical parity is 2/3, readiness is 95/100 and promotion is BLOCKED.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/state.json",
+        ".agent/backlog.json",
+        ".agent/verification.jsonl#VFY-CVG-003-AUDIT-OPERATIONAL-COVERAGE-LEGACY-RLS-GLOBAL-NON-PROMOTION-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This is a control-plane assertion and not a global readiness verdict."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-003-AUDIT-OPERATIONAL-COVERAGE-SOURCE-OF-TRUTH.md",
+    ".agent/artifacts/CVG-003-audit-operational-coverage-source-of-truth-2026-08-29.md",
+    ".agent/gates/implementation-ready-CVG-003-audit-operational-coverage-source-of-truth.json",
+    ".agent/gates/verified-CVG-003-audit-operational-coverage-legacy-rls.json",
+    ".agent/verification.jsonl#VFY-CVG-003-AUDIT-OPERATIONAL-COVERAGE-SOURCE-OF-TRUTH-FINAL-001",
+    "packages/modules/audit/src/index.ts",
+    "packages/modules/audit/src/repositories/database-audit.repository.ts",
+    "apps/api/src/routes/access-control-routes.ts",
+    "tests/integration/database/audit-cursor-pagination-postgres.test.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "This gate does not certify target-cluster migration application, production, providers, credentials, remote CI or release acceptance.",
+    "Global Vetus parity remains 4/11 and clinical parity remains 2/3; enterprise readiness remains 95/100 with 42 PASS, 3 WARN and 1 FAIL.",
+    "Replay-after-revocation/idempotency, durable audit atomicity, systemic ABAC and other cross-system ERP boundaries remain separate residuals."
+  ],
+  "conditions": [
+    "Preserve complete committed snapshot semantics, no stale-cache fallback, principal account scope and sanitized 503 behavior.",
+    "Keep the legacy RLS correction under its separate bounded child gate and preserve migration 0003/helpers.",
+    "Keep the operational requirements catalog, unrelated audit routes, mutation semantics, providers, credentials, target, production, deployment and release scope outside this gate.",
+    "Keep CVG-003/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+    "Do not infer target, production, provider, deployment or release acceptance from this local gate."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED_RECONCILED",
+    "actor": "Ricardo (repository owner), via explicit continuation request and the implementation-ready parent/child gates",
+    "scope": "Repository-backed operational coverage source, route contract, complete database snapshot behavior and the separately gated tenant-safe legacy RLS dependency",
+    "decision": "Authorize bounded local closure of the operational-coverage source-of-truth slice after its child RLS dependency is verified. Exclude unrelated audit routes, mutation semantics, replay/idempotency, durable atomicity, systemic ABAC, providers, credentials, target, production, deployment and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-003-AUDIT-OPERATIONAL-COVERAGE-SOURCE-OF-TRUTH-IR-001",
+    "expires_or_revalidates": "Revalidate before changing requirements, report shape, global cache recovery, mutation transactions, another audit route, any policy outside audit_events or any external/production boundary."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_BOUNDED",
+  "implementation_status": "COMPLETE_BOUNDED",
+  "next_action": "Fresh-scout the next repository-local P1/P2 gap under a new implementation-ready authority. Do not promote CVG-003 or global ERP readiness.",
+  "revalidation_triggers": [
+    "Changes to the operational requirements catalog or report JSON shape",
+    "Changes to global cache recovery, mutation transactions or durable audit semantics",
+    "Changes to other audit/log/trace/export routes, replay/idempotency or ABAC",
+    "Changes to policies outside audit_events",
+    "Expansion to providers, credentials, target, production, deployment or release scope"
+  ],
+  "supersedes": ".agent/gates/implementation-ready-CVG-003-audit-operational-coverage-source-of-truth.json"
+}

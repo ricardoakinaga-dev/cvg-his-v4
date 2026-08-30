@@ -14,6 +14,11 @@ test('NotificationsService: create notification returns notification with queued
   });
 
   assert.ok(notification.id);
+  assert.match(
+    notification.id,
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    'Persisted notification identifiers must match the UUID database contract'
+  );
   assert.equal(notification.status, 'queued');
   assert.equal(notification.title, 'Test notification');
   assert.equal(notification.severity, 'medium');
@@ -246,21 +251,41 @@ test('NotificationsService: processPendingFromRepository fires onNotificationSen
   const jobsStore = new Map();
   let callbackInvocation: any = null;
   const repository = {
-    async createNotification(notification: any) { notificationsStore.set(notification.id, notification); },
-    async updateNotification(notification: any) { notificationsStore.set(notification.id, notification); },
-    async findNotificationById(id: any) { return notificationsStore.get(id) ?? null; },
-    async findNotifications() { return Array.from(notificationsStore.values()); },
-    async createJob(job: any) { jobsStore.set(job.id, job); },
-    async updateJob(job: any) { jobsStore.set(job.id, job); },
-    async findJobById(id: any) { return jobsStore.get(id) ?? null; },
-    async findJobs() { return Array.from(jobsStore.values()); },
+    async createNotification(notification: any) {
+      notificationsStore.set(notification.id, notification);
+    },
+    async updateNotification(notification: any) {
+      notificationsStore.set(notification.id, notification);
+    },
+    async findNotificationById(id: any) {
+      return notificationsStore.get(id) ?? null;
+    },
+    async findNotifications() {
+      return Array.from(notificationsStore.values());
+    },
+    async createJob(job: any) {
+      jobsStore.set(job.id, job);
+    },
+    async updateJob(job: any) {
+      jobsStore.set(job.id, job);
+    },
+    async findJobById(id: any) {
+      return jobsStore.get(id) ?? null;
+    },
+    async findJobs() {
+      return Array.from(jobsStore.values());
+    },
     async findQueuedJobs(limit: any) {
-      return Array.from(jobsStore.values()).filter((i: any) => i.status === 'queued').slice(0, limit);
+      return Array.from(jobsStore.values())
+        .filter((i: any) => i.status === 'queued')
+        .slice(0, limit);
     }
   };
   const notifications = new NotificationsService({
     notificationRepository: repository as never,
-    async onNotificationSent(notification) { callbackInvocation = notification; }
+    async onNotificationSent(notification) {
+      callbackInvocation = notification;
+    }
   });
 
   await notifications.create('user_1' as never, 'acc_1' as never, {

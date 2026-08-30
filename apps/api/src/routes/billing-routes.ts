@@ -40,7 +40,7 @@ function settlementIrreversibleResponse(correlationId: string, receiptPath: stri
 export interface BillingRoutesHandlers {
   billing: BillingService;
   audit: AuditService;
-  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
+  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
   enforceAbac: (
     actionCode: string,
     principal: AuthenticatedPrincipal,
@@ -64,7 +64,7 @@ export async function handleBillingRoutes(
 
   // GET /billing — list billing records (optionally filtered by encounter/patient/owner)
   if (pathname === '/billing' && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'billing.read');
+    const principal = await requirePrincipal(request, 'billing.read');
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const filters = {
       accountId: principal.user.accountId,
@@ -97,7 +97,7 @@ export async function handleBillingRoutes(
     pathname.endsWith('/items') &&
     request.method === 'GET'
   ) {
-    const principal = requirePrincipal(request, 'billing.read');
+    const principal = await requirePrincipal(request, 'billing.read');
     const encounterId = pathname.split('/')[2];
     const items = await billing.listItems(encounterId as never);
     appendAudit(audit, {
@@ -123,7 +123,7 @@ export async function handleBillingRoutes(
     !pathname.endsWith('/status') &&
     request.method === 'GET'
   ) {
-    const principal = requirePrincipal(request, 'billing.read');
+    const principal = await requirePrincipal(request, 'billing.read');
     const encounterId = pathname.split('/')[2];
     const record = await billing.findByEncounter(encounterId as never);
     if (!record) {
@@ -153,7 +153,7 @@ export async function handleBillingRoutes(
 
   // POST /billing/estimate — create a billing estimate
   if (pathname === '/billing/estimate' && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'billing.manage');
+    const principal = await requirePrincipal(request, 'billing.manage');
     const payload = (await readJsonBody(request)) as CreateBillingEstimateRequest;
     enforceAbac(
       'billing.manage',
@@ -186,7 +186,7 @@ export async function handleBillingRoutes(
 
   // POST /billing/items — add a billing item
   if (pathname === '/billing/items' && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'billing.manage');
+    const principal = await requirePrincipal(request, 'billing.manage');
     const payload = (await readJsonBody(request)) as CreateBillingItemRequest;
     enforceAbac(
       'billing.manage',
@@ -224,7 +224,7 @@ export async function handleBillingRoutes(
     pathname.endsWith('/status') &&
     request.method === 'PATCH'
   ) {
-    const principal = requirePrincipal(request, 'billing.manage');
+    const principal = await requirePrincipal(request, 'billing.manage');
     const encounterId = pathname.split('/')[2];
     const rawPayload = await readJsonBody(request);
     if (typeof rawPayload !== 'object' || rawPayload === null || Array.isArray(rawPayload)) {

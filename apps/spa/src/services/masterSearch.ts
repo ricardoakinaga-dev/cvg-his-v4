@@ -1,8 +1,12 @@
 import { apiRequest } from './api';
-import type { OwnerSummary, PatientSummary, OwnerPatientLinkSummary } from '@cvg-his-v2/shared-types';
+import type {
+  MasterSearchOwnerResult,
+  PatientSummary,
+  OwnerPatientLinkSummary
+} from '@cvg-his-v2/shared-types';
 
 export interface MasterSearchResponse {
-  owners: OwnerSummary[];
+  owners: MasterSearchOwnerResult[];
   patients: PatientSummary[];
   links: OwnerPatientLinkSummary[];
 }

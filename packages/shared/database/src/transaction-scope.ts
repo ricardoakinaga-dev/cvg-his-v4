@@ -14,6 +14,23 @@ export function getDatabaseTransactionScope(): DatabaseTransactionScope | undefi
   return transactionStorage.getStore();
 }
 
+/**
+ * Serializes authorization decisions with other protected writes for one
+ * tenant account. PostgreSQL releases transaction advisory locks on commit or
+ * rollback, so callers must already be inside the canonical tenant UoW.
+ */
+export async function acquireTenantAuthorizationLock(accountId: string): Promise<void> {
+  const scope = getDatabaseTransactionScope();
+  if (!scope || !scope.isActive()) {
+    throw new Error('Tenant authorization linearization requires an active database transaction');
+  }
+  if (scope.accountId !== accountId) {
+    throw new Error('Tenant authorization linearization account mismatch');
+  }
+
+  await scope.client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [accountId]);
+}
+
 export function runWithDatabaseTransactionScope<T>(
   scope: DatabaseTransactionScope,
   operation: () => Promise<T>

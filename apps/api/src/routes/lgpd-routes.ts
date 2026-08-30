@@ -16,7 +16,7 @@ import { readJsonBody } from '../helpers/common.js';
 export interface LgpdRoutesHandlers {
   lgpd: LgpdService | undefined;
   audit: AuditService;
-  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
+  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
 }
 
 const SUBJECT_TYPES = ['owner', 'patient', 'user'] as const;
@@ -49,11 +49,8 @@ const DSR_TYPES = [
 const DSR_STATUSES = ['pending', 'in_progress', 'completed', 'rejected', 'cancelled'] as const;
 const MAX_ID_LENGTH = 128;
 const MAX_REASON_LENGTH = 2_000;
-// The seed RBAC catalog predates the LGPD route names. Keep the boundary
-// usable with the existing roles until dedicated LGPD permissions are added
-// to the shared access catalog.
-const LGPD_READ_PERMISSION = 'audit.read';
-const LGPD_MANAGE_PERMISSION = 'users.manage';
+const LGPD_READ_PERMISSION = 'lgpd.requests.read';
+const LGPD_MANAGE_PERMISSION = 'lgpd.requests.manage';
 
 type SubjectType = (typeof SUBJECT_TYPES)[number];
 
@@ -191,7 +188,7 @@ export async function handleLgpdRoutes(
 
   // POST /lgpd/consent — grant consent
   if (pathname === '/lgpd/consent' && request.method === 'POST') {
-    const principal = requirePrincipal(request, LGPD_MANAGE_PERMISSION);
+    const principal = await requirePrincipal(request, LGPD_MANAGE_PERMISSION);
     const lgpdSvc = lgpd;
     if (!lgpdSvc) {
       response.statusCode = 501;
@@ -225,7 +222,7 @@ export async function handleLgpdRoutes(
 
   // POST /lgpd/consent/revoke — revoke consent
   if (pathname === '/lgpd/consent/revoke' && request.method === 'POST') {
-    const principal = requirePrincipal(request, LGPD_MANAGE_PERMISSION);
+    const principal = await requirePrincipal(request, LGPD_MANAGE_PERMISSION);
     const lgpdSvc = lgpd;
     if (!lgpdSvc) {
       response.statusCode = 501;
@@ -253,7 +250,7 @@ export async function handleLgpdRoutes(
 
   // GET /lgpd/consent — list consents
   if (pathname === '/lgpd/consent' && request.method === 'GET') {
-    const principal = requirePrincipal(request, LGPD_READ_PERMISSION);
+    const principal = await requirePrincipal(request, LGPD_READ_PERMISSION);
     const lgpdSvc = lgpd;
     if (!lgpdSvc) {
       response.statusCode = 200;
@@ -276,7 +273,7 @@ export async function handleLgpdRoutes(
 
   // GET /lgpd/consent/status — consent status by purpose
   if (pathname === '/lgpd/consent/status' && request.method === 'GET') {
-    const principal = requirePrincipal(request, LGPD_READ_PERMISSION);
+    const principal = await requirePrincipal(request, LGPD_READ_PERMISSION);
     const lgpdSvc = lgpd;
     if (!lgpdSvc) {
       response.statusCode = 200;
@@ -312,7 +309,7 @@ export async function handleLgpdRoutes(
 
   // POST /lgpd/requests — create DSR
   if (pathname === '/lgpd/requests' && request.method === 'POST') {
-    const principal = requirePrincipal(request, LGPD_MANAGE_PERMISSION);
+    const principal = await requirePrincipal(request, LGPD_MANAGE_PERMISSION);
     const lgpdSvc = lgpd;
     if (!lgpdSvc) {
       response.statusCode = 501;
@@ -342,7 +339,7 @@ export async function handleLgpdRoutes(
 
   // GET /lgpd/requests — list DSRs
   if (pathname === '/lgpd/requests' && request.method === 'GET') {
-    const principal = requirePrincipal(request, LGPD_READ_PERMISSION);
+    const principal = await requirePrincipal(request, LGPD_READ_PERMISSION);
     const lgpdSvc = lgpd;
     if (!lgpdSvc) {
       response.statusCode = 200;
@@ -417,7 +414,7 @@ export async function handleLgpdRoutes(
 
   // POST /lgpd/requests/complete — complete DSR
   if (pathname === '/lgpd/requests/complete' && request.method === 'POST') {
-    const principal = requirePrincipal(request, LGPD_MANAGE_PERMISSION);
+    const principal = await requirePrincipal(request, LGPD_MANAGE_PERMISSION);
     const lgpdSvc = lgpd;
     if (!lgpdSvc) {
       response.statusCode = 501;
@@ -457,7 +454,7 @@ export async function handleLgpdRoutes(
 
   // POST /lgpd/requests/reject — reject DSR
   if (pathname === '/lgpd/requests/reject' && request.method === 'POST') {
-    const principal = requirePrincipal(request, LGPD_MANAGE_PERMISSION);
+    const principal = await requirePrincipal(request, LGPD_MANAGE_PERMISSION);
     const lgpdSvc = lgpd;
     if (!lgpdSvc) {
       response.statusCode = 501;
@@ -498,7 +495,7 @@ export async function handleLgpdRoutes(
 
   // POST /lgpd/export — build personal data export
   if (pathname === '/lgpd/export' && request.method === 'POST') {
-    const principal = requirePrincipal(request, LGPD_MANAGE_PERMISSION);
+    const principal = await requirePrincipal(request, LGPD_MANAGE_PERMISSION);
     const lgpdSvc = lgpd;
     if (!lgpdSvc) {
       response.statusCode = 501;

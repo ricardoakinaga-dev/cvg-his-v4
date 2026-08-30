@@ -19,6 +19,7 @@
  */
 
 import { getPool } from '@cvg-his-v2/shared-database';
+import { ValidationError } from '@cvg-his-v2/shared-errors';
 import type { AccountId } from '@cvg-his-v2/shared-types';
 import { withTenantQueryExplicit } from '@cvg-his-v2/tenant-context';
 import type {
@@ -39,12 +40,7 @@ import type {
   UpdateFiscalIbsCbsTableRequest,
   UpdateFiscalNfseLayoutRequest
 } from '@cvg-his-v2/shared-contracts';
-import type {
-  NfseCustomer,
-  NfseDocument,
-  NfseIssuer,
-  NfseServiceLine
-} from './nfse-emitter.js';
+import type { NfseCustomer, NfseDocument, NfseIssuer, NfseServiceLine } from './nfse-emitter.js';
 
 // ============================================================================
 // Types
@@ -119,7 +115,13 @@ export interface PersistedNfseDocument extends NfseDocument {
 export interface DbNfseDocumentFilters extends DbFiscalFilters {
   readonly status?: PersistedNfseDocument['status'];
   readonly customerSearch?: string;
+  readonly search?: string;
+  readonly competenciaFrom?: string;
+  readonly competenciaTo?: string;
+  readonly limit?: number;
 }
+
+const MAX_NFSE_DOCUMENT_READ_ROWS = 10_001;
 
 export type NfseOperationKind = 'issue' | 'cancel';
 
@@ -137,9 +139,11 @@ function toIsoString(value: unknown): string {
 }
 
 function toDateOnly(value: unknown): string {
-  return value instanceof Date
-    ? value.toISOString().slice(0, 10)
-    : String(value).slice(0, 10);
+  return value instanceof Date ? value.toISOString().slice(0, 10) : String(value).slice(0, 10);
+}
+
+function escapeIlikePattern(value: string): string {
+  return value.replace(/[\\%_]/g, '\\$&');
 }
 
 function mapNfseLayoutRow(row: Record<string, unknown>): FiscalNfseLayoutSummary {
@@ -189,9 +193,7 @@ function mapNfseDocumentRow(row: Record<string, unknown>): PersistedNfseDocument
 function mapCfopRow(row: Record<string, unknown>): FiscalCfopSummary {
   const rawApplicableTo = row.applicable_to;
   const applicableTo = (
-    Array.isArray(rawApplicableTo)
-      ? rawApplicableTo
-      : JSON.parse(rawApplicableTo as string)
+    Array.isArray(rawApplicableTo) ? rawApplicableTo : JSON.parse(rawApplicableTo as string)
   ) as readonly ('nfe' | 'nfce' | 'nfse' | 'cte')[];
 
   return {
@@ -246,7 +248,9 @@ export class DatabaseFiscalRepository {
     let items = result.rows.map((row) => mapCfopRow(row));
 
     if (filters.documentType) {
-      items = items.filter((item) => item.applicableTo.includes(filters.documentType as 'nfe' | 'nfce' | 'nfse' | 'cte'));
+      items = items.filter((item) =>
+        item.applicableTo.includes(filters.documentType as 'nfe' | 'nfce' | 'nfse' | 'cte')
+      );
     }
 
     return items;
@@ -254,18 +258,12 @@ export class DatabaseFiscalRepository {
 
   async findCfopByCode(code: string): Promise<FiscalCfopSummary | null> {
     const pool = this.pool;
-    const result = await pool.query(
-      'SELECT * FROM cfop_entries WHERE code = $1 LIMIT 1',
-      [code]
-    );
+    const result = await pool.query('SELECT * FROM cfop_entries WHERE code = $1 LIMIT 1', [code]);
     if (result.rows.length === 0) return null;
     return mapCfopRow(result.rows[0]);
   }
 
-  async createCfop(
-    _accountId: AccountId,
-    cfop: FiscalCfopSummary
-  ): Promise<FiscalCfopSummary> {
+  async createCfop(_accountId: AccountId, cfop: FiscalCfopSummary): Promise<FiscalCfopSummary> {
     const result = await this.pool.query(
       `INSERT INTO cfop_entries (
         code,
@@ -351,10 +349,7 @@ export class DatabaseFiscalRepository {
       params.push(`%${filters.search}%`);
     }
 
-    const result = await pool.query(
-      `SELECT * FROM icms_tables ${where} ORDER BY code`,
-      params
-    );
+    const result = await pool.query(`SELECT * FROM icms_tables ${where} ORDER BY code`, params);
 
     return result.rows.map((row) => ({
       id: row.id as string,
@@ -433,10 +428,7 @@ export class DatabaseFiscalRepository {
       params.push(`%${filters.search}%`);
     }
 
-    const result = await pool.query(
-      `SELECT * FROM ipi_tables ${where} ORDER BY code`,
-      params
-    );
+    const result = await pool.query(`SELECT * FROM ipi_tables ${where} ORDER BY code`, params);
 
     return result.rows.map((row) => ({
       id: row.id as string,
@@ -515,10 +507,7 @@ export class DatabaseFiscalRepository {
       params.push(`%${filters.search}%`);
     }
 
-    const result = await pool.query(
-      `SELECT * FROM pis_tables ${where} ORDER BY code`,
-      params
-    );
+    const result = await pool.query(`SELECT * FROM pis_tables ${where} ORDER BY code`, params);
 
     return result.rows.map((row) => ({
       id: row.id as string,
@@ -597,10 +586,7 @@ export class DatabaseFiscalRepository {
       params.push(`%${filters.search}%`);
     }
 
-    const result = await pool.query(
-      `SELECT * FROM cofins_tables ${where} ORDER BY code`,
-      params
-    );
+    const result = await pool.query(`SELECT * FROM cofins_tables ${where} ORDER BY code`, params);
 
     return result.rows.map((row) => ({
       id: row.id as string,
@@ -680,10 +666,7 @@ export class DatabaseFiscalRepository {
       params.push(`%${filters.search}%`);
     }
 
-    const result = await pool.query(
-      `SELECT * FROM ibs_cbs_tables ${where} ORDER BY code`,
-      params
-    );
+    const result = await pool.query(`SELECT * FROM ibs_cbs_tables ${where} ORDER BY code`, params);
 
     return result.rows.map((row) => ({
       id: row.id as string,
@@ -800,13 +783,7 @@ export class DatabaseFiscalRepository {
       `INSERT INTO icms_rules (uf_origin, uf_destination, ncm, rate, cst, operation_type)
        VALUES ($1, $2, NULL, $3, $4, $5)
        RETURNING *`,
-      [
-        payload.ufOrigin,
-        payload.ufDestination,
-        payload.rate,
-        payload.cst,
-        payload.operationType
-      ]
+      [payload.ufOrigin, payload.ufDestination, payload.rate, payload.cst, payload.operationType]
     );
     const row = result.rows[0];
     return {
@@ -1073,16 +1050,48 @@ export class DatabaseFiscalRepository {
       }
       if (filters.customerSearch?.trim()) {
         conditions.push(`(
-          customer->>'name' ILIKE $${params.length + 1}
-          OR customer->>'document' ILIKE $${params.length + 1}
+          customer->>'name' ILIKE $${params.length + 1} ESCAPE E'\\\\'
+          OR customer->>'document' ILIKE $${params.length + 1} ESCAPE E'\\\\'
         )`);
-        params.push(`%${filters.customerSearch.trim()}%`);
+        params.push(`%${escapeIlikePattern(filters.customerSearch.trim())}%`);
+      }
+
+      if (filters.search?.trim()) {
+        conditions.push(`(
+          customer->>'name' ILIKE $${params.length + 1} ESCAPE E'\\\\'
+          OR customer->>'document' ILIKE $${params.length + 1} ESCAPE E'\\\\'
+          OR services::text ILIKE $${params.length + 1} ESCAPE E'\\\\'
+        )`);
+        params.push(`%${escapeIlikePattern(filters.search.trim())}%`);
+      }
+      if (filters.competenciaFrom) {
+        conditions.push(`competencia >= $${params.length + 1}::date`);
+        params.push(filters.competenciaFrom);
+      }
+      if (filters.competenciaTo) {
+        conditions.push(`competencia <= $${params.length + 1}::date`);
+        params.push(filters.competenciaTo);
+      }
+
+      let limitClause = '';
+      if (filters.limit !== undefined) {
+        if (
+          !Number.isSafeInteger(filters.limit) ||
+          filters.limit <= 0 ||
+          filters.limit > MAX_NFSE_DOCUMENT_READ_ROWS
+        ) {
+          throw new ValidationError('NFS-e document read limit must be between 1 and 10001', {
+            limit: filters.limit
+          });
+        }
+        limitClause = ` LIMIT $${params.length + 1}`;
+        params.push(filters.limit);
       }
 
       const result = await client.query(
         `SELECT * FROM fiscal_nfse_documents
          WHERE ${conditions.join(' AND ')}
-         ORDER BY created_at DESC, id DESC`,
+         ORDER BY created_at DESC, id DESC${limitClause}`,
         params
       );
       return result.rows.map((row) => mapNfseDocumentRow(row as Record<string, unknown>));
@@ -1124,15 +1133,16 @@ export class DatabaseFiscalRepository {
       const lastOperationKind = row.last_operation_kind as NfseOperationKind | null | undefined;
 
       if (
-        (operationKind === 'issue' && status === 'issued')
-        || (operationKind === 'cancel' && status === 'cancelled')
+        (operationKind === 'issue' && status === 'issued') ||
+        (operationKind === 'cancel' && status === 'cancelled')
       ) {
         return { state: 'completed', document: current };
       }
 
-      const allowed = operationKind === 'issue'
-        ? status === 'draft' || (status === 'error' && lastOperationKind === 'issue')
-        : status === 'issued' || (status === 'error' && lastOperationKind === 'cancel');
+      const allowed =
+        operationKind === 'issue'
+          ? status === 'draft' || (status === 'error' && lastOperationKind === 'issue')
+          : status === 'issued' || (status === 'error' && lastOperationKind === 'cancel');
       if (!allowed) {
         const verb = operationKind === 'issue' ? 'issue' : 'cancel';
         throw new Error(`Cannot ${verb} document in status: ${status}`);

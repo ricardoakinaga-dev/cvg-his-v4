@@ -36,12 +36,17 @@ export const RUNTIME_INSTALLER_MUTATIONS = [
   { tableName: 'nfse_layouts', privileges: 'INSERT, UPDATE' }
 ] as const;
 
+/** Runtime roles may ingest and review provider rows, but never remove them. */
+export const RUNTIME_APPEND_ONLY_TABLES = ['laboratory_result_imports'] as const;
+
 /** Direct DML required by API-owned authentication and user repositories. */
 export const API_SENSITIVE_TABLE_PRIVILEGES = [
   { tableName: 'users', privileges: 'SELECT, INSERT, UPDATE' },
   { tableName: 'sessions', privileges: 'SELECT, INSERT, UPDATE, DELETE' },
   { tableName: 'mfa_credentials', privileges: 'SELECT, INSERT, UPDATE, DELETE' },
   { tableName: 'auth_mfa_login_challenges', privileges: 'SELECT, INSERT, UPDATE' },
+  { tableName: 'auth_webauthn_credentials', privileges: 'SELECT, INSERT, UPDATE, DELETE' },
+  { tableName: 'auth_webauthn_challenges', privileges: 'SELECT, INSERT, UPDATE' },
   { tableName: 'api_keys', privileges: 'SELECT, INSERT, UPDATE, DELETE' },
   { tableName: 'api_key_usage', privileges: 'SELECT, INSERT' },
   { tableName: 'api_key_rate_limits', privileges: 'SELECT, INSERT, UPDATE' }
@@ -62,6 +67,8 @@ export const RUNTIME_SENSITIVE_TABLES = [
   'sessions',
   'mfa_credentials',
   'auth_mfa_login_challenges',
+  'auth_webauthn_credentials',
+  'auth_webauthn_challenges',
   'api_keys',
   'api_key_usage',
   'api_key_rate_limits'
@@ -83,5 +90,9 @@ export const RUNTIME_SETTLEMENT_FUNCTIONS = [
   {
     functionName: 'assert_encounter_non_cash_receipt_consistent',
     argumentTypes: 'uuid'
+  },
+  {
+    functionName: 'assert_one_active_encounter_cash_receipt',
+    argumentTypes: 'uuid, uuid'
   }
 ] as const;

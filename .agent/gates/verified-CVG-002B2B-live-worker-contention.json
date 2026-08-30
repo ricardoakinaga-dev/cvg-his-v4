@@ -1,0 +1,91 @@
+{
+  "record_id": "GATE-CVG-002B2B-LIVE-WORKER-CONTENTION-VFY-001",
+  "timestamp": "2026-08-27T17:09:14-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-002B2B bounded two-live-worker contention for one PIX delivery",
+  "scope_ref": "CVG-002B2B-LIVE-WORKER-CONTENTION",
+  "version": 1,
+  "decision": "PASS_BOUNDED",
+  "confidence": "HIGH",
+  "residual_risk": "HIGH",
+  "criteria": [
+    {
+      "id": "LIVE-001-DISTINCT-PROCESS",
+      "description": "Two independent worker processes run with distinct real PIDs and the reconciled worker database role.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002B2B-LIVE-WORKER-CONTENTION-001",
+        "tests/integration/process/pix-provider-settlement-sigkill.test.ts",
+        "apps/worker/test-fixtures/pix-provider-settlement-process.ts"
+      ],
+      "limitations": "The proof uses a local disposable PostgreSQL cluster and synthetic provider fixture."
+    },
+    {
+      "id": "LIVE-002-SINGLE-CLAIM",
+      "description": "While worker A holds a valid processing lease, worker B cannot claim the same delivery and returns idle.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002B2B-LIVE-WORKER-CONTENTION-001",
+        "apps/worker/src/jobs/pix-provider-event-delivery-repository.ts",
+        "tests/integration/process/pix-provider-settlement-sigkill.test.ts"
+      ],
+      "limitations": "The scenario covers one delivery and one account; broader load and target topology remain open."
+    },
+    {
+      "id": "LIVE-003-ONE-FINANCIAL-EFFECT",
+      "description": "The winning worker applies one fenced settlement and the final graph contains one receipt with no duplicate financial effect.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002B2B-LIVE-WORKER-CONTENTION-001",
+        ".agent/artifacts/CVG-002B2B-live-worker-concurrency-2026-08-27.md",
+        "packages/modules/pix/src/confirmed-settlement/confirmed-pix-settlement-command.ts"
+      ],
+      "limitations": "This does not close the complete B2B failpoint matrix or provider reconciliation contract."
+    },
+    {
+      "id": "LIVE-004-REGRESSION",
+      "description": "The complete independent-process PIX settlement file remains green after adding the contention scenario.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002B2B-LIVE-WORKER-CONTENTION-001",
+        "tests/integration/process/pix-provider-settlement-sigkill.test.ts"
+      ],
+      "limitations": "This is a focused process regression, not a global workspace or release gate."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-002B2B.md",
+    ".agent/artifacts/CVG-002B2B-live-worker-concurrency-2026-08-27.md",
+    "tests/integration/process/pix-provider-settlement-sigkill.test.ts",
+    "apps/worker/src/jobs/pix-provider-event-delivery-repository.ts",
+    "apps/worker/src/jobs/pix-provider-settlement-consumer.ts",
+    ".agent/verification.jsonl#VFY-CVG-002B2B-LIVE-WORKER-CONTENTION-001"
+  ],
+  "gaps": [
+    "The complete B2B contract remains open for all declared B1 failpoints, full principal login/cache/MFA exclusion coverage and production operational controls.",
+    "Real providers, target deployment/RLS, backup/restore, remote CI, parity, accessibility, LGPD operations and release acceptance remain open."
+  ],
+  "conditions": [
+    "Keep the parent CVG-002B2B, CVG-002 and global ERP program IN_PROGRESS/PARTIAL.",
+    "Use only disposable PostgreSQL and the explicitly synthetic local provider for this evidence."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via the original consolidation brief",
+    "scope": "CVG-002B2B signed synthetic PIX inbound and durable shared-B1 settlement worker",
+    "decision": "Authorize repository-local verification with disposable PostgreSQL and synthetic provider; real providers, credentials, external mutation, production, deployment and release remain excluded.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-002B2B-IR-001",
+    "expires_or_revalidates": "Revalidate before real provider, target, production, migration, operational redrive or release work."
+  },
+  "next_action": "Keep this bounded evidence and continue through a separately authorized B2B gap; do not promote to production or full readiness.",
+  "revalidation_triggers": [
+    "Changes to delivery claim/fence semantics, settlement lock order or worker process fixture",
+    "Expansion to provider, target, production, deployment or release scope"
+  ],
+  "supersedes": null
+}

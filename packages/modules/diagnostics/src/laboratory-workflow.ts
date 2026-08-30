@@ -3,7 +3,8 @@ import { createHash } from 'node:crypto';
 import type {
   AccountId,
   DiagnosticOrderId,
-  DiagnosticOrderSummary
+  DiagnosticOrderSummary,
+  LaboratoryResultValue
 } from '@cvg-his-v2/shared-types';
 
 export const LABORATORY_LIFECYCLE_STATUSES = [
@@ -66,6 +67,7 @@ export interface LaboratoryWorkflowState {
   readonly deliveredByUserId?: string;
   readonly deliveryChannel?: string;
   readonly resultSummary?: string;
+  readonly resultValues?: readonly LaboratoryResultValue[];
   readonly resultAttachmentId?: string;
   readonly signedByUserId?: string;
   readonly signatureHash?: string;
@@ -108,6 +110,7 @@ export type LaboratoryWorkflowTransitionRequest =
   | {
       readonly status: 'reported';
       readonly resultSummary?: string;
+      readonly resultValues?: readonly LaboratoryResultValue[];
       readonly resultAttachmentId?: string;
       readonly actorUserId: string;
       readonly idempotencyKey?: string;

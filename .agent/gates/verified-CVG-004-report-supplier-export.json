@@ -1,0 +1,100 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-SUPPLIER-EXPORT-VFY-001",
+  "timestamp": "2026-08-26T09:33:00-03:00",
+  "gate_id": "VERIFIED",
+  "scope": "CVG-004 bounded audited read-only supplier and expense registry report execution/export from the tenant-scoped finance expense catalog",
+  "scope_ref": "CVG-004-REPORT-SUPPLIER-EXPORT",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-001-ACCEPTANCE-EVIDENCE",
+      "description": "The bounded registration-suppliers report executes through ReportsService with billing.read, authenticated-account source composition, persisted-field mapping, strict dates, deterministic pagination and a 10,000-row guard; the SPA uses the audited execution/export path.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SUPPLIER-EXPORT-REGRESSION-001",
+        ".agent/artifacts/CVG-004-report-supplier-export-2026-08-26.md",
+        ".agent/tasks/CVG-004-report-supplier-export.md",
+        "packages/modules/reports/src/index.ts",
+        "apps/api/src/routes/reports-routes.ts",
+        "apps/spa/src/pages/reports/ReportWorkbenchPage.vue"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The source is a persisted expense catalog rather than a dedicated supplier master; the result is not full Vetus supplier semantic parity."
+    },
+    {
+      "id": "V-002-REGRESSION-RISK",
+      "description": "The authorized migration, tenant RLS/FORCE RLS boundary, runtime composition, API/SPA/module regressions, official coverage threshold and repository security/static controls are current and passing.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SUPPLIER-EXPORT-REGRESSION-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SUPPLIER-EXPORT-MIGRATION-GREEN-001",
+        "packages/db/migrations/0146_finance_catalogs.sql",
+        "tests/integration/rls/finance-catalog-isolation.test.ts",
+        "apps/api/src/bootstrap.ts",
+        "apps/api/src/runtime.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Local disposable PostgreSQL evidence does not replace target migration, backup/restore, provider, distributed failure, browser persistence or release evidence."
+    },
+    {
+      "id": "V-003-LIMITATIONS-AUTHORITY",
+      "description": "The independent critique, addressed findings, residual risk, authority boundary and global limitations are explicit without promoting the parent or release gates.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SUPPLIER-EXPORT-REVIEW-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SUPPLIER-EXPORT-GLOBAL-RETEST-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SUPPLIER-EXPORT-FINAL-001",
+        ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SUPPLIER-EXPORT-IR-001",
+        ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SUPPLIER-EXPORT-MIGRATION-IR-002"
+      ],
+      "confidence": "HIGH",
+      "limitations": "No reviewer approval, production authority, provider selection, target operation or release acceptance is inferred."
+    }
+  ],
+  "evidence": [
+    ".agent/artifacts/CVG-004-report-supplier-export-2026-08-26.md",
+    ".agent/tasks/CVG-004-report-supplier-export.md",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-SUPPLIER-EXPORT-REGRESSION-001",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-SUPPLIER-EXPORT-REVIEW-001",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-SUPPLIER-EXPORT-GLOBAL-RETEST-001",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-SUPPLIER-EXPORT-FINAL-001",
+    "packages/db/migrations/0146_finance_catalogs.sql",
+    "packages/db/src/schema/finance_catalogs.ts",
+    "apps/api/src/repositories/database-finance-catalog.repository.ts",
+    "apps/api/src/repositories/finance-catalog-report-source.ts",
+    "apps/api/src/routes/reports-routes.ts",
+    "apps/api/src/routes/expenses-catalog-routes.ts",
+    "apps/spa/src/pages/reports/ReportWorkbenchPage.vue",
+    "tests/integration/rls/finance-catalog-isolation.test.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "General Vetus parity remains 98/100 evidence with 4/11 areas verified and NOT VERIFIED.",
+    "Clinical parity remains 100/100 evidence with 2/3 areas verified and NOT VERIFIED.",
+    "Enterprise readiness remains 95/100 with 42 PASS, 3 WARN and 1 FAIL.",
+    "Provider/homologation and Live Lab, distributed worker failure/observability, Vetus import, payment advance, remaining/personalized reports, target-backed RLS/restore/RTO-RPO, remote CI, accessibility, operations and release remain open."
+  ],
+  "conditions": [],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner)",
+    "scope": "CVG-004 bounded on-demand read-only supplier and expense registry report execution/export",
+    "decision": "Record the reversible repository-local implementation and disposable PostgreSQL verification as bounded evidence using only tenant-scoped persisted finance expense catalog facts and the existing audited ReportsService. No supplier CRUD, advance-payment ledger, inferred contact/tax/payment facts, worker scheduling, providers, credentials, target, production, deployment, external mutation or release acceptance is authorized.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SUPPLIER-EXPORT-IR-001",
+    "expires_or_revalidates": "Revalidate before adding a dedicated supplier entity, scheduled delivery, payment-advance or personalized sources, unsupported fields, providers, target operations, production or release acceptance."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "next_action": "Keep CVG-004 IN_PROGRESS/PARTIAL. Select the next separately authorized bounded gap only after a new implementation-ready gate; do not promote this local result to Vetus parity, enterprise readiness or release.",
+  "revalidation_triggers": [
+    "Changes to finance catalog persistence, tenant repository queries, billing.read authorization or migration 0146",
+    "Changes to ReportsService execution/export or report-workbench behavior",
+    "Expansion beyond persisted read-only finance catalog facts",
+    "Any target, provider, credential, production, deployment or release activity"
+  ],
+  "supersedes": ".agent/gates/implementation-ready-CVG-004-report-supplier-export.json"
+}

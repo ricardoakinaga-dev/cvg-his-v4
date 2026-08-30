@@ -8,8 +8,7 @@ import type {
   SectorId,
   BedId,
   SectorSummary,
-  BedSummary,
-  InpatientStayId
+  BedSummary
 } from '@cvg-his-v2/shared-types';
 import type {
   CreateSectorRequest,
@@ -24,17 +23,21 @@ import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 
 export interface SectorRepository {
   create(sector: SectorSummary): Promise<void>;
-  findById(id: SectorId): Promise<SectorSummary | null>;
+  findById(accountId: AccountId, id: SectorId): Promise<SectorSummary | null>;
   findByAccountId(accountId: AccountId): Promise<readonly SectorSummary[]>;
 }
 
 export interface BedRepository {
   create(bed: BedSummary): Promise<void>;
   update(bed: BedSummary): Promise<void>;
-  findById(id: BedId): Promise<BedSummary | null>;
-  findBySectorId(sectorId: SectorId): Promise<readonly BedSummary[]>;
+  findById(accountId: AccountId, id: BedId): Promise<BedSummary | null>;
+  findBySectorId(accountId: AccountId, sectorId: SectorId): Promise<readonly BedSummary[]>;
   findByAccountId(accountId: AccountId): Promise<readonly BedSummary[]>;
-  findByStatus(sectorId: SectorId, status: BedSummary['status']): Promise<readonly BedSummary[]>;
+  findByStatus(
+    accountId: AccountId,
+    sectorId: SectorId,
+    status: BedSummary['status']
+  ): Promise<readonly BedSummary[]>;
 }
 
 export class DatabaseSectorRepository implements SectorRepository {
@@ -57,8 +60,12 @@ export class DatabaseSectorRepository implements SectorRepository {
     });
   }
 
-  public async findById(id: SectorId): Promise<SectorSummary | null> {
-    const result = await this.#db.select().from(sectors).where(eq(sectors.id, id)).limit(1);
+  public async findById(accountId: AccountId, id: SectorId): Promise<SectorSummary | null> {
+    const result = await this.#db
+      .select()
+      .from(sectors)
+      .where(and(eq(sectors.id, id), eq(sectors.accountId, accountId)))
+      .limit(1);
 
     if (result.length === 0) {
       return null;
@@ -121,11 +128,15 @@ export class DatabaseBedRepository implements BedRepository {
         active: bed.active,
         updatedAt: new Date(bed.updatedAt)
       })
-      .where(eq(beds.id, bed.id));
+      .where(and(eq(beds.id, bed.id), eq(beds.accountId, bed.accountId)));
   }
 
-  public async findById(id: BedId): Promise<BedSummary | null> {
-    const result = await this.#db.select().from(beds).where(eq(beds.id, id)).limit(1);
+  public async findById(accountId: AccountId, id: BedId): Promise<BedSummary | null> {
+    const result = await this.#db
+      .select()
+      .from(beds)
+      .where(and(eq(beds.id, id), eq(beds.accountId, accountId)))
+      .limit(1);
 
     if (result.length === 0) {
       return null;
@@ -134,8 +145,14 @@ export class DatabaseBedRepository implements BedRepository {
     return this.mapRow(result[0]);
   }
 
-  public async findBySectorId(sectorId: SectorId): Promise<readonly BedSummary[]> {
-    const result = await this.#db.select().from(beds).where(eq(beds.sectorId, sectorId));
+  public async findBySectorId(
+    accountId: AccountId,
+    sectorId: SectorId
+  ): Promise<readonly BedSummary[]> {
+    const result = await this.#db
+      .select()
+      .from(beds)
+      .where(and(eq(beds.sectorId, sectorId), eq(beds.accountId, accountId)));
 
     return result.map((row) => this.mapRow(row));
   }
@@ -147,13 +164,16 @@ export class DatabaseBedRepository implements BedRepository {
   }
 
   public async findByStatus(
+    accountId: AccountId,
     sectorId: SectorId,
     status: BedSummary['status']
   ): Promise<readonly BedSummary[]> {
     const result = await this.#db
       .select()
       .from(beds)
-      .where(and(eq(beds.sectorId, sectorId), eq(beds.status, status)));
+      .where(
+        and(eq(beds.sectorId, sectorId), eq(beds.accountId, accountId), eq(beds.status, status))
+      );
 
     return result.map((row) => this.mapRow(row));
   }
@@ -200,37 +220,39 @@ function createInMemoryRepositories(): {
       create: async (sector) => {
         sectorById.set(sector.id, copySector(sector));
       },
-      findById: async (sectorId) => {
+      findById: async (accountId, sectorId) => {
         const sector = sectorById.get(sectorId);
-        return sector ? copySector(sector) : null;
+        return sector && sector.accountId === accountId ? copySector(sector) : null;
       },
       findByAccountId: async (accountId) =>
-        [...sectorById.values()]
-          .filter((sector) => sector.accountId === accountId)
-          .map(copySector)
+        [...sectorById.values()].filter((sector) => sector.accountId === accountId).map(copySector)
     },
     bedRepository: {
       create: async (bed) => {
         bedById.set(bed.id, copyBed(bed));
       },
       update: async (bed) => {
-        bedById.set(bed.id, copyBed(bed));
+        const current = bedById.get(bed.id);
+        if (current?.accountId === bed.accountId) {
+          bedById.set(bed.id, copyBed(bed));
+        }
       },
-      findById: async (bedId) => {
+      findById: async (accountId, bedId) => {
         const bed = bedById.get(bedId);
-        return bed ? copyBed(bed) : null;
+        return bed && bed.accountId === accountId ? copyBed(bed) : null;
       },
-      findBySectorId: async (sectorId) =>
+      findBySectorId: async (accountId, sectorId) =>
         [...bedById.values()]
-          .filter((bed) => bed.sectorId === sectorId)
+          .filter((bed) => bed.accountId === accountId && bed.sectorId === sectorId)
           .map(copyBed),
       findByAccountId: async (accountId) =>
+        [...bedById.values()].filter((bed) => bed.accountId === accountId).map(copyBed),
+      findByStatus: async (accountId, sectorId, status) =>
         [...bedById.values()]
-          .filter((bed) => bed.accountId === accountId)
-          .map(copyBed),
-      findByStatus: async (sectorId, status) =>
-        [...bedById.values()]
-          .filter((bed) => bed.sectorId === sectorId && bed.status === status)
+          .filter(
+            (bed) =>
+              bed.accountId === accountId && bed.sectorId === sectorId && bed.status === status
+          )
           .map(copyBed)
     }
   };
@@ -278,15 +300,16 @@ export class SectorBedService {
   }
 
   public async listSectors(accountId: AccountId): Promise<readonly SectorSummary[]> {
-    return this.#sectorRepo.findByAccountId(accountId);
+    const sectors = await this.#sectorRepo.findByAccountId(accountId);
+    return sectors.filter((sector) => sector.accountId === accountId).map(copySector);
   }
 
-  public async getSectorOrThrow(sectorId: SectorId): Promise<SectorSummary> {
-    const sector = await this.#sectorRepo.findById(sectorId);
-    if (!sector) {
+  public async getSectorOrThrow(accountId: AccountId, sectorId: SectorId): Promise<SectorSummary> {
+    const sector = await this.#sectorRepo.findById(accountId, sectorId);
+    if (!sector || sector.accountId !== accountId) {
       throw new NotFoundError('Sector not found', { sectorId });
     }
-    return sector;
+    return copySector(sector);
   }
 
   public async createBed(accountId: AccountId, payload: CreateBedRequest): Promise<BedSummary> {
@@ -294,7 +317,7 @@ export class SectorBedService {
     requireNonEmptyString(payload.code, 'code');
     requireNonEmptyString(payload.name, 'name');
 
-    await this.getSectorOrThrow(payload.sectorId as SectorId);
+    await this.getSectorOrThrow(accountId, payload.sectorId as SectorId);
 
     const now = nowIso();
     const bed: BedSummary = {
@@ -315,26 +338,22 @@ export class SectorBedService {
   }
 
   public async listBeds(accountId: AccountId, sectorId?: SectorId): Promise<readonly BedSummary[]> {
-    if (sectorId) {
-      return this.#bedRepo.findBySectorId(sectorId);
-    }
-    return this.#bedRepo.findByAccountId(accountId);
+    const beds = sectorId
+      ? await this.#bedRepo.findBySectorId(accountId, sectorId)
+      : await this.#bedRepo.findByAccountId(accountId);
+    return beds.filter((bed) => bed.accountId === accountId).map(copyBed);
   }
 
-  public async getBedOrThrow(bedId: BedId): Promise<BedSummary> {
-    const bed = await this.#bedRepo.findById(bedId);
-    if (!bed) {
+  public async getBedOrThrow(accountId: AccountId, bedId: BedId): Promise<BedSummary> {
+    const bed = await this.#bedRepo.findById(accountId, bedId);
+    if (!bed || bed.accountId !== accountId) {
       throw new NotFoundError('Bed not found', { bedId });
     }
-    return bed;
+    return copyBed(bed);
   }
 
   public async getBedForAccountOrThrow(accountId: AccountId, bedId: BedId): Promise<BedSummary> {
-    const bed = await this.getBedOrThrow(bedId);
-    if (bed.accountId !== accountId) {
-      throw new NotFoundError('Bed not found', { bedId });
-    }
-    return bed;
+    return this.getBedOrThrow(accountId, bedId);
   }
 
   public async updateBed(
@@ -346,10 +365,7 @@ export class SectorBedService {
     const nextSectorId = (payload.sectorId ?? current.sectorId) as SectorId;
 
     if (payload.sectorId && payload.sectorId !== current.sectorId) {
-      const sector = await this.getSectorOrThrow(nextSectorId);
-      if (sector.accountId !== accountId) {
-        throw new NotFoundError('Sector not found', { sectorId: nextSectorId });
-      }
+      await this.getSectorOrThrow(accountId, nextSectorId);
     }
 
     const nextStatus = payload.status ?? current.status;
@@ -388,12 +404,16 @@ export class SectorBedService {
     });
   }
 
-  public async getAvailableBeds(sectorId: SectorId): Promise<readonly BedSummary[]> {
-    return this.#bedRepo.findByStatus(sectorId, 'available');
+  public async getAvailableBeds(
+    accountId: AccountId,
+    sectorId: SectorId
+  ): Promise<readonly BedSummary[]> {
+    const beds = await this.#bedRepo.findByStatus(accountId, sectorId, 'available');
+    return beds.filter((bed) => bed.accountId === accountId).map(copyBed);
   }
 
-  public async setBedOccupied(bedId: BedId): Promise<void> {
-    const bed = await this.getBedOrThrow(bedId);
+  public async setBedOccupied(accountId: AccountId, bedId: BedId): Promise<void> {
+    const bed = await this.getBedOrThrow(accountId, bedId);
     const updated: BedSummary = {
       ...bed,
       status: 'occupied',
@@ -402,8 +422,8 @@ export class SectorBedService {
     await this.#bedRepo.update(updated);
   }
 
-  public async setBedAvailable(bedId: BedId): Promise<void> {
-    const bed = await this.getBedOrThrow(bedId);
+  public async setBedAvailable(accountId: AccountId, bedId: BedId): Promise<void> {
+    const bed = await this.getBedOrThrow(accountId, bedId);
     const updated: BedSummary = {
       ...bed,
       status: 'available',

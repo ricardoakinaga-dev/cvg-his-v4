@@ -1,0 +1,97 @@
+{
+  "record_id": "GATE-CVG-003-AUDIT-OPERATIONAL-COVERAGE-LEGACY-RLS-IR-001",
+  "timestamp": "2026-08-29T18:35:00-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-003 tenant-safe legacy audit coverage under NOBYPASSRLS",
+  "scope_ref": "CVG-003-AUDIT-OPERATIONAL-COVERAGE-LEGACY-RLS",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "Independent review identified that the prior legacy-row proof used an administrative connection and that the current audit_events RLS policy hides NULL-account legacy rows under tenant context.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-SCOUT-CVG-003-AUDIT-OPERATIONAL-COVERAGE-LEGACY-RLS-001",
+        ".agent/tasks/CVG-003-AUDIT-OPERATIONAL-COVERAGE-LEGACY-RLS.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This is a bounded repository finding; it does not certify a target cluster."
+    },
+    {
+      "id": "IR-002",
+      "description": "The correction is limited to one audit_events policy migration and restricted-role integration evidence, with no bypass role, broad null-row access or unrelated migration changes.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/authority.jsonl#AUTH-CVG-003-AUDIT-OPERATIONAL-COVERAGE-LEGACY-RLS-IR-001",
+        ".agent/tasks/CVG-003-AUDIT-OPERATIONAL-COVERAGE-LEGACY-RLS.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The migration and tests must still be written RED/GREEN."
+    },
+    {
+      "id": "IR-003",
+      "description": "The required proof will run with cvg_test_rls/NOBYPASSRLS and tenant context, proving legacy inclusion, cross-account exclusion, complete history and deterministic ordering.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/authority.jsonl#AUTH-CVG-003-AUDIT-OPERATIONAL-COVERAGE-LEGACY-RLS-IR-001",
+        "tests/helpers/rls-helpers.ts",
+        "tests/integration/database/audit-cursor-pagination-postgres.test.ts"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "Execution evidence is pending."
+    },
+    {
+      "id": "IR-004",
+      "description": "Parent report, route, ABAC, API, global retest and promotion boundaries remain unchanged; global ERP remains IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-003-AUDIT-OPERATIONAL-COVERAGE-SOURCE-OF-TRUTH.md",
+        ".agent/state.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This is an implementation-ready child gate, not a completion verdict."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-003-AUDIT-OPERATIONAL-COVERAGE-LEGACY-RLS.md",
+    ".agent/verification.jsonl#VFY-SCOUT-CVG-003-AUDIT-OPERATIONAL-COVERAGE-LEGACY-RLS-001",
+    "packages/db/migrations/0003_rls_core_tables.sql",
+    "tests/helpers/rls-helpers.ts",
+    "tests/integration/database/audit-cursor-pagination-postgres.test.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "Restricted-role RED/GREEN and complete >100-row PostgreSQL evidence are pending.",
+    "Parent operational coverage still needs final closure after this child gate.",
+    "Replay-after-revocation, durable reprocess atomicity, systemic ABAC, external parity, target and release evidence remain open."
+  ],
+  "conditions": [
+    "Use exact legacyAccountId equality with current tenant UUID under RLS.",
+    "Do not expose all NULL-account rows to a tenant context.",
+    "Do not edit an already-applied migration; add one canonical forward migration.",
+    "Keep all production, target, credentials, providers, deployment and release scope excluded."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via explicit continuation request and independent security review",
+    "scope": "One audit_events RLS policy correction plus restricted-role PostgreSQL proof needed by parent CVG-003",
+    "decision": "Authorize only the minimum tenant-safe RLS policy migration and integration tests needed to make legacy-account operational coverage truthful under NOBYPASSRLS. Exclude all unrelated RLS, report, route, mutation, external and release scope.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-003-AUDIT-OPERATIONAL-COVERAGE-LEGACY-RLS-IR-001",
+    "expires_or_revalidates": "Revalidate before changing any policy outside audit_events, any report behavior, or any target/production boundary."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "implementation_status": "READY",
+  "next_action": "Write and execute the intentional restricted-role RED test before adding the forward migration, then run GREEN and full regression.",
+  "revalidation_triggers": [
+    "Changes to policies outside audit_events",
+    "Changes to report JSON, account filtering or route authorization",
+    "Any target, production, provider, credential, deployment or release action"
+  ],
+  "supersedes": null
+}

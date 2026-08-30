@@ -5,6 +5,7 @@ import type {
   LaboratoryService,
   LaboratoryWorkflowTransitionRequest
 } from '@cvg-his-v2/module-diagnostics';
+import { normalizeLaboratoryResultValues } from '@cvg-his-v2/module-diagnostics';
 import type {
   CreateDiagnosticOrderRequest,
   CreateLaboratoryEquipmentRequest,
@@ -30,7 +31,7 @@ import { readJsonBody as readLimitedJsonBody } from '../helpers/common.js';
 export interface LaboratoryRoutesHandlers {
   laboratory: LaboratoryService;
   audit: AuditService;
-  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
+  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
   onOrderCreated?: (order: { encounterId: string; examType: string }, principalUserId: string) => void;
   onOrderStatusChanged?: (
     order: { encounterId: string; examType: string },
@@ -155,8 +156,33 @@ function resolveModuleName(pathname: string): 'laboratory' | 'diagnostics' {
 }
 
 function normalizeSearch(value: string | null | undefined): string | undefined {
-  const normalized = value?.trim().toLowerCase();
+  const normalized = value
+    ?.trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
   return normalized ? normalized : undefined;
+}
+
+function laboratoryResultSearchText(order: {
+  readonly resultSummary?: string;
+  readonly resultValues?: readonly {
+    readonly parameter: string;
+    readonly value: string;
+    readonly unit?: string;
+    readonly reference?: string;
+  }[];
+}): string {
+  const parts = [
+    order.resultSummary,
+    ...(order.resultValues ?? []).flatMap((result) => [
+      result.parameter,
+      result.value,
+      result.unit,
+      result.reference
+    ])
+  ].filter((part): part is string => Boolean(part));
+  return normalizeSearch(parts.join(' ')) ?? '';
 }
 
 function createdAtMatchesDate(createdAt: string, dateFilter: string): boolean {
@@ -189,6 +215,18 @@ function formatReportDate(value: string | undefined): string {
 }
 
 function buildPrintableLaboratoryReportHtml(order: ReturnType<LaboratoryService['getOrder']>): string {
+  const resultValuesMarkup = order.resultValues?.length
+    ? `<table class="result-table">
+        <thead><tr><th>Parâmetro</th><th>Valor</th><th>Unidade</th><th>Referência</th><th>Status</th></tr></thead>
+        <tbody>${order.resultValues.map((result) => `<tr>
+          <td>${escapeHtml(result.parameter)}</td>
+          <td>${escapeHtml(result.value)}</td>
+          <td>${escapeHtml(result.unit ?? '-')}</td>
+          <td>${escapeHtml(result.reference ?? '-')}</td>
+          <td>${result.outOfRange ? 'Fora da faixa' : 'Dentro da faixa'}</td>
+        </tr>`).join('')}</tbody>
+      </table>`
+    : '';
   return `<!doctype html>
 <html lang="pt-BR">
 <head>
@@ -203,6 +241,9 @@ function buildPrintableLaboratoryReportHtml(order: ReturnType<LaboratoryService[
     dt { color: #475569; font-weight: 700; }
     dd { margin: 0; }
     .result { border: 1px solid #cbd5e1; border-radius: 8px; padding: 16px; white-space: pre-wrap; }
+    .result-table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+    .result-table th, .result-table td { border: 1px solid #cbd5e1; padding: 8px; text-align: left; }
+    .result-table th { background: #f8fafc; }
     .signature { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; margin-top: 24px; padding: 16px; }
     .hash { font-family: monospace; overflow-wrap: anywhere; }
   </style>
@@ -229,6 +270,7 @@ function buildPrintableLaboratoryReportHtml(order: ReturnType<LaboratoryService[
   <section>
     <h2>Resultado</h2>
     <div class="result">${escapeHtml(order.resultSummary ?? 'Resultado disponível em anexo.')}</div>
+    ${resultValuesMarkup}
   </section>
   <section class="signature">
     <h2>Assinatura e auditoria</h2>
@@ -410,6 +452,7 @@ function parseCanonicalLaboratoryTransition(
     return {
       status,
       resultSummary: typeof payload.resultSummary === 'string' ? payload.resultSummary : undefined,
+      resultValues: normalizeLaboratoryResultValues(payload.resultValues),
       resultAttachmentId:
         typeof payload.resultAttachmentId === 'string' ? payload.resultAttachmentId : undefined,
       actorUserId: principalUserId,
@@ -484,7 +527,7 @@ export async function handleLaboratoryRoutes(
   const routeModule = resolveModuleName(pathname);
 
   if ((pathname === '/laboratory/summary' || pathname === '/diagnostics/summary') && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'diagnostics.read');
+    const principal = await requirePrincipal(request, 'diagnostics.read');
     const payload = await laboratory.getDashboardSummary(principal.user.accountId as never);
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -501,7 +544,7 @@ export async function handleLaboratoryRoutes(
   }
 
   if ((pathname === '/laboratory/catalog' || pathname === '/diagnostics/catalog') && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'diagnostics.read');
+    const principal = await requirePrincipal(request, 'diagnostics.read');
     const payload: ExamCatalogListResponse = {
       items: laboratory.listCatalog()
     };
@@ -521,7 +564,7 @@ export async function handleLaboratoryRoutes(
   }
 
   if ((isLaboratoryOrdersCollectionPath(pathname) || pathname === '/diagnostics/orders') && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'diagnostics.read');
+    const principal = await requirePrincipal(request, 'diagnostics.read');
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const encounterId = url.searchParams.get('encounterId') ?? undefined;
     const patientFilter = normalizeSearch(url.searchParams.get('patientId') ?? url.searchParams.get('animal'));
@@ -553,7 +596,7 @@ export async function handleLaboratoryRoutes(
   }
 
   if (pathname === '/exam-orders' && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'diagnostics.read');
+    const principal = await requirePrincipal(request, 'diagnostics.read');
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const encounterId = url.searchParams.get('encounterId') ?? undefined;
     const items = await laboratory.listOrders(principal.user.accountId as never, encounterId);
@@ -586,7 +629,7 @@ export async function handleLaboratoryRoutes(
 
   const orderRouteMatch = pathname.match(/^\/(?:laboratory|diagnostics)\/orders\/([^/]+)$/);
   if (orderRouteMatch && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'diagnostics.read');
+    const principal = await requirePrincipal(request, 'diagnostics.read');
     const orderId = requireNonEmptyString(orderRouteMatch[1], 'diagnosticOrderId');
     const payload = pathname.startsWith('/laboratory/')
       ? laboratory.getWorkflowOrder(principal.user.accountId as never, orderId as never)
@@ -608,7 +651,7 @@ export async function handleLaboratoryRoutes(
 
   const examOrderRouteMatch = pathname.match(/^\/exam-orders\/([^/]+)$/);
   if (examOrderRouteMatch && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'diagnostics.read');
+    const principal = await requirePrincipal(request, 'diagnostics.read');
     const order = laboratory.getOrder(principal.user.accountId as never, examOrderRouteMatch[1] as never);
     return json(response, 200, {
       id: order.id,
@@ -636,7 +679,7 @@ export async function handleLaboratoryRoutes(
   }
 
   if ((isLaboratoryOrdersCollectionPath(pathname) || pathname === '/diagnostics/orders') && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'diagnostics.manage');
+    const principal = await requirePrincipal(request, 'diagnostics.manage');
     const payload = (await readJsonBody(request)) as CreateDiagnosticOrderRequest;
     const order = await laboratory.createOrderAndPersistForAccount(
       principal.user.accountId as never,
@@ -662,7 +705,7 @@ export async function handleLaboratoryRoutes(
     (pathname === '/exam-orders' || pathname.match(/^\/encounters\/[^/]+\/exam-orders$/))
     && request.method === 'POST'
   ) {
-    const principal = requirePrincipal(request, 'diagnostics.manage');
+    const principal = await requirePrincipal(request, 'diagnostics.manage');
     const payload = (await readJsonBody(request)) as Record<string, unknown>;
     const encounterIdFromPath = pathname.match(/^\/encounters\/([^/]+)\/exam-orders$/)?.[1];
     const order = await laboratory.createOrderAndPersistForAccount(
@@ -704,7 +747,7 @@ export async function handleLaboratoryRoutes(
     )
     && request.method === 'GET'
   ) {
-    const principal = requirePrincipal(request, 'diagnostics.read');
+    const principal = await requirePrincipal(request, 'diagnostics.read');
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const examType = isLaboratoryHemogramsCollectionPath(pathname)
       ? (url.searchParams.get('examType') ?? 'HEM')
@@ -722,7 +765,7 @@ export async function handleLaboratoryRoutes(
     const items = (await laboratory.listResults(principal.user.accountId as never, examType)).filter((order) => {
       if (codeFilter && !order.id.toLowerCase().includes(codeFilter)) return false;
       if (patientFilter && !order.patientId.toLowerCase().includes(patientFilter)) return false;
-      if (bodyFilter && !normalizeSearch(order.resultSummary)?.includes(bodyFilter)) return false;
+      if (bodyFilter && !laboratoryResultSearchText(order).includes(bodyFilter)) return false;
       if (finalizedAt && !dateMatches(order.updatedAt, finalizedAt)) return false;
       if (enteredAt && !dateMatches(order.createdAt, enteredAt)) return false;
       if (includeClosed === 'false' && order.status === 'resulted') return false;
@@ -757,7 +800,7 @@ export async function handleLaboratoryRoutes(
   }
 
   if (pathname === '/exam-results' && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'diagnostics.read');
+    const principal = await requirePrincipal(request, 'diagnostics.read');
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const examType = url.searchParams.get('category') ?? url.searchParams.get('examType') ?? undefined;
     const items = await laboratory.listResults(principal.user.accountId as never, examType);
@@ -774,7 +817,7 @@ export async function handleLaboratoryRoutes(
         status: order.status === 'resulted' ? 'released' : order.status === 'cancelled' ? 'cancelled' : 'draft',
         findings: order.resultSummary ?? null,
         interpretation: order.resultSummary ?? null,
-        resultValues: null,
+        resultValues: order.resultValues ?? null,
         normalRange: null,
         performedByUserId: order.collectedByUserId ?? null,
         performedAt: order.status === 'resulted' ? order.updatedAt : null,
@@ -790,7 +833,7 @@ export async function handleLaboratoryRoutes(
 
   const examResultRouteMatch = pathname.match(/^\/exam-results\/([^/]+)$/);
   if (examResultRouteMatch && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'diagnostics.read');
+    const principal = await requirePrincipal(request, 'diagnostics.read');
     const order = laboratory.getOrder(principal.user.accountId as never, examResultRouteMatch[1] as never);
     return json(response, 200, {
       id: order.id,
@@ -804,7 +847,7 @@ export async function handleLaboratoryRoutes(
       status: order.status === 'resulted' ? 'released' : order.status === 'cancelled' ? 'cancelled' : 'draft',
       findings: order.resultSummary ?? null,
       interpretation: order.resultSummary ?? null,
-      resultValues: null,
+      resultValues: order.resultValues ?? null,
       normalRange: null,
       performedByUserId: order.collectedByUserId ?? null,
       performedAt: order.status === 'resulted' ? order.updatedAt : null,
@@ -821,7 +864,7 @@ export async function handleLaboratoryRoutes(
     /^\/(?:laboratory\/reports|laboratorio\/atendimentos\/laudos|exam-results)\/([^/]+)\/print$/
   );
   if (printableReportMatch && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'diagnostics.read');
+    const principal = await requirePrincipal(request, 'diagnostics.read');
     const orderId = requireNonEmptyString(printableReportMatch[1], 'diagnosticOrderId');
     const order = laboratory.getOrder(principal.user.accountId as never, orderId as never);
     if (order.status !== 'resulted') {
@@ -847,7 +890,7 @@ export async function handleLaboratoryRoutes(
     /^\/(?:laboratory|diagnostics)\/orders\/([^/]+)\/result$/
   );
   if (resultRouteMatch && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'diagnostics.manage');
+    const principal = await requirePrincipal(request, 'diagnostics.manage');
     const orderId = requireNonEmptyString(resultRouteMatch[1], 'diagnosticOrderId');
     const idempotencyKey = requireLaboratoryIdempotencyKey(request);
     const incomingPayload = (await readJsonBody(request)) as Record<string, unknown>;
@@ -883,6 +926,7 @@ export async function handleLaboratoryRoutes(
         {
           status: callbackStatus,
           resultSummary: order.resultSummary,
+          resultValues: order.resultValues,
           resultAttachmentId: order.resultAttachmentId,
           collectedByUserId: order.collectedByUserId,
           releasedByUserId: order.releasedByUserId,
@@ -919,6 +963,7 @@ export async function handleLaboratoryRoutes(
       resultSummary: typeof incomingPayload.resultSummary === 'string'
         ? incomingPayload.resultSummary
         : undefined,
+      resultValues: normalizeLaboratoryResultValues(incomingPayload.resultValues),
       resultAttachmentId: typeof incomingPayload.resultAttachmentId === 'string'
         ? incomingPayload.resultAttachmentId
         : undefined,
@@ -948,7 +993,7 @@ export async function handleLaboratoryRoutes(
 
   const recollectRouteMatch = pathname.match(/^\/laboratory\/orders\/([^/]+)\/recollect$/);
   if (recollectRouteMatch && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'diagnostics.manage');
+    const principal = await requirePrincipal(request, 'diagnostics.manage');
     const orderId = requireNonEmptyString(recollectRouteMatch[1], 'diagnosticOrderId');
     const idempotencyKey = requireLaboratoryIdempotencyKey(request);
     const incomingPayload = (await readJsonBody(request)) as Record<string, unknown>;
@@ -977,7 +1022,7 @@ export async function handleLaboratoryRoutes(
 
   const deliverRouteMatch = pathname.match(/^\/laboratory\/orders\/([^/]+)\/deliver$/);
   if (deliverRouteMatch && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'diagnostics.manage');
+    const principal = await requirePrincipal(request, 'diagnostics.manage');
     const orderId = requireNonEmptyString(deliverRouteMatch[1], 'diagnosticOrderId');
     const idempotencyKey = requireLaboratoryIdempotencyKey(request);
     const incomingPayload = (await readJsonBody(request)) as Record<string, unknown>;
@@ -1012,7 +1057,7 @@ export async function handleLaboratoryRoutes(
   }
 
   if (pathname.match(/^\/exam-results\/[^/]+$/) && request.method === 'PATCH') {
-    const principal = requirePrincipal(request, 'diagnostics.manage');
+    const principal = await requirePrincipal(request, 'diagnostics.manage');
     const orderId = requireNonEmptyString(pathname.split('/')[2], 'examResultId');
     const payload = (await readJsonBody(request)) as Record<string, unknown>;
     const status =
@@ -1032,6 +1077,7 @@ export async function handleLaboratoryRoutes(
             : typeof payload.interpretation === 'string'
               ? payload.interpretation
               : undefined,
+        resultValues: normalizeLaboratoryResultValues(payload.resultValues),
         resultAttachmentId:
           typeof payload.resultAttachmentId === 'string' ? payload.resultAttachmentId : undefined,
         collectedByUserId: principal.user.id,
@@ -1054,6 +1100,7 @@ export async function handleLaboratoryRoutes(
             : typeof payload.interpretation === 'string'
               ? payload.interpretation
               : undefined,
+        resultValues: normalizeLaboratoryResultValues(payload.resultValues),
         resultAttachmentId:
           typeof payload.resultAttachmentId === 'string' ? payload.resultAttachmentId : undefined,
         collectedByUserId: principal.user.id,
@@ -1079,7 +1126,7 @@ export async function handleLaboratoryRoutes(
       status: order.status === 'resulted' ? 'released' : order.status === 'cancelled' ? 'cancelled' : 'draft',
       findings: order.resultSummary ?? null,
       interpretation: order.resultSummary ?? null,
-      resultValues: null,
+      resultValues: order.resultValues ?? null,
       normalRange: null,
       performedByUserId: order.collectedByUserId ?? null,
       performedAt: order.status === 'resulted' ? order.updatedAt : null,
@@ -1094,7 +1141,7 @@ export async function handleLaboratoryRoutes(
 
   const equipmentDetailMatch = pathname.match(/^\/laboratory\/equipment\/([^/]+)$/);
   if (equipmentDetailMatch && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'diagnostics.read');
+    const principal = await requirePrincipal(request, 'diagnostics.read');
     const equipmentId = requireNonEmptyString(equipmentDetailMatch[1], 'equipmentId');
     const payload = await laboratory.getEquipment(principal.user.accountId as never, equipmentId);
     appendAudit(audit, {
@@ -1112,7 +1159,7 @@ export async function handleLaboratoryRoutes(
   }
 
   if (isLaboratoryEquipmentCollectionPath(pathname) && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'diagnostics.read');
+    const principal = await requirePrincipal(request, 'diagnostics.read');
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const idFilter = normalizeSearch(url.searchParams.get('id') ?? url.searchParams.get('codigo'));
     const descriptionFilter = normalizeSearch(url.searchParams.get('description') ?? url.searchParams.get('descricao'));
@@ -1144,7 +1191,7 @@ export async function handleLaboratoryRoutes(
   }
 
   if (isLaboratoryEquipmentCollectionPath(pathname) && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'diagnostics.manage');
+    const principal = await requirePrincipal(request, 'diagnostics.manage');
     const payload = parseCreateEquipmentPayload((await readJsonBody(request)) as Record<string, unknown>);
     const equipment = await laboratory.createEquipment(principal.user.accountId as never, payload);
     appendAudit(audit, {
@@ -1162,7 +1209,7 @@ export async function handleLaboratoryRoutes(
   }
 
   if (equipmentDetailMatch && request.method === 'PATCH') {
-    const principal = requirePrincipal(request, 'diagnostics.manage');
+    const principal = await requirePrincipal(request, 'diagnostics.manage');
     const equipmentId = requireNonEmptyString(equipmentDetailMatch[1], 'equipmentId');
     const payload = parseUpdateEquipmentPayload((await readJsonBody(request)) as Record<string, unknown>);
     const equipment = await laboratory.updateEquipment(principal.user.accountId as never, equipmentId, payload);
@@ -1185,7 +1232,7 @@ export async function handleLaboratoryRoutes(
   );
 
   if (reportTypeDetailMatch && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'diagnostics.read');
+    const principal = await requirePrincipal(request, 'diagnostics.read');
     const reportTypeId = requireNonEmptyString(reportTypeDetailMatch[1], 'reportTypeId');
     const payload = await laboratory.getReportType(principal.user.accountId as never, reportTypeId);
     appendAudit(audit, {
@@ -1203,7 +1250,7 @@ export async function handleLaboratoryRoutes(
   }
 
   if (isLaboratoryReportTypeCollectionPath(pathname) && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'diagnostics.read');
+    const principal = await requirePrincipal(request, 'diagnostics.read');
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const codeFilter = normalizeSearch(url.searchParams.get('code') ?? url.searchParams.get('codigo'));
     const descriptionFilter = normalizeSearch(url.searchParams.get('description') ?? url.searchParams.get('descricao'));
@@ -1238,7 +1285,7 @@ export async function handleLaboratoryRoutes(
   }
 
   if (isLaboratoryReportTypeCollectionPath(pathname) && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'diagnostics.manage');
+    const principal = await requirePrincipal(request, 'diagnostics.manage');
     const payload = parseCreateReportTypePayload((await readJsonBody(request)) as Record<string, unknown>);
     const reportType = await laboratory.createReportType(principal.user.accountId as never, payload);
     appendAudit(audit, {
@@ -1256,7 +1303,7 @@ export async function handleLaboratoryRoutes(
   }
 
   if (reportTypeDetailMatch && request.method === 'PATCH') {
-    const principal = requirePrincipal(request, 'diagnostics.manage');
+    const principal = await requirePrincipal(request, 'diagnostics.manage');
     const reportTypeId = requireNonEmptyString(reportTypeDetailMatch[1], 'reportTypeId');
     const payload = parseUpdateReportTypePayload((await readJsonBody(request)) as Record<string, unknown>);
     const reportType = await laboratory.updateReportType(principal.user.accountId as never, reportTypeId, payload);
@@ -1279,7 +1326,7 @@ export async function handleLaboratoryRoutes(
   );
 
   if (referenceValueDetailMatch && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'diagnostics.read');
+    const principal = await requirePrincipal(request, 'diagnostics.read');
     const referenceValueId = requireNonEmptyString(referenceValueDetailMatch[1], 'referenceValueId');
     const payload = await laboratory.getReferenceValue(principal.user.accountId as never, referenceValueId);
     appendAudit(audit, {
@@ -1297,7 +1344,7 @@ export async function handleLaboratoryRoutes(
   }
 
   if (isLaboratoryReferenceValueCollectionPath(pathname) && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'diagnostics.read');
+    const principal = await requirePrincipal(request, 'diagnostics.read');
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const examType = isLaboratoryHemogramReferenceValueCollectionPath(pathname)
       ? 'HEM'
@@ -1339,7 +1386,7 @@ export async function handleLaboratoryRoutes(
   }
 
   if (isLaboratoryHemogramReferenceValueCollectionPath(pathname) && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'diagnostics.manage');
+    const principal = await requirePrincipal(request, 'diagnostics.manage');
     const payload = parseCreateReferenceValuePayload((await readJsonBody(request)) as Record<string, unknown>, 'HEM');
     const referenceValue = await laboratory.createReferenceValue(principal.user.accountId as never, {
       ...payload,
@@ -1360,7 +1407,7 @@ export async function handleLaboratoryRoutes(
   }
 
   if (isLaboratoryBiochemistryReferenceValueCollectionPath(pathname) && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'diagnostics.manage');
+    const principal = await requirePrincipal(request, 'diagnostics.manage');
     const payload = parseCreateReferenceValuePayload((await readJsonBody(request)) as Record<string, unknown>, 'BIO');
     const referenceValue = await laboratory.createReferenceValue(principal.user.accountId as never, {
       ...payload,
@@ -1381,7 +1428,7 @@ export async function handleLaboratoryRoutes(
   }
 
   if (referenceValueDetailMatch && request.method === 'PATCH') {
-    const principal = requirePrincipal(request, 'diagnostics.manage');
+    const principal = await requirePrincipal(request, 'diagnostics.manage');
     const referenceValueId = requireNonEmptyString(referenceValueDetailMatch[1], 'referenceValueId');
     const payload = parseUpdateReferenceValuePayload((await readJsonBody(request)) as Record<string, unknown>);
     const referenceValue = await laboratory.updateReferenceValue(principal.user.accountId as never, referenceValueId, payload);

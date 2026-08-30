@@ -5,12 +5,11 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { EncounterCashReceiptCommand } from '../../../apps/api/src/commands/encounter-cash-receipt.js';
 import { DatabaseEncounterCashReceiptRepository } from '../../../apps/api/src/encounter-cash-receipt-repository.js';
+import { EncounterCashReceiptReversalCommand } from '../../../apps/api/src/commands/encounter-cash-receipt-reversal.js';
+import { DatabaseEncounterCashReceiptReversalRepository } from '../../../apps/api/src/encounter-cash-receipt-reversal-repository.js';
 import { assertEncounterHasNoCashReceipt } from '../../../apps/api/src/routes/encounter-cash-receipt-routes.js';
 import { DatabaseCashRepository } from '../../../packages/modules/cash/src/index.js';
-import {
-  createTenantUnitOfWork,
-  type JsonValue
-} from '@cvg-his-v2/shared-database';
+import { createTenantUnitOfWork, type JsonValue } from '@cvg-his-v2/shared-database';
 import { AppError } from '@cvg-his-v2/shared-errors';
 import { getTestPool } from '../../db/db-admin.js';
 
@@ -102,6 +101,26 @@ function input(fixture: Fixture) {
     cashRegisterId: fixture.cashRegisterId,
     expectedAmount: AMOUNT,
     notes: 'Pagamento integral em dinheiro'
+  };
+}
+
+function reversalContext(fixture: Fixture, idempotencyKey: string) {
+  return {
+    accountId: fixture.accountId,
+    actorUserId: fixture.actorUserId,
+    correlationId: randomUUID(),
+    operation: 'POST /encounters/:id/cash-receipts/:receiptId/reverse',
+    idempotencyKey
+  };
+}
+
+function reversalInput(fixture: Fixture, receiptId: string) {
+  return {
+    accountId: fixture.accountId,
+    encounterId: fixture.encounterId,
+    receiptId,
+    actorUserId: fixture.actorUserId,
+    reason: 'Correção de caixa'
   };
 }
 
@@ -200,14 +219,10 @@ describe('atomic encounter cash receipt command', () => {
     const payload = input(fixture);
 
     await expect(
-      unitOfWork.execute(
-        context(fixture, randomUUID()),
-        payload,
-        async () => {
-          await command.execute(payload);
-          throw new Error('injected failure after receipt');
-        }
-      )
+      unitOfWork.execute(context(fixture, randomUUID()), payload, async () => {
+        await command.execute(payload);
+        throw new Error('injected failure after receipt');
+      })
     ).rejects.toThrow('injected failure after receipt');
 
     expect(await artifactCounts(pool, fixture)).toEqual({
@@ -231,11 +246,12 @@ describe('atomic encounter cash receipt command', () => {
     const command = new EncounterCashReceiptCommand(new DatabaseEncounterCashReceiptRepository());
     const executionContext = context(fixture, randomUUID());
     const payload = input(fixture);
-    const execute = () => unitOfWork.execute(
-      executionContext,
-      payload,
-      async () => command.execute(payload) as unknown as JsonValue
-    );
+    const execute = () =>
+      unitOfWork.execute(
+        executionContext,
+        payload,
+        async () => command.execute(payload) as unknown as JsonValue
+      );
 
     const results = await Promise.all([execute(), execute()]);
 
@@ -406,10 +422,10 @@ describe('atomic encounter cash receipt command', () => {
       {},
       async (transaction) => {
         await assertEncounterHasNoCashReceipt(repository, fixture.accountId, fixture.encounterId);
-        await transaction.client.query(
-          'DELETE FROM encounters WHERE account_id = $1 AND id = $2',
-          [fixture.accountId, fixture.encounterId]
-        );
+        await transaction.client.query('DELETE FROM encounters WHERE account_id = $1 AND id = $2', [
+          fixture.accountId,
+          fixture.encounterId
+        ]);
         return null;
       }
     );
@@ -491,5 +507,347 @@ describe('atomic encounter cash receipt command', () => {
       audits: 0,
       outbox_events: 0
     });
+  });
+
+  it('reverses the receipt atomically, preserves the original proof and permits a replacement receipt', async () => {
+    const fixture = await createFixture(pool);
+    const receiptRepository = new DatabaseEncounterCashReceiptRepository();
+    const receiptCommand = new EncounterCashReceiptCommand(receiptRepository);
+    const unitOfWork = createTenantUnitOfWork(pool);
+    const created = await unitOfWork.execute(
+      context(fixture, randomUUID()),
+      input(fixture),
+      async () => receiptCommand.execute(input(fixture)) as unknown as JsonValue
+    );
+    const reversalRepository = new DatabaseEncounterCashReceiptReversalRepository();
+    const reversalCommand = new EncounterCashReceiptReversalCommand(reversalRepository);
+    const reversed = await unitOfWork.execute(
+      reversalContext(fixture, randomUUID()),
+      reversalInput(fixture, created.value.id),
+      async () =>
+        reversalCommand.execute(reversalInput(fixture, created.value.id)) as unknown as JsonValue
+    );
+
+    expect(reversed.replayed).toBe(false);
+    expect(reversed.value).toMatchObject({
+      accountId: fixture.accountId,
+      receiptId: created.value.id,
+      encounterId: fixture.encounterId,
+      amount: AMOUNT,
+      currency: 'BRL',
+      reason: 'Correção de caixa',
+      reversedByUserId: fixture.actorUserId,
+      originalCashRegisterId: fixture.cashRegisterId,
+      reversalCashRegisterId: fixture.cashRegisterId,
+      originalCashMovementId: created.value.cashMovementId,
+      originalJournalEntryId: created.value.journalEntryId
+    });
+
+    const state = await pool.query(
+      `SELECT billing.status AS billing_status,
+              financial.financial_status,
+              financial.paid_amount,
+              financial.balance_due,
+              receivable.status AS receivable_status,
+              receivable.amount_paid,
+              receivable.amount_outstanding,
+              (SELECT COUNT(*)::int FROM encounter_cash_receipts
+                WHERE account_id = $1 AND encounter_id = $2) AS receipt_count,
+              (SELECT COUNT(*)::int FROM encounter_cash_receipt_reversals
+                WHERE account_id = $1 AND encounter_id = $2) AS reversal_count,
+              (SELECT COUNT(*)::int FROM encounter_receivable_payments
+                WHERE account_id = $1 AND encounter_id = $2) AS payment_count,
+              (SELECT COUNT(*)::int FROM cash_movements
+                WHERE account_id = $1 AND cash_register_id = $3
+                  AND movement_type IN ('payment', 'withdrawal')) AS cash_movement_count,
+              (SELECT running_balance FROM cash_movements
+                WHERE account_id = $1 AND cash_register_id = $3
+                ORDER BY created_at DESC, id DESC LIMIT 1) AS running_balance,
+              (SELECT COUNT(*)::int FROM financial_journal_entries
+                WHERE account_id = $1 AND source_type IN ('encounter_cash_receipt', 'encounter_cash_receipt_reversal')) AS journal_count,
+              (SELECT COUNT(*)::int FROM audit_events
+                WHERE account_id = $1 AND entity_type = 'encounter_cash_receipt_reversal') AS reversal_audit_count,
+              (SELECT COUNT(*)::int FROM outbox_events
+                WHERE account_id = $1 AND event_type = 'encounter.cash-receipt.reversed') AS reversal_outbox_count
+         FROM billing_records AS billing
+         JOIN encounter_financial_accounts AS financial
+           ON financial.account_id = billing.account_id AND financial.encounter_id = billing.encounter_id
+         JOIN encounter_receivables AS receivable
+           ON receivable.account_id = financial.account_id AND receivable.financial_account_id = financial.id
+        WHERE billing.account_id = $1 AND billing.encounter_id = $2`,
+      [fixture.accountId, fixture.encounterId, fixture.cashRegisterId]
+    );
+    expect(state.rows[0]).toMatchObject({
+      billing_status: 'open',
+      financial_status: 'pending',
+      paid_amount: '0.00',
+      balance_due: '125.50',
+      receivable_status: 'open',
+      amount_paid: '0.00',
+      amount_outstanding: '125.50',
+      receipt_count: 1,
+      reversal_count: 1,
+      payment_count: 1,
+      cash_movement_count: 2,
+      running_balance: '50.00',
+      journal_count: 2,
+      reversal_audit_count: 1,
+      reversal_outbox_count: 1
+    });
+    const reversalJournalLines = await pool.query(
+      `SELECT account_code, debit, credit
+         FROM financial_journal_lines
+        WHERE account_id = $1 AND entry_id = $2
+        ORDER BY account_code`,
+      [fixture.accountId, reversed.value.reversalJournalEntryId]
+    );
+    expect(reversalJournalLines.rows).toEqual([
+      { account_code: '1.1.01-caixa', debit: '0.00', credit: '125.50' },
+      { account_code: '3.1.01-receita-clinica', debit: '125.50', credit: '0.00' }
+    ]);
+    await expect(
+      pool.query(
+        `UPDATE encounter_cash_receipt_reversals
+            SET reason = 'Tampering'
+          WHERE account_id = $1 AND id = $2`,
+        [fixture.accountId, reversed.value.id]
+      )
+    ).rejects.toThrow(/financial proof is immutable/iu);
+    await expect(
+      pool.query(
+        `DELETE FROM encounter_cash_receipt_reversals
+          WHERE account_id = $1 AND id = $2`,
+        [fixture.accountId, reversed.value.id]
+      )
+    ).rejects.toThrow(/append-only/iu);
+    await expect(
+      pool.query(
+        `UPDATE cash_movements
+            SET running_balance = 0
+          WHERE account_id = $1 AND id = $2`,
+        [fixture.accountId, reversed.value.reversalCashMovementId]
+      )
+    ).rejects.toThrow(/reversal movements are immutable/iu);
+    await expect(
+      pool.query(
+        `DELETE FROM cash_movements
+          WHERE account_id = $1 AND id = $2`,
+        [fixture.accountId, reversed.value.reversalCashMovementId]
+      )
+    ).rejects.toThrow(/reversal movements are immutable/iu);
+    await expect(
+      pool.query(
+        `UPDATE financial_journal_entries
+            SET description = 'Tampering'
+          WHERE account_id = $1 AND id = $2`,
+        [fixture.accountId, reversed.value.reversalJournalEntryId]
+      )
+    ).rejects.toThrow(/reversal journal entries are immutable/iu);
+    await expect(
+      pool.query(
+        `UPDATE financial_journal_lines
+            SET memo = 'Tampering'
+          WHERE account_id = $1 AND entry_id = $2`,
+        [fixture.accountId, reversed.value.reversalJournalEntryId]
+      )
+    ).rejects.toThrow(/reversal journal lines are immutable/iu);
+    await expect(
+      pool.query(
+        `INSERT INTO financial_journal_lines (
+           id, account_id, entry_id, account_code, debit, credit, memo
+         ) VALUES ($1, $2, $3, '1.1.01-caixa', 0, 1, 'Tampering')`,
+        [randomUUID(), fixture.accountId, reversed.value.reversalJournalEntryId]
+      )
+    ).rejects.toThrow(/reversal journal lines are immutable/iu);
+    await expect(
+      pool.query(
+        `DELETE FROM financial_journal_lines
+          WHERE account_id = $1 AND entry_id = $2`,
+        [fixture.accountId, reversed.value.reversalJournalEntryId]
+      )
+    ).rejects.toThrow(/reversal journal lines are immutable/iu);
+    await expect(
+      unitOfWork.execute(context(fixture, randomUUID()), null, async () => {
+        await assertEncounterHasNoCashReceipt(
+          receiptRepository,
+          fixture.accountId,
+          fixture.encounterId
+        );
+        return null;
+      })
+    ).resolves.toMatchObject({ replayed: false });
+
+    const source = await pool.query(
+      `SELECT amount, received_by_user_id, cash_movement_id, journal_entry_id
+         FROM encounter_cash_receipts
+        WHERE account_id = $1 AND id = $2`,
+      [fixture.accountId, created.value.id]
+    );
+    expect(source.rows[0]).toEqual({
+      amount: '125.50',
+      received_by_user_id: fixture.actorUserId,
+      cash_movement_id: created.value.cashMovementId,
+      journal_entry_id: created.value.journalEntryId
+    });
+
+    const replacement = await unitOfWork.execute(
+      context(fixture, randomUUID()),
+      input(fixture),
+      async () => receiptCommand.execute(input(fixture)) as unknown as JsonValue
+    );
+    expect(replacement.replayed).toBe(false);
+    expect(replacement.value.id).not.toBe(created.value.id);
+    const receipts = await pool.query(
+      `SELECT COUNT(*)::int AS count FROM encounter_cash_receipts
+        WHERE account_id = $1 AND encounter_id = $2`,
+      [fixture.accountId, fixture.encounterId]
+    );
+    expect(receipts.rows[0]?.count).toBe(2);
+    await expect(
+      unitOfWork.execute(context(fixture, randomUUID()), null, async () => {
+        await assertEncounterHasNoCashReceipt(
+          receiptRepository,
+          fixture.accountId,
+          fixture.encounterId
+        );
+        return null;
+      })
+    ).rejects.toMatchObject<AppError>({
+      code: 'CASH_RECEIPT_REVERSAL_REQUIRED',
+      statusCode: 409
+    });
+  });
+
+  it('rechecks the separate reversal cash register when its timing changes', async () => {
+    const fixture = await createFixture(pool);
+    const receiptRepository = new DatabaseEncounterCashReceiptRepository();
+    const receiptCommand = new EncounterCashReceiptCommand(receiptRepository);
+    const unitOfWork = createTenantUnitOfWork(pool);
+    const created = await unitOfWork.execute(
+      context(fixture, randomUUID()),
+      input(fixture),
+      async () => receiptCommand.execute(input(fixture)) as unknown as JsonValue
+    );
+
+    await pool.query(
+      `UPDATE cash_registers
+          SET status = 'closed', closed_at = clock_timestamp()
+        WHERE account_id = $1 AND id = $2`,
+      [fixture.accountId, fixture.cashRegisterId]
+    );
+    const reversalRegisterId = randomUUID();
+    await pool.query(
+      `INSERT INTO cash_registers (
+         id, account_id, opened_by_user_id, opening_amount, status
+       ) VALUES ($1, $2, $3, 200, 'open')`,
+      [reversalRegisterId, fixture.accountId, fixture.actorUserId]
+    );
+
+    const reversalCommand = new EncounterCashReceiptReversalCommand(
+      new DatabaseEncounterCashReceiptReversalRepository()
+    );
+    const reversalPayload = reversalInput(fixture, created.value.id);
+    const reversed = await unitOfWork.execute(
+      reversalContext(fixture, randomUUID()),
+      reversalPayload,
+      async () => reversalCommand.execute(reversalPayload) as unknown as JsonValue
+    );
+    expect(reversed.value.reversalCashRegisterId).toBe(reversalRegisterId);
+
+    await expect(
+      pool.query(
+        `UPDATE cash_registers
+            SET status = 'closed', closed_at = '2000-01-01T00:00:00.000Z'
+          WHERE account_id = $1 AND id = $2`,
+        [fixture.accountId, reversalRegisterId]
+      )
+    ).rejects.toThrow(/inconsistent with its settlement artifacts/iu);
+    const register = await pool.query(
+      `SELECT status, closed_at
+         FROM cash_registers
+        WHERE account_id = $1 AND id = $2`,
+      [fixture.accountId, reversalRegisterId]
+    );
+    expect(register.rows[0]?.status).toBe('open');
+    expect(register.rows[0]?.closed_at).toBeNull();
+  });
+
+  it('rolls the reversal graph back when a later command stage fails', async () => {
+    const fixture = await createFixture(pool);
+    const receiptRepository = new DatabaseEncounterCashReceiptRepository();
+    const receiptCommand = new EncounterCashReceiptCommand(receiptRepository);
+    const unitOfWork = createTenantUnitOfWork(pool);
+    const created = await unitOfWork.execute(
+      context(fixture, randomUUID()),
+      input(fixture),
+      async () => receiptCommand.execute(input(fixture)) as unknown as JsonValue
+    );
+    const reversalRepository = new DatabaseEncounterCashReceiptReversalRepository();
+    const reversalCommand = new EncounterCashReceiptReversalCommand(reversalRepository);
+    const reversalPayload = reversalInput(fixture, created.value.id);
+
+    await expect(
+      unitOfWork.execute(reversalContext(fixture, randomUUID()), reversalPayload, async () => {
+        await reversalCommand.execute(reversalPayload);
+        throw new Error('injected failure after reversal');
+      })
+    ).rejects.toThrow('injected failure after reversal');
+
+    const state = await pool.query(
+      `SELECT
+         (SELECT COUNT(*)::int FROM encounter_cash_receipt_reversals WHERE account_id = $1 AND receipt_id = $2) AS reversals,
+         (SELECT COUNT(*)::int FROM cash_movements WHERE account_id = $1 AND reference LIKE 'encounter_cash_receipt_reversal:%') AS movements,
+         (SELECT COUNT(*)::int FROM financial_journal_entries WHERE account_id = $1 AND source_type = 'encounter_cash_receipt_reversal') AS journals,
+         (SELECT COUNT(*)::int FROM audit_events WHERE account_id = $1 AND entity_type = 'encounter_cash_receipt_reversal') AS audits,
+         (SELECT COUNT(*)::int FROM outbox_events WHERE account_id = $1 AND event_type = 'encounter.cash-receipt.reversed') AS outbox_events,
+         (SELECT status FROM billing_records WHERE account_id = $1 AND encounter_id = $3) AS billing_status,
+         (SELECT financial_status FROM encounter_financial_accounts WHERE account_id = $1 AND encounter_id = $3) AS financial_status`,
+      [fixture.accountId, created.value.id, fixture.encounterId]
+    );
+    expect(state.rows[0]).toEqual({
+      reversals: 0,
+      movements: 0,
+      journals: 0,
+      audits: 0,
+      outbox_events: 0,
+      billing_status: 'settled',
+      financial_status: 'paid'
+    });
+  });
+
+  it('serializes distinct idempotency keys into one reversal and one stable conflict', async () => {
+    const fixture = await createFixture(pool);
+    const receiptRepository = new DatabaseEncounterCashReceiptRepository();
+    const receiptCommand = new EncounterCashReceiptCommand(receiptRepository);
+    const unitOfWork = createTenantUnitOfWork(pool);
+    const created = await unitOfWork.execute(
+      context(fixture, randomUUID()),
+      input(fixture),
+      async () => receiptCommand.execute(input(fixture)) as unknown as JsonValue
+    );
+    const reversalCommand = new EncounterCashReceiptReversalCommand(
+      new DatabaseEncounterCashReceiptReversalRepository()
+    );
+    const payload = reversalInput(fixture, created.value.id);
+    const execute = (key: string) =>
+      unitOfWork.execute(
+        reversalContext(fixture, key),
+        payload,
+        async () => reversalCommand.execute(payload) as unknown as JsonValue
+      );
+
+    const results = await Promise.allSettled([execute(randomUUID()), execute(randomUUID())]);
+    expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+    const rejected = results.find((result) => result.status === 'rejected');
+    expect(rejected?.status === 'rejected' ? rejected.reason : undefined).toMatchObject<AppError>({
+      code: 'CASH_RECEIPT_ALREADY_REVERSED',
+      statusCode: 409
+    });
+    const count = await pool.query(
+      `SELECT COUNT(*)::int AS count FROM encounter_cash_receipt_reversals
+        WHERE account_id = $1 AND receipt_id = $2`,
+      [fixture.accountId, created.value.id]
+    );
+    expect(count.rows[0]?.count).toBe(1);
   });
 });

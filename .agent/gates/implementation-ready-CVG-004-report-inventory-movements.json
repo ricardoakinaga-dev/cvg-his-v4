@@ -1,0 +1,85 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-INVENTORY-MOVEMENTS-IR-001",
+  "timestamp": "2026-08-28T01:19:38-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-004 bounded on-demand server-backed inventory movement ledger report/export",
+  "scope_ref": "CVG-004-REPORT-INVENTORY-MOVEMENTS",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The ledger grain, exact thirteen-field contract, raw movement semantics, filters, permission, bound and non-promotion exclusions are frozen.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-inventory-movements.md",
+        ".agent/authority.jsonl#AUTH-CVG-004-REPORT-INVENTORY-MOVEMENTS-IR-001",
+        "packages/db/migrations/0052_inventory_stock_movements.sql",
+        "docs/vetus/guides/2026-04-24-relatorio-relatorios-estoque.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Vetus evidence establishes the report surface, not an authoritative dynamic-executor schema; the bounded local contract is explicit about that limitation."
+    },
+    {
+      "id": "IR-002",
+      "description": "Existing tenant-scoped inventory_stock_movements and inventory_items persistence plus ReportsService provide an additive implementation path without a migration.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/db/migrations/0052_inventory_stock_movements.sql",
+        "packages/db/migrations/0062_inventory_runtime_persistence.sql",
+        "packages/modules/inventory/src/repositories/database-inventory.repository.ts",
+        "packages/modules/inventory/src/index.ts",
+        "apps/api/src/routes/reports-routes.ts",
+        "apps/api/src/runtime.ts",
+        "apps/api/src/bootstrap.ts",
+        "packages/modules/reports/src/index.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The current repository query needs report-specific filtering, deterministic tie-breaking and an explicit disabled stock-movement capability check before it is implementation-ready in code."
+    },
+    {
+      "id": "IR-003",
+      "description": "Focused TDD and disposable PostgreSQL/browser evidence can prove exact mapping, tenant isolation, filter semantics, fail-closed behavior, durable audit and server-side SPA export.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-inventory-movements.md",
+        "packages/modules/inventory/src/inventory.test.ts",
+        "packages/modules/reports/src/reports.test.ts",
+        "apps/api/src/routes/reports-routes.test.ts",
+        "apps/spa/src/pages/reports/__tests__/ReportWorkbenchPage.test.ts",
+        "tests/integration/database/inventory-stock-report-postgres.test.ts",
+        "e2e/spa/inventory-stock-report-flow.spec.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Implementation, fresh verification and independent critique are required before a bounded result is recorded."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-report-inventory-movements.md",
+    ".agent/authority.jsonl#AUTH-CVG-004-REPORT-INVENTORY-MOVEMENTS-IR-001",
+    "packages/db/migrations/0052_inventory_stock_movements.sql",
+    "packages/db/migrations/0062_inventory_runtime_persistence.sql",
+    "packages/modules/inventory/src/repositories/database-inventory.repository.ts",
+    "apps/api/src/routes/reports-routes.ts",
+    "apps/spa/src/pages/reports/ReportWorkbenchPage.vue",
+    "docs/vetus/guides/2026-04-24-relatorio-relatorios-estoque.md"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "The RED tests, implementation, disposable database/browser proof, independent critique and post-implementation regression are not complete at gate creation."
+  ],
+  "conditions": [],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via the original consolidation brief and explicit continuation request",
+    "scope": "CVG-004 bounded on-demand server-backed inventory movement ledger report/export",
+    "decision": "Authorize only the raw tenant-scoped persisted movement ledger projection and its audited on-demand Reports Workbench execution/export. Exclude lots, consumptions, inventory-invoices/NF semantics, scheduled delivery, historical/as-of valuation, providers, fiscal writes, credentials, target, production, deployment, backfill and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-INVENTORY-MOVEMENTS-IR-001",
+    "expires_or_revalidates": "Revalidate before adding invoice/NF-entry semantics, lot or consumption reconstruction, business interpretation, scheduled delivery, writes, providers, credentials, target, production, deployment or release activity."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS"
+}

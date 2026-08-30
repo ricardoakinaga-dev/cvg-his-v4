@@ -56,6 +56,22 @@ describe('EnvSecretsProvider', () => {
 });
 
 describe('VaultSecretsProvider', () => {
+  it('fails closed when Vault is enabled without complete production-like configuration', async () => {
+    await expect(createSecretsManager({
+      vaultEnabled: true,
+      environment: 'production'
+    })).rejects.toThrow(/Vault configuration incomplete.*production-like|refusing env fallback/i);
+  });
+
+  it('keeps the environment fallback explicit for development', async () => {
+    const manager = await createSecretsManager({
+      vaultEnabled: true,
+      environment: 'development'
+    });
+
+    expect(manager.provider).toBe('env');
+  });
+
   it('authenticates with AppRole and reads KV-v2 secrets using the configured prefix', async () => {
     const requests: string[] = [];
     const server = createServer((request, response) => {

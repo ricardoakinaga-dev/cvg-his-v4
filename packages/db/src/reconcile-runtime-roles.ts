@@ -5,6 +5,7 @@ import {
   API_GLOBAL_TABLE_MUTATIONS,
   API_SENSITIVE_TABLE_PRIVILEGES,
   RUNTIME_SENSITIVE_TABLES,
+  RUNTIME_APPEND_ONLY_TABLES,
   RUNTIME_INSTALLER_MUTATIONS,
   RUNTIME_SETTLEMENT_FUNCTIONS,
   WORKER_USER_READ_COLUMNS
@@ -255,6 +256,15 @@ export async function reconcileRuntimeRoles(
          AND class.relrowsecurity`,
       [[apiRole, workerRole]]
     );
+    for (const tableName of RUNTIME_APPEND_ONLY_TABLES) {
+      await executeGeneratedStatements(
+        client,
+        `SELECT format('REVOKE DELETE, TRUNCATE ON TABLE public.%I FROM %I', $1::text, role_name) AS statement
+         FROM unnest($2::text[]) AS role_name
+         WHERE to_regclass(format('public.%I', $1::text)) IS NOT NULL`,
+        [tableName, [apiRole, workerRole]]
+      );
+    }
     for (const mutation of RUNTIME_INSTALLER_MUTATIONS) {
       await executeGeneratedStatements(
         client,

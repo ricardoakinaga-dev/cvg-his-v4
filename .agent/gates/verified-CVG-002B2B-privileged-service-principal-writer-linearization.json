@@ -1,0 +1,137 @@
+{
+  "record_id": "GATE-CVG-002B2B-PRIVILEGED-SERVICE-PRINCIPAL-WRITER-LINEARIZATION-VFY-001",
+  "timestamp": "2026-08-29T10:06:37-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-002B2B bounded repository-local database-enforced service-principal writer linearization",
+  "scope_ref": "CVG-002B2B-PRIVILEGED-SERVICE-PRINCIPAL-WRITER-LINEARIZATION",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-001-TRIGGER-SECURITY",
+      "description": "The additive migration installs database-enforced triggers for every account_service_principals INSERT/UPDATE/DELETE and users account_id, principal_kind, interactive_login_enabled and is_active UPDATE, with SECURITY DEFINER search_path hardened to pg_catalog, pg_temp, qualified advisory helpers and revoked public execution.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/db/migrations/0155_service_principal_writer_linearization.sql",
+        "tests/unit/database/service-principal-writer-linearization-migration.test.ts",
+        "tests/integration/database/service-principal-writer-linearization.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-PRIVILEGED-SERVICE-PRINCIPAL-WRITER-LINEARIZATION-SECURITY-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The trigger boundary is verified in repository-local disposable PostgreSQL; target role ownership and production catalog governance remain outside this gate."
+    },
+    {
+      "id": "V-002-ACCOUNT-SCOPED-CONCURRENCY",
+      "description": "Direct writers take an account-prefixed transaction writer gate with try-before-wait semantics and then the worker account lock; cross-account changes use deterministic order, conflicts fail with retryable 40001 and independent accounts remain concurrent without a global mutex.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/db/migrations/0155_service_principal_writer_linearization.sql",
+        "tests/integration/database/service-principal-writer-linearization.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-PRIVILEGED-SERVICE-PRINCIPAL-WRITER-LINEARIZATION-SECURITY-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This proves the defined PostgreSQL advisory-lock protocol and does not certify performance, failover or distributed target-cluster behavior."
+    },
+    {
+      "id": "V-003-PIX-FAIL-CLOSED",
+      "description": "The real settlement consumer remains unchanged in semantics: a trigger-backed direct writer can commit revocation while the worker waits, after which the worker re-reads the principal, fails closed and invokes B1 zero times.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "tests/integration/database/pix-provider-settlement-consumer.test.ts",
+        "apps/worker/src/jobs/pix-provider-event-delivery-repository.ts",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-PRIVILEGED-SERVICE-PRINCIPAL-WRITER-LINEARIZATION-REAL-CONSUMER-003"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The provider is synthetic/local and this gate does not authorize external payment providers, credentials or production settlement."
+    },
+    {
+      "id": "V-004-REPLAY-QUALITY",
+      "description": "Migration replay/catalog, focused static contracts, worker regressions, migration-source validation, RLS validation, secret scan, lint and targeted diff hygiene pass on the final snapshot.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002B2B-PRIVILEGED-SERVICE-PRINCIPAL-WRITER-LINEARIZATION-SECURITY-001",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-PRIVILEGED-SERVICE-PRINCIPAL-WRITER-LINEARIZATION-QUALITY-004",
+        "packages/db/migrations/0155_service_principal_writer_linearization.sql",
+        "tests/integration/database/service-principal-writer-linearization.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The evidence is focused/local; it does not claim whole-workspace coverage, remote CI or release readiness."
+    },
+    {
+      "id": "V-005-INDEPENDENT-REVIEW",
+      "description": "Two fresh separated read-only reviewers inspected the final security-hardened snapshot and returned APPROVE_BOUNDED with no P0, P1 or P2 finding.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002B2B-PRIVILEGED-SERVICE-PRINCIPAL-WRITER-LINEARIZATION-REVIEW-007",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-PRIVILEGED-SERVICE-PRINCIPAL-WRITER-LINEARIZATION-REVIEW-008"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Approval is limited to this repository-local writer/PIX identity boundary."
+    },
+    {
+      "id": "V-006-GLOBAL-NON-PROMOTION",
+      "description": "The bounded writer result is reconciled without promoting CVG-002B2B, global ERP, Vetus parity, clinical parity, target operations, production or release acceptance.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002B2B-PRIVILEGED-SERVICE-PRINCIPAL-WRITER-LINEARIZATION-GLOBAL-RETEST-001",
+        ".agent/state.json",
+        ".agent/backlog.json",
+        "docs/engineering/QUALITY_BAR.md",
+        "docs/engineering/REQUIREMENT_EVIDENCE_MATRIX.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Global audits remain non-promoting: Vetus 4/11 verified, clinical 2/3 verified and enterprise readiness 95/100 with 42 PASS, 3 WARN and 1 FAIL."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-002B2B-PRIVILEGED-SERVICE-PRINCIPAL-WRITER-LINEARIZATION.md",
+    ".agent/authority.jsonl#AUTH-CVG-002B2B-PRIVILEGED-SERVICE-PRINCIPAL-WRITER-LINEARIZATION-IR-001",
+    "packages/db/migrations/0155_service_principal_writer_linearization.sql",
+    "tests/integration/database/service-principal-writer-linearization.test.ts",
+    "tests/integration/database/pix-provider-settlement-consumer.test.ts",
+    "tests/unit/database/service-principal-writer-linearization-migration.test.ts",
+    ".agent/verification.jsonl#VFY-CVG-002B2B-PRIVILEGED-SERVICE-PRINCIPAL-WRITER-LINEARIZATION-SECURITY-001",
+    ".agent/verification.jsonl#VFY-CVG-002B2B-PRIVILEGED-SERVICE-PRINCIPAL-WRITER-LINEARIZATION-REAL-CONSUMER-003",
+    ".agent/verification.jsonl#VFY-CVG-002B2B-PRIVILEGED-SERVICE-PRINCIPAL-WRITER-LINEARIZATION-QUALITY-004",
+    ".agent/verification.jsonl#VFY-CVG-002B2B-PRIVILEGED-SERVICE-PRINCIPAL-WRITER-LINEARIZATION-REVIEW-007",
+    ".agent/verification.jsonl#VFY-CVG-002B2B-PRIVILEGED-SERVICE-PRINCIPAL-WRITER-LINEARIZATION-REVIEW-008"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "No target-cluster role/ownership, NOBYPASSRLS runtime deployment, failover or distributed lock behavior is certified.",
+    "No external PIX provider, credential, production, deployment, backup/restore, accessibility, operational LGPD or remote-CI evidence is certified.",
+    "Global ERP remains IN_PROGRESS/PARTIAL because Vetus parity, provider homologation, target operations and release evidence remain open.",
+    "The historical engineering checker still reports pre-existing ledger/schema drift outside this current task and was not rewritten as part of the bounded slice."
+  ],
+  "conditions": [
+    "Keep the result limited to database-enforced linearization of service-principal mapping writes and the four named users identity fields.",
+    "Keep existing worker account lock order and settlement fail-closed behavior unchanged.",
+    "Keep CVG-002B2B/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+    "Do not use this gate as approval for provider, credential, target, production, deployment, backup/restore, Vetus parity or release activity.",
+    "Revalidate before adding service-principal writers, changing advisory-lock keys/order, changing settlement semantics or expanding scope."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via explicit continuation of the consolidation request",
+    "scope": "CVG-002B2B repository-local database-enforced service-principal writer linearization",
+    "decision": "Authorize only the additive migration, account-scoped writer gates and disposable PostgreSQL/PIX regression evidence for direct service-principal authorization writes; exclude providers, credentials, target, production, deployment and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-002B2B-PRIVILEGED-SERVICE-PRINCIPAL-WRITER-LINEARIZATION-IR-001",
+    "expires_or_revalidates": "Revalidate before changing the account lock key/order, adding new writers, changing settlement semantics or entering provider/target/production/release scope."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "Close only this bounded writer-linearization slice as PASS_BOUNDED, preserve global non-promotion, then fresh-scout the next authorized repository gap.",
+  "revalidation_triggers": [
+    "Any change to account authorization advisory-lock key or lock order",
+    "Any new direct writer for service-principal mappings or users identity fields",
+    "Any change to PIX settlement, principal provisioning, runtime grants or RLS",
+    "Any provider, credential, target, production, deployment or release activity"
+  ],
+  "supersedes": ".agent/gates/implementation-ready-CVG-002B2B-privileged-service-principal-writer-linearization-IR-001.json"
+}

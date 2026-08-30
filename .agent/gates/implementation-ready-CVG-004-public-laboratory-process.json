@@ -1,0 +1,86 @@
+{
+  "record_id": "GATE-CVG-004-PUBLIC-LABORATORY-PROCESS-IR-001",
+  "timestamp": "2026-08-26T07:51:55-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-004 bounded authenticated laboratory structured-results API to PostgreSQL process proof",
+  "scope_ref": "CVG-004-PUBLIC-LABORATORY-PROCESS",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The local laboratory composition gap, bounded contract, owner and exclusions are recorded without promoting clinical parity or release readiness.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-public-laboratory-process.md",
+        ".agent/backlog.json",
+        ".agent/authority.jsonl#AUTH-CVG-004-PUBLIC-LABORATORY-PROCESS-IR-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The gate authorizes only the local public laboratory workflow and disposable PostgreSQL evidence boundary."
+    },
+    {
+      "id": "IR-002",
+      "description": "The current API route, laboratory workflow service, structured result normalization, PostgreSQL persistence and specialized result projection exist and are bounded by focused tests.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/api/src/routes/laboratory-routes.ts",
+        "packages/modules/diagnostics/src/laboratory.ts",
+        "packages/modules/diagnostics/src/laboratory-workflow.ts",
+        "packages/modules/diagnostics/src/laboratory-result-values.ts",
+        "packages/db/migrations/0145_laboratory_structured_result_values.sql",
+        "packages/modules/diagnostics/src/laboratory-postgres.integration.test.ts",
+        "apps/api/src/routes/laboratory-routes.test.ts",
+        ".agent/artifacts/CVG-004-laboratory-structured-results-2026-08-26.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Existing evidence is focused module/route/SPA coverage; the public authenticated process composition remains to be executed."
+    },
+    {
+      "id": "IR-003",
+      "description": "A focused RED process contract can reject direct service/database seeding as the source, missing restricted role attributes, forged laboratory signatures, duplicate idempotent transitions, missing specialized result values, cross-account reads and recollection value leakage.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-public-laboratory-process.md",
+        "tests/integration/process/public-laboratory-structured-results.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The test must still be written and run; implementation and fresh PostgreSQL verification are required before any bounded PASS."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-public-laboratory-process.md",
+    "apps/api/src/routes/laboratory-routes.ts",
+    "packages/modules/diagnostics/src/laboratory.ts",
+    "packages/modules/diagnostics/src/laboratory-workflow.ts",
+    "packages/modules/diagnostics/src/laboratory-result-values.ts",
+    "packages/db/migrations/0145_laboratory_structured_result_values.sql",
+    "packages/modules/diagnostics/src/laboratory-postgres.integration.test.ts",
+    "apps/api/src/routes/laboratory-routes.test.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "The new process contract, RED/GREEN execution, fresh PostgreSQL run, review, global retest and reconciliation are not complete at gate creation."
+  ],
+  "conditions": [],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner)",
+    "scope": "CVG-004 bounded authenticated laboratory structured-results API to PostgreSQL process proof",
+    "decision": "Authorize reversible repository test/fixture work and disposable PostgreSQL verification of one account-scoped laboratory lifecycle with an enabled professional signer; external providers, credentials, target, production, deployment, migration, import and release remain excluded.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-PUBLIC-LABORATORY-PROCESS-IR-001",
+    "expires_or_revalidates": "Revalidate before provider/homologation, target, production, deployment, migration, import, connector or release behavior."
+  },
+  "residual_risk": "CRITICAL",
+  "decision": "PASS",
+  "next_action": "Write and run the focused RED process contract, then implement only the minimal repository-local correction needed to prove the existing public laboratory path.",
+  "revalidation_triggers": [
+    "Changes to laboratory route authorization, signer derivation, workflow transitions, persistence or structured result projection",
+    "Expansion beyond the local public laboratory API-to-PostgreSQL process boundary",
+    "Any provider, target, production, deployment, migration, import, connector or release behavior change"
+  ],
+  "supersedes": null
+}

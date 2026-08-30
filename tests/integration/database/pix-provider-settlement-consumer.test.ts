@@ -11,7 +11,7 @@ import {
 } from '@cvg-his-v2/module-pix';
 import { getTenantTransactionContext } from '@cvg-his-v2/shared-database';
 import { getTestPool } from '../../db/db-admin.js';
-import { TEST_DB_URL } from '../../setup/env.js';
+import { TEST_DB_IS_EPHEMERAL, TEST_DB_URL } from '../../setup/env.js';
 
 const TENANT_ID = '00000000-0000-0000-0000-000000000001';
 
@@ -158,322 +158,463 @@ async function makeDeliverySettlementReady(
   );
 }
 
-describe('PIX provider settlement consumer PostgreSQL fencing', () => {
-  beforeEach(async () => {
-    await getTestPool().query('TRUNCATE TABLE accounts CASCADE');
-  });
+async function waitForAuthorizationLockWait(pool: Pool, accountId: string): Promise<boolean> {
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
+    const result = await pool.query<{ readonly waiting: boolean }>(
+      `SELECT EXISTS (
+         SELECT 1
+           FROM pg_locks
+          WHERE locktype = 'advisory'
+            AND granted = false
+            AND classid = ((hashtextextended($1, 0) >> 32) & 4294967295)::oid
+            AND objid = (hashtextextended($1, 0) & 4294967295)::oid
+       ) AS waiting`,
+      [accountId]
+    );
+    if (result.rows[0]?.waiting === true) return true;
+    await new Promise((resolveSleep) => setTimeout(resolveSleep, 10));
+  }
+  return false;
+}
 
-  it('claims once with SKIP LOCKED, retries absent principal and never uses idempotency_requests', async () => {
-    const fixture = await createPendingDelivery();
-    const pool = getTestPool();
-    const before = await pool.query<{ readonly count: string }>(
-      `SELECT COUNT(*)::text AS count FROM idempotency_requests WHERE account_id = $1`,
-      [fixture.accountId]
-    );
-    const repository = new DatabasePixProviderEventDeliveryRepository(pool);
-    const [first, second] = await Promise.all([
-      repository.claimNext({
-        accountId: fixture.accountId,
-        leaseOwner: 'worker-a',
-        leaseMs: 60_000
-      }),
-      repository.claimNext({
-        accountId: fixture.accountId,
-        leaseOwner: 'worker-b',
-        leaseMs: 60_000
-      })
-    ]);
-    const claimed = first ?? second;
-    expect(claimed).not.toBeNull();
-    expect([first, second].filter(Boolean)).toHaveLength(1);
-    const consumerRepository = new DatabasePixProviderEventDeliveryRepository(pool);
-    await pool.query(
-      `UPDATE pix_provider_event_deliveries
-          SET lease_expires_at = clock_timestamp() - interval '1 second'
-        WHERE id = $1`,
-      [fixture.deliveryId]
-    );
-    const consumer = new PixProviderSettlementConsumer(consumerRepository, {
-      workerId: 'worker-c',
-      leaseMs: 60_000,
-      createSettlementExecutor: () => ({ execute: async () => ({}) })
+describe.skipIf(!TEST_DB_IS_EPHEMERAL)(
+  'PIX provider settlement consumer PostgreSQL fencing',
+  () => {
+    beforeEach(async () => {
+      if (TEST_DB_IS_EPHEMERAL) {
+        await getTestPool().query('TRUNCATE TABLE accounts CASCADE');
+      }
     });
-    const result = await consumer.processNext(fixture.accountId);
-    expect(result.status).toBe('retry_scheduled');
-    const delivery = await pool.query<{
-      readonly attempts: number;
-      readonly last_error_code: string;
-      readonly state: string;
-    }>(`SELECT attempts, last_error_code, state FROM pix_provider_event_deliveries WHERE id = $1`, [
-      fixture.deliveryId
-    ]);
-    expect(delivery.rows[0]).toEqual({
-      attempts: 2,
-      last_error_code: 'PIX_SETTLEMENT_PRINCIPAL_NOT_FOUND',
-      state: 'pending'
-    });
-    const after = await pool.query<{ readonly count: string }>(
-      `SELECT COUNT(*)::text AS count FROM idempotency_requests WHERE account_id = $1`,
-      [fixture.accountId]
-    );
-    expect(after.rows[0]?.count).toBe(before.rows[0]?.count);
-  });
 
-  it('revalidates a tenant-local service principal then retries missing provider correlation', async () => {
-    const fixture = await createPendingDelivery();
-    const pool = getTestPool();
-    const serviceUserId = randomUUID();
-    const suffix = serviceUserId.replaceAll('-', '');
-    await pool.query(
-      `INSERT INTO users (
-         id, account_id, username, email, password_hash, full_name,
-         principal_kind, interactive_login_enabled
-       ) VALUES ($1, $2, $3, $4, 'hash', 'PIX service', 'service', false)`,
-      [serviceUserId, fixture.accountId, `service_${suffix}`, `service-${suffix}@example.test`]
-    );
-    await pool.query(
-      `INSERT INTO account_service_principals (account_id, purpose, user_id)
-       VALUES ($1, 'pix-settlement', $2)`,
-      [fixture.accountId, serviceUserId]
-    );
-    const repository = new DatabasePixProviderEventDeliveryRepository(pool);
-    const consumer = new PixProviderSettlementConsumer(repository, {
-      workerId: 'worker-principal',
-      leaseMs: 60_000,
-      createSettlementExecutor: () => ({ execute: async () => ({}) })
-    });
-    expect((await consumer.processNext(fixture.accountId)).status).toBe('retry_scheduled');
-    const delivery = await pool.query<{ readonly last_error_code: string; readonly state: string }>(
-      `SELECT last_error_code, state FROM pix_provider_event_deliveries WHERE id = $1`,
-      [fixture.deliveryId]
-    );
-    expect(delivery.rows[0]).toEqual({ last_error_code: 'PIX_NOT_CORRELATED', state: 'pending' });
-  });
-
-  it('rejects a stale fence before invoking B1', async () => {
-    const fixture = await createPendingDelivery();
-    const pool = getTestPool();
-    const repository = new DatabasePixProviderEventDeliveryRepository(pool);
-    const claim = await repository.claimNext({
-      accountId: fixture.accountId,
-      leaseOwner: 'worker-stale',
-      leaseMs: 60_000
-    });
-    expect(claim).not.toBeNull();
-    await pool.query(
-      `UPDATE pix_provider_event_deliveries
-          SET lease_expires_at = clock_timestamp() - interval '1 second'
-        WHERE id = $1`,
-      [fixture.deliveryId]
-    );
-    let b1Calls = 0;
-    const result = await repository.executeSettlement(claim!, async () => {
-      b1Calls += 1;
-    });
-    expect(result).toBe('lease_lost');
-    expect(b1Calls).toBe(0);
-  });
-
-  it('recovers after worker crash on a fresh pool, fences the stale claim and applies B1 once', async () => {
-    const fixture = await createPendingDelivery();
-    await makeDeliverySettlementReady(fixture);
-    const pool = getTestPool();
-    const beforeIdempotency = await pool.query<{ readonly count: string }>(
-      `SELECT COUNT(*)::text AS count FROM idempotency_requests WHERE account_id = $1`,
-      [fixture.accountId]
-    );
-    const workerAPool = new Pool({ connectionString: TEST_DB_URL, max: 1 });
-    const workerBPool = new Pool({ connectionString: TEST_DB_URL, max: 1 });
-
-    try {
-      const workerAConnection = await workerAPool.query<{ readonly backend_pid: number }>(
-        'SELECT pg_backend_pid() AS backend_pid'
-      );
-      const workerA = new DatabasePixProviderEventDeliveryRepository(workerAPool);
-      const staleClaim = await workerA.claimNext({
-        accountId: fixture.accountId,
-        leaseOwner: 'worker-crashed-a',
-        leaseMs: 1
-      });
-      expect(staleClaim).not.toBeNull();
-
-      // A completed its claim transaction, then its process/connection disappeared before B1/CAS.
-      await workerAPool.end();
-      await new Promise<void>((resolve) => setTimeout(resolve, 25));
-
-      const workerB = new DatabasePixProviderEventDeliveryRepository(workerBPool);
-      const workerBConnection = await workerBPool.query<{ readonly backend_pid: number }>(
-        'SELECT pg_backend_pid() AS backend_pid'
-      );
-      expect(workerBConnection.rows[0]?.backend_pid).not.toBe(
-        workerAConnection.rows[0]?.backend_pid
-      );
-      const takeoverClaim = await workerB.claimNext({
-        accountId: fixture.accountId,
-        leaseOwner: 'worker-restarted-b',
-        leaseMs: 60_000
-      });
-      expect(takeoverClaim).not.toBeNull();
-      expect(takeoverClaim?.deliveryId).toBe(staleClaim?.deliveryId);
-      expect(takeoverClaim?.leaseVersion).toBe((staleClaim?.leaseVersion ?? 0) + 1);
-      expect(takeoverClaim?.leaseToken).not.toBe(staleClaim?.leaseToken);
-
-      let staleB1Calls = 0;
-      expect(
-        await workerB.executeSettlement(staleClaim!, async () => {
-          staleB1Calls += 1;
-        })
-      ).toBe('lease_lost');
-      expect(staleB1Calls).toBe(0);
-
-      let b1Calls = 0;
-      const result = await workerB.executeSettlement(takeoverClaim!, async (input, transaction) => {
-        b1Calls += 1;
-        await new ConfirmedPixSettlementCommand(
-          new DatabaseConfirmedPixSettlementRepository(),
-          { allowSyntheticProviders: true },
-          () => transaction
-        ).execute(input);
-      });
-      expect(result).toBe('applied');
-      expect(b1Calls).toBe(1);
-      expect(
-        await workerB.claimNext({
-          accountId: fixture.accountId,
-          leaseOwner: 'worker-restarted-b-second-tick',
-          leaseMs: 60_000
-        })
-      ).toBeNull();
-
-      const delivery = await pool.query<{
-        readonly attempts: number;
-        readonly lease_version: string;
-        readonly state: string;
-      }>(
-        `SELECT attempts, lease_version::text, state
-           FROM pix_provider_event_deliveries
-          WHERE account_id = $1 AND id = $2`,
-        [fixture.accountId, fixture.deliveryId]
-      );
-      expect(delivery.rows[0]).toEqual({
-        attempts: 2,
-        lease_version: String(takeoverClaim?.leaseVersion),
-        state: 'applied'
-      });
-      const receipts = await pool.query<{ readonly count: string }>(
-        `SELECT COUNT(*)::text AS count
-           FROM encounter_non_cash_receipts
-          WHERE account_id = $1 AND transaction_id = $2`,
-        [fixture.accountId, fixture.attemptId]
-      );
-      expect(receipts.rows[0]?.count).toBe('1');
-      const afterIdempotency = await pool.query<{ readonly count: string }>(
+    it('claims once with SKIP LOCKED, retries absent principal and never uses idempotency_requests', async () => {
+      const fixture = await createPendingDelivery();
+      const pool = getTestPool();
+      const before = await pool.query<{ readonly count: string }>(
         `SELECT COUNT(*)::text AS count FROM idempotency_requests WHERE account_id = $1`,
         [fixture.accountId]
       );
-      expect(afterIdempotency.rows[0]?.count).toBe(beforeIdempotency.rows[0]?.count);
-    } finally {
-      await workerAPool.end().catch(() => undefined);
-      await workerBPool.end();
-    }
-  });
-
-  it('redrives terminal delivery only through an explicit audited operator action', async () => {
-    const fixture = await createPendingDelivery();
-    const pool = getTestPool();
-    const repository = new DatabasePixProviderEventDeliveryRepository(pool);
-    const claim = await repository.claimNext({
-      accountId: fixture.accountId,
-      leaseOwner: 'worker-redrive',
-      leaseMs: 60_000
+      const repository = new DatabasePixProviderEventDeliveryRepository(pool);
+      const [first, second] = await Promise.all([
+        repository.claimNext({
+          accountId: fixture.accountId,
+          leaseOwner: 'worker-a',
+          leaseMs: 60_000
+        }),
+        repository.claimNext({
+          accountId: fixture.accountId,
+          leaseOwner: 'worker-b',
+          leaseMs: 60_000
+        })
+      ]);
+      const claimed = first ?? second;
+      expect(claimed).not.toBeNull();
+      expect([first, second].filter(Boolean)).toHaveLength(1);
+      const consumerRepository = new DatabasePixProviderEventDeliveryRepository(pool);
+      await pool.query(
+        `UPDATE pix_provider_event_deliveries
+          SET lease_expires_at = clock_timestamp() - interval '1 second'
+        WHERE id = $1`,
+        [fixture.deliveryId]
+      );
+      const consumer = new PixProviderSettlementConsumer(consumerRepository, {
+        workerId: 'worker-c',
+        leaseMs: 60_000,
+        createSettlementExecutor: () => ({ execute: async () => ({}) })
+      });
+      const result = await consumer.processNext(fixture.accountId);
+      expect(result.status).toBe('retry_scheduled');
+      const delivery = await pool.query<{
+        readonly attempts: number;
+        readonly last_error_code: string;
+        readonly state: string;
+      }>(
+        `SELECT attempts, last_error_code, state FROM pix_provider_event_deliveries WHERE id = $1`,
+        [fixture.deliveryId]
+      );
+      expect(delivery.rows[0]).toEqual({
+        attempts: 2,
+        last_error_code: 'PIX_SETTLEMENT_PRINCIPAL_NOT_FOUND',
+        state: 'pending'
+      });
+      const after = await pool.query<{ readonly count: string }>(
+        `SELECT COUNT(*)::text AS count FROM idempotency_requests WHERE account_id = $1`,
+        [fixture.accountId]
+      );
+      expect(after.rows[0]?.count).toBe(before.rows[0]?.count);
     });
-    expect(claim).not.toBeNull();
-    expect(
-      await repository.completeFailure(claim!, {
-        code: 'PIX_SETTLEMENT_CLAIMS_DIVERGENT',
-        errorClass: 'terminal',
-        retryDelaySeconds: 0
-      })
-    ).toBe('reconciliation_required');
 
-    expect(
-      await repository.redrive({
+    it('revalidates a tenant-local service principal then retries missing provider correlation', async () => {
+      const fixture = await createPendingDelivery();
+      const pool = getTestPool();
+      const serviceUserId = randomUUID();
+      const suffix = serviceUserId.replaceAll('-', '');
+      await pool.query(
+        `INSERT INTO users (
+         id, account_id, username, email, password_hash, full_name,
+         principal_kind, interactive_login_enabled
+       ) VALUES ($1, $2, $3, $4, 'hash', 'PIX service', 'service', false)`,
+        [serviceUserId, fixture.accountId, `service_${suffix}`, `service-${suffix}@example.test`]
+      );
+      await pool.query(
+        `INSERT INTO account_service_principals (account_id, purpose, user_id)
+       VALUES ($1, 'pix-settlement', $2)`,
+        [fixture.accountId, serviceUserId]
+      );
+      const repository = new DatabasePixProviderEventDeliveryRepository(pool);
+      const consumer = new PixProviderSettlementConsumer(repository, {
+        workerId: 'worker-principal',
+        leaseMs: 60_000,
+        createSettlementExecutor: () => ({ execute: async () => ({}) })
+      });
+      expect((await consumer.processNext(fixture.accountId)).status).toBe('retry_scheduled');
+      const delivery = await pool.query<{
+        readonly last_error_code: string;
+        readonly state: string;
+      }>(`SELECT last_error_code, state FROM pix_provider_event_deliveries WHERE id = $1`, [
+        fixture.deliveryId
+      ]);
+      expect(delivery.rows[0]).toEqual({ last_error_code: 'PIX_NOT_CORRELATED', state: 'pending' });
+    });
+
+    it('linearizes service-principal revocation before settlement reads the principal', async () => {
+      const fixture = await createPendingDelivery();
+      await makeDeliverySettlementReady(fixture);
+      const pool = getTestPool();
+      const repository = new DatabasePixProviderEventDeliveryRepository(pool);
+      const claim = await repository.claimNext({
         accountId: fixture.accountId,
-        deliveryId: fixture.deliveryId,
-        eventId: claim!.eventId,
-        actorUserId: fixture.actorUserId,
-        correlationId: `redrive-${randomUUID()}`,
-        reason: 'Operator verified provider receipt and requested a bounded replay'
-      })
-    ).toBe(true);
+        leaseOwner: 'worker-revocation-race',
+        leaseMs: 60_000
+      });
+      expect(claim).not.toBeNull();
 
-    const delivery = await pool.query<{
-      readonly state: string;
-      readonly attempts: number;
-      readonly last_error_code: string | null;
-      readonly next_attempt_at: Date | null;
-    }>(
-      `SELECT state, attempts, last_error_code, next_attempt_at
+      const revocationPool = new Pool({ connectionString: TEST_DB_URL, max: 1 });
+      const revocationClient = await revocationPool.connect();
+      let settled = false;
+      let b1Calls = 0;
+      try {
+        await revocationClient.query('BEGIN');
+        await revocationClient.query("SELECT set_config('app.current_account_id', $1, true)", [
+          fixture.accountId
+        ]);
+        await revocationClient.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [
+          fixture.accountId
+        ]);
+        await revocationClient.query(
+          `UPDATE account_service_principals
+            SET is_active = false
+          WHERE account_id = $1 AND purpose = 'pix-settlement'`,
+          [fixture.accountId]
+        );
+
+        const execution = repository
+          .executeSettlement(claim!, async () => {
+            b1Calls += 1;
+          })
+          .finally(() => {
+            settled = true;
+          });
+        const waitDeadline = Date.now() + 5_000;
+        let authorizationLockWaitObserved = false;
+        while (Date.now() < waitDeadline) {
+          const lockState = await revocationClient.query<{ readonly waiting: boolean }>(
+            `SELECT EXISTS (
+             SELECT 1
+               FROM pg_locks
+              WHERE locktype = 'advisory'
+                AND NOT granted
+           ) AS waiting`
+          );
+          if (lockState.rows[0]?.waiting === true) {
+            authorizationLockWaitObserved = true;
+            break;
+          }
+          await new Promise((resolveSleep) => setTimeout(resolveSleep, 10));
+        }
+        expect(authorizationLockWaitObserved).toBe(true);
+        expect(settled).toBe(false);
+        expect(b1Calls).toBe(0);
+
+        await revocationClient.query('COMMIT');
+        await expect(execution).rejects.toMatchObject({
+          code: 'PIX_SETTLEMENT_PRINCIPAL_INVALID'
+        });
+        expect(b1Calls).toBe(0);
+      } finally {
+        await revocationClient.query('ROLLBACK').catch(() => undefined);
+        revocationClient.release();
+        await revocationPool.end();
+      }
+    });
+
+    it('re-reads a direct writer commit and fails closed before B1', async () => {
+      const fixture = await createPendingDelivery();
+      await makeDeliverySettlementReady(fixture);
+      const pool = getTestPool();
+      const repository = new DatabasePixProviderEventDeliveryRepository(pool);
+      const claim = await repository.claimNext({
+        accountId: fixture.accountId,
+        leaseOwner: 'worker-direct-writer-commit',
+        leaseMs: 60_000
+      });
+      expect(claim).not.toBeNull();
+
+      const writer = await pool.connect();
+      let execution: Promise<unknown> | undefined;
+      let b1Calls = 0;
+      try {
+        await writer.query('BEGIN');
+        await writer.query(
+          `UPDATE account_service_principals
+              SET is_active = false
+            WHERE account_id = $1 AND purpose = 'pix-settlement'`,
+          [fixture.accountId]
+        );
+
+        execution = repository.executeSettlement(claim!, async () => {
+          b1Calls += 1;
+        });
+        expect(await waitForAuthorizationLockWait(pool, fixture.accountId)).toBe(true);
+        expect(b1Calls).toBe(0);
+
+        await writer.query('COMMIT');
+        await expect(execution).rejects.toMatchObject({ code: 'PIX_SETTLEMENT_PRINCIPAL_INVALID' });
+        expect(b1Calls).toBe(0);
+      } finally {
+        await writer.query('ROLLBACK').catch(() => undefined);
+        await execution?.catch(() => undefined);
+        writer.release();
+      }
+    });
+
+    it('rejects a stale fence before invoking B1', async () => {
+      const fixture = await createPendingDelivery();
+      const pool = getTestPool();
+      const repository = new DatabasePixProviderEventDeliveryRepository(pool);
+      const claim = await repository.claimNext({
+        accountId: fixture.accountId,
+        leaseOwner: 'worker-stale',
+        leaseMs: 60_000
+      });
+      expect(claim).not.toBeNull();
+      await pool.query(
+        `UPDATE pix_provider_event_deliveries
+          SET lease_expires_at = clock_timestamp() - interval '1 second'
+        WHERE id = $1`,
+        [fixture.deliveryId]
+      );
+      let b1Calls = 0;
+      const result = await repository.executeSettlement(claim!, async () => {
+        b1Calls += 1;
+      });
+      expect(result).toBe('lease_lost');
+      expect(b1Calls).toBe(0);
+    });
+
+    it('recovers after worker crash on a fresh pool, fences the stale claim and applies B1 once', async () => {
+      const fixture = await createPendingDelivery();
+      await makeDeliverySettlementReady(fixture);
+      const pool = getTestPool();
+      const beforeIdempotency = await pool.query<{ readonly count: string }>(
+        `SELECT COUNT(*)::text AS count FROM idempotency_requests WHERE account_id = $1`,
+        [fixture.accountId]
+      );
+      const workerAPool = new Pool({ connectionString: TEST_DB_URL, max: 1 });
+      const workerBPool = new Pool({ connectionString: TEST_DB_URL, max: 1 });
+
+      try {
+        const workerAConnection = await workerAPool.query<{ readonly backend_pid: number }>(
+          'SELECT pg_backend_pid() AS backend_pid'
+        );
+        const workerA = new DatabasePixProviderEventDeliveryRepository(workerAPool);
+        const staleClaim = await workerA.claimNext({
+          accountId: fixture.accountId,
+          leaseOwner: 'worker-crashed-a',
+          leaseMs: 1
+        });
+        expect(staleClaim).not.toBeNull();
+
+        // A completed its claim transaction, then its process/connection disappeared before B1/CAS.
+        await workerAPool.end();
+        await new Promise<void>((resolve) => setTimeout(resolve, 25));
+
+        const workerB = new DatabasePixProviderEventDeliveryRepository(workerBPool);
+        const workerBConnection = await workerBPool.query<{ readonly backend_pid: number }>(
+          'SELECT pg_backend_pid() AS backend_pid'
+        );
+        expect(workerBConnection.rows[0]?.backend_pid).not.toBe(
+          workerAConnection.rows[0]?.backend_pid
+        );
+        const takeoverClaim = await workerB.claimNext({
+          accountId: fixture.accountId,
+          leaseOwner: 'worker-restarted-b',
+          leaseMs: 60_000
+        });
+        expect(takeoverClaim).not.toBeNull();
+        expect(takeoverClaim?.deliveryId).toBe(staleClaim?.deliveryId);
+        expect(takeoverClaim?.leaseVersion).toBe((staleClaim?.leaseVersion ?? 0) + 1);
+        expect(takeoverClaim?.leaseToken).not.toBe(staleClaim?.leaseToken);
+
+        let staleB1Calls = 0;
+        expect(
+          await workerB.executeSettlement(staleClaim!, async () => {
+            staleB1Calls += 1;
+          })
+        ).toBe('lease_lost');
+        expect(staleB1Calls).toBe(0);
+
+        let b1Calls = 0;
+        const result = await workerB.executeSettlement(
+          takeoverClaim!,
+          async (input, transaction) => {
+            b1Calls += 1;
+            await new ConfirmedPixSettlementCommand(
+              new DatabaseConfirmedPixSettlementRepository(),
+              { allowSyntheticProviders: true },
+              () => transaction
+            ).execute(input);
+          }
+        );
+        expect(result).toBe('applied');
+        expect(b1Calls).toBe(1);
+        expect(
+          await workerB.claimNext({
+            accountId: fixture.accountId,
+            leaseOwner: 'worker-restarted-b-second-tick',
+            leaseMs: 60_000
+          })
+        ).toBeNull();
+
+        const delivery = await pool.query<{
+          readonly attempts: number;
+          readonly lease_version: string;
+          readonly state: string;
+        }>(
+          `SELECT attempts, lease_version::text, state
+           FROM pix_provider_event_deliveries
+          WHERE account_id = $1 AND id = $2`,
+          [fixture.accountId, fixture.deliveryId]
+        );
+        expect(delivery.rows[0]).toEqual({
+          attempts: 2,
+          lease_version: String(takeoverClaim?.leaseVersion),
+          state: 'applied'
+        });
+        const receipts = await pool.query<{ readonly count: string }>(
+          `SELECT COUNT(*)::text AS count
+           FROM encounter_non_cash_receipts
+          WHERE account_id = $1 AND transaction_id = $2`,
+          [fixture.accountId, fixture.attemptId]
+        );
+        expect(receipts.rows[0]?.count).toBe('1');
+        const afterIdempotency = await pool.query<{ readonly count: string }>(
+          `SELECT COUNT(*)::text AS count FROM idempotency_requests WHERE account_id = $1`,
+          [fixture.accountId]
+        );
+        expect(afterIdempotency.rows[0]?.count).toBe(beforeIdempotency.rows[0]?.count);
+      } finally {
+        await workerAPool.end().catch(() => undefined);
+        await workerBPool.end();
+      }
+    });
+
+    it('redrives terminal delivery only through an explicit audited operator action', async () => {
+      const fixture = await createPendingDelivery();
+      const pool = getTestPool();
+      const repository = new DatabasePixProviderEventDeliveryRepository(pool);
+      const claim = await repository.claimNext({
+        accountId: fixture.accountId,
+        leaseOwner: 'worker-redrive',
+        leaseMs: 60_000
+      });
+      expect(claim).not.toBeNull();
+      expect(
+        await repository.completeFailure(claim!, {
+          code: 'PIX_SETTLEMENT_CLAIMS_DIVERGENT',
+          errorClass: 'terminal',
+          retryDelaySeconds: 0
+        })
+      ).toBe('reconciliation_required');
+
+      expect(
+        await repository.redrive({
+          accountId: fixture.accountId,
+          deliveryId: fixture.deliveryId,
+          eventId: claim!.eventId,
+          actorUserId: fixture.actorUserId,
+          correlationId: `redrive-${randomUUID()}`,
+          reason: 'Operator verified provider receipt and requested a bounded replay'
+        })
+      ).toBe(true);
+
+      const delivery = await pool.query<{
+        readonly state: string;
+        readonly attempts: number;
+        readonly last_error_code: string | null;
+        readonly next_attempt_at: Date | null;
+      }>(
+        `SELECT state, attempts, last_error_code, next_attempt_at
          FROM pix_provider_event_deliveries
         WHERE id = $1`,
-      [fixture.deliveryId]
-    );
-    expect(delivery.rows[0]?.state).toBe('pending');
-    expect(delivery.rows[0]?.attempts).toBe(0);
-    expect(delivery.rows[0]?.last_error_code).toBeNull();
-    expect(delivery.rows[0]?.next_attempt_at).not.toBeNull();
+        [fixture.deliveryId]
+      );
+      expect(delivery.rows[0]?.state).toBe('pending');
+      expect(delivery.rows[0]?.attempts).toBe(0);
+      expect(delivery.rows[0]?.last_error_code).toBeNull();
+      expect(delivery.rows[0]?.next_attempt_at).not.toBeNull();
 
-    const audit = await pool.query<{ readonly action: string; readonly reason: string | null }>(
-      `SELECT action, reason
+      const audit = await pool.query<{ readonly action: string; readonly reason: string | null }>(
+        `SELECT action, reason
          FROM audit_events
         WHERE account_id = $1 AND entity_type = 'pix_provider_event_delivery'
           AND entity_id = $2 AND action = 'pix_settlement_redrive'
         ORDER BY created_at DESC
         LIMIT 1`,
-      [fixture.accountId, fixture.deliveryId]
-    );
-    expect(audit.rows[0]?.action).toBe('pix_settlement_redrive');
-    expect(audit.rows[0]?.reason).toBe(
-      'Operator verified provider receipt and requested a bounded replay'
-    );
-    expect(
-      await repository.redrive({
-        accountId: fixture.accountId,
-        deliveryId: fixture.deliveryId,
-        eventId: claim!.eventId,
-        actorUserId: fixture.actorUserId,
-        correlationId: `redrive-repeat-${randomUUID()}`,
-        reason: 'Repeated redrive must be a no-op after the state leaves reconciliation'
-      })
-    ).toBe(false);
-  });
+        [fixture.accountId, fixture.deliveryId]
+      );
+      expect(audit.rows[0]?.action).toBe('pix_settlement_redrive');
+      expect(audit.rows[0]?.reason).toBe(
+        'Operator verified provider receipt and requested a bounded replay'
+      );
+      expect(
+        await repository.redrive({
+          accountId: fixture.accountId,
+          deliveryId: fixture.deliveryId,
+          eventId: claim!.eventId,
+          actorUserId: fixture.actorUserId,
+          correlationId: `redrive-repeat-${randomUUID()}`,
+          reason: 'Repeated redrive must be a no-op after the state leaves reconciliation'
+        })
+      ).toBe(false);
+    });
 
-  it('runs settlement and applied CAS inside the canonical non-idempotent context', async () => {
-    const fixture = await createPendingDelivery();
-    const pool = getTestPool();
-    const serviceUserId = randomUUID();
-    const suffix = serviceUserId.replaceAll('-', '');
-    await pool.query(
-      `INSERT INTO users (
+    it('runs settlement and applied CAS inside the canonical non-idempotent context', async () => {
+      const fixture = await createPendingDelivery();
+      const pool = getTestPool();
+      const serviceUserId = randomUUID();
+      const suffix = serviceUserId.replaceAll('-', '');
+      await pool.query(
+        `INSERT INTO users (
          id, account_id, username, email, password_hash, full_name,
          principal_kind, interactive_login_enabled
        ) VALUES ($1, $2, $3, $4, 'hash', 'PIX service', 'service', false)`,
-      [serviceUserId, fixture.accountId, `service_${suffix}`, `service-${suffix}@example.test`]
-    );
-    await pool.query(
-      `INSERT INTO account_service_principals (account_id, purpose, user_id)
+        [serviceUserId, fixture.accountId, `service_${suffix}`, `service-${suffix}@example.test`]
+      );
+      await pool.query(
+        `INSERT INTO account_service_principals (account_id, purpose, user_id)
        VALUES ($1, 'pix-settlement', $2)`,
-      [fixture.accountId, serviceUserId]
-    );
-    await pool.query(
-      `UPDATE encounter_payment_attempts
+        [fixture.accountId, serviceUserId]
+      );
+      await pool.query(
+        `UPDATE encounter_payment_attempts
           SET state = 'awaiting_confirmation', provider_transaction_id = $3,
               next_attempt_at = NULL
         WHERE account_id = $1 AND id = $2`,
-      [fixture.accountId, fixture.attemptId, fixture.providerTransactionId]
-    );
-    await pool.query(
-      `INSERT INTO pix_transactions (
+        [fixture.accountId, fixture.attemptId, fixture.providerTransactionId]
+      );
+      await pool.query(
+        `INSERT INTO pix_transactions (
          transaction_id, provider, account_id, billing_record_id, payment_attempt_id,
          amount, currency, description, qr_code_payload, qr_code_base64, expires_at,
          status, provider_transaction_id,
@@ -482,30 +623,36 @@ describe('PIX provider settlement consumer PostgreSQL fencing', () => {
                  'PIX settlement context test', 'test-payload', 'dGVzdA==',
                  clock_timestamp() + interval '1 hour', 'pending', $4,
                  'awaiting_payment', 'pending')`,
-      [fixture.attemptId, fixture.accountId, fixture.billingRecordId, fixture.providerTransactionId]
-    );
-    const before = await pool.query<{ readonly count: string }>(
-      `SELECT COUNT(*)::text AS count FROM idempotency_requests WHERE account_id = $1`,
-      [fixture.accountId]
-    );
-    const repository = new DatabasePixProviderEventDeliveryRepository(pool);
-    const claim = await repository.claimNext({
-      accountId: fixture.accountId,
-      leaseOwner: 'worker-context',
-      leaseMs: 60_000
+        [
+          fixture.attemptId,
+          fixture.accountId,
+          fixture.billingRecordId,
+          fixture.providerTransactionId
+        ]
+      );
+      const before = await pool.query<{ readonly count: string }>(
+        `SELECT COUNT(*)::text AS count FROM idempotency_requests WHERE account_id = $1`,
+        [fixture.accountId]
+      );
+      const repository = new DatabasePixProviderEventDeliveryRepository(pool);
+      const claim = await repository.claimNext({
+        accountId: fixture.accountId,
+        leaseOwner: 'worker-context',
+        leaseMs: 60_000
+      });
+      expect(claim).not.toBeNull();
+      const result = await repository.executeSettlement(claim!, async (_input, transaction) => {
+        expect(getTenantTransactionContext()).toBe(transaction);
+        expect(transaction.actorUserId).toBe(serviceUserId);
+        expect(await transaction.inbox.claim('pix-context-test', fixture.deliveryId)).toBe(true);
+      });
+      expect(result).toBe('applied');
+      expect(getTenantTransactionContext()).toBeUndefined();
+      const after = await pool.query<{ readonly count: string }>(
+        `SELECT COUNT(*)::text AS count FROM idempotency_requests WHERE account_id = $1`,
+        [fixture.accountId]
+      );
+      expect(after.rows[0]?.count).toBe(before.rows[0]?.count);
     });
-    expect(claim).not.toBeNull();
-    const result = await repository.executeSettlement(claim!, async (_input, transaction) => {
-      expect(getTenantTransactionContext()).toBe(transaction);
-      expect(transaction.actorUserId).toBe(serviceUserId);
-      expect(await transaction.inbox.claim('pix-context-test', fixture.deliveryId)).toBe(true);
-    });
-    expect(result).toBe('applied');
-    expect(getTenantTransactionContext()).toBeUndefined();
-    const after = await pool.query<{ readonly count: string }>(
-      `SELECT COUNT(*)::text AS count FROM idempotency_requests WHERE account_id = $1`,
-      [fixture.accountId]
-    );
-    expect(after.rows[0]?.count).toBe(before.rows[0]?.count);
-  });
-});
+  }
+);

@@ -5,12 +5,6 @@ import ReportWorkbenchPage from '../ReportWorkbenchPage.vue';
 import { auditService } from '@/services/audit';
 import { administrativeReportsService } from '@/services/administrativeReports';
 import { appointmentService } from '@/services/appointment';
-import { counterSalesService, type CounterSaleSummary } from '@/services/counterSales';
-import {
-  expensesCatalogService,
-  type ExpenseCatalogItem,
-  type ExpenseCostCenterItem
-} from '@/services/expensesCatalog';
 import {
   financialPayablesService,
   type FinancialPayableRecord
@@ -47,18 +41,6 @@ vi.mock('@/services/audit', () => ({
 
 vi.mock('@/services/appointment', () => ({
   appointmentService: {
-    list: vi.fn()
-  }
-}));
-
-vi.mock('@/services/counterSales', () => ({
-  counterSalesService: {
-    list: vi.fn()
-  }
-}));
-
-vi.mock('@/services/expensesCatalog', () => ({
-  expensesCatalogService: {
     list: vi.fn()
   }
 }));
@@ -295,6 +277,49 @@ const appointments = [
   }
 ] as AppointmentSummary[];
 
+const appointmentReportExecution = {
+  id: 'rep-exec-appointments',
+  rowCount: 3,
+  rows: appointments.map((appointment) => ({
+    appointmentId: appointment.id,
+    scheduledAt: appointment.scheduledAt,
+    status: appointment.status,
+    reason: appointment.reason,
+    patientId: appointment.patientId,
+    ownerId: appointment.ownerId,
+    practitionerStaffId: appointment.practitionerStaffId ?? null,
+    serviceId: appointment.serviceId ?? null,
+    unit: appointment.unit ?? null,
+    specialty: null,
+    resourceLabel: null,
+    createdAt: appointment.createdAt,
+    updatedAt: appointment.updatedAt
+  }))
+} as never;
+
+const professionalCareReportExecution = {
+  id: 'rep-exec-professional-care',
+  rowCount: 2,
+  rows: [
+    {
+      professional: 'staff-1',
+      scheduled: 2,
+      completed: 1,
+      checkedIn: 1,
+      cancelled: 0,
+      services: 2
+    },
+    {
+      professional: 'Sem profissional',
+      scheduled: 1,
+      completed: 0,
+      checkedIn: 0,
+      cancelled: 1,
+      services: 0
+    }
+  ]
+} as never;
+
 const services = [
   {
     id: 'service-1',
@@ -319,6 +344,29 @@ const services = [
     updatedAt: '2026-04-02T00:00:00.000Z'
   }
 ] as ServiceSummary[];
+
+const servicesReportExecution = {
+  id: 'rep-exec-services',
+  rowCount: 2,
+  rows: [
+    {
+      code: 'CONS',
+      name: 'Consulta Teste',
+      description: 'Consulta clínica geral',
+      basePrice: 180,
+      status: 'active',
+      createdAt: '2026-04-01T00:00:00.000Z'
+    },
+    {
+      code: '',
+      name: 'Vacina Teste',
+      description: '',
+      basePrice: 120,
+      status: 'inactive',
+      createdAt: '2026-04-02T00:00:00.000Z'
+    }
+  ]
+} as never;
 
 const owners = [
   {
@@ -373,83 +421,286 @@ const patients = [
   }
 ] as PatientSummary[];
 
-const supplierCostCenters = [
-  {
-    code: 'ESTOQUE',
-    name: 'Estoque',
-    kind: 'Operacional',
-    owner: 'Compras',
-    description: 'Compras e fornecedores'
-  }
-] as ExpenseCostCenterItem[];
+const ownersReportExecution = {
+  id: 'rep-exec-owners',
+  rowCount: 2,
+  rows: [
+    {
+      documentId: '123.456.789-00',
+      fullName: 'Maria Cliente',
+      primaryContact: 'Celular: (11) 99999-0000',
+      city: 'Campinas',
+      financialResponsible: 'Sim',
+      status: 'active',
+      createdAt: '2026-04-03T00:00:00.000Z'
+    },
+    {
+      documentId: '',
+      fullName: 'João Sem Contato',
+      primaryContact: 'Sem contato',
+      city: '',
+      financialResponsible: 'Não',
+      status: 'inactive',
+      createdAt: '2026-04-04T00:00:00.000Z'
+    }
+  ]
+} as never;
+
+const patientsReportExecution = {
+  id: 'rep-exec-patients',
+  rowCount: 2,
+  rows: [
+    {
+      code: 'A-100',
+      name: 'Bolota',
+      species: 'canine',
+      breed: 'SRD',
+      sex: 'female',
+      microchip: '985141000000001',
+      status: 'active',
+      createdAt: '2026-04-05T00:00:00.000Z'
+    },
+    {
+      code: 'patient-2',
+      name: 'Thor',
+      species: 'feline',
+      breed: '',
+      sex: 'male',
+      microchip: '',
+      status: 'deceased',
+      createdAt: '2026-04-06T00:00:00.000Z'
+    }
+  ]
+} as never;
 
 const suppliers = [
   {
-    id: 'sup-1',
+    code: 'sup-1',
     name: 'Fornecedor CVG',
     kind: 'Operacional',
     category: 'FORNECEDOR',
     costCenterCode: 'ESTOQUE',
     costCenterName: 'Estoque',
-    description: 'compras@cvg.test'
+    description: 'compras@cvg.test',
+    createdAt: '2026-04-01T00:00:00.000Z',
+    updatedAt: '2026-04-01T00:00:00.000Z'
   },
   {
-    id: 'sup-2',
+    code: 'sup-2',
     name: 'Despesa Energia',
     kind: 'Fixo',
     category: 'DESPESA',
     costCenterCode: 'ADM',
     costCenterName: '',
-    description: ''
+    description: '',
+    createdAt: '2026-04-02T00:00:00.000Z',
+    updatedAt: '2026-04-02T00:00:00.000Z'
   }
-] as ExpenseCatalogItem[];
+];
 
-const counterSales = [
-  {
-    id: 'sale-1',
-    accountId: 'acc-1',
-    number: 'CV-100',
-    ownerId: 'owner-1',
-    patientId: null,
-    encounterId: null,
-    queueEntryId: null,
-    billingRecordId: null,
-    status: 'cancelled',
-    subtotal: 250,
-    discountAmount: 25,
-    total: 225,
-    paidAmount: 0,
-    balanceDue: 225,
-    notes: 'Cancelada por duplicidade',
-    openedByUserId: 'user-caixa',
-    closedByUserId: null,
-    closedAt: null,
-    createdAt: '2026-04-07T10:00:00.000Z',
-    updatedAt: '2026-04-07T10:30:00.000Z'
-  },
-  {
-    id: 'sale-2',
-    accountId: 'acc-1',
-    number: 'CV-101',
-    ownerId: null,
-    patientId: null,
-    encounterId: null,
-    queueEntryId: null,
-    billingRecordId: null,
-    status: 'closed',
-    subtotal: 180,
-    discountAmount: 0,
-    total: 180,
-    paidAmount: 180,
-    balanceDue: 0,
-    notes: null,
-    openedByUserId: 'user-caixa',
-    closedByUserId: 'user-caixa',
-    closedAt: '2026-04-07T12:00:00.000Z',
-    createdAt: '2026-04-07T11:00:00.000Z',
-    updatedAt: '2026-04-07T12:00:00.000Z'
-  }
-] as CounterSaleSummary[];
+const chequeExecution = {
+  id: 'rep-exec-cheques',
+  rowCount: 1,
+  rows: [
+    {
+      paymentId: 'payment-check-1',
+      counterSaleId: 'sale-1',
+      saleNumber: 'CV-100',
+      saleStatus: 'cancelled',
+      reference: 'CHQ-0001',
+      amount: 225,
+      installments: 1,
+      recordedAt: '2026-04-07T12:00:00.000Z',
+      notes: 'Banco Vetus, bom para 30/04'
+    }
+  ]
+} as never;
+
+const advancePaymentExecution = {
+  id: 'rep-exec-advance-payments',
+  rowCount: 1,
+  rows: [
+    {
+      paymentId: 'advance-1',
+      ownerName: 'Maria Persistida',
+      documentId: '111.111.111-11',
+      issuedAt: '2026-05-10T12:00:00.000Z',
+      originalAmount: 250,
+      compensatedAmount: 100,
+      balance: 150,
+      origin: 'cash_receipt',
+      status: 'partially_compensated',
+      notes: 'Recebimento persistido'
+    }
+  ]
+} as never;
+
+const deletedSalesExecution = {
+  id: 'rep-exec-deleted-sales',
+  rowCount: 1,
+  rows: [
+    {
+      number: 'CV-100',
+      status: 'cancelled',
+      ownerId: 'owner-1',
+      openedByUserId: 'user-caixa',
+      createdAt: '2026-04-07T10:00:00.000Z',
+      updatedAt: '2026-04-07T10:30:00.000Z',
+      total: 225,
+      discountAmount: 25,
+      paidAmount: 0,
+      balanceDue: 225,
+      notes: 'Cancelada por duplicidade'
+    }
+  ]
+} as never;
+
+const inventoryProductExecution = {
+  id: 'rep-exec-inventory-products',
+  rowCount: 2,
+  rows: [
+    {
+      sku: 'MED-001',
+      name: 'Dipirona Gotas',
+      unit: 'un',
+      onHandQuantity: 4,
+      reorderLevel: 5,
+      unitCostAmount: 12.5,
+      createdAt: '2026-04-08T00:00:00.000Z',
+      updatedAt: '2026-04-08T10:00:00.000Z'
+    },
+    {
+      sku: 'VAC-010',
+      name: 'Vacina V10',
+      unit: 'dose',
+      onHandQuantity: 20,
+      reorderLevel: 3,
+      unitCostAmount: 40,
+      createdAt: '2026-04-09T00:00:00.000Z',
+      updatedAt: '2026-04-09T10:00:00.000Z'
+    }
+  ]
+} as never;
+
+const inventoryStockExecution = {
+  id: 'rep-exec-inventory-stock',
+  rowCount: 2,
+  rows: [
+    {
+      sku: 'MED-001',
+      name: 'Dipirona Gotas',
+      unit: 'un',
+      onHandQuantity: 4,
+      reorderLevel: 5,
+      unitCostAmount: 12.5,
+      stockValue: 50,
+      reorderStatus: 'below_reorder_level',
+      createdAt: '2026-04-08T00:00:00.000Z',
+      updatedAt: '2026-04-08T10:00:00.000Z'
+    },
+    {
+      sku: 'VAC-010',
+      name: 'Vacina V10',
+      unit: 'dose',
+      onHandQuantity: 20,
+      reorderLevel: 3,
+      unitCostAmount: 40,
+      stockValue: 800,
+      reorderStatus: 'adequate',
+      createdAt: '2026-04-09T00:00:00.000Z',
+      updatedAt: '2026-04-09T10:00:00.000Z'
+    }
+  ]
+} as never;
+
+const inventoryMovementExecution = {
+  id: 'rep-exec-inventory-movements',
+  rowCount: 2,
+  rows: [
+    {
+      movementId: 'movement-consumption',
+      occurredAt: '2026-04-08T10:00:00.000Z',
+      movementType: 'consumption',
+      sku: 'MED-001',
+      name: 'Dipirona Gotas',
+      unit: 'un',
+      quantityDelta: -2,
+      balanceBefore: 6,
+      balanceAfter: 4,
+      unitCostAmount: 12.5,
+      reason: 'Consumo assistencial',
+      reference: 'encounter-1',
+      recordedByUserId: 'user-estoque'
+    },
+    {
+      movementId: 'movement-inbound',
+      occurredAt: '2026-04-07T10:00:00.000Z',
+      movementType: 'inbound',
+      sku: 'VAC-010',
+      name: 'Vacina V10',
+      unit: 'dose',
+      quantityDelta: 10,
+      balanceBefore: 10,
+      balanceAfter: 20,
+      unitCostAmount: 40,
+      reason: 'Entrada de compra',
+      reference: 'NF-2026-010',
+      recordedByUserId: 'user-compras'
+    }
+  ]
+} as never;
+
+const inventoryInvoiceExecution = {
+  id: 'rep-exec-inventory-invoices',
+  rowCount: 1,
+  rows: [
+    {
+      purchaseId: 'purchase-report-1',
+      invoiceNumber: 'NF-2026-001',
+      supplierName: 'Fornecedor Persistente',
+      status: 'approved',
+      totalAmount: 125,
+      receivedAmount: 0,
+      payableId: 'payable-1',
+      createdByUserId: 'buyer-1',
+      approvedByUserId: 'manager-1',
+      createdAt: '2026-05-10T10:00:00.000Z',
+      updatedAt: '2026-05-10T11:00:00.000Z',
+      receivedAt: null
+    }
+  ]
+} as never;
+
+const serviceInvoiceExecution = {
+  id: 'rep-exec-service-invoices',
+  rowCount: 1,
+  rows: [
+    {
+      documentId: 'nfse-report-1',
+      serie: '001',
+      numero: 42,
+      competencia: '2026-05-15',
+      status: 'issued',
+      customerName: 'Cliente NFS-e',
+      customerDocument: '11122233344',
+      provider: 'abrasf',
+      serviceDescriptions: 'Consulta clínica',
+      serviceCodes: '0407',
+      serviceQuantity: 2,
+      serviceSubtotal: 200,
+      totalIss: 10,
+      totalPis: 0,
+      totalCofins: 0,
+      totalCsll: 0,
+      totalIrrf: 0,
+      totalInss: 0,
+      totalDocument: 210,
+      observations: 'Documento persistido',
+      createdAt: '2026-05-15T12:00:00.000Z',
+      authorizationCode: 'AUTH-42'
+    }
+  ]
+} as never;
 
 const inventoryItems = [
   {
@@ -671,21 +922,9 @@ describe('ReportWorkbenchPage', () => {
     vi.mocked(servicesService.list).mockResolvedValue(services);
     vi.mocked(ownerService.list).mockResolvedValue(owners);
     vi.mocked(patientService.list).mockResolvedValue(patients);
-    vi.mocked(counterSalesService.list).mockResolvedValue(counterSales);
     vi.mocked(inventoryService.list).mockResolvedValue(inventoryItems);
     vi.mocked(inventoryService.listConsumptions).mockResolvedValue(inventoryConsumptions);
     vi.mocked(inventoryService.listLots).mockResolvedValue(inventoryLots);
-    vi.mocked(expensesCatalogService.list).mockResolvedValue({
-      items: suppliers,
-      categories: ['FORNECEDOR', 'DESPESA'],
-      costCenters: supplierCostCenters,
-      page: 1,
-      pageSize: 500,
-      totalItems: suppliers.length,
-      totalPages: 1,
-      sort: 'name',
-      order: 'asc'
-    });
     vi.mocked(financialPayablesService.list).mockResolvedValue({
       data: financialPayables,
       page: 1,
@@ -713,10 +952,22 @@ describe('ReportWorkbenchPage', () => {
         totalSettled: data.reduce((total, item) => total + item.amountPaid, 0)
       };
     });
-    vi.mocked(reportsService.execute).mockResolvedValue({
-      id: 'rep-exec-payables',
-      rowCount: 1
-    } as never);
+    vi.mocked(reportsService.execute).mockImplementation(async (payload) => {
+      if (payload.reportId === 'registration-services') return servicesReportExecution;
+      if (payload.reportId === 'registration-owners') return ownersReportExecution;
+      if (payload.reportId === 'registration-patients') return patientsReportExecution;
+      if (payload.reportId === 'registration-suppliers') {
+        return { id: 'rep-exec-suppliers', rowCount: suppliers.length, rows: suppliers } as never;
+      }
+      if (payload.reportId === 'financial-advance-payments') return advancePaymentExecution;
+      if (payload.reportId === 'scheduling-appointments') return appointmentReportExecution;
+      if (payload.reportId === 'scheduling-professional-care')
+        return professionalCareReportExecution;
+      if (payload.reportId === 'fiscal-service-invoices') return serviceInvoiceExecution;
+      if (payload.reportId === 'inventory-stock') return inventoryStockExecution;
+      if (payload.reportId === 'inventory-movements') return inventoryMovementExecution;
+      return { id: 'rep-exec-payables', rowCount: 1, rows: [] } as never;
+    });
     vi.mocked(reportsService.exportExecution).mockResolvedValue({
       id: 'rep-export-payables',
       accountId: 'account-1',
@@ -895,6 +1146,8 @@ describe('ReportWorkbenchPage', () => {
   });
 
   it('renders cheques financial report as a read-only legacy report', async () => {
+    vi.mocked(reportsService.execute).mockResolvedValue(chequeExecution);
+
     const wrapper = mount(ReportWorkbenchPage, {
       props: { reportKey: 'cheques' }
     });
@@ -902,18 +1155,118 @@ describe('ReportWorkbenchPage', () => {
 
     expect(wrapper.text()).toContain('Cheques');
     expect(wrapper.text()).toContain('Relatórios Financeiros');
-    expect(wrapper.text()).toContain('Solicitar Excel');
-    expect(wrapper.text()).toContain('Financeiro/Cheques.htm');
+    expect(wrapper.text()).toContain('Exportar CSV');
+    expect(wrapper.text()).toContain('Sistema/Relatorio/ChequesRelatorio.htm');
     expect(wrapper.text()).toContain('Cheques no período');
-    expect(wrapper.text()).toContain('Fonte operacional');
-    expect(wrapper.text()).toContain('Fonte analítica');
-    expect(wrapper.text()).toContain('Estrutura operacional mapeada');
-    expect(wrapper.text()).toContain('Cadastro, baixa, devolução e exportação');
-    expect(wrapper.text()).not.toContain('Abrir financeiro');
-    expect(administrativeReportsService.getHubs).toHaveBeenCalled();
+    expect(wrapper.find('caption').text()).toBe('Cheques');
+    expect(wrapper.text()).toContain('CHQ-0001');
+    expect(wrapper.text()).toContain('CV-100');
+    expect(wrapper.text()).toContain('Cancelado');
+    expect(wrapper.text()).toContain('Banco Vetus, bom para 30/04');
+    expect(wrapper.text()).toContain('R$\u00A0225,00');
+    expect(wrapper.text()).not.toContain('CARD-0001');
+    expect(wrapper.text()).not.toContain('A Depositar');
+    expect(wrapper.text()).not.toContain('Devolvidos');
+    expect(administrativeReportsService.getHubs).not.toHaveBeenCalled();
+    expect(reportsService.execute).toHaveBeenCalledWith({
+      reportId: 'financial-cheques',
+      filters: {}
+    });
   });
 
-  it('renders advance payments financial report as a read-only legacy report', async () => {
+  it('exports only persisted cheque payments from the report workbench', async () => {
+    vi.mocked(reportsService.execute).mockResolvedValue(chequeExecution);
+    const createObjectURL = vi.fn((_blob: Blob) => 'blob:cheques-report');
+    const revokeObjectURL = vi.fn();
+    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL });
+
+    try {
+      const wrapper = mount(ReportWorkbenchPage, {
+        props: { reportKey: 'cheques' }
+      });
+      await flushPromises();
+
+      const exportButton = wrapper
+        .findAll('button')
+        .find((button) => button.text() === 'Exportar CSV');
+      expect(exportButton).toBeDefined();
+
+      await exportButton?.trigger('click');
+      await flushPromises();
+
+      expect(reportsService.execute).toHaveBeenCalledWith({
+        reportId: 'financial-cheques',
+        filters: {}
+      });
+      expect(reportsService.exportExecution).toHaveBeenCalledWith('rep-exec-cheques', 'csv');
+      expect(createObjectURL).toHaveBeenCalledOnce();
+      expect(createObjectURL.mock.calls[0]?.[0]).toBeInstanceOf(Blob);
+      expect(wrapper.text()).toContain('Exportação server-side auditada gerada com 1 linha(s).');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('passes the report period to the server-side cheque payment-date filter', async () => {
+    const wrapper = mount(ReportWorkbenchPage, {
+      props: { reportKey: 'cheques' }
+    });
+    await flushPromises();
+
+    const dateInputs = wrapper.findAll('input[type="date"]');
+    await dateInputs[0]?.setValue('2026-05-01');
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Aplicar')
+      ?.trigger('click');
+    await flushPromises();
+
+    expect(wrapper.text()).not.toContain('CHQ-0001');
+    expect(reportsService.execute).toHaveBeenLastCalledWith({
+      reportId: 'financial-cheques',
+      filters: { dateFrom: '2026-05-01' }
+    });
+  });
+
+  it('clears previous cheque rows when a server-side refresh fails', async () => {
+    vi.mocked(reportsService.execute)
+      .mockResolvedValueOnce(chequeExecution)
+      .mockRejectedValueOnce(new Error('Falha ao executar relatório de cheques'));
+
+    const wrapper = mount(ReportWorkbenchPage, {
+      props: { reportKey: 'cheques' }
+    });
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('CHQ-0001');
+
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Aplicar')
+      ?.trigger('click');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Falha ao executar relatório de cheques');
+    expect(wrapper.text()).not.toContain('CHQ-0001');
+  });
+
+  it('surfaces malformed server-side cheque rows instead of silently dropping them', async () => {
+    vi.mocked(reportsService.execute).mockResolvedValueOnce({
+      id: 'rep-exec-invalid-cheques',
+      rowCount: 1,
+      rows: [{ paymentId: 'missing-required-fields' }]
+    } as never);
+
+    const wrapper = mount(ReportWorkbenchPage, {
+      props: { reportKey: 'cheques' }
+    });
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Resposta inválida do relatório de cheques');
+    expect(wrapper.text()).not.toContain('missing-required-fields');
+  });
+
+  it('renders advance payments from the audited server-side report source', async () => {
     const wrapper = mount(ReportWorkbenchPage, {
       props: { reportKey: 'advance-payments' }
     });
@@ -921,15 +1274,102 @@ describe('ReportWorkbenchPage', () => {
 
     expect(wrapper.text()).toContain('Pagamento Antecipado');
     expect(wrapper.text()).toContain('Relatórios Financeiros');
-    expect(wrapper.text()).toContain('Solicitar Excel');
+    expect(wrapper.text()).toContain('Exportar CSV');
     expect(wrapper.text()).toContain('Financeiro/PagamentoAntecipado.htm');
     expect(wrapper.text()).toContain('Pagamentos antecipados no período');
-    expect(wrapper.text()).toContain('Fonte operacional');
-    expect(wrapper.text()).toContain('Fonte analítica');
-    expect(wrapper.text()).toContain('Estrutura operacional mapeada');
-    expect(wrapper.text()).toContain('Geração, compensação e exportação');
+    expect(wrapper.text()).toContain('Maria Persistida');
+    expect(wrapper.text()).toContain('cash_receipt');
+    expect(wrapper.text()).toContain('R$\u00A0250,00');
+    expect(wrapper.text()).toContain('R$\u00A0150,00');
     expect(wrapper.text()).not.toContain('Abrir financeiro');
-    expect(administrativeReportsService.getHubs).toHaveBeenCalled();
+    expect(administrativeReportsService.getHubs).not.toHaveBeenCalled();
+    expect(reportsService.execute).toHaveBeenCalledWith({
+      reportId: 'financial-advance-payments',
+      filters: {}
+    });
+  });
+
+  it('forwards advance-payment owner search and compensation status filters', async () => {
+    const wrapper = mount(ReportWorkbenchPage, {
+      props: { reportKey: 'advance-payments' }
+    });
+    await flushPromises();
+
+    await wrapper.find('input[placeholder="Nome ou documento do cliente"]').setValue('Maria');
+    await wrapper.get('#advance-payment-status').setValue('partially_compensated');
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Aplicar')
+      ?.trigger('click');
+    await flushPromises();
+
+    expect(reportsService.execute).toHaveBeenLastCalledWith({
+      reportId: 'financial-advance-payments',
+      filters: {
+        search: 'Maria',
+        status: 'partially_compensated'
+      }
+    });
+  });
+
+  it('exports advance payments through the audited server-side report artifact', async () => {
+    const createObjectURL = vi.fn((_blob: Blob) => 'blob:advance-report');
+    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL: vi.fn() });
+
+    try {
+      const wrapper = mount(ReportWorkbenchPage, {
+        props: { reportKey: 'advance-payments' }
+      });
+      await flushPromises();
+
+      const exportButton = wrapper
+        .findAll('button')
+        .find((button) => button.text() === 'Exportar CSV');
+      expect(exportButton).toBeDefined();
+      await exportButton?.trigger('click');
+      await flushPromises();
+
+      expect(reportsService.execute).toHaveBeenLastCalledWith({
+        reportId: 'financial-advance-payments',
+        filters: {}
+      });
+      expect(reportsService.exportExecution).toHaveBeenCalledWith(
+        'rep-exec-advance-payments',
+        'csv'
+      );
+      expect(createObjectURL).toHaveBeenCalledOnce();
+      expect(wrapper.text()).toContain('Exportação server-side auditada gerada com 1 linha(s).');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('exports the persisted owner registry through the audited server-side report', async () => {
+    const createObjectURL = vi.fn((_blob: Blob) => 'blob:owner-report');
+    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL: vi.fn() });
+
+    try {
+      const wrapper = mount(ReportWorkbenchPage, {
+        props: { reportKey: 'register-owners' }
+      });
+      await flushPromises();
+
+      const exportButton = wrapper
+        .findAll('button')
+        .find((button) => button.text() === 'Exportar CSV');
+      expect(exportButton).toBeDefined();
+      await exportButton?.trigger('click');
+      await flushPromises();
+
+      expect(reportsService.execute).toHaveBeenCalledWith({
+        reportId: 'registration-owners',
+        filters: {}
+      });
+      expect(reportsService.exportExecution).toHaveBeenCalledWith('rep-exec-owners', 'csv');
+      expect(wrapper.text()).toContain('Exportação server-side auditada gerada com 2 linha(s).');
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('renders counter sales and sales attendance report as a read-only legacy report', async () => {
@@ -1011,10 +1451,11 @@ describe('ReportWorkbenchPage', () => {
     expect(wrapper.text()).toContain('Cancelado');
     expect(wrapper.text()).not.toContain('Abrir hub executivo');
     expect(administrativeReportsService.getHubs).not.toHaveBeenCalled();
-    expect(appointmentService.list).toHaveBeenCalledWith({
-      startAt: undefined,
-      endAt: undefined
+    expect(reportsService.execute).toHaveBeenCalledWith({
+      reportId: 'scheduling-appointments',
+      filters: {}
     });
+    expect(appointmentService.list).not.toHaveBeenCalled();
   });
 
   it('renders professional care attendance report as a read-only legacy report', async () => {
@@ -1035,10 +1476,110 @@ describe('ReportWorkbenchPage', () => {
     expect(wrapper.text()).toContain('Sem profissional');
     expect(wrapper.text()).not.toContain('Abrir profissionais');
     expect(administrativeReportsService.getHubs).not.toHaveBeenCalled();
-    expect(appointmentService.list).toHaveBeenCalledWith({
-      startAt: undefined,
-      endAt: undefined
+    expect(reportsService.execute).toHaveBeenCalledWith({
+      reportId: 'scheduling-professional-care',
+      filters: {}
     });
+    expect(appointmentService.list).not.toHaveBeenCalled();
+  });
+
+  it('exports professional care through the audited server artifact', async () => {
+    const createObjectURL = vi.fn((_blob: Blob) => 'blob:professional-care');
+    const revokeObjectURL = vi.fn();
+    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL });
+    vi.mocked(reportsService.exportExecution).mockResolvedValue({
+      id: 'rep-export-professional-care',
+      accountId: 'account-1',
+      executionId: 'rep-exec-professional-care',
+      format: 'csv',
+      filename: 'scheduling-professional-care-rep-exec-professional-care.csv',
+      contentType: 'text/csv;charset=utf-8',
+      contentEncoding: 'utf8',
+      content: 'Profissional;Agendamentos\nstaff-1;2',
+      exportedByUserId: 'user-1',
+      exportedAt: '2026-05-20T00:00:00.000Z'
+    });
+
+    try {
+      const wrapper = mount(ReportWorkbenchPage, {
+        props: { reportKey: 'professional-care' }
+      });
+      await flushPromises();
+
+      const exportButton = wrapper
+        .findAll('button')
+        .find((button) => button.text() === 'Exportar CSV');
+      expect(exportButton).toBeDefined();
+
+      await exportButton?.trigger('click');
+
+      expect(reportsService.execute).toHaveBeenLastCalledWith({
+        reportId: 'scheduling-professional-care',
+        filters: {}
+      });
+      expect(reportsService.exportExecution).toHaveBeenCalledWith(
+        'rep-exec-professional-care',
+        'csv'
+      );
+      expect(createObjectURL).toHaveBeenCalledOnce();
+      expect(wrapper.text()).toContain('Exportação server-side auditada gerada com 2 linha(s).');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('forwards the professional care UTC period filters to the server', async () => {
+    const wrapper = mount(ReportWorkbenchPage, {
+      props: { reportKey: 'professional-care' }
+    });
+    await flushPromises();
+
+    const dateInputs = wrapper.findAll('input[type="date"]');
+    await dateInputs[0]?.setValue('2026-04-01');
+    await dateInputs[1]?.setValue('2026-04-30');
+    const applyButton = wrapper.findAll('button').find((button) => button.text() === 'Aplicar');
+    await applyButton?.trigger('click');
+    await flushPromises();
+
+    expect(reportsService.execute).toHaveBeenLastCalledWith({
+      reportId: 'scheduling-professional-care',
+      filters: {
+        dateFrom: '2026-04-01',
+        dateTo: '2026-04-30'
+      }
+    });
+    expect(appointmentService.list).not.toHaveBeenCalled();
+  });
+
+  it('forwards appointments report search, status and UTC period filters to the server', async () => {
+    const wrapper = mount(ReportWorkbenchPage, {
+      props: { reportKey: 'appointments' }
+    });
+    await flushPromises();
+
+    const dateInputs = wrapper.findAll('input[type="date"]');
+    await dateInputs[0]?.setValue('2026-04-01');
+    await dateInputs[1]?.setValue('2026-04-30');
+    await wrapper
+      .find('input[placeholder="ID, motivo, unidade ou especialidade"]')
+      .setValue(' rotina ');
+    await wrapper.find('#appointment-report-status').setValue('completed');
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Aplicar')
+      ?.trigger('click');
+    await flushPromises();
+
+    expect(reportsService.execute).toHaveBeenLastCalledWith({
+      reportId: 'scheduling-appointments',
+      filters: {
+        search: 'rotina',
+        status: 'completed',
+        dateFrom: '2026-04-01',
+        dateTo: '2026-04-30'
+      }
+    });
+    expect(appointmentService.list).not.toHaveBeenCalled();
   });
 
   it('renders service invoices custom report as a read-only legacy report', async () => {
@@ -1049,17 +1590,63 @@ describe('ReportWorkbenchPage', () => {
 
     expect(wrapper.text()).toContain('Relatório de NF de Serviços Prestados');
     expect(wrapper.text()).toContain('Relatórios Personalizados');
-    expect(wrapper.text()).toContain('Solicitar Excel');
-    expect(wrapper.text()).toContain('Sistema/Relatorio/RelatorioNFServicosPrestados.htm');
-    expect(wrapper.text()).toContain('NF de serviços prestados');
-    expect(wrapper.text()).toContain('Layouts NFS-e');
-    expect(wrapper.text()).toContain('Serviços prestados');
-    expect(wrapper.text()).toContain('Faturamento bruto');
-    expect(wrapper.text()).toContain('Configuração NFS-e disponível');
-    expect(wrapper.text()).toContain('Serviços prestados consolidados');
-    expect(wrapper.text()).toContain('Emissão, prefeitura e exportação');
+    expect(wrapper.text()).toContain('Exportar CSV');
+    expect(wrapper.text()).toContain('Sistema/Relatorio/RelatoriosDinamicosExecutor.htm?id=1');
+    expect(wrapper.text()).toContain('Documentos NFS-e persistidos');
+    expect(wrapper.text()).toContain('Cliente NFS-e');
+    expect(wrapper.text()).toContain('Consulta clínica');
+    expect(wrapper.text()).toContain('Emitida');
+    expect(wrapper.text()).toContain('Documento persistido');
     expect(wrapper.text()).not.toContain('Atualizar relatório de NF');
-    expect(administrativeReportsService.getHubs).toHaveBeenCalled();
+    expect(administrativeReportsService.getHubs).not.toHaveBeenCalled();
+    expect(reportsService.execute).toHaveBeenCalledWith({
+      reportId: 'fiscal-service-invoices',
+      filters: {}
+    });
+  });
+
+  it('exports service invoices through the audited server-side report artifact', async () => {
+    vi.mocked(reportsService.execute).mockResolvedValue(serviceInvoiceExecution);
+    vi.mocked(reportsService.exportExecution).mockResolvedValue({
+      id: 'rep-export-service-invoices',
+      accountId: 'account-1',
+      executionId: 'rep-exec-service-invoices',
+      format: 'csv',
+      filename: 'fiscal-service-invoices-rep-exec-service-invoices.csv',
+      contentType: 'text/csv;charset=utf-8',
+      contentEncoding: 'utf8',
+      content: 'Documento,Cliente\n42,Cliente NFS-e',
+      exportedByUserId: 'user-1',
+      exportedAt: '2026-05-20T00:00:00.000Z'
+    });
+    const createObjectURL = vi.fn((_blob: Blob) => 'blob:service-invoices-report');
+    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL: vi.fn() });
+
+    try {
+      const wrapper = mount(ReportWorkbenchPage, {
+        props: { reportKey: 'service-invoices' }
+      });
+      await flushPromises();
+
+      const exportButton = wrapper
+        .findAll('button')
+        .find((button) => button.text() === 'Exportar CSV');
+      await exportButton?.trigger('click');
+      await flushPromises();
+
+      expect(reportsService.execute).toHaveBeenCalledWith({
+        reportId: 'fiscal-service-invoices',
+        filters: {}
+      });
+      expect(reportsService.exportExecution).toHaveBeenCalledWith(
+        'rep-exec-service-invoices',
+        'csv'
+      );
+      expect(createObjectURL).toHaveBeenCalledOnce();
+      expect(wrapper.text()).toContain('Exportação server-side auditada gerada com 1 linha(s).');
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('renders services register report as a read-only legacy report', async () => {
@@ -1070,7 +1657,7 @@ describe('ReportWorkbenchPage', () => {
 
     expect(wrapper.text()).toContain('Serviços');
     expect(wrapper.text()).toContain('Relatórios de Cadastros');
-    expect(wrapper.text()).toContain('Solicitar Excel');
+    expect(wrapper.text()).toContain('Exportar CSV');
     expect(wrapper.text()).toContain('Sistema/Relatorio/ServicosRelatorio.htm');
     expect(wrapper.text()).toContain('Serviços cadastrados');
     expect(wrapper.text()).toContain('Serviços ativos');
@@ -1082,7 +1669,64 @@ describe('ReportWorkbenchPage', () => {
     expect(wrapper.text()).toContain('Inativo');
     expect(wrapper.text()).not.toContain('Abrir serviços');
     expect(administrativeReportsService.getHubs).not.toHaveBeenCalled();
-    expect(servicesService.list).toHaveBeenCalledWith();
+    expect(servicesService.list).not.toHaveBeenCalled();
+    expect(reportsService.execute).toHaveBeenCalledWith({
+      reportId: 'registration-services',
+      filters: {}
+    });
+
+    const dateInputs = wrapper.findAll('input[type="date"]');
+    await dateInputs[0]?.setValue('2026-04-01');
+    await dateInputs[1]?.setValue('2026-04-30');
+    const applyButton = wrapper.findAll('button').find((button) => button.text() === 'Aplicar');
+    await applyButton?.trigger('click');
+    await flushPromises();
+    expect(reportsService.execute).toHaveBeenLastCalledWith({
+      reportId: 'registration-services',
+      filters: { dateFrom: '2026-04-01', dateTo: '2026-04-30' }
+    });
+
+    const exportButton = wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Exportar CSV');
+    await exportButton?.trigger('click');
+    await flushPromises();
+
+    expect(reportsService.execute).toHaveBeenCalledWith({
+      reportId: 'registration-services',
+      filters: { dateFrom: '2026-04-01', dateTo: '2026-04-30' }
+    });
+    expect(reportsService.exportExecution).toHaveBeenCalledWith('rep-exec-services', 'csv');
+  });
+
+  it('rejects malformed server services rows instead of falling back to the local list', async () => {
+    vi.mocked(reportsService.execute).mockResolvedValueOnce({
+      id: 'rep-exec-services-invalid',
+      rowCount: 1,
+      rows: [
+        {
+          code: 'BAD',
+          name: 'Serviço inválido',
+          description: '',
+          basePrice: 'not-a-number',
+          status: 'active',
+          createdAt: '2026-04-01T00:00:00.000Z'
+        }
+      ]
+    } as never);
+
+    const wrapper = mount(ReportWorkbenchPage, {
+      props: { reportKey: 'register-services' }
+    });
+    await flushPromises();
+
+    expect(reportsService.execute).toHaveBeenCalledWith({
+      reportId: 'registration-services',
+      filters: {}
+    });
+    expect(servicesService.list).not.toHaveBeenCalled();
+    expect(wrapper.text()).toContain('Resposta inválida do relatório de serviços');
+    expect(wrapper.text()).not.toContain('Serviço inválido');
   });
 
   it('renders owners register report as a read-only legacy report', async () => {
@@ -1093,7 +1737,7 @@ describe('ReportWorkbenchPage', () => {
 
     expect(wrapper.text()).toContain('Clientes');
     expect(wrapper.text()).toContain('Relatórios de Cadastros');
-    expect(wrapper.text()).toContain('Solicitar Excel');
+    expect(wrapper.text()).toContain('Exportar CSV');
     expect(wrapper.text()).toContain('Sistema/Relatorio/ClientesRelatorio.htm');
     expect(wrapper.text()).toContain('Clientes cadastrados');
     expect(wrapper.text()).toContain('Clientes ativos');
@@ -1109,7 +1753,29 @@ describe('ReportWorkbenchPage', () => {
     expect(wrapper.text()).toContain('Inativo');
     expect(wrapper.text()).not.toContain('Abrir clientes');
     expect(administrativeReportsService.getHubs).not.toHaveBeenCalled();
-    expect(ownerService.list).toHaveBeenCalledWith({ pageSize: 500, status: 'all' });
+    expect(ownerService.list).not.toHaveBeenCalled();
+    expect(reportsService.execute).toHaveBeenCalledWith({
+      reportId: 'registration-owners',
+      filters: {}
+    });
+
+    const dateInputs = wrapper.findAll('input[type="date"]');
+    await dateInputs[0]?.setValue('2026-04-01');
+    await dateInputs[1]?.setValue('2026-04-30');
+    const applyButton = wrapper.findAll('button').find((button) => button.text() === 'Aplicar');
+    await applyButton?.trigger('click');
+    await flushPromises();
+    expect(reportsService.execute).toHaveBeenLastCalledWith({
+      reportId: 'registration-owners',
+      filters: { dateFrom: '2026-04-01', dateTo: '2026-04-30' }
+    });
+
+    const exportButton = wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Exportar CSV');
+    await exportButton?.trigger('click');
+    await flushPromises();
+    expect(reportsService.exportExecution).toHaveBeenCalledWith('rep-exec-owners', 'csv');
   });
 
   it('renders patients register report as a read-only legacy report', async () => {
@@ -1120,7 +1786,7 @@ describe('ReportWorkbenchPage', () => {
 
     expect(wrapper.text()).toContain('Animais');
     expect(wrapper.text()).toContain('Relatórios de Cadastros');
-    expect(wrapper.text()).toContain('Solicitar Excel');
+    expect(wrapper.text()).toContain('Exportar CSV');
     expect(wrapper.text()).toContain('Sistema/Relatorio/AnimaisRelatorio.htm');
     expect(wrapper.text()).toContain('Animais cadastrados');
     expect(wrapper.text()).toContain('Animais ativos');
@@ -1138,7 +1804,84 @@ describe('ReportWorkbenchPage', () => {
     expect(wrapper.text()).toContain('Sem chip');
     expect(wrapper.text()).not.toContain('Abrir animais');
     expect(administrativeReportsService.getHubs).not.toHaveBeenCalled();
-    expect(patientService.list).toHaveBeenCalledWith({ pageSize: 500, status: 'all' });
+    expect(patientService.list).not.toHaveBeenCalled();
+    expect(reportsService.execute).toHaveBeenCalledWith({
+      reportId: 'registration-patients',
+      filters: {}
+    });
+
+    const dateInputs = wrapper.findAll('input[type="date"]');
+    await dateInputs[0]?.setValue('2026-04-01');
+    await dateInputs[1]?.setValue('2026-04-30');
+    const applyButton = wrapper.findAll('button').find((button) => button.text() === 'Aplicar');
+    await applyButton?.trigger('click');
+    await flushPromises();
+    expect(reportsService.execute).toHaveBeenLastCalledWith({
+      reportId: 'registration-patients',
+      filters: { dateFrom: '2026-04-01', dateTo: '2026-04-30' }
+    });
+
+    const exportButton = wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Exportar CSV');
+    await exportButton?.trigger('click');
+    await flushPromises();
+    expect(reportsService.exportExecution).toHaveBeenCalledWith('rep-exec-patients', 'csv');
+  });
+
+  it('rejects malformed server owner rows without falling back to the local list', async () => {
+    vi.mocked(reportsService.execute).mockResolvedValueOnce({
+      id: 'rep-exec-owners-invalid',
+      rowCount: 1,
+      rows: [
+        {
+          documentId: '',
+          fullName: 'Cliente inválido',
+          primaryContact: 42,
+          city: '',
+          financialResponsible: 'Sim',
+          status: 'active',
+          createdAt: '2026-04-03T00:00:00.000Z'
+        }
+      ]
+    } as never);
+
+    const wrapper = mount(ReportWorkbenchPage, {
+      props: { reportKey: 'register-owners' }
+    });
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Resposta inválida do relatório de clientes');
+    expect(wrapper.text()).not.toContain('Cliente inválido');
+    expect(ownerService.list).not.toHaveBeenCalled();
+  });
+
+  it('rejects malformed server patient rows without falling back to the local list', async () => {
+    vi.mocked(reportsService.execute).mockResolvedValueOnce({
+      id: 'rep-exec-patients-invalid',
+      rowCount: 1,
+      rows: [
+        {
+          code: 'BAD',
+          name: 'Animal inválido',
+          species: 'canine',
+          breed: '',
+          sex: 'male',
+          microchip: '',
+          status: 'unknown',
+          createdAt: '2026-04-05T00:00:00.000Z'
+        }
+      ]
+    } as never);
+
+    const wrapper = mount(ReportWorkbenchPage, {
+      props: { reportKey: 'register-patients' }
+    });
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Resposta inválida do relatório de animais');
+    expect(wrapper.text()).not.toContain('Animal inválido');
+    expect(patientService.list).not.toHaveBeenCalled();
   });
 
   it('renders suppliers register report as a read-only legacy report', async () => {
@@ -1149,12 +1892,13 @@ describe('ReportWorkbenchPage', () => {
 
     expect(wrapper.text()).toContain('Fornecedores');
     expect(wrapper.text()).toContain('Relatórios de Cadastros');
-    expect(wrapper.text()).toContain('Solicitar Excel');
+    expect(wrapper.text()).toContain('Exportar CSV');
     expect(wrapper.text()).toContain('Sistema/Relatorio/FornecedoresRelatorio.htm');
     expect(wrapper.text()).toContain('Registros cadastrados');
     expect(wrapper.text()).toContain('Despesas');
-    expect(wrapper.text()).toContain('Com contato');
+    expect(wrapper.text()).toContain('Com descrição');
     expect(wrapper.text()).toContain('Fornecedor CVG');
+    expect(wrapper.text()).toContain('sup-1');
     expect(wrapper.text()).toContain('FORNECEDOR');
     expect(wrapper.text()).toContain('Operacional');
     expect(wrapper.text()).toContain('Estoque · ESTOQUE');
@@ -1162,17 +1906,36 @@ describe('ReportWorkbenchPage', () => {
     expect(wrapper.text()).toContain('Despesa Energia');
     expect(wrapper.text()).toContain('DESPESA');
     expect(wrapper.text()).toContain('ADM');
-    expect(wrapper.text()).toContain('Sem Contato - Cadastrado pela NFE');
+    expect(wrapper.text()).toContain('Sem descrição');
     expect(wrapper.text()).not.toContain('Abrir fornecedores');
     expect(administrativeReportsService.getHubs).not.toHaveBeenCalled();
-    expect(expensesCatalogService.list).toHaveBeenCalledWith({
-      pageSize: 500,
-      sort: 'name',
-      order: 'asc'
+    expect(reportsService.execute).toHaveBeenCalledWith({
+      reportId: 'registration-suppliers',
+      filters: {}
     });
   });
 
+  it('exports the supplier register through the audited server report path', async () => {
+    const wrapper = mount(ReportWorkbenchPage, {
+      props: { reportKey: 'register-suppliers' }
+    });
+    await flushPromises();
+
+    const exportButton = wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Exportar CSV');
+    await exportButton?.trigger('click');
+    await flushPromises();
+
+    expect(reportsService.execute).toHaveBeenCalledWith({
+      reportId: 'registration-suppliers',
+      filters: {}
+    });
+    expect(reportsService.exportExecution).toHaveBeenCalledWith('rep-exec-suppliers', 'csv');
+  });
+
   it('renders deleted sales and counter sales register report as a read-only legacy report', async () => {
+    vi.mocked(reportsService.execute).mockResolvedValue(deletedSalesExecution);
     const wrapper = mount(ReportWorkbenchPage, {
       props: { reportKey: 'deleted-sales-counter-sales' }
     });
@@ -1180,8 +1943,8 @@ describe('ReportWorkbenchPage', () => {
 
     expect(wrapper.text()).toContain('Exclusão de Vendas e Comandas');
     expect(wrapper.text()).toContain('Relatórios de Cadastros');
-    expect(wrapper.text()).toContain('Solicitar Excel');
-    expect(wrapper.text()).toContain('Sistema/Relatorio/ExclusaoVendasComandasRelatorio.htm');
+    expect(wrapper.text()).toContain('Exportar CSV');
+    expect(wrapper.text()).toContain('Sistema/Relatorio/ExclusaoVendaComandaRelatorio.htm');
     expect(wrapper.text()).toContain('Exclusões registradas');
     expect(wrapper.text()).toContain('Valor cancelado');
     expect(wrapper.text()).toContain('Descontos cancelados');
@@ -1193,14 +1956,54 @@ describe('ReportWorkbenchPage', () => {
     expect(wrapper.text()).not.toContain('CV-101');
     expect(wrapper.text()).not.toContain('Abrir auditoria');
     expect(administrativeReportsService.getHubs).not.toHaveBeenCalled();
-    expect(counterSalesService.list).toHaveBeenCalledWith({
-      status: 'all',
-      dateFrom: undefined,
-      dateTo: undefined
+    expect(reportsService.execute).toHaveBeenCalledWith({
+      reportId: 'commercial-deleted-sales',
+      filters: {}
     });
   });
 
-  it('renders inventory stock report as a read-only legacy report', async () => {
+  it('exports deleted sales through the audited server-side report artifact', async () => {
+    vi.mocked(reportsService.execute).mockResolvedValue(deletedSalesExecution);
+    vi.mocked(reportsService.exportExecution).mockResolvedValue({
+      id: 'rep-export-deleted-sales',
+      accountId: 'account-1',
+      executionId: 'rep-exec-deleted-sales',
+      format: 'csv',
+      filename: 'commercial-deleted-sales-rep-exec-deleted-sales.csv',
+      contentType: 'text/csv;charset=utf-8',
+      contentEncoding: 'utf8',
+      content: 'Número;Tutor;Usuário de abertura\nCV-100;owner-1;user-caixa',
+      exportedByUserId: 'user-1',
+      exportedAt: '2026-05-20T00:00:00.000Z'
+    });
+    const createObjectURL = vi.fn((_blob: Blob) => 'blob:deleted-sales-report');
+    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL: vi.fn() });
+
+    try {
+      const wrapper = mount(ReportWorkbenchPage, {
+        props: { reportKey: 'deleted-sales-counter-sales' }
+      });
+      await flushPromises();
+
+      const exportButton = wrapper
+        .findAll('button')
+        .find((button) => button.text() === 'Exportar CSV');
+      await exportButton?.trigger('click');
+      await flushPromises();
+
+      expect(reportsService.execute).toHaveBeenCalledWith({
+        reportId: 'commercial-deleted-sales',
+        filters: {}
+      });
+      expect(reportsService.exportExecution).toHaveBeenCalledWith('rep-exec-deleted-sales', 'csv');
+      expect(createObjectURL).toHaveBeenCalledOnce();
+      expect(wrapper.text()).toContain('Exportação server-side auditada gerada com 1 linha(s).');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('renders inventory stock from the audited server report without loading local inventory state', async () => {
     const wrapper = mount(ReportWorkbenchPage, {
       props: { reportKey: 'inventory-stock' }
     });
@@ -1213,20 +2016,68 @@ describe('ReportWorkbenchPage', () => {
     expect(wrapper.text()).toContain('Itens em estoque');
     expect(wrapper.text()).toContain('Valor em estoque');
     expect(wrapper.text()).toContain('Abaixo do mínimo');
-    expect(wrapper.text()).toContain('Lotes críticos');
     expect(wrapper.text()).toContain('MED-001');
     expect(wrapper.text()).toContain('Dipirona Gotas');
     expect(wrapper.text()).toContain('un');
-    expect(wrapper.text()).toContain('1 a vencer');
+    expect(wrapper.text()).toContain('Abaixo do mínimo');
     expect(wrapper.text()).toContain('VAC-010');
-    expect(wrapper.text()).toContain('Regular');
+    expect(wrapper.text()).toContain('Adequado');
     expect(wrapper.text()).not.toContain('Abrir estoque');
     expect(administrativeReportsService.getHubs).not.toHaveBeenCalled();
-    expect(inventoryService.list).toHaveBeenCalledWith();
-    expect(inventoryService.listLots).toHaveBeenCalledWith();
+    expect(reportsService.execute).toHaveBeenCalledWith({
+      reportId: 'inventory-stock',
+      filters: {}
+    });
+    expect(inventoryService.list).not.toHaveBeenCalled();
+    expect(inventoryService.listLots).not.toHaveBeenCalled();
+    expect(inventoryService.listConsumptions).not.toHaveBeenCalled();
   });
 
-  it('renders inventory movements report as a read-only legacy report', async () => {
+  it('exports inventory stock through the audited server-side report artifact', async () => {
+    vi.mocked(reportsService.execute).mockResolvedValue(inventoryStockExecution);
+    vi.mocked(reportsService.exportExecution).mockResolvedValue({
+      id: 'rep-export-inventory-stock',
+      accountId: 'account-1',
+      executionId: 'rep-exec-inventory-stock',
+      format: 'csv',
+      filename: 'inventory-stock-rep-exec-inventory-stock.csv',
+      contentType: 'text/csv;charset=utf-8',
+      contentEncoding: 'utf8',
+      content: 'Código;Produto;Valor estoque\nMED-001;Dipirona Gotas;50,00',
+      exportedByUserId: 'user-1',
+      exportedAt: '2026-05-20T00:00:00.000Z'
+    });
+    const createObjectURL = vi.fn((_blob: Blob) => 'blob:inventory-stock-report');
+    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL: vi.fn() });
+
+    try {
+      const wrapper = mount(ReportWorkbenchPage, {
+        props: { reportKey: 'inventory-stock' }
+      });
+      await flushPromises();
+
+      const exportButton = wrapper
+        .findAll('button')
+        .find((button) => button.text() === 'Exportar CSV');
+      await exportButton?.trigger('click');
+      await flushPromises();
+
+      expect(reportsService.execute).toHaveBeenLastCalledWith({
+        reportId: 'inventory-stock',
+        filters: {}
+      });
+      expect(reportsService.exportExecution).toHaveBeenCalledWith(
+        'rep-exec-inventory-stock',
+        'csv'
+      );
+      expect(createObjectURL).toHaveBeenCalledOnce();
+      expect(wrapper.text()).toContain('Exportação server-side auditada gerada com 2 linha(s).');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('renders inventory movements from the audited server ledger and avoids local projections', async () => {
     const wrapper = mount(ReportWorkbenchPage, {
       props: { reportKey: 'inventory-movements' }
     });
@@ -1237,24 +2088,28 @@ describe('ReportWorkbenchPage', () => {
     expect(wrapper.text()).toContain('Exportar CSV');
     expect(wrapper.text()).toContain('Sistema/Relatorio/MovimentacaoEstoqueRelatorio.htm');
     expect(wrapper.text()).toContain('Movimentações registradas');
-    expect(wrapper.text()).toContain('Entradas em lotes');
-    expect(wrapper.text()).toContain('Saídas consumidas');
+    expect(wrapper.text()).toContain('Entradas');
+    expect(wrapper.text()).toContain('Saídas/consumos');
     expect(wrapper.text()).toContain('Valor movimentado');
     expect(wrapper.text()).toContain('Saída');
-    expect(wrapper.text()).toContain('Atendimento');
+    expect(wrapper.text()).toContain('Consumo assistencial');
     expect(wrapper.text()).toContain('user-estoque');
-    expect(wrapper.text()).toContain('Prescrição');
-    expect(wrapper.text()).toContain('Entrada/lote');
-    expect(wrapper.text()).toContain('L-001');
-    expect(wrapper.text()).toContain('Fornecedor CVG');
+    expect(wrapper.text()).toContain('Entrada');
+    expect(wrapper.text()).toContain('NF-2026-010');
+    expect(wrapper.text()).toContain('user-compras');
     expect(wrapper.text()).not.toContain('Abrir estoque');
     expect(administrativeReportsService.getHubs).not.toHaveBeenCalled();
-    expect(inventoryService.list).toHaveBeenCalledWith();
-    expect(inventoryService.listLots).toHaveBeenCalledWith();
-    expect(inventoryService.listConsumptions).toHaveBeenCalledWith();
+    expect(reportsService.execute).toHaveBeenCalledWith({
+      reportId: 'inventory-movements',
+      filters: {}
+    });
+    expect(inventoryService.list).not.toHaveBeenCalled();
+    expect(inventoryService.listLots).not.toHaveBeenCalled();
+    expect(inventoryService.listConsumptions).not.toHaveBeenCalled();
   });
 
-  it('renders inventory invoices report as a read-only legacy report', async () => {
+  it('renders inventory invoices from the audited persisted purchase-entry report', async () => {
+    vi.mocked(reportsService.execute).mockResolvedValue(inventoryInvoiceExecution);
     const wrapper = mount(ReportWorkbenchPage, {
       props: { reportKey: 'inventory-invoices' }
     });
@@ -1264,27 +2119,28 @@ describe('ReportWorkbenchPage', () => {
     expect(wrapper.text()).toContain('Relatórios de Estoque');
     expect(wrapper.text()).toContain('Exportar CSV');
     expect(wrapper.text()).toContain('Sistema/Relatorio/EntradaNotaFiscalRelatorio.htm');
-    expect(wrapper.text()).toContain('Entradas registradas');
+    expect(wrapper.text()).toContain('Compras com referência de NF');
     expect(wrapper.text()).toContain('Fornecedores');
-    expect(wrapper.text()).toContain('Lotes conferidos');
-    expect(wrapper.text()).toContain('Valor em NF');
-    expect(wrapper.text()).toContain('Em atenção');
-    expect(wrapper.text()).toContain('NF-L-001');
-    expect(wrapper.text()).toContain('Fornecedor CVG');
-    expect(wrapper.text()).toContain('MED-001');
-    expect(wrapper.text()).toContain('Dipirona Gotas');
-    expect(wrapper.text()).toContain('Atenção');
-    expect(wrapper.text()).toContain('NF-L-010');
-    expect(wrapper.text()).toContain('Vacina V10');
-    expect(wrapper.text()).toContain('Conferida');
+    expect(wrapper.text()).toContain('Valor comprado');
+    expect(wrapper.text()).toContain('Valor recebido');
+    expect(wrapper.text()).toContain('NF-2026-001');
+    expect(wrapper.text()).toContain('Fornecedor Persistente');
+    expect(wrapper.text()).toContain('purchase-report-1');
+    expect(wrapper.text()).toContain('Aprovada');
+    expect(wrapper.text()).toContain('não é documento fiscal');
     expect(wrapper.text()).not.toContain('Abrir estoque');
     expect(administrativeReportsService.getHubs).not.toHaveBeenCalled();
-    expect(inventoryService.list).toHaveBeenCalledWith();
-    expect(inventoryService.listLots).toHaveBeenCalledWith();
+    expect(reportsService.execute).toHaveBeenCalledWith({
+      reportId: 'inventory-invoices',
+      filters: {}
+    });
+    expect(inventoryService.list).not.toHaveBeenCalled();
+    expect(inventoryService.listLots).not.toHaveBeenCalled();
     expect(inventoryService.listConsumptions).not.toHaveBeenCalled();
   });
 
-  it('renders inventory products report as a read-only legacy report', async () => {
+  it('renders inventory products from the audited server report and does not load local lots', async () => {
+    vi.mocked(reportsService.execute).mockResolvedValue(inventoryProductExecution);
     const wrapper = mount(ReportWorkbenchPage, {
       props: { reportKey: 'inventory-products' }
     });
@@ -1293,24 +2149,112 @@ describe('ReportWorkbenchPage', () => {
     expect(wrapper.text()).toContain('Relatório de Produtos');
     expect(wrapper.text()).toContain('Relatórios de Estoque');
     expect(wrapper.text()).toContain('Exportar CSV');
-    expect(wrapper.text()).toContain('não traz URL legacy funcional explícita');
+    expect(wrapper.text()).toContain('fonte persistida de itens de estoque');
     expect(wrapper.text()).toContain('Produtos cadastrados');
     expect(wrapper.text()).toContain('Com saldo');
     expect(wrapper.text()).toContain('Abaixo do mínimo');
-    expect(wrapper.text()).toContain('Com lote');
-    expect(wrapper.text()).toContain('Valor em estoque');
     expect(wrapper.text()).toContain('MED-001');
     expect(wrapper.text()).toContain('Dipirona Gotas');
     expect(wrapper.text()).toContain('Abaixo do mínimo');
     expect(wrapper.text()).toContain('VAC-010');
     expect(wrapper.text()).toContain('Vacina V10');
     expect(wrapper.text()).toContain('Com saldo');
-    expect(wrapper.text()).toContain('Estoque operacional');
+    expect(wrapper.text()).not.toContain('Com lote');
+    expect(wrapper.text()).not.toContain('Valor em estoque');
     expect(wrapper.text()).not.toContain('Abrir estoque');
     expect(administrativeReportsService.getHubs).not.toHaveBeenCalled();
-    expect(inventoryService.list).toHaveBeenCalledWith();
-    expect(inventoryService.listLots).toHaveBeenCalledWith();
+    expect(reportsService.execute).toHaveBeenCalledWith({
+      reportId: 'inventory-products',
+      filters: {}
+    });
+    expect(inventoryService.list).not.toHaveBeenCalled();
+    expect(inventoryService.listLots).not.toHaveBeenCalled();
     expect(inventoryService.listConsumptions).not.toHaveBeenCalled();
+  });
+
+  it('renders persisted report dates as UTC calendar dates', async () => {
+    vi.mocked(reportsService.execute).mockResolvedValue(inventoryProductExecution);
+    const wrapper = mount(ReportWorkbenchPage, {
+      props: { reportKey: 'inventory-products' }
+    });
+    await flushPromises();
+
+    const cells = wrapper.find('tbody tr').findAll('td');
+    expect(cells[6]?.text()).toBe('08/04/2026');
+    expect(cells[7]?.text()).toBe('08/04/2026');
+  });
+
+  it('forwards inventory product search and createdAt period filters to the server', async () => {
+    vi.mocked(reportsService.execute).mockResolvedValue(inventoryProductExecution);
+    const wrapper = mount(ReportWorkbenchPage, {
+      props: { reportKey: 'inventory-products' }
+    });
+    await flushPromises();
+
+    const dateInputs = wrapper.findAll('input[type="date"]');
+    await dateInputs[0]?.setValue('2026-04-01');
+    await dateInputs[1]?.setValue('2026-04-30');
+    await wrapper.find('input[placeholder="SKU ou nome do produto"]').setValue('MED-001');
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Aplicar')
+      ?.trigger('click');
+    await flushPromises();
+
+    expect(reportsService.execute).toHaveBeenLastCalledWith({
+      reportId: 'inventory-products',
+      filters: {
+        search: 'MED-001',
+        dateFrom: '2026-04-01',
+        dateTo: '2026-04-30'
+      }
+    });
+    expect(inventoryService.list).not.toHaveBeenCalled();
+    expect(inventoryService.listLots).not.toHaveBeenCalled();
+  });
+
+  it('exports inventory products through the audited server-side report artifact', async () => {
+    vi.mocked(reportsService.execute).mockResolvedValue(inventoryProductExecution);
+    vi.mocked(reportsService.exportExecution).mockResolvedValue({
+      id: 'rep-export-inventory-products',
+      accountId: 'account-1',
+      executionId: 'rep-exec-inventory-products',
+      format: 'csv',
+      filename: 'inventory-products-rep-exec-inventory-products.csv',
+      contentType: 'text/csv;charset=utf-8',
+      contentEncoding: 'utf8',
+      content: 'Código;Produto\nMED-001;Dipirona Gotas\nVAC-010;Vacina V10',
+      exportedByUserId: 'user-1',
+      exportedAt: '2026-05-20T00:00:00.000Z'
+    });
+    const createObjectURL = vi.fn((_blob: Blob) => 'blob:inventory-products-report');
+    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL: vi.fn() });
+
+    try {
+      const wrapper = mount(ReportWorkbenchPage, {
+        props: { reportKey: 'inventory-products' }
+      });
+      await flushPromises();
+
+      const exportButton = wrapper
+        .findAll('button')
+        .find((button) => button.text() === 'Exportar CSV');
+      await exportButton?.trigger('click');
+      await flushPromises();
+
+      expect(reportsService.execute).toHaveBeenLastCalledWith({
+        reportId: 'inventory-products',
+        filters: {}
+      });
+      expect(reportsService.exportExecution).toHaveBeenCalledWith(
+        'rep-exec-inventory-products',
+        'csv'
+      );
+      expect(createObjectURL).toHaveBeenCalledOnce();
+      expect(wrapper.text()).toContain('Exportação server-side auditada gerada com 2 linha(s).');
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('renders cash drawer financial report as read-only Vetus report', async () => {
@@ -1410,10 +2354,22 @@ describe('ReportWorkbenchPage', () => {
     });
   });
 
-  it('exports the loaded attendance report as a CSV snapshot', async () => {
+  it('exports the loaded appointments report through the audited server artifact', async () => {
     const createObjectURL = vi.fn((_blob: Blob) => 'blob:report');
     const revokeObjectURL = vi.fn();
     vi.stubGlobal('URL', { createObjectURL, revokeObjectURL });
+    vi.mocked(reportsService.exportExecution).mockResolvedValue({
+      id: 'rep-export-appointments',
+      accountId: 'account-1',
+      executionId: 'rep-exec-appointments',
+      format: 'csv',
+      filename: 'scheduling-appointments-rep-exec-appointments.csv',
+      contentType: 'text/csv;charset=utf-8',
+      contentEncoding: 'utf8',
+      content: 'Agendamento;Status\napt-1;Concluído',
+      exportedByUserId: 'user-1',
+      exportedAt: '2026-05-20T00:00:00.000Z'
+    });
 
     try {
       const wrapper = mount(ReportWorkbenchPage, {
@@ -1428,9 +2384,14 @@ describe('ReportWorkbenchPage', () => {
 
       await exportButton?.trigger('click');
 
+      expect(reportsService.execute).toHaveBeenLastCalledWith({
+        reportId: 'scheduling-appointments',
+        filters: {}
+      });
+      expect(reportsService.exportExecution).toHaveBeenCalledWith('rep-exec-appointments', 'csv');
       expect(createObjectURL).toHaveBeenCalledOnce();
       expect(createObjectURL.mock.calls[0]?.[0]).toBeInstanceOf(Blob);
-      expect(wrapper.text()).toContain('Exportação CSV gerada com 3 linha(s).');
+      expect(wrapper.text()).toContain('Exportação server-side auditada gerada com 3 linha(s).');
     } finally {
       vi.unstubAllGlobals();
     }

@@ -1,0 +1,76 @@
+{
+  "record_id": "GATE-CVG-002-ENCOUNTER-ACTIVE-UNIQUENESS-IR-001",
+  "timestamp": "2026-08-27T03:23:36-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-002 bounded database authority for one non-closed encounter per tenant patient",
+  "scope_ref": "CVG-002-ENCOUNTER-ACTIVE-UNIQUENESS",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The clinical integrity gap, bounded scope, owner, authority and exclusions are recorded without promoting CVG-002 or the global ERP gate.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-002-ENCOUNTER-ACTIVE-UNIQUENESS.md",
+        ".agent/backlog.json",
+        ".agent/authority.jsonl#AUTH-CVG-002-ENCOUNTER-ACTIVE-UNIQUENESS-IR-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Only repository-local code, one additive migration and disposable PostgreSQL verification are authorized; historical duplicate remediation and target behavior remain open."
+    },
+    {
+      "id": "IR-002",
+      "description": "The current encounter service performs only a process-local duplicate check and the canonical database insert lacks an active patient uniqueness invariant; the repository and migration are the smallest authoritative hardening boundary.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/encounters/src/index.ts",
+        "packages/modules/encounters/src/repositories/database-encounter.repository.ts",
+        "packages/db/migrations/0000_vengeful_pet_avengers.sql",
+        "packages/db/migrations/0066_advanced_care_persistence.sql",
+        "packages/db/migrations/0108_encounter_cash_receipts.sql"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A migration preflight must refuse unresolved historical duplicates; no existing data is authorized for automatic normalization."
+    },
+    {
+      "id": "IR-003",
+      "description": "Focused RED tests can prove the missing cross-runtime invariant, then GREEN tests can prove one winner, stable conflict mapping, tenant separation and close/reopen lifecycle behavior.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-002-ENCOUNTER-ACTIVE-UNIQUENESS.md",
+        "packages/modules/encounters/src/encounters.test.ts",
+        "tests/integration/billing-hydration.test.ts",
+        "tests/integration/database/migration.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Implementation, fresh PostgreSQL race evidence, security/static review and post-change regressions are required before bounded verification."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-002-ENCOUNTER-ACTIVE-UNIQUENESS.md",
+    "packages/modules/encounters/src/index.ts",
+    "packages/modules/encounters/src/repositories/database-encounter.repository.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "The additive migration, unique-violation translation, RED/GREEN tests and fresh concurrent PostgreSQL evidence are not complete at gate creation."
+  ],
+  "conditions": [
+    "Do not apply the migration to a database with unresolved active duplicates; the preflight must fail closed."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via the original consolidation brief",
+    "scope": "CVG-002 bounded active-encounter uniqueness and conflict mapping",
+    "decision": "Authorize reversible repository implementation, one additive canonical packages/db migration, focused API/domain tests and disposable PostgreSQL concurrency verification for the invariant that a tenant patient has at most one non-closed encounter. Exclude historical duplicate remediation, provider, credentials, target, production, deployment, external mutation and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-002-ENCOUNTER-ACTIVE-UNIQUENESS-IR-001",
+    "expires_or_revalidates": "Revalidate before normalizing historical duplicates, changing encounter lifecycle semantics beyond this invariant, target operations, production/deployment or release acceptance."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "next_action": "Write and run the intentional repository/service RED tests, then implement the additive index and named unique-violation mapping."
+}

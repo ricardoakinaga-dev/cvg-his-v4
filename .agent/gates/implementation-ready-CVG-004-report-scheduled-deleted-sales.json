@@ -1,0 +1,80 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-SCHEDULED-DELETED-SALES-IR-001",
+  "timestamp": "2026-08-27T21:40:00-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-004 bounded scheduled source for persisted current cancelled counter-sale snapshot",
+  "scope_ref": "CVG-004-REPORT-SCHEDULED-DELETED-SALES",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The worker-only scope, authority, exclusions and non-promotion boundary are recorded.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-scheduled-deleted-sales.md",
+        ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-DELETED-SALES-IR-001",
+        ".agent/backlog.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Only scheduled row resolution and local persisted execution are authorized; external delivery, providers, target and release remain open."
+    },
+    {
+      "id": "IR-002",
+      "description": "The existing on-demand report gate, persisted CounterSales source, ReportsService schedule path and worker bootstrap establish a safe additive source contract.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/gates/verified-CVG-004-report-deleted-sales-snapshot.json",
+        ".agent/artifacts/CVG-004-report-deleted-sales-snapshot-2026-08-27.md",
+        "packages/modules/counter-sales/src/index.ts",
+        "packages/modules/counter-sales/src/repositories/database-counter-sales.repository.ts",
+        "apps/worker/src/runner.ts",
+        "apps/worker/src/bootstrap.ts",
+        "apps/worker/src/jobs/scheduled-report-job.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The current worker has no commercial-deleted-sales resolver; this gate authorizes only that bounded missing source."
+    },
+    {
+      "id": "IR-003",
+      "description": "Focused RED tests and a two-account disposable process proof can establish source wiring, strict filters, row bounds and tenant isolation.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-scheduled-deleted-sales.md",
+        "apps/worker/src/runner.test.ts",
+        "tests/integration/process/worker-run-once-reports.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Implementation, independent review and fresh process evidence are pending."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-report-scheduled-deleted-sales.md",
+    ".agent/gates/verified-CVG-004-report-deleted-sales-snapshot.json",
+    "apps/worker/src/runner.ts",
+    "apps/worker/src/bootstrap.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "TDD RED/GREEN, two-account process verification, independent review, regression/coverage retest and final reconciliation are pending."
+  ],
+  "conditions": [],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via the original consolidation brief",
+    "scope": "CVG-004 bounded scheduled source for persisted current cancelled counter-sale snapshot",
+    "decision": "Authorize reversible worker resolver/bootstrap/test implementation and disposable PostgreSQL two-account one-shot verification using the already verified persisted commercial-deleted-sales contract. Exclude external delivery providers, credentials, fiscal or cancellation writes, target, production, deployment, backfill and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-DELETED-SALES-IR-001",
+    "expires_or_revalidates": "Revalidate before adding external delivery, cancellation history, writes, providers, credentials, target, production, deployment or release activity."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "next_action": "Write RED tests, implement only the scheduled persisted source and run the two-account disposable process proof before reconciliation.",
+  "revalidation_triggers": [
+    "Changes to counter-sale cancellation semantics, report fields, schedule delivery or worker identity",
+    "Any external delivery/provider, credential, target, production, deployment, backfill or release activity"
+  ]
+}

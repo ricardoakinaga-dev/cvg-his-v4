@@ -1,11 +1,13 @@
 import { randomUUID } from 'node:crypto';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import type { PoolClient } from 'pg';
 
+import type { SessionRepository } from '../../../packages/modules/auth/src/index.js';
 import { setAppState } from '../../../apps/api/src/app-state.js';
 import { bootstrapServices, shutdownServices } from '../../../apps/api/src/bootstrap.js';
 import { createApiServer, type ApiServer } from '../../../apps/api/src/server.js';
@@ -18,6 +20,8 @@ const ACCOUNT_A = randomUUID();
 const USER_A = randomUUID();
 const OWNER_A = randomUUID();
 const PATIENT_A = randomUUID();
+const RACE_PATIENT_A = randomUUID();
+const AUDIT_PATIENT_A = randomUUID();
 const ENCOUNTER_A = randomUUID();
 const RACE_ENCOUNTER_A = randomUUID();
 const AUDIT_ENCOUNTER_A = randomUUID();
@@ -28,10 +32,19 @@ const BED_A_3 = randomUUID();
 const ITEM_A = `vertical-item-${randomUUID()}`;
 const LOT_A = `vertical-lot-${randomUUID()}`;
 const CASH_REGISTER_A = randomUUID();
+const ACCESS_AUDIT_USER_A = randomUUID();
+const ACCESS_AUDIT_RETRY_TEAM_A = `vertical-access-retry-${randomUUID().replaceAll('-', '')}`;
+const ACCESS_AUDIT_RECOVERY_TEAM_A = `vertical-access-recovery-${randomUUID().replaceAll('-', '')}`;
 const CLINICAL_TIMELINE_FAILPOINT_CONSTRAINT = `vertical_timeline_failpoint_${randomUUID().replaceAll('-', '')}`;
 const BED_FAILPOINT_CONSTRAINT = `vertical_bed_failpoint_${randomUUID().replaceAll('-', '')}`;
 const TRANSFER_BED_FAILPOINT_CONSTRAINT = `vertical_transfer_bed_failpoint_${randomUUID().replaceAll('-', '')}`;
 const AUDIT_FAILPOINT_CONSTRAINT = `vertical_audit_failpoint_${randomUUID().replaceAll('-', '')}`;
+const ACCESS_AUDIT_RETRY_CONSTRAINT = `vertical_access_audit_retry_${randomUUID().replaceAll('-', '')}`;
+const ACCESS_AUDIT_RECOVERY_CONSTRAINT = `vertical_access_audit_recovery_${randomUUID().replaceAll('-', '')}`;
+const AUTH_LINEARIZATION_TRIGGER = `vertical_auth_linearization_trigger_${randomUUID().replaceAll('-', '')}`;
+const AUTH_LINEARIZATION_FUNCTION = `vertical_auth_linearization_function_${randomUUID().replaceAll('-', '')}`;
+const AUTH_LINEARIZATION_GATE = `vertical-auth-linearization-gate-${randomUUID().replaceAll('-', '')}`;
+const AUTH_LINEARIZATION_SUPPLIER = `Authorization linearization supplier ${randomUUID()}`;
 
 const TENANT_B = randomUUID();
 const ACCOUNT_B = randomUUID();
@@ -55,10 +68,61 @@ let baseUrl = '';
 let secondaryBaseUrl = '';
 let accessTokenA = '';
 let accessTokenB = '';
+let accessAuditToken = '';
+const secondarySessionReadGate = {
+  reads: 0,
+  armed: false,
+  started: Promise.resolve(),
+  release: Promise.resolve(),
+  signalStarted: () => {},
+  signalRelease: () => {}
+};
 let apiDatabaseRole = '';
 let workerDatabaseRole = '';
 let runtimeRolePassword = '';
+let fileStoragePath = '';
 let journeyReceiptId = '';
+
+function createGatedSessionRepository(repository: SessionRepository): SessionRepository {
+  return new Proxy(repository, {
+    get(target, property, receiver) {
+      const value = Reflect.get(target, property, target);
+      if (property !== 'findById') {
+        return typeof value === 'function' ? value.bind(target) : value;
+      }
+
+      const findById = value.bind(target) as SessionRepository['findById'];
+      return async (...args: Parameters<SessionRepository['findById']>) => {
+        const result = await findById(...args);
+        if (secondarySessionReadGate.armed) {
+          secondarySessionReadGate.reads += 1;
+          if (secondarySessionReadGate.reads === 2) {
+            secondarySessionReadGate.armed = false;
+            secondarySessionReadGate.signalStarted();
+            await secondarySessionReadGate.release;
+          }
+        }
+        return result;
+      };
+    }
+  });
+}
+
+function armSecondarySessionReadGate(): void {
+  secondarySessionReadGate.reads = 0;
+  secondarySessionReadGate.armed = true;
+  secondarySessionReadGate.started = new Promise<void>((resolve) => {
+    secondarySessionReadGate.signalStarted = resolve;
+  });
+  secondarySessionReadGate.release = new Promise<void>((resolve) => {
+    secondarySessionReadGate.signalRelease = resolve;
+  });
+}
+
+function releaseSecondarySessionReadGate(): void {
+  secondarySessionReadGate.armed = false;
+  secondarySessionReadGate.signalRelease();
+}
 let raceStayId = '';
 let auditStayId = '';
 
@@ -132,6 +196,13 @@ interface ReceiptResponse {
   readonly billingRecordId: string;
 }
 
+interface EffectivePermissionResponse {
+  readonly effectivePermissions: readonly {
+    readonly permissionCode: string;
+    readonly effective: boolean;
+  }[];
+}
+
 async function requestJsonAt<T>(
   origin: string,
   path: string,
@@ -148,6 +219,32 @@ async function requestJsonAt<T>(
 
 async function requestJson<T>(path: string, init: RequestInit = {}): Promise<JsonResponse<T>> {
   return requestJsonAt(baseUrl, path, init);
+}
+
+async function readAccessGrantState(teamId: string): Promise<{
+  readonly assignments: number;
+  readonly audits: number;
+}> {
+  const result = await getTestPool().query<{
+    readonly assignments: number;
+    readonly audits: number;
+  }>(
+    `SELECT
+       (SELECT COUNT(*)::int
+          FROM access_team_permissions assignment
+          JOIN permissions permission ON permission.id = assignment.permission_id
+         WHERE assignment.account_id = $1
+           AND assignment.team_id = $2
+           AND permission.key = 'counter_sale.write') AS assignments,
+       (SELECT COUNT(*)::int
+          FROM audit_events
+         WHERE account_id = $1
+           AND action = 'permission_granted'
+           AND entity_type = 'access-permission-assignment'
+           AND entity_id = $2::text) AS audits`,
+    [ACCOUNT_A, teamId]
+  );
+  return result.rows[0] ?? { assignments: 0, audits: 0 };
 }
 
 function headers(token: string, tenantId: string, accountId: string): HeadersInit {
@@ -174,6 +271,7 @@ async function seedTenant(input: {
   readonly ownerId: string;
   readonly patientId: string;
   readonly encounterIds: readonly string[];
+  readonly encounterPatientIds?: Readonly<Record<string, string>>;
   readonly itemId: string;
   readonly lotId: string;
   readonly username: string;
@@ -226,12 +324,27 @@ async function seedTenant(input: {
      VALUES ($1, $2, $3, $4, 'canine')`,
     [input.patientId, input.accountId, input.ownerId, `${input.label} patient`]
   );
+  const additionalPatientIds = [
+    ...new Set(
+      input.encounterIds
+        .map((encounterId) => input.encounterPatientIds?.[encounterId])
+        .filter((patientId): patientId is string => Boolean(patientId))
+    )
+  ].filter((patientId) => patientId !== input.patientId);
+  for (const [index, patientId] of additionalPatientIds.entries()) {
+    await pool.query(
+      `INSERT INTO patients (id, account_id, owner_id, name, species)
+       VALUES ($1, $2, $3, $4, 'canine')`,
+      [patientId, input.accountId, input.ownerId, `${input.label} patient ${index + 2}`]
+    );
+  }
   for (const encounterId of input.encounterIds) {
+    const patientId = input.encounterPatientIds?.[encounterId] ?? input.patientId;
     await pool.query(
       `INSERT INTO encounters (
          id, account_id, patient_id, owner_id, status, opened_by_user_id, reason
        ) VALUES ($1, $2, $3, $4, 'open', $5, 'Vertical inpatient journey')`,
-      [encounterId, input.accountId, input.patientId, input.ownerId, input.userId]
+      [encounterId, input.accountId, patientId, input.ownerId, input.userId]
     );
   }
   await pool.query(
@@ -254,6 +367,42 @@ async function seedTenant(input: {
      ) VALUES ($1, $2, $3, $4, 10, 0, 'unit', 'Ala A', 'Vertical supplier',
        '2028-12-31T00:00:00.000Z', 'active')`,
     [input.lotId, input.accountId, input.itemId, `LOT-${input.lotId.slice(-12)}`]
+  );
+}
+
+async function seedAccessControlAuditFixture(): Promise<void> {
+  const pool = getTestPool();
+  await pool.query(
+    `INSERT INTO users (
+       id, account_id, username, email, password_hash, full_name, is_active
+     ) VALUES ($1, $2, $3, $4, 'cvg-his-v2-seed-salt-v1:seed_admin', $5, true)`,
+    [
+      ACCESS_AUDIT_USER_A,
+      ACCOUNT_A,
+      `vertical-access-${ACCESS_AUDIT_USER_A.slice(0, 8)}`,
+      `vertical-access-${ACCESS_AUDIT_USER_A.slice(0, 8)}@example.test`,
+      'Vertical access audit subject'
+    ]
+  );
+  await pool.query(
+    `INSERT INTO access_teams (id, account_id, code, name, is_active)
+     VALUES
+       ($1, $3, $4, 'Access audit retry team', true),
+       ($2, $3, $5, 'Access audit recovery team', true)`,
+    [
+      ACCESS_AUDIT_RETRY_TEAM_A,
+      ACCESS_AUDIT_RECOVERY_TEAM_A,
+      ACCOUNT_A,
+      `access-audit-retry-${ACCESS_AUDIT_USER_A.slice(0, 8)}`,
+      `access-audit-recovery-${ACCESS_AUDIT_USER_A.slice(0, 8)}`
+    ]
+  );
+  await pool.query(
+    `INSERT INTO access_team_memberships (account_id, user_id, team_id)
+     VALUES
+       ($1, $2, $3),
+       ($1, $2, $4)`,
+    [ACCOUNT_A, ACCESS_AUDIT_USER_A, ACCESS_AUDIT_RETRY_TEAM_A, ACCESS_AUDIT_RECOVERY_TEAM_A]
   );
 }
 
@@ -377,7 +526,7 @@ async function ensureRaceStay(): Promise<void> {
     TENANT_A,
     ACCOUNT_A,
     RACE_ENCOUNTER_A,
-    PATIENT_A,
+    RACE_PATIENT_A,
     randomUUID()
   );
   expect(admission.status).toBe(201);
@@ -391,7 +540,7 @@ async function ensureAuditStay(): Promise<void> {
     TENANT_A,
     ACCOUNT_A,
     AUDIT_ENCOUNTER_A,
-    PATIENT_A,
+    AUDIT_PATIENT_A,
     randomUUID()
   );
   expect(admission.status).toBe(201);
@@ -568,12 +717,17 @@ beforeAll(async () => {
     ownerId: OWNER_A,
     patientId: PATIENT_A,
     encounterIds: [ENCOUNTER_A, RACE_ENCOUNTER_A, AUDIT_ENCOUNTER_A],
+    encounterPatientIds: {
+      [RACE_ENCOUNTER_A]: RACE_PATIENT_A,
+      [AUDIT_ENCOUNTER_A]: AUDIT_PATIENT_A
+    },
     itemId: ITEM_A,
     lotId: LOT_A,
     username: USERNAME_A,
     label: 'Vertical A',
     chargeUnitPriceAmount: 40
   });
+  await seedAccessControlAuditFixture();
   await seedInpatientCatalog(ACCOUNT_A, SECTOR_A, [BED_A_1, BED_A_2, BED_A_3]);
   await seedTenant({
     tenantId: TENANT_B,
@@ -623,9 +777,10 @@ beforeAll(async () => {
   runtimeDatabaseUrl.username = apiDatabaseRole;
   runtimeDatabaseUrl.password = runtimeRolePassword;
 
+  fileStoragePath = mkdtempSync(join(tmpdir(), 'cvg-his-v2-inpatient-vertical-http-'));
   const bootstrap = await bootstrapServices({
     databaseUrl: runtimeDatabaseUrl.toString(),
-    fileStoragePath: mkdtempSync(join(tmpdir(), 'cvg-his-v2-inpatient-vertical-http-')),
+    fileStoragePath,
     maxRetries: 10,
     retryDelayMs: 1000
   });
@@ -690,9 +845,17 @@ beforeAll(async () => {
   await server.ready;
   await new Promise<void>((resolve) => server?.listen(0, '127.0.0.1', () => resolve()));
   baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  const secondarySessionRepository = options.repositories.session;
+  if (!secondarySessionRepository) {
+    throw new Error('secondary session repository is required for the guard interleaving test');
+  }
   secondaryServer = createApiServer({
     appName: 'inpatient-vertical-http-test-secondary',
-    ...options
+    ...options,
+    repositories: {
+      ...options.repositories,
+      session: createGatedSessionRepository(secondarySessionRepository)
+    }
   });
   await secondaryServer.ready;
   await new Promise<void>((resolve) => secondaryServer?.listen(0, '127.0.0.1', () => resolve()));
@@ -700,11 +863,18 @@ beforeAll(async () => {
 
   accessTokenA = await login(USERNAME_A);
   accessTokenB = await login(USERNAME_B);
+  accessAuditToken = await login(`vertical-access-${ACCESS_AUDIT_USER_A.slice(0, 8)}`);
 });
 
 afterAll(async () => {
   await getTestPool().query(
     `ALTER TABLE encounters DROP CONSTRAINT IF EXISTS ${ROLLBACK_CONSTRAINT}`
+  );
+  await getTestPool().query(
+    `ALTER TABLE audit_events DROP CONSTRAINT IF EXISTS ${ACCESS_AUDIT_RETRY_CONSTRAINT}`
+  );
+  await getTestPool().query(
+    `ALTER TABLE audit_events DROP CONSTRAINT IF EXISTS ${ACCESS_AUDIT_RECOVERY_CONSTRAINT}`
   );
   if (server?.listening) {
     await new Promise<void>((resolve, reject) =>
@@ -731,6 +901,9 @@ afterAll(async () => {
     await adminPool.query(`REVOKE cvg_installer FROM "${apiDatabaseRole}"`).catch(() => undefined);
     await adminPool.query(`DROP ROLE IF EXISTS "${apiDatabaseRole}"`);
     await adminPool.query(`DROP ROLE IF EXISTS "${workerDatabaseRole}"`);
+  }
+  if (fileStoragePath) {
+    rmSync(fileStoragePath, { recursive: true, force: true });
   }
 });
 
@@ -773,7 +946,7 @@ describe('inpatient clinical-financial vertical HTTP PostgreSQL boundary', () =>
       admissionKey,
       'A-02'
     );
-    expect(admission.status).toBe(201);
+    expect(admission.status, admission.text).toBe(201);
     expect(admission.body).toMatchObject({ encounterId: ENCOUNTER_A, accountId: ACCOUNT_A });
     expect(admissionReplay.status).toBe(201);
     expect(admissionReplay.body).toEqual(admission.body);
@@ -1407,6 +1580,560 @@ describe('inpatient clinical-financial vertical HTTP PostgreSQL boundary', () =>
     expect(foreignSecondaryDischarges.body?.items).toEqual([]);
   });
 
+  it('proves Owner → Patient → Encounter → care → close from HTTP-created records', async () => {
+    const owner = await requestJson<{ readonly id: string; readonly accountId: string }>(
+      '/owners',
+      {
+        method: 'POST',
+        headers: headersA(),
+        body: JSON.stringify({
+          fullName: `End-to-end owner ${randomUUID()}`,
+          contacts: [
+            {
+              label: 'Telefone',
+              value: `+55119${randomUUID().replaceAll('-', '').slice(0, 9)}`,
+              type: 'phone',
+              primary: true
+            }
+          ],
+          financialResponsible: true
+        })
+      }
+    );
+    expect(owner.status).toBe(201);
+    expect(owner.body?.accountId).toBe(ACCOUNT_A);
+    const ownerId = owner.body?.id;
+    expect(ownerId).toBeTruthy();
+
+    const patient = await requestJson<{ readonly id: string; readonly primaryOwnerId: string }>(
+      '/patients',
+      {
+        method: 'POST',
+        headers: headersA(),
+        body: JSON.stringify({
+          name: `End-to-end patient ${randomUUID()}`,
+          species: 'canine',
+          sex: 'female',
+          primaryOwnerId: ownerId
+        })
+      }
+    );
+    expect(patient.status).toBe(201);
+    expect(patient.body?.primaryOwnerId).toBe(ownerId);
+    const patientId = patient.body?.id;
+    expect(patientId).toBeTruthy();
+
+    const summary = await requestJson<{
+      readonly patient: { readonly id: string };
+      readonly owner: { readonly id: string };
+      readonly stats: { readonly totalEncounters: number };
+    }>(`/patients/${patientId}/summary`, { headers: headersA() });
+    expect(summary.status).toBe(200);
+    expect(summary.body).toMatchObject({
+      patient: { id: patientId },
+      owner: { id: ownerId },
+      stats: { totalEncounters: 0 }
+    });
+
+    const opened = await requestJson<EncounterResponse>('/encounters', {
+      method: 'POST',
+      headers: headersA(),
+      body: JSON.stringify({
+        patientId,
+        ownerId,
+        visitType: 'walk_in',
+        origin: 'reception',
+        reason: 'Jornada clínica end-to-end'
+      })
+    });
+    expect(opened.status).toBe(201);
+    expect(opened.body).toMatchObject({
+      id: expect.any(String),
+      status: 'reception'
+    });
+    const encounterId = opened.body?.id;
+    expect(encounterId).toBeTruthy();
+
+    const triage = await requestJson<EncounterResponse>(`/encounters/${encounterId}/transition`, {
+      method: 'POST',
+      headers: headersA(),
+      body: JSON.stringify({ nextStatus: 'in_triage' })
+    });
+    expect(triage.status).toBe(200);
+    expect(triage.body?.status).toBe('in_triage');
+
+    const inCare = await requestJson<EncounterResponse>(`/encounters/${encounterId}/transition`, {
+      method: 'POST',
+      headers: headersA(),
+      body: JSON.stringify({ nextStatus: 'in_care' })
+    });
+    expect(inCare.status).toBe(200);
+    expect(inCare.body?.status).toBe('in_care');
+
+    const closeKey = randomUUID();
+    const closed = await closeEncounter(encounterId!, closeKey, 'Alta clínica end-to-end');
+    const replay = await closeEncounter(encounterId!, closeKey, 'Alta clínica end-to-end');
+    expect(closed.status).toBe(200);
+    expect(closed.body).toMatchObject({ id: encounterId, status: 'closed' });
+    expect(replay.status).toBe(200);
+    expect(replay.body).toEqual(closed.body);
+
+    const state = await getTestPool().query<{
+      readonly status: string;
+      readonly patientId: string;
+      readonly ownerId: string;
+      readonly timelineEvents: number;
+      readonly closeAudits: number;
+      readonly closeOutbox: number;
+    }>(
+      `SELECT e.status,
+              e.patient_id AS "patientId",
+              e.owner_id AS "ownerId",
+              (SELECT COUNT(*)::int FROM encounter_timeline
+                WHERE account_id = $1 AND encounter_id = $2::uuid) AS "timelineEvents",
+              (SELECT COUNT(*)::int FROM audit_events
+                WHERE account_id = $1 AND entity_type = 'encounter'
+                  AND entity_id = $2::text AND action = 'close') AS "closeAudits",
+              (SELECT COUNT(*)::int FROM outbox_events
+                WHERE account_id = $1 AND event_type = 'encounter.closed'
+                  AND payload->>'encounterId' = $2::text) AS "closeOutbox"
+         FROM encounters e
+        WHERE e.account_id = $1 AND e.id = $2::uuid`,
+      [ACCOUNT_A, encounterId]
+    );
+    expect(state.rows).toEqual([
+      {
+        status: 'closed',
+        patientId,
+        ownerId,
+        timelineEvents: 4,
+        closeAudits: 1,
+        closeOutbox: 1
+      }
+    ]);
+  });
+
+  it('carries HTTP-created Owner → Patient → Encounter through inpatient, billing, stock and receipt', async () => {
+    const owner = await requestJson<{ readonly id: string }>('/owners', {
+      method: 'POST',
+      headers: headersA(),
+      body: JSON.stringify({
+        fullName: `Full vertical owner ${randomUUID()}`,
+        contacts: [
+          {
+            label: 'Telefone',
+            value: `+55119${randomUUID().replaceAll('-', '').slice(0, 9)}`,
+            type: 'phone',
+            primary: true
+          }
+        ],
+        financialResponsible: true
+      })
+    });
+    expect(owner.status).toBe(201);
+    const ownerId = owner.body?.id;
+    expect(ownerId).toMatch(/^[0-9a-f-]{36}$/i);
+
+    const patient = await requestJson<{ readonly id: string }>('/patients', {
+      method: 'POST',
+      headers: headersA(),
+      body: JSON.stringify({
+        name: `Full vertical patient ${randomUUID()}`,
+        species: 'canine',
+        sex: 'male',
+        primaryOwnerId: ownerId
+      })
+    });
+    expect(patient.status).toBe(201);
+    const patientId = patient.body?.id;
+    expect(patientId).toMatch(/^[0-9a-f-]{36}$/i);
+
+    const encounter = await requestJson<EncounterResponse>('/encounters', {
+      method: 'POST',
+      headers: headersA(),
+      body: JSON.stringify({
+        patientId,
+        ownerId,
+        visitType: 'walk_in',
+        origin: 'reception',
+        reason: 'Full inpatient-to-receipt journey'
+      })
+    });
+    expect(encounter.status).toBe(201);
+    const encounterId = encounter.body?.id;
+    expect(encounterId).toMatch(/^[0-9a-f-]{36}$/i);
+
+    const triage = await requestJson<EncounterResponse>(`/encounters/${encounterId}/transition`, {
+      method: 'POST',
+      headers: headersA(),
+      body: JSON.stringify({ nextStatus: 'in_triage' })
+    });
+    const inCare = await requestJson<EncounterResponse>(`/encounters/${encounterId}/transition`, {
+      method: 'POST',
+      headers: headersA(),
+      body: JSON.stringify({ nextStatus: 'in_care' })
+    });
+    expect(triage.status).toBe(200);
+    expect(inCare.status).toBe(200);
+
+    const admissionKey = randomUUID();
+    const admission = await requestJson<AdmissionResponse>('/inpatient', {
+      method: 'POST',
+      headers: { ...headersA(), 'idempotency-key': admissionKey },
+      body: JSON.stringify({
+        encounterId,
+        patientId,
+        unit: 'Internacao clinica',
+        ward: 'Ala A',
+        bed: 'A-03'
+      })
+    });
+    const admissionReplay = await requestJson<AdmissionResponse>('/inpatient', {
+      method: 'POST',
+      headers: { ...headersA(), 'idempotency-key': admissionKey },
+      body: JSON.stringify({
+        encounterId,
+        patientId,
+        unit: 'Internacao clinica',
+        ward: 'Ala A',
+        bed: 'A-03'
+      })
+    });
+    expect(admission.status).toBe(201);
+    expect(admissionReplay.status).toBe(201);
+    expect(admissionReplay.body).toEqual(admission.body);
+    const stayId = admission.body?.id;
+    expect(stayId).toMatch(/^[0-9a-f-]{36}$/i);
+
+    const assignment = await requestJson<AdmissionResponse>(`/inpatient/${stayId}/assign-bed`, {
+      method: 'POST',
+      headers: { ...headersA(), 'idempotency-key': randomUUID() },
+      body: JSON.stringify({ bedId: BED_A_3, sectorId: SECTOR_A })
+    });
+    const stable = await requestJson<AdmissionResponse>(`/inpatient/${stayId}/update-status`, {
+      method: 'PATCH',
+      headers: { ...headersA(), 'idempotency-key': randomUUID() },
+      body: JSON.stringify({ status: 'stable' })
+    });
+    expect(assignment.status).toBe(200);
+    expect(stable.status).toBe(200);
+
+    const handoffKey = randomUUID();
+    const handoffBody = {
+      encounterId,
+      clinicalSummary: 'Paciente internado, estável e em observação.',
+      receptionInstructions: 'Confirmar itens e valores na alta.',
+      priority: 'medium'
+    };
+    const handoff = await requestJson<{ readonly id: string }>(
+      '/clinical-handoffs/send-to-reception',
+      {
+        method: 'POST',
+        headers: { ...headersA(), 'idempotency-key': handoffKey },
+        body: JSON.stringify(handoffBody)
+      }
+    );
+    const handoffReplay = await requestJsonAt<{ readonly id: string }>(
+      secondaryBaseUrl,
+      '/clinical-handoffs/send-to-reception',
+      {
+        method: 'POST',
+        headers: { ...headersA(), 'idempotency-key': handoffKey },
+        body: JSON.stringify(handoffBody)
+      }
+    );
+    expect(handoff.status).toBe(201);
+    expect(handoffReplay.status).toBe(201);
+    expect(handoffReplay.body).toEqual(handoff.body);
+
+    const progress = await requestJson<{ readonly id: string }>(`/inpatient/${stayId}/progress`, {
+      method: 'POST',
+      headers: { ...headersA(), 'idempotency-key': randomUUID() },
+      body: JSON.stringify({ note: 'Paciente evoluiu sem intercorrências.' })
+    });
+    expect(progress.status).toBe(201);
+
+    const consumptionKey = randomUUID();
+    const consumptionBody = {
+      encounterId,
+      inventoryItemId: ITEM_A,
+      quantity: 2,
+      sourceEntityType: 'inpatient_stay',
+      sourceEntityId: stayId
+    };
+    const consumption = await requestJson<ConsumptionResponse>('/inventory/consumptions', {
+      method: 'POST',
+      headers: { ...headersA(), 'idempotency-key': consumptionKey },
+      body: JSON.stringify(consumptionBody)
+    });
+    const consumptionReplay = await requestJsonAt<ConsumptionResponse>(
+      secondaryBaseUrl,
+      '/inventory/consumptions',
+      {
+        method: 'POST',
+        headers: { ...headersA(), 'idempotency-key': consumptionKey },
+        body: JSON.stringify(consumptionBody)
+      }
+    );
+    expect(consumption.status).toBe(201);
+    expect(consumptionReplay.status).toBe(201);
+    expect(consumptionReplay.body).toEqual(consumption.body);
+
+    const daily = await requestJson<DailyChargeResponse>(`/inpatient/${stayId}/daily-charges`, {
+      method: 'POST',
+      headers: { ...headersA(), 'idempotency-key': randomUUID() },
+      body: JSON.stringify({
+        description: 'Diária do paciente criado via HTTP',
+        quantity: 1,
+        unitAmount: AMOUNT_DAILY
+      })
+    });
+    expect(daily.status).toBe(201);
+    const billed = await requestJson<DailyChargeResponse>(
+      `/inpatient/${stayId}/daily-charges/${daily.body?.id}/bill`,
+      {
+        method: 'POST',
+        headers: { ...headersA(), 'idempotency-key': randomUUID() },
+        body: JSON.stringify({})
+      }
+    );
+    expect(billed.status).toBe(200);
+    const billingRecordId = billed.body?.billingRecordId ?? '';
+    expect(billingRecordId).toMatch(/^[A-Za-z0-9_-]+$/);
+
+    const openedBilling = await requestJson<{ readonly status: string }>(
+      `/billing/${encounterId}/status`,
+      {
+        method: 'PATCH',
+        headers: headersA(),
+        body: JSON.stringify({ status: 'open' })
+      }
+    );
+    expect(openedBilling.status).toBe(200);
+
+    const discharged = await discharge(encounterId!, randomUUID());
+    expect(discharged.status).toBe(201);
+    const closed = await closeEncounter(
+      encounterId!,
+      randomUUID(),
+      'Alta clínica do paciente criado via HTTP'
+    );
+    expect(closed.status).toBe(200);
+
+    const receiptKey = randomUUID();
+    const receiptBody = {
+      cashRegisterId: CASH_REGISTER_A,
+      expectedAmount: AMOUNT_TOTAL,
+      notes: 'Recebimento do paciente criado via HTTP'
+    };
+    const received = await requestJson<ReceiptResponse>(
+      `/encounters/${encounterId}/cash-receipts`,
+      {
+        method: 'POST',
+        headers: { ...headersA(), 'idempotency-key': receiptKey },
+        body: JSON.stringify(receiptBody)
+      }
+    );
+    const receivedReplay = await requestJsonAt<ReceiptResponse>(
+      secondaryBaseUrl,
+      `/encounters/${encounterId}/cash-receipts`,
+      {
+        method: 'POST',
+        headers: { ...headersA(), 'idempotency-key': receiptKey },
+        body: JSON.stringify(receiptBody)
+      }
+    );
+    expect(received.status).toBe(201);
+    expect(receivedReplay.status).toBe(201);
+    expect(receivedReplay.body).toEqual(received.body);
+    const receiptId = received.body?.id ?? '';
+    expect(receiptId).toMatch(/^[0-9a-f-]{36}$/i);
+
+    const foreignView = await requestJsonAt<{ readonly items: readonly unknown[] }>(
+      secondaryBaseUrl,
+      `/inpatient?encounterId=${encodeURIComponent(encounterId!)}&includeDischarged=true`,
+      { headers: headersB() }
+    );
+    expect(foreignView.status).toBe(200);
+    expect(foreignView.body?.items).toEqual([]);
+
+    const foreignBilling = await requestJsonAt<unknown>(
+      secondaryBaseUrl,
+      `/billing/${encounterId}`,
+      { headers: headersB() }
+    );
+    expect(foreignBilling.status).toBe(404);
+
+    const foreignBillingItems = await requestJsonAt<{ readonly items: readonly unknown[] }>(
+      secondaryBaseUrl,
+      `/billing/${encounterId}/items`,
+      { headers: headersB() }
+    );
+    expect(foreignBillingItems.status).toBe(404);
+
+    const foreignConsumptions = await requestJsonAt<{ readonly items: readonly unknown[] }>(
+      secondaryBaseUrl,
+      `/inventory/consumptions?encounterId=${encodeURIComponent(encounterId!)}`,
+      { headers: headersB() }
+    );
+    expect(foreignConsumptions.status).toBe(200);
+    expect(foreignConsumptions.body?.items).toEqual([]);
+
+    const foreignReceipt = await requestJsonAt<unknown>(
+      secondaryBaseUrl,
+      `/encounters/${encounterId}/cash-receipts`,
+      { headers: headersB() }
+    );
+    expect(foreignReceipt.status).toBe(404);
+
+    const graph = await getTestPool().query<{
+      readonly ownerId: string;
+      readonly patientId: string;
+      readonly encounterStatus: string;
+      readonly stayStatus: string;
+      readonly consumptions: number;
+      readonly billingRecords: number;
+      readonly receipts: number;
+      readonly closeAudits: number;
+      readonly closeOutbox: number;
+    }>(
+      `SELECT o.id AS "ownerId",
+              p.id AS "patientId",
+              e.status AS "encounterStatus",
+              s.status AS "stayStatus",
+              (SELECT COUNT(*)::int FROM inventory_consumptions WHERE account_id = $1 AND encounter_id = $2::text) AS consumptions,
+              (SELECT COUNT(*)::int FROM billing_records WHERE account_id = $1 AND encounter_id = $2::uuid) AS "billingRecords",
+              (SELECT COUNT(*)::int FROM encounter_cash_receipts WHERE account_id = $1 AND encounter_id = $2::uuid) AS receipts,
+              (SELECT COUNT(*)::int FROM audit_events WHERE account_id = $1 AND entity_type = 'encounter' AND entity_id = $2::text AND action = 'close') AS "closeAudits",
+              (SELECT COUNT(*)::int FROM outbox_events WHERE account_id = $1 AND event_type = 'encounter.closed' AND payload->>'encounterId' = $2::text) AS "closeOutbox"
+         FROM owners o
+         JOIN patients p ON p.account_id = o.account_id AND p.owner_id = o.id
+         JOIN encounters e ON e.account_id = p.account_id AND e.patient_id = p.id
+         JOIN inpatient_stays s ON s.account_id = e.account_id AND s.encounter_id = e.id
+        WHERE o.account_id = $1 AND o.id = $3::uuid AND p.id = $4::uuid AND e.id = $2::uuid AND s.id = $5::uuid`,
+      [ACCOUNT_A, encounterId, ownerId, patientId, stayId]
+    );
+    expect(graph.rows).toEqual([
+      {
+        ownerId,
+        patientId,
+        encounterStatus: 'closed',
+        stayStatus: 'discharged',
+        consumptions: 1,
+        billingRecords: 1,
+        receipts: 1,
+        closeAudits: 1,
+        closeOutbox: 1
+      }
+    ]);
+
+    const exactGraph = await getTestPool().query<{
+      readonly consumptionQuantity: number;
+      readonly consumptionCost: number;
+      readonly consumptionSourceType: string;
+      readonly consumptionSourceId: string;
+      readonly inventoryOnHand: number;
+      readonly inventoryLotQuantity: number;
+      readonly billingStatus: string;
+      readonly billingSubtotal: number;
+      readonly billingItemCount: number;
+      readonly billingTotal: number;
+      readonly receiptAmount: number;
+      readonly receiptBillingRecordId: string;
+      readonly paymentAmount: number;
+      readonly cashAmount: number;
+      readonly journalDebit: number;
+      readonly journalCredit: number;
+    }>(
+      `SELECT
+         (SELECT COALESCE(SUM(quantity), 0)::float8
+            FROM inventory_consumptions
+           WHERE account_id = $1 AND encounter_id = $2::text) AS "consumptionQuantity",
+         (SELECT COALESCE(SUM(cost_amount), 0)::float8
+            FROM inventory_consumptions
+           WHERE account_id = $1 AND encounter_id = $2::text) AS "consumptionCost",
+         (SELECT source_entity_type
+            FROM inventory_consumptions
+           WHERE account_id = $1 AND encounter_id = $2::text
+           ORDER BY created_at
+           LIMIT 1) AS "consumptionSourceType",
+         (SELECT source_entity_id
+            FROM inventory_consumptions
+           WHERE account_id = $1 AND encounter_id = $2::text
+           ORDER BY created_at
+           LIMIT 1) AS "consumptionSourceId",
+         (SELECT on_hand_quantity::float8
+            FROM inventory_items
+           WHERE account_id = $1 AND id = $3) AS "inventoryOnHand",
+         (SELECT quantity::float8
+            FROM inventory_lots
+           WHERE account_id = $1 AND id = $4) AS "inventoryLotQuantity",
+         (SELECT status
+            FROM billing_records
+           WHERE account_id = $1 AND id = $5) AS "billingStatus",
+         (SELECT subtotal_amount::float8
+            FROM billing_records
+           WHERE account_id = $1 AND id = $5) AS "billingSubtotal",
+         (SELECT COUNT(*)::int
+            FROM billing_items
+           WHERE account_id = $1 AND billing_record_id = $5) AS "billingItemCount",
+         (SELECT COALESCE(SUM(total_amount), 0)::float8
+            FROM billing_items
+           WHERE account_id = $1 AND billing_record_id = $5) AS "billingTotal",
+         (SELECT amount::float8
+            FROM encounter_cash_receipts
+           WHERE account_id = $1 AND id = $6::uuid) AS "receiptAmount",
+         (SELECT billing_record_id
+            FROM encounter_cash_receipts
+           WHERE account_id = $1 AND id = $6::uuid) AS "receiptBillingRecordId",
+         (SELECT amount_paid::float8
+            FROM encounter_receivable_payments
+           WHERE account_id = $1
+             AND id = (SELECT receivable_payment_id
+                        FROM encounter_cash_receipts
+                       WHERE account_id = $1 AND id = $6::uuid)) AS "paymentAmount",
+         (SELECT amount::float8
+            FROM cash_movements
+           WHERE account_id = $1
+             AND id = (SELECT cash_movement_id
+                        FROM encounter_cash_receipts
+                       WHERE account_id = $1 AND id = $6::uuid)) AS "cashAmount",
+         (SELECT COALESCE(SUM(line.debit), 0)::float8
+            FROM financial_journal_lines AS line
+           WHERE line.account_id = $1
+             AND line.entry_id = (SELECT journal_entry_id
+                                    FROM encounter_cash_receipts
+                                   WHERE account_id = $1 AND id = $6::uuid)) AS "journalDebit",
+         (SELECT COALESCE(SUM(line.credit), 0)::float8
+            FROM financial_journal_lines AS line
+           WHERE line.account_id = $1
+             AND line.entry_id = (SELECT journal_entry_id
+                                    FROM encounter_cash_receipts
+                                   WHERE account_id = $1 AND id = $6::uuid)) AS "journalCredit"`,
+      [ACCOUNT_A, encounterId, ITEM_A, LOT_A, billingRecordId, receiptId]
+    );
+    expect(exactGraph.rows).toEqual([
+      {
+        consumptionQuantity: 2,
+        consumptionCost: 50,
+        consumptionSourceType: 'inpatient_stay',
+        consumptionSourceId: stayId,
+        inventoryOnHand: 6,
+        inventoryLotQuantity: 6,
+        billingStatus: 'settled',
+        billingSubtotal: AMOUNT_TOTAL,
+        billingItemCount: 2,
+        billingTotal: AMOUNT_TOTAL,
+        receiptAmount: AMOUNT_TOTAL,
+        receiptBillingRecordId: billingRecordId,
+        paymentAmount: AMOUNT_TOTAL,
+        cashAmount: AMOUNT_TOTAL,
+        journalDebit: AMOUNT_TOTAL,
+        journalCredit: AMOUNT_TOTAL
+      }
+    ]);
+  });
+
   it('rejects a shadowed settlement under a runtime role with pg_temp search_path', async () => {
     expect(journeyReceiptId).toMatch(/^[0-9a-f-]{36}$/i);
     const client = await getPool().connect();
@@ -1465,6 +2192,11 @@ describe('inpatient clinical-financial vertical HTTP PostgreSQL boundary', () =>
       ).rejects.toThrow(/Encounter cash receipt .* inconsistent/);
     } finally {
       await client.query('ROLLBACK').catch(() => undefined);
+      await client
+        .query(
+          'DROP TABLE IF EXISTS pg_temp.encounter_cash_receipts, pg_temp.financial_journal_entries'
+        )
+        .catch(() => undefined);
       client.release();
     }
   });
@@ -1475,7 +2207,7 @@ describe('inpatient clinical-financial vertical HTTP PostgreSQL boundary', () =>
       TENANT_A,
       ACCOUNT_A,
       RACE_ENCOUNTER_A,
-      PATIENT_A,
+      RACE_PATIENT_A,
       randomUUID()
     );
     expect(admission.status).toBe(201);
@@ -1510,12 +2242,43 @@ describe('inpatient clinical-financial vertical HTTP PostgreSQL boundary', () =>
   });
 
   it('rolls back a close failpoint without leaving audit, outbox or idempotency residue', async () => {
-    await getTestPool().query(
-      `ALTER TABLE encounters ADD CONSTRAINT ${ROLLBACK_CONSTRAINT}
-       CHECK (NOT (id = '${ENCOUNTER_B}'::uuid AND status = 'closed'))`
-    );
     const key = randomUUID();
-    const response = await requestJson<EncounterResponse & { readonly code?: string }>(
+    try {
+      await getTestPool().query(
+        `ALTER TABLE encounters ADD CONSTRAINT ${ROLLBACK_CONSTRAINT}
+         CHECK (NOT (id = '${ENCOUNTER_B}'::uuid AND status = 'closed'))`
+      );
+      const response = await requestJson<EncounterResponse & { readonly code?: string }>(
+        `/encounters/${ENCOUNTER_B}/close`,
+        {
+          method: 'POST',
+          headers: { ...headersB(), 'idempotency-key': key },
+          body: JSON.stringify({ closeReason: 'Failpoint vertical' })
+        }
+      );
+      expect(response.status).toBe(500);
+      const state = await getTestPool().query<{
+        readonly status: string;
+        readonly audits: number;
+        readonly outbox: number;
+        readonly idempotency: number;
+      }>(
+        `SELECT
+           (SELECT status FROM encounters WHERE account_id = $1 AND id = $2) AS status,
+           (SELECT COUNT(*)::int FROM audit_events WHERE account_id = $1 AND entity_type = 'encounter' AND entity_id = $2::text AND action = 'close') AS audits,
+           (SELECT COUNT(*)::int FROM outbox_events WHERE account_id = $1 AND event_type = 'encounter.closed' AND payload->>'encounterId' = $2::text) AS outbox,
+           (SELECT COUNT(*)::int FROM idempotency_requests WHERE account_id = $1 AND operation = $3 AND idempotency_key = $4) AS idempotency`,
+        [ACCOUNT_B, ENCOUNTER_B, `POST /encounters/${ENCOUNTER_B}/close`, key]
+      );
+      expect(state.rows[0]).toEqual({ status: 'open', audits: 0, outbox: 0, idempotency: 0 });
+    } finally {
+      await getTestPool().query(
+        `ALTER TABLE encounters DROP CONSTRAINT IF EXISTS ${ROLLBACK_CONSTRAINT}`
+      );
+      await new Promise<void>((resolve) => setImmediate(resolve));
+    }
+
+    const retry = await requestJson<EncounterResponse & { readonly code?: string }>(
       `/encounters/${ENCOUNTER_B}/close`,
       {
         method: 'POST',
@@ -1523,8 +2286,9 @@ describe('inpatient clinical-financial vertical HTTP PostgreSQL boundary', () =>
         body: JSON.stringify({ closeReason: 'Failpoint vertical' })
       }
     );
-    expect(response.status).toBe(500);
-    const state = await getTestPool().query<{
+    expect(retry.status).toBe(200);
+    expect(retry.body).toMatchObject({ id: ENCOUNTER_B, status: 'closed' });
+    const recovered = await getTestPool().query<{
       readonly status: string;
       readonly audits: number;
       readonly outbox: number;
@@ -1534,10 +2298,13 @@ describe('inpatient clinical-financial vertical HTTP PostgreSQL boundary', () =>
          (SELECT status FROM encounters WHERE account_id = $1 AND id = $2) AS status,
          (SELECT COUNT(*)::int FROM audit_events WHERE account_id = $1 AND entity_type = 'encounter' AND entity_id = $2::text AND action = 'close') AS audits,
          (SELECT COUNT(*)::int FROM outbox_events WHERE account_id = $1 AND event_type = 'encounter.closed' AND payload->>'encounterId' = $2::text) AS outbox,
-         (SELECT COUNT(*)::int FROM idempotency_requests WHERE account_id = $1 AND operation = $3 AND idempotency_key = $4) AS idempotency`,
+         (SELECT COUNT(*)::int FROM idempotency_requests WHERE account_id = $1 AND operation = $3 AND idempotency_key = $4 AND status = 'completed') AS idempotency`,
       [ACCOUNT_B, ENCOUNTER_B, `POST /encounters/${ENCOUNTER_B}/close`, key]
     );
-    expect(state.rows[0]).toEqual({ status: 'open', audits: 0, outbox: 0, idempotency: 0 });
+    expect(recovered.rows[0]).toEqual({ status: 'closed', audits: 1, outbox: 1, idempotency: 1 });
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    await new Promise<void>((resolve) => setImmediate(resolve));
   });
 
   it('rolls back a clinical timeline projection failpoint and retries the status command cleanly', async () => {
@@ -1559,7 +2326,17 @@ describe('inpatient clinical-financial vertical HTTP PostgreSQL boundary', () =>
       await getTestPool().query(
         `ALTER TABLE clinical_timeline DROP CONSTRAINT IF EXISTS ${CLINICAL_TIMELINE_FAILPOINT_CONSTRAINT}`
       );
+      await new Promise<void>((resolve) => setImmediate(resolve));
     }
+
+    const remainingFailpoint = await getTestPool().query<{ readonly name: string }>(
+      `SELECT conname AS name
+         FROM pg_constraint
+        WHERE conrelid = 'clinical_timeline'::regclass
+          AND conname = $1`,
+      [CLINICAL_TIMELINE_FAILPOINT_CONSTRAINT]
+    );
+    expect(remainingFailpoint.rows).toEqual([]);
 
     const rolledBack = await getTestPool().query<{
       readonly stayStatus: string;
@@ -1587,7 +2364,7 @@ describe('inpatient clinical-financial vertical HTTP PostgreSQL boundary', () =>
     });
 
     const retry = await updateInpatientStatus(raceStayId, key, 'stable');
-    expect(retry.status).toBe(200);
+    expect(retry.status, retry.text).toBe(200);
     expect(retry.body).toMatchObject({ id: raceStayId, status: 'stable' });
 
     const recovered = await getTestPool().query<{
@@ -1948,5 +2725,404 @@ describe('inpatient clinical-financial vertical HTTP PostgreSQL boundary', () =>
       [ACCOUNT_A, ENCOUNTER_B, ACCOUNT_B]
     );
     expect(state.rows[0]).toEqual({ accountAStays: 0, accountBStays: 0 });
+  });
+
+  it('rolls back an access-control audit failure, rehydrates the cache, and retries cleanly', async () => {
+    const before = await requestJson<EffectivePermissionResponse>(
+      `/access-control/users/${ACCESS_AUDIT_USER_A}/effective`,
+      { headers: headersA() }
+    );
+    expect(before.status).toBe(200);
+    expect(
+      before.body?.effectivePermissions.find(
+        (permission) => permission.permissionCode === 'counter_sale.write'
+      )?.effective
+    ).toBe(false);
+
+    try {
+      await getTestPool().query(
+        `ALTER TABLE audit_events ADD CONSTRAINT ${ACCESS_AUDIT_RETRY_CONSTRAINT}
+         CHECK (NOT (
+           account_id = '${ACCOUNT_A}'::uuid
+           AND action = 'permission_granted'
+           AND entity_type = 'access-permission-assignment'
+           AND entity_id = '${ACCESS_AUDIT_RETRY_TEAM_A}'
+         ))`
+      );
+      const failed = await requestJson('/access-control/grants', {
+        method: 'POST',
+        headers: headersA(),
+        body: JSON.stringify({
+          subjectType: 'team',
+          subjectId: ACCESS_AUDIT_RETRY_TEAM_A,
+          permissionCode: 'counter_sale.write',
+          effect: 'allow'
+        })
+      });
+      expect(failed.status).toBe(500);
+    } finally {
+      await getTestPool().query(
+        `ALTER TABLE audit_events DROP CONSTRAINT IF EXISTS ${ACCESS_AUDIT_RETRY_CONSTRAINT}`
+      );
+    }
+
+    expect(await readAccessGrantState(ACCESS_AUDIT_RETRY_TEAM_A)).toEqual({
+      assignments: 0,
+      audits: 0
+    });
+    const afterRollback = await requestJson<EffectivePermissionResponse>(
+      `/access-control/users/${ACCESS_AUDIT_USER_A}/effective`,
+      { headers: headersA() }
+    );
+    expect(afterRollback.status).toBe(200);
+    expect(
+      afterRollback.body?.effectivePermissions.find(
+        (permission) => permission.permissionCode === 'counter_sale.write'
+      )?.effective
+    ).toBe(false);
+
+    const retry = await requestJson('/access-control/grants', {
+      method: 'POST',
+      headers: headersA(),
+      body: JSON.stringify({
+        subjectType: 'team',
+        subjectId: ACCESS_AUDIT_RETRY_TEAM_A,
+        permissionCode: 'counter_sale.write',
+        effect: 'allow'
+      })
+    });
+    expect(retry.status).toBe(200);
+    expect(await readAccessGrantState(ACCESS_AUDIT_RETRY_TEAM_A)).toEqual({
+      assignments: 1,
+      audits: 1
+    });
+
+    const afterRetry = await requestJson<EffectivePermissionResponse>(
+      `/access-control/users/${ACCESS_AUDIT_USER_A}/effective`,
+      { headers: headersA() }
+    );
+    expect(afterRetry.status).toBe(200);
+    expect(
+      afterRetry.body?.effectivePermissions.find(
+        (permission) => permission.permissionCode === 'counter_sale.write'
+      )?.effective
+    ).toBe(true);
+
+    const secondary = await requestJsonAt<EffectivePermissionResponse>(
+      secondaryBaseUrl,
+      `/access-control/users/${ACCESS_AUDIT_USER_A}/effective`,
+      { headers: headersA() }
+    );
+    expect(secondary.status).toBe(200);
+    expect(
+      secondary.body?.effectivePermissions.find(
+        (permission) => permission.permissionCode === 'counter_sale.write'
+      )?.effective
+    ).toBe(true);
+  });
+
+  it('fails closed on recovery failure and heals after PostgreSQL recovers', async () => {
+    try {
+      await getTestPool().query(
+        `ALTER TABLE audit_events ADD CONSTRAINT ${ACCESS_AUDIT_RECOVERY_CONSTRAINT}
+         CHECK (NOT (
+           account_id = '${ACCOUNT_A}'::uuid
+           AND action = 'permission_granted'
+           AND entity_type = 'access-permission-assignment'
+           AND entity_id = '${ACCESS_AUDIT_RECOVERY_TEAM_A}'
+         ))`
+      );
+      await getTestPool().query(`REVOKE SELECT ON TABLE access_teams FROM "${apiDatabaseRole}"`);
+      const failed = await requestJson('/access-control/grants', {
+        method: 'POST',
+        headers: headersA(),
+        body: JSON.stringify({
+          subjectType: 'team',
+          subjectId: ACCESS_AUDIT_RECOVERY_TEAM_A,
+          permissionCode: 'inventory.manage',
+          effect: 'allow'
+        })
+      });
+      expect(failed.status).toBe(503);
+    } finally {
+      try {
+        await getTestPool().query(`GRANT SELECT ON TABLE access_teams TO "${apiDatabaseRole}"`);
+      } finally {
+        await getTestPool().query(
+          `ALTER TABLE audit_events DROP CONSTRAINT IF EXISTS ${ACCESS_AUDIT_RECOVERY_CONSTRAINT}`
+        );
+      }
+    }
+
+    expect(await readAccessGrantState(ACCESS_AUDIT_RECOVERY_TEAM_A)).toEqual({
+      assignments: 0,
+      audits: 0
+    });
+    const recovered = await requestJson<EffectivePermissionResponse>(
+      `/access-control/users/${ACCESS_AUDIT_USER_A}/effective`,
+      { headers: headersA() }
+    );
+    expect(recovered.status).toBe(200);
+    expect(
+      recovered.body?.effectivePermissions.find(
+        (permission) => permission.permissionCode === 'inventory.manage'
+      )?.effective
+    ).toBe(false);
+  });
+
+  it('denies protected access after a cross-instance permission revocation', async () => {
+    const grantBody = {
+      subjectType: 'team',
+      subjectId: ACCESS_AUDIT_RECOVERY_TEAM_A,
+      permissionCode: 'inventory.read',
+      effect: 'allow'
+    } as const;
+    let granted = false;
+    try {
+      const grant = await requestJson('/access-control/grants', {
+        method: 'POST',
+        headers: headersA(),
+        body: JSON.stringify(grantBody)
+      });
+      expect(grant.status).toBe(200);
+      granted = true;
+
+      const allowed = await requestJsonAt(baseUrl, '/inventory/purchases', {
+        headers: headers(accessAuditToken, TENANT_A, ACCOUNT_A)
+      });
+      expect(allowed.status).toBe(200);
+
+      const allowedOnSecondary = await requestJsonAt(secondaryBaseUrl, '/inventory/purchases', {
+        headers: headers(accessAuditToken, TENANT_A, ACCOUNT_A)
+      });
+      expect(allowedOnSecondary.status).toBe(200);
+
+      const revoke = await requestJson('/access-control/grants', {
+        method: 'POST',
+        headers: headersA(),
+        body: JSON.stringify({ ...grantBody, effect: 'inherit' })
+      });
+      expect(revoke.status).toBe(200);
+
+      const deniedOnSecondary = await requestJsonAt(secondaryBaseUrl, '/inventory/purchases', {
+        headers: headers(accessAuditToken, TENANT_A, ACCOUNT_A)
+      });
+      expect(deniedOnSecondary.status).toBe(403);
+    } finally {
+      if (granted) {
+        await requestJson('/access-control/grants', {
+          method: 'POST',
+          headers: headersA(),
+          body: JSON.stringify({ ...grantBody, effect: 'inherit' })
+        });
+      }
+    }
+  });
+
+  it('denies a request when revocation commits while its final guard is paused', async () => {
+    const grantBody = {
+      subjectType: 'team',
+      subjectId: ACCESS_AUDIT_RECOVERY_TEAM_A,
+      permissionCode: 'inventory.read',
+      effect: 'allow'
+    } as const;
+    let granted = false;
+
+    try {
+      const grant = await requestJson('/access-control/grants', {
+        method: 'POST',
+        headers: headersA(),
+        body: JSON.stringify(grantBody)
+      });
+      expect(grant.status).toBe(200);
+      granted = true;
+
+      armSecondarySessionReadGate();
+      const pendingRequest = requestJsonAt<EffectivePermissionResponse>(
+        secondaryBaseUrl,
+        '/inventory/purchases',
+        { headers: headers(accessAuditToken, TENANT_A, ACCOUNT_A) }
+      );
+      let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+      const finalGuardPaused = await Promise.race([
+        secondarySessionReadGate.started.then(() => true),
+        new Promise<false>((resolve) => {
+          timeoutHandle = setTimeout(() => resolve(false), 5_000);
+        })
+      ]);
+      if (timeoutHandle) clearTimeout(timeoutHandle);
+      expect(finalGuardPaused).toBe(true);
+
+      const revoke = await requestJson('/access-control/grants', {
+        method: 'POST',
+        headers: headersA(),
+        body: JSON.stringify({ ...grantBody, effect: 'inherit' })
+      });
+      expect(revoke.status).toBe(200);
+
+      releaseSecondarySessionReadGate();
+      const denied = await pendingRequest;
+      expect(denied.status).toBe(403);
+    } finally {
+      releaseSecondarySessionReadGate();
+      if (granted) {
+        await requestJson('/access-control/grants', {
+          method: 'POST',
+          headers: headersA(),
+          body: JSON.stringify({ ...grantBody, effect: 'inherit' })
+        });
+      }
+    }
+  });
+
+  it('linearizes a protected write before a concurrent permission revocation can commit', async () => {
+    const grantBody = {
+      subjectType: 'team',
+      subjectId: ACCESS_AUDIT_RECOVERY_TEAM_A,
+      permissionCode: 'inventory.manage',
+      effect: 'allow'
+    } as const;
+    let granted = false;
+    let gateClient: PoolClient | undefined;
+    let writePromise: Promise<JsonResponse<unknown>> | undefined;
+    let revokePromise: Promise<JsonResponse<unknown>> | undefined;
+
+    const readManageAssignmentCount = async (): Promise<number> => {
+      const result = await getTestPool().query<{ readonly assignments: number }>(
+        `SELECT COUNT(*)::int AS assignments
+           FROM access_team_permissions assignment
+           JOIN permissions permission ON permission.id = assignment.permission_id
+          WHERE assignment.account_id = $1
+            AND assignment.team_id = $2
+            AND permission.key = 'inventory.manage'`,
+        [ACCOUNT_A, ACCESS_AUDIT_RECOVERY_TEAM_A]
+      );
+      return result.rows[0]?.assignments ?? 0;
+    };
+
+    const waitForDatabaseAdvisoryBlock = async (lockKey: string): Promise<boolean> => {
+      const deadline = Date.now() + 5_000;
+      while (Date.now() < deadline) {
+        const result = await getTestPool().query<{ readonly waiting: number }>(
+          `SELECT COUNT(*)::int AS waiting
+             FROM pg_locks
+            WHERE locktype = 'advisory'
+              AND granted = false
+              AND classid = ((hashtextextended($1, 0) >> 32) & 4294967295)::oid
+              AND objid = (hashtextextended($1, 0) & 4294967295)::oid`,
+          [lockKey]
+        );
+        if ((result.rows[0]?.waiting ?? 0) > 0) return true;
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+      return false;
+    };
+
+    try {
+      const grant = await requestJson('/access-control/grants', {
+        method: 'POST',
+        headers: headersA(),
+        body: JSON.stringify(grantBody)
+      });
+      expect(grant.status).toBe(200);
+      granted = true;
+      expect(await readManageAssignmentCount()).toBe(1);
+
+      await getTestPool().query(`
+        CREATE FUNCTION ${AUTH_LINEARIZATION_FUNCTION}() RETURNS trigger
+        LANGUAGE plpgsql
+        AS $function$
+        BEGIN
+          PERFORM pg_advisory_xact_lock(hashtextextended('${AUTH_LINEARIZATION_GATE}', 0));
+          RETURN NEW;
+        END;
+        $function$;
+      `);
+      await getTestPool().query(`
+        CREATE TRIGGER ${AUTH_LINEARIZATION_TRIGGER}
+        BEFORE INSERT ON inventory_purchases
+        FOR EACH ROW
+        EXECUTE FUNCTION ${AUTH_LINEARIZATION_FUNCTION}();
+      `);
+
+      gateClient = await getTestPool().connect();
+      await gateClient.query('SELECT pg_advisory_lock(hashtextextended($1, 0))', [
+        AUTH_LINEARIZATION_GATE
+      ]);
+
+      writePromise = requestJsonAt(secondaryBaseUrl, '/inventory/purchases', {
+        method: 'POST',
+        headers: {
+          ...headers(accessAuditToken, TENANT_A, ACCOUNT_A),
+          'idempotency-key': randomUUID()
+        },
+        body: JSON.stringify({
+          supplierName: AUTH_LINEARIZATION_SUPPLIER,
+          invoiceNumber: `AUTH-LIN-${randomUUID().slice(0, 8)}`,
+          lines: [
+            {
+              inventoryItemId: ITEM_A,
+              quantity: 1,
+              unitCostAmount: 1,
+              lotNumber: `AUTH-LIN-LOT-${randomUUID().slice(0, 8)}`,
+              location: 'Ala A'
+            }
+          ]
+        })
+      });
+      expect(await waitForDatabaseAdvisoryBlock(AUTH_LINEARIZATION_GATE)).toBe(true);
+
+      let revokeSettled = false;
+      revokePromise = requestJson('/access-control/grants', {
+        method: 'POST',
+        headers: headersA(),
+        body: JSON.stringify({ ...grantBody, effect: 'inherit' })
+      }).then((result) => {
+        revokeSettled = true;
+        return result;
+      });
+
+      expect(await waitForDatabaseAdvisoryBlock(ACCOUNT_A)).toBe(true);
+      expect(revokeSettled).toBe(false);
+      expect(await readManageAssignmentCount()).toBe(1);
+
+      await gateClient.query('SELECT pg_advisory_unlock(hashtextextended($1, 0))', [
+        AUTH_LINEARIZATION_GATE
+      ]);
+      const write = await writePromise;
+      const revoke = await revokePromise;
+      expect(write.status).toBe(201);
+      expect(revoke.status).toBe(200);
+      expect(await readManageAssignmentCount()).toBe(0);
+
+      const persisted = await getTestPool().query<{ readonly purchases: number }>(
+        `SELECT COUNT(*)::int AS purchases
+           FROM inventory_purchases
+          WHERE account_id = $1 AND supplier_name = $2`,
+        [ACCOUNT_A, AUTH_LINEARIZATION_SUPPLIER]
+      );
+      expect(persisted.rows[0]?.purchases).toBe(1);
+    } finally {
+      if (gateClient) {
+        await gateClient
+          .query('SELECT pg_advisory_unlock(hashtextextended($1, 0))', [AUTH_LINEARIZATION_GATE])
+          .catch(() => undefined);
+      }
+      await Promise.allSettled([writePromise, revokePromise].filter(Boolean) as Promise<unknown>[]);
+      gateClient?.release();
+      await getTestPool()
+        .query(`DROP TRIGGER IF EXISTS ${AUTH_LINEARIZATION_TRIGGER} ON inventory_purchases`)
+        .catch(() => undefined);
+      await getTestPool()
+        .query(`DROP FUNCTION IF EXISTS ${AUTH_LINEARIZATION_FUNCTION}()`)
+        .catch(() => undefined);
+      if (granted) {
+        await requestJson('/access-control/grants', {
+          method: 'POST',
+          headers: headersA(),
+          body: JSON.stringify({ ...grantBody, effect: 'inherit' })
+        }).catch(() => undefined);
+      }
+    }
   });
 });

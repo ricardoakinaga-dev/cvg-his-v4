@@ -39,7 +39,7 @@ export interface SchedulingRoutesHandlers {
   audit: AuditService;
   featureFlags?: Pick<ApiFeatureFlagsSnapshot, 'mlSmartSchedulingEnabled'>;
   telemetry?: MlTelemetryService;
-  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
+  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
   runCommand?: TenantCommandRunner;
 }
 
@@ -75,7 +75,7 @@ export async function handleSchedulingRoutes(
   const url = new URL(request.url ?? pathname, 'http://localhost');
 
   if (pathname === '/appointments' && method === 'GET') {
-    const principal = requirePrincipal(request, 'scheduling.read');
+    const principal = await requirePrincipal(request, 'scheduling.read');
     const payload: AppointmentListResponse = {
       items: scheduling.listAppointments(principal.user.accountId, {
         startAt: url.searchParams.get('startAt') ?? undefined,
@@ -105,7 +105,7 @@ export async function handleSchedulingRoutes(
   }
 
   if (pathname === '/appointments' && method === 'POST') {
-    const principal = requirePrincipal(request, 'scheduling.manage');
+    const principal = await requirePrincipal(request, 'scheduling.manage');
     const payload = (await readJsonBody(request)) as CreateAppointmentRequest;
     const appointment = await runCommand({
       request,
@@ -149,7 +149,7 @@ export async function handleSchedulingRoutes(
       response.end(JSON.stringify({ error: 'feature_disabled', message: 'Smart scheduling is disabled' }));
       return true;
     }
-    const principal = requirePrincipal(request, 'scheduling.read');
+    const principal = await requirePrincipal(request, 'scheduling.read');
     const payload = (await readJsonBody(request)) as SmartSchedulingRecommendationRequest;
     const patientId = requireNonEmptyString(payload.patientId, 'patientId');
     const scheduledAt = requireNonEmptyString(payload.scheduledAt, 'scheduledAt');
@@ -213,7 +213,7 @@ export async function handleSchedulingRoutes(
   }
 
   if (pathname.startsWith('/appointments/') && method === 'GET') {
-    const principal = requirePrincipal(request, 'scheduling.read');
+    const principal = await requirePrincipal(request, 'scheduling.read');
     const appointmentId = requireNonEmptyString(pathname.split('/')[2], 'appointmentId');
     const appointment = scheduling.getAppointmentOrThrow(appointmentId as never);
     if (appointment.accountId !== principal.user.accountId) {
@@ -234,7 +234,7 @@ export async function handleSchedulingRoutes(
   }
 
   if (pathname.startsWith('/appointments/') && pathname.endsWith('/cancel') && method === 'POST') {
-    const principal = requirePrincipal(request, 'scheduling.manage');
+    const principal = await requirePrincipal(request, 'scheduling.manage');
     const appointmentId = requireNonEmptyString(pathname.split('/')[2], 'appointmentId');
     const existing = scheduling.getAppointmentOrThrow(appointmentId as never);
     if (existing.accountId !== principal.user.accountId) {
@@ -273,7 +273,7 @@ export async function handleSchedulingRoutes(
     && pathname.endsWith('/reschedule')
     && method === 'POST'
   ) {
-    const principal = requirePrincipal(request, 'scheduling.manage');
+    const principal = await requirePrincipal(request, 'scheduling.manage');
     const appointmentId = requireNonEmptyString(pathname.split('/')[2], 'appointmentId');
     const existing = scheduling.getAppointmentOrThrow(appointmentId as never);
     if (existing.accountId !== principal.user.accountId) {
@@ -318,7 +318,7 @@ export async function handleSchedulingRoutes(
     if (!encounters) {
       return false;
     }
-    const principal = requirePrincipal(request, 'encounters.manage');
+    const principal = await requirePrincipal(request, 'encounters.manage');
     const appointmentId = requireNonEmptyString(pathname.split('/')[2], 'appointmentId');
     const appointment = scheduling.getAppointmentOrThrow(appointmentId as never);
     if (appointment.accountId !== principal.user.accountId) {
@@ -371,7 +371,7 @@ export async function handleSchedulingRoutes(
   }
 
   if (pathname === '/scheduling/overview' && method === 'GET') {
-    const principal = requirePrincipal(request, 'scheduling.read');
+    const principal = await requirePrincipal(request, 'scheduling.read');
     const payload: SchedulingOverviewResponse = scheduling.getSchedulingOverview(
       principal.user.accountId,
       {
@@ -402,7 +402,7 @@ export async function handleSchedulingRoutes(
   }
 
   if (pathname === '/scheduling/availability' && method === 'GET') {
-    const principal = requirePrincipal(request, 'scheduling.read');
+    const principal = await requirePrincipal(request, 'scheduling.read');
     const scheduledAt = requireNonEmptyString(url.searchParams.get('scheduledAt'), 'scheduledAt');
     const patientId = requireNonEmptyString(url.searchParams.get('patientId'), 'patientId');
     const payload: SchedulingAvailabilityResponse = scheduling.getAvailability(
@@ -434,7 +434,7 @@ export async function handleSchedulingRoutes(
   }
 
   if (pathname === '/queue' && method === 'GET') {
-    const principal = requirePrincipal(request, 'scheduling.read');
+    const principal = await requirePrincipal(request, 'scheduling.read');
     const payload: QueueListResponse = {
       items: scheduling.getQueue(principal.user.accountId)
     };
@@ -453,7 +453,7 @@ export async function handleSchedulingRoutes(
   }
 
   if (pathname === '/queue/check-in' && method === 'POST') {
-    const principal = requirePrincipal(request, 'scheduling.manage');
+    const principal = await requirePrincipal(request, 'scheduling.manage');
     const payload = (await readJsonBody(request)) as CheckInQueueRequest;
     const entry = await runCommand({
       request,
@@ -482,7 +482,7 @@ export async function handleSchedulingRoutes(
   }
 
   if (pathname.startsWith('/queue/') && pathname.endsWith('/call') && method === 'POST') {
-    const principal = requirePrincipal(request, 'scheduling.manage');
+    const principal = await requirePrincipal(request, 'scheduling.manage');
     const queueEntryId = requireNonEmptyString(pathname.split('/')[2], 'queueEntryId');
     const existing = scheduling.getQueueEntryOrThrow(queueEntryId as never);
     if (existing.accountId !== principal.user.accountId) {
@@ -515,7 +515,7 @@ export async function handleSchedulingRoutes(
   }
 
   if (pathname.startsWith('/queue/') && pathname.endsWith('/transfer') && method === 'POST') {
-    const principal = requirePrincipal(request, 'scheduling.manage');
+    const principal = await requirePrincipal(request, 'scheduling.manage');
     const queueEntryId = requireNonEmptyString(pathname.split('/')[2], 'queueEntryId');
     const existing = scheduling.getQueueEntryOrThrow(queueEntryId as never);
     if (existing.accountId !== principal.user.accountId) {
@@ -562,7 +562,7 @@ export async function handleSchedulingRoutes(
 
   const transferListMatch = pathname.match(/^\/queue\/([^/]+)\/transfers$/);
   if (transferListMatch && method === 'GET') {
-    const principal = requirePrincipal(request, 'scheduling.read');
+    const principal = await requirePrincipal(request, 'scheduling.read');
     const queueEntryId = requireNonEmptyString(transferListMatch[1], 'queueEntryId');
     const existing = scheduling.getQueueEntryOrThrow(queueEntryId as never);
     if (existing.accountId !== principal.user.accountId) {
@@ -587,7 +587,7 @@ export async function handleSchedulingRoutes(
     /^\/queue\/([^/]+)\/transfers\/([^/]+)\/receive$/
   );
   if (receiveTransferMatch && method === 'POST') {
-    const principal = requirePrincipal(request, 'scheduling.manage');
+    const principal = await requirePrincipal(request, 'scheduling.manage');
     const queueEntryId = requireNonEmptyString(receiveTransferMatch[1], 'queueEntryId');
     const transferId = requireNonEmptyString(receiveTransferMatch[2], 'transferId');
     const existing = scheduling.getQueueEntryOrThrow(queueEntryId as never);
@@ -625,7 +625,7 @@ export async function handleSchedulingRoutes(
   }
 
   if (pathname.startsWith('/queue/') && pathname.endsWith('/start-care') && method === 'POST') {
-    const principal = requirePrincipal(request, 'scheduling.manage');
+    const principal = await requirePrincipal(request, 'scheduling.manage');
     const queueEntryId = requireNonEmptyString(pathname.split('/')[2], 'queueEntryId');
     const existing = scheduling.getQueueEntryOrThrow(queueEntryId as never);
     if (existing.accountId !== principal.user.accountId) {
@@ -658,7 +658,7 @@ export async function handleSchedulingRoutes(
   }
 
   if (pathname.startsWith('/queue/') && pathname.endsWith('/complete') && method === 'POST') {
-    const principal = requirePrincipal(request, 'scheduling.manage');
+    const principal = await requirePrincipal(request, 'scheduling.manage');
     const queueEntryId = requireNonEmptyString(pathname.split('/')[2], 'queueEntryId');
     const existing = scheduling.getQueueEntryOrThrow(queueEntryId as never);
     if (existing.accountId !== principal.user.accountId) {
@@ -691,7 +691,7 @@ export async function handleSchedulingRoutes(
   }
 
   if (pathname.startsWith('/queue/') && pathname.endsWith('/no-show') && method === 'POST') {
-    const principal = requirePrincipal(request, 'scheduling.manage');
+    const principal = await requirePrincipal(request, 'scheduling.manage');
     const queueEntryId = requireNonEmptyString(pathname.split('/')[2], 'queueEntryId');
     const existing = scheduling.getQueueEntryOrThrow(queueEntryId as never);
     if (existing.accountId !== principal.user.accountId) {

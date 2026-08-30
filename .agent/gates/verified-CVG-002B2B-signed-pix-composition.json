@@ -1,0 +1,188 @@
+{
+  "record_id": "GATE-CVG-002B2B-SIGNED-PIX-COMPOSITION-VFY-001",
+  "timestamp": "2026-08-26T19:56:59-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-002B2B bounded signed synthetic PIX HTTP-to-PostgreSQL-to-worker settlement composition",
+  "scope_ref": "CVG-002B2B",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-001-ENVIRONMENT-GUARD",
+      "description": "The synthetic PIX capability fails closed for production, prod, staging and stage aliases, and for a production-like NODE_ENV that conflicts with a caller option, in both API and worker runtimes.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002B2B-SIGNED-PIX-HTTP-001",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-SIGNED-PIX-QUALITY-001",
+        "apps/api/src/routes/pix-provider-webhook-routes.ts",
+        "apps/worker/src/bootstrap.ts",
+        "apps/worker/src/bootstrap.test.ts",
+        "tests/integration/pix-provider-webhook-http.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Only the local synthetic capability is covered; this is not real provider homologation."
+    },
+    {
+      "id": "V-002-SIGNED-INGRESS",
+      "description": "The real HTTP boundary authenticates the raw request body with HMAC, binds the provider key to the tenant, durably persists a receipt and delivery before ACK, replays byte-identical events, and rejects a cross-tenant signed spoof without ingress for the other tenant.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002B2B-SIGNED-PIX-HTTP-001",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-SIGNED-PIX-POSTGRES-001",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-SIGNED-PIX-COMPOSITION-001",
+        "apps/api/src/pix-provider-event-ingress-repository.ts",
+        "tests/integration/pix-provider-webhook-http.test.ts",
+        "tests/integration/process/pix-provider-webhook-settlement-e2e.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The provider is local synthetic and the evidence uses disposable PostgreSQL."
+    },
+    {
+      "id": "V-003-DURABLE-RETRY-CORRELATION",
+      "description": "A signed event remains durably retryable when the payment attempt/PIX transaction is not correlated, then converges after correlation without creating duplicate receipt or delivery state.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002B2B-SIGNED-PIX-INGRESS-001",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-SIGNED-PIX-COMPOSITION-001",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-SIGNED-PIX-CONSUMER-001",
+        "apps/worker/src/jobs/pix-provider-event-delivery-repository.ts",
+        "tests/integration/database/pix-provider-settlement-consumer.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The bounded process proof does not claim every declared B2B failpoint has a dedicated composition test."
+    },
+    {
+      "id": "V-004-SHARED-B1-SETTLEMENT",
+      "description": "The actual worker invokes the shared B1 settlement path and settles billing, payment attempt and PIX state exactly once, with one receipt, journal, audit/outbox and delivery completion for tenant A and no financial effects for tenant B.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002B2B-SIGNED-PIX-COMPOSITION-001",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-SIGNED-PIX-CONSUMER-001",
+        "tests/integration/process/pix-provider-webhook-settlement-e2e.test.ts",
+        "apps/worker/src/jobs/pix-provider-event-delivery-repository.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This is a local synthetic worker composition; target accounting, provider and release acceptance remain open."
+    },
+    {
+      "id": "V-005-RLS-ACL-READINESS",
+      "description": "Reconciled API and worker runtime roles are non-superuser, non-BYPASSRLS, non-inheriting and least-privileged; direct API ACL probes, tenant RLS behavior and worker readiness checks pass before mounting the settlement runtime. Readiness binds each required policy to its table, requires ALL and exact tenant predicates, and verifies required columns, constraints and indexes.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002B2B-SIGNED-PIX-INGRESS-001",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-SIGNED-PIX-COMPOSITION-001",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-SIGNED-PIX-NON-EPHEMERAL-001",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-SIGNED-PIX-QUALITY-001",
+        "apps/worker/src/bootstrap.ts",
+        "apps/api/src/pix-provider-event-ingress-repository.ts",
+        "tests/integration/process/pix-provider-webhook-settlement-e2e.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Role and schema behavior is verified on disposable PostgreSQL after local role reconciliation; target infrastructure and operational SQL writers remain open."
+    },
+    {
+      "id": "V-006-CRASH-RESTART-FENCING",
+      "description": "The process composition restarts cleanly, and the independent-process matrix recovers after SIGKILL at claim/B1/CAS points while stale-process takeover is fenced before duplicate B1 effects.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002B2B-SIGNED-PIX-SIGKILL-001",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-SIGNED-PIX-COMPOSITION-001",
+        "tests/integration/process/pix-provider-settlement-sigkill.test.ts",
+        "tests/integration/process/pix-provider-webhook-settlement-e2e.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The matrix is not a claim of a complete two-live-worker run for every B2B failpoint."
+    },
+    {
+      "id": "V-007-AUTHORIZATION-LINEARIZATION",
+      "description": "Worker service-principal reads acquire the same tenant authorization advisory lock as protected application revocations, and a deterministic PostgreSQL lock barrier proves revocation linearizes before B1 execution.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002B2B-SIGNED-PIX-CONSUMER-001",
+        "apps/worker/src/jobs/pix-provider-event-delivery-repository.ts",
+        "tests/integration/database/pix-provider-settlement-consumer.test.ts",
+        "packages/shared/database/src/tenant-authorization-lock.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Privileged operational SQL writers outside the runtime roles can bypass the protocol and must be governed before production."
+    },
+    {
+      "id": "V-008-QUALITY",
+      "description": "The bounded implementation passes focused tests, full API and worker package tests, official coverage, typecheck, lint, formatting and diff hygiene.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002B2B-SIGNED-PIX-UNIT-001",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-SIGNED-PIX-QUALITY-001",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-SIGNED-PIX-COVERAGE-001",
+        ".agent/artifacts/CVG-002B2B-signed-pix-composition-2026-08-26.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Repository-local quality does not certify remote CI, target operations, accessibility, backup/restore or release."
+    },
+    {
+      "id": "V-009-INDEPENDENT-REVIEW-BOUNDARY",
+      "description": "An independent read-only review of the final code returns PASS_BOUNDED without Critical, High or remaining Medium findings, while the B2B/global limits and residual privileged-writer risk remain explicit.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002B2B-SIGNED-PIX-REVIEW-001",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-SIGNED-PIX-NON-EPHEMERAL-001",
+        ".agent/artifacts/CVG-002B2B-signed-pix-composition-2026-08-26.md",
+        ".agent/tasks/CVG-002B2B.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This bounded gate is not a complete CVG-002B2B, CVG-002, Vetus parity, enterprise readiness or release gate."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-002B2B.md",
+    ".agent/artifacts/CVG-002B2B-signed-pix-composition-2026-08-26.md",
+    ".agent/authority.jsonl#AUTH-CVG-002B2B-IR-001",
+    ".agent/verification.jsonl#VFY-CVG-002B2B-SIGNED-PIX-FINAL-001",
+    "apps/api/src/pix-provider-event-ingress-repository.ts",
+    "apps/api/src/routes/pix-provider-webhook-routes.ts",
+    "apps/worker/src/bootstrap.ts",
+    "apps/worker/src/jobs/pix-provider-event-delivery-repository.ts",
+    "tests/integration/process/pix-provider-webhook-settlement-e2e.test.ts",
+    "tests/integration/process/pix-provider-settlement-sigkill.test.ts",
+    "tests/integration/database/pix-provider-settlement-consumer.test.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "The complete CVG-002B2B contract remains open for dedicated coverage of every declared B1 failpoint, a concurrent two-live-worker composition and the full principal login/cache/MFA exclusion matrix.",
+    "Privileged operational writers outside runtime roles can bypass the shared advisory lock; enforce and revalidate that writer protocol before production.",
+    "Real providers, credentials, external mutation, target deployment/homologation, browser accessibility, backup/restore/RTO-RPO, remote CI, global parity and release acceptance remain open.",
+    "Global state remains partial: general Vetus parity 98/100 with 4/11 verified, clinical parity 100/100 with 2/3 verified, enterprise readiness 95/100 with 42 PASS / 3 WARN / 1 FAIL."
+  ],
+  "conditions": [
+    "Run only with canonical migrations through 0149, a unique or ephemeral PostgreSQL database, reconciled restricted runtime roles and synthetic capability in a non-production environment.",
+    "All application service-principal mapping/identity writers must acquire the tenant authorization advisory lock; the worker runtime role cannot mutate the mapping.",
+    "Revalidate before real provider contracts, credentials, target, production ACL/deployment, external mutation, irreversible migration, redrive authority or release acceptance."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner)",
+    "scope": "CVG-002B2B signed synthetic PIX inbound and durable shared-B1 settlement worker",
+    "decision": "Authorize reversible repository implementation, disposable PostgreSQL and an explicitly local synthetic PIX provider for the bounded B2b inbound receipt/shared-B1 worker slice; real providers, credentials, external mutation, production, deployment and release remain excluded.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-002B2B-IR-001",
+    "expires_or_revalidates": "Revalidate before real provider contracts, credentials, external mutation, production ACL/deployment, irreversible migration, operational redrive authority or release acceptance; revalidate after changes to protocol, attempt/delivery states, lock order, service-principal policy, shared UoW, runtime grants or coverage configuration."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_BOUNDED",
+  "next_action": "Keep CVG-002B2B, CVG-002 and the global program IN_PROGRESS/PARTIAL. Do not promote this bounded result to production, full parity, enterprise readiness or release.",
+  "revalidation_triggers": [
+    "Any expansion from the local synthetic provider/reversible code/disposable PostgreSQL to real provider, credentials, external mutation, production, deployment or release",
+    "Changes to raw-body signing, claims canonicalization, attempt/delivery states, lease/CAS/backoff/max-attempt rules or billing-to-PIX-to-attempt lock order",
+    "Changes to service-principal login/cache/MFA filters, authorization-lock writers, runtime ACL/schema checks, shared B1 UoW or coverage configuration",
+    "A RED, role regression, security scan, target test or independent review disproves the bounded assumptions"
+  ],
+  "supersedes": ".agent/gates/implementation-ready-CVG-002B2B.json"
+}

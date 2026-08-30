@@ -374,6 +374,18 @@ describe('OwnersService with repository', () => {
     expect(found?.fullName).toBe('Repo Updated');
   });
 
+  it('refreshes the account cache by removing records no longer in the repository', async () => {
+    const persisted = service.create(ACCOUNT_ID, makeOwner({ fullName: 'Persisted Owner' }));
+    const stale = service.create(ACCOUNT_ID, makeOwner({ fullName: 'Stale Owner', documentId: '999.999.999-99' }));
+    await service.waitForPersistence();
+    await repo.delete(stale.id);
+
+    await service.refreshFromDatabase(ACCOUNT_ID);
+
+    expect(service.getOrThrow(persisted.id).fullName).toBe('Persisted Owner');
+    expect(() => service.getOrThrow(stale.id)).toThrow(NotFoundError);
+  });
+
   it('deletes owner via repository', async () => {
     const owner = service.create(ACCOUNT_ID, makeOwner({ documentId: '111.111.111-11' }));
     await new Promise((r) => setTimeout(r, 10));

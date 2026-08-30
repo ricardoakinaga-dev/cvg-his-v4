@@ -90,6 +90,10 @@ const checks = [
       files.packageJson?.includes('"ops:backup:check"')
   },
   {
+    label: 'package.json expõe restore drill representativo explicitamente',
+    ok: files.packageJson?.includes('"ops:restore:drill:fixture:representative"')
+  },
+  {
     label: 'documentacao viva de cutover menciona registro de evidencias',
     ok:
       files.cutoverChecklist?.includes('registrar evidencias do cutover') &&
@@ -98,7 +102,7 @@ const checks = [
   {
     label: 'roadmap atual mantem backup/restore como criterio de saida',
     ok:
-      files.roadmap?.includes('| OPS-001 | Backup, restore e Game Day |') &&
+      /\|\s*OPS-001\s*\|\s*Backup, restore e Game Day\s*\|/.test(files.roadmap ?? '') &&
       files.roadmap?.includes('restore é comprovado') &&
       files.roadmap?.includes('backup/restore, Game Day')
   }

@@ -1,0 +1,161 @@
+{
+  "record_id": "GATE-CVG-003-OUTBOX-ADMIN-TENANT-ISOLATION-VFY-001",
+  "timestamp": "2026-08-29T11:55:22-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-003 bounded account-scoped outbox administration and internal event HTTP boundary",
+  "scope_ref": "CVG-003-OUTBOX-ADMIN-TENANT-ISOLATION",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "VFY-001",
+      "description": "EventBusService and every administrative OutboxRepository operation require a non-empty principal-derived AccountId first, and the in-memory implementation filters reads, counts and reprocess mutations by that account.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/event-bus/src/outbox.interface.ts",
+        "packages/modules/event-bus/src/event-bus.service.ts",
+        "apps/api/src/runtime-repositories.ts",
+        ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-TENANT-ISOLATION-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-TENANT-ISOLATION-GREEN-002"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This certifies the repository-local application service and supported in-memory implementation; worker claims and direct SQL outside the repository remain outside scope."
+    },
+    {
+      "id": "VFY-002",
+      "description": "Database administration requires the explicit account to match ambient tenant context and retains account predicates for detail, list, correlation, counts and reprocess operations.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/event-bus/src/event-bus.service.ts",
+        "tests/integration/database/outbox-delivery.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-TENANT-ISOLATION-GREEN-002"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The database proof uses a disposable local PostgreSQL instance and does not certify target roles, RLS deployment or production operations."
+    },
+    {
+      "id": "VFY-003",
+      "description": "All internal event administration routes derive the account from the authenticated principal, expose an unambiguous correlation path, enforce the 1..200 list bound with default 50, and preserve permission behavior and response shapes.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/api/src/routes/internal-events-routes.ts",
+        "apps/api/src/routes/internal-events-routes.test.ts",
+        "apps/api/src/server.test.ts",
+        "apps/api/src/openapi.yaml",
+        "apps/api/src/routes/api-keys-routes.ts",
+        ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-TENANT-ISOLATION-RED-002",
+        ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-TENANT-ISOLATION-GREEN-002"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The HTTP and catalog evidence is local and does not certify a deployed gateway, external operator identity provider or production ingress policy."
+    },
+    {
+      "id": "VFY-004",
+      "description": "Counts remain repository-backed and worker delivery/claim semantics are unchanged; same-account administration, foreign-account opacity, invalid input rejection and bounded correlation behavior are covered by focused and PostgreSQL regressions.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/event-bus/src/event-bus.test.ts",
+        "apps/api/src/runtime.test.ts",
+        "tests/integration/database/outbox-delivery.test.ts",
+        "apps/worker/src/runner.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-TENANT-ISOLATION-GREEN-002"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The task deliberately excludes payload redaction, replay authorization policy, systemic ABAC redesign and distributed worker acceptance."
+    },
+    {
+      "id": "VFY-005",
+      "description": "Quality, contract and security evidence are current after remediation: full API regression, module/API typechecks, OpenAPI validation, formatting/diff hygiene, RLS validation, secret scan and official workspace coverage satisfy the local quality bar.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-TENANT-ISOLATION-QUALITY-002",
+        ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-EXECUTION-COMMAND-EVENT-TENANT-ISOLATION-COVERAGE-001",
+        "coverage/coverage-final.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Local coverage and scanners do not replace remote CI, external homologation, target operations or release acceptance."
+    },
+    {
+      "id": "VFY-006",
+      "description": "Independent review findings were remediated: the API-key catalog no longer advertises Bearer-only operator routes as integration endpoints, OpenAPI documents the six routes, and the unbounded correlation search now has an enforced service/repository/route bound.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-TENANT-ISOLATION-REVIEW-001",
+        ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-TENANT-ISOLATION-REVIEW-002",
+        ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-TENANT-ISOLATION-REVIEW-003",
+        ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-TENANT-ISOLATION-REVIEW-004"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The approvals are bounded to this repository-local event administration contract; wider payload, replay and authorization policy remain follow-up scopes."
+    },
+    {
+      "id": "VFY-007",
+      "description": "Fresh global audits confirm non-promotion: Vetus functional parity remains 4/11 verified, clinical parity 2/3 verified, enterprise readiness 95/100 with 42 PASS, 3 WARN and 1 FAIL, and promotion remains blocked.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-TENANT-ISOLATION-GLOBAL-RETEST-001",
+        ".agent/state.json",
+        ".agent/backlog.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This is a global status check, not evidence of complete ERP/Vetus parity, external-provider homologation, target readiness or release acceptance."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-003-OUTBOX-ADMIN-TENANT-ISOLATION.md",
+    ".agent/artifacts/CVG-003-outbox-admin-tenant-isolation-2026-08-29.md",
+    ".agent/gates/implementation-ready-CVG-003-outbox-admin-tenant-isolation.json",
+    ".agent/authority.jsonl#AUTH-CVG-003-OUTBOX-ADMIN-TENANT-ISOLATION-IR-001",
+    ".agent/authority.jsonl#AUTH-CVG-003-OUTBOX-ADMIN-TENANT-ISOLATION-HARDENING-001",
+    ".agent/verification.jsonl#VFY-SCOUT-CVG-003-OUTBOX-ADMIN-TENANT-ISOLATION-001",
+    ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-TENANT-ISOLATION-RED-001",
+    ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-TENANT-ISOLATION-GREEN-001",
+    ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-TENANT-ISOLATION-RED-002",
+    ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-TENANT-ISOLATION-GREEN-002",
+    ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-TENANT-ISOLATION-QUALITY-002",
+    ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-TENANT-ISOLATION-REVIEW-001",
+    ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-TENANT-ISOLATION-REVIEW-002",
+    ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-TENANT-ISOLATION-REVIEW-003",
+    ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-TENANT-ISOLATION-REVIEW-004",
+    ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-TENANT-ISOLATION-GLOBAL-RETEST-001"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "Global Vetus functional parity is not verified: 4/11 areas verified; clinical parity is not verified: 2/3 areas verified.",
+    "Enterprise readiness remains 95/100 with 42 PASS, 3 WARN and 1 FAIL; remote CI, real backup/restore and real deploy/cutover remain warnings.",
+    "Payload redaction, replay authorization after permission revocation and systemic ABAC policy remain wider follow-up risks.",
+    "Direct SQL/privileged writers, target RLS/runtime roles, distributed worker operations, external providers, accessibility, LGPD operational acceptance, production and release evidence remain open."
+  ],
+  "conditions": [
+    "Close only this repository-local account-scoped outbox administration service/repository/HTTP boundary as PASS_BOUNDED.",
+    "Keep AccountId-first signatures, principal-derived route propagation and bounded list limits mandatory for future callers.",
+    "Keep worker claim semantics, payload policy and replay policy outside this gate unless a new authority explicitly expands scope.",
+    "Keep CVG-003/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+    "Do not infer target, production, provider, deployment or release acceptance from this gate."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via explicit continuation request and bounded hardening addendum",
+    "scope": "CVG-003 bounded account-scoped outbox administration and internal event HTTP boundary",
+    "decision": "Authorize only reversible repository-local service, repository, route, catalog, OpenAPI and test corrections for account isolation and bounded administration. Exclude payload redaction, replay authorization redesign, systemic ABAC, worker claims, migrations, providers, credentials, target, production, deployment and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-003-OUTBOX-ADMIN-TENANT-ISOLATION-IR-001",
+    "expires_or_revalidates": "Revalidate before any new event administration path, payload-policy change, replay authorization change or expansion beyond the application service/HTTP boundary."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_WITH_CONDITIONS",
+  "implementation_status": "COMPLETE_BOUNDED",
+  "next_action": "Close only this slice as PASS_BOUNDED, reconcile state/backlog/artifact and return to fresh scouting; do not promote CVG-003 or global ERP readiness.",
+  "revalidation_triggers": [
+    "New internal event administration route, event repository implementation or worker administrative action",
+    "Changes to payload exposure, replay authorization, audit policy, ABAC policy, tenant context or outbox schema",
+    "Expansion to migrations, providers, credentials, target, production, deployment or release activity"
+  ],
+  "supersedes": null
+}

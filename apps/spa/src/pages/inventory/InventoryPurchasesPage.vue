@@ -28,12 +28,21 @@
     </section>
 
     <section class="purchase-layout">
-      <form class="purchase-panel" aria-label="Preparar compra de estoque" @submit.prevent="submitPurchase">
+      <form
+        class="purchase-panel"
+        aria-label="Preparar compra de estoque"
+        @submit.prevent="submitPurchase"
+      >
         <h2>Compra</h2>
         <div class="purchase-grid">
           <label class="field">
             <span>Fornecedor</span>
-            <input v-model="purchase.supplier" type="text" autocomplete="off" data-testid="purchase-supplier" />
+            <input
+              v-model="purchase.supplier"
+              type="text"
+              autocomplete="off"
+              data-testid="purchase-supplier"
+            />
           </label>
 
           <label class="field">
@@ -59,17 +68,34 @@
 
           <label class="field">
             <span>Código</span>
-            <input v-model="purchase.code" type="search" autocomplete="off" data-testid="purchase-code" />
+            <input
+              v-model="purchase.code"
+              type="search"
+              autocomplete="off"
+              data-testid="purchase-code"
+            />
           </label>
 
           <label class="field">
             <span>Quantidade</span>
-            <input v-model.number="purchase.quantity" type="number" min="1" step="1" data-testid="purchase-quantity" />
+            <input
+              v-model.number="purchase.quantity"
+              type="number"
+              min="1"
+              step="1"
+              data-testid="purchase-quantity"
+            />
           </label>
 
           <label class="field">
             <span>Custo Unit.</span>
-            <input v-model.number="purchase.unitCost" type="number" min="0" step="0.01" data-testid="purchase-cost" />
+            <input
+              v-model.number="purchase.unitCost"
+              type="number"
+              min="0"
+              step="0.01"
+              data-testid="purchase-cost"
+            />
           </label>
 
           <label class="field">
@@ -79,12 +105,24 @@
 
           <label class="field field--wide">
             <span>Observação</span>
-            <input v-model="purchase.notes" type="text" maxlength="180" data-testid="purchase-notes" />
+            <input
+              v-model="purchase.notes"
+              type="text"
+              maxlength="180"
+              data-testid="purchase-notes"
+            />
           </label>
         </div>
 
         <div class="purchase-preview">
-          <span>Saldo atual: {{ selectedItem ? formatQuantity(selectedItem.onHandQuantity, selectedItem.unit) : 'Selecione um produto' }}</span>
+          <span
+            >Saldo atual:
+            {{
+              selectedItem
+                ? formatQuantity(selectedItem.onHandQuantity, selectedItem.unit)
+                : 'Selecione um produto'
+            }}</span
+          >
           <strong>Total previsto: {{ purchaseTotalLabel }}</strong>
         </div>
 
@@ -115,7 +153,11 @@
               <option value="suggested">Sugerida</option>
               <option value="quote">Cotação</option>
               <option value="ordered">Pedido</option>
+              <option value="draft">Rascunho</option>
+              <option value="approved">Aprovada</option>
+              <option value="partially_received">Recebimento parcial</option>
               <option value="received">Recebida</option>
+              <option value="cancelled">Cancelada</option>
             </select>
           </label>
           <label class="field">
@@ -165,12 +207,7 @@
         {{ formatDate((row as PurchaseRow).expectedDate) }}
       </template>
       <template #cell-actions="{ row }">
-        <DsButton
-          tag="a"
-          :to="(row as PurchaseRow).detailPath"
-          size="sm"
-          variant="secondary"
-        >
+        <DsButton tag="a" :to="(row as PurchaseRow).detailPath" size="sm" variant="secondary">
           Abrir
         </DsButton>
       </template>
@@ -188,13 +225,19 @@ import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
 import { inventoryService } from '@/services/inventory';
-import type { InventoryItemSummary, InventoryLotSummary } from '@/types/inventory';
+import type {
+  InventoryItemSummary,
+  InventoryLotSummary,
+  InventoryPurchaseSummary
+} from '@/types/inventory';
 
-type PurchaseStatus = 'suggested' | 'quote' | 'ordered' | 'received';
+type PurchaseStatus = 'suggested' | 'quote' | 'ordered' | InventoryPurchaseSummary['status'];
+type PurchaseRowSource = 'prepared' | 'persisted' | 'suggested' | 'quote';
 type StatusVariant = 'success' | 'warning' | 'danger' | 'info' | 'neutral';
 
 interface PurchaseRow {
   id: string;
+  source: PurchaseRowSource;
   code: string;
   product: string;
   supplier: string;
@@ -214,6 +257,7 @@ interface PurchaseRow {
 
 const items = ref<InventoryItemSummary[]>([]);
 const lots = ref<InventoryLotSummary[]>([]);
+const purchases = ref<InventoryPurchaseSummary[]>([]);
 const preparedRows = ref<PurchaseRow[]>([]);
 const loading = ref(false);
 const saving = ref(false);
@@ -254,10 +298,11 @@ const columns: DataTableColumn[] = [
   { key: 'actions', label: 'Abrir', width: '100px', class: 'table__actions-col' }
 ];
 
-const selectedItem = computed(() =>
-  items.value.find((item) => item.id === purchase.inventoryItemId)
-    ?? items.value.find((item) => normalizeSearch(item.sku) === normalizeSearch(purchase.code))
-    ?? null
+const selectedItem = computed(
+  () =>
+    items.value.find((item) => item.id === purchase.inventoryItemId) ??
+    items.value.find((item) => normalizeSearch(item.sku) === normalizeSearch(purchase.code)) ??
+    null
 );
 const purchaseTotal = computed(() => {
   const quantity = Number(purchase.quantity);
@@ -266,26 +311,43 @@ const purchaseTotal = computed(() => {
   return Number((quantity * unitCost).toFixed(2));
 });
 const purchaseTotalLabel = computed(() => formatCurrency(purchaseTotal.value));
-const suggestedRowsCount = computed(() =>
-  rows.value.filter((row) => row.status === 'suggested').length
+const suggestedRowsCount = computed(
+  () => rows.value.filter((row) => row.status === 'suggested').length
 );
-const supplierCount = computed(() =>
-  new Set(rows.value.map((row) => row.supplier).filter((supplier) => supplier !== 'Fornecedor não informado')).size
+const supplierCount = computed(
+  () =>
+    new Set(
+      rows.value
+        .map((row) => row.supplier)
+        .filter((supplier) => supplier !== 'Fornecedor não informado')
+    ).size
 );
 const totalOpenValueLabel = computed(() => {
-  const total = rows.value
-    .filter((row) => row.status !== 'received')
+  const persistedOpenTotal = purchases.value
+    .filter((purchase) => purchase.status !== 'received' && purchase.status !== 'cancelled')
+    .reduce(
+      (sum, purchase) => sum + Math.max(purchase.totalAmount - purchase.receivedAmount, 0),
+      0
+    );
+  const derivedOpenTotal = rows.value
+    .filter(
+      (row) => row.source !== 'persisted' && row.status !== 'received' && row.status !== 'cancelled'
+    )
     .reduce((sum, row) => sum + row.total, 0);
+  const total = Number((persistedOpenTotal + derivedOpenTotal).toFixed(2));
   return `${formatCurrency(total)} em aberto`;
 });
 const rows = computed<PurchaseRow[]>(() => {
+  const persisted = purchases.value.flatMap(purchaseToRows);
   const suggested = items.value
     .filter((item) => item.onHandQuantity <= item.reorderLevel)
     .map(itemToSuggestedRow);
   const lotQuoteRows = lots.value
-    .filter((lot) => lot.status === 'expiring' || lot.status === 'expired' || lot.status === 'depleted')
+    .filter(
+      (lot) => lot.status === 'expiring' || lot.status === 'expired' || lot.status === 'depleted'
+    )
     .map(lotToQuoteRow);
-  return [...preparedRows.value, ...suggested, ...lotQuoteRows].sort((left, right) =>
+  return [...preparedRows.value, ...persisted, ...suggested, ...lotQuoteRows].sort((left, right) =>
     right.expectedDate.localeCompare(left.expectedDate)
   );
 });
@@ -298,7 +360,8 @@ const filteredRows = computed(() => {
 
   return rows.value.filter((row) => {
     if (status && row.status !== status) return false;
-    if (expectedUntil && row.expectedDate.slice(0, 10) > expectedUntil) return false;
+    if (expectedUntil && (!row.expectedDate || row.expectedDate.slice(0, 10) > expectedUntil))
+      return false;
     if (code && !normalizeSearch(row.code).includes(code)) return false;
     if (product && !normalizeSearch(row.product).includes(product)) return false;
     if (supplier && !normalizeSearch(row.supplier).includes(supplier)) return false;
@@ -323,6 +386,7 @@ function itemToSuggestedRow(item: InventoryItemSummary): PurchaseRow {
   const supplier = preferredSupplier(item) || 'Fornecedor não informado';
   return {
     id: `suggested-purchase-${item.id}`,
+    source: 'suggested',
     code: item.sku,
     product: item.name,
     supplier,
@@ -342,11 +406,14 @@ function itemToSuggestedRow(item: InventoryItemSummary): PurchaseRow {
 }
 
 function lotToQuoteRow(lot: InventoryLotSummary): PurchaseRow {
-  const item = items.value.find((candidate) => candidate.id === lot.inventoryItemId || candidate.sku === lot.sku);
+  const item = items.value.find(
+    (candidate) => candidate.id === lot.inventoryItemId || candidate.sku === lot.sku
+  );
   const unitCost = item?.unitCostAmount ?? 0;
   const quantity = Math.max(item ? suggestedQuantity(item) : lot.quantity, 1);
   return {
     id: `lot-purchase-${lot.id}`,
+    source: 'quote',
     code: lot.sku,
     product: lot.itemName,
     supplier: lot.supplier || 'Fornecedor não informado',
@@ -354,15 +421,76 @@ function lotToQuoteRow(lot: InventoryLotSummary): PurchaseRow {
     unit: lot.unit,
     unitCost,
     total: Number((quantity * unitCost).toFixed(2)),
-    stockLabel: item ? formatQuantity(item.onHandQuantity, item.unit) : formatQuantity(lot.quantity, lot.unit),
+    stockLabel: item
+      ? formatQuantity(item.onHandQuantity, item.unit)
+      : formatQuantity(lot.quantity, lot.unit),
     minimumLabel: item ? formatQuantity(item.reorderLevel, item.unit) : 'Sem mínimo',
     status: 'quote',
-    statusLabel: lot.status === 'expired' || lot.status === 'depleted' ? 'Cotação urgente' : 'Cotação',
+    statusLabel:
+      lot.status === 'expired' || lot.status === 'depleted' ? 'Cotação urgente' : 'Cotação',
     statusVariant: lot.status === 'expired' || lot.status === 'depleted' ? 'danger' : 'info',
     condition: 'Cotação',
     expectedDate: addDaysIso(lot.status === 'expired' || lot.status === 'depleted' ? 3 : 10),
     detailPath: item ? `/inventory/${item.id}` : '/inventory'
   };
+}
+
+function purchaseToRows(purchase: InventoryPurchaseSummary): PurchaseRow[] {
+  return purchase.lines.map((line) => {
+    const item = items.value.find(
+      (candidate) => candidate.id === line.inventoryItemId || candidate.sku === line.sku
+    );
+    const total = Number((line.orderedQuantity * line.unitCostAmount).toFixed(2));
+    return {
+      id: `persisted-purchase-${purchase.id}-${line.id}`,
+      source: 'persisted',
+      code: line.sku,
+      product: line.itemName,
+      supplier: purchase.supplierName,
+      quantity: line.orderedQuantity,
+      unit: line.unit,
+      unitCost: line.unitCostAmount,
+      total,
+      stockLabel: item ? formatQuantity(item.onHandQuantity, item.unit) : 'Não carregado',
+      minimumLabel: item ? formatQuantity(item.reorderLevel, item.unit) : 'Não carregado',
+      status: purchase.status,
+      statusLabel: purchaseStatusLabel(purchase.status),
+      statusVariant: purchaseStatusVariant(purchase.status),
+      condition: purchase.invoiceNumber ? `NF ${purchase.invoiceNumber}` : 'Persistida',
+      expectedDate: '',
+      detailPath: `/inventory/purchases/${encodeURIComponent(purchase.id)}`
+    };
+  });
+}
+
+function purchaseStatusLabel(status: InventoryPurchaseSummary['status']): string {
+  switch (status) {
+    case 'draft':
+      return 'Rascunho';
+    case 'approved':
+      return 'Aprovada';
+    case 'partially_received':
+      return 'Recebimento parcial';
+    case 'received':
+      return 'Recebida';
+    case 'cancelled':
+      return 'Cancelada';
+  }
+}
+
+function purchaseStatusVariant(status: InventoryPurchaseSummary['status']): StatusVariant {
+  switch (status) {
+    case 'draft':
+      return 'warning';
+    case 'approved':
+      return 'info';
+    case 'partially_received':
+      return 'warning';
+    case 'received':
+      return 'success';
+    case 'cancelled':
+      return 'neutral';
+  }
 }
 
 function suggestedQuantity(item: InventoryItemSummary): number {
@@ -372,12 +500,18 @@ function suggestedQuantity(item: InventoryItemSummary): number {
 }
 
 function preferredSupplier(item: InventoryItemSummary): string {
-  const lot = lots.value.find((candidate) => candidate.inventoryItemId === item.id && candidate.supplier?.trim());
+  const lot = lots.value.find(
+    (candidate) => candidate.inventoryItemId === item.id && candidate.supplier?.trim()
+  );
   return lot?.supplier?.trim() ?? '';
 }
 
 function normalizeSearch(value: string): string {
-  return value.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
+  return value
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .trim();
 }
 
 function formatNumber(value: number): string {
@@ -393,7 +527,11 @@ function formatCurrency(value: number): string {
 }
 
 function formatDate(value: string): string {
-  return new Intl.DateTimeFormat('pt-BR', { timeZone: 'UTC' }).format(new Date(value));
+  if (!value) return '—';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? '—'
+    : new Intl.DateTimeFormat('pt-BR', { timeZone: 'UTC' }).format(date);
 }
 
 function todayIsoDate(): string {
@@ -446,6 +584,7 @@ async function submitPurchase() {
   try {
     const row: PurchaseRow = {
       id: `prepared-purchase-${Date.now()}`,
+      source: 'prepared',
       code: item.sku,
       product: item.name,
       supplier: purchase.supplier.trim() || preferredSupplier(item) || 'Fornecedor não informado',
@@ -475,16 +614,19 @@ async function load() {
   error.value = '';
   try {
     const query = draftFilters.product || draftFilters.code || undefined;
-    const [loadedItems, loadedLots] = await Promise.all([
+    const [loadedItems, loadedLots, loadedPurchases] = await Promise.all([
       inventoryService.list(query),
-      inventoryService.listLots()
+      inventoryService.listLots(),
+      inventoryService.listPurchases()
     ]);
     items.value = loadedItems;
     lots.value = loadedLots;
+    purchases.value = loadedPurchases;
   } catch (err: unknown) {
     error.value = err instanceof Error ? err.message : 'Erro ao carregar compras de estoque';
     items.value = [];
     lots.value = [];
+    purchases.value = [];
   } finally {
     loading.value = false;
   }

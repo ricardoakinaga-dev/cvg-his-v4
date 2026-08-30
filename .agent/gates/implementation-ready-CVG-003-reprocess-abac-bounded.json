@@ -1,0 +1,123 @@
+{
+  "record_id": "GATE-CVG-003-REPROCESS-ABAC-BOUNDED-IR-001",
+  "timestamp": "2026-08-29T14:05:30-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-003 bounded ABAC and auditability for POST /internal/events/{eventId}/reprocess",
+  "scope_ref": "CVG-003-REPROCESS-ABAC-BOUNDED",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "Fresh scouting identifies the route's missing ABAC seam as the highest-risk local gap and records the P1 operational-coverage alternative separately.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-SCOUT-CVG-003-REPROCESS-ABAC-BOUNDED-001",
+        ".agent/tasks/CVG-003-REPROCESS-ABAC-BOUNDED.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Scouting selects a bounded local slice; it does not certify replay semantics, global parity or release readiness."
+    },
+    {
+      "id": "IR-002",
+      "description": "The frozen route contract enforces audit.write ABAC with principal-derived audit_entry/event/account attributes before event lookup or reprocess mutation and retains the existing RBAC guard.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/authority.jsonl#AUTH-CVG-003-REPROCESS-ABAC-BOUNDED-IR-001",
+        "apps/api/src/routes/internal-events-routes.ts",
+        "apps/api/src/server.ts",
+        ".agent/tasks/CVG-003-REPROCESS-ABAC-BOUNDED.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Implementation and RED/GREEN evidence are pending; this gate authorizes the contract only."
+    },
+    {
+      "id": "IR-003",
+      "description": "The authority permits one explicit admin-only abac-009 audit.write policy and forbids changes to global default behavior, abac-006 and unrelated policy semantics.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/authority.jsonl#AUTH-CVG-003-REPROCESS-ABAC-BOUNDED-IR-001",
+        "packages/modules/access-control/src/abac.ts",
+        "packages/rbac/src/access-control-catalog.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Policy behavior must still be proven by a focused RED/GREEN test and module regression."
+    },
+    {
+      "id": "IR-004",
+      "description": "The bounded change preserves tenant-scoped EventBus behavior, 404/202 response semantics, worker/repository contracts and adds only a metadata-only successful audit event plus matching OpenAPI documentation.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/authority.jsonl#AUTH-CVG-003-REPROCESS-ABAC-BOUNDED-IR-001",
+        "packages/modules/event-bus/src/event-bus.service.ts",
+        "apps/api/src/routes/internal-events-routes.test.ts",
+        "apps/api/src/openapi.yaml"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The gate excludes worker delivery, distributed replay/idempotency and external provider behavior."
+    },
+    {
+      "id": "IR-005",
+      "description": "TDD, security review, compatibility review, regression, coverage and control-plane evidence are required before bounded closure; global ERP promotion remains blocked.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/instruction-scope.md",
+        ".agent/state.json",
+        ".agent/backlog.json",
+        ".agent/tasks/CVG-003-REPROCESS-ABAC-BOUNDED.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This is an implementation-ready gate, not a completion or production-readiness verdict."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-003-REPROCESS-ABAC-BOUNDED.md",
+    ".agent/verification.jsonl#VFY-SCOUT-CVG-003-REPROCESS-ABAC-BOUNDED-001",
+    "apps/api/src/routes/internal-events-routes.ts",
+    "apps/api/src/routes/internal-events-routes.test.ts",
+    "apps/api/src/server.ts",
+    "apps/api/src/openapi.yaml",
+    "packages/modules/access-control/src/abac.ts",
+    "packages/modules/event-bus/src/event-bus.service.ts",
+    "packages/rbac/src/access-control-catalog.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "Intentional RED and implementation are pending.",
+    "Independent review, full regression, coverage and final control-plane validation are pending.",
+    "Operational coverage source-of-truth remains a separate P1 candidate.",
+    "Distributed replay-after-revocation, workers, providers, target, parity, operations and release evidence remain open."
+  ],
+  "conditions": [
+    "Keep the existing RBAC audit.write check and add ABAC before getEvent/reprocessEvent.",
+    "Use resourceType audit_entry, resourceId eventId and principal-derived accountId.",
+    "Add only explicit admin-permit/non-admin-deny abac-009 for audit.write; do not change global default permit behavior or abac-006.",
+    "Record a successful metadata-only replay audit event through the existing AuditService without copying raw payload.",
+    "Keep operational coverage, worker/provider/distributed replay, other event routes, migrations, credentials, target, production, deployment and release scope outside this gate.",
+    "Keep CVG-003/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via explicit continuation request and reconciled fresh scouting",
+    "scope": "CVG-003 bounded ABAC and successful-operation auditability for POST /internal/events/{eventId}/reprocess",
+    "decision": "Authorize only reversible repository-local route, server seam, focused test, explicit admin-only abac-009 policy, successful metadata audit and matching OpenAPI documentation. Exclude operational coverage, worker delivery, distributed replay/idempotency, other event routes, global ABAC redesign, storage, migrations, providers, credentials, target, production, deployment and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-003-REPROCESS-ABAC-BOUNDED-IR-001",
+    "expires_or_revalidates": "Revalidate before changing replay-after-revocation semantics, worker claims, global ABAC defaults, other event routes, operational coverage or any external/production boundary."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "implementation_status": "READY",
+  "next_action": "Write and execute intentional RED assertions for route ABAC ordering, fail-closed denial, explicit admin-only policy and successful metadata audit before implementing the bounded slice.",
+  "revalidation_triggers": [
+    "Replay-after-revocation, idempotency or worker-delivery changes",
+    "Changes to audit permissions, abac-006, global ABAC default or principal attributes",
+    "Operational-coverage or another event/audit route",
+    "Expansion to storage, migrations, providers, credentials, target, production, deployment or release scope"
+  ],
+  "supersedes": null
+}

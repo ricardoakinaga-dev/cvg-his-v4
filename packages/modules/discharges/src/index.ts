@@ -13,15 +13,26 @@ import { requireNonEmptyString, requireOptionalString } from '@cvg-his-v2/shared
 
 export interface DischargeRepository {
   create(discharge: DischargeSummary): Promise<void>;
-  update(discharge: DischargeSummary): Promise<void>;
-  findById(id: DischargeId): Promise<DischargeSummary | null>;
-  findByEncounterId(encounterId: EncounterId): Promise<DischargeSummary | null>;
+  update(discharge: DischargeSummary, expectedVersion?: number): Promise<void>;
+  findById(accountId: AccountId, id: DischargeId): Promise<DischargeSummary | null>;
+  findByEncounterId(
+    accountId: AccountId,
+    encounterId: EncounterId
+  ): Promise<DischargeSummary | null>;
   findByAccountId(accountId: AccountId): Promise<readonly DischargeSummary[]>;
-  delete(id: DischargeId): Promise<void>;
+  delete(accountId: AccountId, id: DischargeId): Promise<void>;
 }
 
 export interface DischargesServiceOptions {
   readonly dischargeRepository?: DischargeRepository;
+}
+
+function requireAccountId(accountId: AccountId): AccountId {
+  return requireNonEmptyString(accountId as string, 'accountId') as AccountId;
+}
+
+function cloneDischargeSummary(discharge: DischargeSummary): DischargeSummary {
+  return { ...discharge };
 }
 
 export class DischargesService {
@@ -43,10 +54,13 @@ export class DischargesService {
   }
 
   public async hydrateFromDatabase(accountId: AccountId): Promise<void> {
+    const scopedAccountId = requireAccountId(accountId);
     if (!this.#dischargeRepository) return;
-    const persisted = await this.#dischargeRepository.findByAccountId(accountId);
+    const persisted = await this.#dischargeRepository.findByAccountId(scopedAccountId);
     for (const discharge of persisted) {
-      this.#discharges.set(discharge.id, discharge);
+      if (discharge.accountId === scopedAccountId) {
+        this.#discharges.set(discharge.id, cloneDischargeSummary(discharge));
+      }
     }
   }
 
@@ -57,15 +71,18 @@ export class DischargesService {
    * discharge from remaining visible to a subsequent request.
    */
   public async refreshAccount(accountId: AccountId): Promise<void> {
+    const scopedAccountId = requireAccountId(accountId);
     if (!this.#dischargeRepository) return;
-    const persisted = await this.#dischargeRepository.findByAccountId(accountId);
+    const persisted = await this.#dischargeRepository.findByAccountId(scopedAccountId);
     for (const [id, discharge] of this.#discharges) {
-      if (discharge.accountId === accountId) {
+      if (discharge.accountId === scopedAccountId) {
         this.#discharges.delete(id);
       }
     }
     for (const discharge of persisted) {
-      this.#discharges.set(discharge.id, discharge);
+      if (discharge.accountId === scopedAccountId) {
+        this.#discharges.set(discharge.id, cloneDischargeSummary(discharge));
+      }
     }
   }
 
@@ -79,55 +96,56 @@ export class DischargesService {
   }
 
   #enqueuePersist(operation: () => Promise<void>, rollback?: () => void): void {
-    const pending = this.#pendingPersist.then(async () => {
-      try {
-        await operation();
-      } catch (error) {
-        rollback?.();
-        throw error;
-      }
-    });
+    const pending = this.#pendingPersist
+      .catch(() => undefined)
+      .then(async () => {
+        try {
+          await operation();
+        } catch (error) {
+          rollback?.();
+          throw error;
+        }
+      });
     this.#lastPersist = pending;
     this.#pendingPersist = pending;
   }
 
-  public getById(id: DischargeId): DischargeSummary {
+  public getById(accountId: AccountId, id: DischargeId): DischargeSummary {
+    const scopedAccountId = requireAccountId(accountId);
     const discharge = this.#discharges.get(id);
-    if (!discharge) {
+    if (!discharge || discharge.accountId !== scopedAccountId) {
       throw new NotFoundError('Discharge not found', { dischargeId: id });
     }
-    return discharge;
+    return cloneDischargeSummary(discharge);
   }
 
   public getByIdForAccount(accountId: AccountId, id: DischargeId): DischargeSummary {
-    const discharge = this.getById(id);
-    if (discharge.accountId !== accountId) {
-      throw new NotFoundError('Discharge not found', { dischargeId: id });
-    }
-    return discharge;
+    return this.getById(accountId, id);
   }
 
-  public getByEncounterId(
-    encounterId: EncounterId,
-    accountId?: AccountId
-  ): DischargeSummary | null {
+  public getByEncounterId(accountId: AccountId, encounterId: EncounterId): DischargeSummary | null {
+    const scopedAccountId = requireAccountId(accountId);
     for (const discharge of this.#discharges.values()) {
-      if (
-        discharge.encounterId === encounterId &&
-        (!accountId || discharge.accountId === accountId)
-      ) {
-        return discharge;
+      if (discharge.encounterId === encounterId && discharge.accountId === scopedAccountId) {
+        return cloneDischargeSummary(discharge);
       }
     }
     return null;
   }
 
   public list(accountId: AccountId): readonly DischargeSummary[] {
-    return Array.from(this.#discharges.values()).filter((d) => d.accountId === accountId);
+    const scopedAccountId = requireAccountId(accountId);
+    return Array.from(this.#discharges.values())
+      .filter((d) => d.accountId === scopedAccountId)
+      .map(cloneDischargeSummary);
   }
 
-  public removeFromCache(id: DischargeId): void {
-    this.#discharges.delete(id);
+  public removeFromCache(accountId: AccountId, id: DischargeId): void {
+    const scopedAccountId = requireAccountId(accountId);
+    const discharge = this.#discharges.get(id);
+    if (discharge?.accountId === scopedAccountId) {
+      this.#discharges.delete(id);
+    }
   }
 
   public create(
@@ -135,13 +153,14 @@ export class DischargesService {
     dischargedBy: UserId,
     payload: CreateDischargeRequest
   ): DischargeSummary {
+    const scopedAccountId = requireAccountId(accountId);
     requireNonEmptyString(payload.encounterId, 'encounterId');
     requireNonEmptyString(payload.dischargeType, 'dischargeType');
 
     const encounterId = payload.encounterId as EncounterId;
 
     // Check for duplicate discharge per encounter
-    const existing = this.getByEncounterId(encounterId, accountId);
+    const existing = this.getByEncounterId(scopedAccountId, encounterId);
     if (existing) {
       throw new ConflictError('Encounter already has a discharge', {
         dischargeId: existing.id,
@@ -152,7 +171,7 @@ export class DischargesService {
     const now = nowIso();
     const discharge: DischargeSummary = {
       id: this.#nextId(),
-      accountId,
+      accountId: scopedAccountId,
       encounterId,
       dischargeType: payload.dischargeType,
       outcome: requireOptionalString(payload.outcome),
@@ -180,15 +199,17 @@ export class DischargesService {
       );
     }
 
-    return discharge;
+    return cloneDischargeSummary(discharge);
   }
 
   public update(
+    accountId: AccountId,
     id: DischargeId,
     payload: UpdateDischargeRequest,
     expectedVersion?: number
   ): DischargeSummary {
-    const current = this.getById(id);
+    const scopedAccountId = requireAccountId(accountId);
+    const current = this.getById(scopedAccountId, id);
 
     if (expectedVersion !== undefined && current.version !== expectedVersion) {
       throw new ConflictError('Discharge version mismatch', {
@@ -226,14 +247,14 @@ export class DischargesService {
 
     if (this.#dischargeRepository) {
       this.#enqueuePersist(
-        () => this.#dischargeRepository!.update(updated),
+        () => this.#dischargeRepository!.update(updated, current.version),
         () => {
           this.#discharges.set(id, current);
         }
       );
     }
 
-    return updated;
+    return cloneDischargeSummary(updated);
   }
 }
 

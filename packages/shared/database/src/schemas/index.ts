@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
   check,
+  index,
   pgTable,
   varchar,
   timestamp,
@@ -414,6 +415,7 @@ export const diagnosticOrders = pgTable('diagnostic_orders', {
   collectedAt: timestamp('collected_at'),
   collectedByUserId: varchar('collected_by_user_id', { length: 255 }),
   resultSummary: varchar('result_summary', { length: 5000 }),
+  resultValues: jsonb('result_values'),
   resultAttachmentId: varchar('result_attachment_id', { length: 255 }),
   resultedAt: timestamp('resulted_at'),
   releasedByUserId: varchar('released_by_user_id', { length: 255 }),
@@ -423,20 +425,31 @@ export const diagnosticOrders = pgTable('diagnostic_orders', {
   updatedAt: timestamp('updated_at').notNull()
 });
 
-export const laboratoryResultImports = pgTable('laboratory_result_imports', {
-  accountId: uuid('account_id').notNull(),
-  externalResultId: varchar('external_result_id', { length: 120 }).notNull(),
-  orderId: varchar('order_id', { length: 120 }).notNull(),
-  equipmentId: varchar('equipment_id', { length: 120 }).notNull(),
-  status: varchar('status', { length: 32 }).notNull(),
-  importedAt: timestamp('imported_at').notNull(),
-  resultSummary: varchar('result_summary', { length: 4000 }).notNull(),
-  failureReason: varchar('failure_reason', { length: 1000 }),
-  attemptCount: integer('attempt_count').notNull().default(1),
-  lastAttemptAt: timestamp('last_attempt_at').notNull()
-}, (table) => ({
-  pk: primaryKey({ columns: [table.accountId, table.externalResultId] })
-}));
+export const laboratoryResultImports = pgTable(
+  'laboratory_result_imports',
+  {
+    accountId: uuid('account_id').notNull(),
+    externalResultId: varchar('external_result_id', { length: 120 }).notNull(),
+    orderId: varchar('order_id', { length: 120 }).notNull(),
+    equipmentId: varchar('equipment_id', { length: 120 }).notNull(),
+    providerCode: varchar('provider_code', { length: 64 }).notNull().default('equipment-bridge'),
+    schemaVersion: varchar('schema_version', { length: 32 }).notNull().default('legacy'),
+    signatureKeyId: varchar('signature_key_id', { length: 128 }).notNull().default('legacy'),
+    payloadFingerprint: varchar('payload_fingerprint', { length: 64 })
+      .notNull()
+      .default('0'.repeat(64)),
+    observedAt: timestamp('observed_at').notNull(),
+    status: varchar('status', { length: 32 }).notNull(),
+    importedAt: timestamp('imported_at').notNull(),
+    resultSummary: varchar('result_summary', { length: 4000 }).notNull(),
+    failureReason: varchar('failure_reason', { length: 1000 }),
+    attemptCount: integer('attempt_count').notNull().default(1),
+    lastAttemptAt: timestamp('last_attempt_at').notNull()
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.accountId, table.externalResultId] })
+  })
+);
 
 export const laboratoryEquipment = pgTable('laboratory_equipment', {
   id: varchar('id', { length: 255 }).primaryKey(),
@@ -554,6 +567,67 @@ export const mfaLoginChallenges = pgTable(
     attemptLimit: check(
       'auth_mfa_login_challenges_attempt_limit',
       sql`${table.attemptCount} <= ${table.maxAttempts}`
+    )
+  })
+);
+
+export const webauthnCredentials = pgTable(
+  'auth_webauthn_credentials',
+  {
+    credentialId: text('credential_id').primaryKey(),
+    accountId: uuid('account_id').notNull(),
+    userId: uuid('user_id').notNull(),
+    publicKey: text('public_key').notNull(),
+    counter: bigint('counter', { mode: 'number' }).notNull().default(0),
+    deviceType: varchar('device_type', { length: 16 }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+    lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+    nickname: varchar('nickname', { length: 255 })
+  },
+  (table) => ({
+    accountUserIdx: index('idx_auth_webauthn_credentials_account_user').on(
+      table.accountId,
+      table.userId
+    ),
+    counterNonnegative: check(
+      'auth_webauthn_credentials_counter_nonnegative',
+      sql`${table.counter} >= 0`
+    ),
+    deviceTypeValid: check(
+      'auth_webauthn_credentials_device_type_valid',
+      sql`${table.deviceType} in ('platform', 'cross-platform')`
+    )
+  })
+);
+
+export const webauthnChallenges = pgTable(
+  'auth_webauthn_challenges',
+  {
+    accountId: uuid('account_id').notNull(),
+    userId: uuid('user_id').notNull(),
+    purpose: varchar('purpose', { length: 32 }).notNull(),
+    challenge: text('challenge').notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    consumedAt: timestamp('consumed_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull()
+  },
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.accountId, table.userId, table.purpose],
+      name: 'auth_webauthn_challenges_pk'
+    }),
+    expiryIdx: index('idx_auth_webauthn_challenges_expires_at').on(table.expiresAt),
+    accountUserIdx: index('idx_auth_webauthn_challenges_account_user').on(
+      table.accountId,
+      table.userId
+    ),
+    purposeValid: check(
+      'auth_webauthn_challenges_purpose_valid',
+      sql`${table.purpose} in ('registration', 'authentication')`
+    ),
+    challengeNonempty: check(
+      'auth_webauthn_challenges_challenge_nonempty',
+      sql`length(${table.challenge}) > 0`
     )
   })
 );

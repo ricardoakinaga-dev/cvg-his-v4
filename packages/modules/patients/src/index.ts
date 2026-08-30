@@ -246,6 +246,43 @@ export class PatientsService {
     }
   }
 
+  /**
+   * Reconciles one account's patients and owner links with durable state after
+   * a transaction boundary, removing cache entries from rolled-back work.
+   */
+  public async refreshFromDatabase(accountId: AccountId): Promise<void> {
+    if (!this.#patientRepository) {
+      return;
+    }
+
+    const patients = await this.#patientRepository.findByAccountId(accountId);
+    const persistedPatientIds = new Set(patients.map((patient) => patient.id));
+    for (const [patientId, patient] of this.#patients) {
+      if (patient.accountId === accountId && !persistedPatientIds.has(patientId)) {
+        this.#patients.delete(patientId);
+      }
+    }
+    for (const patient of patients) {
+      this.#patients.set(patient.id, patient);
+    }
+
+    if (!this.#ownerPatientLinkRepository) {
+      return;
+    }
+
+    for (const [linkId, link] of this.#links) {
+      if (link.accountId === accountId) {
+        this.#links.delete(linkId);
+      }
+    }
+    for (const patient of patients) {
+      const links = await this.#ownerPatientLinkRepository.findByPatientId(patient.id, accountId);
+      for (const link of links) {
+        this.#links.set(link.id, link);
+      }
+    }
+  }
+
   public async waitForPersistence(): Promise<void> {
     try {
       await Promise.all([this.#lastPersist, this.#pendingCallbacks]);
@@ -803,3 +840,12 @@ export {
   DatabaseOwnerPatientLinkRepository,
   DatabasePatientMergeRepository
 } from './repositories/database-patient.repository.js';
+export {
+  DatabasePatientsReportSource,
+  MAX_PATIENTS_REPORT_ROWS,
+  type PatientsReportFilters,
+  type PatientsReportRow,
+  type PatientsReportSex,
+  type PatientsReportSource,
+  type PatientsReportStatus
+} from './patients-report.js';

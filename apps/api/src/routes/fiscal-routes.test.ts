@@ -211,7 +211,10 @@ test('handleFiscalRoutes creates and updates simple CFOP entries when enabled', 
   assert.equal(updatedHandled, true);
   assert.equal(requiredPermission, 'fiscal.manage');
   assert.equal(updateResponse.statusCode, 200);
-  const updatedPayload = updateResponse.bodyJson<{ description: string; documentTypesLabel: string }>();
+  const updatedPayload = updateResponse.bodyJson<{
+    description: string;
+    documentTypesLabel: string;
+  }>();
   assert.equal(updatedPayload.description, 'Operacao fiscal veterinaria atualizada');
   assert.equal(updatedPayload.documentTypesLabel, 'NFE');
 });
@@ -322,7 +325,13 @@ test('handleFiscalRoutes filters simple ICMS, IPI, PIS, COFINS and NFS-e tables 
     items: Array<{ code: string; description: string; percent: number }>;
   }>();
   const nfsePayload = nfseResponse.bodyJson<{
-    items: Array<{ city: string; provider: string; municipalityCode: string; state: string; active: boolean }>;
+    items: Array<{
+      city: string;
+      provider: string;
+      municipalityCode: string;
+      state: string;
+      active: boolean;
+    }>;
   }>();
 
   assert.ok(icmsPayload.items.length > 0);
@@ -332,11 +341,17 @@ test('handleFiscalRoutes filters simple ICMS, IPI, PIS, COFINS and NFS-e tables 
   assert.ok(pisPayload.items.length > 0);
   assert.ok(pisPayload.items.every((item) => `${item.code} ${item.description}`.includes('0,65')));
   assert.ok(cofinsPayload.items.length > 0);
-  assert.ok(cofinsPayload.items.every((item) => `${item.code} ${item.description}`.includes('7,6')));
+  assert.ok(
+    cofinsPayload.items.every((item) => `${item.code} ${item.description}`.includes('7,6'))
+  );
   assert.ok(nfsePayload.items.length > 0);
   assert.ok(nfsePayload.items.every((item) => item.state === 'SP'));
   assert.ok(nfsePayload.items.every((item) => item.active));
-  assert.ok(nfsePayload.items.every((item) => `${item.city} ${item.provider} ${item.municipalityCode}`.includes('ISS SP')));
+  assert.ok(
+    nfsePayload.items.every((item) =>
+      `${item.city} ${item.provider} ${item.municipalityCode}`.includes('ISS SP')
+    )
+  );
 });
 
 test('handleFiscalRoutes filters and creates ICMS state matrix entries', async () => {
@@ -702,7 +717,12 @@ test('handleFiscalRoutes lists, creates and updates simple IBS/CBS table entries
   assert.equal(createdHandled, true);
   assert.equal(requiredPermission, 'fiscal.manage');
   assert.equal(createResponse.statusCode, 201);
-  const createdPayload = createResponse.bodyJson<{ id: string; code: string; ibsPercent: number; cbsPercent: number }>();
+  const createdPayload = createResponse.bodyJson<{
+    id: string;
+    code: string;
+    ibsPercent: number;
+    cbsPercent: number;
+  }>();
   assert.equal(createdPayload.code, 'TRANSICAO');
   assert.equal(createdPayload.ibsPercent, 0.1);
   assert.equal(createdPayload.cbsPercent, 0.9);
@@ -730,7 +750,11 @@ test('handleFiscalRoutes lists, creates and updates simple IBS/CBS table entries
   assert.equal(updatedHandled, true);
   assert.equal(requiredPermission, 'fiscal.manage');
   assert.equal(updateResponse.statusCode, 200);
-  const updatedPayload = updateResponse.bodyJson<{ description: string; ibsPercent: number; cbsPercent: number }>();
+  const updatedPayload = updateResponse.bodyJson<{
+    description: string;
+    ibsPercent: number;
+    cbsPercent: number;
+  }>();
   assert.equal(updatedPayload.description, 'Transicao IBS/CBS revisada');
   assert.equal(updatedPayload.ibsPercent, 0.2);
   assert.equal(updatedPayload.cbsPercent, 0.8);
@@ -937,6 +961,68 @@ test('handleFiscalRoutes executes complete NFSe document lifecycle', async () =>
   assert.equal(cancelledPayload.status, 'cancelled');
 });
 
+test('handleFiscalRoutes bounds persisted NFS-e document listing', async () => {
+  let receivedLimit: number | undefined;
+  const repository = {
+    listNfseDocuments: async (filters: { readonly limit?: number }) => {
+      receivedLimit = filters.limit;
+      return [];
+    }
+  };
+  const fiscal = new FiscalService(repository as never, 'acc-1' as never);
+
+  const response = new MockResponse();
+  const handled = await handleFiscalRoutes(
+    '/fiscal/nfse/documents',
+    {
+      method: 'GET',
+      url: '/fiscal/nfse/documents?limit=25'
+    } as never,
+    response as never,
+    'corr-fiscal-list-limit',
+    {
+      fiscal,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal(),
+      fiscalBackofficeEnabled: true
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 200);
+  assert.equal(receivedLimit, 25);
+
+  await handleFiscalRoutes(
+    '/fiscal/nfse/documents',
+    { method: 'GET', url: '/fiscal/nfse/documents' } as never,
+    new MockResponse() as never,
+    'corr-fiscal-list-limit-default',
+    {
+      fiscal,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal(),
+      fiscalBackofficeEnabled: true
+    }
+  );
+  assert.equal(receivedLimit, 1000);
+
+  await assert.rejects(
+    handleFiscalRoutes(
+      '/fiscal/nfse/documents',
+      { method: 'GET', url: '/fiscal/nfse/documents?limit=0' } as never,
+      new MockResponse() as never,
+      'corr-fiscal-list-limit-invalid',
+      {
+        fiscal,
+        audit: { write: () => ({}) } as never,
+        requirePrincipal: () => createPrincipal(),
+        fiscalBackofficeEnabled: true
+      }
+    ),
+    /limit must be between 1 and 1000/
+  );
+});
+
 test('handleFiscalRoutes returns a safe provider error after persisting an unauthorized NFS-e response', async () => {
   const service = new FiscalService(undefined, undefined, {
     allowNfseSimulation: false,
@@ -967,19 +1053,21 @@ test('handleFiscalRoutes returns a safe provider error after persisting an unaut
           document: '12345678909',
           name: 'Cliente Fiscal'
         },
-        services: [{
-          description: 'Consulta',
-          codigoServico: '0407',
-          cnae: '7500-1/00',
-          quantity: 1,
-          unitValue: 100,
-          totalValue: 100,
-          issRate: 0.05,
-          issValue: 5,
-          pisValue: 0,
-          cofinsValue: 0,
-          csllValue: 0
-        }]
+        services: [
+          {
+            description: 'Consulta',
+            codigoServico: '0407',
+            cnae: '7500-1/00',
+            quantity: 1,
+            unitValue: 100,
+            totalValue: 100,
+            issRate: 0.05,
+            issValue: 5,
+            pisValue: 0,
+            cofinsValue: 0,
+            csllValue: 0
+          }
+        ]
       }) as never,
       createResponse as never,
       'corr-fiscal-provider-error-create',

@@ -1,0 +1,85 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-DELETED-SALES-SNAPSHOT-IR-001",
+  "timestamp": "2026-08-27T19:24:00-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-004 bounded on-demand cancelled counter-sale snapshot and audited export",
+  "scope_ref": "CVG-004-REPORT-DELETED-SALES-SNAPSHOT",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The bounded report scope, authority, exclusions and non-promotion boundary are recorded.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-deleted-sales-snapshot.md",
+        ".agent/authority.jsonl#AUTH-CVG-004-REPORT-DELETED-SALES-SNAPSHOT-IR-001",
+        ".agent/backlog.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Only repository-local read-only report execution/export and disposable verification are authorized; service-invoices, Vetus parity and release remain open."
+    },
+    {
+      "id": "IR-002",
+      "description": "Persisted counter_sales fields, tenant predicates, existing ReportsService execution/export and the absence of durable cancellation history establish a safe bounded contract.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/db/src/schema/counterSales.ts",
+        "packages/db/migrations/0078_counter_sales_quotes.sql",
+        "packages/modules/counter-sales/src/repositories/database-counter-sales.repository.ts",
+        "packages/modules/reports/src/index.ts",
+        "apps/api/src/routes/reports-routes.ts",
+        "apps/spa/src/pages/reports/ReportWorkbenchPage.vue",
+        "docs/vetus/guides/2026-04-24-relatorio-modulo-relatorios-itens.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The source has current status and last-update facts but no authoritative cancelledAt, cancelledByUserId or cancellation reason."
+    },
+    {
+      "id": "IR-003",
+      "description": "Focused RED tests can prove catalog/source/filter/RBAC/export behavior, PostgreSQL date/tenant boundaries, SPA behavior and the official browser composition before reconciliation.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-deleted-sales-snapshot.md",
+        "packages/modules/counter-sales/src/counter-sales.test.ts",
+        "apps/api/src/routes/reports-routes.test.ts",
+        "apps/spa/src/pages/reports/__tests__/ReportWorkbenchPage.test.ts",
+        "tests/integration/database/counter-sales-payment-authority-postgres.test.ts",
+        "e2e/spa/deleted-sales-report-flow.spec.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A bounded result still requires fresh unit/API/integration/E2E evidence, independent review, global non-promotion retest and final reconciliation."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-report-deleted-sales-snapshot.md",
+    "packages/modules/counter-sales/src/repositories/database-counter-sales.repository.ts",
+    "packages/modules/reports/src/index.ts",
+    "apps/api/src/routes/reports-routes.ts",
+    "apps/spa/src/pages/reports/ReportWorkbenchPage.vue"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "Fresh independent review, global regression/coverage retest and final control-plane reconciliation are pending."
+  ],
+  "conditions": [],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner)",
+    "scope": "CVG-004 bounded on-demand cancelled counter-sale snapshot and audited export",
+    "decision": "Authorize reversible repository implementation and disposable PostgreSQL/Redis/browser verification using only tenant-scoped persisted counter_sales status and existing ReportsService execution/export. Exclude cancellation-history inference, service-invoices, migrations, providers, credentials, target, production, deployment, external Vetus operation, backfill and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-DELETED-SALES-SNAPSHOT-IR-001",
+    "expires_or_revalidates": "Revalidate before adding cancellation history, fiscal report wiring, external Vetus comparison, target/provider/credential/production/deployment or release activity."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "next_action": "Complete the independent review, then rerun global non-promotion gates and reconcile the bounded result without promoting CVG-004, Vetus parity or release readiness.",
+  "revalidation_triggers": [
+    "Changes to counter_sales cancellation semantics, report filters/columns or ReportsService export behavior",
+    "Any migration or durable cancellation-history writer",
+    "Any service-invoices/fiscal source, external Vetus, provider, credential, target, production, deployment or release activity"
+  ]
+}

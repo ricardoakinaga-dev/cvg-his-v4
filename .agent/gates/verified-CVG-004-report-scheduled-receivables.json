@@ -1,0 +1,152 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-SCHEDULED-RECEIVABLES-VFY-001",
+  "timestamp": "2026-08-28T04:45:00-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-004 bounded tenant-scoped scheduled financial-receivables report resolution through the real worker",
+  "scope_ref": "CVG-004-REPORT-SCHEDULED-RECEIVABLES",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-001-EXACT-CATALOG-CONTRACT",
+      "description": "The worker resolves the existing financial-receivables catalog entry through the financial-module source and maps exactly its sixteen output columns.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-RECEIVABLES-GREEN-001",
+        "packages/modules/reports/src/index.ts",
+        "packages/modules/financial/src/receivables-report.ts",
+        "apps/worker/src/runner.ts",
+        "apps/worker/src/runner.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The contract is verified against the current repository catalog; complete external Vetus dynamic-executor parity remains open."
+    },
+    {
+      "id": "V-002-TENANT-FILTERS-PII",
+      "description": "The persisted source uses explicit account-scoped joins and projection, validates status/search/date input, applies inclusive UTC report-date semantics with issuedAt fallback, rejects foreign rows and does not select or log owner documents or full source rows.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-RECEIVABLES-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-RECEIVABLES-PROCESS-001",
+        "packages/modules/financial/src/receivables-report.ts",
+        "apps/worker/src/runner.ts",
+        "tests/integration/process/worker-run-once-reports.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Local disposable PostgreSQL proves the query and tenant boundary; target runtime roles, ACLs, network policy and deployed RLS remain outside this gate."
+    },
+    {
+      "id": "V-003-BOUNDED-FAIL-CLOSED",
+      "description": "The source and worker reject more than 10,000 rows, invalid persisted state, missing sources and unknown report ids before empty-success persistence; the one-shot process propagates scheduled failures with a non-zero exit code.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-RECEIVABLES-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-RECEIVABLES-PROCESS-001",
+        "packages/modules/financial/src/receivables-report.ts",
+        "apps/worker/src/jobs/scheduled-report-job.ts",
+        "apps/worker/src/run-once.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The continuous worker intentionally retains tick-and-continue behavior; this gate does not change broader retry policy."
+    },
+    {
+      "id": "V-004-DURABLE-AUDIT-WORKER-PROOF",
+      "description": "Bootstrap composes the source and audit service for continuous and one-shot workers; a real two-account one-shot process persists exact executions and durable non-PII execution/export audit records while preserving delivery and retry paths.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-RECEIVABLES-PROCESS-001",
+        "apps/worker/src/bootstrap.ts",
+        "apps/worker/src/index.ts",
+        "apps/worker/src/run-once.ts",
+        "apps/worker/src/jobs/scheduled-report-job.ts",
+        "tests/integration/process/worker-run-once-reports.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The process uses disposable local PostgreSQL and controlled/mock email only; no external provider or target deployment is claimed."
+    },
+    {
+      "id": "V-005-REGRESSION-QUALITY",
+      "description": "Intentional RED history is retained and financial/worker tests, builds, typechecks, secrets, formatting and diff hygiene pass after the implementation and exit-code remediation.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-RECEIVABLES-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-RECEIVABLES-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-RECEIVABLES-PROCESS-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-RECEIVABLES-HYGIENE-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The bounded checks do not replace full global coverage, remote CI, target operations or release acceptance."
+    },
+    {
+      "id": "V-006-INDEPENDENT-FINAL-REVIEW",
+      "description": "A fresh independent read-only review inspected the final scoped implementation after all remediations and found no scoped Critical, High or Medium issue.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-RECEIVABLES-REVIEW-001",
+        ".agent/execution-log.jsonl#EVT-0783"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "The final reviewer was static and did not run tests; executable evidence is recorded separately. The reviewer role attempt rejected by account policy is not treated as approval."
+    },
+    {
+      "id": "V-007-GLOBAL-NON-PROMOTION",
+      "description": "The bounded result is reconciled without promoting CVG-004, strict Vetus parity, clinical parity, enterprise readiness or release acceptance.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-RECEIVABLES-GLOBAL-RETEST-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-RECEIVABLES-FINAL-001",
+        ".agent/state.json",
+        ".agent/backlog.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Global parity remains 4/11 verified, clinical parity 2/3 verified and enterprise readiness 95/100 with 42 PASS / 3 WARN / 1 FAIL."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-report-scheduled-receivables.md",
+    ".agent/artifacts/CVG-004-report-scheduled-receivables-2026-08-28.md",
+    ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-RECEIVABLES-IR-001",
+    "packages/modules/financial/src/receivables-report.ts",
+    "apps/worker/src/runner.ts",
+    "apps/worker/src/bootstrap.ts",
+    "apps/worker/src/jobs/scheduled-report-job.ts",
+    "apps/worker/src/run-once.ts",
+    "tests/integration/process/worker-run-once-reports.test.ts"
+  ],
+  "confidence": "MEDIUM",
+  "gaps": [
+    "Disposable local PostgreSQL does not certify target TCP/RLS/FORCE-RLS, runtime roles, ACLs or production scale.",
+    "The final independent review was static and did not run tests, although the executable test evidence is green.",
+    "Other scheduled report families, provider delivery, distributed worker failure/observability, browser/accessibility, remote CI, backup/restore, RTO/RPO, operational LGPD and remaining parity are open.",
+    "Run-once failure exit behavior is now non-zero for scheduled tick failures; consumers that relied on zero for a failed report must adopt the explicit failure contract."
+  ],
+  "conditions": [
+    "Keep this report read-only and sourced only from tenant-scoped persisted encounter financial facts.",
+    "Revalidate before changing report columns, lifecycle semantics, search/date policy, actor/audit behavior or adding another worker report family.",
+    "Do not infer target, production, provider, credential, parity, readiness or release authority from this local bounded result."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via AUTH-CVG-004-REPORT-SCHEDULED-RECEIVABLES-IR-001",
+    "scope": "CVG-004 bounded tenant-scoped scheduled financial-receivables report source through the real worker",
+    "decision": "Authorize only reversible financial-module/worker TDD implementation and disposable PostgreSQL/process verification of the existing read-only report. Exclude settlement, cash/journal/provider behavior, credentials, target, production, deployment, external mutation and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-RECEIVABLES-IR-001",
+    "expires_or_revalidates": "Revalidate before changing receivable lifecycle semantics, exposing additional PII, adding provider/target behavior or expanding to another report family."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_BOUNDED",
+  "next_action": "Keep CVG-004 and the global program IN_PROGRESS/PARTIAL with promotion BLOCKED; select any next gap only through fresh scouting and a new implementation-ready authority.",
+  "revalidation_triggers": [
+    "Changes to encounter receivable schema, entity joins, status or report columns",
+    "Changes to worker bootstrap, schedule claiming, report execution/export/delivery, audit or one-shot exit semantics",
+    "Expansion beyond scheduled financial-receivables read resolution"
+  ],
+  "supersedes": ".agent/gates/implementation-ready-CVG-004-report-scheduled-receivables.json"
+}

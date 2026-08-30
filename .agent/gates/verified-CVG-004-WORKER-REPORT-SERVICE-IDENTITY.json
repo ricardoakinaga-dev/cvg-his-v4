@@ -1,0 +1,156 @@
+{
+  "record_id": "GATE-CVG-004-WORKER-REPORT-SERVICE-IDENTITY-VFY-001",
+  "timestamp": "2026-08-27T06:15:00-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-004 bounded explicit worker report actor configuration, fail-closed entrypoints and operator-managed deployment wiring",
+  "scope_ref": "CVG-004-WORKER-REPORT-SERVICE-IDENTITY",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-001-TDD-RED-RETAINED",
+      "description": "The intentional RED reproduced missing worker configuration, absent resolver compilation, account-id fallback persistence behavior and missing Helm identity wiring before implementation.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-WORKER-REPORT-SERVICE-IDENTITY-RED-001",
+        ".agent/tasks/CVG-004-WORKER-REPORT-SERVICE-IDENTITY.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The RED is historical evidence retained for TDD traceability; it is not a current defect claim."
+    },
+    {
+      "id": "V-002-CONFIG-AND-RESOLVER",
+      "description": "Canonical worker configuration validates one trimmed, non-nil RFC 4122 UUID actor, requires it in production-like environments, and the shared worker resolver rejects missing or malformed values before report execution.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-WORKER-REPORT-SERVICE-IDENTITY-GREEN-001",
+        "packages/shared/config/src/index.ts",
+        "packages/shared/config/src/config.test.ts",
+        "apps/worker/src/worker-report-identity.ts",
+        "apps/worker/src/worker-report-identity.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The UUID contract identifies a configured actor but does not establish account membership for every worker account."
+    },
+    {
+      "id": "V-003-CONTINUOUS-AND-ONCE-BOUNDARY",
+      "description": "Continuous and one-shot worker report entrypoints use the same explicit actor resolver and pass the resolved identity as runAsUserId; no account-id report actor fallback remains in these paths.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-WORKER-REPORT-SERVICE-IDENTITY-GREEN-001",
+        "apps/worker/src/index.ts",
+        "apps/worker/src/run-once.ts",
+        "apps/worker/src/worker-report-identity.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The entrypoint continuity proof is a compiled static wiring assertion plus the real one-shot process; a long-lived deployed continuous-worker run remains outside this local gate."
+    },
+    {
+      "id": "V-004-POSTGRES-PROCESS-PROOF",
+      "description": "A disposable PostgreSQL run-once process proves a known explicit actor persists requested_by_user_id, a missing actor exits before scheduling, and an unknown UUID actor fails closed without a report execution row.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-WORKER-REPORT-SERVICE-IDENTITY-PROCESS-001",
+        "tests/integration/process/worker-run-once-reports.test.ts",
+        ".agent/artifacts/CVG-004-worker-report-service-identity-2026-08-27.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The database is disposable and local; target roles, remote CI, deployed replicas, distributed worker behavior and external providers are not certified."
+    },
+    {
+      "id": "V-005-OPERATOR-DEPLOYMENT-WIRING",
+      "description": "Production-like Compose and canonical staging/prod Helm worker deployments require WORKER_REPORTS_USER_ID from operator-managed Secret configuration and do not accept a plaintext chart-values fallback.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-WORKER-REPORT-SERVICE-IDENTITY-GREEN-001",
+        "tests/unit/infra/validate-helm-script.test.mjs",
+        "infra/scripts/validate-helm.mjs",
+        "docker-compose.v2.yml",
+        "infra/helm/cvg-his-v2/templates/worker-deployment.yaml",
+        "infra/helm/cvg-his-v2/values.staging.yaml",
+        "infra/helm/cvg-his-v2/values.prod.yaml"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "The Helm binary was unavailable locally; static chart validation passed for dev, staging and prod, but actual rendered manifests and target admission remain unverified. Dev intentionally has no actor and fails closed at worker startup."
+    },
+    {
+      "id": "V-006-QUALITY-SECURITY-REGRESSION",
+      "description": "Focused and repository quality rails pass for the final bounded implementation, including worker/shared tests, lint, typecheck, build, security/static checks and diff hygiene.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-WORKER-REPORT-SERVICE-IDENTITY-QUALITY-001",
+        ".agent/artifacts/CVG-004-worker-report-service-identity-2026-08-27.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Local quality rails do not certify remote CI, target infrastructure, production operations, accessibility, disaster recovery, providers or release acceptance."
+    },
+    {
+      "id": "V-007-INDEPENDENT-REVIEW-CONDITION",
+      "description": "A fresh independent read-only review found no Critical or High issue in the bounded slice; remaining Medium/Low findings are either remediated or explicitly retained as residual scope.",
+      "required": true,
+      "status": "CONDITIONAL",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-WORKER-REPORT-SERVICE-IDENTITY-REVIEW-001",
+        ".agent/artifacts/CVG-004-worker-report-service-identity-2026-08-27.md"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "The review remains conditional because one configured actor is not mapped per account and the existing report execution foreign key does not enforce actor/account membership."
+    },
+    {
+      "id": "V-008-GLOBAL-NON-PROMOTION",
+      "description": "The worker identity result is reconciled without promoting parent CVG-004, Vetus parity, clinical parity, enterprise readiness or release status.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-WORKER-REPORT-SERVICE-IDENTITY-GLOBAL-001",
+        ".agent/verification.jsonl#VFY-CVG-004-WORKER-REPORT-SERVICE-IDENTITY-FINAL-001",
+        ".agent/state.json",
+        ".agent/backlog.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "General parity remains 98/100 with 4/11 verified, clinical parity 100/100 with 2/3 verified, and enterprise readiness 95/100 with 42 PASS / 3 WARN / 1 FAIL."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-WORKER-REPORT-SERVICE-IDENTITY.md",
+    ".agent/gates/implementation-ready-CVG-004-WORKER-REPORT-SERVICE-IDENTITY.json",
+    ".agent/authority.jsonl#AUTH-CVG-004-WORKER-REPORT-SERVICE-IDENTITY-IR-001",
+    ".agent/artifacts/CVG-004-worker-report-service-identity-2026-08-27.md",
+    "apps/worker/src/worker-report-identity.ts",
+    "apps/worker/src/index.ts",
+    "apps/worker/src/run-once.ts",
+    "packages/shared/config/src/index.ts",
+    "tests/integration/process/worker-run-once-reports.test.ts",
+    "docker-compose.v2.yml",
+    "infra/helm/cvg-his-v2/templates/worker-deployment.yaml"
+  ],
+  "confidence": "MEDIUM",
+  "gaps": [
+    "The configured worker actor is not yet resolved through a per-account service-principal mapping; a known user from another account may not be rejected by the existing report_executions user-only foreign key.",
+    "The existing report audit model and requested_by_user_id tenant-membership semantics were not changed in this bounded slice.",
+    "Dev Helm has no actor Secret by design and the worker fails closed; actual Helm rendering was unavailable because the Helm binary is not installed locally.",
+    "Local evidence does not certify target roles/RLS, distributed worker restart/fencing, providers, remote CI, accessibility, backup/restore, parity or release acceptance."
+  ],
+  "conditions": [
+    "Keep this result limited to explicit worker report actor configuration, fail-closed entrypoints and operator-managed Compose/Helm wiring.",
+    "Obtain new authority before introducing per-account service principals, changing report audit/schema semantics, provisioning credentials, or operating a target/production environment.",
+    "Keep parent CVG-004 and the global ERP program IN_PROGRESS/PARTIAL regardless of this bounded result."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via the original consolidation brief and bounded task authority",
+    "scope": "CVG-004 bounded explicit worker report actor configuration and fail-closed deployment wiring",
+    "decision": "Authorize repository-local config/helper/entrypoint/template/test changes and disposable PostgreSQL/real run-once verification. Exclude report schema/audit-model changes, per-account principal provisioning, providers, credentials, target, production, deployment, external mutation and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-WORKER-REPORT-SERVICE-IDENTITY-IR-001",
+    "expires_or_revalidates": "Revalidate before changing report identity/schema/audit semantics, adding account-to-principal mapping, provisioning service principals, operating a target or production environment, or expanding report scope."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_BOUNDED",
+  "next_action": "Keep CVG-004 and the global program IN_PROGRESS/PARTIAL; open a separately authorized tenant-aware service-principal mapping task before treating scheduled reports as production-ready across multiple accounts."
+}

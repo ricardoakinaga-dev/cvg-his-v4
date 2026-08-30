@@ -27,7 +27,7 @@ export interface UsersStaffQuotesRoutesHandlers {
   counterSales: CounterSalesService;
   accessControl: AccessControlService;
   audit: AuditService;
-  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
+  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
 }
 
 export async function handleUsersStaffQuotesRoutes(
@@ -46,7 +46,7 @@ export async function handleUsersStaffQuotesRoutes(
 
   // POST /users — create user
   if (pathname === '/users' && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'users.manage');
+    const principal = await requirePrincipal(request, 'users.manage');
     const payload = (await readJsonBody(request)) as Record<string, unknown>;
     try {
       validateRequestBody(
@@ -99,7 +99,7 @@ export async function handleUsersStaffQuotesRoutes(
 
   // GET /users — list users
   if (pathname === '/users' && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'users.read');
+    const principal = await requirePrincipal(request, 'users.read');
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
@@ -118,8 +118,7 @@ export async function handleUsersStaffQuotesRoutes(
 
   // GET/PATCH /users/:id
   if (pathname.startsWith('/users/')) {
-    const principal = requirePrincipal(
-      request,
+    const principal = await requirePrincipal(request,
       request.method === 'PATCH' ? 'users.manage' : 'users.read'
     );
     const userId = requireNonEmptyString(pathname.split('/')[2], 'userId');
@@ -170,7 +169,7 @@ export async function handleUsersStaffQuotesRoutes(
 
   // GET /professions — list the tenant's profession master data
   if (pathname === '/professions' && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'staff.read');
+    const principal = await requirePrincipal(request, 'staff.read');
     const search = url.searchParams.get('search') ?? undefined;
     const isActiveParam = url.searchParams.get('isActive');
     const isActive = isActiveParam === null ? undefined : isActiveParam === 'true';
@@ -193,7 +192,7 @@ export async function handleUsersStaffQuotesRoutes(
 
   // POST /professions — create a profession master record
   if (pathname === '/professions' && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'staff.manage');
+    const principal = await requirePrincipal(request, 'staff.manage');
     const payload = (await readJsonBody(request)) as {
       code: string;
       name: string;
@@ -222,7 +221,7 @@ export async function handleUsersStaffQuotesRoutes(
 
   // PATCH /professions/:id — update a profession master record
   if (pathname.startsWith('/professions/') && request.method === 'PATCH') {
-    const principal = requirePrincipal(request, 'staff.manage');
+    const principal = await requirePrincipal(request, 'staff.manage');
     const professionId = requireNonEmptyString(pathname.split('/')[2], 'professionId');
     const payload = (await readJsonBody(request)) as {
       code?: string;
@@ -262,7 +261,7 @@ export async function handleUsersStaffQuotesRoutes(
     pathname.endsWith('/toggle-active') &&
     request.method === 'POST'
   ) {
-    const principal = requirePrincipal(request, 'staff.manage');
+    const principal = await requirePrincipal(request, 'staff.manage');
     const professionId = requireNonEmptyString(pathname.split('/')[2], 'professionId');
     const payload = (await readJsonBody(request)) as { isActive: boolean };
     if (typeof payload.isActive !== 'boolean') {
@@ -291,7 +290,7 @@ export async function handleUsersStaffQuotesRoutes(
 
   // GET /staff/time-off — list absences/leave intervals
   if (pathname === '/staff/time-off' && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'staff.read');
+    const principal = await requirePrincipal(request, 'staff.read');
     const staffId = url.searchParams.get('staffId') ?? undefined;
     const items = staff.listTimeOff(principal.user.accountId as never, staffId as never);
     appendAudit(audit, {
@@ -312,7 +311,7 @@ export async function handleUsersStaffQuotesRoutes(
 
   // POST /staff/time-off — create an absence/leave interval
   if (pathname === '/staff/time-off' && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'staff.manage');
+    const principal = await requirePrincipal(request, 'staff.manage');
     const payload = (await readJsonBody(request)) as {
       staffId: string;
       startsAt: string;
@@ -343,7 +342,7 @@ export async function handleUsersStaffQuotesRoutes(
 
   // POST /staff/time-off/:id/cancel — cancel an absence/leave interval
   if (pathname.startsWith('/staff/time-off/') && pathname.endsWith('/cancel') && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'staff.manage');
+    const principal = await requirePrincipal(request, 'staff.manage');
     const timeOffId = requireNonEmptyString(pathname.split('/')[3], 'timeOffId');
     const timeOff = await staff.cancelTimeOff(principal.user.accountId as never, timeOffId);
     appendAudit(audit, {
@@ -364,7 +363,7 @@ export async function handleUsersStaffQuotesRoutes(
 
   // GET /staff — list staff members
   if (pathname === '/staff' && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'staff.read');
+    const principal = await requirePrincipal(request, 'staff.read');
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
@@ -387,7 +386,7 @@ export async function handleUsersStaffQuotesRoutes(
 
   // GET /staff/:id
   if (pathname.startsWith('/staff/') && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'staff.read');
+    const principal = await requirePrincipal(request, 'staff.read');
     const staffId = requireNonEmptyString(pathname.split('/')[2], 'staffId');
     const member = staff.getOrThrow(staffId as never);
     if (member.accountId !== principal.user.accountId) {
@@ -411,7 +410,7 @@ export async function handleUsersStaffQuotesRoutes(
 
   // POST /staff — create staff member
   if (pathname === '/staff' && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'staff.manage');
+    const principal = await requirePrincipal(request, 'staff.manage');
     const payload = (await readJsonBody(request)) as {
       employeeCode: string;
       fullName: string;
@@ -449,7 +448,7 @@ export async function handleUsersStaffQuotesRoutes(
 
   // PATCH /staff/:id
   if (pathname.startsWith('/staff/') && request.method === 'PATCH') {
-    const principal = requirePrincipal(request, 'staff.manage');
+    const principal = await requirePrincipal(request, 'staff.manage');
     const staffId = requireNonEmptyString(pathname.split('/')[2], 'staffId');
     const existingMember = staff.getOrThrow(staffId as never);
     if (existingMember.accountId !== principal.user.accountId) {
@@ -494,7 +493,7 @@ export async function handleUsersStaffQuotesRoutes(
     pathname.endsWith('/toggle-active') &&
     request.method === 'POST'
   ) {
-    const principal = requirePrincipal(request, 'staff.manage');
+    const principal = await requirePrincipal(request, 'staff.manage');
     const staffId = requireNonEmptyString(pathname.split('/')[2], 'staffId');
     const existingMember = staff.getOrThrow(staffId as never);
     if (existingMember.accountId !== principal.user.accountId) {
@@ -524,7 +523,7 @@ export async function handleUsersStaffQuotesRoutes(
 
   // GET /quotes — list quotes
   if (pathname === '/quotes' && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'quote.read');
+    const principal = await requirePrincipal(request, 'quote.read');
     const search = url.searchParams.get('search') ?? undefined;
     const status = url.searchParams.get('status') ?? undefined;
     appendAudit(audit, {
@@ -549,7 +548,7 @@ export async function handleUsersStaffQuotesRoutes(
 
   // POST /quotes — create quote
   if (pathname === '/quotes' && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'quote.write');
+    const principal = await requirePrincipal(request, 'quote.write');
     const payload = (await readJsonBody(request).catch(() => ({}))) as {
       ownerId?: string | null;
       validUntil?: string | null;
@@ -578,7 +577,7 @@ export async function handleUsersStaffQuotesRoutes(
 
   // GET /quotes/:id or /quotes/:id/print or /quotes/:id/pdf
   if (pathname.startsWith('/quotes/') && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'quote.read');
+    const principal = await requirePrincipal(request, 'quote.read');
     const quoteId = requireNonEmptyString(pathname.split('/')[2], 'quoteId');
     const action = pathname.split('/')[3];
     const quote = quotes.getOrThrow(quoteId);
@@ -629,7 +628,7 @@ export async function handleUsersStaffQuotesRoutes(
     pathname.endsWith('/items') &&
     request.method === 'POST'
   ) {
-    const principal = requirePrincipal(request, 'quote.write');
+    const principal = await requirePrincipal(request, 'quote.write');
     const quoteId = requireNonEmptyString(pathname.split('/')[2], 'quoteId');
     const quote = quotes.getOrThrow(quoteId);
     if (quote.accountId !== principal.user.accountId) {
@@ -668,7 +667,7 @@ export async function handleUsersStaffQuotesRoutes(
     pathname.endsWith('/approve') &&
     request.method === 'POST'
   ) {
-    const principal = requirePrincipal(request, 'quote.write');
+    const principal = await requirePrincipal(request, 'quote.write');
     const quoteId = requireNonEmptyString(pathname.split('/')[2], 'quoteId');
     const quote = await quotes.approve(quoteId);
     appendAudit(audit, {
@@ -693,7 +692,7 @@ export async function handleUsersStaffQuotesRoutes(
     pathname.endsWith('/reject') &&
     request.method === 'POST'
   ) {
-    const principal = requirePrincipal(request, 'quote.write');
+    const principal = await requirePrincipal(request, 'quote.write');
     const quoteId = requireNonEmptyString(pathname.split('/')[2], 'quoteId');
     const quote = await quotes.reject(quoteId);
     appendAudit(audit, {
@@ -718,7 +717,7 @@ export async function handleUsersStaffQuotesRoutes(
     pathname.endsWith('/cancel') &&
     request.method === 'POST'
   ) {
-    const principal = requirePrincipal(request, 'quote.write');
+    const principal = await requirePrincipal(request, 'quote.write');
     const quoteId = requireNonEmptyString(pathname.split('/')[2], 'quoteId');
     const quote = await quotes.cancel(quoteId);
     appendAudit(audit, {
@@ -743,7 +742,7 @@ export async function handleUsersStaffQuotesRoutes(
     pathname.endsWith('/convert-to-sale') &&
     request.method === 'POST'
   ) {
-    const principal = requirePrincipal(request, 'quote.write');
+    const principal = await requirePrincipal(request, 'quote.write');
     const quoteId = requireNonEmptyString(pathname.split('/')[2], 'quoteId');
     const quote = quotes.getOrThrow(quoteId);
     if (quote.accountId !== principal.user.accountId) {

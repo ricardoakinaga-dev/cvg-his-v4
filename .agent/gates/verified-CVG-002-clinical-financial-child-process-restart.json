@@ -1,0 +1,149 @@
+{
+  "record_id": "GATE-CVG-002-CLINICAL-FINANCIAL-CHILD-PROCESS-RESTART-VFY-001",
+  "timestamp": "2026-08-28T11:29:30-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-002 bounded real API child-process clinical-financial restart, rollback, replay and financial continuation",
+  "scope_ref": "CVG-002-CLINICAL-FINANCIAL-CHILD-PROCESS-RESTART",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-001-CONTRACT",
+      "description": "The bounded contract remains limited to a guarded real API child, restricted disposable roles, a temporary PostgreSQL interruption after the inventory billing-item write, SIGKILL rollback, distinct-PID restart, replay/conflict, two-account isolation and exact SQL reconciliation; production semantics and global readiness are excluded.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-002-clinical-financial-child-process-restart.md",
+        ".agent/authority.jsonl#AUTH-CVG-002-CLINICAL-FINANCIAL-CHILD-PROCESS-RESTART-IR-001",
+        ".agent/gates/implementation-ready-CVG-002-clinical-financial-child-process-restart.json",
+        ".agent/verification.jsonl#VFY-CVG-002-CLINICAL-FINANCIAL-CHILD-PROCESS-RESTART-EVIDENCE-POINTER-RECONCILIATION-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The parent CVG-002 and global ERP remain IN_PROGRESS/PARTIAL; target operations, providers and release acceptance are outside this gate."
+    },
+    {
+      "id": "V-002-CHILD-ROLLBACK-ROLES",
+      "description": "The fresh disposable process uses the guarded real API launcher under separate restricted API/worker roles, observes the exact advisory-lock witness after billing_items insertion, kills the serving child and proves rollback of inventory, lot, movement, consumption, billing, audit, outbox and idempotency residue.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002-CLINICAL-FINANCIAL-CHILD-PROCESS-RESTART-HARDENED-GREEN-002",
+        "apps/api/test-fixtures/inpatient-clinical-financial-process.ts",
+        "tests/integration/process/inpatient-clinical-financial-child-process.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Role and RLS observations are local disposable evidence and do not certify deployed target grants or runtime topology."
+    },
+    {
+      "id": "V-003-RESTART-REPLAY-ISOLATION-GRAPH",
+      "description": "The distinct-PID child restart completes two identical inventory replays with the same response/ID, rejects the divergent key with 409, rejects a valid tenant-B item paired with tenant-A encounter/stay identifiers, proves zero tenant-B mutations, completes the clinical-financial continuation and satisfies the exact SQL graph invariants.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002-CLINICAL-FINANCIAL-CHILD-PROCESS-RESTART-HARDENED-GREEN-002",
+        ".agent/artifacts/CVG-002-clinical-financial-child-process-restart-2026-08-28.md",
+        "tests/integration/process/inpatient-clinical-financial-child-process.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The graph is a bounded local fixture and does not establish complete Vetus clinical/financial parity or provider settlement behavior."
+    },
+    {
+      "id": "V-004-TDD-QUALITY",
+      "description": "Intentional RED preceded the launcher, the post-correction focused process passed, and targeted runner-contract, Prettier, ESLint, secret and diff checks passed.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002-CLINICAL-FINANCIAL-CHILD-PROCESS-RESTART-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-002-CLINICAL-FINANCIAL-CHILD-PROCESS-RESTART-HARDENED-GREEN-002",
+        ".agent/verification.jsonl#VFY-CVG-002-CLINICAL-FINANCIAL-CHILD-PROCESS-RESTART-HYGIENE-002",
+        "tests/unit/infra/critical-process-suite-contract.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The full serial critical runner is not green because the unrelated PIX settlement entry timed out at 15/25; this scoped child entry passed at position 5."
+    },
+    {
+      "id": "V-005-INDEPENDENT-REVIEW",
+      "description": "A final fresh read-only independent review approved the reconciled bounded slice and found no current CRITICAL, HIGH, MEDIUM or LOW blocker.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002-CLINICAL-FINANCIAL-CHILD-PROCESS-RESTART-REVIEW-002"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Approval is limited to the local bounded slice and does not approve the parent, global ERP, target or production."
+    },
+    {
+      "id": "V-006-CRITICAL-REGRESSION-BOUNDARY",
+      "description": "The updated critical manifest exercised the new child-process entry successfully and retained the independent pre-existing PIX timeout as an explicit open residual rather than masking it.",
+      "required": true,
+      "status": "CONDITIONAL",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002-CLINICAL-FINANCIAL-CHILD-PROCESS-RESTART-CRITICAL-PROCESS-REGRESSION-001",
+        "infra/scripts/run-critical-process-suite.mjs"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Entries after PIX position 8 were not run. No full critical-suite green or provider/distributed-operations claim is made."
+    },
+    {
+      "id": "V-007-GLOBAL-NON-PROMOTION",
+      "description": "Global parity, clinical parity and enterprise-readiness audits remain open and the bounded result is not promoted to CVG-002, ERP, parity, readiness or release.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002-CLINICAL-FINANCIAL-CHILD-PROCESS-RESTART-GLOBAL-NON-PROMOTION-RETEST-001",
+        ".agent/state.json",
+        ".agent/backlog.json",
+        ".gauntlet/state.md",
+        ".gauntlet/progress.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "General parity remains 4/11 verified, clinical parity 2/3 verified and enterprise readiness 95/100 with 42 PASS, 3 WARN and 1 FAIL."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-002-clinical-financial-child-process-restart.md",
+    ".agent/artifacts/CVG-002-clinical-financial-child-process-restart-2026-08-28.md",
+    ".agent/authority.jsonl#AUTH-CVG-002-CLINICAL-FINANCIAL-CHILD-PROCESS-RESTART-IR-001",
+    ".agent/gates/implementation-ready-CVG-002-clinical-financial-child-process-restart.json",
+    "apps/api/test-fixtures/inpatient-clinical-financial-process.ts",
+    "tests/integration/process/inpatient-clinical-financial-child-process.test.ts",
+    "infra/scripts/run-critical-process-suite.mjs",
+    ".agent/verification.jsonl#VFY-CVG-002-CLINICAL-FINANCIAL-CHILD-PROCESS-RESTART-RED-001",
+    ".agent/verification.jsonl#VFY-CVG-002-CLINICAL-FINANCIAL-CHILD-PROCESS-RESTART-HARDENED-GREEN-002",
+    ".agent/verification.jsonl#VFY-CVG-002-CLINICAL-FINANCIAL-CHILD-PROCESS-RESTART-REVIEW-001",
+    ".agent/verification.jsonl#VFY-CVG-002-CLINICAL-FINANCIAL-CHILD-PROCESS-RESTART-REVIEW-002",
+    ".agent/verification.jsonl#VFY-CVG-002-CLINICAL-FINANCIAL-CHILD-PROCESS-RESTART-CRITICAL-PROCESS-REGRESSION-001",
+    ".agent/verification.jsonl#VFY-CVG-002-CLINICAL-FINANCIAL-CHILD-PROCESS-RESTART-GLOBAL-NON-PROMOTION-RETEST-001",
+    ".agent/verification.jsonl#VFY-CVG-002-CLINICAL-FINANCIAL-CHILD-PROCESS-RESTART-HYGIENE-002",
+    ".agent/verification.jsonl#VFY-CVG-002-CLINICAL-FINANCIAL-CHILD-PROCESS-RESTART-FINAL-001"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "The full serial critical process manifest remains open at the unrelated pix-provider-settlement-sigkill timeout; later entries were not run.",
+    "Local disposable process evidence does not certify target RLS/runtime grants, Redis/provider behavior, distributed operations, remote CI, backup/restore, accessibility, operational LGPD, external Vetus acceptance, production or release.",
+    "The parent CVG-002 and global ERP remain IN_PROGRESS/PARTIAL; general parity is 4/11 and clinical parity is 2/3."
+  ],
+  "conditions": [
+    "Keep this result limited to the named test-only API child process and the frozen clinical-financial command graph.",
+    "Keep CVG-002/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+    "Do not treat the critical runner's position-5 pass as a full runner/provider/distributed-operations approval.",
+    "Revalidate before changing command semantics, migrations, runtime roles/RLS, providers, target, production, deployment or release scope."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via explicit continuation of the consolidation request",
+    "scope": "CVG-002 bounded real child-process clinical-financial restart/replay evidence",
+    "decision": "Authorize only reversible test-fixture/critical-process harness work and disposable PostgreSQL verification of the existing public clinical-financial commands. Exclude production behavior changes, migrations, providers, credentials, deployment, target authorization and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-002-CLINICAL-FINANCIAL-CHILD-PROCESS-RESTART-IR-001",
+    "expires_or_revalidates": "Revalidate before changing command/financial semantics, runtime-role policy, target/provider behavior or claiming parent/global readiness."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_BOUNDED",
+  "next_action": "Keep CVG-002/global ERP IN_PROGRESS/PARTIAL with promotion BLOCKED; select the next gap only through fresh scouting and a new implementation-ready authority, and retain the PIX critical-runner timeout as open.",
+  "revalidation_triggers": [
+    "Changes to the public clinical-financial command transaction or idempotency semantics",
+    "Changes to runtime roles, RLS policy, process fixtures or critical-suite manifest",
+    "Expansion into provider, target, production, deployment, migration or release work"
+  ],
+  "supersedes": ".agent/gates/implementation-ready-CVG-002-clinical-financial-child-process-restart.json"
+}

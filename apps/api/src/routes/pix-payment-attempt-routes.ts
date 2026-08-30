@@ -24,7 +24,7 @@ export interface PixPaymentAttemptRouteHandlers {
   readonly requirePrincipal: (
     request: IncomingMessage,
     permissionCode: string
-  ) => AuthenticatedPrincipal;
+  ) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
 }
 
 export interface PixPaymentAttemptRateLimiter {
@@ -144,7 +144,7 @@ export async function handlePixPaymentAttemptRoutes(
 ): Promise<boolean> {
   const createMatch = CREATE_PATH.exec(pathname);
   if (createMatch && request.method === 'POST') {
-    const principal = handlers.requirePrincipal(request, 'billing.manage');
+    const principal = await handlers.requirePrincipal(request, 'billing.manage');
     const encounterId = requireUuid(createMatch[1] ?? '', 'encounterId');
     const requestKey = requirePixPaymentAttemptIdempotencyKey(request);
     requireEmptyObject(await readJsonBody(request));
@@ -164,7 +164,7 @@ export async function handlePixPaymentAttemptRoutes(
 
   const getMatch = GET_PATH.exec(pathname);
   if (getMatch && request.method === 'GET') {
-    const principal = handlers.requirePrincipal(request, 'billing.read');
+    const principal = await handlers.requirePrincipal(request, 'billing.read');
     if (
       await applyPixPaymentAttemptRateLimit(
         response,

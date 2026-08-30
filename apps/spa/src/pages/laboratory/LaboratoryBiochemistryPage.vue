@@ -171,6 +171,7 @@ interface ParameterRow {
   unit: string;
   minValue: number;
   maxValue: number;
+  outOfRange?: boolean;
   statusLabel: string;
   statusVariant: StatusVariant;
 }
@@ -250,7 +251,7 @@ const filteredBiochemistry = computed(() => {
     if (animal && !normalizeSearch(result.animalName).includes(animal) && !normalizeSearch(result.patientId).includes(animal)) {
       return false;
     }
-    if (body && !normalizeSearch(result.resultSummary).includes(body)) return false;
+    if (body && !laboratoryResultSearchText(result).includes(body)) return false;
     if (appliedFilters.finalizedAt && result.analysisAt.slice(0, 10) !== appliedFilters.finalizedAt) return false;
     if (appliedFilters.enteredAt && result.enteredAt.slice(0, 10) !== appliedFilters.enteredAt) return false;
     if (!appliedFilters.closed && result.status === 'resulted') return false;
@@ -260,24 +261,35 @@ const filteredBiochemistry = computed(() => {
 
 const parameterRows = computed<ParameterRow[]>(() =>
   referenceValues.value.map((reference) => {
-    const value = resolveLatestValue(reference.parameter);
+    const structuredValue = resolveLatestStructuredValue(reference.parameter);
+    const value = structuredValue?.value ?? resolveLatestValue(reference.parameter);
 
     return {
       id: reference.id,
       panel: classifyBiochemistryPanel(reference.parameter),
       parameter: displayParameter(reference.parameter),
       value,
-      unit: reference.unit,
+      unit: structuredValue?.unit ?? reference.unit,
       minValue: reference.minValue,
       maxValue: reference.maxValue,
-      statusLabel: value === '-' ? 'Referência aplicada' : 'Dentro da faixa',
-      statusVariant: 'info'
+      outOfRange: structuredValue?.outOfRange,
+      statusLabel: structuredValue
+        ? structuredValue.outOfRange ? 'Fora da faixa' : 'Dentro da faixa'
+        : value === '-' ? 'Referência aplicada' : 'Dentro da faixa',
+      statusVariant: structuredValue
+        ? structuredValue.outOfRange ? 'warning' : 'success'
+        : 'info'
     };
   })
 );
 
 const outOfRangeCount = computed(() =>
-  biochemistryResults.value.filter((item) => normalizeSearch(item.resultSummary).includes('fora da faixa')).length
+  biochemistryResults.value.some((item) => item.resultValues?.length)
+    ? biochemistryResults.value.reduce(
+      (total, item) => total + (item.resultValues?.filter((value) => value.outOfRange).length ?? 0),
+      0
+    )
+    : biochemistryResults.value.filter((item) => normalizeSearch(item.resultSummary).includes('fora da faixa')).length
 );
 
 const panelCards = computed(() => [
@@ -289,6 +301,18 @@ const panelCards = computed(() => [
 
 function normalizeSearch(value: string | undefined): string {
   return (value ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
+}
+
+function laboratoryResultSearchText(result: DiagnosticOrderSummary): string {
+  return [
+    result.resultSummary,
+    ...(result.resultValues ?? []).flatMap((value) => [
+      value.parameter,
+      value.value,
+      value.unit,
+      value.reference
+    ])
+  ].filter(Boolean).join(' ').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
 }
 
 function shortId(id: string): string {
@@ -336,12 +360,23 @@ function countByPanel(panel: string): number {
 }
 
 function resolveLatestValue(parameter: string): string {
+  const structuredValue = resolveLatestStructuredValue(parameter);
+  if (structuredValue) return structuredValue.value;
+
   const latestSummary = filteredBiochemistry.value[0]?.resultSummary;
   if (!latestSummary) return '-';
 
   const escaped = parameter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const match = latestSummary.match(new RegExp(`${escaped}\\s*[:=]\\s*([\\d.,]+)`, 'i'));
   return match?.[1] ?? '-';
+}
+
+function resolveLatestStructuredValue(parameter: string) {
+  const normalizedParameter = normalizeSearch(parameter);
+  return filteredBiochemistry.value
+    .find((item) => item.resultValues?.length)
+    ?.resultValues
+    ?.find((item) => normalizeSearch(item.parameter) === normalizedParameter);
 }
 
 function formatReference(row: ParameterRow): string {

@@ -34,7 +34,7 @@ export interface FinancialRoutesHandlers {
   audit: AuditService;
   pixTransactions: PixTransactionRepository;
   cardTransactions: CardTransactionRepository;
-  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
+  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
 }
 
 function json(response: ServerResponse, statusCode: number, payload: unknown): true {
@@ -581,7 +581,7 @@ export async function handleFinancialRoutes(
   const url = new URL(request.url ?? pathname, 'http://localhost');
 
   if (pathname === '/financial/payables' && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'billing.read');
+    const principal = await requirePrincipal(request, 'billing.read');
     const status = parsePayableStatus(url.searchParams.get('status'));
     const result = await financialPayables.listPayables(principal.user.accountId as never, {
       status,
@@ -606,7 +606,7 @@ export async function handleFinancialRoutes(
   }
 
   if (pathname === '/financial/income-statement' && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'billing.read');
+    const principal = await requirePrincipal(request, 'billing.read');
     const result = await financialStatements.getIncomeStatement(principal.user.accountId as never, {
       dateFrom: url.searchParams.get('dateFrom'),
       dateTo: url.searchParams.get('dateTo')
@@ -631,7 +631,7 @@ export async function handleFinancialRoutes(
     (pathname === '/financial/ledger' || pathname === '/financial/ledger/reconciliation')
     && request.method === 'GET'
   ) {
-    const principal = requirePrincipal(request, 'billing.read');
+    const principal = await requirePrincipal(request, 'billing.read');
     if (!ledger) {
       return json(response, 503, {
         error: 'financial_ledger_unavailable',
@@ -710,7 +710,7 @@ export async function handleFinancialRoutes(
   }
 
   if (pathname === '/financial/reconciliation/payables' && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'billing.read');
+    const principal = await requirePrincipal(request, 'billing.read');
     const result = await financialPayables.listPayableReconciliation(principal.user.accountId as never, {
       status: parsePayableReconciliationStatus(url.searchParams.get('status')),
       search: url.searchParams.get('search') ?? undefined,
@@ -734,7 +734,7 @@ export async function handleFinancialRoutes(
   }
 
   if (pathname === '/financial/payables' && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'billing.manage');
+    const principal = await requirePrincipal(request, 'billing.manage');
     const payload = await readJsonBody(request) as Record<string, unknown>;
     const payable = await financialPayables.createPayable(principal.user.accountId as never, principal.user.id as never, {
       supplierName: requireNonEmptyString(payload.supplierName, 'supplierName'),
@@ -765,7 +765,7 @@ export async function handleFinancialRoutes(
   }
 
   if (pathname.startsWith('/financial/payables/') && pathname.endsWith('/pay') && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'billing.manage');
+    const principal = await requirePrincipal(request, 'billing.manage');
     const payableId = requireNonEmptyString(pathname.split('/')[3], 'payableId');
     const payload = await readJsonBody(request) as Record<string, unknown>;
     const payable = await financialPayables.payPayable(principal.user.accountId as never, principal.user.id as never, payableId, {
@@ -791,7 +791,7 @@ export async function handleFinancialRoutes(
   }
 
   if (pathname.startsWith('/financial/payables/') && pathname.endsWith('/cancel') && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'billing.manage');
+    const principal = await requirePrincipal(request, 'billing.manage');
     const payableId = requireNonEmptyString(pathname.split('/')[3], 'payableId');
     const payload = await readJsonBody(request) as Record<string, unknown>;
     const payable = await financialPayables.cancelPayable(
@@ -817,7 +817,7 @@ export async function handleFinancialRoutes(
   }
 
   if (pathname.startsWith('/financial/payables/') && pathname.endsWith('/reconcile') && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'billing.manage');
+    const principal = await requirePrincipal(request, 'billing.manage');
     const payableId = requireNonEmptyString(pathname.split('/')[3], 'payableId');
     const payload = await readJsonBody(request) as Record<string, unknown>;
     const payable = await financialPayables.reconcilePayablePayment(
@@ -850,7 +850,7 @@ export async function handleFinancialRoutes(
     && pathname.endsWith('/financial-summary')
     && request.method === 'GET'
   ) {
-    const principal = requirePrincipal(request, 'billing.read');
+    const principal = await requirePrincipal(request, 'billing.read');
     const encounterId = requireNonEmptyString(pathname.split('/')[2], 'encounterId');
     const summary = await encounterFinancial.getSummary(encounterId as never);
 
@@ -874,7 +874,7 @@ export async function handleFinancialRoutes(
     && pathname.endsWith('/financial-close')
     && request.method === 'POST'
   ) {
-    const principal = requirePrincipal(request, 'billing.manage');
+    const principal = await requirePrincipal(request, 'billing.manage');
     const encounterId = requireNonEmptyString(pathname.split('/')[2], 'encounterId');
     const rawPayload = await readJsonBody(request);
     const payload =
@@ -920,7 +920,7 @@ export async function handleFinancialRoutes(
   }
 
   if (pathname === '/financial/receivables' && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'billing.read');
+    const principal = await requirePrincipal(request, 'billing.read');
     const status = url.searchParams.get('status');
     const encounterId = url.searchParams.get('encounterId');
     const search = url.searchParams.get('search');
@@ -949,7 +949,7 @@ export async function handleFinancialRoutes(
   }
 
   if (pathname === '/financial/aging' && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'billing.read');
+    const principal = await requirePrincipal(request, 'billing.read');
     const search = url.searchParams.get('search');
     const result = await buildReceivablesAgingReport(handlers, {
       accountId: principal.user.accountId,
@@ -972,7 +972,7 @@ export async function handleFinancialRoutes(
   }
 
   if (pathname === '/financial/reconciliation' && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'billing.read');
+    const principal = await requirePrincipal(request, 'billing.read');
     const status = url.searchParams.get('status');
     const provider = url.searchParams.get('provider');
     const search = url.searchParams.get('search');
@@ -1010,7 +1010,7 @@ export async function handleFinancialRoutes(
   }
 
   if (pathname === '/financial/reconciliation/cards' && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'billing.read');
+    const principal = await requirePrincipal(request, 'billing.read');
     const status = url.searchParams.get('status');
     const provider = url.searchParams.get('provider');
     const search = url.searchParams.get('search');
@@ -1054,7 +1054,7 @@ export async function handleFinancialRoutes(
     && pathname.endsWith('/settle')
     && request.method === 'POST'
   ) {
-    requirePrincipal(request, 'billing.manage');
+    await requirePrincipal(request, 'billing.manage');
     requireNonEmptyString(pathname.split('/')[3], 'receivableId');
     return json(response, 409, manualSettlementDisabledResponse(correlationId));
   }

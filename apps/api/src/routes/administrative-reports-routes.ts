@@ -27,7 +27,7 @@ export interface AdministrativeReportsRoutesHandlers {
   cash: CashService;
   fiscal: FiscalService;
   audit: AuditService;
-  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
+  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
 }
 
 type FinancialReceivableRow = {
@@ -231,7 +231,7 @@ export async function handleAdministrativeReportsRoutes(
     return false;
   }
 
-  const principal = handlers.requirePrincipal(request, 'billing.read');
+  const principal = await handlers.requirePrincipal(request, 'billing.read');
   const url = new URL(request.url ?? pathname, 'http://localhost');
   const dateFrom = parseDateFloor(url.searchParams.get('dateFrom'));
   const dateTo = parseDateCeil(url.searchParams.get('dateTo'));

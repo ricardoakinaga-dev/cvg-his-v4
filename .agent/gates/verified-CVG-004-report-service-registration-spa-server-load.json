@@ -1,0 +1,146 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-SERVICE-REGISTRATION-SPA-SERVER-LOAD-VFY-001",
+  "timestamp": "2026-08-29T23:25:00-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "Register-services Reports Workbench server-backed initial load",
+  "scope_ref": "CVG-004-REPORT-SERVICE-REGISTRATION-SPA-SERVER-LOAD",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "VFY-001",
+      "description": "The register-services Workbench loads through ReportsService.execute with registration-services and does not call servicesService.list(); every row is validated against exactly the six existing server fields.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-service-registration-spa-server-load.md",
+        "apps/spa/src/pages/reports/ReportWorkbenchPage.vue",
+        "apps/spa/src/pages/reports/__tests__/ReportWorkbenchPage.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SERVICE-REGISTRATION-SPA-SERVER-LOAD-GREEN-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The existing API/catalog/source contract is reused but not redesigned or re-proven by this SPA-only gate."
+    },
+    {
+      "id": "VFY-002",
+      "description": "Visible services table/cards derive from validated server rows, preserve blank code/description and active/inactive labels, and pass the existing date filters through the same server filter boundary.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/spa/src/pages/reports/ReportWorkbenchPage.vue",
+        "apps/spa/src/pages/reports/__tests__/ReportWorkbenchPage.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SERVICE-REGISTRATION-SPA-SERVER-LOAD-GREEN-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The proof is component-level and does not certify target-browser or accessibility behavior."
+    },
+    {
+      "id": "VFY-003",
+      "description": "Malformed server rows fail with a user-facing error before rendering and no local services fallback is retained; audited server-side export remains intact.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/spa/src/pages/reports/ReportWorkbenchPage.vue",
+        "apps/spa/src/pages/reports/__tests__/ReportWorkbenchPage.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SERVICE-REGISTRATION-SPA-SERVER-LOAD-GREEN-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Provider, delivery, external side effects and report-source semantics remain outside this boundary."
+    },
+    {
+      "id": "VFY-004",
+      "description": "TDD RED preceded implementation and the focused Workbench tests, complete Workbench suite, SPA Vue typecheck/build and official workspace coverage are green.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SERVICE-REGISTRATION-SPA-SERVER-LOAD-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SERVICE-REGISTRATION-SPA-SERVER-LOAD-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SERVICE-REGISTRATION-SPA-SERVER-LOAD-REGRESSION-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The long-running uncaptured full-workspace build/typecheck invocation is not used as evidence; the SPA build includes the changed Vue typecheck and the full official coverage run completed."
+    },
+    {
+      "id": "VFY-005",
+      "description": "Coverage and repository quality/security checks pass, and the fresh parity audit is recorded without global promotion.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SERVICE-REGISTRATION-SPA-SERVER-LOAD-QUALITY-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SERVICE-REGISTRATION-SPA-SERVER-LOAD-GLOBAL-NON-PROMOTION-001",
+        ".agent/artifacts/CVG-004-report-service-registration-spa-server-load-2026-08-29.md",
+        "coverage/coverage-final.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Local quality checks are not a remote CI, target, production, release, accessibility or global parity certificate."
+    },
+    {
+      "id": "VFY-006",
+      "description": "Review availability and scope limitations are reconciled transparently: no independent approval or end-to-end/global ERP approval is inferred.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SERVICE-REGISTRATION-SPA-SERVER-LOAD-REVIEW-001",
+        ".agent/tasks/CVG-004-report-service-registration-spa-server-load.md",
+        ".agent/artifacts/CVG-004-report-service-registration-spa-server-load-2026-08-29.md"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "The reviewer did not deliver a verdict; this criterion records that absence rather than treating it as approval."
+    },
+    {
+      "id": "VFY-007",
+      "description": "The parent CVG-004 and global ERP remain IN_PROGRESS/PARTIAL with promotion BLOCKED after the fresh parity audit.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SERVICE-REGISTRATION-SPA-SERVER-LOAD-GLOBAL-NON-PROMOTION-001",
+        ".agent/state.json",
+        ".agent/backlog.json",
+        ".agent/artifacts/CVG-004-report-service-registration-spa-server-load-2026-08-29.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This is a bounded non-promotion condition, not a global readiness statement."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-report-service-registration-spa-server-load.md",
+    ".agent/artifacts/CVG-004-report-service-registration-spa-server-load-2026-08-29.md",
+    ".agent/gates/implementation-ready-CVG-004-report-service-registration-spa-server-load.json",
+    ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SERVICE-REGISTRATION-SPA-SERVER-LOAD-IR-001",
+    "apps/spa/src/pages/reports/ReportWorkbenchPage.vue",
+    "apps/spa/src/pages/reports/__tests__/ReportWorkbenchPage.test.ts",
+    "packages/modules/reports/src/index.ts",
+    "apps/api/src/routes/reports-routes.ts",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-SERVICE-REGISTRATION-SPA-SERVER-LOAD-CONTROL-PLANE-001"
+  ],
+  "confidence": "MEDIUM",
+  "gaps": [
+    "No independent reviewer verdict was obtained; direct local evidence is the basis of closure.",
+    "The slice does not certify target browser, PostgreSQL-backed browser session, remote CI, accessibility, API/source semantics, providers, workers, credentials, target, production, deployment, legal retention or release acceptance.",
+    "Global Vetus parity remains NOT VERIFIED with 4/11 areas verified despite 100/100 evidence coverage."
+  ],
+  "conditions": [
+    "Keep registration-services as the sole server execution source for this Workbench path and do not restore servicesService.list() fallback behavior.",
+    "Preserve the exact six server fields and existing buildServerReportFilters boundary.",
+    "Do not expand this gate into API/source redesign, CRUD, worker/provider/delivery, target/production/deployment or release scope without fresh authority.",
+    "Keep parent CVG-004/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED_REVALIDATED",
+    "actor": "Ricardo (repository owner), via explicit continuation and bounded local reconciliation",
+    "scope": "SPA-only register-services Workbench server-backed loading, exact six-field validation, existing filters and audited export",
+    "decision": "Authorize bounded closure of the frozen SPA caller alignment. Exclude API/source redesign, service CRUD, worker/provider/delivery, credentials, target, production, deployment, accessibility and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SERVICE-REGISTRATION-SPA-SERVER-LOAD-IR-001",
+    "expires_or_revalidates": "Revalidate before changing registration-services API/catalog/source semantics, adding fields/filters, changing service CRUD, changing ReportsService audit/export semantics or entering target/production/release scope."
+  },
+  "residual_risk": "MEDIUM",
+  "decision": "PASS_BOUNDED",
+  "implementation_status": "COMPLETE_BOUNDED",
+  "next_action": "Close this bounded task, reconcile the control plane and return to fresh read-only residual scouting under a new implementation-ready authority. Keep parent CVG-004/global ERP IN_PROGRESS/PARTIAL with promotion BLOCKED.",
+  "revalidation_triggers": [
+    "Changing the registration-services API/source, report catalog, service schema or authorization boundary",
+    "Changing the six-field projection, filter semantics or ReportsService execute/export/audit behavior",
+    "Adding service CRUD, worker delivery, provider integration, credentials, target, production, deployment or release behavior"
+  ],
+  "supersedes": ".agent/gates/implementation-ready-CVG-004-report-service-registration-spa-server-load.json"
+}

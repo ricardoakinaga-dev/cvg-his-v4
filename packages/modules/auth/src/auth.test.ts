@@ -11,13 +11,12 @@ import { AuthenticationError } from '@cvg-his-v2/shared-errors';
 import type { AccountId, UserId } from '@cvg-his-v2/shared-types';
 import { getTenantContext } from '@cvg-his-v2/tenant-context';
 
-import {
-  AuthService,
-  BruteForceProtection,
-  InMemoryMfaLoginChallengeRepository
-} from './index.js';
+import { AuthService, BruteForceProtection, InMemoryMfaLoginChallengeRepository } from './index.js';
 import { InMemorySessionRepository } from './repositories/in-memory-session.repository.js';
-import type { SessionRepository } from './repositories/session.repository.js';
+import type {
+  PersistedSessionRecord,
+  SessionRepository
+} from './repositories/session.repository.js';
 import { generateCurrentTOTP } from './totp-wrapper.js';
 
 const SEED_PASSWORD = 'seed_admin';
@@ -153,7 +152,7 @@ test('AuthService: login requires MFA for critical role when MFA is enabled', as
   assert.deepEqual(result.mfaMethods, []);
   assert.equal(result.enrollmentRequired, true);
   assert.ok(result.challengeId);
-  assert.equal(auth.getPendingMfaEnrollmentUser(result.challengeId).id, 'user_admin');
+  assert.equal((await auth.getPendingMfaEnrollmentUser(result.challengeId)).id, 'user_admin');
 });
 
 test('AuthService: MFA enrollment stays inside the tenant context from the login challenge', async () => {
@@ -764,6 +763,156 @@ test('AuthService: listSessionsForUser returns sessions ordered newest first', a
   assert.equal(sessions.length, 2);
   assert.equal(sessions[0].sessionId, second.principal.session.sessionId);
   assert.equal(sessions[1].sessionId, first.principal.session.sessionId);
+});
+
+test('AuthService: authoritative session list observes a session created by another instance', async () => {
+  const sessionRepository = new InMemorySessionRepository();
+  const authA = createAuthService({ sessionRepository });
+  const authB = createAuthService({ sessionRepository });
+
+  const login = await authA.login(
+    { username: 'admin', password: SEED_PASSWORD },
+    'corr-authoritative-session-list'
+  );
+  assert.ok('accessToken' in login);
+
+  const sessions = await authB.listSessionsForUserAuthoritative(
+    'user_admin' as UserId,
+    'corr-authoritative-session-list-read'
+  );
+
+  assert.deepEqual(
+    sessions.map((session) => session.sessionId),
+    [login.principal.session.sessionId]
+  );
+});
+
+test('AuthService: authoritative session list filters user and account boundaries and orders durable rows', async () => {
+  const delegate = new InMemorySessionRepository();
+  const sessionRepository: SessionRepository = {
+    create: (session) => delegate.create(session),
+    update: (session) => delegate.update(session),
+    rotateRefreshNonce: (params) => delegate.rotateRefreshNonce(params),
+    findById: (id) => delegate.findById(id),
+    findByUserId: async () => delegate.getAll(),
+    delete: (id) => delegate.delete(id)
+  };
+  const auth = createAuthService({ sessionRepository });
+  const baseSession: PersistedSessionRecord = {
+    sessionId: 'sess_oldest' as never,
+    userId: 'user_admin' as UserId,
+    accountId: ACCOUNT_ID as never,
+    createdAt: '2026-08-30T10:00:00.000Z',
+    authTime: '2026-08-30T10:00:00.000Z',
+    expiresAt: '2026-08-30T10:15:00.000Z',
+    refreshExpiresAt: '2026-09-06T10:00:00.000Z',
+    active: true,
+    roleCodes: ['admin'],
+    refreshNonce: 'nonce-oldest'
+  };
+
+  await delegate.create(baseSession);
+  await delegate.create({
+    ...baseSession,
+    sessionId: 'sess_newest' as never,
+    createdAt: '2026-08-30T11:00:00.000Z',
+    authTime: '2026-08-30T11:00:00.000Z',
+    expiresAt: '2026-08-30T11:15:00.000Z',
+    refreshExpiresAt: '2026-09-06T11:00:00.000Z',
+    refreshNonce: 'nonce-newest'
+  });
+  await delegate.create({
+    ...baseSession,
+    sessionId: 'sess_tie_a' as never,
+    createdAt: '2026-08-30T12:00:00.000Z',
+    authTime: '2026-08-30T12:00:00.000Z',
+    expiresAt: '2026-08-30T12:15:00.000Z',
+    refreshExpiresAt: '2026-09-06T12:00:00.000Z',
+    refreshNonce: 'nonce-tie-a'
+  });
+  await delegate.create({
+    ...baseSession,
+    sessionId: 'sess_tie_b' as never,
+    createdAt: '2026-08-30T12:00:00.000Z',
+    authTime: '2026-08-30T12:00:00.000Z',
+    expiresAt: '2026-08-30T12:15:00.000Z',
+    refreshExpiresAt: '2026-09-06T12:00:00.000Z',
+    refreshNonce: 'nonce-tie-b'
+  });
+  await delegate.create({
+    ...baseSession,
+    sessionId: 'sess_other_user' as never,
+    userId: 'user_other' as UserId
+  });
+  await delegate.create({
+    ...baseSession,
+    sessionId: 'sess_other_account' as never,
+    accountId: 'acc_other' as never
+  });
+
+  const sessions = await auth.listSessionsForUserAuthoritative(
+    'user_admin' as UserId,
+    'corr-authoritative-session-list-boundaries'
+  );
+
+  assert.deepEqual(
+    sessions.map((session) => session.sessionId),
+    ['sess_tie_b', 'sess_tie_a', 'sess_newest', 'sess_oldest']
+  );
+  assert.deepEqual(Object.keys(sessions[0]).sort(), [
+    'accountId',
+    'active',
+    'authTime',
+    'createdAt',
+    'expiresAt',
+    'refreshExpiresAt',
+    'sessionId',
+    'userId'
+  ]);
+});
+
+test('AuthService: authoritative session list preserves the in-memory compatibility path', async () => {
+  const auth = createAuthService();
+  const login = await auth.login(
+    { username: 'admin', password: SEED_PASSWORD },
+    'corr-authoritative-session-list-memory'
+  );
+  assert.ok('accessToken' in login);
+
+  const sessions = await auth.listSessionsForUserAuthoritative('user_admin' as UserId);
+
+  assert.deepEqual(
+    sessions.map((session) => session.sessionId),
+    [login.principal.session.sessionId]
+  );
+});
+
+test('AuthService: authoritative session list fails closed when the repository is unavailable', async () => {
+  const delegate = new InMemorySessionRepository();
+  let readsAvailable = true;
+  const sessionRepository: SessionRepository = {
+    create: (session) => delegate.create(session),
+    update: (session) => delegate.update(session),
+    rotateRefreshNonce: (params) => delegate.rotateRefreshNonce(params),
+    findById: (id) => delegate.findById(id),
+    findByUserId: async (userId) => {
+      if (!readsAvailable) throw new Error('session repository unavailable');
+      return delegate.findByUserId(userId);
+    },
+    delete: (id) => delegate.delete(id)
+  };
+  const auth = createAuthService({ sessionRepository });
+  const login = await auth.login(
+    { username: 'admin', password: SEED_PASSWORD },
+    'corr-authoritative-session-list-failure'
+  );
+  assert.ok('accessToken' in login);
+
+  readsAvailable = false;
+  await assert.rejects(
+    () => auth.listSessionsForUserAuthoritative('user_admin' as UserId),
+    /session repository unavailable/
+  );
 });
 
 test('AuthService: revokeOtherSessions keeps current session active and revokes the rest', async () => {

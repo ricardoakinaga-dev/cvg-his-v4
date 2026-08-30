@@ -3,6 +3,7 @@ import { mkdtempSync } from 'node:fs';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { PoolClient } from 'pg';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -23,12 +24,19 @@ const DAILY_CHARGE_ID = randomUUID();
 const ROLLBACK_ENCOUNTER_ID = randomUUID();
 const ROLLBACK_STAY_ID = randomUUID();
 const ROLLBACK_CHARGE_ID = randomUUID();
+const ROLLBACK_PATIENT_ID = randomUUID();
 const CONCURRENT_ENCOUNTER_ID = randomUUID();
 const CONCURRENT_STAY_ID = randomUUID();
 const CONCURRENT_CHARGE_ID = randomUUID();
+const CONCURRENT_PATIENT_ID = randomUUID();
+const DISTINCT_KEY_ENCOUNTER_ID = randomUUID();
+const DISTINCT_KEY_STAY_ID = randomUUID();
+const DISTINCT_KEY_CHARGE_ID = randomUUID();
+const DISTINCT_KEY_PATIENT_ID = randomUUID();
 const CROSS_TENANT_ENCOUNTER_ID = randomUUID();
 const CROSS_TENANT_STAY_ID = randomUUID();
 const CROSS_TENANT_CHARGE_ID = randomUUID();
+const CROSS_TENANT_PATIENT_ID = randomUUID();
 const FOREIGN_TENANT_ID = randomUUID();
 const FOREIGN_ACCOUNT_ID = randomUUID();
 const FOREIGN_USER_ID = randomUUID();
@@ -42,10 +50,19 @@ const EMAIL = `${USERNAME}@example.com`;
 const FOREIGN_USERNAME = `daily-http-foreign-${FOREIGN_USER_ID.slice(0, 8)}`;
 const FOREIGN_EMAIL = `${FOREIGN_USERNAME}@example.com`;
 const ROLLBACK_CONSTRAINT = 'daily_charge_http_rollback_status_guard';
+const DISTINCT_KEY_RACE_FUNCTION = `dc_http_race_pause_${DISTINCT_KEY_ENCOUNTER_ID.replaceAll('-', '')}`;
+const DISTINCT_KEY_RACE_TRIGGER = `dc_http_race_trigger_${DISTINCT_KEY_ENCOUNTER_ID.replaceAll('-', '')}`;
+const DISTINCT_KEY_RACE_LOCK_KEY = Number.parseInt(
+  DISTINCT_KEY_ENCOUNTER_ID.replaceAll('-', '').slice(0, 7),
+  16
+);
 
 let server: ApiServer | undefined;
+let secondaryServer: ApiServer | undefined;
 let baseUrl = '';
+let secondaryBaseUrl = '';
 let accessToken = '';
+let distinctKeyRaceBarrierClient: PoolClient | undefined;
 
 interface LoginResponse {
   readonly accessToken: string;
@@ -80,14 +97,18 @@ let foreignFixture: TenantFixture = {
   accessToken: ''
 };
 
-async function requestJson<T>(path: string, init: RequestInit = {}) {
-  const response = await fetch(`${baseUrl}${path}`, init);
+async function requestJsonAt<T>(origin: string, path: string, init: RequestInit = {}) {
+  const response = await fetch(`${origin}${path}`, init);
   const text = await response.text();
   return {
     status: response.status,
     body: text.length > 0 ? (JSON.parse(text) as T) : undefined,
     text
   };
+}
+
+async function requestJson<T>(path: string, init: RequestInit = {}) {
+  return requestJsonAt<T>(baseUrl, path, init);
 }
 
 function authHeadersFor(
@@ -133,6 +154,32 @@ async function postBill(
   );
 }
 
+async function postBillAt(
+  origin: string,
+  stayId: string,
+  chargeId: string,
+  idempotencyKey: string,
+  body: Record<string, unknown> = {}
+): Promise<{
+  status: number;
+  body?: DailyChargeResponse & { readonly code?: string };
+  text: string;
+}> {
+  return requestJsonAt<DailyChargeResponse & { readonly code?: string }>(
+    origin,
+    `/inpatient/${stayId}/daily-charges/${chargeId}/bill`,
+    {
+      method: 'POST',
+      headers: {
+        ...authHeaders(),
+        'content-type': 'application/json',
+        'idempotency-key': idempotencyKey
+      },
+      body: JSON.stringify(body)
+    }
+  );
+}
+
 async function postBillAs(
   fixture: Pick<TenantFixture, 'tenantId' | 'accountId' | 'accessToken'>,
   stayId: string,
@@ -163,12 +210,13 @@ async function insertStayCharge(
   encounterId: string,
   stayId: string,
   chargeId: string,
-  description: string
+  description: string,
+  patientId: string = PATIENT_ID
 ): Promise<void> {
   return insertStayChargeFor(
     {
       accountId: ACCOUNT_ID,
-      patientId: PATIENT_ID,
+      patientId,
       ownerId: OWNER_ID,
       userId: USER_ID
     },
@@ -262,24 +310,50 @@ async function seedFixture(): Promise<void> {
      VALUES ($1, $2, $3, 'Daily HTTP Patient', 'canine')`,
     [PATIENT_ID, ACCOUNT_ID, OWNER_ID]
   );
+  await pool.query(
+    `INSERT INTO patients (id, account_id, owner_id, name, species)
+     VALUES
+       ($1, $2, $3, 'Daily HTTP Rollback Patient', 'canine'),
+       ($4, $2, $3, 'Daily HTTP Concurrent Patient', 'canine'),
+       ($5, $2, $3, 'Daily HTTP Distinct-Key Patient', 'canine'),
+       ($6, $2, $3, 'Daily HTTP Isolation Patient', 'canine')`,
+    [
+      ROLLBACK_PATIENT_ID,
+      ACCOUNT_ID,
+      OWNER_ID,
+      CONCURRENT_PATIENT_ID,
+      DISTINCT_KEY_PATIENT_ID,
+      CROSS_TENANT_PATIENT_ID
+    ]
+  );
   await insertStayCharge(ENCOUNTER_ID, STAY_ID, DAILY_CHARGE_ID, 'Diaria HTTP');
   await insertStayCharge(
     ROLLBACK_ENCOUNTER_ID,
     ROLLBACK_STAY_ID,
     ROLLBACK_CHARGE_ID,
-    'Diaria HTTP rollback'
+    'Diaria HTTP rollback',
+    ROLLBACK_PATIENT_ID
   );
   await insertStayCharge(
     CONCURRENT_ENCOUNTER_ID,
     CONCURRENT_STAY_ID,
     CONCURRENT_CHARGE_ID,
-    'Diaria HTTP concorrente'
+    'Diaria HTTP concorrente',
+    CONCURRENT_PATIENT_ID
+  );
+  await insertStayCharge(
+    DISTINCT_KEY_ENCOUNTER_ID,
+    DISTINCT_KEY_STAY_ID,
+    DISTINCT_KEY_CHARGE_ID,
+    'Diaria HTTP chaves distintas',
+    DISTINCT_KEY_PATIENT_ID
   );
   await insertStayCharge(
     CROSS_TENANT_ENCOUNTER_ID,
     CROSS_TENANT_STAY_ID,
     CROSS_TENANT_CHARGE_ID,
-    'Diaria HTTP isolamento'
+    'Diaria HTTP isolamento',
+    CROSS_TENANT_PATIENT_ID
   );
 }
 
@@ -337,6 +411,73 @@ async function seedForeignFixture(): Promise<void> {
   );
 }
 
+async function installDistinctKeyRaceBarrier(): Promise<void> {
+  const pool = getTestPool();
+  await pool.query(
+    `CREATE OR REPLACE FUNCTION ${DISTINCT_KEY_RACE_FUNCTION}()
+     RETURNS trigger
+     LANGUAGE plpgsql
+     AS $$
+     BEGIN
+       PERFORM pg_advisory_lock(${DISTINCT_KEY_RACE_LOCK_KEY});
+       PERFORM pg_advisory_unlock(${DISTINCT_KEY_RACE_LOCK_KEY});
+       PERFORM pg_sleep(0.5);
+       RETURN NEW;
+     END;
+     $$`
+  );
+  await pool.query(
+    `CREATE TRIGGER ${DISTINCT_KEY_RACE_TRIGGER}
+       BEFORE INSERT ON billing_records
+       FOR EACH ROW
+       WHEN (NEW.encounter_id = '${DISTINCT_KEY_ENCOUNTER_ID}'::uuid)
+       EXECUTE FUNCTION ${DISTINCT_KEY_RACE_FUNCTION}()`
+  );
+  distinctKeyRaceBarrierClient = await pool.connect();
+  await distinctKeyRaceBarrierClient.query('SELECT pg_advisory_lock($1)', [
+    DISTINCT_KEY_RACE_LOCK_KEY
+  ]);
+}
+
+async function waitForDistinctKeyRaceParticipants(): Promise<void> {
+  const pool = getTestPool();
+  for (let attempt = 0; attempt < 200; attempt += 1) {
+    const result = await pool.query<{ readonly waiting: number }>(
+      `SELECT COUNT(*)::int AS waiting
+         FROM pg_locks
+        WHERE locktype = 'advisory'
+          AND NOT granted
+          AND classid = 0
+          AND objid = $1
+          AND objsubid = 1`,
+      [DISTINCT_KEY_RACE_LOCK_KEY]
+    );
+    // One participant is sufficient to prove that the request reached the
+    // guarded billing insert. The trigger keeps that participant in the
+    // critical section briefly after the external lock is released, giving
+    // the second HTTP transaction a deterministic overlap window without
+    // depending on unrelated advisory locks in the database.
+    if ((result.rows[0]?.waiting ?? 0) >= 1) return;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  throw new Error('distinct-key race barrier did not observe two waiting API transactions');
+}
+
+async function releaseDistinctKeyRaceBarrier(): Promise<void> {
+  const client = distinctKeyRaceBarrierClient;
+  distinctKeyRaceBarrierClient = undefined;
+  if (!client) return;
+  await client.query('SELECT pg_advisory_unlock($1)', [DISTINCT_KEY_RACE_LOCK_KEY]);
+  client.release();
+}
+
+async function removeDistinctKeyRaceBarrier(): Promise<void> {
+  await releaseDistinctKeyRaceBarrier();
+  const pool = getTestPool();
+  await pool.query(`DROP TRIGGER IF EXISTS ${DISTINCT_KEY_RACE_TRIGGER} ON billing_records`);
+  await pool.query(`DROP FUNCTION IF EXISTS ${DISTINCT_KEY_RACE_FUNCTION}()`);
+}
+
 beforeAll(async () => {
   await seedFixture();
   await seedForeignFixture();
@@ -382,6 +523,25 @@ beforeAll(async () => {
   });
   baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 
+  secondaryServer = createApiServer({
+    appName: 'daily-charge-http-test-secondary',
+    environment: 'test',
+    version: '0.1.0',
+    authSecret: 'daily-charge-http-test-secret',
+    accessTokenTtlSeconds: 900,
+    refreshTokenTtlSeconds: 604800,
+    repositories: bootstrap.repositories,
+    fileStorage: bootstrap.fileStorage,
+    unitOfWork: bootstrap.unitOfWork,
+    preserveSeedUsersWithRepository: false,
+    preserveSeedMasterDataWithRepository: false
+  });
+  await secondaryServer.ready;
+  await new Promise<void>((resolve) => {
+    secondaryServer?.listen(0, '127.0.0.1', () => resolve());
+  });
+  secondaryBaseUrl = `http://127.0.0.1:${(secondaryServer.address() as AddressInfo).port}`;
+
   const login = await requestJson<LoginResponse>('/auth/login', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -407,14 +567,47 @@ beforeAll(async () => {
 
 afterAll(async () => {
   const pool = getTestPool();
-  await pool.query(
-    `ALTER TABLE inpatient_daily_charges DROP CONSTRAINT IF EXISTS ${ROLLBACK_CONSTRAINT}`
-  );
+  await removeDistinctKeyRaceBarrier();
   if (server?.listening) {
     await new Promise<void>((resolve, reject) => {
       server?.close((error) => (error ? reject(error) : resolve()));
     });
   }
+  if (secondaryServer?.listening) {
+    await new Promise<void>((resolve, reject) => {
+      secondaryServer?.close((error) => (error ? reject(error) : resolve()));
+    });
+  }
+  await pool.query(
+    `ALTER TABLE inpatient_daily_charges DROP CONSTRAINT IF EXISTS ${ROLLBACK_CONSTRAINT}`
+  );
+  const fixtureAccounts = [ACCOUNT_ID, FOREIGN_ACCOUNT_ID];
+  await pool.query(
+    'DELETE FROM idempotency_requests WHERE account_id IN ($1, $2)',
+    fixtureAccounts
+  );
+  await pool.query('DELETE FROM billing_items WHERE account_id IN ($1, $2)', fixtureAccounts);
+  await pool.query(
+    'DELETE FROM inpatient_daily_charges WHERE account_id IN ($1, $2)',
+    fixtureAccounts
+  );
+  await pool.query('DELETE FROM billing_records WHERE account_id IN ($1, $2)', fixtureAccounts);
+  await pool.query('DELETE FROM inpatient_stays WHERE account_id IN ($1, $2)', fixtureAccounts);
+  await pool.query('DELETE FROM encounters WHERE account_id IN ($1, $2)', fixtureAccounts);
+  await pool.query('DELETE FROM patients WHERE account_id IN ($1, $2)', fixtureAccounts);
+  await pool.query('DELETE FROM owners WHERE account_id IN ($1, $2)', fixtureAccounts);
+  await pool.query('DELETE FROM audit_events WHERE account_id IN ($1, $2)', [
+    ACCOUNT_ID,
+    FOREIGN_ACCOUNT_ID
+  ]);
+  await pool.query('DELETE FROM sessions WHERE account_id IN ($1, $2)', [
+    ACCOUNT_ID,
+    FOREIGN_ACCOUNT_ID
+  ]);
+  await pool.query('DELETE FROM user_roles WHERE user_id IN ($1, $2)', [USER_ID, FOREIGN_USER_ID]);
+  await pool.query('DELETE FROM users WHERE id IN ($1, $2)', [USER_ID, FOREIGN_USER_ID]);
+  await pool.query('DELETE FROM accounts WHERE id IN ($1, $2)', [ACCOUNT_ID, FOREIGN_ACCOUNT_ID]);
+  await pool.query('DELETE FROM tenants WHERE id IN ($1, $2)', [TENANT_ID, FOREIGN_TENANT_ID]);
   await shutdownServices();
 });
 
@@ -545,6 +738,67 @@ describe('inpatient daily-charge HTTP PostgreSQL boundary', () => {
     );
 
     expect(state.rows[0]).toEqual({ billingItems: 1, completedIdempotency: 1 });
+  });
+
+  it('converges equivalent distinct-key concurrent billing inside the HTTP UoW', async () => {
+    const firstKey = randomUUID();
+    const secondKey = randomUUID();
+    await installDistinctKeyRaceBarrier();
+    const requests = Promise.allSettled([
+      postBill(DISTINCT_KEY_STAY_ID, DISTINCT_KEY_CHARGE_ID, firstKey),
+      postBillAt(secondaryBaseUrl, DISTINCT_KEY_STAY_ID, DISTINCT_KEY_CHARGE_ID, secondKey)
+    ]);
+    try {
+      await waitForDistinctKeyRaceParticipants();
+      await releaseDistinctKeyRaceBarrier();
+      const outcomes = await requests;
+      const responses = outcomes.map((outcome) => {
+        if (outcome.status === 'rejected') throw outcome.reason;
+        return outcome.value;
+      });
+      const [first, second] = responses;
+
+      expect([first.status, second.status].sort()).toEqual([200, 200]);
+      expect(first.body).toEqual(second.body);
+
+      const state = await getTestPool().query<{
+        readonly billingItems: number;
+        readonly billingRecords: number;
+        readonly dailyChargeStatus: string;
+        readonly completedIdempotency: number;
+      }>(
+        `SELECT
+           (SELECT COUNT(*)::int FROM billing_items
+             WHERE account_id = $1 AND source_entity_type = 'inpatient_daily_charge'
+               AND source_entity_id = $2) AS "billingItems",
+           (SELECT COUNT(*)::int FROM billing_records
+             WHERE account_id = $1 AND encounter_id = $3) AS "billingRecords",
+           (SELECT status FROM inpatient_daily_charges
+             WHERE account_id = $1 AND id = $2) AS "dailyChargeStatus",
+           (SELECT COUNT(*)::int FROM idempotency_requests
+             WHERE account_id = $1 AND operation = $4
+               AND idempotency_key IN ($5, $6) AND status = 'completed') AS "completedIdempotency"`,
+        [
+          ACCOUNT_ID,
+          DISTINCT_KEY_CHARGE_ID,
+          DISTINCT_KEY_ENCOUNTER_ID,
+          `POST /inpatient/${DISTINCT_KEY_STAY_ID}/daily-charges/${DISTINCT_KEY_CHARGE_ID}/bill`,
+          firstKey,
+          secondKey
+        ]
+      );
+
+      expect(state.rows[0]).toEqual({
+        billingItems: 1,
+        billingRecords: 1,
+        dailyChargeStatus: 'billed',
+        completedIdempotency: 2
+      });
+    } finally {
+      await releaseDistinctKeyRaceBarrier();
+      await requests;
+      await removeDistinctKeyRaceBarrier();
+    }
   });
 
   it('keeps inpatient reads, writes and idempotency scoped to the bearer tenant', async () => {

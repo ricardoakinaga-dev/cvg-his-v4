@@ -93,7 +93,9 @@ describe('interactive human principal guard', () => {
 
     await expect(users.resolveByUsername('operator', accountId)).resolves.toBeUndefined();
     await expect(users.resolveById(userId, accountId)).resolves.toMatchObject({ id: userId });
+    await expect(users.resolveInteractiveById(userId, accountId)).resolves.toBeUndefined();
     expect(users.findByUsername('operator', accountId)).toBeUndefined();
+    expect(users.list()).toEqual([]);
   });
 
   test('evicts a warm-cache principal that loses interactive-human eligibility', async () => {
@@ -106,6 +108,21 @@ describe('interactive human principal guard', () => {
     await users.hydrateFromDatabase();
 
     expect(users.findByUsername('operator', accountId)).toBeUndefined();
+    expect(users.list()).toEqual([]);
+  });
+
+  test.each([
+    [{ principalKind: 'service' as const }, 'service principal'],
+    [{ isActive: false }, 'inactive principal']
+  ])('evicts a warm-cache %s from interactive resolution (%s)', async (changes) => {
+    const { principal, repository } = createRepository();
+    Object.assign(principal, changes);
+    const users = new UsersService({ repository, seedUsersEnabled: false });
+
+    await users.resolveById(userId, accountId);
+    expect(users.list()).toHaveLength(1);
+
+    await expect(users.resolveInteractiveById(userId, accountId)).resolves.toBeUndefined();
     expect(users.list()).toEqual([]);
   });
 
@@ -128,6 +145,8 @@ describe('interactive human principal guard', () => {
     await expect(
       auth.synchronizeAccessToken(login.accessToken, 'corr-interactive-bearer')
     ).rejects.toBeInstanceOf(AuthenticationError);
+    expect(users.list()).toEqual([]);
+    expect(() => auth.authenticateAccessToken(login.accessToken)).toThrow(AuthenticationError);
   });
 
   test('refreshes principal eligibility even when sessions are process-local', async () => {
@@ -149,6 +168,42 @@ describe('interactive human principal guard', () => {
     await expect(
       auth.synchronizeAccessToken(login.accessToken, 'corr-local-session-bearer')
     ).rejects.toBeInstanceOf(AuthenticationError);
+  });
+
+  test('authoritatively rejects a stale interactive session before cache eviction', async () => {
+    const { principal, repository } = createRepository();
+    const users = new UsersService({ repository, seedUsersEnabled: false });
+    const auth = createAuth(users);
+    const login = await auth.login(
+      { username: 'operator', password, accountId },
+      'corr-stale-session-login'
+    );
+    if (!('accessToken' in login)) throw new Error('Expected completed login');
+
+    principal.isActive = false;
+
+    await expect(auth.getSession(login.accessToken)).rejects.toBeInstanceOf(AuthenticationError);
+    expect(users.list()).toEqual([]);
+  });
+
+  test('authoritatively rejects a stale MFA enrollment principal before cache eviction', async () => {
+    const { principal, repository } = createRepository();
+    const users = new UsersService({ repository, seedUsersEnabled: false });
+    const auth = createAuth(users, new MfaService());
+    const login = await auth.login(
+      { username: 'operator', password, accountId },
+      'corr-stale-mfa-login'
+    );
+    if (!('challengeId' in login)) throw new Error('Expected MFA challenge');
+
+    expect((await auth.getPendingMfaEnrollmentUser(login.challengeId)).id).toBe(userId);
+    principal.principalKind = 'service';
+    principal.interactiveLoginEnabled = false;
+
+    await expect(
+      auth.getPendingMfaEnrollmentUser(login.challengeId, 'corr-stale-mfa-pending')
+    ).rejects.toBeInstanceOf(AuthenticationError);
+    expect(users.list()).toEqual([]);
   });
 
   test('blocks MFA enrollment and completion after principal eligibility changes', async () => {
@@ -174,5 +229,8 @@ describe('interactive human principal guard', () => {
         'corr-interactive-mfa-complete'
       )
     ).rejects.toBeInstanceOf(AuthenticationError);
+    await expect(auth.getPendingMfaEnrollmentUser(login.challengeId)).rejects.toBeInstanceOf(
+      AuthenticationError
+    );
   });
 });

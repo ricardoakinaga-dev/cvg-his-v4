@@ -1,0 +1,86 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-SCHEDULE-LEASE-FENCING-IR-001",
+  "timestamp": "2026-08-29T22:18:00-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-004 durable scheduled-report lease fencing",
+  "scope_ref": "CVG-004-REPORT-SCHEDULE-LEASE-FENCING",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "A fresh two-scout reconciliation selected a concrete P1 scheduled-report takeover race without reopening closed report slices or promoting global ERP readiness.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-SCOUT-CVG-004-REPORT-SCHEDULE-LEASE-FENCING-001",
+        ".agent/backlog.json",
+        ".agent/state.json"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "Selection is static residual evidence, not implementation, database proof, independent review or release approval."
+    },
+    {
+      "id": "IR-002",
+      "description": "The durable schedule claim columns exist, but claimDueSchedules exposes only summaries and recordScheduleExecution/saveSchedule do not fence finalization by the current claim token.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/db/migrations/0142_reports_schedule_claims.sql",
+        "packages/modules/reports/src/index.ts",
+        "apps/worker/src/jobs/scheduled-report-job.ts",
+        "tests/integration/database/reports-delivery-postgres.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Source inspection identifies the race but does not prove takeover behavior until the intentional RED and PostgreSQL tests execute."
+    },
+    {
+      "id": "IR-003",
+      "description": "The bounded correction contract freezes token propagation, account/schedule/token/lease fencing, in-memory parity, worker lease-loss handling and disposable PostgreSQL takeover proof while excluding providers, target and production.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-schedule-lease-fencing.md",
+        ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULE-LEASE-FENCING-IR-001",
+        "packages/modules/reports/src/reports.test.ts",
+        "apps/worker/src/jobs/scheduled-report-job.test.ts",
+        "tests/integration/database"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "RED/GREEN execution, PostgreSQL proof, full regression, quality, review and final reconciliation remain open."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-report-schedule-lease-fencing.md",
+    ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULE-LEASE-FENCING-IR-001",
+    ".agent/verification.jsonl#VFY-SCOUT-CVG-004-REPORT-SCHEDULE-LEASE-FENCING-001",
+    "packages/modules/reports/src/index.ts",
+    "apps/worker/src/jobs/scheduled-report-job.ts",
+    "packages/db/migrations/0142_reports_schedule_claims.sql",
+    "tests/integration/database/reports-delivery-postgres.test.ts"
+  ],
+  "confidence": "MEDIUM",
+  "gaps": [
+    "Implementation, intentional RED/GREEN, PostgreSQL takeover proof, regression, quality and review evidence remain open.",
+    "Delivery-provider behavior, distributed clock/worker topology and report payload semantics remain out of scope.",
+    "Parent CVG-004, global Vetus/clinical parity, target, production, provider and release gates remain open."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via explicit continuation and two-scout local residual reconciliation",
+    "scope": "Repository-local durable scheduled-report claim contract, ReportsService finalization, worker propagation and bounded PostgreSQL/concurrency tests",
+    "decision": "Authorize only an additive fenced claim/finalization correction: expose an opaque claim token paired with each claimed schedule, require account+schedule+active-token ownership for recordScheduleExecution, use a fenced database UPDATE and equivalent in-memory guard, and make the scheduled-report worker carry the token on success and failure. Preserve report payload semantics, delivery-lease behavior and the compatibility summary wrapper. Exclude providers, target, production, deployment, credentials, release and global ERP promotion.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULE-LEASE-FENCING-IR-001",
+    "expires_or_revalidates": "Revalidate before changing delivery claims, report payload semantics, schedule API client contracts, migration shape, provider behavior or entering target/production/deployment/release scope."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "implementation_status": "IMPLEMENTATION_READY",
+  "next_action": "Write and run intentional RED tests for token-bearing claims, fenced finalization, worker propagation and PostgreSQL takeover. Keep professional-care and appointments gates closed, parent CVG-004/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+  "revalidation_triggers": [
+    "Changing report payloads, delivery claims or schedule API client contracts",
+    "Changing claim expiry/clock semantics or migration shape",
+    "Adding provider, target, production, deployment, backup/restore or release behavior",
+    "Expanding into global report parity or ERP readiness"
+  ]
+}

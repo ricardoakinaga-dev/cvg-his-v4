@@ -1,32 +1,38 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { test } from 'vitest';
-import type { CorrelationId, ModuleName } from '@cvg-his-v2/shared-types';
+import type { AccountId, CorrelationId, ModuleName } from '@cvg-his-v2/shared-types';
 import { DatabaseOutboxRepository, EventBusService } from './event-bus.service.js';
 
 const mockCorrelationId = 'corr_test_123' as CorrelationId;
 const mockModuleName = 'notifications' as ModuleName;
-const mockAccountId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' as any;
+const mockAccountId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' as AccountId;
 
 function createMockRepository() {
   const events: any[] = [];
   return {
     deliveryGuarantees: 'ephemeral' as const,
     events, // expose for test assertions
-    create: async (event: any) => { events.push(event); },
+    create: async (event: any) => {
+      events.push(event);
+    },
     update: async (event: any) => {
-      const idx = events.findIndex(e => e.id === event.id);
+      const idx = events.findIndex((e) => e.id === event.id);
       if (idx >= 0) events[idx] = event;
     },
-    findById: async (id: string) => events.find(e => e.id === id) ?? null,
-    findPending: async () => {
+    findById: async (accountId: AccountId, id: string) =>
+      events.find((e) => e.accountId === accountId && e.id === id) ?? null,
+    findPending: async (accountId: AccountId, limit: number) => {
       const now = new Date();
-      return events.filter(
-        (e) =>
-          (e.status === 'pending' || e.status === 'retrying') &&
-          e.attempts < e.maxAttempts &&
-          new Date(e.scheduledAt) <= now
-      );
+      return events
+        .filter(
+          (e) =>
+            e.accountId === accountId &&
+            (e.status === 'pending' || e.status === 'retrying') &&
+            e.attempts < e.maxAttempts &&
+            new Date(e.scheduledAt) <= now
+        )
+        .slice(0, limit);
     },
     claimPending: async ({ limit, leaseOwner, leaseMs }: any) => {
       const now = Date.now();
@@ -35,8 +41,7 @@ function createMockRepository() {
           (event) =>
             ((event.status === 'pending' || event.status === 'retrying') &&
               new Date(event.scheduledAt).getTime() <= now) ||
-            (event.status === 'processing' &&
-              new Date(event.leaseExpiresAt ?? 0).getTime() <= now)
+            (event.status === 'processing' && new Date(event.leaseExpiresAt ?? 0).getTime() <= now)
         )
         .filter((event) => event.attempts < event.maxAttempts)
         .slice(0, limit)
@@ -62,30 +67,48 @@ function createMockRepository() {
     },
     renewClaim: async (claim: any, leaseMs: number) => {
       const event = events.find((candidate) => candidate.id === claim.event.id);
-      if (!event || event.leaseToken !== claim.leaseToken || event.status !== 'processing') return false;
+      if (!event || event.leaseToken !== claim.leaseToken || event.status !== 'processing')
+        return false;
       event.leaseExpiresAt = new Date(Date.now() + leaseMs).toISOString();
       return true;
     },
     completeClaim: async (claim: any, processedAt: string) => {
       const index = events.findIndex((candidate) => candidate.id === claim.event.id);
-      if (index < 0 || events[index].leaseToken !== claim.leaseToken || events[index].status !== 'processing') return false;
+      if (
+        index < 0 ||
+        events[index].leaseToken !== claim.leaseToken ||
+        events[index].status !== 'processing'
+      )
+        return false;
       events[index] = { ...events[index], status: 'completed', processedAt, leaseToken: null };
       return true;
     },
     retryClaim: async (claim: any, input: any) => {
       const index = events.findIndex((candidate) => candidate.id === claim.event.id);
-      if (index < 0 || events[index].leaseToken !== claim.leaseToken || events[index].status !== 'processing') return false;
+      if (
+        index < 0 ||
+        events[index].leaseToken !== claim.leaseToken ||
+        events[index].status !== 'processing'
+      )
+        return false;
       events[index] = { ...events[index], status: 'retrying', ...input, leaseToken: null };
       return true;
     },
     failClaim: async (claim: any, error: string) => {
       const index = events.findIndex((candidate) => candidate.id === claim.event.id);
-      if (index < 0 || events[index].leaseToken !== claim.leaseToken || events[index].status !== 'processing') return false;
+      if (
+        index < 0 ||
+        events[index].leaseToken !== claim.leaseToken ||
+        events[index].status !== 'processing'
+      )
+        return false;
       events[index] = { ...events[index], status: 'failed', error, leaseToken: null };
       return true;
     },
-    reprocess: async (eventId: string) => {
-      const index = events.findIndex((candidate) => candidate.id === eventId);
+    reprocess: async (accountId: AccountId, eventId: string) => {
+      const index = events.findIndex(
+        (candidate) => candidate.accountId === accountId && candidate.id === eventId
+      );
       if (index < 0 || !['failed', 'retrying'].includes(events[index].status)) return null;
       events[index] = {
         ...events[index],
@@ -96,19 +119,39 @@ function createMockRepository() {
       };
       return events[index];
     },
-    peekPending: async (limit: number) => {
+    peekPending: async (accountId: AccountId, limit: number) => {
       const now = new Date();
-      return events.filter(
-        (e) =>
-          (e.status === 'pending' || e.status === 'retrying') &&
-          e.attempts < e.maxAttempts &&
-          new Date(e.scheduledAt) <= now
-      ).slice(0, limit);
+      return events
+        .filter(
+          (e) =>
+            e.accountId === accountId &&
+            (e.status === 'pending' || e.status === 'retrying') &&
+            e.attempts < e.maxAttempts &&
+            new Date(e.scheduledAt) <= now
+        )
+        .slice(0, limit);
     },
-    findFailed: async (limit: number) => events
-      .filter((e) => e.status === 'failed')
-      .slice(0, limit),
-    findByCorrelationId: async (correlationId: CorrelationId) => events.filter(e => e.correlationId === correlationId)
+    findFailed: async (accountId: AccountId, limit: number) =>
+      events.filter((e) => e.accountId === accountId && e.status === 'failed').slice(0, limit),
+    findByCorrelationId: async (
+      accountId: AccountId,
+      correlationId: CorrelationId,
+      limit = events.length
+    ) =>
+      events
+        .filter((e) => e.accountId === accountId && e.correlationId === correlationId)
+        .slice(0, limit),
+    countByStatus: async (accountId: AccountId) => {
+      const counts = { pending: 0, retrying: 0, completed: 0, failed: 0, total: 0 };
+      for (const event of events) {
+        if (event.accountId !== accountId) continue;
+        if (event.status in counts && event.status !== 'total') {
+          counts[event.status as keyof Omit<typeof counts, 'total'>] += 1;
+          counts.total += 1;
+        }
+      }
+      return counts;
+    }
   };
 }
 
@@ -220,7 +263,7 @@ test('EventBusService getEvent returns event by id', async () => {
     payload: {}
   });
 
-  const result = await service.getEvent(published.id);
+  const result = await service.getEvent(mockAccountId, published.id);
 
   assert.ok(result);
   assert.equal(result!.id, published.id);
@@ -245,9 +288,9 @@ test('EventBusService getEventsByCorrelationId returns events for correlation', 
     payload: {}
   });
 
-  const results = await service.getEventsByCorrelationId(mockCorrelationId);
+  const results = await service.getEventsByCorrelationId(mockAccountId, mockCorrelationId, 1);
 
-  assert.equal(results.length, 2);
+  assert.equal(results.length, 1);
 });
 
 test('EventBusService subscribe calls handler when event is processed', async () => {
@@ -309,8 +352,12 @@ test('EventBusService multiple handlers are all called', async () => {
   const service = new EventBusService(repo as any);
 
   const calls: number[] = [];
-  service.subscribe(async () => { calls.push(1); });
-  service.subscribe(async () => { calls.push(2); });
+  service.subscribe(async () => {
+    calls.push(1);
+  });
+  service.subscribe(async () => {
+    calls.push(2);
+  });
 
   await service.publish({
     accountId: mockAccountId,
@@ -400,7 +447,9 @@ test('EventBusService getDeadLetterEvents returns failed events', async () => {
   const repo = createMockRepository();
   const service = new EventBusService(repo as any, { baseMs: 1, maxMs: 10 });
 
-  service.subscribe(async () => { throw new Error('always fails'); });
+  service.subscribe(async () => {
+    throw new Error('always fails');
+  });
 
   await service.publish({
     accountId: mockAccountId,
@@ -422,7 +471,7 @@ test('EventBusService getDeadLetterEvents returns failed events', async () => {
   });
   await service.processPending(10);
 
-  const dlq = await service.getDeadLetterEvents(10);
+  const dlq = await service.getDeadLetterEvents(mockAccountId, 10);
   assert.equal(dlq.length, 2);
   assert.ok(dlq.every((e: any) => e.status === 'failed'));
 });
@@ -431,7 +480,9 @@ test('EventBusService reprocessEvent resets failed event to pending', async () =
   const repo = createMockRepository();
   const service = new EventBusService(repo as any, { baseMs: 1, maxMs: 10 });
 
-  service.subscribe(async () => { throw new Error('always fails'); });
+  service.subscribe(async () => {
+    throw new Error('always fails');
+  });
 
   // Publish an event that will fail and go to DLQ
   await service.publish({
@@ -451,7 +502,7 @@ test('EventBusService reprocessEvent resets failed event to pending', async () =
   const eventId = allEvents[0].id;
 
   // Reprocess the failed event
-  const reprocessed = await service.reprocessEvent(eventId);
+  const reprocessed = await service.reprocessEvent(mockAccountId, eventId);
 
   assert.ok(reprocessed, 'reprocessEvent should return the event');
   assert.equal(reprocessed!.status, 'pending');
@@ -463,7 +514,7 @@ test('EventBusService reprocessEvent returns null for non-existent event', async
   const repo = createMockRepository();
   const service = new EventBusService(repo as any);
 
-  const result = await service.reprocessEvent('non-existent-id');
+  const result = await service.reprocessEvent(mockAccountId, 'non-existent-id');
   assert.equal(result, null);
 });
 
@@ -486,24 +537,38 @@ test('EventBusService getPendingEvents returns pending/retrying events', async (
     payload: {}
   });
 
-  const pending = await service.getPendingEvents(50);
+  const pending = await service.getPendingEvents(mockAccountId, 50);
   // Both events are pending (not processed yet)
   assert.ok(pending.length >= 2);
 });
 
 test('EventBusService getPendingEvents uses a read-only repository query', async () => {
   const repo = createMockRepository();
-  repo.events.push({ id: 'pending-read-only', status: 'pending' });
+  repo.events.push({ id: 'pending-read-only', accountId: mockAccountId, status: 'pending' });
   repo.findPending = async () => {
     throw new Error('claiming query must not be used by a read endpoint');
   };
   repo.peekPending = async () => repo.events;
   const service = new EventBusService(repo as any);
 
-  const pending = await service.getPendingEvents(10);
+  const pending = await service.getPendingEvents(mockAccountId, 10);
 
   assert.equal(pending[0]?.id, 'pending-read-only');
   assert.equal(repo.events[0]?.status, 'pending');
+});
+
+test('EventBusService rejects administrative list limits outside the bounded range', async () => {
+  const repo = createMockRepository();
+  const service = new EventBusService(repo as any);
+
+  await assert.rejects(
+    service.getDeadLetterEvents(mockAccountId, 0),
+    /Outbox administration limit must be an integer between 1 and 200/
+  );
+  await assert.rejects(
+    service.getPendingEvents(mockAccountId, Number.NaN),
+    /Outbox administration limit must be an integer between 1 and 200/
+  );
 });
 
 test('retry executes only the consumer that has no committed inbox receipt', async () => {
@@ -518,11 +583,11 @@ test('retry executes only the consumer that has no committed inbox receipt', asy
       return true;
     }
   };
-  const service = new EventBusService(
-    repo as any,
-    { baseMs: 1, maxMs: 1 },
-    { workerId: 'worker-test', leaseMs: 60_000, consumerGuard } as never
-  );
+  const service = new EventBusService(repo as any, { baseMs: 1, maxMs: 1 }, {
+    workerId: 'worker-test',
+    leaseMs: 60_000,
+    consumerGuard
+  } as never);
   let callsA = 0;
   let callsB = 0;
 
@@ -559,11 +624,10 @@ test('renews the lease while a slow consumer is running', async () => {
     renewals += 1;
     return originalRenew(claim, leaseMs);
   };
-  const service = new EventBusService(
-    repo as any,
-    undefined,
-    { workerId: 'worker-heartbeat', leaseMs: 1_000 }
-  );
+  const service = new EventBusService(repo as any, undefined, {
+    workerId: 'worker-heartbeat',
+    leaseMs: 1_000
+  });
   service.subscribe('slow-consumer', async () => {
     await new Promise((resolve) => setTimeout(resolve, 400));
   });
@@ -658,8 +722,5 @@ test('requires a durable guard for any repository not explicitly marked ephemera
   const service = new EventBusService(repository as any);
   service.subscribe('durable-consumer', async () => {});
 
-  await assert.rejects(
-    service.processPending(1),
-    /requires a durable consumer guard/
-  );
+  await assert.rejects(service.processPending(1), /requires a durable consumer guard/);
 });

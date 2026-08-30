@@ -21,9 +21,7 @@ function createEncounter(
   };
 }
 
-function createEncountersStub(
-  encounter = createEncounter()
-) {
+function createEncountersStub(encounter = createEncounter()) {
   return {
     getOrThrow(encounterId: string) {
       if (encounterId !== encounter.id) {
@@ -39,14 +37,18 @@ describe('TriageService coverage guard', () => {
     const service = new TriageService(createEncountersStub());
 
     await expect(
-      service.createTriage('user_triage' as never, {
-        encounterId: 'enc_triage',
-        patientId: 'patient_other',
-        priority: 'high',
-        chiefComplaint: 'Dispneia',
-        alerts: ['urgente'],
-        destination: 'in_care'
-      })
+      service.createTriage(
+        'user_triage' as never,
+        {
+          encounterId: 'enc_triage',
+          patientId: 'patient_other',
+          priority: 'high',
+          chiefComplaint: 'Dispneia',
+          alerts: ['urgente'],
+          destination: 'in_care'
+        },
+        'acc_triage' as never
+      )
     ).rejects.toThrow(ValidationError);
   });
 
@@ -80,19 +82,26 @@ describe('TriageService coverage guard', () => {
       }
     };
 
-    const service = new TriageService(createEncountersStub(createEncounter({ status: 'observation' })), {
-      repository
-    });
+    const service = new TriageService(
+      createEncountersStub(createEncounter({ status: 'observation' })),
+      {
+        repository
+      }
+    );
 
-    const created = await service.createTriage('user_creator' as never, {
-      encounterId: 'enc_triage',
-      patientId: 'patient_triage',
-      priority: 'medium',
-      chiefComplaint: 'Febre',
-      initialNotes: '  observacao inicial  ',
-      alerts: ['letargia'],
-      destination: 'observation'
-    });
+    const created = await service.createTriage(
+      'user_creator' as never,
+      {
+        encounterId: 'enc_triage',
+        patientId: 'patient_triage',
+        priority: 'medium',
+        chiefComplaint: 'Febre',
+        initialNotes: '  observacao inicial  ',
+        alerts: ['letargia'],
+        destination: 'observation'
+      },
+      'acc_triage' as never
+    );
 
     const updated = await service.updateTriage(
       created.id,
@@ -102,13 +111,14 @@ describe('TriageService coverage guard', () => {
         alerts: ['letargia', 'desidratacao'],
         destination: 'in_care'
       },
+      'acc_triage' as never,
       'user_supervisor' as never
     );
 
     expect(createdRecords).toHaveLength(2);
     expect(updated.initialNotes).toBeUndefined();
-    expect(service.listVersions(created.id)).toHaveLength(1);
-    expect(service.listVersions(created.id)[0]).toEqual(
+    expect(service.listVersions(created.id, 'acc_triage' as never)).toHaveLength(1);
+    expect(service.listVersions(created.id, 'acc_triage' as never)[0]).toEqual(
       expect.objectContaining({
         changedByUserId: 'user_supervisor',
         changedFields: expect.arrayContaining([
@@ -214,12 +224,13 @@ describe('TriageService coverage guard', () => {
 
     await service.hydrateFromDatabase('acc_repo' as never);
 
-    const listed = service.list();
+    const listed = service.list('acc_repo' as never);
     expect(listed).toHaveLength(1);
     expect(listed[0]?.id).toBe('triage_acc_repo');
-    expect(service.listVersions('triage_acc_repo' as never).map((version) => version.id)).toEqual([
-      'triagev_newer',
-      'triagev_older'
-    ]);
+    expect(
+      service
+        .listVersions('triage_acc_repo' as never, 'acc_repo' as never)
+        .map((version) => version.id)
+    ).toEqual(['triagev_newer', 'triagev_older']);
   });
 });

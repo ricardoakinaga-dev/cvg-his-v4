@@ -119,7 +119,7 @@ interface CardFailedPayload {
  *
  * Supported event types:
  *   - payment.pix.intent.created → audit log (PIX intent recorded)
- *   - payment.pix.confirmed → settle associated billing record via BillingService
+ *   - payment.pix.confirmed → validate an authoritative legacy intent, then settle billing
  */
 export class PaymentsEventHandlers {
   readonly name = 'payments';
@@ -208,45 +208,63 @@ export class PaymentsEventHandlers {
   async #handlePixConfirmed(event: OutboxEvent): Promise<void> {
     const payload = event.payload as unknown as PixConfirmedPayload;
     const completedAt = payload.completedAt ?? payload.confirmedAt ?? nowIso();
-    let transaction = await this.#pixTransactions.findByTransactionId(payload.intentId);
+    const transaction = await this.#pixTransactions.findByTransactionId(payload.intentId);
 
+    // A legacy confirmation is only an observation about an intent created by
+    // the legacy flow. It is never allowed to reconstruct payment state from
+    // an event alone: the dedicated attempt-linked flow owns B1 settlement.
     if (!transaction) {
-      const createdAt = event.createdAt ?? completedAt;
-      await this.#pixTransactions.create({
-        transactionId: payload.intentId,
-        provider: 'local-pix',
-        accountId: payload.accountId,
-        billingRecordId: payload.billingRecordId,
-        amount: 0,
-        currency: 'BRL',
-        description: `PIX payment ${payload.intentId}`,
-        qrCodePayload: '',
-        qrCodeBase64: '',
-        expiresAt: completedAt,
-        status: 'pending',
-        createdAt,
-        updatedAt: createdAt,
-        billingSettlementStatus: payload.billingRecordId ? 'pending_billing' : 'not_applicable',
-        cashReconciliationStatus: 'pending'
-      });
-      transaction = await this.#pixTransactions.findByTransactionId(payload.intentId);
+      throw new Error(
+        `Legacy PIX confirmation ${payload.intentId} has no authoritative PIX transaction intent`
+      );
+    }
+    if (transaction.paymentAttemptId) {
+      throw new Error(
+        `Legacy PIX confirmation ${payload.intentId} is attempt-linked; attempt-linked PIX confirmation must use the dedicated settlement flow`
+      );
+    }
+    if (
+      event.accountId !== payload.accountId ||
+      transaction.accountId !== payload.accountId ||
+      transaction.billingRecordId !== payload.billingRecordId
+    ) {
+      throw new Error('PIX confirmation does not match the event, transaction or billing account');
+    }
+    if (payload.status && payload.status !== 'completed') {
+      throw new Error('PIX confirmation status is not completed');
+    }
+
+    const billingRecord = payload.billingRecordId
+      ? this.#billing.getOrThrow(payload.billingRecordId as BillingRecordId)
+      : undefined;
+    if (billingRecord) {
+      if (billingRecord.accountId !== payload.accountId) {
+        throw new Error('PIX confirmation does not match the billing account');
+      }
+      if (
+        transaction.currency !== billingRecord.currency ||
+        transaction.amount !== billingRecord.subtotalAmount
+      ) {
+        throw new Error('PIX confirmation amount does not match the billing record');
+      }
     }
 
     const updatedTransaction = await this.#pixTransactions.updateStatus({
       transactionId: payload.intentId,
       status: 'completed',
       updatedAt: completedAt,
-      providerTransactionId: payload.providerTransactionId ?? transaction?.providerTransactionId,
+      providerTransactionId: payload.providerTransactionId ?? transaction.providerTransactionId,
       providerConfirmationId: payload.providerConfirmationId ?? payload.providerTransactionId,
       completedAt,
       lastProviderSyncAt: completedAt,
       billingSettlementStatus: payload.billingRecordId ? 'pending_billing' : 'not_applicable'
     });
-
-    const effectiveTransaction = updatedTransaction ?? transaction;
-    if (!effectiveTransaction) {
-      return;
+    if (!updatedTransaction) {
+      throw new Error(
+        `Legacy PIX confirmation ${payload.intentId} could not mark its authoritative transaction as completed`
+      );
     }
+    const effectiveTransaction = updatedTransaction;
 
     if (!payload.billingRecordId) {
       await this.#pixTransactions.updateCashReconciliation({
@@ -272,20 +290,6 @@ export class PaymentsEventHandlers {
     }
 
     try {
-      const billingRecord = this.#billing.getOrThrow(payload.billingRecordId as BillingRecordId);
-      if (
-        effectiveTransaction.accountId !== payload.accountId ||
-        effectiveTransaction.billingRecordId !== payload.billingRecordId ||
-        billingRecord.accountId !== payload.accountId
-      ) {
-        throw new Error('PIX confirmation does not match the billing account');
-      }
-      if (
-        effectiveTransaction.currency !== billingRecord.currency ||
-        effectiveTransaction.amount !== billingRecord.subtotalAmount
-      ) {
-        throw new Error('PIX confirmation amount does not match the billing record');
-      }
       await this.#billing.settleByRecordId(payload.billingRecordId as BillingRecordId);
 
       const hasReceivablePayment = await this.#hasReceivablePaymentLink(

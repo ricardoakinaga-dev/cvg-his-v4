@@ -1,0 +1,88 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-INVENTORY-STOCK-IR-001",
+  "timestamp": "2026-08-27T23:25:01-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-004 bounded on-demand server-backed inventory-stock report/export",
+  "scope_ref": "CVG-004-REPORT-INVENTORY-STOCK",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The report grain, exact ten-field contract, filters, current-value derivation, permission, bound and non-promotion exclusions are frozen.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-inventory-stock.md",
+        ".agent/authority.jsonl#AUTH-CVG-004-REPORT-INVENTORY-STOCK-IR-001",
+        "packages/modules/reports/src/index.ts",
+        "docs/vetus/guides/2026-04-24-relatorio-relatorios-estoque.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Vetus evidence establishes the report surface and business role but not an authoritative dynamic-executor schema; the bounded local contract is explicit about that limitation."
+    },
+    {
+      "id": "IR-002",
+      "description": "The existing tenant-scoped inventory_items repository and ReportsService execution/export boundary provide an additive implementation path without a migration.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/db/migrations/0062_inventory_runtime_persistence.sql",
+        "packages/modules/inventory/src/repositories/database-inventory.repository.ts",
+        "packages/modules/inventory/src/index.ts",
+        "apps/api/src/routes/reports-routes.ts",
+        "apps/api/src/runtime.ts",
+        "apps/api/src/bootstrap.ts",
+        "packages/modules/reports/src/index.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The local source supports current persisted item facts; lots, movements, invoices and historical valuation are not part of this gate."
+    },
+    {
+      "id": "IR-003",
+      "description": "Focused TDD and disposable PostgreSQL evidence can prove exact mapping, tenant isolation, filter semantics, fail-closed behavior and server-side SPA export.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-inventory-stock.md",
+        "packages/modules/inventory/src/inventory.test.ts",
+        "packages/modules/reports/src/reports.test.ts",
+        "apps/api/src/routes/reports-routes.test.ts",
+        "apps/spa/src/pages/reports/__tests__/ReportWorkbenchPage.test.ts",
+        "tests/integration/database/inventory-products-report-postgres.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The implementation, independent critique and fresh verification are required before a bounded result is recorded."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-report-inventory-stock.md",
+    ".agent/authority.jsonl#AUTH-CVG-004-REPORT-INVENTORY-STOCK-IR-001",
+    "packages/db/migrations/0062_inventory_runtime_persistence.sql",
+    "packages/modules/inventory/src/repositories/database-inventory.repository.ts",
+    "apps/api/src/routes/reports-routes.ts",
+    "apps/spa/src/pages/reports/ReportWorkbenchPage.vue"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "The RED tests, implementation, independent critique and post-implementation regression are not complete at gate creation."
+  ],
+  "conditions": [],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via the original consolidation brief",
+    "scope": "CVG-004 bounded on-demand server-backed inventory-stock report/export",
+    "decision": "Authorize reversible repository, API and SPA implementation with focused tests and disposable PostgreSQL verification using only tenant-scoped persisted inventory_items. Exclude scheduled worker resolution, historical/as-of stock, lots, invoices, historical valuation, providers, fiscal writes, credentials, target, production, deployment, backfill and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-INVENTORY-STOCK-IR-001",
+    "expires_or_revalidates": "Revalidate before adding lot, movement, invoice, historical/valuation semantics, scheduled delivery, providers, credentials, target, production, deployment or release activity."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "next_action": "Write and run the intentional RED module/API/SPA tests, then implement the smallest tenant-scoped persisted current-stock projection and audited export.",
+  "revalidation_triggers": [
+    "Changes to inventory item schema, balance/cost semantics, tenant repository queries or report authorization",
+    "Changes to ReportsService execution/export or Report Workbench behavior",
+    "Expansion beyond current persisted inventory_items facts"
+  ],
+  "supersedes": null
+}

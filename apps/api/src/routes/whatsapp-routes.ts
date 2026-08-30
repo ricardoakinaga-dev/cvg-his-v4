@@ -19,7 +19,7 @@ export interface WhatsAppRoutesHandlers {
   audit: AuditService;
   notificationsWhatsappInboundActionsEnabled: boolean;
   inboundWebhookSecret?: string;
-  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
+  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
 }
 
 type ScopedScheduling = {
@@ -126,7 +126,7 @@ export async function handleWhatsAppRoutes(
     pathname.endsWith('/report') &&
     request.method === 'GET'
   ) {
-    const principal = requirePrincipal(request, 'notifications.read');
+    const principal = await requirePrincipal(request, 'notifications.read');
     const appointmentId = pathname.split('/')[3] ?? '';
     const appointment = scheduling.getAppointmentOrThrow(appointmentId as never);
     if (appointment.accountId !== principal.user.accountId) {

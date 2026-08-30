@@ -9,11 +9,7 @@ import {
   type OutboxEvent,
   type OutboxRepository
 } from '../../../packages/modules/event-bus/src/index.js';
-import {
-  createDatabaseClient,
-  createTenantUnitOfWork,
-  getPool
-} from '@cvg-his-v2/shared-database';
+import { createDatabaseClient, createTenantUnitOfWork, getPool } from '@cvg-his-v2/shared-database';
 import { runWithTenantContext } from '@cvg-his-v2/tenant-context';
 import type { AccountId } from '@cvg-his-v2/shared-types';
 import { TEST_DB_URL } from '../../setup/env.js';
@@ -107,10 +103,12 @@ describe('outbox delivery leases', () => {
     const first = new DatabaseOutboxRepository() as unknown as LeaseRepository;
     const second = new DatabaseOutboxRepository() as unknown as LeaseRepository;
 
-    const [claimsA, claimsB] = await asTenant(() => Promise.all([
-      first.claimPending({ limit: 2, leaseOwner: 'worker-a', leaseMs: 60_000 }),
-      second.claimPending({ limit: 2, leaseOwner: 'worker-b', leaseMs: 60_000 })
-    ]));
+    const [claimsA, claimsB] = await asTenant(() =>
+      Promise.all([
+        first.claimPending({ limit: 2, leaseOwner: 'worker-a', leaseMs: 60_000 }),
+        second.claimPending({ limit: 2, leaseOwner: 'worker-b', leaseMs: 60_000 })
+      ])
+    );
 
     const claimedA = claimsA.map((claim) => claim.event.id);
     const claimedB = claimsB.map((claim) => claim.event.id);
@@ -143,12 +141,14 @@ describe('outbox delivery leases', () => {
     const [ownEventId] = await insertEvents(1);
     const repository = new DatabaseOutboxRepository();
 
-    const foreignRead = await asTenant(() => repository.findById(foreignEventId));
-    const [claim] = await asTenant(() => repository.claimPending({
-      limit: 1,
-      leaseOwner: 'tenant-isolation-worker',
-      leaseMs: 60_000
-    }));
+    const foreignRead = await asTenant(() => repository.findById(ACCOUNT_ID, foreignEventId));
+    const [claim] = await asTenant(() =>
+      repository.claimPending({
+        limit: 1,
+        leaseOwner: 'tenant-isolation-worker',
+        leaseMs: 60_000
+      })
+    );
     const foreignRow = await adminPool.query(
       'SELECT status, lease_owner FROM outbox_events WHERE id = $1',
       [foreignEventId]
@@ -159,32 +159,117 @@ describe('outbox delivery leases', () => {
     expect(foreignRow.rows[0]).toEqual({ status: 'pending', lease_owner: null });
   });
 
+  it('scopes all administrative reads, counts and redrive to the explicit account', async () => {
+    const foreignEventId = randomUUID();
+    const foreignCorrelationId = randomUUID();
+    await adminPool.query(
+      `INSERT INTO outbox_events
+         (id, account_id, correlation_id, module_name, event_type, payload, status,
+          attempts, max_attempts, scheduled_at, created_at)
+       VALUES ($1, $2, $3, 'test', 'test.foreign.failed', $4::jsonb, 'failed', 1, 1,
+               now(), now())`,
+      [
+        foreignEventId,
+        OTHER_ACCOUNT_ID,
+        foreignCorrelationId,
+        JSON.stringify({ accountId: OTHER_ACCOUNT_ID, id: foreignEventId })
+      ]
+    );
+    const [ownEventId] = await insertEvents(1);
+    const repository = new DatabaseOutboxRepository();
+
+    await asTenant(async () => {
+      expect(await repository.findById(ACCOUNT_ID, foreignEventId)).toBeNull();
+      expect(await repository.findFailed(ACCOUNT_ID, 10)).toEqual([]);
+      expect(await repository.findByCorrelationId(ACCOUNT_ID, foreignCorrelationId, 10)).toEqual(
+        []
+      );
+      expect(await repository.reprocess(ACCOUNT_ID, foreignEventId)).toBeNull();
+      expect((await repository.peekPending(ACCOUNT_ID, 10)).map((event) => event.id)).toEqual([
+        ownEventId
+      ]);
+      expect(await repository.countByStatus(ACCOUNT_ID)).toEqual({
+        pending: 1,
+        retrying: 0,
+        completed: 0,
+        failed: 0,
+        total: 1
+      });
+    });
+
+    const foreignRow = await adminPool.query(
+      'SELECT status, attempts FROM outbox_events WHERE id = $1',
+      [foreignEventId]
+    );
+    expect(foreignRow.rows[0]).toEqual({ status: 'failed', attempts: 1 });
+  });
+
+  it('rejects an explicit administrative account that differs from ambient tenant context', async () => {
+    const [eventId] = await insertEvents(1);
+    const repository = new DatabaseOutboxRepository();
+
+    await expect(asTenant(() => repository.findById(OTHER_ACCOUNT_ID, eventId))).rejects.toThrow(
+      'Outbox administration account does not match tenant context'
+    );
+    await expect(asTenant(() => repository.countByStatus(OTHER_ACCOUNT_ID))).rejects.toThrow(
+      'Outbox administration account does not match tenant context'
+    );
+  });
+
+  it('bounds database correlation searches to the requested limit', async () => {
+    const correlationId = randomUUID();
+    const eventIds = [randomUUID(), randomUUID()];
+    for (const eventId of eventIds) {
+      await adminPool.query(
+        `INSERT INTO outbox_events
+           (id, account_id, correlation_id, module_name, event_type, payload, status,
+            attempts, max_attempts, scheduled_at, created_at)
+         VALUES ($1, $2, $3, 'test', 'test.correlation', $4::jsonb, 'completed', 1, 1,
+                 now(), now())`,
+        [eventId, ACCOUNT_ID, correlationId, JSON.stringify({ accountId: ACCOUNT_ID, id: eventId })]
+      );
+    }
+
+    const repository = new DatabaseOutboxRepository();
+    await asTenant(async () => {
+      const events = await repository.findByCorrelationId(ACCOUNT_ID, correlationId, 1);
+      expect(events).toHaveLength(1);
+      expect(eventIds).toContain(events[0]?.id);
+    });
+  });
+
   it('allows takeover only after lease expiry', async () => {
     const [eventId] = await insertEvents(1);
     const first = new DatabaseOutboxRepository() as unknown as LeaseRepository;
     const second = new DatabaseOutboxRepository() as unknown as LeaseRepository;
 
-    const [claimA] = await asTenant(() => first.claimPending({
-      limit: 1,
-      leaseOwner: 'worker-a',
-      leaseMs: 60_000
-    }));
-    const beforeExpiry = await asTenant(() => second.claimPending({
-      limit: 1,
-      leaseOwner: 'worker-b',
-      leaseMs: 60_000
-    }));
+    const [claimA] = await asTenant(() =>
+      first.claimPending({
+        limit: 1,
+        leaseOwner: 'worker-a',
+        leaseMs: 60_000
+      })
+    );
+    const beforeExpiry = await asTenant(() =>
+      second.claimPending({
+        limit: 1,
+        leaseOwner: 'worker-b',
+        leaseMs: 60_000
+      })
+    );
     expect(beforeExpiry).toEqual([]);
 
     await adminPool.query(
       `UPDATE outbox_events SET lease_expires_at = now() - interval '1 second' WHERE id = $1`,
       [eventId]
     );
-    const [claimB] = await asTenant(() => second.claimPending({
-      limit: 1,
-      leaseOwner: 'worker-b',
-      leaseMs: 60_000
-    }));
+    const [claimB] = await asTenant(() =>
+      second.claimPending({
+        limit: 1,
+        leaseOwner: 'worker-b',
+        leaseMs: 60_000
+      })
+    );
 
     expect(claimB.event.id).toBe(claimA.event.id);
     expect(claimB.leaseToken).not.toBe(claimA.leaseToken);
@@ -195,24 +280,29 @@ describe('outbox delivery leases', () => {
     const [eventId] = await insertEvents(1);
     const first = new DatabaseOutboxRepository() as unknown as LeaseRepository;
     const second = new DatabaseOutboxRepository() as unknown as LeaseRepository;
-    const [claimA] = await asTenant(() => first.claimPending({
-      limit: 1,
-      leaseOwner: 'worker-a',
-      leaseMs: 60_000
-    }));
+    const [claimA] = await asTenant(() =>
+      first.claimPending({
+        limit: 1,
+        leaseOwner: 'worker-a',
+        leaseMs: 60_000
+      })
+    );
     await adminPool.query(
       `UPDATE outbox_events SET lease_expires_at = now() - interval '1 second' WHERE id = $1`,
       [eventId]
     );
-    const [claimB] = await asTenant(() => second.claimPending({
-      limit: 1,
-      leaseOwner: 'worker-b',
-      leaseMs: 60_000
-    }));
+    const [claimB] = await asTenant(() =>
+      second.claimPending({
+        limit: 1,
+        leaseOwner: 'worker-b',
+        leaseMs: 60_000
+      })
+    );
 
     await expect(asTenant(() => first.renewClaim(claimA, 60_000))).resolves.toBe(false);
-    await expect(asTenant(() => first.completeClaim(claimA, new Date().toISOString())))
-      .resolves.toBe(false);
+    await expect(
+      asTenant(() => first.completeClaim(claimA, new Date().toISOString()))
+    ).resolves.toBe(false);
     const stillOwnedByB = await adminPool.query(
       'SELECT status, lease_owner, lease_token::text, processed_at FROM outbox_events WHERE id = $1',
       [eventId]
@@ -224,31 +314,37 @@ describe('outbox delivery leases', () => {
       processed_at: null
     });
 
-    await expect(asTenant(() => second.completeClaim(claimB, new Date().toISOString())))
-      .resolves.toBe(true);
-    await expect(asTenant(() => second.completeClaim(claimB, new Date().toISOString())))
-      .resolves.toBe(false);
+    await expect(
+      asTenant(() => second.completeClaim(claimB, new Date().toISOString()))
+    ).resolves.toBe(true);
+    await expect(
+      asTenant(() => second.completeClaim(claimB, new Date().toISOString()))
+    ).resolves.toBe(false);
   });
 
   it('moves an expired final attempt to DLQ before claiming more work', async () => {
     const [eventId] = await insertEvents(1);
     await adminPool.query('UPDATE outbox_events SET max_attempts = 1 WHERE id = $1', [eventId]);
     const repository = new DatabaseOutboxRepository() as unknown as LeaseRepository;
-    await asTenant(() => repository.claimPending({
-      limit: 1,
-      leaseOwner: 'worker-final-attempt',
-      leaseMs: 60_000
-    }));
+    await asTenant(() =>
+      repository.claimPending({
+        limit: 1,
+        leaseOwner: 'worker-final-attempt',
+        leaseMs: 60_000
+      })
+    );
     await adminPool.query(
       `UPDATE outbox_events SET lease_expires_at = now() - interval '1 second' WHERE id = $1`,
       [eventId]
     );
 
-    const next = await asTenant(() => repository.claimPending({
-      limit: 1,
-      leaseOwner: 'worker-takeover',
-      leaseMs: 60_000
-    }));
+    const next = await asTenant(() =>
+      repository.claimPending({
+        limit: 1,
+        leaseOwner: 'worker-takeover',
+        leaseMs: 60_000
+      })
+    );
     const row = await adminPool.query(
       `SELECT status, attempts, lease_owner, lease_token, lease_expires_at, error
        FROM outbox_events WHERE id = $1`,
@@ -290,7 +386,8 @@ describe('outbox delivery leases', () => {
       reprocess: repository.reprocess.bind(repository),
       peekPending: repository.peekPending.bind(repository),
       findFailed: repository.findFailed.bind(repository),
-      findByCorrelationId: repository.findByCorrelationId.bind(repository)
+      findByCorrelationId: repository.findByCorrelationId.bind(repository),
+      countByStatus: repository.countByStatus.bind(repository)
     };
     let handlerCalls = 0;
     const createService = (workerId: string) => {

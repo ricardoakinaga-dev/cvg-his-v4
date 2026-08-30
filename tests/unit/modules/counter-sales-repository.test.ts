@@ -20,7 +20,8 @@ vi.mock('@cvg-his-v2/tenant-context', () => ({
 import { NotFoundError } from '@cvg-his-v2/shared-errors';
 import {
   DatabaseCounterSalesRepository,
-  type CounterSaleItemRecord
+  type CounterSaleItemRecord,
+  type CounterSaleRecord
 } from '../../../packages/modules/counter-sales/src/repositories/database-counter-sales.repository.js';
 
 const item: CounterSaleItemRecord = {
@@ -40,10 +41,97 @@ const item: CounterSaleItemRecord = {
   updatedAt: '2026-08-24T10:00:00.000Z'
 };
 
+const sale: CounterSaleRecord = {
+  id: 'sale-1',
+  accountId: 'account-1' as never,
+  number: 'CS-000001',
+  ownerId: null,
+  patientId: null,
+  encounterId: null,
+  queueEntryId: null,
+  billingRecordId: null,
+  status: 'cancelled',
+  subtotal: 100,
+  discountAmount: 0,
+  total: 100,
+  paidAmount: 0,
+  balanceDue: 100,
+  notes: null,
+  openedByUserId: 'user-1' as never,
+  closedByUserId: null,
+  closedAt: null,
+  createdAt: '2026-08-24T10:00:00.000Z',
+  updatedAt: '2026-08-24T10:01:00.000Z'
+};
+
 describe('DatabaseCounterSalesRepository item tenant boundaries', () => {
   beforeEach(() => {
     queryMock.mockReset();
     withTenantQueryMock.mockClear();
+  });
+
+  it('scopes sale updates by account and rejects a missing row', async () => {
+    queryMock.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+
+    await expect(new DatabaseCounterSalesRepository().update(sale)).rejects.toBeInstanceOf(
+      NotFoundError
+    );
+
+    expect(queryMock).toHaveBeenCalledWith(
+      expect.stringMatching(/WHERE id = \$1\s+AND account_id = \$2/),
+      expect.arrayContaining(['sale-1', 'account-1'])
+    );
+  });
+
+  it('locks a sale with the explicit account predicate', async () => {
+    queryMock.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+
+    await expect(
+      new DatabaseCounterSalesRepository().lockSaleForUpdate?.('sale-1', 'account-1' as never)
+    ).resolves.toBeNull();
+
+    expect(queryMock).toHaveBeenCalledWith(
+      expect.stringMatching(/WHERE id = \$1 AND account_id = \$2 FOR UPDATE/),
+      ['sale-1', 'account-1']
+    );
+  });
+
+  it('reads cancellation history only for the current tenant and sale', async () => {
+    queryMock.mockResolvedValueOnce({
+      rows: [
+        {
+          id: 'event-1',
+          account_id: 'account-1',
+          entity_id: 'sale-1',
+          actor_user_id: 'user-1',
+          occurred_at: '2026-08-24T10:01:00.000Z',
+          reason: 'Cliente desistiu',
+          correlation_id: 'corr-1'
+        }
+      ],
+      rowCount: 1
+    });
+
+    const repository = new DatabaseCounterSalesRepository() as unknown as {
+      listCancellationHistory: (
+        accountId: string,
+        counterSaleId: string
+      ) => Promise<readonly Record<string, unknown>[]>;
+    };
+    const history = await repository.listCancellationHistory('account-1', 'sale-1');
+
+    expect(history).toHaveLength(1);
+    expect(history[0]).toMatchObject({
+      eventId: 'event-1',
+      accountId: 'account-1',
+      counterSaleId: 'sale-1',
+      cancelledByUserId: 'user-1',
+      reason: 'Cliente desistiu'
+    });
+    expect(queryMock).toHaveBeenCalledWith(
+      expect.stringMatching(/entity_type = 'counter-sale'.*action = 'cancelled'/s),
+      ['account-1', 'sale-1']
+    );
   });
 
   it('scopes item updates by account and parent sale and rejects a missing row', async () => {

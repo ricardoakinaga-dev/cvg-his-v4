@@ -1,0 +1,161 @@
+{
+  "record_id": "GATE-CVG-005-LAB-PROVIDER-INGRESS-LOCAL-VFY-001",
+  "timestamp": "2026-08-29T03:55:00-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-005 local hardening of the tenant-scoped equipment laboratory provider-result ingress",
+  "scope_ref": "CVG-005-LAB-PROVIDER-INGRESS-LOCAL",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-001-SIGNED-PROTOCOL",
+      "description": "The equipment-result boundary requires strict versioned raw JSON, canonical UTC observedAt, account-bound fresh HMAC-SHA-256 headers and duplicate/unknown/malformed input rejection.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-005-LAB-PROVIDER-INGRESS-LOCAL.md",
+        "apps/api/src/laboratory-provider-ingress.ts",
+        "apps/api/src/laboratory-provider-ingress.test.ts",
+        "apps/api/src/routes/laboratory-integration-routes.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The protocol is local evidence and does not homologate a real laboratory provider or transport."
+    },
+    {
+      "id": "V-002-NO-CLINICAL-MUTATION",
+      "description": "Valid first ingress is durably acknowledged as pending_human_review, replay is stable, divergent reuse conflicts, audit is awaited and the route never mutates or signs a diagnostic order.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/api/src/routes/laboratory-integration-routes.ts",
+        "apps/api/src/routes/laboratory-integration-routes.test.ts",
+        "apps/api/src/server.test.ts",
+        "tests/integration/external-integrations-premium.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Human clinical review and any later release/signature workflow remain outside this gate."
+    },
+    {
+      "id": "V-003-DURABLE-ATOMIC-LEDGER",
+      "description": "The durable repository and migration use the account/external-result boundary for atomic replay/conflict decisions, immutable provider facts, tenant filtering and workflow-only updates.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/api/src/laboratory-result-import-repository.ts",
+        "packages/db/migrations/0154_laboratory_provider_ingress.sql",
+        "tests/integration/database/laboratory-provider-ingress.test.ts",
+        "tests/unit/db/laboratory-provider-ingress-migration.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The PostgreSQL proof is disposable local infrastructure; target rollout and production scale are not certified."
+    },
+    {
+      "id": "V-004-CATALOG-AND-ACL",
+      "description": "The dedicated permission is present in the real first-run catalog, and runtime API/worker roles lose DELETE/TRUNCATE on the append-only laboratory ledger after broad grants, including inherited-role evidence.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/rbac/src/access-control-catalog.ts",
+        "apps/api/src/setup-provisioning.ts",
+        "apps/api/src/setup-provisioning.test.ts",
+        "packages/db/src/runtime-role-policy.ts",
+        "packages/db/src/reconcile-runtime-roles.ts",
+        "infra/postgres/init-runtime-role.sh",
+        "infra/helm/cvg-his-v2/templates/postgres-runtime-role-configmap.yaml",
+        "tests/integration/setup/installation-state.test.ts",
+        "tests/integration/rls/runtime-role-sensitive-acl.test.ts",
+        "tests/unit/infra/runtime-role-grants.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The ACL evidence covers the repository's disposable PostgreSQL roles and local deployment scripts, not a target cluster."
+    },
+    {
+      "id": "V-005-QUALITY-REGRESSION",
+      "description": "The bounded implementation passes TDD/API/database regressions, aggregate coverage, workspace quality gates and security/contract validators.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-005-LAB-PROVIDER-INGRESS-LOCAL-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-005-LAB-PROVIDER-INGRESS-LOCAL-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-005-LAB-PROVIDER-INGRESS-LOCAL-QUALITY-001",
+        ".agent/verification.jsonl#VFY-CVG-005-LAB-PROVIDER-INGRESS-LOCAL-POSTGRES-001",
+        ".agent/artifacts/CVG-005-lab-provider-ingress-local-2026-08-29.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The recursive pnpm test attempt was interrupted with exit 130 after local resource saturation and is not counted as a pass; serial PostgreSQL and full API evidence are the accepted bounded regression set."
+    },
+    {
+      "id": "V-006-INDEPENDENT-REVIEW-CONDITION",
+      "description": "The initial independent review's P1 clean-install catalog and P2 runtime DELETE/TRUNCATE findings were corrected and directly retested; a fresh reviewer session did not return before the bounded operational timeout.",
+      "required": true,
+      "status": "CONDITIONAL",
+      "evidence_refs": [
+        ".agent/artifacts/CVG-005-lab-provider-ingress-local-2026-08-29.md",
+        ".agent/verification.jsonl#VFY-CVG-005-LAB-PROVIDER-INGRESS-LOCAL-REVIEW-001",
+        ".agent/verification.jsonl#VFY-CVG-005-LAB-PROVIDER-INGRESS-LOCAL-REVIEW-RETRY-001",
+        ".agent/verification.jsonl#VFY-CVG-005-LAB-PROVIDER-INGRESS-LOCAL-CATALOG-ACL-POSTFIX-001"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "No independent APPROVE_BOUNDED is inferred after the corrections: two delegated review attempts were shut down after no result. Direct tests and integrator inspection remain the basis for this bounded conditional closure."
+    },
+    {
+      "id": "V-007-GLOBAL-NON-PROMOTION",
+      "description": "The local result is reconciled without promoting CVG-005, general/clinical Vetus parity, enterprise readiness, target operations or release acceptance.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-005-LAB-PROVIDER-INGRESS-LOCAL-GLOBAL-RETEST-001",
+        ".agent/state.json",
+        ".agent/backlog.json",
+        ".gauntlet/state.md",
+        ".gauntlet/progress.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "General parity remains 4/11, clinical parity 2/3 and enterprise readiness 95/100 with 42 PASS, 3 WARN and 1 FAIL."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-005-LAB-PROVIDER-INGRESS-LOCAL.md",
+    ".agent/artifacts/CVG-005-lab-provider-ingress-local-2026-08-29.md",
+    ".agent/gates/implementation-ready-CVG-005-lab-provider-ingress-local-IR-001.json",
+    ".agent/authority.jsonl#AUTH-CVG-005-LAB-PROVIDER-INGRESS-LOCAL-IR-001",
+    "apps/api/src/laboratory-provider-ingress.ts",
+    "apps/api/src/laboratory-provider-keyring.ts",
+    "apps/api/src/laboratory-result-import-repository.ts",
+    "apps/api/src/routes/laboratory-integration-routes.ts",
+    "packages/db/migrations/0154_laboratory_provider_ingress.sql",
+    "packages/rbac/src/access-control-catalog.ts",
+    "packages/db/src/reconcile-runtime-roles.ts",
+    ".agent/verification.jsonl#VFY-CVG-005-LAB-PROVIDER-INGRESS-LOCAL-FINAL-001"
+  ],
+  "confidence": "MEDIUM",
+  "gaps": [
+    "No fresh independent approval was returned after the P1/P2 corrections; the gate remains conditional on direct evidence.",
+    "Live Lab/provider homologation, external credentials, analyzer mapping, target runtime, production operations, backup/restore, accessibility, LGPD and complete Vetus parity remain open.",
+    "The recursive workspace test attempt was interrupted by local resource saturation and is not evidence of a clean full-suite pass."
+  ],
+  "conditions": [
+    "Keep CVG-005 and global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+    "Treat the ingress as pending human review only; do not auto-release, auto-sign or mutate diagnostic orders.",
+    "Obtain a fresh independent review before using this slice as a release or production approval.",
+    "Revalidate before changing payload/signing semantics, adding providers, using external credentials or enabling target/production behavior."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via explicit continuation of the consolidation request",
+    "scope": "Authorize only local versioned/signed laboratory provider-result ingress hardening",
+    "decision": "Implement and verify the exact signed equipment-bridge contract, account-bound HMAC verification, durable tenant-scoped atomic replay/conflict ledger and pending-human-review status; preserve no-clinical-mutation and least-privilege runtime boundaries.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-005-LAB-PROVIDER-INGRESS-LOCAL-IR-001",
+    "expires_or_revalidates": "Revalidate before changing the protocol, adding another provider, mutating clinical workflows, using external credentials/targets or claiming homologation/production readiness."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_BOUNDED",
+  "next_action": "Keep the bounded result conditional until a fresh independent review is obtained; then begin fresh scouting under a new authority while global ERP remains IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+  "revalidation_triggers": [
+    "Payload or signing scheme changes",
+    "Additional provider or transport integration",
+    "Clinical order/workflow mutation or automatic release/signature",
+    "External credentials, target, production, deployment, backfill or release activity"
+  ],
+  "supersedes": ".agent/gates/implementation-ready-CVG-005-lab-provider-ingress-local-IR-001.json"
+}

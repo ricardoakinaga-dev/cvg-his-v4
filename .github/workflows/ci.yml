@@ -47,6 +47,43 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+  lint:
+    name: Lint
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    needs: [typecheck]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
+
+      - name: Get pnpm store path
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_ENV
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
   sast:
     name: SAST (Semgrep)
     runs-on: ubuntu-22.04
@@ -166,6 +203,82 @@ jobs:
       - name: Validate OpenAPI
         run: pnpm validate:openapi
 
+  repository-guards:
+    name: Repository Guards
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    needs: [typecheck]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
+
+      - name: Get pnpm store path
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_ENV
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install pinned Helm
+        env:
+          CVG_HELM_VERSION: v3.15.4
+          CVG_HELM_SHA256: 11400fecfc07fd6f034863e4e0c4c4445594673fd2a129e701fe41f31170cfa9
+        run: |
+          set -euo pipefail
+          helm_archive="helm-${CVG_HELM_VERSION#v}-linux-amd64.tar.gz"
+          helm_url="https://get.helm.sh/${helm_archive}"
+          curl --fail --silent --show-error --location "${helm_url}" --output "/tmp/${helm_archive}"
+          echo "${CVG_HELM_SHA256}  /tmp/${helm_archive}" | sha256sum --check -
+          tar -xzf "/tmp/${helm_archive}" -C /tmp
+          sudo install "/tmp/linux-amd64/helm" /usr/local/bin/helm
+          test -x /usr/local/bin/helm
+          test "$(command -v helm)" = "/usr/local/bin/helm"
+          helm version --short
+
+      - name: Start isolated PostgreSQL
+        run: pnpm test:db:start
+
+      - name: Validate repository, deployment and recovery contracts
+        run: |
+          pnpm validate:openapi
+          pnpm validate:migration-source
+          pnpm validate:rls
+          pnpm validate:deploy-surface
+          HELM_BIN=/usr/local/bin/helm REQUIRE_HELM=1 pnpm validate:helm
+          pnpm deploy:check
+          pnpm ops:backup:check
+          REQUIRE_TEST_DB=1 pnpm vitest run tests/unit/infra/requirement-evidence-matrix.test.ts --config vitest.config.ts
+          node --test tests/unit/infra/gauntlet-subcriteria-evidence.test.mjs
+          pnpm vetus:parity:test
+          pnpm vitest run tests/integration/process/runtime-lifecycle.test.ts --config vitest.integration.config.ts
+          REQUIRE_TEST_DB=1 pnpm vitest run tests/integration/database/migration-integrity-runtime.test.ts --config vitest.integration.config.ts
+          REQUIRE_TEST_DB=1 pnpm vitest run tests/integration/rls/force-rls-catalog.test.ts tests/integration/rls/rls-isolation.test.ts tests/integration/rls/rls-access-governance.test.ts tests/integration/rls/runtime-role-sensitive-acl.test.ts --config vitest.integration.config.ts
+          REQUIRE_TEST_DB=1 pnpm vitest run tests/integration/setup/production-like-runtime-bootstrap.test.ts --config vitest.integration.config.ts
+          REQUIRE_TEST_DB=1 pnpm vitest run tests/integration/database/inpatient-clinical-financial-vertical-http-postgres.test.ts --config vitest.integration.config.ts
+          docker compose --env-file .env.v2.example -f docker-compose.v2.yml config --quiet
+
+      - name: Stop isolated PostgreSQL
+        if: always()
+        run: pnpm test:db:stop
+
   api-contract-tests:
     name: API Contract Tests
     runs-on: ubuntu-22.04
@@ -181,6 +294,7 @@ jobs:
         ports:
           - 5433:5432
         options: >-
+          --shm-size 1g
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
@@ -234,12 +348,13 @@ jobs:
         env:
           DATABASE_URL_TEST: postgres://postgres:postgres@localhost:5433/cvg_his_v2_test
           DATABASE_URL: postgres://postgres:postgres@localhost:5433/cvg_his_v2_test
-        run: node packages/db/src/migrate.ts
+        run: pnpm exec tsx packages/db/src/migrate.ts
 
       - name: Start API
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5433/cvg_his_v2_test
           REDIS_URL: redis://localhost:6380
+          RUNTIME_DISTRIBUTED_STATE_ENABLED: '1'
           AUTH_SECRET: ci-test-secret-key-do-not-use-in-production-123456789012
           PORT: '3001'
           NODE_ENV: test
@@ -249,9 +364,13 @@ jobs:
           API_PID=$!
           echo "API_PID=$API_PID" >> $GITHUB_ENV
           for i in $(seq 1 60); do
-            if curl -fsS http://localhost:3001/health >/dev/null 2>&1; then
+            if curl -fsS http://localhost:3001/ready >/dev/null 2>&1; then
               echo "API is healthy"
               break
+            fi
+            if [ "$i" -eq 60 ]; then
+              echo "API did not become ready"
+              exit 1
             fi
             sleep 2
           done
@@ -270,7 +389,7 @@ jobs:
     name: Build
     runs-on: ubuntu-22.04
     timeout-minutes: 10
-    needs: [typecheck, validate-openapi]
+    needs: [typecheck, validate-openapi, lint]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -306,7 +425,7 @@ jobs:
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-22.04
-    timeout-minutes: 10
+    timeout-minutes: 30
     needs: [build]
     steps:
       - name: Checkout
@@ -337,6 +456,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Start isolated PostgreSQL
+        run: pnpm test:db:start
+
       - name: Run unit tests
         run: pnpm test
         env:
@@ -344,11 +466,83 @@ jobs:
           # are gated on an explicit development/test environment, never on an
           # unset NODE_ENV.
           NODE_ENV: test
+          REQUIRE_TEST_DB: 1
+
+      - name: Run critical process runner contract
+        run: pnpm exec vitest run tests/unit/infra/critical-process-suite-contract.test.ts --config vitest.config.ts --no-file-parallelism
+        env:
+          NODE_ENV: test
+          REQUIRE_TEST_DB: 1
+
+      - name: Run CI workflow contract
+        run: pnpm exec vitest run tests/unit/infra/ci-contract.test.ts --config vitest.config.ts --no-file-parallelism
+        env:
+          NODE_ENV: test
+          REQUIRE_TEST_DB: 1
+
+      - name: Stop isolated PostgreSQL
+        if: always()
+        run: pnpm test:db:stop
+
+  critical-process-runner-windows:
+    name: Critical Process Runner (Windows contract)
+    runs-on: windows-2022
+    timeout-minutes: 15
+    needs: [build]
+    env:
+      CRITICAL_PROCESS_ARTIFACT_DIR: ${{ runner.temp }}/critical-process-artifacts
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
+
+      - name: Get pnpm store path
+        shell: pwsh
+        run: Add-Content -Path $env:GITHUB_ENV -Value "STORE_PATH=$(pnpm store path)"
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Windows package-manager invocation contract
+        run: node --test tests/unit/infra/critical-process-suite-windows-contract.test.mjs
+
+      - name: Validate the Windows runner manifest and dry-run
+        env:
+          NODE_ENV: test
+        run: |
+          node infra/scripts/run-critical-process-suite.mjs --list
+          node infra/scripts/run-critical-process-suite.mjs --dry-run
+
+      - name: Upload Windows runner diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: critical-process-windows-diagnostics
+          path: ${{ runner.temp }}/critical-process-artifacts/**
+          if-no-files-found: ignore
+          retention-days: 30
 
   integration-tests:
     name: Integration Tests
     runs-on: ubuntu-22.04
-    timeout-minutes: 15
+    timeout-minutes: 120
     needs: [build]
     services:
       postgres:
@@ -360,6 +554,7 @@ jobs:
         ports:
           - 5433:5432
         options: >-
+          --shm-size 1g
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
@@ -404,7 +599,20 @@ jobs:
         env:
           DATABASE_URL_TEST: postgres://postgres:postgres@localhost:5433/cvg_his_v2_test
           DATABASE_URL: postgres://postgres:postgres@localhost:5433/cvg_his_v2_test
+          REQUIRE_TEST_DB: 1
+          TEST_DB_EPHEMERAL: 1
+          CRITICAL_PROCESS_TIMEOUT_MS: 600000
+          CRITICAL_PROCESS_ARTIFACT_DIR: critical-process-artifacts
         run: pnpm test:critical
+
+      - name: Upload critical process failure artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: critical-process-artifacts
+          path: critical-process-artifacts/
+          if-no-files-found: ignore
+          retention-days: 30
 
   coverage:
     name: Coverage
@@ -485,6 +693,7 @@ jobs:
         ports:
           - 5433:5432
         options: >-
+          --shm-size 1g
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
@@ -589,6 +798,7 @@ jobs:
         ports:
           - 5434:5432
         options: >-
+          --shm-size 1g
           --health-cmd "pg_isready -U postgres -d cvg_his_e2e"
           --health-interval 3s
           --health-timeout 5s
@@ -659,6 +869,7 @@ jobs:
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5434/cvg_his_e2e
           REDIS_URL: redis://localhost:6380
+          RUNTIME_DISTRIBUTED_STATE_ENABLED: '1'
           AUTH_SECRET: e2e-ci-secret-key-do-not-use-in-production-12345678
           API_DISABLE_INCOMPATIBLE_DB_REPOS: '0'
           PORT: '3001'
@@ -673,9 +884,13 @@ jobs:
       - name: Wait for API health
         run: |
           for i in $(seq 1 60); do
-            if curl -fsS http://localhost:3001/health >/dev/null 2>&1; then
+            if curl -fsS http://localhost:3001/ready >/dev/null 2>&1; then
               echo "✅ API is healthy"
               break
+            fi
+            if [ "$i" -eq 60 ]; then
+              echo "❌ API did not become ready"
+              exit 1
             fi
             sleep 2
           done
@@ -708,12 +923,17 @@ jobs:
           E2E_ADMIN_PASSWORD: seed_admin
           E2E_DATABASE_URL: postgres://postgres:postgres@localhost:5434/cvg_his_e2e
           E2E_REDIS_URL: redis://localhost:6380
+          E2E_DATABASE_MODE: '1'
           API_DISABLE_INCOMPATIBLE_DB_REPOS: '0'
         run: |
           npx playwright test --config playwright-spa.config.ts \
             e2e/spa/master-search-360-reception.spec.ts \
             e2e/spa/master-search-360-mobile.spec.ts \
-            e2e/spa/enterprise-surfaces-gate.spec.ts
+            e2e/spa/enterprise-surfaces-gate.spec.ts \
+            e2e/spa/setup-wizard-accessibility.spec.ts \
+            e2e/spa/vetus-import-flow.spec.ts \
+            e2e/spa/deleted-sales-report-flow.spec.ts \
+            e2e/spa/service-invoices-report-flow.spec.ts
 
       - name: Generate Enterprise RC evidence
         if: always()
@@ -729,7 +949,9 @@ jobs:
         if: always()
         with:
           name: e2e-spa-report
-          path: e2e/spa-report/
+          path: |
+            e2e/spa-report/
+            test-results/
           retention-days: 30
 
   test-visual:
@@ -747,6 +969,7 @@ jobs:
         ports:
           - 5434:5432
         options: >-
+          --shm-size 1g
           --health-cmd "pg_isready -U postgres -d cvg_his_e2e"
           --health-interval 3s
           --health-timeout 5s
@@ -814,6 +1037,7 @@ jobs:
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5434/cvg_his_e2e
           REDIS_URL: redis://localhost:6380
+          RUNTIME_DISTRIBUTED_STATE_ENABLED: '1'
           AUTH_SECRET: e2e-ci-secret-key-do-not-use-in-production-12345678
           PORT: '3001'
           NODE_ENV: test
@@ -827,9 +1051,13 @@ jobs:
       - name: Wait for API health
         run: |
           for i in $(seq 1 60); do
-            if curl -fsS http://localhost:3001/health >/dev/null 2>&1; then
+            if curl -fsS http://localhost:3001/ready >/dev/null 2>&1; then
               echo "✅ API is healthy"
               break
+            fi
+            if [ "$i" -eq 60 ]; then
+              echo "❌ API did not become ready"
+              exit 1
             fi
             sleep 2
           done
@@ -861,7 +1089,6 @@ jobs:
           E2E_ADMIN_EMAIL: admin@cvg.local
           E2E_ADMIN_PASSWORD: Admin123!
         run: npx playwright test --config playwright-spa.config.ts -g "Visual"
-        continue-on-error: true
 
       - name: Upload visual regression report
         uses: actions/upload-artifact@v4

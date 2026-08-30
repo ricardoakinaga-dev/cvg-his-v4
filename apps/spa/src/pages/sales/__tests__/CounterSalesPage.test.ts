@@ -156,7 +156,8 @@ const saleDetail: CounterSaleDetail = {
       createdAt: '2026-04-15T10:10:00Z'
     }
   ],
-  receipt: null
+  receipt: null,
+  cancellationHistory: []
 };
 
 describe('CounterSalesPage', () => {
@@ -164,6 +165,7 @@ describe('CounterSalesPage', () => {
     vi.resetModules();
     vi.restoreAllMocks();
     vi.clearAllMocks();
+    mockCounterSalesGetById.mockReset();
     window.history.pushState({}, '', '/counter-sales');
     vi.spyOn(window, 'open').mockImplementation(
       () =>
@@ -272,7 +274,9 @@ describe('CounterSalesPage', () => {
           accountId: 'acc-1',
           fullName: 'Maria Costa',
           documentId: '123.456.789-00',
-          contacts: [{ label: 'WhatsApp', value: '(11) 99999-9999', type: 'whatsapp', primary: true }],
+          contacts: [
+            { label: 'WhatsApp', value: '(11) 99999-9999', type: 'whatsapp', primary: true }
+          ],
           financialResponsible: true,
           administrativeNotes: null,
           status: 'active',
@@ -446,7 +450,9 @@ describe('CounterSalesPage', () => {
     expect(wrapper.text()).toContain('Encaminhar Esteira');
     expect(wrapper.text()).toContain('Voltar para Comandas');
     expect(wrapper.text()).toContain('Imprimir');
-    expect(wrapper.find('input[placeholder="Buscar por Nome, CPF, E-mail ou ID"]').exists()).toBe(true);
+    expect(wrapper.find('input[placeholder="Buscar por Nome, CPF, E-mail ou ID"]').exists()).toBe(
+      true
+    );
 
     const addItemButton = wrapper
       .findAll('button')
@@ -528,17 +534,87 @@ describe('CounterSalesPage', () => {
     await closeButton!.trigger('click');
     await flushPromises();
 
-    expect(mockCounterSalesSettle).toHaveBeenCalledWith(
-      'cs-1',
-      [
-        expect.objectContaining({
-          method: 'pix',
-          amount: 100,
-          installments: 1
-        })
-      ]
-    );
+    expect(mockCounterSalesSettle).toHaveBeenCalledWith('cs-1', [
+      expect.objectContaining({
+        method: 'pix',
+        amount: 100,
+        installments: 1
+      })
+    ]);
     expect(mockCounterSalesClose).not.toHaveBeenCalled();
+  });
+
+  it('exige motivo trimado antes de cancelar a comanda e exibe o histórico retornado', async () => {
+    const cancelledDetail: CounterSaleDetail = {
+      ...saleDetail,
+      status: 'cancelled',
+      cancellationHistory: [
+        {
+          eventId: 'event-1',
+          accountId: 'acc-1',
+          counterSaleId: 'cs-1',
+          cancelledByUserId: 'user-1',
+          cancelledAt: '2026-04-15T10:20:00Z',
+          reason: 'Cliente desistiu',
+          correlationId: 'corr-1'
+        }
+      ]
+    };
+    mockCounterSalesGetById
+      .mockResolvedValueOnce(saleDetail)
+      .mockResolvedValueOnce(saleDetail)
+      .mockResolvedValue(cancelledDetail);
+
+    const CounterSalesPage = (await import('../CounterSalesPage.vue')).default;
+    const wrapper = mount(CounterSalesPage, { attachTo: document.body });
+    await flushPromises();
+
+    const cancelButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('Cancelar Comanda'));
+    expect(cancelButton).toBeTruthy();
+    await cancelButton!.trigger('click');
+    await flushPromises();
+
+    const reasonInput = wrapper.find('#counter-sale-cancel-reason');
+    expect(reasonInput.exists()).toBe(true);
+    expect(wrapper.text()).toContain('Motivo do cancelamento');
+
+    const confirmButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('Confirmar cancelamento'));
+    expect(confirmButton).toBeTruthy();
+    expect(confirmButton!.attributes('disabled')).toBeDefined();
+
+    await reasonInput.setValue('Cliente desistiu\n');
+    expect(confirmButton!.attributes('disabled')).toBeDefined();
+    await reasonInput.setValue('  Cliente desistiu  ');
+    await confirmButton!.trigger('click');
+    await flushPromises();
+
+    expect(mockCounterSalesCancel).toHaveBeenCalledWith('cs-1', 'Cliente desistiu');
+    expect(wrapper.text()).toContain('Histórico de cancelamentos');
+    expect(wrapper.text()).toContain('Cliente desistiu');
+    expect(wrapper.text()).toContain('Operador user-1');
+  });
+
+  it('não permite motivo de cancelamento acima de 500 caracteres', async () => {
+    const CounterSalesPage = (await import('../CounterSalesPage.vue')).default;
+    const wrapper = mount(CounterSalesPage, { attachTo: document.body });
+    await flushPromises();
+
+    const cancelButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('Cancelar Comanda'));
+    await cancelButton!.trigger('click');
+    const reasonInput = wrapper.find('#counter-sale-cancel-reason');
+    await reasonInput.setValue('x'.repeat(501));
+
+    const confirmButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('Confirmar cancelamento'));
+    expect(confirmButton!.attributes('disabled')).toBeDefined();
+    expect(mockCounterSalesCancel).not.toHaveBeenCalled();
   });
 
   it('prepara impressão operacional da comanda selecionada', async () => {

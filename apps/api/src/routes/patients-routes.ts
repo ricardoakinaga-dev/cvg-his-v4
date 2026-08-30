@@ -11,7 +11,7 @@ import type {
   UpdatePatientRequest,
   UpdateOwnerPatientLinkRequest
 } from '@cvg-his-v2/shared-contracts';
-import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
+import type { AuthenticatedPrincipal, MasterSearchOwnerResult } from '@cvg-his-v2/shared-types';
 import { NotFoundError } from '@cvg-his-v2/shared-errors';
 
 import { appendAudit } from '../helpers/audit-helper.js';
@@ -22,7 +22,10 @@ export interface PatientsRoutesHandlers {
   owners?: OwnersService;
   encounters?: EncountersService;
   audit: AuditService;
-  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
+  requirePrincipal: (
+    request: IncomingMessage,
+    permissionCode: string
+  ) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
 }
 
 function json(response: ServerResponse, statusCode: number, payload: unknown): true {
@@ -44,11 +47,19 @@ export async function handlePatientsRoutes(
   const url = new URL(request.url ?? pathname, 'http://localhost');
 
   if (pathname === '/master-search' && method === 'GET') {
-    const principal = requirePrincipal(request, 'patients.read');
+    const principal = await requirePrincipal(request, 'patients.read');
+    await requirePrincipal(request, 'owners.read');
     const query = url.searchParams.get('q') ?? '';
     const rawResults = patients.searchMaster(query);
+    const owners: MasterSearchOwnerResult[] = rawResults.owners
+      .filter((owner) => owner.accountId === principal.user.accountId)
+      .map((owner) => ({
+        id: owner.id,
+        fullName: owner.fullName,
+        status: owner.status
+      }));
     const results = {
-      owners: rawResults.owners.filter((owner) => owner.accountId === principal.user.accountId),
+      owners,
       patients: rawResults.patients.filter(
         (patient) => patient.accountId === principal.user.accountId
       ),
@@ -75,7 +86,7 @@ export async function handlePatientsRoutes(
     if (!match) return false;
     if (!owners || !encounters) return false;
 
-    const principal = requirePrincipal(request, 'patients.read');
+    const principal = await requirePrincipal(request, 'patients.read');
     const patientId = match[1];
     const patient = patients.getOrThrow(patientId as never);
     if (patient.accountId !== principal.user.accountId) {
@@ -115,7 +126,8 @@ export async function handlePatientsRoutes(
       },
       stats: {
         totalEncounters: relatedEncounters.length,
-        openEncounters: relatedEncounters.filter((encounter) => encounter.status !== 'closed').length
+        openEncounters: relatedEncounters.filter((encounter) => encounter.status !== 'closed')
+          .length
       },
       recentEncounters: relatedEncounters.slice(0, 5).map((encounter) => ({
         id: encounter.id,
@@ -127,7 +139,7 @@ export async function handlePatientsRoutes(
 
   // GET /patients - List patients
   if (pathname === '/patients' && method === 'GET') {
-    const principal = requirePrincipal(request, 'patients.read');
+    const principal = await requirePrincipal(request, 'patients.read');
     const query = url.searchParams.get('q') ?? undefined;
     const ownerId = url.searchParams.get('ownerId') ?? undefined;
     const species = url.searchParams.get('species') ?? undefined;
@@ -166,7 +178,7 @@ export async function handlePatientsRoutes(
 
   // POST /patients - Create patient
   if (pathname === '/patients' && method === 'POST') {
-    const principal = requirePrincipal(request, 'patients.manage');
+    const principal = await requirePrincipal(request, 'patients.manage');
     const body = (await readJsonBody(request)) as CreatePatientRequest;
     if (owners) {
       const owner = owners.getOrThrow(body.primaryOwnerId as never);
@@ -215,7 +227,7 @@ export async function handlePatientsRoutes(
 
   const mergeMatch = pathname.match(/^\/patients\/([^/]+)\/merge$/);
   if (mergeMatch && method === 'POST') {
-    const principal = requirePrincipal(request, 'patients.manage');
+    const principal = await requirePrincipal(request, 'patients.manage');
     const sourcePatientId = mergeMatch[1];
     const source = patients.getOrThrow(sourcePatientId as never);
     if (source.accountId !== principal.user.accountId) {
@@ -255,7 +267,7 @@ export async function handlePatientsRoutes(
     if (!match) return false;
     if (!owners) return false;
 
-    const principal = requirePrincipal(request, 'patients.read');
+    const principal = await requirePrincipal(request, 'patients.read');
     const patientId = match[1];
 
     const patient = patients.getOrThrow(patientId as never);
@@ -297,7 +309,7 @@ export async function handlePatientsRoutes(
     const match = pathname.match(/^\/patients\/([^/]+)$/);
     if (!match) return false;
 
-    const principal = requirePrincipal(request, 'patients.read');
+    const principal = await requirePrincipal(request, 'patients.read');
     const patientId = match[1];
 
     const patient = patients.getOrThrow(patientId as never);
@@ -325,7 +337,7 @@ export async function handlePatientsRoutes(
     const match = pathname.match(/^\/patients\/([^/]+)$/);
     if (!match) return false;
 
-    const principal = requirePrincipal(request, 'patients.manage');
+    const principal = await requirePrincipal(request, 'patients.manage');
     const patientId = match[1];
     const body = (await readJsonBody(request)) as UpdatePatientRequest;
     const existing = patients.getOrThrow(patientId as never);
@@ -382,7 +394,7 @@ export async function handlePatientsRoutes(
     const match = pathname.match(/^\/patients\/([^/]+)$/);
     if (!match) return false;
 
-    const principal = requirePrincipal(request, 'patients.manage');
+    const principal = await requirePrincipal(request, 'patients.manage');
     const patientId = match[1];
 
     const existing = patients.getOrThrow(patientId as never);
@@ -410,7 +422,7 @@ export async function handlePatientsRoutes(
   }
 
   if (pathname === '/owner-patient-links' && method === 'GET') {
-    const principal = requirePrincipal(request, 'patients.read');
+    const principal = await requirePrincipal(request, 'patients.read');
     const ownerId = url.searchParams.get('ownerId') ?? undefined;
     const patientId = url.searchParams.get('patientId') ?? undefined;
 
@@ -434,7 +446,7 @@ export async function handlePatientsRoutes(
   }
 
   if (pathname === '/owner-patient-links' && method === 'POST') {
-    const principal = requirePrincipal(request, 'patients.manage');
+    const principal = await requirePrincipal(request, 'patients.manage');
     const payload = (await readJsonBody(request)) as CreateOwnerPatientLinkRequest;
     const patient = patients.getOrThrow(payload.patientId as never);
     if (patient.accountId !== principal.user.accountId) {
@@ -466,7 +478,7 @@ export async function handlePatientsRoutes(
 
   const linkMatch = pathname.match(/^\/owner-patient-links\/([^/]+)$/);
   if (linkMatch && method === 'PATCH') {
-    const principal = requirePrincipal(request, 'patients.manage');
+    const principal = await requirePrincipal(request, 'patients.manage');
     const payload = (await readJsonBody(request)) as UpdateOwnerPatientLinkRequest;
     const link = patients.updateLink(
       principal.user.accountId as never,
@@ -489,7 +501,7 @@ export async function handlePatientsRoutes(
   }
 
   if (linkMatch && method === 'DELETE') {
-    const principal = requirePrincipal(request, 'patients.manage');
+    const principal = await requirePrincipal(request, 'patients.manage');
     patients.deleteLink(principal.user.accountId as never, linkMatch[1] as never);
     await patients.waitForPersistence();
     appendAudit(audit, {

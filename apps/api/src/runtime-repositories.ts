@@ -16,6 +16,7 @@ import type {
   ClaimPendingInput,
   OutboxClaim,
   OutboxEvent,
+  OutboxEventCounts,
   OutboxRepository,
   RetryClaimInput
 } from '@cvg-his-v2/module-event-bus';
@@ -108,8 +109,10 @@ class InMemoryOutboxRepository implements OutboxRepository {
     this.#events.set(event.id, event);
   }
 
-  async findById(id: string): Promise<OutboxEvent | null> {
-    return this.#events.get(id) ?? null;
+  async findById(accountId: AccountId, id: string): Promise<OutboxEvent | null> {
+    this.#assertAdministrativeAccount(accountId);
+    const event = this.#events.get(id);
+    return event?.accountId === accountId ? event : null;
   }
 
   async claimPending(input: ClaimPendingInput): Promise<readonly OutboxClaim[]> {
@@ -127,7 +130,11 @@ class InMemoryOutboxRepository implements OutboxRepository {
       .slice(0, input.limit)
       .map((event) => {
         const previousLease = this.#leases.get(event.id);
-        const claimedEvent = { ...event, status: 'processing' as const, attempts: event.attempts + 1 };
+        const claimedEvent = {
+          ...event,
+          status: 'processing' as const,
+          attempts: event.attempts + 1
+        };
         const lease = {
           leaseOwner: input.leaseOwner,
           leaseToken: createCorrelationId('lease'),
@@ -155,16 +162,23 @@ class InMemoryOutboxRepository implements OutboxRepository {
   }
 
   async retryClaim(claim: OutboxClaim, input: RetryClaimInput): Promise<boolean> {
-    return this.#settle(claim, { status: 'retrying', scheduledAt: input.scheduledAt, error: input.error });
+    return this.#settle(claim, {
+      status: 'retrying',
+      scheduledAt: input.scheduledAt,
+      error: input.error
+    });
   }
 
   async failClaim(claim: OutboxClaim, error: string): Promise<boolean> {
     return this.#settle(claim, { status: 'failed', error });
   }
 
-  async reprocess(eventId: string): Promise<OutboxEvent | null> {
+  async reprocess(accountId: AccountId, eventId: string): Promise<OutboxEvent | null> {
+    this.#assertAdministrativeAccount(accountId);
     const event = this.#events.get(eventId);
-    if (!event || !['failed', 'retrying'].includes(event.status)) return null;
+    if (!event || event.accountId !== accountId || !['failed', 'retrying'].includes(event.status)) {
+      return null;
+    }
     const reprocessed: OutboxEvent = {
       ...event,
       status: 'pending',
@@ -178,32 +192,81 @@ class InMemoryOutboxRepository implements OutboxRepository {
     return reprocessed;
   }
 
-  async peekPending(limit: number): Promise<readonly OutboxEvent[]> {
+  async peekPending(accountId: AccountId, limit: number): Promise<readonly OutboxEvent[]> {
+    this.#assertAdministrativeAccount(accountId);
+    this.#assertAdministrativeLimit(limit);
     const now = Date.now();
     return Array.from(this.#events.values())
-      .filter((event) =>
-        (event.status === 'pending' || event.status === 'retrying') &&
-        new Date(event.scheduledAt).getTime() <= now
+      .filter(
+        (event) =>
+          event.accountId === accountId &&
+          (event.status === 'pending' || event.status === 'retrying') &&
+          new Date(event.scheduledAt).getTime() <= now
       )
       .slice(0, limit);
   }
 
   /** @deprecated Test/admin compatibility. Processing must use claimPending(). */
-  async findPending(limit: number): Promise<readonly OutboxEvent[]> {
-    return this.peekPending(limit);
+  async findPending(accountId: AccountId, limit: number): Promise<readonly OutboxEvent[]> {
+    return this.peekPending(accountId, limit);
   }
 
-  async findByCorrelationId(correlationId: CorrelationId): Promise<readonly OutboxEvent[]> {
+  async findByCorrelationId(
+    accountId: AccountId,
+    correlationId: CorrelationId,
+    limit: number
+  ): Promise<readonly OutboxEvent[]> {
+    this.#assertAdministrativeAccount(accountId);
+    this.#assertAdministrativeLimit(limit);
     return Array.from(this.#events.values())
-      .filter((event) => event.correlationId === correlationId)
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  }
-
-  async findFailed(limit: number): Promise<readonly OutboxEvent[]> {
-    return Array.from(this.#events.values())
-      .filter((event) => event.status === 'failed')
+      .filter((event) => event.accountId === accountId && event.correlationId === correlationId)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
       .slice(0, limit);
+  }
+
+  async findFailed(accountId: AccountId, limit: number): Promise<readonly OutboxEvent[]> {
+    this.#assertAdministrativeAccount(accountId);
+    this.#assertAdministrativeLimit(limit);
+    return Array.from(this.#events.values())
+      .filter((event) => event.accountId === accountId && event.status === 'failed')
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, limit);
+  }
+
+  async countByStatus(accountId: AccountId): Promise<OutboxEventCounts> {
+    this.#assertAdministrativeAccount(accountId);
+    const counts = {
+      pending: 0,
+      retrying: 0,
+      completed: 0,
+      failed: 0,
+      total: 0
+    };
+    for (const event of this.#events.values()) {
+      if (event.accountId !== accountId) continue;
+      if (
+        event.status === 'pending' ||
+        event.status === 'retrying' ||
+        event.status === 'completed' ||
+        event.status === 'failed'
+      ) {
+        counts[event.status] += 1;
+        counts.total += 1;
+      }
+    }
+    return counts;
+  }
+
+  #assertAdministrativeAccount(accountId: AccountId): void {
+    if (typeof accountId !== 'string' || accountId.trim().length === 0) {
+      throw new Error('Outbox administration requires an accountId');
+    }
+  }
+
+  #assertAdministrativeLimit(limit: number): void {
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 200) {
+      throw new Error('Outbox administration limit must be an integer between 1 and 200');
+    }
   }
 
   #activeLease(claim: OutboxClaim): Omit<OutboxClaim, 'event'> | null {
@@ -216,7 +279,8 @@ class InMemoryOutboxRepository implements OutboxRepository {
       lease.leaseToken !== claim.leaseToken ||
       lease.leaseVersion !== claim.leaseVersion ||
       new Date(lease.leaseExpiresAt).getTime() <= Date.now()
-    ) return null;
+    )
+      return null;
     return lease;
   }
 

@@ -1,0 +1,143 @@
+{
+  "record_id": "GATE-CVG-003-OUTBOX-ADMIN-PAYLOAD-REDACTION-VFY-001",
+  "timestamp": "2026-08-29T12:33:00-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-003 bounded HTTP redaction of raw outbox payloads in administrative detail and correlation responses",
+  "scope_ref": "CVG-003-OUTBOX-ADMIN-PAYLOAD-REDACTION",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "VFY-001",
+      "description": "Detail and by-correlation HTTP responses use an explicit metadata-only OutboxEvent view, omit payload entirely and preserve the original internal event for downstream processing.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/api/src/routes/internal-events-routes.ts",
+        "apps/api/src/routes/internal-events-routes.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-PAYLOAD-REDACTION-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-PAYLOAD-REDACTION-GREEN-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This certifies only the two repository-local HTTP response paths; it does not certify payload redaction in storage, audit records, logs, traces, exports or callbacks."
+    },
+    {
+      "id": "VFY-002",
+      "description": "The bounded correction preserves account derivation, permissions, list/DLQ response behavior, correlation validation and existing runtime event processing while changing only the detail/correlation HTTP projection.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/api/src/routes/internal-events-routes.ts",
+        "apps/api/src/routes/internal-events-routes.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-PAYLOAD-REDACTION-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-PAYLOAD-REDACTION-QUALITY-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The local tests do not certify deployed ingress, external identity providers, replay authorization after revocation or systemic ABAC."
+    },
+    {
+      "id": "VFY-003",
+      "description": "OpenAPI advertises metadata-only detail and correlation schemas, does not expose raw payload on those response schemas and declares the existing invalid correlation-limit response as HTTP 400.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/api/src/openapi.yaml",
+        ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-PAYLOAD-REDACTION-RED-002",
+        ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-PAYLOAD-REDACTION-GREEN-002"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This is a repository OpenAPI contract check and does not certify a deployed gateway or generated-client rollout."
+    },
+    {
+      "id": "VFY-004",
+      "description": "Final local regression and quality evidence meets the bounded quality bar after the correction.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-PAYLOAD-REDACTION-QUALITY-001",
+        ".agent/artifacts/CVG-003-outbox-admin-payload-redaction-2026-08-29.md",
+        "coverage/coverage-final.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Local regression, coverage and scanners do not replace remote CI, external homologation, target operations or release acceptance."
+    },
+    {
+      "id": "VFY-005",
+      "description": "Independent review findings are closed: final correctness/security and compatibility reviews approve the bounded response contract with no remaining P0, P1 or P2 finding.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-PAYLOAD-REDACTION-REVIEW-001",
+        ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-PAYLOAD-REDACTION-REVIEW-002",
+        ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-PAYLOAD-REDACTION-REVIEW-003",
+        ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-PAYLOAD-REDACTION-REVIEW-004"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Review approval is bounded to the repository-local HTTP/OpenAPI contract and does not accept wider payload, replay, ABAC or operational risk."
+    },
+    {
+      "id": "VFY-006",
+      "description": "Fresh global audits confirm non-promotion after this slice: Vetus parity remains 4/11 verified, clinical parity 2/3 verified, readiness 95/100 with 42 PASS, 3 WARN and 1 FAIL, and promotion remains blocked.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-PAYLOAD-REDACTION-GLOBAL-RETEST-001",
+        ".agent/state.json",
+        ".agent/backlog.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This is a global status check, not evidence of complete ERP/Vetus parity, external-provider homologation, target readiness or release acceptance."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-003-OUTBOX-ADMIN-PAYLOAD-REDACTION.md",
+    ".agent/artifacts/CVG-003-outbox-admin-payload-redaction-2026-08-29.md",
+    ".agent/gates/implementation-ready-CVG-003-outbox-admin-payload-redaction.json",
+    ".agent/authority.jsonl#AUTH-CVG-003-OUTBOX-ADMIN-PAYLOAD-REDACTION-IR-001",
+    ".agent/authority.jsonl#AUTH-CVG-003-OUTBOX-ADMIN-PAYLOAD-REDACTION-HARDENING-001",
+    ".agent/verification.jsonl#VFY-SCOUT-CVG-003-OUTBOX-ADMIN-PAYLOAD-REDACTION-001",
+    ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-PAYLOAD-REDACTION-RED-001",
+    ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-PAYLOAD-REDACTION-GREEN-001",
+    ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-PAYLOAD-REDACTION-RED-002",
+    ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-PAYLOAD-REDACTION-GREEN-002",
+    ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-PAYLOAD-REDACTION-QUALITY-001",
+    ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-PAYLOAD-REDACTION-REVIEW-001",
+    ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-PAYLOAD-REDACTION-REVIEW-002",
+    ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-PAYLOAD-REDACTION-REVIEW-003",
+    ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-PAYLOAD-REDACTION-REVIEW-004",
+    ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-PAYLOAD-REDACTION-GLOBAL-RETEST-001"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "Payload redaction in audit records, logs, traces, exports, other administrative endpoints and provider callbacks remains open.",
+    "Replay authorization after permission revocation and systemic ABAC policy remain separate follow-up scopes.",
+    "Global Vetus functional parity remains not verified: 4/11 areas verified; clinical parity remains not verified: 2/3 areas verified.",
+    "Enterprise readiness remains 95/100 with remote CI, real backup/restore and real deploy/cutover warnings; external providers, target operations, accessibility, LGPD operations and release evidence remain open."
+  ],
+  "conditions": [
+    "Close only this repository-local metadata-only HTTP response boundary as PASS_BOUNDED.",
+    "Preserve the internal OutboxEvent shape and worker/repository behavior; do not infer payload safety outside the two mapped responses.",
+    "Keep replay authorization, systemic ABAC, audit/log/trace redaction and all provider/target/production/deployment/release work outside this gate unless newly authorized.",
+    "Keep CVG-003/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+    "Do not infer target, production, provider, deployment or release acceptance from this gate."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via explicit continuation request and confirmed hardening addendum",
+    "scope": "CVG-003 bounded HTTP redaction of raw outbox payloads in administrative detail and correlation responses",
+    "decision": "Authorize only the reversible route/test/OpenAPI response-contract correction. Exclude internal storage and processing changes, audit/log/trace policy, replay authorization, ABAC, target, providers, credentials, production, deployment and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-003-OUTBOX-ADMIN-PAYLOAD-REDACTION-IR-001",
+    "hardening_evidence_ref": ".agent/authority.jsonl#AUTH-CVG-003-OUTBOX-ADMIN-PAYLOAD-REDACTION-HARDENING-001",
+    "expires_or_revalidates": "Revalidate before adding payload exports/allowlists, storage changes, audit redaction, replay policy, ABAC policy or any broader event response surface."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_WITH_CONDITIONS",
+  "implementation_status": "COMPLETE_BOUNDED",
+  "next_action": "Return to fresh bounded scouting for the next residual issue; do not promote CVG-003 or global ERP readiness.",
+  "revalidation_triggers": [
+    "New event administration response, payload export or diagnostic surface",
+    "Changes to OutboxEvent serialization, worker processing, audit/logging, replay authorization or ABAC policy",
+    "Expansion to migrations, providers, credentials, target, production, deployment or release scope"
+  ],
+  "supersedes": null
+}

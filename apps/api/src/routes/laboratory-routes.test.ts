@@ -297,6 +297,74 @@ test('handleLaboratoryRoutes accepts Vetus-like laboratory exams aliases and fil
   assert.equal(datedPayload.items.every((item) => item.patientId === 'pat-1'), true);
 });
 
+test('handleLaboratoryRoutes searches structured-only laboratory values', async () => {
+  const diagnostics = new DiagnosticsService(
+    {
+      getOrThrow() {
+        return { id: 'enc-1', accountId: 'acc-1', patientId: 'pat-1' };
+      }
+    } as never,
+    {
+      laboratorySignerAuthority: {
+        async isEnabledLaboratorySigner(_accountId: string, userId: string) {
+          return userId === 'user-1';
+        }
+      }
+    } as never
+  );
+  const requested = diagnostics.createOrder({
+    encounterId: 'enc-1',
+    patientId: 'pat-1',
+    examType: 'Bioquimico',
+    examCatalogId: 'cat_002',
+    reason: 'Busca estruturada'
+  });
+  diagnostics.recordResult(requested.id, {
+    status: 'collected',
+    collectedByUserId: 'lab-user'
+  });
+  diagnostics.recordResult(requested.id, {
+    status: 'resulted',
+    resultValues: [
+      { parameter: 'ALT', value: '92', unit: 'U/L' },
+      { parameter: 'pH urinário', value: '6.0' }
+    ],
+    releasedByUserId: 'user-1'
+  });
+
+  const response = new MockResponse();
+  await handleLaboratoryRoutes(
+    '/laboratory/biochemistry',
+    { method: 'GET', url: '/laboratory/biochemistry?corpo=ALT' } as never,
+    response as never,
+    'corr-lab-structured-search',
+    {
+      laboratory: new LaboratoryService(diagnostics),
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.bodyJson<{ items: Array<{ id: string }> }>().items.length, 1);
+
+  const accentInsensitiveResponse = new MockResponse();
+  await handleLaboratoryRoutes(
+    '/laboratory/biochemistry',
+    { method: 'GET', url: '/laboratory/biochemistry?corpo=urinario' } as never,
+    accentInsensitiveResponse as never,
+    'corr-lab-structured-search-accent-insensitive',
+    {
+      laboratory: new LaboratoryService(diagnostics),
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.equal(accentInsensitiveResponse.statusCode, 200);
+  assert.equal(accentInsensitiveResponse.bodyJson<{ items: Array<{ id: string }> }>().items.length, 1);
+});
+
 test('handleLaboratoryRoutes exposes diagnostics catalog and order detail', async () => {
   const laboratory = createLaboratoryService();
   const orders = await laboratory.listOrders('acc-1' as never, 'enc-1');
@@ -391,7 +459,16 @@ test('handleLaboratoryRoutes releases result with authenticated user and technic
     `/laboratory/orders/${openOrder.id}/result`,
     createMockRequest('POST', `/laboratory/orders/${openOrder.id}/result`, {
       status: 'resulted',
-      resultSummary: 'Bioquimico liberado'
+      resultSummary: 'Bioquimico liberado',
+      resultValues: [
+        {
+          parameter: 'ALT',
+          value: '92',
+          unit: 'U/L',
+          reference: '10-125 U/L',
+          outOfRange: false
+        }
+      ]
     }) as never,
     releaseResponse as never,
     'corr-lab-release-2',
@@ -410,12 +487,37 @@ test('handleLaboratoryRoutes releases result with authenticated user and technic
     releasedByUserId?: string;
     signedByUserId?: string;
     signatureHash?: string;
+    resultValues?: Array<{ parameter: string; value: string; outOfRange?: boolean }>;
   }>();
   assert.equal(payload.status, 'resulted');
   assert.equal(payload.releasedByUserId, 'user-1');
   assert.equal(payload.signedByUserId, 'user-1');
   assert.ok(payload.resultedAt);
   assert.ok(payload.signatureHash);
+  assert.deepEqual(payload.resultValues, [
+    {
+      parameter: 'ALT',
+      value: '92',
+      unit: 'U/L',
+      reference: '10-125 U/L',
+      outOfRange: false
+    }
+  ]);
+
+  const printResponse = new MockResponse();
+  await handleLaboratoryRoutes(
+    `/laboratory/reports/${openOrder.id}/print`,
+    { method: 'GET', url: `/laboratory/reports/${openOrder.id}/print` } as never,
+    printResponse as never,
+    'corr-lab-release-print',
+    {
+      laboratory,
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+  assert.match(printResponse.bodyJson<{ html: string }>().html, /ALT/);
+  assert.match(printResponse.bodyJson<{ html: string }>().html, /10-125 U\/L/);
 });
 
 test('handleLaboratoryRoutes exposes the canonical analysis, report, recollection and delivery workflow', async () => {

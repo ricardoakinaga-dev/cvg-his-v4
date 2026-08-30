@@ -170,6 +170,67 @@ test('DiagnosticsService recordResult follows valid lifecycle', () => {
   assert.ok(resulted.signatureHash);
 });
 
+test('DiagnosticsService preserves validated structured laboratory result values', () => {
+  const { service, encounter } = createService();
+
+  const order = service.createOrder({
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    examType: 'Bioquimico',
+    reason: 'Acompanhamento hepatico'
+  });
+
+  const resultValues = [
+    {
+      parameter: 'ALT',
+      value: '92',
+      unit: 'U/L',
+      reference: '10-125 U/L',
+      outOfRange: false
+    },
+    {
+      parameter: 'Bilirrubina',
+      value: '2.4',
+      unit: 'mg/dL',
+      reference: '0.1-0.8 mg/dL',
+      outOfRange: true
+    }
+  ];
+
+  service.recordResult(order.id, {
+    status: 'collected',
+    collectedByUserId: 'lab_joao'
+  });
+  const resulted = service.recordResult(order.id, {
+    status: 'resulted',
+    resultSummary: 'Bilirrubina acima da referencia',
+    resultValues,
+    releasedByUserId: 'vet_ana'
+  });
+
+  assert.deepEqual(resulted.resultValues, resultValues);
+  assert.notEqual(resulted.resultValues, resultValues);
+  assert.ok(Object.isFrozen(resulted.resultValues));
+  assert.ok(Object.isFrozen(resulted.resultValues?.[0]));
+  const invalidOrder = service.createOrder({
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    examType: 'Bioquimico',
+    reason: 'Validacao de resultado'
+  });
+  service.recordResult(invalidOrder.id, {
+    status: 'collected',
+    collectedByUserId: 'lab_joao'
+  });
+  assert.throws(() => {
+    service.recordResult(invalidOrder.id, {
+      status: 'resulted',
+      resultValues: [{ parameter: 'ALT', value: '' }],
+      releasedByUserId: 'vet_ana'
+    });
+  }, /value must contain/);
+});
+
 test('DiagnosticsService recordResult blocks invalid transitions', () => {
   const { service, encounter } = createService();
 
@@ -281,6 +342,25 @@ test('DiagnosticsService recordResult requires collector and clinical evidence w
 
   assert.throws(
     () => service.recordResult(order.id, { status: 'resulted' }),
+    /resultSummary or resultAttachmentId/
+  );
+
+  const whitespaceOrder = service.createOrder({
+    encounterId: encounter.id,
+    patientId: encounter.patientId,
+    examType: 'Hemograma',
+    reason: 'Resumo vazio'
+  });
+  service.recordResult(whitespaceOrder.id, {
+    status: 'collected',
+    collectedByUserId: 'lab_1'
+  });
+  assert.throws(
+    () => service.recordResult(whitespaceOrder.id, {
+      status: 'resulted',
+      resultSummary: '   ',
+      releasedByUserId: 'vet_ana'
+    }),
     /resultSummary or resultAttachmentId/
   );
 

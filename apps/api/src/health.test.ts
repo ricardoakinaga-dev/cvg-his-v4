@@ -13,7 +13,17 @@ import {
 import { createHealthResponse, createLivenessResponse, createReadinessResponse } from './health.js';
 import type { RuntimeRepositories } from './runtime.js';
 
-function createDeps(overrides: Partial<Parameters<typeof createHealthResponse>[4]> = {}) {
+type RateLimiterMode = 'redis' | 'in-memory' | 'fail-closed';
+
+type HealthDependencies = Parameters<typeof createHealthResponse>[4] & {
+  redisConfigured: boolean;
+  redisHealthy: boolean;
+  redisDetail: string;
+  runtimeDistributedStateEnabled: boolean;
+  rateLimiterMode: RateLimiterMode;
+};
+
+function createDeps(overrides: Partial<HealthDependencies> = {}): HealthDependencies {
   return {
     databaseConfigured: false,
     databaseHealthy: false,
@@ -27,8 +37,21 @@ function createDeps(overrides: Partial<Parameters<typeof createHealthResponse>[4
     initialized: true,
     mlReady: true,
     mlDetail: 'SmartSchedulingService, ModelRegistryService, FeatureStoreService wired',
+    redisConfigured: false,
+    redisHealthy: false,
+    redisDetail: 'Redis not configured for this runtime.',
+    runtimeDistributedStateEnabled: false,
+    rateLimiterMode: 'in-memory',
     ...overrides
   };
+}
+
+function readRedisDependency(response: unknown): { state: string; detail: string } {
+  return (
+    response as {
+      dependencies: { redis: { state: string; detail: string } };
+    }
+  ).dependencies.redis;
 }
 
 function createRuntimeRepositories(
@@ -105,13 +128,31 @@ test('createHealthResponse shows unhealthy when database configured but not heal
       databaseConfigured: true,
       persistenceMode: 'in-memory',
       workerReady: false,
-      workerDetail: 'Worker dependency degraded: notification repository not ready for shared DB processing'
+      workerDetail:
+        'Worker dependency degraded: notification repository not ready for shared DB processing'
     })
   );
 
   assert.equal(response.ok, false);
   assert.equal(response.dependencies.database.state, 'unhealthy');
   assert.equal(response.dependencies.worker.state, 'degraded');
+});
+
+test('createHealthResponse does not expose database connection details', () => {
+  const response = createHealthResponse(
+    'cvg-his-v2-api',
+    'production',
+    '0.1.0',
+    { headers: {} } as never,
+    createDeps({
+      databaseConfigured: true,
+      databaseHealthy: false,
+      databaseDetail: 'postgresql://admin:super-secret@db.internal:5432/cvg'
+    })
+  );
+
+  assert.equal(response.dependencies.database.detail, 'Database is unavailable.');
+  assert.doesNotMatch(JSON.stringify(response), /super-secret|db\.internal|5432/);
 });
 
 test('createHealthResponse returns ok when database is healthy and configured', () => {
@@ -135,9 +176,41 @@ test('createHealthResponse returns ok when database is healthy and configured', 
 
   assert.equal(response.ok, true);
   assert.equal(response.dependencies.database.state, 'healthy');
-  assert.equal(response.dependencies.database.detail, 'Database connected');
+  assert.equal(response.dependencies.database.detail, 'Database connection is healthy.');
   assert.equal(response.dependencies.worker.state, 'ready');
   assert.equal(response.readiness.ready, true);
+});
+
+test('createReadinessResponse includes Redis and fails closed when its probe is unhealthy', () => {
+  const response = createReadinessResponse(
+    'cvg-his-v2-api',
+    'production',
+    '0.1.0',
+    { headers: {} } as never,
+    createDeps({
+      databaseHealthy: true,
+      databaseConfigured: true,
+      databaseDetail: 'Database connected',
+      persistenceMode: 'database',
+      repositoriesReady: true,
+      repositoryCount: 11,
+      workerReady: true,
+      workerDetail: 'Worker ready',
+      productionReady: true,
+      runtimeDistributedStateEnabled: true,
+      redisConfigured: true,
+      redisHealthy: false,
+      redisDetail: 'Redis health probe failed',
+      rateLimiterMode: 'fail-closed'
+    })
+  );
+
+  const redis = readRedisDependency(response);
+  assert.equal(response.ok, false);
+  assert.equal(response.readiness.ready, false);
+  assert.equal(redis.state, 'unhealthy');
+  assert.equal(redis.detail, 'Redis rate limiter backend is unavailable.');
+  assert.equal(response.liveness.live, true);
 });
 
 test('createHealthResponse returns not ok when database healthy but repositories not ready', () => {
@@ -154,7 +227,8 @@ test('createHealthResponse returns not ok when database healthy but repositories
       repositoriesReady: false,
       repositoryCount: 0,
       workerReady: false,
-      workerDetail: 'Worker dependency degraded: notification repository not ready for shared DB processing',
+      workerDetail:
+        'Worker dependency degraded: notification repository not ready for shared DB processing',
       productionReady: false
     })
   );
@@ -193,16 +267,14 @@ test('createHealthResponse reports unhealthy detail when database configured but
       persistenceMode: 'in-memory',
       repositoryCount: 11,
       workerReady: false,
-      workerDetail: 'Worker dependency degraded: notification repository not ready for shared DB processing'
+      workerDetail:
+        'Worker dependency degraded: notification repository not ready for shared DB processing'
     })
   );
 
   assert.equal(response.ok, false);
   assert.equal(response.dependencies.database.state, 'unhealthy');
-  assert.equal(
-    response.dependencies.database.detail,
-    'Connection refused: ECONNREFUSED 127.0.0.1:5432'
-  );
+  assert.equal(response.dependencies.database.detail, 'Database is unavailable.');
 });
 
 test('createReadinessResponse returns  not ready when worker dependency is degraded', () => {
@@ -218,7 +290,8 @@ test('createReadinessResponse returns  not ready when worker dependency is degra
       persistenceMode: 'database',
       repositoryCount: 11,
       workerReady: false,
-      workerDetail: 'Worker dependency degraded: notification repository not ready for shared DB processing',
+      workerDetail:
+        'Worker dependency degraded: notification repository not ready for shared DB processing',
       productionReady: false
     })
   );
@@ -276,14 +349,8 @@ test('production database readiness identifies every repository still backed by 
   assert.deepEqual(findMissingProductionRepositories(repositories), [
     ...productionDatabaseRepositoryKeys.filter((key) => !repositories[key])
   ]);
-  assert.equal(
-    findMissingProductionRepositories(repositories).includes('session'),
-    false
-  );
-  assert.equal(
-    findMissingProductionRepositories(repositories).includes('billing'),
-    true
-  );
+  assert.equal(findMissingProductionRepositories(repositories).includes('session'), false);
+  assert.equal(findMissingProductionRepositories(repositories).includes('billing'), true);
 });
 
 test('production database readiness refuses missing repositories and unit of work', () => {

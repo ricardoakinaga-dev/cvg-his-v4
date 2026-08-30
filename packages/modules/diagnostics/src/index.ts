@@ -14,11 +14,13 @@ import type {
   AccountId,
   DiagnosticOrderId,
   DiagnosticOrderSummary,
-  ExamCatalogEntry
+  ExamCatalogEntry,
+  LaboratoryResultValue
 } from '@cvg-his-v2/shared-types';
 import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 import { DEFAULT_EXAM_CATALOG } from './catalog.js';
+import { normalizeLaboratoryResultValues } from './laboratory-result-values.js';
 import {
   DatabaseLaboratoryCatalogRepository
 } from './repositories/database-laboratory-catalog.repository.js';
@@ -59,6 +61,7 @@ export {
 
 export type { DiagnosticOrderRepository };
 export { DatabaseDiagnosticOrderRepository };
+export { normalizeLaboratoryResultValues };
 export type { LaboratoryCatalogRepository };
 export {
   DatabaseLaboratoryCatalogRepository,
@@ -151,6 +154,7 @@ export class DiagnosticsService {
         payload.releasedByUserId,
         payload.releasedByUserId,
         payload.resultSummary ?? '',
+        JSON.stringify(payload.resultValues ?? []),
         payload.resultAttachmentId ?? '',
         resultedAt
       ].join('|'))
@@ -160,6 +164,7 @@ export class DiagnosticsService {
   private createLaboratorySignatureHash(
     order: DiagnosticOrderSummary,
     resultSummary: string | undefined,
+    resultValues: readonly LaboratoryResultValue[] | undefined,
     resultAttachmentId: string | undefined,
     reportedByUserId: string,
     signedByUserId: string,
@@ -172,6 +177,7 @@ export class DiagnosticsService {
         reportedByUserId,
         signedByUserId,
         resultSummary ?? '',
+        JSON.stringify(resultValues ?? []),
         resultAttachmentId ?? '',
         reportedAt
       ].join('|'))
@@ -205,6 +211,7 @@ export class DiagnosticsService {
       reportedAt: order.status === 'resulted' ? order.resultedAt : undefined,
       reportedByUserId: order.status === 'resulted' ? order.releasedByUserId : undefined,
       resultSummary: order.resultSummary,
+      resultValues: order.resultValues,
       resultAttachmentId: order.resultAttachmentId,
       signedByUserId: order.signedByUserId,
       signatureHash: order.signatureHash,
@@ -237,6 +244,7 @@ export class DiagnosticsService {
       deliveredByUserId: workflow.deliveredByUserId,
       deliveryChannel: workflow.deliveryChannel,
       resultSummary: workflow.resultSummary,
+      resultValues: workflow.resultValues,
       resultAttachmentId: workflow.resultAttachmentId,
       signedByUserId: workflow.signedByUserId,
       signatureHash: workflow.signatureHash,
@@ -485,8 +493,22 @@ export class DiagnosticsService {
       requireNonEmptyString(payload.collectedByUserId, 'collectedByUserId');
     }
 
-    if (payload.status === 'resulted' && !payload.resultSummary && !payload.resultAttachmentId) {
-      throw new Error('resultSummary or resultAttachmentId is required when status is resulted');
+    const resultSummary = payload.status === 'resulted'
+      ? payload.resultSummary?.trim() || undefined
+      : undefined;
+    const resultAttachmentId = payload.status === 'resulted'
+      ? payload.resultAttachmentId?.trim() || undefined
+      : undefined;
+    const resultValues = payload.status === 'resulted'
+      ? normalizeLaboratoryResultValues(payload.resultValues)
+      : undefined;
+    if (
+      payload.status === 'resulted'
+      && !resultSummary
+      && !resultAttachmentId
+      && !resultValues?.length
+    ) {
+      throw new Error('resultSummary or resultAttachmentId or resultValues is required when status is resulted');
     }
 
     const now = nowIso();
@@ -499,6 +521,9 @@ export class DiagnosticsService {
       payload.status === 'resulted'
         ? this.createResultSignatureHash(current, {
           ...payload,
+          resultSummary,
+          resultValues,
+          resultAttachmentId,
           releasedByUserId,
           signedByUserId
         }, now)
@@ -511,8 +536,9 @@ export class DiagnosticsService {
         collectedByUserId: requireNonEmptyString(payload.collectedByUserId, 'collectedByUserId')
       }),
       ...(payload.status === 'resulted' && {
-        resultSummary: payload.resultSummary,
-        resultAttachmentId: payload.resultAttachmentId,
+        resultSummary,
+        resultValues,
+        resultAttachmentId,
         resultedAt: now,
         releasedByUserId,
         signedByUserId,
@@ -542,6 +568,7 @@ export class DiagnosticsService {
       reportedAt: order.status === 'resulted' ? order.resultedAt : current.reportedAt,
       reportedByUserId: order.status === 'resulted' ? order.releasedByUserId : current.reportedByUserId,
       resultSummary: order.resultSummary,
+      resultValues: order.resultValues,
       resultAttachmentId: order.resultAttachmentId,
       signedByUserId: order.signedByUserId,
       signatureHash: order.signatureHash,
@@ -645,13 +672,15 @@ export class DiagnosticsService {
     if (payload.status === 'reported') {
       const resultSummary = payload.resultSummary?.trim();
       const resultAttachmentId = payload.resultAttachmentId?.trim();
-      if (!resultSummary && !resultAttachmentId) {
-        throw new Error('resultSummary or resultAttachmentId is required when status is reported');
+      const resultValues = normalizeLaboratoryResultValues(payload.resultValues);
+      if (!resultSummary && !resultAttachmentId && !resultValues?.length) {
+        throw new Error('resultSummary or resultAttachmentId or resultValues is required when status is reported');
       }
       const actorUserId = requireNonEmptyString(payload.actorUserId, 'actorUserId');
       const signatureHash = this.createLaboratorySignatureHash(
         currentOrder,
         resultSummary,
+        resultValues,
         resultAttachmentId,
         actorUserId,
         actorUserId,
@@ -665,6 +694,7 @@ export class DiagnosticsService {
           reportedAt: now,
           reportedByUserId: actorUserId,
           resultSummary,
+          resultValues,
           resultAttachmentId,
           signedByUserId: actorUserId,
           signatureHash,
@@ -684,6 +714,7 @@ export class DiagnosticsService {
           ...currentOrder,
           status: 'resulted',
           resultSummary,
+          resultValues,
           resultAttachmentId,
           resultedAt: now,
           releasedByUserId: actorUserId,
@@ -786,6 +817,7 @@ export class DiagnosticsService {
         deliveredByUserId: undefined,
         deliveryChannel: undefined,
         resultSummary: undefined,
+        resultValues: undefined,
         resultAttachmentId: undefined,
         signedByUserId: undefined,
         signatureHash: undefined,
@@ -808,6 +840,7 @@ export class DiagnosticsService {
         collectedAt: now,
         collectedByUserId,
         resultSummary: undefined,
+        resultValues: undefined,
         resultAttachmentId: undefined,
         resultedAt: undefined,
         releasedByUserId: undefined,

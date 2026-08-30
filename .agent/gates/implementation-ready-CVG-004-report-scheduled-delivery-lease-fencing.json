@@ -1,0 +1,95 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-SCHEDULED-DELIVERY-LEASE-FENCING-IR-001",
+  "timestamp": "2026-08-30T00:15:00-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-004 scheduled-report delivery persistence lease fencing",
+  "scope_ref": "CVG-004-REPORT-SCHEDULED-DELIVERY-LEASE-FENCING",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "Fresh local residual reconciliation identified that the scheduled worker claims a schedule lease but calls delivery persistence without carrying that schedule token; the existing claimToken parameter belongs to failed-delivery retry leases.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-SCOUT-CVG-004-REPORT-SCHEDULED-DELIVERY-LEASE-FENCING-001",
+        "apps/worker/src/jobs/scheduled-report-job.ts",
+        "packages/modules/reports/src/index.ts",
+        "apps/worker/src/jobs/scheduled-report-job.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Two replacement scouts were unavailable because of the auxiliary model usage limit; selection is direct source/test reconciliation, not independent approval."
+    },
+    {
+      "id": "IR-002",
+      "description": "The current ReportsService has separate schedule and delivery claim maps and the database schema already persists both schedule claims and delivery rows, so a repository-local conditional delivery write can be added without changing report payloads or retry claims.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-DELIVERY-LEASE-FENCING-IR-001",
+        "packages/modules/reports/src/index.ts",
+        "packages/db/migrations/0142_reports_schedule_claims.sql",
+        "packages/db/migrations/0156_report_delivery_claims.sql",
+        "tests/integration/database/reports-delivery-postgres.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Source inspection identifies the missing fence; PostgreSQL behavior remains unverified until the RED/GREEN integration proof."
+    },
+    {
+      "id": "IR-003",
+      "description": "The bounded correction can be tested as a separate scheduleClaimToken capability, fail closed for stale durable writes, preserve active-token delivery, and retain external provider side effects and lease renewal as explicit non-claims.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-scheduled-delivery-lease-fencing.md",
+        ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-DELIVERY-LEASE-FENCING-IR-001",
+        "packages/modules/reports/src/reports.test.ts",
+        "apps/worker/src/jobs/scheduled-report-job.test.ts",
+        "tests/integration/database/reports-schedule-lease-fencing-postgres.test.ts"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "Intentional RED/GREEN, PostgreSQL proof, regression, quality, review and final reconciliation remain open."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-report-scheduled-delivery-lease-fencing.md",
+    ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-DELIVERY-LEASE-FENCING-IR-001",
+    ".agent/verification.jsonl#VFY-SCOUT-CVG-004-REPORT-SCHEDULED-DELIVERY-LEASE-FENCING-001",
+    "packages/modules/reports/src/index.ts",
+    "apps/worker/src/jobs/scheduled-report-job.ts",
+    "apps/worker/src/jobs/scheduled-report-job.test.ts",
+    "tests/integration/database/reports-delivery-postgres.test.ts"
+  ],
+  "confidence": "MEDIUM",
+  "gaps": [
+    "Implementation, intentional RED/GREEN, PostgreSQL takeover proof, regression, quality and review evidence remain open.",
+    "Provider/export/audit external side effects, delivery retry claims, heartbeat/renewal and distributed worker topology remain outside scope.",
+    "Parent CVG-004, global Vetus/clinical parity, target, production, provider and release gates remain open."
+  ],
+  "conditions": [
+    "Use a distinct scheduleClaimToken capability; do not reinterpret the existing failed-delivery claimToken.",
+    "Require account, schedule, active claim token and active lease for schedule-worker delivery persistence; no saveDelivery fallback when a schedule token is supplied.",
+    "Keep provider calls and external side-effect guarantees out of this bounded gate and document any in-flight side-effect limitation.",
+    "Keep parent CVG-004/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via explicit continuation and direct read-only residual reconciliation",
+    "scope": "Repository-local scheduled-report delivery persistence fence, ReportsService capability separation, worker propagation and disposable PostgreSQL takeover tests",
+    "decision": "Authorize only the additive scheduleClaimToken delivery-persistence fence and worker ordering correction. Preserve existing report payloads, provider adapter, delivery retry claims and API compatibility; exclude provider behavior, renewal, target, production, deployment, release and global ERP promotion.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-DELIVERY-LEASE-FENCING-IR-001",
+    "expires_or_revalidates": "Revalidate before changing provider invocation semantics, delivery retry claims, report payloads, schedule API client contracts, lease renewal, migration shape beyond the repository contract, or entering target/production/deployment/release scope."
+  },
+  "residual_risk": "HIGH",
+  "decision": "IMPLEMENTATION_READY",
+  "implementation_status": "GREEN_FOCUSED",
+  "next_action": "Focused GREEN and PostgreSQL takeover passed. Run full workspace regression, coverage, static security/contract checks and bounded review; keep provider side effects and global promotion open.",
+  "revalidation_triggers": [
+    "Changing provider calls, provider idempotency or external delivery semantics",
+    "Changing failed-delivery claim tokens or retry behavior",
+    "Changing schedule lease expiry/renewal or migration shape",
+    "Expanding into target, production, deployment, parity, global ERP or release scope"
+  ],
+  "supersedes": null
+}

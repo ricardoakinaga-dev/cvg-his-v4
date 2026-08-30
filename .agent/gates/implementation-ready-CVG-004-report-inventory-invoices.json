@@ -1,0 +1,90 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-INVENTORY-INVOICES-IR-001",
+  "timestamp": "2026-08-28T03:00:00-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-004 bounded server-backed inventory purchase-entry report for the inventory-invoices Workbench route",
+  "scope_ref": "CVG-004-REPORT-INVENTORY-INVOICES",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The bounded purchase-entry projection, exact twelve-field contract, permission, filters and non-fiscal exclusions are frozen.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-inventory-invoices.md",
+        ".agent/authority.jsonl#AUTH-CVG-004-REPORT-INVENTORY-INVOICES-IR-001",
+        "docs/vetus/guides/2026-04-24-relatorio-relatorios-estoque.md",
+        "apps/spa/src/pages/reports/ReportWorkbenchPage.vue"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The Vetus surface establishes report purpose, not an authoritative fiscal-document schema; this gate explicitly limits the source to persisted inventory purchase headers with stored invoice references."
+    },
+    {
+      "id": "IR-002",
+      "description": "Existing inventory_purchases persistence, ProcurementService composition and ReportsService execution/export establish an additive implementation path without a migration.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/db/migrations/0085_inventory_procurement.sql",
+        "packages/modules/inventory/src/procurement.ts",
+        "apps/api/src/runtime.ts",
+        "apps/api/src/bootstrap.ts",
+        "packages/modules/reports/src/index.ts",
+        "apps/api/src/routes/reports-routes.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The current repository exposes only a cache-oriented purchase list and the report-specific bounded query, source capability and exact route wiring must be implemented and tested before verification."
+    },
+    {
+      "id": "IR-003",
+      "description": "Focused TDD plus disposable PostgreSQL and authenticated browser evidence can reject local reconstruction and prove source, tenant, filter, bound, audit and export behavior.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-inventory-invoices.md",
+        "packages/modules/inventory/src/inventory.test.ts",
+        "packages/modules/reports/src/reports.test.ts",
+        "apps/api/src/routes/reports-routes.test.ts",
+        "apps/spa/src/pages/reports/__tests__/ReportWorkbenchPage.test.ts",
+        "tests/integration/database/inventory-stock-report-postgres.test.ts",
+        "e2e/spa/inventory-movements-report-flow.spec.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "RED/GREEN implementation, fresh database/browser execution, independent criticism and final reconciliation remain pending."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-report-inventory-invoices.md",
+    "packages/db/migrations/0085_inventory_procurement.sql",
+    "packages/modules/inventory/src/procurement.ts",
+    "apps/api/src/runtime.ts",
+    "apps/api/src/bootstrap.ts",
+    "packages/modules/reports/src/index.ts",
+    "apps/api/src/routes/reports-routes.ts",
+    "apps/spa/src/pages/reports/ReportWorkbenchPage.vue",
+    "docs/vetus/guides/2026-04-24-relatorio-relatorios-estoque.md"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "Intentional RED tests, source/API/SPA implementation, disposable PostgreSQL/browser proof, independent critique, regression and final control-plane reconciliation are pending."
+  ],
+  "conditions": [],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via the original consolidation brief and explicit continuation request",
+    "scope": "CVG-004 bounded server-backed inventory purchase-entry report for the inventory-invoices Workbench route",
+    "decision": "Authorize reversible inventory/Procurement, Reports, API and SPA implementation plus disposable PostgreSQL/browser verification using only tenant-scoped persisted inventory_purchases headers with non-empty stored invoice_number. Expose stored purchase and receipt facts with exact twelve-field mapping and strict status/search/createdAt filters; exclude fiscal-document claims, issuance/cancellation, CFOP/tax, providers/municipality, credentials, supplier master, lot/movement reconstruction, valuation, scheduled delivery, target, production, deployment, backfill and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-INVENTORY-INVOICES-IR-001",
+    "expires_or_revalidates": "Revalidate before treating invoice_number as a fiscal authorization/document, adding fiscal writes, tax/CFOP, supplier master, lot or movement reconstruction, commercial reconciliation, workers, providers, credentials, target, production, deployment or release activity."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "next_action": "Write and execute the intentional RED tests, then implement only the persisted purchase-entry projection and its local verification boundaries.",
+  "revalidation_triggers": [
+    "Changes to inventory purchase persistence, invoice-reference semantics, receipt lifecycle or report filters/grain",
+    "Any fiscal write, provider/municipality, tax/CFOP, supplier-master, commercial reconciliation, worker, target, production, deployment or release activity"
+  ],
+  "supersedes": null
+}

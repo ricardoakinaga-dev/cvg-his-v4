@@ -171,6 +171,7 @@ interface ParameterRow {
   unit: string;
   minValue: number;
   maxValue: number;
+  outOfRange?: boolean;
   statusLabel: string;
   statusVariant: StatusVariant;
 }
@@ -250,7 +251,7 @@ const filteredHemograms = computed(() => {
     if (animal && !normalizeSearch(hemogram.animalName).includes(animal) && !normalizeSearch(hemogram.patientId).includes(animal)) {
       return false;
     }
-    if (body && !normalizeSearch(hemogram.resultSummary).includes(body)) return false;
+    if (body && !laboratoryResultSearchText(hemogram).includes(body)) return false;
     if (appliedFilters.finalizedAt && hemogram.analysisAt.slice(0, 10) !== appliedFilters.finalizedAt) return false;
     if (appliedFilters.enteredAt && hemogram.enteredAt.slice(0, 10) !== appliedFilters.enteredAt) return false;
     if (!appliedFilters.closed && hemogram.status === 'resulted') return false;
@@ -259,21 +260,35 @@ const filteredHemograms = computed(() => {
 });
 
 const parameterRows = computed<ParameterRow[]>(() =>
-  referenceValues.value.map((reference) => ({
-    id: reference.id,
-    group: classifyHemogramGroup(reference.parameter),
-    parameter: displayParameter(reference.parameter),
-    value: resolveLatestValue(reference.parameter),
-    unit: reference.unit,
-    minValue: reference.minValue,
-    maxValue: reference.maxValue,
-    statusLabel: resolveLatestValue(reference.parameter) === '-' ? 'Referência aplicada' : 'Dentro da faixa',
-    statusVariant: 'info'
-  }))
+  referenceValues.value.map((reference) => {
+    const structuredValue = resolveLatestStructuredValue(reference.parameter);
+    const value = structuredValue?.value ?? resolveLatestValue(reference.parameter);
+    return {
+      id: reference.id,
+      group: classifyHemogramGroup(reference.parameter),
+      parameter: displayParameter(reference.parameter),
+      value,
+      unit: structuredValue?.unit ?? reference.unit,
+      minValue: reference.minValue,
+      maxValue: reference.maxValue,
+      outOfRange: structuredValue?.outOfRange,
+      statusLabel: structuredValue
+        ? structuredValue.outOfRange ? 'Fora da faixa' : 'Dentro da faixa'
+        : value === '-' ? 'Referência aplicada' : 'Dentro da faixa',
+      statusVariant: structuredValue
+        ? structuredValue.outOfRange ? 'warning' : 'success'
+        : 'info'
+    };
+  })
 );
 
 const outOfRangeCount = computed(() =>
-  hemograms.value.filter((item) => normalizeSearch(item.resultSummary).includes('fora da faixa')).length
+  hemograms.value.some((item) => item.resultValues?.length)
+    ? hemograms.value.reduce(
+      (total, item) => total + (item.resultValues?.filter((value) => value.outOfRange).length ?? 0),
+      0
+    )
+    : hemograms.value.filter((item) => normalizeSearch(item.resultSummary).includes('fora da faixa')).length
 );
 
 const historyCards = computed(() => [
@@ -285,6 +300,18 @@ const historyCards = computed(() => [
 
 function normalizeSearch(value: string | undefined): string {
   return (value ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
+}
+
+function laboratoryResultSearchText(result: DiagnosticOrderSummary): string {
+  return [
+    result.resultSummary,
+    ...(result.resultValues ?? []).flatMap((value) => [
+      value.parameter,
+      value.value,
+      value.unit,
+      value.reference
+    ])
+  ].filter(Boolean).join(' ').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
 }
 
 function shortId(id: string): string {
@@ -327,12 +354,23 @@ function countByGroup(group: string): number {
 }
 
 function resolveLatestValue(parameter: string): string {
+  const structuredValue = resolveLatestStructuredValue(parameter);
+  if (structuredValue) return structuredValue.value;
+
   const latestSummary = filteredHemograms.value[0]?.resultSummary;
   if (!latestSummary) return '-';
 
   const escaped = parameter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const match = latestSummary.match(new RegExp(`${escaped}\\s*[:=]\\s*([\\d.,]+)`, 'i'));
   return match?.[1] ?? '-';
+}
+
+function resolveLatestStructuredValue(parameter: string) {
+  const normalizedParameter = normalizeSearch(parameter);
+  return filteredHemograms.value
+    .find((item) => item.resultValues?.length)
+    ?.resultValues
+    ?.find((item) => normalizeSearch(item.parameter) === normalizedParameter);
 }
 
 function formatReference(row: ParameterRow): string {

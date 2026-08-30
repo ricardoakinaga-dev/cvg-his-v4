@@ -1,0 +1,82 @@
+{
+  "record_id": "GATE-CVG-004-ADVANCE-PAYMENT-WRITE-IR-001",
+  "timestamp": "2026-08-26T14:28:00-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-004 bounded manual advance-payment issuance and append-only compensation",
+  "scope_ref": "CVG-004-ADVANCE-PAYMENT-WRITE",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The write scope, owner, authority and exclusions are recorded without promoting CVG-004 or global readiness.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-advance-payment-write-lifecycle.md",
+        ".agent/backlog.json",
+        ".agent/authority.jsonl#AUTH-CVG-004-ADVANCE-PAYMENT-WRITE-IR-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Only manual issuance and append-only compensation through the existing canonical ledger are authorized. Cash, journal, receivable, refund, cancellation, provider, target and release remain excluded."
+    },
+    {
+      "id": "IR-002",
+      "description": "The canonical 0148 immutable source, tenant transaction context, idempotency UoW, audit/outbox primitives and finance authorization boundary exist for the bounded commands.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/db/migrations/0148_advance_payments.sql",
+        "apps/api/src/repositories/database-advance-payments-report.repository.ts",
+        "packages/shared/database/src/tenant-unit-of-work.ts",
+        "apps/api/src/helpers/tenant-command.ts",
+        "packages/rbac/src/access-control-catalog.ts",
+        "apps/api/src/routes/encounter-cash-receipt-routes.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The write methods and command routes are not implemented at gate creation."
+    },
+    {
+      "id": "IR-003",
+      "description": "Focused RED tests can be written for exact cents, transaction context, idempotency, audit/outbox atomicity, RLS/concurrency and the finance page before implementation.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-advance-payment-write-lifecycle.md",
+        "tests/integration/rls/advance-payments-report-source.test.ts",
+        "apps/api/src/routes/encounter-cash-receipt-routes.test.ts",
+        "apps/spa/src/pages/finance/__tests__/AdvancePaymentsPage.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A bounded result requires implementation, fresh PostgreSQL evidence, SPA/API regression, security review and control-plane reconciliation."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-advance-payment-write-lifecycle.md",
+    "packages/db/migrations/0148_advance_payments.sql",
+    "apps/api/src/repositories/database-advance-payments-report.repository.ts",
+    "packages/shared/database/src/tenant-unit-of-work.ts",
+    "apps/spa/src/pages/finance/AdvancePaymentsPage.vue"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "The write repository, API routes, UI integration, tests and post-implementation review are not complete at gate creation."
+  ],
+  "conditions": [],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner)",
+    "scope": "CVG-004 bounded manual advance-payment issuance and append-only compensation",
+    "decision": "Authorize reversible repository implementation and local/disposable PostgreSQL, API and SPA verification using the existing 0148 ledger. Require billing.manage, exact BRL cents, tenant UoW/idempotency, transaction-scoped audit/outbox and RLS. Exclude cash/journal/receivable links, refund/cancellation, providers, credentials, target, production, deployment, external mutation and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-ADVANCE-PAYMENT-WRITE-IR-001",
+    "expires_or_revalidates": "Revalidate before adding refund/cancellation/reversal, cash/bank/PIX/receivable/journal integration, backfill, provider, target operation, production/deployment action or release acceptance."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "next_action": "Write focused RED tests for the repository, API route and finance page, then implement the bounded write path without changing migration 0148.",
+  "revalidation_triggers": [
+    "Changes to advance-payment persistence, allocation semantics or the existing 0148 triggers",
+    "Changes to tenant UoW, idempotency, transaction audit/outbox or finance authorization",
+    "Any cash/journal/receivable/provider/target/production/release expansion"
+  ]
+}

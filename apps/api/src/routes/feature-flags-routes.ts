@@ -15,7 +15,7 @@ export interface FeatureFlagsRoutesHandlers {
   featureFlagRepository: DatabaseFeatureFlagRepository;
   featureFlagProvider: FeatureFlagProvider;
   audit: AuditService;
-  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
+  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
 }
 
 function json(response: ServerResponse, statusCode: number, payload: unknown): true {
@@ -148,7 +148,7 @@ export async function handleFeatureFlagsRoutes(
 
   // GET /flags - List all flags for account
   if (pathname === '/flags' && method === 'GET') {
-    const principal = requirePrincipal(request, 'flags.read');
+    const principal = await requirePrincipal(request, 'flags.read');
     const accountId = principal.user.accountId;
 
     const flags = await featureFlagRepository.listByAccount(accountId);
@@ -172,7 +172,7 @@ export async function handleFeatureFlagsRoutes(
   }
 
   if (pathname === '/flags/report' && method === 'GET') {
-    const principal = requirePrincipal(request, 'flags.read');
+    const principal = await requirePrincipal(request, 'flags.read');
     const accountId = principal.user.accountId;
     const environment = url.searchParams.get('environment') ?? 'development';
     const userId = url.searchParams.get('userId') ?? principal.user.id;
@@ -218,7 +218,7 @@ export async function handleFeatureFlagsRoutes(
 
   // POST /flags - Create a new flag
   if (pathname === '/flags' && method === 'POST') {
-    const principal = requirePrincipal(request, 'flags.admin');
+    const principal = await requirePrincipal(request, 'flags.admin');
     const accountId = principal.user.accountId;
     const body = (await readJsonBody(request)) as CreateFeatureFlagRequest;
 
@@ -254,7 +254,7 @@ export async function handleFeatureFlagsRoutes(
     const match = pathname.match(/^\/flags\/([^/]+)\/report$/);
     if (!match) return false;
 
-    const principal = requirePrincipal(request, 'flags.read');
+    const principal = await requirePrincipal(request, 'flags.read');
     const accountId = principal.user.accountId;
     const flagKey = match[1];
     const environment = url.searchParams.get('environment') ?? 'development';
@@ -295,7 +295,7 @@ export async function handleFeatureFlagsRoutes(
     if (!match) {
       // Keep probing more specific subroutes such as /flags/:key/evaluate and /flags/:key/overrides.
     } else {
-      const principal = requirePrincipal(request, 'flags.read');
+      const principal = await requirePrincipal(request, 'flags.read');
       const accountId = principal.user.accountId;
       const flagKey = match[1];
 
@@ -326,7 +326,7 @@ export async function handleFeatureFlagsRoutes(
     const match = pathname.match(/^\/flags\/([^/]+)$/);
     if (!match) return false;
 
-    const principal = requirePrincipal(request, 'flags.admin');
+    const principal = await requirePrincipal(request, 'flags.admin');
     const accountId = principal.user.accountId;
     const flagKey = match[1];
     const body = (await readJsonBody(request)) as UpdateFeatureFlagRequest;
@@ -369,7 +369,7 @@ export async function handleFeatureFlagsRoutes(
     const match = pathname.match(/^\/flags\/([^/]+)$/);
     if (!match) return false;
 
-    const principal = requirePrincipal(request, 'flags.admin');
+    const principal = await requirePrincipal(request, 'flags.admin');
     const accountId = principal.user.accountId;
     const flagKey = match[1];
 
@@ -406,7 +406,7 @@ export async function handleFeatureFlagsRoutes(
     const match = pathname.match(/^\/flags\/([^/]+)\/evaluate$/);
     if (!match) return false;
 
-    const principal = requirePrincipal(request, 'flags.read');
+    const principal = await requirePrincipal(request, 'flags.read');
     const accountId = principal.user.accountId;
     const flagKey = match[1];
     const environment = url.searchParams.get('environment') ?? 'development';
@@ -443,7 +443,7 @@ export async function handleFeatureFlagsRoutes(
     const match = pathname.match(/^\/flags\/([^/]+)\/overrides$/);
     if (!match) return false;
 
-    const principal = requirePrincipal(request, 'flags.admin');
+    const principal = await requirePrincipal(request, 'flags.admin');
     const accountId = principal.user.accountId;
     const flagKey = match[1];
     const body = (await readJsonBody(request)) as CreateOverrideRequest;
@@ -482,7 +482,7 @@ export async function handleFeatureFlagsRoutes(
     const match = pathname.match(/^\/flags\/([^/]+)\/overrides$/);
     if (!match) return false;
 
-    const principal = requirePrincipal(request, 'flags.read');
+    const principal = await requirePrincipal(request, 'flags.read');
     const accountId = principal.user.accountId;
     const flagKey = match[1];
 

@@ -4,12 +4,7 @@ import type { EncountersService } from '@cvg-his-v2/module-encounters';
 import type { OwnersService } from '@cvg-his-v2/module-owners';
 import type { PatientsService } from '@cvg-his-v2/module-patients';
 import { ConflictError, NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
-import type {
-  AccountId,
-  BillingRecordId,
-  EncounterId,
-  UserId
-} from '@cvg-his-v2/shared-types';
+import type { AccountId, BillingRecordId, EncounterId, UserId } from '@cvg-his-v2/shared-types';
 import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
 
 export {
@@ -38,10 +33,7 @@ export type FinancialPayablePaymentMethod =
   | 'card'
   | 'cheque'
   | 'other';
-export type FinancialPayableReconciliationStatus =
-  | 'not_required'
-  | 'pending'
-  | 'reconciled';
+export type FinancialPayableReconciliationStatus = 'not_required' | 'pending' | 'reconciled';
 
 export interface EncounterFinancialAccountRecord {
   readonly id: string;
@@ -174,6 +166,8 @@ export interface EncounterFinancialRepository {
     encounterId: EncounterId
   ): Promise<EncounterFinancialAccountRecord | null>;
   findReceivableByIdForUpdate?(receivableId: string): Promise<EncounterReceivableRecord | null>;
+  /** True when append-only cash-receipt history keeps payment rows attached. */
+  hasReversedCashReceiptForFinancialAccount?(financialAccountId: string): Promise<boolean>;
 }
 
 export interface CloseEncounterFinancialInput {
@@ -311,7 +305,11 @@ function normalizeDate(value: string | undefined, field: string): string {
   return date.toISOString().slice(0, 10);
 }
 
-function normalizePeriodDate(value: string | null | undefined, fallback: string, field: string): string {
+function normalizePeriodDate(
+  value: string | null | undefined,
+  fallback: string,
+  field: string
+): string {
   return normalizeDate(value ?? fallback, field);
 }
 
@@ -325,7 +323,11 @@ function currentMonthPeriod(): { dateFrom: string; dateTo: string } {
   };
 }
 
-function isDateWithinPeriod(value: string | null | undefined, dateFrom: string, dateTo: string): boolean {
+function isDateWithinPeriod(
+  value: string | null | undefined,
+  dateFrom: string,
+  dateTo: string
+): boolean {
   if (!value) return false;
   const normalized = value.slice(0, 10);
   return normalized >= dateFrom && normalized <= dateTo;
@@ -485,7 +487,9 @@ export class InMemoryFinancialPayablesRepository implements FinancialPayablesRep
     return this.#payables.get(payableId) ?? null;
   }
 
-  async listPayables(filters?: FinancialPayableListFilters): Promise<readonly FinancialPayableRecord[]> {
+  async listPayables(
+    filters?: FinancialPayableListFilters
+  ): Promise<readonly FinancialPayableRecord[]> {
     let items = Array.from(this.#payables.values());
     if (filters?.accountId) {
       items = items.filter((item) => item.accountId === filters.accountId);
@@ -493,7 +497,10 @@ export class InMemoryFinancialPayablesRepository implements FinancialPayablesRep
     if (filters?.status) {
       items = items.filter((item) => item.status === filters.status);
     }
-    return items.sort((left, right) => left.dueAt.localeCompare(right.dueAt) || left.supplierName.localeCompare(right.supplierName));
+    return items.sort(
+      (left, right) =>
+        left.dueAt.localeCompare(right.dueAt) || left.supplierName.localeCompare(right.supplierName)
+    );
   }
 }
 
@@ -557,12 +564,15 @@ export class FinancialPayablesService {
 
   public async listPayables(
     accountId: AccountId,
-    filters: Omit<FinancialPayableListFilters, 'accountId'> & { readonly page?: number; readonly pageSize?: number } = {}
+    filters: Omit<FinancialPayableListFilters, 'accountId'> & {
+      readonly page?: number;
+      readonly pageSize?: number;
+    } = {}
   ) {
     const page = Math.max(1, filters.page ?? 1);
     const pageSize = Math.max(1, Math.min(100, filters.pageSize ?? 20));
     const search = filters.search?.trim().toLowerCase();
-    let data = [...await this.#repository.listPayables({ accountId, status: filters.status })];
+    let data = [...(await this.#repository.listPayables({ accountId, status: filters.status }))];
     if (search) {
       data = data.filter((item) =>
         [item.supplierName, item.description, item.category, item.costCenterName, item.notes ?? '']
@@ -627,7 +637,10 @@ export class FinancialPayablesService {
         notes: normalizeOptional(input.notes) ?? payable.notes,
         paymentMethod,
         paymentReference,
-        reconciliationStatus: this.#derivePayableReconciliationStatus(paymentMethod, nextOutstanding),
+        reconciliationStatus: this.#derivePayableReconciliationStatus(
+          paymentMethod,
+          nextOutstanding
+        ),
         reconciliationReference: null,
         paidByUserId,
         paidAt: nextOutstanding <= 0 ? now : payable.paidAt,
@@ -681,11 +694,12 @@ export class FinancialPayablesService {
     const page = Math.max(1, filters.page ?? 1);
     const pageSize = Math.max(1, Math.min(100, filters.pageSize ?? 20));
     const search = filters.search?.trim().toLowerCase();
-    let data = [...await this.#repository.listPayables({ accountId })].filter((item) =>
-      item.status === 'paid'
-      && item.paymentMethod !== null
-      && item.paymentMethod !== 'cash'
-      && item.reconciliationStatus !== 'not_required'
+    let data = [...(await this.#repository.listPayables({ accountId }))].filter(
+      (item) =>
+        item.status === 'paid' &&
+        item.paymentMethod !== null &&
+        item.paymentMethod !== 'cash' &&
+        item.reconciliationStatus !== 'not_required'
     );
     if (filters.status) {
       data = data.filter((item) => item.reconciliationStatus === filters.status);
@@ -700,7 +714,10 @@ export class FinancialPayablesService {
           item.paymentReference ?? '',
           item.reconciliationReference ?? '',
           item.notes ?? ''
-        ].join(' ').toLowerCase().includes(search)
+        ]
+          .join(' ')
+          .toLowerCase()
+          .includes(search)
       );
     }
     const total = data.length;
@@ -733,7 +750,10 @@ export class FinancialPayablesService {
   ): Promise<FinancialPayableRecord> {
     const payable = await this.#getPayable(accountId, payableId);
     if (payable.status !== 'paid') {
-      throw new ConflictError('Only paid payables can be reconciled', { payableId, status: payable.status });
+      throw new ConflictError('Only paid payables can be reconciled', {
+        payableId,
+        status: payable.status
+      });
     }
     if (!payable.paymentMethod || payable.paymentMethod === 'cash') {
       throw new ConflictError('Only non-cash payable payments require reconciliation', {
@@ -745,7 +765,8 @@ export class FinancialPayablesService {
     const updated: FinancialPayableRecord = {
       ...payable,
       reconciliationStatus: 'reconciled',
-      reconciliationReference: normalizeOptional(input.reconciliationReference) ?? payable.reconciliationReference,
+      reconciliationReference:
+        normalizeOptional(input.reconciliationReference) ?? payable.reconciliationReference,
       notes: normalizeOptional(input.notes) ?? payable.notes,
       reconciledByUserId,
       reconciledAt: now,
@@ -797,19 +818,19 @@ export class FinancialIncomeStatementService {
     }
 
     const allReceivables = await this.#receivables.listReceivables({ accountId });
-    const periodReceivables = allReceivables.filter((receivable) =>
-      isDateWithinPeriod(receivable.issuedAt, dateFrom, dateTo)
-      || isDateWithinPeriod(receivable.dueAt, dateFrom, dateTo)
-      || isDateWithinPeriod(receivable.settledAt, dateFrom, dateTo)
+    const periodReceivables = allReceivables.filter(
+      (receivable) =>
+        isDateWithinPeriod(receivable.issuedAt, dateFrom, dateTo) ||
+        isDateWithinPeriod(receivable.dueAt, dateFrom, dateTo) ||
+        isDateWithinPeriod(receivable.settledAt, dateFrom, dateTo)
     );
     const allPayables = await this.#payables.listPayables({ accountId });
-    const periodPayables = allPayables.filter((payable) =>
-      payable.status !== 'cancelled'
-      && (
-        isDateWithinPeriod(payable.issuedAt, dateFrom, dateTo)
-        || isDateWithinPeriod(payable.dueAt, dateFrom, dateTo)
-        || isDateWithinPeriod(payable.paidAt, dateFrom, dateTo)
-      )
+    const periodPayables = allPayables.filter(
+      (payable) =>
+        payable.status !== 'cancelled' &&
+        (isDateWithinPeriod(payable.issuedAt, dateFrom, dateTo) ||
+          isDateWithinPeriod(payable.dueAt, dateFrom, dateTo) ||
+          isDateWithinPeriod(payable.paidAt, dateFrom, dateTo))
     );
 
     const grossRevenue = roundCurrency(
@@ -841,8 +862,11 @@ export class FinancialIncomeStatementService {
         realizedRevenue,
         outstandingReceivables,
         receivableCount: periodReceivables.length,
-        settledReceivableCount: periodReceivables.filter((receivable) => receivable.status === 'settled').length,
-        openReceivableCount: periodReceivables.filter((receivable) => receivable.status === 'open').length
+        settledReceivableCount: periodReceivables.filter(
+          (receivable) => receivable.status === 'settled'
+        ).length,
+        openReceivableCount: periodReceivables.filter((receivable) => receivable.status === 'open')
+          .length
       },
       expenses: {
         accruedExpenses,
@@ -850,20 +874,31 @@ export class FinancialIncomeStatementService {
         outstandingPayables,
         payableCount: periodPayables.length,
         paidPayableCount: periodPayables.filter((payable) => payable.status === 'paid').length,
-        openPayableCount: periodPayables.filter((payable) => payable.status === 'open' || payable.status === 'partial').length,
+        openPayableCount: periodPayables.filter(
+          (payable) => payable.status === 'open' || payable.status === 'partial'
+        ).length,
         byCategory: this.#buildCategoryBreakdown(periodPayables)
       },
       result: {
         realizedNetResult: roundCurrency(realizedRevenue - paidExpenses),
         accrualNetResult: roundCurrency(grossRevenue - accruedExpenses),
-        grossMarginPercent: grossRevenue > 0 ? roundCurrency(((grossRevenue - accruedExpenses) / grossRevenue) * 100) : null,
-        cashConversionPercent: grossRevenue > 0 ? roundCurrency((realizedRevenue / grossRevenue) * 100) : null
+        grossMarginPercent:
+          grossRevenue > 0
+            ? roundCurrency(((grossRevenue - accruedExpenses) / grossRevenue) * 100)
+            : null,
+        cashConversionPercent:
+          grossRevenue > 0 ? roundCurrency((realizedRevenue / grossRevenue) * 100) : null
       }
     };
   }
 
-  #buildCategoryBreakdown(payables: readonly FinancialPayableRecord[]): FinancialIncomeStatement['expenses']['byCategory'] {
-    const byCategory = new Map<string, { accruedAmount: number; paidAmount: number; outstandingAmount: number }>();
+  #buildCategoryBreakdown(
+    payables: readonly FinancialPayableRecord[]
+  ): FinancialIncomeStatement['expenses']['byCategory'] {
+    const byCategory = new Map<
+      string,
+      { accruedAmount: number; paidAmount: number; outstandingAmount: number }
+    >();
     for (const payable of payables) {
       const current = byCategory.get(payable.category) ?? {
         accruedAmount: 0,
@@ -878,7 +913,10 @@ export class FinancialIncomeStatementService {
     }
     return Array.from(byCategory.entries())
       .map(([category, values]) => ({ category, ...values }))
-      .sort((left, right) => right.accruedAmount - left.accruedAmount || left.category.localeCompare(right.category));
+      .sort(
+        (left, right) =>
+          right.accruedAmount - left.accruedAmount || left.category.localeCompare(right.category)
+      );
   }
 }
 
@@ -1001,9 +1039,9 @@ export class EncounterFinancialService {
       ownerId: owner.id,
       ownerName: owner.fullName,
       ownerPhoneMain:
-        owner.contacts.find((contact) => contact.primary)?.value
-        ?? owner.contacts[0]?.value
-        ?? null,
+        owner.contacts.find((contact) => contact.primary)?.value ??
+        owner.contacts[0]?.value ??
+        null,
       financialStatus: account.financialStatus,
       financialClosed: account.closedAt !== null,
       subtotal: account.subtotalSnapshot,
@@ -1049,6 +1087,12 @@ export class EncounterFinancialService {
     }
 
     const total = account.totalSnapshot;
+    const existingReceivables = await this.#repository.listReceivablesByFinancialAccount(
+      account.id
+    );
+    const hasReversedCashReceipt = this.#repository.hasReversedCashReceiptForFinancialAccount
+      ? await this.#repository.hasReversedCashReceiptForFinancialAccount(account.id)
+      : false;
     const installments =
       input.installments && input.installments.length > 0
         ? input.installments
@@ -1065,26 +1109,48 @@ export class EncounterFinancialService {
 
     if (existingPayments.length === 0) {
       const now = nowIso();
-      const receivables: EncounterReceivableRecord[] = installments.map((installment, index) => ({
-        id: randomUUID(),
-        accountId: account.accountId,
-        encounterId,
-        financialAccountId: account.id,
-        installmentNumber: index + 1,
-        installmentLabel:
-          installment.label?.trim() || `Parcela ${index + 1}/${installments.length}`,
-        dueAt: installment.dueAt ?? null,
-        status: 'open',
-        amountOriginal: roundCurrency(installment.amount),
-        amountPaid: 0,
-        amountOutstanding: roundCurrency(installment.amount),
-        issuedAt: now,
-        settledAt: null,
-        notes: installment.notes?.trim() ?? null,
-        createdAt: now,
-        updatedAt: now
-      }));
-      await this.#repository.replaceReceivables(account.id, receivables);
+      if (hasReversedCashReceipt) {
+        const installment = installments[0];
+        const existing = existingReceivables[0];
+        if (
+          installments.length !== 1 ||
+          !installment ||
+          !existing ||
+          roundCurrency(installment.amount) !== roundCurrency(total)
+        ) {
+          throw new ConflictError(
+            'A cash-receipt reversal preserves its original receivable; a new installment schedule cannot replace it'
+          );
+        }
+        await this.#repository.updateReceivable({
+          ...existing,
+          installmentLabel: installment.label?.trim() || existing.installmentLabel,
+          dueAt: installment.dueAt ?? existing.dueAt,
+          notes: installment.notes?.trim() ?? existing.notes,
+          updatedAt: now
+        });
+      } else {
+        const receivables: EncounterReceivableRecord[] = installments.map((installment, index) => ({
+          id: randomUUID(),
+          accountId: account.accountId,
+          encounterId,
+          financialAccountId: account.id,
+          installmentNumber: index + 1,
+          installmentLabel:
+            installment.label?.trim() || `Parcela ${index + 1}/${installments.length}`,
+          dueAt: installment.dueAt ?? null,
+          status: 'open',
+          amountOriginal: roundCurrency(installment.amount),
+          amountPaid: 0,
+          amountOutstanding: roundCurrency(installment.amount),
+          issuedAt: now,
+          settledAt: null,
+          notes: installment.notes?.trim() ?? null,
+          createdAt: now,
+          updatedAt: now
+        }));
+        await this.#repository.replaceReceivables(account.id, receivables);
+      }
     }
 
     await this.#repository.upsertFinancialAccount({
@@ -1245,7 +1311,9 @@ export class EncounterFinancialService {
       if (!patient) continue;
       const owner = resolveOrSkipMissing(() => this.#owners.getOrThrow(encounter.ownerId));
       if (!owner) continue;
-      const account = await this.#repository.findFinancialAccountByEncounter(receivable.encounterId);
+      const account = await this.#repository.findFinancialAccountByEncounter(
+        receivable.encounterId
+      );
       if (!account) continue;
       const row = {
         ...attachPayments(
@@ -1259,9 +1327,9 @@ export class EncounterFinancialService {
         ownerId: owner.id,
         ownerName: owner.fullName,
         ownerPhoneMain:
-          owner.contacts.find((contact) => contact.primary)?.value
-          ?? owner.contacts[0]?.value
-          ?? null,
+          owner.contacts.find((contact) => contact.primary)?.value ??
+          owner.contacts[0]?.value ??
+          null,
         financialStatus: account.financialStatus,
         totalAmount: account.totalSnapshot,
         lastClosedAt: account.closedAt
@@ -1368,7 +1436,8 @@ export class EncounterFinancialService {
         await this.#onReceivablePaid?.(payment);
       }
 
-      const receivables = await this.#repository.listReceivablesByFinancialAccount(financialAccountId);
+      const receivables =
+        await this.#repository.listReceivablesByFinancialAccount(financialAccountId);
       const totalAmount = roundCurrency(
         receivables.reduce((sum, receivable) => sum + receivable.amountOriginal, 0)
       );
@@ -1401,3 +1470,33 @@ export {
   DatabaseEncounterFinancialRepository,
   DatabaseFinancialPayablesRepository
 } from './repositories/database-financial.repository.js';
+export {
+  DatabaseAdvancePaymentsReportSource,
+  MAX_ADVANCE_PAYMENT_REPORT_ROWS
+} from './advance-payments-report.js';
+export type {
+  AdvancePaymentReportRow,
+  AdvancePaymentReportStatus,
+  AdvancePaymentsReportFilters,
+  AdvancePaymentsReportSource
+} from './advance-payments-report.js';
+export {
+  DatabaseFinancialReceivablesReportSource,
+  MAX_FINANCIAL_RECEIVABLE_REPORT_ROWS
+} from './receivables-report.js';
+export type {
+  FinancialReceivableReportFinancialStatus,
+  FinancialReceivablesReportFilters,
+  FinancialReceivablesReportRow,
+  FinancialReceivablesReportSource,
+  FinancialReceivablesReportStatus
+} from './receivables-report.js';
+export {
+  DatabaseFinanceCatalogReportSource,
+  MAX_FINANCE_CATALOG_REPORT_ROWS
+} from './finance-catalog-report.js';
+export type {
+  FinanceCatalogReportFilters,
+  FinanceCatalogReportRow,
+  FinanceCatalogReportSource
+} from './finance-catalog-report.js';

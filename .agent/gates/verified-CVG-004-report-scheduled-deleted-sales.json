@@ -1,0 +1,144 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-SCHEDULED-DELETED-SALES-VFY-001",
+  "timestamp": "2026-08-27T21:52:56-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-004 bounded scheduled source for persisted current cancelled counter-sale snapshot",
+  "scope_ref": "CVG-004-REPORT-SCHEDULED-DELETED-SALES",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-001-CONTRACT",
+      "description": "The scheduled report reuses the verified commercial-deleted-sales contract, remains database-backed and maps exactly the eleven persisted current-snapshot fields.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-scheduled-deleted-sales.md",
+        ".agent/gates/verified-CVG-004-report-deleted-sales-snapshot.json",
+        "apps/worker/src/runner.ts",
+        "apps/worker/src/bootstrap.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The source is a current cancelled snapshot; no cancellation history, event time, actor or reason is inferred."
+    },
+    {
+      "id": "V-002-FILTERS-BOUNDS",
+      "description": "The worker validates strict ISO dates, inverted periods and search length before querying, forwards normalized filters, requests the 10,001-row detection bound, rejects overflow and defensively reapplies tenant/status/period/search semantics.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-DELETED-SALES-GREEN-001",
+        "apps/worker/src/runner.ts",
+        "apps/worker/src/runner.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The bound protects this scheduled execution path; target-scale and deployed database behavior remain outside this local gate."
+    },
+    {
+      "id": "V-003-SCHEDULED-EXECUTION",
+      "description": "Worker bootstrap composes the database-backed counter-sales source and the existing ReportsService scheduled job persists the filtered execution without adding an external provider dependency.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-DELETED-SALES-GREEN-001",
+        "apps/worker/src/bootstrap.ts",
+        "apps/worker/src/jobs/scheduled-report-job.ts",
+        "apps/worker/src/run-once.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This slice proves local persisted execution with empty recipients; continuous distributed delivery, retries and observability are not certified."
+    },
+    {
+      "id": "V-004-TENANT-PROCESS-PROOF",
+      "description": "Two real one-shot worker processes execute two due schedules for different accounts against disposable PostgreSQL, and each persisted execution contains only its own cancelled sale.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-DELETED-SALES-PROCESS-001",
+        "tests/integration/process/worker-run-once-reports.test.ts",
+        "apps/worker/src/run-once.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Disposable PostgreSQL and local one-shot processes do not certify target roles, target RLS, continuous worker topology or production delivery."
+    },
+    {
+      "id": "V-005-QUALITY-REGRESSION",
+      "description": "The intentional RED, worker regression, coverage, relevant build, static validators, security, formatting and diff hygiene remain green within the repository bar.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-DELETED-SALES-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-DELETED-SALES-QUALITY-001",
+        ".agent/artifacts/CVG-004-report-scheduled-deleted-sales-2026-08-27.md",
+        "apps/worker/src/runner.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Coverage uses the repository's designated integration exclusions; remote CI, production, release and external homologation remain outside this gate."
+    },
+    {
+      "id": "V-006-INDEPENDENT-REVIEW",
+      "description": "A fresh read-only independent review was re-run after the test typing correction and returned bounded approval with no material residual finding in this scope.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-DELETED-SALES-REVIEW-001",
+        ".agent/artifacts/CVG-004-report-scheduled-deleted-sales-2026-08-27.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The first review reported a stale TS2345 from the pre-correction test; re-review confirmed it closed. Approval is limited to this slice."
+    },
+    {
+      "id": "V-007-GLOBAL-NON-PROMOTION",
+      "description": "The scheduled result is reconciled without promoting CVG-004, Vetus parity, clinical parity, enterprise readiness, target operations or release acceptance.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-DELETED-SALES-GLOBAL-RETEST-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-DELETED-SALES-FINAL-001",
+        ".agent/state.json",
+        ".agent/backlog.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Live Vetus parity remains 4/11 verified, clinical parity 2/3 and enterprise readiness 95/100 with open warnings/failure."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-report-scheduled-deleted-sales.md",
+    ".agent/artifacts/CVG-004-report-scheduled-deleted-sales-2026-08-27.md",
+    ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-DELETED-SALES-IR-001",
+    ".agent/gates/verified-CVG-004-report-deleted-sales-snapshot.json",
+    "apps/worker/src/runner.ts",
+    "apps/worker/src/bootstrap.ts",
+    "apps/worker/src/jobs/scheduled-report-job.ts",
+    "apps/worker/src/runner.test.ts",
+    "tests/integration/process/worker-run-once-reports.test.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "The current cancelled snapshot still does not provide cancellation history or exact Vetus dynamic-executor parity.",
+    "Disposable local PostgreSQL does not certify target grants, target RLS, deployed worker topology, provider delivery, backup/restore, RTO/RPO or production operations.",
+    "Other report families, external delivery, accessibility, operational LGPD, remote CI, global parity and release acceptance remain open."
+  ],
+  "conditions": [
+    "Keep this result limited to the tenant-scoped scheduled read of persisted current cancelled counter-sale rows.",
+    "Keep recipients empty or use separately authorized delivery/provider evidence; this gate does not approve external delivery.",
+    "Revalidate before changing cancellation semantics, report fields, schedule execution/delivery, provider/target behavior, credentials, production or release scope."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via the original consolidation brief",
+    "scope": "CVG-004 bounded scheduled source for persisted current cancelled counter-sale snapshot",
+    "decision": "Authorize reversible worker resolver/bootstrap/test implementation and disposable PostgreSQL two-account one-shot verification using the already verified persisted commercial-deleted-sales contract. Exclude external delivery providers, credentials, fiscal or cancellation writes, target, production, deployment, backfill and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-DELETED-SALES-IR-001",
+    "expires_or_revalidates": "Revalidate before adding external delivery, cancellation history, writes, providers, credentials, target, production, deployment or release activity."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_BOUNDED",
+  "next_action": "Keep CVG-004 and the global program IN_PROGRESS/PARTIAL; retain the explicit non-promotion boundary and select another report gap only through fresh scouting and a new implementation-ready authority.",
+  "revalidation_triggers": [
+    "Changes to counter-sale cancellation semantics, report fields or persisted source ordering",
+    "Changes to worker schedule claiming, report execution/export/delivery, actor identity or tenant context",
+    "Expansion to external delivery, cancellation history, fiscal writes, provider, target, credential, production, deployment or release action"
+  ],
+  "supersedes": ".agent/gates/implementation-ready-CVG-004-report-scheduled-deleted-sales.json"
+}

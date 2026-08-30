@@ -18,7 +18,7 @@ export interface SurgeryRoutesHandlers {
   surgery: SurgeryService;
   encounters: EncountersService;
   audit: AuditService;
-  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
+  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
 }
 
 export async function handleSurgeryRoutes(
@@ -31,7 +31,7 @@ export async function handleSurgeryRoutes(
   const { surgery, encounters, audit, requirePrincipal } = handlers;
 
   if (pathname === '/surgeries' && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'surgery.read');
+    const principal = await requirePrincipal(request, 'surgery.read');
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const encounterId = url.searchParams.get('encounterId') ?? undefined;
     if (encounterId) {
@@ -62,7 +62,7 @@ export async function handleSurgeryRoutes(
   }
 
   if (pathname === '/surgeries' && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'surgery.manage');
+    const principal = await requirePrincipal(request, 'surgery.manage');
     const payload = (await readJsonBody(request)) as CreateSurgeryCaseRequest;
     const encounter = encounters.getOrThrow(payload.encounterId as never);
     if (encounter.accountId !== principal.user.accountId) {
@@ -90,7 +90,7 @@ export async function handleSurgeryRoutes(
 
   const detailMatch = pathname.match(/^\/surgeries\/([^/]+)$/);
   if (detailMatch && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'surgery.read');
+    const principal = await requirePrincipal(request, 'surgery.read');
     const surgeryCaseId = requireNonEmptyString(detailMatch[1], 'surgeryCaseId');
     const surgeryCase = surgery.getOrThrow(surgeryCaseId as never);
     if (surgeryCase.accountId !== principal.user.accountId) {
@@ -116,7 +116,7 @@ export async function handleSurgeryRoutes(
 
   const statusMatch = pathname.match(/^\/surgeries\/([^/]+)\/status$/);
   if (statusMatch && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'surgery.manage');
+    const principal = await requirePrincipal(request, 'surgery.manage');
     const surgeryCaseId = requireNonEmptyString(statusMatch[1], 'surgeryCaseId');
     const existing = surgery.getOrThrow(surgeryCaseId as never);
     if (existing.accountId !== principal.user.accountId) {

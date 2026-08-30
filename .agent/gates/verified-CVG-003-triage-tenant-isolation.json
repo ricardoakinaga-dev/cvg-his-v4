@@ -1,0 +1,144 @@
+{
+  "record_id": "GATE-CVG-003-TRIAGE-TENANT-ISOLATION-VFY-001",
+  "timestamp": "2026-08-26T22:06:27-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-003 bounded account-scoped triage collection, version history, creation and update application boundary",
+  "scope_ref": "CVG-003-TRIAGE-TENANT-ISOLATION",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-001-SERVICE-SCOPE",
+      "description": "Triage hydration, collection, detail, version history, creation and update require a valid AccountId; the service filters records and versions before returning or mutating them and rejects missing context.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-TRIAGE-TENANT-ISOLATION-GREEN-001",
+        "packages/modules/triage/src/index.ts",
+        "packages/modules/triage/src/triage.test.ts",
+        "tests/unit/modules/triage-service.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The service boundary is proven locally; a caller outside the tenant transaction wrapper is not a database atomicity guarantee."
+    },
+    {
+      "id": "V-002-REPOSITORY-SCOPE",
+      "description": "Triage repository detail, encounter, collection, version and update queries use parameterized account predicates; existing RLS remains an additional database control.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-TRIAGE-TENANT-ISOLATION-GREEN-001",
+        "packages/modules/triage/src/repositories/database-triage.repository.ts",
+        "packages/db/migrations/0008_rls_text_based_tables.sql"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This does not certify privileged SQL writers outside the application repository or target deployment RLS."
+    },
+    {
+      "id": "V-003-HTTP-SCOPE",
+      "description": "Authenticated triage routes derive tenant scope from the principal, reject an explicit empty encounter filter and deny cross-account list, history, PATCH and POST access in a two-account HTTP fixture.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-TRIAGE-TENANT-ISOLATION-GREEN-001",
+        "apps/api/src/server.ts",
+        "apps/api/src/server.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The HTTP fixture uses the repository's local MockRequest/MockResponse dispatcher and fake repositories; it is not TCP-to-PostgreSQL target evidence."
+    },
+    {
+      "id": "V-004-ROLLBACK-IMMUTABILITY",
+      "description": "Returned triage models and history snapshots are defensive copies, speculative create/update cache state is restored on persistence failure, and POST validation/persistence precedes encounter transition.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-TRIAGE-TENANT-ISOLATION-GREEN-001",
+        "packages/modules/triage/src/index.ts",
+        "packages/modules/triage/src/triage.test.ts",
+        "apps/api/src/server.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Repository update and version creation remain two sequential calls when no outer tenant transaction owns them."
+    },
+    {
+      "id": "V-005-QUALITY",
+      "description": "TDD RED is recorded, corrected tests/builds/typechecks/static hygiene pass, PostgreSQL persistence passes and official repository coverage remains above the required threshold.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-TRIAGE-TENANT-ISOLATION-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-003-TRIAGE-TENANT-ISOLATION-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-003-TRIAGE-TENANT-ISOLATION-QUALITY-001",
+        ".agent/artifacts/CVG-003-triage-tenant-isolation-2026-08-26.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Aggregate lint remains blocked by 45 unused-symbol diagnostics in unrelated dirty files; scoped triage lint passes."
+    },
+    {
+      "id": "V-006-INDEPENDENT-REVIEW",
+      "description": "A fresh independent read-only reviewer inspected the final service, repository, route and tests and returned PASS_BOUNDED without Critical or High findings.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-TRIAGE-TENANT-ISOLATION-REVIEW-001",
+        ".agent/tasks/CVG-003-triage-tenant-isolation.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The reviewer retained Medium residuals for transaction-wrapper dependence, local HTTP/RLS limits and unrelated aggregate lint, plus a Low test-gap observation."
+    },
+    {
+      "id": "V-007-GLOBAL-BOUNDARY",
+      "description": "The bounded result is reconciled without promoting CVG-003 or global gates; parity, clinical parity and enterprise readiness remain at their observed partial/open states.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-TRIAGE-TENANT-ISOLATION-GLOBAL-RETEST-001",
+        ".agent/verification.jsonl#VFY-CVG-003-TRIAGE-TENANT-ISOLATION-FINAL-001",
+        ".agent/state.json",
+        ".agent/backlog.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "General parity is 98/100 with 4/11 verified, clinical parity is 100/100 with 2/3 verified and enterprise readiness is 95/100 with 42 PASS, 3 WARN and 1 FAIL."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-003-triage-tenant-isolation.md",
+    ".agent/artifacts/CVG-003-triage-tenant-isolation-2026-08-26.md",
+    ".agent/authority.jsonl#AUTH-CVG-003-TRIAGE-TENANT-ISOLATION-IR-001",
+    ".agent/verification.jsonl#VFY-CVG-003-TRIAGE-TENANT-ISOLATION-FINAL-001",
+    "packages/modules/triage/src/index.ts",
+    "packages/modules/triage/src/repositories/database-triage.repository.ts",
+    "apps/api/src/server.ts",
+    "apps/api/src/server.test.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "The repository update and version insert are only atomic when an outer tenant transaction wrapper owns both calls.",
+    "The HTTP proof uses local dispatcher/fake repositories and does not replace TCP-to-target PostgreSQL/RLS evidence.",
+    "Aggregate lint has unrelated baseline diagnostics in the mixed dirty worktree.",
+    "Target behavior, privileged writers, other clinical routes, providers, Live Lab, accessibility, operations, remote CI, backup/restore, remaining parity and release acceptance remain open."
+  ],
+  "conditions": [
+    "Keep required AccountId context and principal-derived route scope.",
+    "Do not broaden empty filters or reintroduce unscoped triage repository predicates.",
+    "Revalidate before changing hydration, tenant context, authorization, transaction ownership, direct SQL, target or production scope."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via the original consolidation brief",
+    "scope": "CVG-003 bounded triage collection, history and update tenant isolation",
+    "decision": "Authorize reversible repository-local triage service/repository/route/test correction and local verification of account-scoped triage collection, history and update boundaries; exclude migrations, direct SQL beyond the repository query correction, target, providers, credentials, production, deployment, external mutation and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-003-TRIAGE-TENANT-ISOLATION-IR-001",
+    "expires_or_revalidates": "Revalidate before expanding beyond triage collection, history and update application boundaries."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_BOUNDED",
+  "next_action": "Keep CVG-003 and the global program IN_PROGRESS/PARTIAL. Continue with the next separately authorized gap; do not promote this bounded result to clinical parity, enterprise readiness or release.",
+  "revalidation_triggers": [
+    "Any new triage collection, detail, version-history, creation or update path",
+    "Changes to runtime hydration, tenant context, authorization, transaction ownership or triage persistence",
+    "Any expansion to target, provider, credential, production, deployment or release acceptance"
+  ],
+  "supersedes": ".agent/gates/implementation-ready-CVG-003-triage-tenant-isolation.json"
+}

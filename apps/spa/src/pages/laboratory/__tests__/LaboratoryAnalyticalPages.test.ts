@@ -43,6 +43,10 @@ describe('Laboratory analytical result pages', () => {
         reason: 'Check-up',
         status: 'resulted',
         resultSummary: 'Hemacias: 6.2; Leucocitos: 12.4',
+        resultValues: [
+          { parameter: 'Hemacias', value: '6.2', unit: 'milhoes/uL', outOfRange: false },
+          { parameter: 'Leucocitos', value: '12.4', unit: 'mil/uL', outOfRange: false }
+        ],
         createdAt: '2026-04-24T08:30:00.000Z',
         updatedAt: '2026-04-25T10:00:00.000Z'
       }
@@ -58,6 +62,10 @@ describe('Laboratory analytical result pages', () => {
         reason: 'Suspeita urinaria',
         status: 'resulted',
         resultSummary: 'Densidade urinaria: 1.035; pH urinario: 6.5',
+        resultValues: [
+          { parameter: 'Densidade urinaria', value: '1.035', unit: 'SG', outOfRange: false },
+          { parameter: 'pH urinario', value: '6.5', unit: 'pH', outOfRange: false }
+        ],
         createdAt: '2026-04-24T08:30:00.000Z',
         updatedAt: '2026-04-25T10:00:00.000Z'
       }
@@ -73,6 +81,10 @@ describe('Laboratory analytical result pages', () => {
         reason: 'Perfil bioquimico',
         status: 'resulted',
         resultSummary: 'ALT: 92; Creatinina: 1.3',
+        resultValues: [
+          { parameter: 'ALT', value: '92', unit: 'U/L', reference: '10-125 U/L', outOfRange: false },
+          { parameter: 'Creatinina', value: '1.3', unit: 'mg/dL', reference: '0.5-1.8 mg/dL', outOfRange: false }
+        ],
         createdAt: '2026-04-24T08:30:00.000Z',
         updatedAt: '2026-04-25T10:00:00.000Z'
       }
@@ -195,6 +207,7 @@ describe('Laboratory analytical result pages', () => {
     expect(wrapper.text()).toContain('Hemácias');
     expect(wrapper.text()).toContain('Leucócitos');
     expect(wrapper.text()).toContain('Histórico comparativo');
+    expect(wrapper.text()).toContain('6.2');
     expect(laboratoryService.listHemograms).toHaveBeenCalledWith({
       code: undefined,
       finalizedAt: undefined,
@@ -248,6 +261,7 @@ describe('Laboratory analytical result pages', () => {
     expect(wrapper.text()).toContain('Achados observacionais');
     expect(wrapper.text()).toContain('Densidade urinária');
     expect(wrapper.text()).toContain('pH urinário');
+    expect(wrapper.text()).toContain('1.035');
     expect(laboratoryService.listUrinalysis).toHaveBeenCalledWith({
       code: undefined,
       finalizedAt: undefined,
@@ -300,6 +314,7 @@ describe('Laboratory analytical result pages', () => {
     expect(wrapper.text()).toContain('Painel renal');
     expect(wrapper.text()).toContain('Metabólico');
     expect(wrapper.text()).toContain('ALT');
+    expect(wrapper.text()).toContain('92');
     expect(wrapper.text()).toContain('Creatinina');
     expect(wrapper.text()).toContain('Vlr. Ref. Bioquímico');
     expect(laboratoryService.listBiochemistry).toHaveBeenCalledWith({
@@ -329,6 +344,43 @@ describe('Laboratory analytical result pages', () => {
       code: 'diag',
       finalizedAt: '2026-04-25',
       enteredAt: '2026-04-24',
+      body: 'ALT',
+      closed: true
+    });
+  });
+
+  it('filters a structured-only biochemistry result by parameter body', async () => {
+    vi.mocked(laboratoryService.listBiochemistry).mockResolvedValue([
+      {
+        id: 'diag_bio_structured' as never,
+        accountId: 'acc_1' as never,
+        encounterId: 'enc_1' as never,
+        patientId: 'patient_1' as never,
+        examType: 'Bioquimico',
+        examCatalogId: 'cat_002',
+        reason: 'Resultado sem resumo textual',
+        status: 'resulted',
+        resultValues: [
+          { parameter: 'ALT', value: '92', unit: 'U/L', outOfRange: false }
+        ],
+        createdAt: '2026-04-24T08:30:00.000Z',
+        updatedAt: '2026-04-25T10:00:00.000Z'
+      }
+    ]);
+
+    const wrapper = mount(LaboratoryBiochemistryPage);
+    await flushPromises();
+    expect(wrapper.text()).toContain('92');
+
+    await wrapper.findAll('input[type="search"]')[4].setValue('ALT');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('92');
+    expect(laboratoryService.listBiochemistry).toHaveBeenLastCalledWith({
+      code: undefined,
+      finalizedAt: undefined,
+      enteredAt: undefined,
       body: 'ALT',
       closed: true
     });

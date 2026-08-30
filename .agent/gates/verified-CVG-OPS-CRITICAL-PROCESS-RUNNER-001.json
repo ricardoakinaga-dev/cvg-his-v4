@@ -1,0 +1,155 @@
+{
+  "record_id": "GATE-CVG-OPS-CRITICAL-PROCESS-RUNNER-VFY-001",
+  "timestamp": "2026-08-28T23:20:00-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-OPS bounded serial critical-process runner reliability, ownership, cleanup and failure-evidence contract",
+  "scope_ref": "CVG-OPS-CRITICAL-PROCESS-RUNNER-001",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-001-RUNNER-CONTRACT",
+      "description": "The frozen ten-entry manifest remains serial and complete; child execution is asynchronous and shell-free with finite validated budgets, typed timeout/spawn/signal/exit/report outcomes, bounded diagnostics and complete non-skipped report validation.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-OPS-CRITICAL-PROCESS-RUNNER-001.md",
+        ".agent/authority.jsonl#AUTH-CVG-OPS-CRITICAL-PROCESS-RUNNER-IR-001",
+        ".agent/gates/implementation-ready-CVG-OPS-CRITICAL-PROCESS-RUNNER-001.json",
+        "infra/scripts/critical-process-suite-runtime.mjs",
+        "infra/scripts/run-critical-process-suite.mjs",
+        "tests/unit/infra/critical-process-suite-contract.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-OPS-CRITICAL-PROCESS-RUNNER-REGRESSION-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The contract is a repository-local runner gate; it does not establish business-process, provider, target or production semantics."
+    },
+    {
+      "id": "V-002-PROCESS-MATRIX",
+      "description": "A fresh unique disposable PostgreSQL matrix observed all ten serial manifest entries, accepted every complete report contract, passed PIX 25/25 and cleaned each per-entry ephemeral database.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-OPS-CRITICAL-PROCESS-RUNNER-PROCESS-FINAL-001",
+        ".agent/artifacts/CVG-OPS-CRITICAL-PROCESS-RUNNER-2026-08-28.md",
+        "infra/scripts/run-critical-process-suite.mjs",
+        "tests/integration/process/pix-provider-settlement-sigkill.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This is local disposable-process regression evidence, not provider certification, target evidence, remote CI evidence or release approval."
+    },
+    {
+      "id": "V-003-OWNERSHIP-CLEANUP-SECURITY",
+      "description": "Owned descendant cleanup is bounded and fail-closed: POSIX uses detached process groups; Windows uses suspended native Job Object creation with kill-on-close and identity-bound native handles; report paths, credentials, database URLs and cleanup sockets are bounded and sanitized; post-run checks are clean.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "infra/scripts/critical-process-suite-runtime.mjs",
+        "infra/scripts/windows-owned-process-supervisor.ps1",
+        "infra/scripts/windows-terminate-owned-process.ps1",
+        "tests/unit/infra/critical-process-suite-contract.test.ts",
+        "tests/unit/infra/critical-process-suite-windows-contract.test.mjs",
+        ".agent/verification.jsonl#VFY-CVG-OPS-CRITICAL-PROCESS-RUNNER-PROCESS-FINAL-001",
+        ".agent/verification.jsonl#VFY-CVG-OPS-CRITICAL-PROCESS-RUNNER-HYGIENE-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Native Windows execution was not available on this Linux host; Windows runtime coverage is delegated to the configured windows-2022 CI job."
+    },
+    {
+      "id": "V-004-TDD-QUALITY",
+      "description": "Intentional RED preceded implementation; the final combined focused runner/CI contracts, syntax, formatting, diff, secret, lint, typecheck, build and OpenAPI checks passed.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-OPS-CRITICAL-PROCESS-RUNNER-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-OPS-CRITICAL-PROCESS-RUNNER-REGRESSION-001",
+        ".agent/verification.jsonl#VFY-CVG-OPS-CRITICAL-PROCESS-RUNNER-WORKSPACE-GATES-001",
+        ".agent/verification.jsonl#VFY-CVG-OPS-CRITICAL-PROCESS-RUNNER-HYGIENE-001",
+        "package.json",
+        "docs/CI_GATES.md",
+        ".github/workflows/ci.yml"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Local green gates do not replace remote CI, pinned-host Helm execution, target operations or release acceptance."
+    },
+    {
+      "id": "V-005-INDEPENDENT-REVIEW",
+      "description": "The initial compatible read-only review findings were remediated, and a final compatible independent review returned APPROVE_BOUNDED with no remaining P0, P1 or P2 finding.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-OPS-CRITICAL-PROCESS-RUNNER-REVIEW-001",
+        ".agent/verification.jsonl#VFY-CVG-OPS-CRITICAL-PROCESS-RUNNER-REVIEW-002"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The approval is limited to the bounded runner implementation and static Windows review; it is not ERP, target, production or release approval."
+    },
+    {
+      "id": "V-006-GLOBAL-NON-PROMOTION",
+      "description": "The bounded runner result is reconciled without promoting the ERP, Vetus parity, clinical parity, enterprise readiness, target, provider, production or release gates.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-OPS-CRITICAL-PROCESS-RUNNER-GLOBAL-NON-PROMOTION-001",
+        ".agent/state.json",
+        ".agent/backlog.json",
+        ".gauntlet/state.md",
+        ".gauntlet/progress.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "General Vetus parity is 4/11 verified, clinical parity is 2/3 verified and enterprise readiness is 95/100 with 42 PASS, 3 WARN and 1 FAIL; promotion remains BLOCKED."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-OPS-CRITICAL-PROCESS-RUNNER-001.md",
+    ".agent/artifacts/CVG-OPS-CRITICAL-PROCESS-RUNNER-2026-08-28.md",
+    ".agent/authority.jsonl#AUTH-CVG-OPS-CRITICAL-PROCESS-RUNNER-IR-001",
+    ".agent/gates/implementation-ready-CVG-OPS-CRITICAL-PROCESS-RUNNER-001.json",
+    "infra/scripts/critical-process-suite-runtime.mjs",
+    "infra/scripts/run-critical-process-suite.mjs",
+    "infra/scripts/windows-owned-process-supervisor.ps1",
+    "infra/scripts/windows-terminate-owned-process.ps1",
+    "tests/unit/infra/critical-process-suite-contract.test.ts",
+    "tests/unit/infra/critical-process-suite-windows-contract.test.mjs",
+    "tests/integration/process/pix-provider-settlement-sigkill.test.ts",
+    ".github/workflows/ci.yml",
+    "docs/CI_GATES.md",
+    ".agent/verification.jsonl#VFY-CVG-OPS-CRITICAL-PROCESS-RUNNER-RED-001",
+    ".agent/verification.jsonl#VFY-CVG-OPS-CRITICAL-PROCESS-RUNNER-REVIEW-001",
+    ".agent/verification.jsonl#VFY-CVG-OPS-CRITICAL-PROCESS-RUNNER-REVIEW-002",
+    ".agent/verification.jsonl#VFY-CVG-OPS-CRITICAL-PROCESS-RUNNER-REGRESSION-001",
+    ".agent/verification.jsonl#VFY-CVG-OPS-CRITICAL-PROCESS-RUNNER-WORKSPACE-GATES-001",
+    ".agent/verification.jsonl#VFY-CVG-OPS-CRITICAL-PROCESS-RUNNER-PROCESS-FINAL-001",
+    ".agent/verification.jsonl#VFY-CVG-OPS-CRITICAL-PROCESS-RUNNER-GLOBAL-NON-PROMOTION-001",
+    ".agent/verification.jsonl#VFY-CVG-OPS-CRITICAL-PROCESS-RUNNER-HYGIENE-001",
+    ".agent/verification.jsonl#VFY-CVG-OPS-CRITICAL-PROCESS-RUNNER-FINAL-001"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "This Linux host cannot execute the native PowerShell/C# Windows supervisor and terminator; the Windows contract is configured for windows-2022 CI and has five local skips.",
+    "The matrix is repository-local disposable evidence and does not certify external providers, target roles, distributed operations, remote CI, backup/restore, production, accessibility, operational LGPD or release acceptance.",
+    "Complete Vetus/ERP parity remains unverified: general parity 4/11 and clinical parity 2/3."
+  ],
+  "conditions": [
+    "Keep the ten-entry manifest, serial execution, finite timeout and sanitized retained failure evidence.",
+    "Keep the bounded runner result as PASS_BOUNDED and global ERP as IN_PROGRESS/PARTIAL with promotion BLOCKED.",
+    "Revalidate before changing process fixtures, report semantics, timeout policy, runtime roles, providers, target, production, deployment, credentials or release scope."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via explicit continuation of the consolidation request and original consolidation brief",
+    "scope": "CVG-OPS bounded critical process runner timeout, signal, descendant-cleanup and failure-artifact contract",
+    "decision": "Authorize reversible repository changes to the serial critical-process runner, its contract tests, CI timeout/artifact wiring and bounded documentation only; exclude product semantics, providers, target, production and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-OPS-CRITICAL-PROCESS-RUNNER-IR-001",
+    "expires_or_revalidates": "Revalidate before changing process fixtures/business behavior, running target/production, using credentials or claiming full/global/release readiness."
+  },
+  "residual_risk": "CRITICAL",
+  "decision": "PASS_BOUNDED",
+  "next_action": "Keep global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED; any next gap requires fresh scouting and a new implementation-ready authority.",
+  "revalidation_triggers": [
+    "Changes to PROCESS_TESTS, process fixtures, Vitest JSON report semantics or timeout policy",
+    "Changes to CI job budget, artifact retention, native Windows ownership or process-group cleanup behavior",
+    "Expansion into provider, target, production, deployment, credential, parity or release scope"
+  ],
+  "supersedes": ".agent/gates/implementation-ready-CVG-OPS-CRITICAL-PROCESS-RUNNER-001.json"
+}

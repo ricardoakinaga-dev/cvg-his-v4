@@ -105,7 +105,10 @@ export class BillingService {
     this.clearAccountCache(accountId);
     for (const [recordId, record] of nextRecords) {
       this.#records.set(recordId, record);
-      this.#recordByEncounterId.set(record.encounterId, nextRecordByEncounterId.get(record.encounterId) ?? recordId);
+      this.#recordByEncounterId.set(
+        record.encounterId,
+        nextRecordByEncounterId.get(record.encounterId) ?? recordId
+      );
       this.#items.set(recordId, nextItems.get(recordId) ?? []);
     }
   }
@@ -399,13 +402,16 @@ export class BillingService {
       (item) =>
         item.sourceEntityType === payload.sourceEntityType && item.sourceEntityId === sourceEntityId
     );
-    const persisted =
-      cached ??
-      (await this.#repository?.findItemBySource?.(
-        record.accountId,
-        payload.sourceEntityType,
-        sourceEntityId
-      ));
+    // Repository-backed caches are populated before the surrounding tenant
+    // unit of work commits. Never treat that hot entry as durable state: a
+    // later rollback could otherwise make a retry replay a phantom item.
+    const persisted = this.#repository
+      ? await this.#repository.findItemBySource?.(
+          record.accountId,
+          payload.sourceEntityType,
+          sourceEntityId
+        )
+      : cached;
     if (!persisted) return null;
 
     if (

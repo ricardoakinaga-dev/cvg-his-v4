@@ -1,0 +1,176 @@
+{
+  "record_id": "GATE-CVG-004-COUNTER-SALE-CANCELLATION-HISTORY-VFY-001",
+  "timestamp": "2026-08-29T20:30:00-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-004 durable counter-sale cancellation provenance and tenant-scoped history",
+  "scope_ref": "CVG-004-COUNTER-SALE-CANCELLATION-HISTORY",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "VFY-001",
+      "description": "The cancellation boundary requires exactly a validated reason, rejects control characters before trim, derives actor/account/correlation from the authenticated command and requires the existing idempotency header.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/contracts/src/counterSales.ts",
+        "apps/api/src/routes/counter-sales-routes.ts",
+        "apps/api/src/routes/counter-sale-cancellation-history.test.ts",
+        "tests/unit/contracts/counter-sale-cancellation-contract.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-004-COUNTER-SALE-CANCELLATION-HISTORY-GREEN-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The boundary proof is repository-local and does not certify an external identity provider or target deployment."
+    },
+    {
+      "id": "VFY-002",
+      "description": "Database cancellation locks the account-scoped sale, accepts only an open row, updates with an account predicate and verified row count, and appends one actor/reason/before-after/correlation audit event in the same tenant transaction.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/counter-sales/src/repositories/database-counter-sales.repository.ts",
+        "apps/api/src/runtime.ts",
+        "packages/shared/database/src/tenant-unit-of-work.ts",
+        "tests/integration/database/counter-sale-cancellation-history.test.ts",
+        "tests/unit/modules/counter-sales-repository.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-004-COUNTER-SALE-CANCELLATION-HISTORY-POSTGRES-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The proof uses disposable PostgreSQL and does not certify target schema rollout or legal audit retention."
+    },
+    {
+      "id": "VFY-003",
+      "description": "Repeated and concurrent cancellation attempts do not create duplicate provenance; history reads are committed, newest-first, cold-projection safe, account-scoped and RLS-isolated.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/counter-sales/src/index.ts",
+        "apps/api/src/routes/counter-sales-routes.ts",
+        "tests/integration/database/counter-sale-cancellation-history.test.ts",
+        "apps/api/src/routes/counter-sale-cancellation-history.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-004-COUNTER-SALE-CANCELLATION-HISTORY-POSTGRES-001",
+        ".agent/verification.jsonl#VFY-CVG-004-COUNTER-SALE-CANCELLATION-HISTORY-GREEN-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Browser-level replay across restarted API instances remains a separate E2E/target evidence item; the command, transaction and RLS boundaries are covered here."
+    },
+    {
+      "id": "VFY-004",
+      "description": "The detail response exposes cancellationHistory without relabelling the existing cancelled-sales snapshot, and both sales workbenches collect and send the required reason.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/contracts/src/counterSales.ts",
+        "apps/api/src/openapi.yaml",
+        "apps/spa/src/services/counterSales.ts",
+        "apps/spa/src/pages/sales/CounterSalesPage.vue",
+        "apps/spa/src/pages/sales/SalesPage.vue",
+        ".agent/verification.jsonl#VFY-CVG-004-COUNTER-SALE-CANCELLATION-HISTORY-SPA-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The browser evidence is focused sales-workbench coverage, not the complete enterprise E2E/release suite."
+    },
+    {
+      "id": "VFY-005",
+      "description": "Transaction/audit failure restores the in-memory projection and does not publish history; audit persistence failure state is isolated per event so a later valid write can succeed.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/counter-sales/src/index.ts",
+        "packages/modules/audit/src/index.ts",
+        "apps/api/src/runtime.test.ts",
+        "packages/modules/audit/src/audit.test.ts",
+        "packages/modules/counter-sales/src/counter-sale-cancellation-history.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-004-COUNTER-SALE-CANCELLATION-HISTORY-GREEN-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This hardens the existing audit seam only; it does not redesign audit storage, tamper evidence or retention."
+    },
+    {
+      "id": "VFY-006",
+      "description": "TDD RED preceded implementation and the final focused, compiled-route, full API and PostgreSQL regressions are green.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-COUNTER-SALE-CANCELLATION-HISTORY-TDD-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-004-COUNTER-SALE-CANCELLATION-HISTORY-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-004-COUNTER-SALE-CANCELLATION-HISTORY-POSTGRES-001",
+        ".agent/verification.jsonl#VFY-CVG-004-COUNTER-SALE-CANCELLATION-HISTORY-REGRESSION-FINAL-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Local regression does not certify remote CI, target operations or release acceptance."
+    },
+    {
+      "id": "VFY-007",
+      "description": "Official coverage and repository quality gates remain above the mandated threshold, with migration-source, OpenAPI, RLS, secret, formatting and diff checks green.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-COUNTER-SALE-CANCELLATION-HISTORY-QUALITY-001",
+        "coverage/coverage-final.json",
+        ".agent/artifacts/CVG-004-counter-sale-cancellation-history-2026-08-29.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Coverage is workspace-local and includes one explicitly skipped external laboratory test; it is not a release certificate."
+    },
+    {
+      "id": "VFY-008",
+      "description": "Independent review findings were reconciled and retested; the final attempted independent sign-off timed out and therefore supplies no approval, so the bounded decision carries medium confidence and explicit residuals.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-COUNTER-SALE-CANCELLATION-HISTORY-REVIEW-001",
+        ".agent/tasks/CVG-004-COUNTER-SALE-CANCELLATION-HISTORY.md",
+        ".agent/backlog.json",
+        ".agent/state.json"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "No final independent APPROVE verdict was obtained after the time-boxed reviewer attempt; closure relies on the completed review findings, direct fixes and fresh regression evidence."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-COUNTER-SALE-CANCELLATION-HISTORY.md",
+    ".agent/artifacts/CVG-004-counter-sale-cancellation-history-2026-08-29.md",
+    ".agent/gates/implementation-ready-CVG-004-counter-sale-cancellation-history.json",
+    ".agent/authority.jsonl#AUTH-CVG-004-COUNTER-SALE-CANCELLATION-HISTORY-IR-001",
+    "packages/modules/counter-sales/src/index.ts",
+    "packages/modules/counter-sales/src/repositories/database-counter-sales.repository.ts",
+    "apps/api/src/runtime.ts",
+    "apps/api/src/routes/counter-sales-routes.ts",
+    "tests/integration/database/counter-sale-cancellation-history.test.ts"
+  ],
+  "confidence": "MEDIUM",
+  "gaps": [
+    "Mixed mode with a database counter-sales repository and an in-memory audit repository does not provide restart-durable history; the mode is explicit and remains a separate deployment residual.",
+    "Existing cancellations are intentionally not backfilled, and no cancelledAt fact is inferred from updatedAt or the snapshot report.",
+    "Browser replay across restarted instances, target operations, external providers, remote CI, backup/restore and release acceptance remain open.",
+    "Parent CVG-004, global Vetus/clinical parity and ERP promotion remain open."
+  ],
+  "conditions": [
+    "Keep new cancellation writes on the tenant UoW/transaction boundary whenever the database repository is active.",
+    "Keep actor and account principal-derived; never accept either from the request body.",
+    "Do not backfill or infer provenance for pre-existing cancelled rows.",
+    "Keep mixed-mode history limitations explicit until a durable audit repository is configured.",
+    "Keep global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+    "Do not infer target, production, provider, deployment or release acceptance from this local gate."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED_REVALIDATED",
+    "actor": "Ricardo (repository owner), via explicit continuation, convergent scouting and bounded review reconciliation",
+    "scope": "Repository-local counter-sale cancellation reason validation, principal-derived provenance, tenant-scoped atomic status/audit write, committed history read, minimal SPA/contract wiring and tests",
+    "decision": "Authorize bounded local closure of new cancellation provenance only. Exclude fiscal, payments/refunds, audit-framework redesign, legal retention, historical backfill, providers, credentials, FIDO2, target, production, deployment, release and global ERP acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-COUNTER-SALE-CANCELLATION-HISTORY-IR-001",
+    "expires_or_revalidates": "Revalidate before changing cancellation semantics, adding backfill/legal retention, touching fiscal/payment workflows, changing audit storage, or entering target/production/deployment/release scope."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_BOUNDED",
+  "implementation_status": "COMPLETE_BOUNDED",
+  "next_action": "Close this bounded task, return to fresh independent scouting and create a new implementation-ready authority before touching the next ERP gap. Keep parent CVG-004 and global ERP IN_PROGRESS/PARTIAL with promotion BLOCKED.",
+  "revalidation_triggers": [
+    "Changing counter-sale close, reopen, payment, fiscal or refund semantics",
+    "Adding audit retention, tamper evidence, backfill or a new persistence provider",
+    "Changing the mixed-mode/runtime transaction boundary",
+    "Changing target, production, deployment, backup/restore or release boundaries"
+  ],
+  "supersedes": ".agent/gates/implementation-ready-CVG-004-counter-sale-cancellation-history.json"
+}

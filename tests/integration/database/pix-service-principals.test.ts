@@ -215,6 +215,103 @@ describe('PIX service principal persistence', () => {
           [firstAccountId, foreignUserId]
         )
       ).rejects.toMatchObject({ code: '23503' });
+      await client.query('ROLLBACK TO SAVEPOINT cross_tenant');
+
+      await expect(
+        client.query(
+          `INSERT INTO account_service_principals (account_id, purpose, user_id)
+           VALUES ($1, 'report-execution', $2)`,
+          [firstAccountId, firstUserId]
+        )
+      ).resolves.toBeDefined();
+    } finally {
+      await client.query('ROLLBACK').catch(() => undefined);
+      client.release();
+    }
+  });
+
+  it('binds report audit actors to the owning account with composite foreign keys', async () => {
+    const client = await getTestPool().connect();
+    try {
+      await client.query('BEGIN');
+      const firstAccountId = await insertAccount(client, 'report-fk-a');
+      const secondAccountId = await insertAccount(client, 'report-fk-b');
+      const firstUserId = await insertUser(client, firstAccountId, 'report-fk-a');
+      const foreignUserId = await insertUser(client, secondAccountId, 'report-fk-b');
+
+      const constraints = await client.query<{ readonly conname: string }>(
+        `SELECT conname
+           FROM pg_constraint
+          WHERE conname = ANY($1::text[])
+          ORDER BY conname`,
+        [
+          [
+            'report_executions_account_requested_by_user_fk',
+            'report_exports_account_exported_by_user_fk',
+            'report_schedules_account_created_by_user_fk'
+          ]
+        ]
+      );
+      expect(constraints.rows.map((row) => row.conname)).toEqual([
+        'report_executions_account_requested_by_user_fk',
+        'report_exports_account_exported_by_user_fk',
+        'report_schedules_account_created_by_user_fk'
+      ]);
+
+      await client.query('SAVEPOINT cross_account_report_actor');
+      await expect(
+        client.query(
+          `INSERT INTO report_executions (
+             id, account_id, report_id, requested_by_user_id, status,
+             filters, row_count, generated_at, expires_at, columns, rows
+           ) VALUES ($1, $2, 'administrative-executive', $3, 'completed',
+             '{}'::jsonb, 0, now(), now() + interval '1 day', '[]'::jsonb, '[]'::jsonb)`,
+          [`report-cross-account-${randomUUID()}`, firstAccountId, foreignUserId]
+        )
+      ).rejects.toMatchObject({ code: '23503' });
+      await client.query('ROLLBACK TO SAVEPOINT cross_account_report_actor');
+
+      const sameAccountExecutionId = `report-same-account-${randomUUID()}`;
+      await expect(
+        client.query(
+          `INSERT INTO report_executions (
+             id, account_id, report_id, requested_by_user_id, status,
+             filters, row_count, generated_at, expires_at, columns, rows
+           ) VALUES ($1, $2, 'administrative-executive', $3, 'completed',
+             '{}'::jsonb, 0, now(), now() + interval '1 day', '[]'::jsonb, '[]'::jsonb)`,
+          [sameAccountExecutionId, firstAccountId, firstUserId]
+        )
+      ).resolves.toBeDefined();
+
+      await client.query('SAVEPOINT cross_account_report_export_actor');
+      await expect(
+        client.query(
+          `INSERT INTO report_exports (
+             id, account_id, execution_id, format, filename, content_type,
+             content, exported_by_user_id
+           ) VALUES ($1, $2, $3, 'csv', 'report.csv', 'text/csv', '', $4)`,
+          [
+            `report-export-cross-account-${randomUUID()}`,
+            firstAccountId,
+            sameAccountExecutionId,
+            foreignUserId
+          ]
+        )
+      ).rejects.toMatchObject({ code: '23503' });
+      await client.query('ROLLBACK TO SAVEPOINT cross_account_report_export_actor');
+
+      await client.query('SAVEPOINT cross_account_report_schedule_actor');
+      await expect(
+        client.query(
+          `INSERT INTO report_schedules (
+             id, account_id, report_id, name, frequency, format, filters,
+             recipients, created_by_user_id
+           ) VALUES ($1, $2, 'administrative-executive', 'Foreign actor schedule',
+             'daily', 'csv', '{}'::jsonb, '[]'::jsonb, $3)`,
+          [`report-schedule-cross-account-${randomUUID()}`, firstAccountId, foreignUserId]
+        )
+      ).rejects.toMatchObject({ code: '23503' });
+      await client.query('ROLLBACK TO SAVEPOINT cross_account_report_schedule_actor');
     } finally {
       await client.query('ROLLBACK').catch(() => undefined);
       client.release();

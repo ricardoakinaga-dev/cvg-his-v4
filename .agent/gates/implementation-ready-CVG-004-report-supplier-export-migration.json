@@ -1,0 +1,82 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-SUPPLIER-EXPORT-MIGRATION-IR-002",
+  "timestamp": "2026-08-26T08:45:00-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-004 additive canonical migration for the tenant-scoped finance catalog required by the supplier and expense registry report",
+  "scope_ref": "CVG-004-REPORT-SUPPLIER-EXPORT",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The discovered schema/migration mismatch and the additive-only migration contract are recorded with explicit authority, without authorizing destructive changes or external operations.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-supplier-export.md",
+        ".agent/backlog.json",
+        ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SUPPLIER-EXPORT-MIGRATION-IR-002"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The migration is not yet applied in this gate; implementation and disposable database verification are required. No production, target or deployment action is authorized."
+    },
+    {
+      "id": "IR-002",
+      "description": "The tracked finance_catalogs schema can be aligned with one new packages/db SQL migration that creates both tables, indexes and tenant RLS/FORCE RLS policies required by the runtime repository.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/db/src/schema/finance_catalogs.ts",
+        "apps/api/src/repositories/database-finance-catalog.repository.ts",
+        "apps/api/src/bootstrap.ts",
+        "packages/db/src/migrate.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The current local database confirms both relations are absent; the new migration must be written and run before a database-backed report claim is allowed."
+    },
+    {
+      "id": "IR-003",
+      "description": "A RED-first integration contract rejects the absent finance catalog relations and tenant isolation before the migration implementation.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-supplier-export.md",
+        "tests/integration/rls/finance-catalog-isolation.test.ts",
+        "packages/modules/reports/src/reports.test.ts",
+        "apps/api/src/routes/reports-routes.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The new database contract is expected to fail until the additive migration is implemented and applied by the test setup."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-report-supplier-export.md",
+    "packages/db/src/schema/finance_catalogs.ts",
+    "apps/api/src/repositories/database-finance-catalog.repository.ts",
+    "apps/api/src/bootstrap.ts",
+    "packages/db/src/migrate.ts",
+    "tests/integration/rls/finance-catalog-isolation.test.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "Migration implementation, disposable database execution, runtime-role grant verification and supplier report integration remain incomplete."
+  ],
+  "conditions": [],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via the original consolidation brief",
+    "scope": "CVG-004 additive canonical finance catalog migration",
+    "decision": "Authorize one additive packages/db migration to align the already tracked finance_catalogs schema with the canonical SQL rail, create finance_cost_centers and finance_expense_catalog_items when absent, add tenant indexes and RLS/FORCE RLS policies, and verify it in disposable PostgreSQL. Do not delete or rewrite prior migrations, transform existing data, deploy, or mutate any external/target environment.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SUPPLIER-EXPORT-MIGRATION-IR-002",
+    "expires_or_revalidates": "Revalidate before any destructive migration, data backfill, production/target application, supplier-master semantics or changes outside the two existing schema tables."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "next_action": "Write and run the migration RED test, then implement migration 0146 and verify schema, RLS, runtime-role access and the real database-backed report path.",
+  "revalidation_triggers": [
+    "Any migration that drops, renames, rewrites or backfills existing data",
+    "Any change beyond finance_cost_centers and finance_expense_catalog_items",
+    "Target, production, deployment or external-system application"
+  ],
+  "supersedes": ".agent/gates/implementation-ready-CVG-004-report-supplier-export.json"
+}

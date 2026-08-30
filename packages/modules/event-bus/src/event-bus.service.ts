@@ -13,6 +13,7 @@ import type {
   ClaimPendingInput,
   OutboxClaim,
   OutboxEvent,
+  OutboxEventCounts,
   OutboxRepository,
   RetryClaimInput
 } from './outbox.interface.js';
@@ -60,8 +61,8 @@ export interface BackoffOptions {
 }
 
 export const DEFAULT_BACKOFF: BackoffOptions = {
-  baseMs: 1_000,   // 1 second
-  maxMs: 60_000    // 1 minute
+  baseMs: 1_000, // 1 second
+  maxMs: 60_000 // 1 minute
 };
 
 const directConsumerGuard: ConsumerExecutionGuard = {
@@ -121,6 +122,26 @@ function parseOutboxPayload(payload: unknown): Record<string, unknown> {
   }
 
   return {};
+}
+
+function assertAdministrativeAccountId(accountId: AccountId): AccountId {
+  if (typeof accountId !== 'string' || accountId.trim().length === 0) {
+    throw new Error('Outbox administration requires an accountId');
+  }
+
+  return accountId;
+}
+
+const MAX_ADMINISTRATIVE_LIMIT = 200;
+
+function assertAdministrativeLimit(limit: number): number {
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > MAX_ADMINISTRATIVE_LIMIT) {
+    throw new Error(
+      `Outbox administration limit must be an integer between 1 and ${MAX_ADMINISTRATIVE_LIMIT}`
+    );
+  }
+
+  return limit;
 }
 
 interface OutboxTraceMeta {
@@ -269,8 +290,8 @@ export class DatabaseOutboxRepository implements OutboxRepository {
     });
   }
 
-  async findById(id: string): Promise<OutboxEvent | null> {
-    const accountId = requireAccountId();
+  async findById(accountId: AccountId, id: string): Promise<OutboxEvent | null> {
+    this.assertAdministrativeAccount(accountId);
     return withTenantQuery(getPool(), async (client) => {
       const result = await client.query(
         'SELECT * FROM outbox_events WHERE id = $1 AND account_id = $2',
@@ -362,27 +383,24 @@ export class DatabaseOutboxRepository implements OutboxRepository {
   }
 
   async completeClaim(claim: OutboxClaim, processedAt: string): Promise<boolean> {
-    return this.transitionClaim(
-      claim,
-      `status = 'completed', processed_at = $6, error = NULL`,
-      [new Date(processedAt)]
-    );
+    return this.transitionClaim(claim, `status = 'completed', processed_at = $6, error = NULL`, [
+      new Date(processedAt)
+    ]);
   }
 
   async retryClaim(claim: OutboxClaim, input: RetryClaimInput): Promise<boolean> {
-    return this.transitionClaim(
-      claim,
-      `status = 'retrying', scheduled_at = $6, error = $7`,
-      [new Date(input.scheduledAt), input.error]
-    );
+    return this.transitionClaim(claim, `status = 'retrying', scheduled_at = $6, error = $7`, [
+      new Date(input.scheduledAt),
+      input.error
+    ]);
   }
 
   async failClaim(claim: OutboxClaim, error: string): Promise<boolean> {
     return this.transitionClaim(claim, `status = 'failed', error = $6`, [error]);
   }
 
-  async reprocess(eventId: string): Promise<OutboxEvent | null> {
-    const accountId = requireAccountId();
+  async reprocess(accountId: AccountId, eventId: string): Promise<OutboxEvent | null> {
+    this.assertAdministrativeAccount(accountId);
     return withTenantQuery(getPool(), async (client) => {
       const result = await client.query(
         `UPDATE outbox_events
@@ -404,8 +422,9 @@ export class DatabaseOutboxRepository implements OutboxRepository {
     });
   }
 
-  async peekPending(limit: number): Promise<readonly OutboxEvent[]> {
-    const accountId = requireAccountId();
+  async peekPending(accountId: AccountId, limit: number): Promise<readonly OutboxEvent[]> {
+    this.assertAdministrativeAccount(accountId);
+    assertAdministrativeLimit(limit);
     return withTenantQuery(getPool(), async (client) => {
       const result = await client.query(
         `SELECT *
@@ -422,8 +441,9 @@ export class DatabaseOutboxRepository implements OutboxRepository {
     });
   }
 
-  async findFailed(limit: number): Promise<readonly OutboxEvent[]> {
-    const accountId = requireAccountId();
+  async findFailed(accountId: AccountId, limit: number): Promise<readonly OutboxEvent[]> {
+    this.assertAdministrativeAccount(accountId);
+    assertAdministrativeLimit(limit);
     return withTenantQuery(getPool(), async (client) => {
       const result = await client.query(
         `SELECT * FROM outbox_events
@@ -437,16 +457,56 @@ export class DatabaseOutboxRepository implements OutboxRepository {
     });
   }
 
-  async findByCorrelationId(correlationId: CorrelationId): Promise<readonly OutboxEvent[]> {
-    const accountId = requireAccountId();
+  async findByCorrelationId(
+    accountId: AccountId,
+    correlationId: CorrelationId,
+    limit: number
+  ): Promise<readonly OutboxEvent[]> {
+    this.assertAdministrativeAccount(accountId);
+    assertAdministrativeLimit(limit);
     return withTenantQuery(getPool(), async (client) => {
       const result = await client.query(
         `SELECT * FROM outbox_events
          WHERE correlation_id = $1 AND account_id = $2
-         ORDER BY created_at DESC`,
-        [correlationId, accountId]
+         ORDER BY created_at DESC
+         LIMIT $3`,
+        [correlationId, accountId, limit]
       );
       return result.rows.map((r: Record<string, unknown>) => this.mapRow(r));
+    });
+  }
+
+  async countByStatus(accountId: AccountId): Promise<OutboxEventCounts> {
+    this.assertAdministrativeAccount(accountId);
+    return withTenantQuery(getPool(), async (client) => {
+      const countResult = await client.query(
+        `SELECT status, COUNT(*) as count
+         FROM outbox_events
+         WHERE account_id = $1
+         GROUP BY status`,
+        [accountId]
+      );
+      const counts = {
+        pending: 0,
+        retrying: 0,
+        completed: 0,
+        failed: 0,
+        total: 0
+      };
+      for (const row of countResult.rows as Record<string, unknown>[]) {
+        const status = row.status as string;
+        const count = Number(row.count) || 0;
+        if (
+          status === 'pending' ||
+          status === 'retrying' ||
+          status === 'completed' ||
+          status === 'failed'
+        ) {
+          counts[status] += count;
+          counts.total += count;
+        }
+      }
+      return counts;
     });
   }
 
@@ -492,6 +552,13 @@ export class DatabaseOutboxRepository implements OutboxRepository {
   private assertClaimAccount(claim: OutboxClaim): void {
     if (claim.event.accountId !== requireAccountId()) {
       throw new Error('Outbox claim account does not match tenant context');
+    }
+  }
+
+  private assertAdministrativeAccount(accountId: AccountId): void {
+    const explicitAccountId = assertAdministrativeAccountId(accountId);
+    if (explicitAccountId !== requireAccountId()) {
+      throw new Error('Outbox administration account does not match tenant context');
     }
   }
 
@@ -582,14 +649,18 @@ export class EventBusService {
 
   async publish(input: CreateOutboxEventInput): Promise<OutboxEvent> {
     const rawMeta = input.payload['_meta'];
-    if (rawMeta !== undefined && (!rawMeta || typeof rawMeta !== 'object' || Array.isArray(rawMeta))) {
+    if (
+      rawMeta !== undefined &&
+      (!rawMeta || typeof rawMeta !== 'object' || Array.isArray(rawMeta))
+    ) {
       throw new Error('Outbox payload _meta must be an object');
     }
     const payloadMeta = (rawMeta ?? {}) as Record<string, unknown>;
     const payloadAccountId =
       typeof input.payload.accountId === 'string'
         ? input.payload.accountId
-        : typeof (input.payload._meta as Record<string, unknown> | undefined)?.accountId === 'string'
+        : typeof (input.payload._meta as Record<string, unknown> | undefined)?.accountId ===
+            'string'
           ? ((input.payload._meta as Record<string, unknown>).accountId as string)
           : undefined;
     const accountId = input.accountId ?? getTenantContext()?.accountId ?? payloadAccountId;
@@ -642,7 +713,9 @@ export class EventBusService {
       });
       if (!claim) break;
       const event = claim.event;
-      console.info(`[EventBus] Processing claimed event with ${this.#handlers.size} handler(s) registered`);
+      console.info(
+        `[EventBus] Processing claimed event with ${this.#handlers.size} handler(s) registered`
+      );
       await withEventSpan(event, async () => {
         console.info(
           `[EventBus] Dispatching event ${event.eventType} (${event.id}) correlation=${event.correlationId} to ${this.#handlers.size} handler(s) — attempt ${event.attempts}/${event.maxAttempts}`
@@ -652,22 +725,17 @@ export class EventBusService {
           const payloadAccountId = event.payload['accountId'];
           const rawMeta = event.payload['_meta'];
           if (!rawMeta || typeof rawMeta !== 'object' || Array.isArray(rawMeta)) {
-            throw new Error('Outbox payload _meta must be an object with the claimed event account');
+            throw new Error(
+              'Outbox payload _meta must be an object with the claimed event account'
+            );
           }
           const metaAccountId = (rawMeta as Record<string, unknown>)['accountId'];
-          if (
-            payloadAccountId !== event.accountId ||
-            metaAccountId !== event.accountId
-          ) {
+          if (payloadAccountId !== event.accountId || metaAccountId !== event.accountId) {
             throw new Error('Outbox payload account does not match claimed event account');
           }
           await this.#withLeaseHeartbeat(claim, async () => {
             for (const [consumerName, handler] of this.#handlers) {
-              await this.#consumerGuard.executeOnce(
-                event,
-                consumerName,
-                () => handler(event)
-              );
+              await this.#consumerGuard.executeOnce(event, consumerName, () => handler(event));
             }
           });
 
@@ -732,14 +800,16 @@ export class EventBusService {
     let heartbeatError: Error | null = null;
     let heartbeatInFlight: Promise<void> = Promise.resolve();
     const timer = setInterval(() => {
-      heartbeatInFlight = heartbeatInFlight.then(async () => {
-        if (!await this.#repository.renewClaim(claim, this.#leaseMs)) {
+      heartbeatInFlight = heartbeatInFlight
+        .then(async () => {
+          if (!(await this.#repository.renewClaim(claim, this.#leaseMs))) {
+            leaseLost = true;
+          }
+        })
+        .catch((error: unknown) => {
+          heartbeatError = error instanceof Error ? error : new Error(String(error));
           leaseLost = true;
-        }
-      }).catch((error: unknown) => {
-        heartbeatError = error instanceof Error ? error : new Error(String(error));
-        leaseLost = true;
-      });
+        });
     }, intervalMs);
     timer.unref?.();
 
@@ -758,57 +828,52 @@ export class EventBusService {
   /**
    * Retrieve dead-letter events for inspection/reprocessing.
    */
-  async getDeadLetterEvents(limit = 100): Promise<readonly OutboxEvent[]> {
-    return this.#repository.findFailed(limit);
+  async getDeadLetterEvents(accountId: AccountId, limit = 100): Promise<readonly OutboxEvent[]> {
+    return this.#repository.findFailed(
+      assertAdministrativeAccountId(accountId),
+      assertAdministrativeLimit(limit)
+    );
   }
 
-  async getEvent(id: string): Promise<OutboxEvent | null> {
-    return this.#repository.findById(id);
+  async getEvent(accountId: AccountId, id: string): Promise<OutboxEvent | null> {
+    return this.#repository.findById(assertAdministrativeAccountId(accountId), id);
   }
 
-  async getEventsByCorrelationId(correlationId: CorrelationId): Promise<readonly OutboxEvent[]> {
-    return this.#repository.findByCorrelationId(correlationId);
+  async getEventsByCorrelationId(
+    accountId: AccountId,
+    correlationId: CorrelationId,
+    limit = 50
+  ): Promise<readonly OutboxEvent[]> {
+    return this.#repository.findByCorrelationId(
+      assertAdministrativeAccountId(accountId),
+      correlationId,
+      assertAdministrativeLimit(limit)
+    );
   }
 
   /**
    * Reprocess a failed or retrying event by resetting it to pending status.
    * The event will be picked up by processPending() on next worker tick.
    */
-  async reprocessEvent(eventId: string): Promise<OutboxEvent | null> {
-    return this.#repository.reprocess(eventId);
+  async reprocessEvent(accountId: AccountId, eventId: string): Promise<OutboxEvent | null> {
+    return this.#repository.reprocess(assertAdministrativeAccountId(accountId), eventId);
   }
 
   /**
    * Return event count breakdown by status.
    * Useful for operational dashboards without fetching full event lists.
    */
-  async countEvents(): Promise<{ pending: number; retrying: number; completed: number; failed: number; total: number }> {
-    const accountId = requireAccountId();
-    return withTenantQuery(getPool(), async (client) => {
-      const countResult = await client.query(
-        `SELECT status, COUNT(*) as count
-         FROM outbox_events
-         WHERE account_id = $1
-         GROUP BY status`,
-        [accountId]
-      );
-      const counts = { pending: 0, retrying: 0, completed: 0, failed: 0, total: 0 };
-      for (const row of countResult.rows as Record<string, unknown>[]) {
-        const status = row.status as string;
-        const cnt = Number(row.count) || 0;
-        if (status === 'pending' || status === 'retrying' || status === 'completed' || status === 'failed') {
-          (counts as Record<string, number>)[status] = cnt;
-          counts.total += cnt;
-        }
-      }
-      return counts;
-    });
+  async countEvents(accountId: AccountId): Promise<OutboxEventCounts> {
+    return this.#repository.countByStatus(assertAdministrativeAccountId(accountId));
   }
 
   /**
    * Retrieve pending and retrying events for inspection (does not reprocess them).
    */
-  async getPendingEvents(limit = 50): Promise<readonly OutboxEvent[]> {
-    return this.#repository.peekPending(limit);
+  async getPendingEvents(accountId: AccountId, limit = 50): Promise<readonly OutboxEvent[]> {
+    return this.#repository.peekPending(
+      assertAdministrativeAccountId(accountId),
+      assertAdministrativeLimit(limit)
+    );
   }
 }

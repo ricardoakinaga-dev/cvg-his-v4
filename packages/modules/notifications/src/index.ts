@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { EncountersService } from '@cvg-his-v2/module-encounters';
 import { PatientsService } from '@cvg-his-v2/module-patients';
 import type {
@@ -11,7 +13,7 @@ import type {
   NotificationSummary,
   UserId
 } from '@cvg-his-v2/shared-types';
-import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
+import { nowIso } from '@cvg-his-v2/shared-utils';
 import { requireEnum, requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 
 export { DatabaseNotificationRepository } from './repositories/database-notifications.repository.js';
@@ -74,7 +76,7 @@ export class NotificationsService {
     }
 
     const notification: NotificationSummary = {
-      id: createCorrelationId('ntf') as NotificationId,
+      id: randomUUID() as NotificationId,
       accountId,
       channel: 'internal',
       category: requireEnum(payload.category, 'category', [
@@ -95,7 +97,7 @@ export class NotificationsService {
     };
 
     const job: NotificationJobSummary = {
-      id: createCorrelationId('ntfjob') as NotificationJobId,
+      id: randomUUID() as NotificationJobId,
       accountId,
       notificationId: notification.id,
       status: 'queued',

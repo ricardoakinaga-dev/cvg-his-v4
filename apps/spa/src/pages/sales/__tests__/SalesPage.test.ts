@@ -66,12 +66,14 @@ const saleDetail = {
       notes: null,
       createdAt: '2026-04-23T12:10:00Z'
     }
-  ]
+  ],
+  cancellationHistory: []
 };
 
 describe('SalesPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockCounterSalesGetById.mockReset();
     mockCounterSalesList.mockResolvedValue([saleSummary]);
     mockCounterSalesGetById.mockResolvedValue(saleDetail);
     mockCounterSalesClose.mockResolvedValue({ ...saleSummary, status: 'closed' });
@@ -148,6 +150,56 @@ describe('SalesPage', () => {
     expect(wrapper.text()).not.toContain('Carla Martins');
   });
 
+  it('requires a trimmed cancellation reason and shows cancellation history in the detail', async () => {
+    const cancelledDetail = {
+      ...saleDetail,
+      status: 'cancelled',
+      cancellationHistory: [
+        {
+          eventId: 'event-1',
+          accountId: 'acc-1',
+          counterSaleId: 'cs-1',
+          cancelledByUserId: 'user-1',
+          cancelledAt: '2026-04-23T12:20:00Z',
+          reason: 'Venda duplicada',
+          correlationId: 'corr-1'
+        }
+      ]
+    };
+    mockCounterSalesGetById
+      .mockResolvedValueOnce(saleDetail)
+      .mockResolvedValueOnce(cancelledDetail);
+
+    const SalesPage = (await import('../SalesPage.vue')).default;
+    const wrapper = mount(SalesPage, { attachTo: document.body });
+    await flushPromises();
+
+    const cancelButton = wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Excluir Venda');
+    expect(cancelButton).toBeTruthy();
+    await cancelButton!.trigger('click');
+    await flushPromises();
+
+    const reasonInput = wrapper.find('#sale-cancel-reason');
+    expect(reasonInput.exists()).toBe(true);
+    const confirmButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('Confirmar cancelamento'));
+    expect(confirmButton).toBeTruthy();
+    expect(confirmButton!.attributes('disabled')).toBeDefined();
+
+    await reasonInput.setValue('Cliente desistiu\n');
+    expect(confirmButton!.attributes('disabled')).toBeDefined();
+    await reasonInput.setValue('  Venda duplicada  ');
+    await confirmButton!.trigger('click');
+    await flushPromises();
+
+    expect(mockCounterSalesCancel).toHaveBeenCalledWith('cs-1', 'Venda duplicada');
+    expect(wrapper.text()).toContain('Histórico de cancelamentos');
+    expect(wrapper.text()).toContain('Venda duplicada');
+  });
+
   it('closes a sale from the transaction sheet and refreshes its status', async () => {
     const closedDetail = {
       ...saleDetail,
@@ -156,9 +208,7 @@ describe('SalesPage', () => {
       balanceDue: 0,
       closedAt: '2026-04-23T12:20:00Z'
     };
-    mockCounterSalesGetById
-      .mockResolvedValueOnce(saleDetail)
-      .mockResolvedValueOnce(closedDetail);
+    mockCounterSalesGetById.mockResolvedValueOnce(saleDetail).mockResolvedValueOnce(closedDetail);
 
     const SalesPage = (await import('../SalesPage.vue')).default;
     const wrapper = mount(SalesPage);

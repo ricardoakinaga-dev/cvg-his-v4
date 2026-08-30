@@ -1,0 +1,140 @@
+{
+  "record_id": "GATE-CVG-003-ACCESS-ROLE-MATRIX-VFY-001",
+  "timestamp": "2026-08-26T12:20:08-03:00",
+  "gate_id": "VERIFIED",
+  "scope": "Bounded local canonical seven-profile application access matrix, persisted role alignment and representative tenant boundary checks",
+  "scope_ref": "CVG-003-ACCESS-ROLE-MATRIX",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-001-CATALOG",
+      "description": "The dependency-free v2 source owns 64 permission seeds and seven exact role projections, including MFA and dedicated LGPD boundaries.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/rbac/src/access-control-catalog.ts",
+        "packages/modules/access-control/src/access-catalog.contract.test.ts",
+        "packages/db/src/access-control-seeds.ts",
+        "packages/db/src/access-control-catalog.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-003-ACCESS-ROLE-MATRIX-UNIT-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Legacy package compatibility exports remain in packages/rbac/src/permissions.ts; current application rails use the v2 source and the literal audit found no protected code missing from it."
+    },
+    {
+      "id": "V-002-MIGRATION",
+      "description": "Migration 0147 upserts the catalog idempotently and reconciles role_permissions only for the seven named system roles while preserving subject assignments.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/db/migrations/0147_access_role_catalog_alignment.sql",
+        "packages/db/src/access-control-catalog.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-003-ACCESS-ROLE-MATRIX-QUALITY-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Local migration-source and disposable database evidence does not prove target migration execution or target ownership/grants."
+    },
+    {
+      "id": "V-003-ROUTE-GUARDS",
+      "description": "Dedicated prescription-execution, discharge and LGPD permission guards are enforced by the compiled API route contracts.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/api/src/routes/prescription-executions-routes.ts",
+        "apps/api/src/routes/prescription-executions-routes.test.ts",
+        "apps/api/src/routes/discharges-routes.ts",
+        "apps/api/src/routes/discharges-routes.test.ts",
+        "apps/api/src/routes/lgpd-routes.ts",
+        "apps/api/src/routes/lgpd-routes.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-003-ACCESS-ROLE-MATRIX-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-003-ACCESS-ROLE-MATRIX-UNIT-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The route contracts cover the corrected boundaries and representative API calls, not every protected route or every operational LGPD workflow."
+    },
+    {
+      "id": "V-004-E2E-MATRIX",
+      "description": "A fresh disposable PostgreSQL/Redis run provisions and authenticates all seven profiles, proves representative allow/deny behavior and proves cross-account access-subject isolation.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "e2e/spa/access-role-matrix-db.spec.ts",
+        "infra/scripts/run-e2e-spa.sh",
+        ".agent/verification.jsonl#VFY-CVG-003-ACCESS-ROLE-MATRIX-E2E-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This is disposable local database evidence; it does not certify target infrastructure, direct SQL, providers or production policy."
+    },
+    {
+      "id": "V-005-REGRESSION",
+      "description": "The access slice remains compatible with API, type, lint, security, structural and existing SPA regressions.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-ACCESS-ROLE-MATRIX-API-001",
+        ".agent/verification.jsonl#VFY-CVG-003-ACCESS-ROLE-MATRIX-REGRESSION-001",
+        ".agent/verification.jsonl#VFY-CVG-003-ACCESS-ROLE-MATRIX-QUALITY-001"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "The full 65-test SPA aggregate contained one queue visual networkidle timeout; the failed test passed on the immediate deterministic target rerun. The aggregate is not represented as an unconditional 65/65 pass."
+    },
+    {
+      "id": "V-006-GLOBAL-BOUNDARY",
+      "description": "The bounded result is reconciled without promoting parent CVG-003, Vetus parity, clinical parity, enterprise readiness or release acceptance.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-003-access-role-matrix.md",
+        ".agent/artifacts/CVG-003-access-role-matrix-2026-08-26.md",
+        ".agent/state.json",
+        ".agent/backlog.json",
+        ".agent/verification.jsonl#VFY-CVG-003-ACCESS-ROLE-MATRIX-FINAL-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Global parity/readiness, target/provider/operations, external LGPD retention/masking and release evidence remain open."
+    }
+  ],
+  "evidence": [
+    ".agent/authority.jsonl#AUTH-CVG-003-ACCESS-ROLE-MATRIX-IR-001",
+    ".agent/tasks/CVG-003-access-role-matrix.md",
+    ".agent/artifacts/CVG-003-access-role-matrix-2026-08-26.md",
+    "packages/rbac/src/access-control-catalog.ts",
+    "packages/modules/access-control/src/index.ts",
+    "packages/db/src/seed.ts",
+    "packages/db/migrations/0147_access_role_catalog_alignment.sql",
+    "apps/api/src/routes/prescription-executions-routes.ts",
+    "apps/api/src/routes/discharges-routes.ts",
+    "apps/api/src/routes/lgpd-routes.ts",
+    "e2e/spa/access-role-matrix-db.spec.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "The full SPA aggregate has one transient queue visual networkidle timeout; the deterministic target rerun passed 1/1.",
+    "No independent reviewer report was available, so no reviewer approval is inferred.",
+    "Parent/global parity, target, provider, operational LGPD, backup/restore, worker failure, CI, accessibility and release gates remain open."
+  ],
+  "conditions": [
+    "Apply migration 0147 through the canonical migration process before relying on the persisted alignment in an existing installation.",
+    "Preserve the seven-role scope and do not infer authorization for direct SQL, maintenance roles, target or production from this gate.",
+    "Re-run the bounded matrix when protected permission codes, role semantics, access hydration or tenant-assignment behavior changes."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via the original consolidation brief",
+    "scope": "CVG-003 canonical seven-profile access matrix and persisted seed alignment",
+    "decision": "Authorize bounded local implementation, migration and disposable PostgreSQL/Redis verification only; preserve external, target, production, provider, credential and release boundaries.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-003-ACCESS-ROLE-MATRIX-IR-001",
+    "expires_or_revalidates": "Revalidate before expanding beyond the local application boundary."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "next_action": "Keep this access matrix slice PASS_BOUNDED, keep parent CVG-003 and the global program IN_PROGRESS/PARTIAL, and continue only through a separately authorized implementation-ready gap.",
+  "revalidation_triggers": [
+    "New protected route permission or profile",
+    "Changes to access-control hydration, setup provisioning or seed/migration ordering",
+    "Security findings involving MFA, flags, LGPD or tenant access assignments",
+    "Expansion to target, production, provider, direct SQL or release claims"
+  ],
+  "supersedes": null
+}

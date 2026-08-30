@@ -50,6 +50,9 @@ export interface ExpenseCatalogFilters extends PaginationParams {
   search?: string;
   category?: string;
   costCenterCode?: string;
+  /** ISO calendar bounds used by persisted report consumers. */
+  dateFrom?: string;
+  dateTo?: string;
 }
 
 export interface CostCenterCatalogFilters extends PaginationParams {

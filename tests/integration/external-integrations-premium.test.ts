@@ -1,3 +1,4 @@
+import { createHmac } from 'node:crypto';
 import { Readable, Writable } from 'node:stream';
 
 import { describe, expect, it } from 'vitest';
@@ -16,6 +17,7 @@ import { InMemoryEmailDeliveryRepository } from '../../apps/api/src/email-delive
 import { LocalGoogleCalendarGateway } from '../../apps/api/src/google-calendar-gateway.ts';
 import { InMemoryGoogleCalendarSyncRepository } from '../../apps/api/src/google-calendar-sync-repository.ts';
 import { InMemoryLaboratoryResultImportRepository } from '../../apps/api/src/laboratory-result-import-repository.ts';
+import { HmacLaboratoryProviderSignatureVerifier } from '../../apps/api/src/laboratory-provider-ingress.ts';
 import { createInMemoryRuntimeRepositories } from '../../apps/api/src/runtime-repositories.ts';
 import { InMemorySmsDeliveryRepository } from '../../apps/api/src/sms-delivery-repository.ts';
 import { LocalSmsGateway } from '../../apps/api/src/sms-gateway.ts';
@@ -73,14 +75,48 @@ function createJsonRequest(
   method: string,
   url: string,
   rawKey: string,
-  body?: unknown
+  body?: unknown,
+  additionalHeaders: Record<string, string> = {}
 ): Readable {
   return Object.assign(Readable.from(body === undefined ? [] : [JSON.stringify(body)]), {
     method,
     url,
     headers: {
       'x-api-key': rawKey,
-      'content-type': 'application/json'
+      'content-type': 'application/json',
+      ...additionalHeaders
+    },
+    socket: { remoteAddress: '127.0.0.1' }
+  });
+}
+
+class DurableLaboratoryResultImportRepository extends InMemoryLaboratoryResultImportRepository {
+  override readonly storage = 'durable' as const;
+}
+
+const LAB_PROVIDER_KEY_ID = 'lab-key-01';
+const LAB_PROVIDER_SECRET = Buffer.alloc(32, 0x52);
+const LAB_PROVIDER_NOW_SECONDS = Math.floor(Date.now() / 1_000);
+
+function createSignedLaboratoryRequest(
+  rawKey: string,
+  payload: Record<string, string>
+): Readable {
+  const rawBody = Buffer.from(JSON.stringify(payload), 'utf8');
+  const timestamp = String(LAB_PROVIDER_NOW_SECONDS);
+  const signature = `v1=${createHmac('sha256', LAB_PROVIDER_SECRET)
+    .update(Buffer.from(`v1.${timestamp}.`, 'ascii'))
+    .update(rawBody)
+    .digest('hex')}`;
+  return Object.assign(Readable.from([rawBody]), {
+    method: 'POST',
+    url: '/integrations/laboratory/equipment-results/imports',
+    headers: {
+      'x-api-key': rawKey,
+      'content-type': 'application/json',
+      'x-lab-provider-key-id': LAB_PROVIDER_KEY_ID,
+      'x-lab-timestamp': timestamp,
+      'x-lab-signature': signature
     },
     socket: { remoteAddress: '127.0.0.1' }
   });
@@ -377,13 +413,14 @@ describe('external integrations premium evidence', () => {
           From: 'whatsapp:+5511999999999',
           Body: 'CONFIRMAR',
           AppointmentId: appointment.id
-        }) as never,
+        }, { 'x-webhook-secret': 'test-webhook-secret' }) as never,
         inboundResponse as never,
         'corr-int-wa-inbound',
         {
           scheduling: runtime.scheduling,
           audit: runtime.audit,
           notificationsWhatsappInboundActionsEnabled: true,
+          inboundWebhookSecret: 'test-webhook-secret',
           requirePrincipal: () => principal
         }
       );
@@ -509,7 +546,7 @@ describe('external integrations premium evidence', () => {
     const key = await apiKeys.create({
       accountId: 'acc_cvg_demo' as never,
       name: 'equipment-premium',
-      permissions: ['integrations.read', 'notifications.manage'],
+      permissions: ['integrations.read', 'laboratory.results.write'],
       createdBy: 'user_admin'
     });
     const owners = new OwnersService();
@@ -531,51 +568,56 @@ describe('external integrations premium evidence', () => {
       reason: 'Importacao premium'
     });
     const audit = new AuditService();
-    const imports = new InMemoryLaboratoryResultImportRepository();
+    const imports = new DurableLaboratoryResultImportRepository();
 
     const payload = {
       externalResultId: 'ext-premium-1',
+      schemaVersion: '1',
+      provider: 'equipment-bridge',
       orderId: order.id,
       equipmentId: 'equip-1',
-      resultSummary: 'Hemoglobina 7.2'
+      resultSummary: 'Hemoglobina 7.2',
+      observedAt: new Date(LAB_PROVIDER_NOW_SECONDS * 1_000).toISOString()
     };
 
     const firstImportResponse = new MockResponse();
     await handleLaboratoryIntegrationRoutes(
       '/integrations/laboratory/equipment-results/imports',
-      createJsonRequest(
-        'POST',
-        '/integrations/laboratory/equipment-results/imports',
-        key.rawKey,
-        payload
-      ) as never,
+      createSignedLaboratoryRequest(key.rawKey, payload) as never,
       firstImportResponse as never,
       'corr-int-lab-1',
       {
-        laboratory,
         laboratoryResultImports: imports,
         apiKeys,
-        audit
+        audit,
+        nowSeconds: () => LAB_PROVIDER_NOW_SECONDS,
+        laboratoryProviderSignatureVerifier: new HmacLaboratoryProviderSignatureVerifier(
+          new Map([
+            [LAB_PROVIDER_KEY_ID, { accountId: 'acc_cvg_demo', secret: LAB_PROVIDER_SECRET }]
+          ])
+        )
       }
     );
-    expect(firstImportResponse.statusCode).toBe(201);
+    expect(firstImportResponse.statusCode).toBe(202);
+    expect(firstImportResponse.bodyJson<{ status: string }>().status).toBe('pending_human_review');
+    expect(laboratory.getOrder('acc_cvg_demo' as never, order.id).status).toBe('requested');
 
     const secondImportResponse = new MockResponse();
     await handleLaboratoryIntegrationRoutes(
       '/integrations/laboratory/equipment-results/imports',
-      createJsonRequest(
-        'POST',
-        '/integrations/laboratory/equipment-results/imports',
-        key.rawKey,
-        payload
-      ) as never,
+      createSignedLaboratoryRequest(key.rawKey, payload) as never,
       secondImportResponse as never,
       'corr-int-lab-2',
       {
-        laboratory,
         laboratoryResultImports: imports,
         apiKeys,
-        audit
+        audit,
+        nowSeconds: () => LAB_PROVIDER_NOW_SECONDS,
+        laboratoryProviderSignatureVerifier: new HmacLaboratoryProviderSignatureVerifier(
+          new Map([
+            [LAB_PROVIDER_KEY_ID, { accountId: 'acc_cvg_demo', secret: LAB_PROVIDER_SECRET }]
+          ])
+        )
       }
     );
     expect(secondImportResponse.statusCode).toBe(200);
@@ -594,16 +636,16 @@ describe('external integrations premium evidence', () => {
       reportResponse as never,
       'corr-int-lab-3',
       {
-        laboratory,
         laboratoryResultImports: imports,
         apiKeys,
         audit
       }
     );
     const report = reportResponse.bodyJson<{
-      summary: { total: number; imported: number };
+      summary: { total: number; pendingHumanReview: number; imported: number };
     }>();
     expect(report.summary.total).toBe(1);
-    expect(report.summary.imported).toBe(1);
+    expect(report.summary.pendingHumanReview).toBe(1);
+    expect(report.summary.imported).toBe(0);
   });
 });

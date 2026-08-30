@@ -159,9 +159,11 @@ export function toPrescriptionSummary(entry: ClinicalEntrySummary): Prescription
     const trimmed = line.trim();
     if (trimmed.startsWith('Posologia:')) dosage = trimmed.slice('Posologia:'.length).trim();
     else if (trimmed.startsWith('Via:')) route = trimmed.slice('Via:'.length).trim();
-    else if (trimmed.startsWith('Frequência:')) frequency = trimmed.slice('Frequência:'.length).trim();
+    else if (trimmed.startsWith('Frequência:'))
+      frequency = trimmed.slice('Frequência:'.length).trim();
     else if (trimmed.startsWith('Duração:')) duration = trimmed.slice('Duração:'.length).trim();
-    else if (trimmed.startsWith('Observações:')) notes = trimmed.slice('Observações:'.length).trim();
+    else if (trimmed.startsWith('Observações:'))
+      notes = trimmed.slice('Observações:'.length).trim();
   }
 
   return {
@@ -273,7 +275,7 @@ export class InMemoryPrescriptionRepository implements PrescriptionRepository {
     const all = await this.findByAccountId(accountId);
     return {
       items: all.slice(options.offset, options.offset + options.limit),
-      total: all.length,
+      total: all.length
     };
   }
 
@@ -282,11 +284,15 @@ export class InMemoryPrescriptionRepository implements PrescriptionRepository {
     this.#revisions.set(revision.prescriptionId, [...current, revision]);
   }
 
-  async findRevisions(prescriptionId: PrescriptionId): Promise<readonly PrescriptionRevisionSummary[]> {
+  async findRevisions(
+    prescriptionId: PrescriptionId
+  ): Promise<readonly PrescriptionRevisionSummary[]> {
     return [...(this.#revisions.get(prescriptionId) ?? [])];
   }
 
-  async sign(signature: PrescriptionSignatureSummary & { readonly accountId: AccountId }): Promise<void> {
+  async sign(
+    signature: PrescriptionSignatureSummary & { readonly accountId: AccountId }
+  ): Promise<void> {
     this.#signatures.set(`${signature.prescriptionId}:${signature.version}`, signature);
   }
 
@@ -373,11 +379,17 @@ export class PrescriptionsService {
     requireNonEmptyString(payload.patientId, 'patientId');
     requireNonEmptyString(payload.medicationName, 'medicationName');
     if (payload.medicationName.trim().length < 2) {
-      throw new ValidationError('Medication name must be at least 2 characters', { field: 'medicationName' });
+      throw new ValidationError('Medication name must be at least 2 characters', {
+        field: 'medicationName'
+      });
     }
   }
 
-  public create(accountId: AccountId, actorUserId: UserId, payload: CreatePrescriptionRequest): PrescriptionSummary {
+  public create(
+    accountId: AccountId,
+    actorUserId: UserId,
+    payload: CreatePrescriptionRequest
+  ): PrescriptionSummary {
     this.#validateCreate(payload);
 
     const now = nowIso();
@@ -439,10 +451,30 @@ export class PrescriptionsService {
     const prescription = toPrescriptionSummary(entry);
     if (!prescription) throw new NotFoundError('Prescription not found', { prescriptionId });
     const signature = this.#signatures.get(prescriptionId);
-    return signature
-      && signature.version === prescription.version
-      ? { ...prescription, signedAt: signature.signedAt, signedByUserId: signature.signedByUserId, signatureHash: signature.signatureHash }
+    return signature && signature.version === prescription.version
+      ? {
+          ...prescription,
+          signedAt: signature.signedAt,
+          signedByUserId: signature.signedByUserId,
+          signatureHash: signature.signatureHash
+        }
       : prescription;
+  }
+
+  /**
+   * Resolves a prescription through the same account boundary used by API
+   * commands. Callers must not use the process-wide id lookup for a clinical
+   * mutation because the hot cache can contain more than one account.
+   */
+  public getByIdForAccount(
+    accountId: AccountId,
+    prescriptionId: ClinicalEntryId
+  ): PrescriptionSummary {
+    const prescription = this.getById(prescriptionId as PrescriptionId);
+    if (prescription.accountId !== accountId) {
+      throw new NotFoundError('Prescription not found', { prescriptionId });
+    }
+    return prescription;
   }
 
   public renderDocument(
@@ -521,16 +553,31 @@ export class PrescriptionsService {
     };
   }
 
-  public listByEncounter(encounterId: EncounterId): readonly PrescriptionSummary[] {
+  public listByEncounter(
+    encounterId: EncounterId,
+    accountId: AccountId
+  ): readonly PrescriptionSummary[] {
+    const scopedAccountId = requireNonEmptyString(accountId, 'accountId') as AccountId;
     return Array.from(this.#prescriptions.values())
-      .filter((e) => e.encounterId === encounterId && e.entryType === 'prescription')
+      .filter(
+        (e) =>
+          e.accountId === scopedAccountId &&
+          e.encounterId === encounterId &&
+          e.entryType === 'prescription'
+      )
       .map(toPrescriptionSummary)
       .filter((p): p is PrescriptionSummary => p !== null);
   }
 
-  public listByPatient(patientId: PatientId): readonly PrescriptionSummary[] {
+  public listByPatient(patientId: PatientId, accountId: AccountId): readonly PrescriptionSummary[] {
+    const scopedAccountId = requireNonEmptyString(accountId, 'accountId') as AccountId;
     return Array.from(this.#prescriptions.values())
-      .filter((e) => e.patientId === patientId && e.entryType === 'prescription')
+      .filter(
+        (e) =>
+          e.accountId === scopedAccountId &&
+          e.patientId === patientId &&
+          e.entryType === 'prescription'
+      )
       .map(toPrescriptionSummary)
       .filter((p): p is PrescriptionSummary => p !== null);
   }
@@ -542,13 +589,20 @@ export class PrescriptionsService {
       .filter((p): p is PrescriptionSummary => p !== null);
   }
 
-  public update(prescriptionId: PrescriptionId, actorUserId: UserId, payload: UpdatePrescriptionRequest): PrescriptionSummary {
+  public update(
+    prescriptionId: PrescriptionId,
+    actorUserId: UserId,
+    payload: UpdatePrescriptionRequest
+  ): PrescriptionSummary {
     const current = this.getById(prescriptionId);
-    if (current.deletedAt) throw new ValidationError('Cannot update an archived prescription', { prescriptionId });
+    if (current.deletedAt)
+      throw new ValidationError('Cannot update an archived prescription', { prescriptionId });
     const reason = requireNonEmptyString(payload.reason, 'reason');
     if (payload.expectedVersion !== undefined && payload.expectedVersion !== current.version) {
       throw new ValidationError('Prescription version mismatch', {
-        prescriptionId, expectedVersion: payload.expectedVersion, currentVersion: current.version
+        prescriptionId,
+        expectedVersion: payload.expectedVersion,
+        currentVersion: current.version
       });
     }
 
@@ -596,12 +650,19 @@ export class PrescriptionsService {
     return prescription;
   }
 
-  public archive(prescriptionId: PrescriptionId, actorUserId: UserId, payload: ArchivePrescriptionRequest): PrescriptionSummary {
+  public archive(
+    prescriptionId: PrescriptionId,
+    actorUserId: UserId,
+    payload: ArchivePrescriptionRequest
+  ): PrescriptionSummary {
     const current = this.getById(prescriptionId);
-    if (current.deletedAt) throw new ValidationError('Prescription is already archived', { prescriptionId });
+    if (current.deletedAt)
+      throw new ValidationError('Prescription is already archived', { prescriptionId });
     if (payload.expectedVersion !== undefined && payload.expectedVersion !== current.version) {
       throw new ValidationError('Prescription version mismatch', {
-        prescriptionId, expectedVersion: payload.expectedVersion, currentVersion: current.version
+        prescriptionId,
+        expectedVersion: payload.expectedVersion,
+        currentVersion: current.version
       });
     }
 
@@ -678,12 +739,16 @@ export class PrescriptionsService {
       signedByUserId: actorUserId,
       signedAt,
       signatureHash: createHash('sha256')
-        .update(`${current.accountId}|${current.id}|${current.version}|${current.content}|${actorUserId}|${signedAt}`)
+        .update(
+          `${current.accountId}|${current.id}|${current.version}|${current.content}|${actorUserId}|${signedAt}`
+        )
         .digest('hex')
     };
     this.#signatures.set(prescriptionId, signature);
     this.#enqueuePersist(
-      () => this.#prescriptionRepository?.sign?.({ ...signature, accountId: current.accountId }) ?? Promise.resolve(),
+      () =>
+        this.#prescriptionRepository?.sign?.({ ...signature, accountId: current.accountId }) ??
+        Promise.resolve(),
       () => this.#signatures.delete(prescriptionId)
     );
     return { ...current, ...signature };

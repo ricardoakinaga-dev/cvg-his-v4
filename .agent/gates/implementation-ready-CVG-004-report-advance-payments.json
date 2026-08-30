@@ -1,0 +1,82 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-ADVANCE-PAYMENTS-IR-001",
+  "timestamp": "2026-08-26T12:33:49-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-004 bounded audited read-only advance-payment report from a canonical persisted minor-unit source",
+  "scope_ref": "CVG-004-REPORT-ADVANCE-PAYMENTS",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The advance-payment report gap, bounded contract, owner, authority and exclusions are recorded without promoting CVG-004 or global readiness.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-advance-payments.md",
+        ".agent/backlog.json",
+        ".agent/authority.jsonl#AUTH-CVG-004-REPORT-ADVANCE-PAYMENTS-IR-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Only a read-only report path is authorized; generation, compensation, cancellation, refund, cash, journal, providers, target and release remain excluded."
+    },
+    {
+      "id": "IR-002",
+      "description": "The existing owner identity and audited ReportsService boundaries are available, while owner creditBalance is explicitly rejected as the report source and a new additive persisted minor-unit source is defined.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/db/src/schema/owners.ts",
+        "packages/modules/owners/src/repositories/database-owner.repository.ts",
+        "packages/modules/reports/src/index.ts",
+        "apps/api/src/routes/reports-routes.ts",
+        "apps/spa/src/pages/reports/ReportWorkbenchPage.vue"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The new source, migration, route composition and tests are not implemented at gate creation."
+    },
+    {
+      "id": "IR-003",
+      "description": "Focused RED tests can reject the absent report catalog/source/export/migration contract before implementation.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-advance-payments.md",
+        "packages/modules/reports/src/reports.test.ts",
+        "apps/api/src/routes/reports-routes.test.ts",
+        "apps/spa/src/pages/reports/__tests__/ReportWorkbenchPage.test.ts",
+        "tests/unit/db/advance-payment-migration.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Implementation, disposable PostgreSQL verification, independent critique and post-implementation regression are required before a bounded result."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-report-advance-payments.md",
+    "packages/db/src/schema/owners.ts",
+    "packages/modules/reports/src/index.ts",
+    "apps/api/src/routes/reports-routes.ts",
+    "apps/spa/src/pages/reports/ReportWorkbenchPage.vue"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "The RED tests, additive migration, source composition, implementation, independent critique and regressions are not complete at gate creation."
+  ],
+  "conditions": [],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner)",
+    "scope": "CVG-004 bounded read-only audited advance-payment report from persisted minor-unit facts",
+    "decision": "Authorize reversible repository implementation, one additive canonical migration and local API/SPA/disposable-PostgreSQL verification of the read-only advance-payment report source; no generation, compensation, cancellation, refund, cash/journal, provider, credential, target, production, deployment, external mutation or release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-ADVANCE-PAYMENTS-IR-001",
+    "expires_or_revalidates": "Revalidate before any write endpoint, allocation command, refund/cancellation, cash or journal integration, provider, target operation, production/deployment action or release acceptance."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "next_action": "Write and run focused RED tests for catalog, API source/route, SPA execution/export and migration/RLS before implementing the bounded read path.",
+  "revalidation_triggers": [
+    "Changes to owner persistence or financial subledger semantics",
+    "Changes to ReportsService execution/export or workbench behavior",
+    "Any write/lifecycle/provider/target expansion"
+  ]
+}

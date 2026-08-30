@@ -108,6 +108,21 @@ describe('Metrics — App Metrics', () => {
     expect(metrics).not.toContain('app_persistence_mode{mode="database"} 1');
   });
 
+  it('should expose unavailable mode when database failure is fail-closed', async () => {
+    updateAppMetrics({
+      uptime: 101,
+      dbHealthy: false,
+      persistenceMode: 'unavailable',
+      redisHealthy: true,
+      rateLimiterMode: 'redis',
+      runtimeDistributedStateEnabled: false
+    });
+
+    const metrics = await getMetricsText();
+    expect(metrics).toContain('app_persistence_mode{mode="unavailable"} 1');
+    expect(metrics).not.toContain('app_persistence_mode{mode="in-memory"} 1');
+  });
+
   it('should track active requests with increment/decrement', async () => {
     incrementActiveRequests();
     incrementActiveRequests();
@@ -147,7 +162,11 @@ describe('Metrics — App Metrics', () => {
     recordRequestSloObservation({ durationMs: 120, statusCode: 200, timestamp: now - 1_000 });
     recordRequestSloObservation({ durationMs: 260, statusCode: 200, timestamp: now - 2_000 });
     recordRequestSloObservation({ durationMs: 900, statusCode: 503, timestamp: now - 3_000 });
-    recordRequestSloObservation({ durationMs: 80, statusCode: 200, timestamp: now - 10 * 60 * 1000 });
+    recordRequestSloObservation({
+      durationMs: 80,
+      statusCode: 200,
+      timestamp: now - 10 * 60 * 1000
+    });
 
     const snapshot = getCurrentSloSnapshot(now);
 

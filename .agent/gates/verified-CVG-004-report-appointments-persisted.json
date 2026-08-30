@@ -1,0 +1,161 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-APPOINTMENTS-PERSISTED-VFY-001",
+  "timestamp": "2026-08-29T21:23:00-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-004 persisted tenant-scoped appointments report through the Reports Workbench",
+  "scope_ref": "CVG-004-REPORT-APPOINTMENTS-PERSISTED",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "VFY-001",
+      "description": "The scheduling source exposes exactly thirteen persisted appointment fields with strict normalized status, literal search, inclusive UTC calendar filters, deterministic order and a 10,001-row source bound.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-appointments-persisted.md",
+        "packages/modules/scheduling/src/repositories/database-scheduling.repository.ts",
+        "packages/modules/scheduling/src/index.ts",
+        "packages/modules/scheduling/src/scheduling.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-APPOINTMENTS-PERSISTED-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-APPOINTMENTS-PERSISTED-POSTGRES-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The local source contract does not certify external Vetus event semantics, production scale or target database rollout."
+    },
+    {
+      "id": "VFY-002",
+      "description": "The persisted source uses database-only account and tenant context rails, parameterized predicates and fails closed when the scheduling repository or source method is unavailable; no in-memory report fallback is allowed.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/scheduling/src/repositories/database-scheduling.repository.ts",
+        "packages/modules/scheduling/src/index.ts",
+        "apps/api/src/routes/reports-routes.ts",
+        "apps/api/src/routes/reports-routes.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-APPOINTMENTS-PERSISTED-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-APPOINTMENTS-PERSISTED-POSTGRES-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The proof is repository-local and disposable-PostgreSQL only; deployed roles, network policy and target operations remain open."
+    },
+    {
+      "id": "VFY-003",
+      "description": "The Reports catalog and API execute the scheduling-appointments report with scheduling.read plus the existing billing.read boundary, revalidate filters and row shape, preserve exact columns and use the existing execution/export/audit path.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/reports/src/index.ts",
+        "packages/modules/reports/src/reports.test.ts",
+        "apps/api/src/routes/reports-routes.ts",
+        "apps/api/src/routes/reports-routes.test.ts",
+        "apps/api/src/server.ts",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-APPOINTMENTS-PERSISTED-GREEN-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The route proof uses the repository-local API runtime and does not certify an external identity provider, remote CI or release ingress."
+    },
+    {
+      "id": "VFY-004",
+      "description": "The SPA appointments report delegates loading and export to the server report execution/export boundary and no longer uses appointmentService.list or browser-local CSV for that report; professional-care remains separate.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/spa/src/pages/reports/ReportWorkbenchPage.vue",
+        "apps/spa/src/pages/reports/__tests__/ReportWorkbenchPage.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-APPOINTMENTS-PERSISTED-GREEN-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This is focused component/build evidence, not a complete Playwright, accessibility, restart-replay or target browser release certificate."
+    },
+    {
+      "id": "VFY-005",
+      "description": "TDD RED preceded implementation and the focused module, API route, SPA, full API, build and disposable PostgreSQL regressions are green.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-APPOINTMENTS-PERSISTED-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-APPOINTMENTS-PERSISTED-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-APPOINTMENTS-PERSISTED-POSTGRES-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-APPOINTMENTS-PERSISTED-REGRESSION-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Local regression does not certify remote CI, target operations, external providers, backup/restore or release acceptance."
+    },
+    {
+      "id": "VFY-006",
+      "description": "Official coverage and repository quality gates remain above the mandated threshold, with RLS, migration-source, OpenAPI, secret, formatting and diff checks green.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-APPOINTMENTS-PERSISTED-QUALITY-001",
+        "coverage/coverage-final.json",
+        ".agent/artifacts/CVG-004-report-appointments-persisted-2026-08-29.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Coverage is workspace-local and includes one explicit skip; it is not a release certificate."
+    },
+    {
+      "id": "VFY-007",
+      "description": "Review availability and decision transparency are recorded explicitly: no fresh independent approval was obtained, so the bounded gate does not infer approval and carries medium confidence.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-APPOINTMENTS-PERSISTED-REVIEW-001",
+        ".agent/tasks/CVG-004-report-appointments-persisted.md",
+        ".agent/state.json"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "No independent final APPROVE verdict is claimed; closure relies on direct implementation, test, PostgreSQL and quality evidence plus bounded self-audit."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-report-appointments-persisted.md",
+    ".agent/artifacts/CVG-004-report-appointments-persisted-2026-08-29.md",
+    ".agent/gates/implementation-ready-CVG-004-report-appointments-persisted.json",
+    ".agent/authority.jsonl#AUTH-CVG-004-REPORT-APPOINTMENTS-PERSISTED-IR-001",
+    "packages/modules/scheduling/src/repositories/database-scheduling.repository.ts",
+    "packages/modules/scheduling/src/index.ts",
+    "packages/modules/reports/src/index.ts",
+    "apps/api/src/routes/reports-routes.ts",
+    "apps/api/src/server.ts",
+    "apps/spa/src/pages/reports/ReportWorkbenchPage.vue",
+    "tests/integration/database/scheduling-appointments-report-postgres.test.ts"
+  ],
+  "confidence": "MEDIUM",
+  "gaps": [
+    "professional-care remains a separate local aggregate and is not included in this persisted appointments report",
+    "patient, owner, professional and service display-name joins are intentionally not certified",
+    "worker scheduling, queue/encounter lifecycle, provider integrations, Vetus behavior parity and external acceptance remain open",
+    "target roles, production scale, remote CI, accessibility, backup/restore, deployment and release acceptance remain open",
+    "parent CVG-004, global ERP parity and ERP promotion remain open"
+  ],
+  "conditions": [
+    "Keep the appointments report database-only and fail closed when the persisted source is unavailable.",
+    "Keep account identity principal-derived and preserve the existing ReportsService execution/export/audit boundary.",
+    "Do not silently reintroduce process-local appointment reads or browser-local exports for scheduling-appointments.",
+    "Keep professional-care, names/joins, writes, queue/encounter semantics, workers and providers as separate authorized slices.",
+    "Keep global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+    "Do not infer target, production, deployment or release acceptance from this local gate."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED_REVALIDATED",
+    "actor": "Ricardo (repository owner), via explicit continuation and bounded local reconciliation",
+    "scope": "Repository-local persisted scheduling-appointments report source, catalog/API/runtime seam, SPA caller and tests",
+    "decision": "Authorize bounded local closure of the appointments report only. Exclude professional-care aggregation, local name joins, appointment writes, queue/encounter, worker scheduling, providers, target, production, deployment, backfill, legal retention and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-APPOINTMENTS-PERSISTED-IR-001",
+    "expires_or_revalidates": "Revalidate before changing report grain/columns, adding joins or worker semantics, touching appointment writes, or entering target/production/deployment/release scope."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_BOUNDED",
+  "implementation_status": "COMPLETE_BOUNDED",
+  "next_action": "Close this bounded task, reconcile the control plane and return to fresh read-only residual scouting under a new implementation-ready authority. Keep parent CVG-004 and global ERP IN_PROGRESS/PARTIAL with promotion BLOCKED.",
+  "revalidation_triggers": [
+    "Changing report grain, columns, status mapping, search fields or date semantics",
+    "Adding patient/owner/professional/service joins or professional-care aggregation",
+    "Changing appointment writes, queue/encounter lifecycle or scheduled workers",
+    "Changing ReportsService audit/export persistence or account authorization",
+    "Changing target, production, deployment, backup/restore or release boundaries"
+  ],
+  "supersedes": ".agent/gates/implementation-ready-CVG-004-report-appointments-persisted.json"
+}

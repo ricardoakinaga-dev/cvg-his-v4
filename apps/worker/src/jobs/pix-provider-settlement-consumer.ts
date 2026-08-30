@@ -1,7 +1,8 @@
 import {
   ConfirmedPixSettlementCommand,
   DatabaseConfirmedPixSettlementRepository,
-  type ApplyConfirmedPixSettlementInput
+  type ApplyConfirmedPixSettlementInput,
+  type ConfirmedPixSettlementCheckpoint
 } from '@cvg-his-v2/module-pix';
 import type { TenantTransactionContext } from '@cvg-his-v2/shared-database';
 
@@ -85,6 +86,15 @@ export interface PixProviderSettlementConsumerOptions {
    */
   readonly onCheckpoint?: (
     checkpoint: PixProviderSettlementCheckpoint,
+    context: PixProviderSettlementCheckpointContext
+  ) => void | Promise<void>;
+  /**
+   * Test/operations failpoints for proving process recovery inside the
+   * transaction-owned B1 settlement writes. The callback receives only
+   * immutable identifiers and the named internal checkpoint.
+   */
+  readonly onSettlementCheckpoint?: (
+    checkpoint: ConfirmedPixSettlementCheckpoint,
     context: PixProviderSettlementCheckpointContext
   ) => void | Promise<void>;
   /**
@@ -254,7 +264,11 @@ export class PixProviderSettlementConsumer {
           const executor = this.#options.createSettlementExecutor
             ? this.#options.createSettlementExecutor(transaction)
             : new ConfirmedPixSettlementCommand(
-                new DatabaseConfirmedPixSettlementRepository(),
+                new DatabaseConfirmedPixSettlementRepository({
+                  onCheckpoint: async (checkpoint) => {
+                    await this.#settlementCheckpoint(checkpoint, claim);
+                  }
+                }),
                 { allowSyntheticProviders: this.#options.allowSyntheticProviders === true },
                 () => transaction
               );
@@ -304,6 +318,18 @@ export class PixProviderSettlementConsumer {
       leaseVersion: claim.leaseVersion
     });
     await this.#options.onCheckpoint?.(checkpoint, context);
+  }
+
+  async #settlementCheckpoint(
+    checkpoint: ConfirmedPixSettlementCheckpoint,
+    claim: PixProviderEventDeliveryClaim
+  ): Promise<void> {
+    const context = Object.freeze({
+      deliveryId: claim.deliveryId,
+      accountId: claim.accountId,
+      leaseVersion: claim.leaseVersion
+    });
+    await this.#options.onSettlementCheckpoint?.(checkpoint, context);
   }
 
   async #claimNext(input: {

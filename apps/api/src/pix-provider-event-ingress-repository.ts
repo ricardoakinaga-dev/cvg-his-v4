@@ -216,13 +216,15 @@ export class DatabasePixProviderEventIngressRepository implements PixProviderEve
     client: PoolClient,
     input: NormalizedPixProviderEventIngress
   ): Promise<ReceiptRow | null> {
+    // Receipts and deliveries are append-only. The unique constraints plus
+    // savepoints serialize duplicate webhook races without requiring a row
+    // lock, which would also require UPDATE privilege on the API role.
     const result = await client.query<ReceiptRow>(
       `SELECT id, body_fingerprint, claims_fingerprint, received_at
          FROM pix_provider_events
         WHERE account_id = $1
           AND provider = $2
-          AND provider_event_id = $3
-        FOR UPDATE`,
+          AND provider_event_id = $3`,
       [input.accountId, input.provider, input.providerEventId]
     );
     return result.rows[0] ?? null;
@@ -243,8 +245,7 @@ export class DatabasePixProviderEventIngressRepository implements PixProviderEve
     const existingDelivery = await client.query<DeliveryRow>(
       `SELECT id
          FROM pix_provider_event_deliveries
-        WHERE account_id = $1 AND event_id = $2
-        FOR UPDATE`,
+        WHERE account_id = $1 AND event_id = $2`,
       [input.accountId, receipt.id]
     );
     const deliveryId =
@@ -278,8 +279,7 @@ export class DatabasePixProviderEventIngressRepository implements PixProviderEve
       const existing = await client.query<DeliveryRow>(
         `SELECT id
            FROM pix_provider_event_deliveries
-          WHERE account_id = $1 AND event_id = $2
-          FOR UPDATE`,
+          WHERE account_id = $1 AND event_id = $2`,
         [accountId, eventId]
       );
       if (!existing.rows[0]) throw error;

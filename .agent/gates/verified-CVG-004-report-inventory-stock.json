@@ -1,0 +1,174 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-INVENTORY-STOCK-VFY-001",
+  "timestamp": "2026-08-28T01:03:40-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-004 bounded on-demand server-backed inventory-stock report and audited export",
+  "scope_ref": "CVG-004-REPORT-INVENTORY-STOCK",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-001-CONTRACT",
+      "description": "The catalog, permission boundary, filters, grain, exact ten-field row contract, current-value derivations and explicit non-promotion exclusions are implemented and covered.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-inventory-stock.md",
+        ".agent/authority.jsonl#AUTH-CVG-004-REPORT-INVENTORY-STOCK-IR-001",
+        "packages/modules/reports/src/index.ts",
+        "packages/modules/reports/src/reports.test.ts",
+        "apps/spa/src/pages/reports/ReportWorkbenchPage.vue",
+        "apps/spa/src/pages/reports/__tests__/ReportWorkbenchPage.test.ts",
+        "docs/vetus/guides/2026-04-24-relatorio-relatorios-estoque.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The Vetus corpus establishes the Estoque report surface but not an authoritative dynamic-executor schema. This gate certifies only the explicitly frozen local ten-field contract."
+    },
+    {
+      "id": "V-002-DATABASE-SOURCE",
+      "description": "The persisted source is tenant-scoped and parameterized, applies inclusive createdAt/search semantics, orders deterministically, rechecks the account boundary and rejects the 10,001-row overflow.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/inventory/src/repositories/database-inventory.repository.ts",
+        "packages/modules/inventory/src/index.ts",
+        "packages/modules/inventory/src/inventory.test.ts",
+        "tests/integration/database/inventory-stock-report-postgres.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-STOCK-DB-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The source is intentionally limited to current persisted inventory_items facts. It does not certify target grants, production scale, lots, movements, invoices, historical/as-of stock or accounting valuation."
+    },
+    {
+      "id": "V-003-API-RBAC-EXPORT",
+      "description": "The API validates execution/export input, enforces the Reports Workbench and inventory permissions, keeps the source fail-closed in memory, maps exactly ten fields and awaits durable ReportsService audit for execution and export.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/api/src/routes/reports-routes.ts",
+        "apps/api/src/routes/reports-routes.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-STOCK-FOCUSED-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-STOCK-RED-REMEDIATION-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This local route gate does not authorize fiscal writes, external providers, scheduled delivery, credentials, target operations or release acceptance."
+    },
+    {
+      "id": "V-004-SPA-UTC",
+      "description": "The Reports Workbench consumes the authenticated server execution, forwards strict filters, validates the exact row contract, exports the server artifact and does not hydrate local inventory or lots for this report.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/spa/src/pages/reports/ReportWorkbenchPage.vue",
+        "apps/spa/src/pages/reports/__tests__/ReportWorkbenchPage.test.ts",
+        "e2e/spa/inventory-stock-report-flow.spec.ts",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-STOCK-FOCUSED-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-STOCK-E2E-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Browser evidence is local and disposable; it does not certify production browser policy, accessibility acceptance or deployed assets."
+    },
+    {
+      "id": "V-005-POSTGRES-E2E",
+      "description": "Disposable PostgreSQL integration and the official authenticated browser runner prove tenant isolation, inclusive filters, deterministic rows, current stock derivation, durable audit, export, SPA server consumption and overflow behavior.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "tests/integration/database/inventory-stock-report-postgres.test.ts",
+        "e2e/spa/inventory-stock-report-flow.spec.ts",
+        "infra/scripts/run-e2e-spa.sh",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-STOCK-DB-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-STOCK-E2E-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The proof uses disposable local PostgreSQL/Redis and does not certify target RLS/roles, backup/restore, RTO/RPO, continuous workers or production operations."
+    },
+    {
+      "id": "V-006-QUALITY",
+      "description": "TDD RED/GREEN, focused and full regressions, workspace coverage, builds, static/security validators, formatting and index hygiene remain within the repository bar.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-STOCK-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-STOCK-RED-REMEDIATION-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-STOCK-FOCUSED-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-STOCK-GLOBAL-RETEST-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-STOCK-HYGIENE-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-STOCK-HYGIENE-002"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Coverage uses the repository's designated integration exclusions. Remote CI, target operations, external homologation, production and release acceptance remain open."
+    },
+    {
+      "id": "V-007-INDEPENDENT-REVIEW",
+      "description": "Independent post-remediation read-only review found no scoped CRITICAL, HIGH or MEDIUM implementation finding; its procedural block was limited to the pending control-plane records reconciled by this gate.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-STOCK-REVIEW-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-STOCK-REVIEW-FINAL-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-STOCK-REVIEW-FINAL-002"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The post-reconciliation independent review returned APPROVE; the earlier review was blocked only by the pre-closure control-plane state. Both reviews remain bounded to the local slice and are not global ERP, target, production or release approval."
+    },
+    {
+      "id": "V-008-GLOBAL-NON-PROMOTION",
+      "description": "The bounded result is reconciled without promoting CVG-004, general Vetus parity, clinical parity, enterprise readiness, target operations or release acceptance.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-STOCK-GLOBAL-RETEST-001",
+        ".agent/state.json",
+        ".agent/backlog.json",
+        ".gauntlet/state.md",
+        ".gauntlet/progress.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "General Vetus parity remains 4/11 verified, clinical parity 2/3 and enterprise readiness 95/100 with 42 PASS, 3 WARN and 1 FAIL."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-report-inventory-stock.md",
+    ".agent/artifacts/CVG-004-report-inventory-stock-2026-08-28.md",
+    ".agent/authority.jsonl#AUTH-CVG-004-REPORT-INVENTORY-STOCK-IR-001",
+    "docs/vetus/guides/2026-04-24-relatorio-relatorios-estoque.md",
+    "packages/modules/inventory/src/repositories/database-inventory.repository.ts",
+    "packages/modules/inventory/src/index.ts",
+    "packages/modules/reports/src/index.ts",
+    "apps/api/src/routes/reports-routes.ts",
+    "apps/spa/src/pages/reports/ReportWorkbenchPage.vue",
+    "tests/integration/database/inventory-stock-report-postgres.test.ts",
+    "e2e/spa/inventory-stock-report-flow.spec.ts",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-STOCK-REVIEW-FINAL-002",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-STOCK-FINAL-002"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "Exact Vetus dynamic-executor columns, filters and grain remain unverified.",
+    "The report is a current persisted inventory_items snapshot only; lots, movements, invoices, historical/as-of stock, historical valuation and scheduled delivery remain open.",
+    "Disposable local services do not certify target RLS/roles, backup/restore, RTO/RPO, Redis operations, remote CI, accessibility, operational LGPD, providers, production or release acceptance."
+  ],
+  "conditions": [
+    "Keep the result limited to the authenticated tenant-scoped on-demand read/export of persisted inventory_items with the exact ten-field contract.",
+    "Keep the existing billing.read Reports Workbench baseline and additive inventory.read definition permission; revalidate before changing the access model.",
+    "Revalidate before adding scheduled delivery, lots, movements, invoices, historical/as-of semantics, valuation, writes, providers, credentials, target, production, deployment or release scope."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via the original consolidation brief",
+    "scope": "CVG-004 bounded on-demand server-backed inventory-stock report/export",
+    "decision": "Authorize reversible repository, API and SPA implementation with focused tests and disposable PostgreSQL verification using only tenant-scoped persisted inventory_items. The report may derive only current stockValue and reorderStatus from persisted balance, minimum and unit cost. Exclude scheduled worker resolution, historical/as-of stock, lots, invoices, movements, historical valuation, providers, fiscal writes, credentials, target, production, deployment, backfill and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-INVENTORY-STOCK-IR-001",
+    "expires_or_revalidates": "Revalidate before adding lot, movement, invoice, historical/valuation semantics, scheduled delivery, providers, credentials, target, production, deployment or release activity."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_BOUNDED",
+  "next_action": "Keep CVG-004 and the global ERP IN_PROGRESS/PARTIAL with promotion BLOCKED; select the next gap only through fresh scouting and a new implementation-ready authority. Revalidate this bounded gate before any scope expansion.",
+  "revalidation_triggers": [
+    "Changes to inventory item schema, balance/cost semantics, tenant repository queries or report authorization",
+    "Changes to ReportsService execution/export/audit or Report Workbench behavior",
+    "Expansion beyond current persisted inventory_items facts to lots, movements, invoices, history, valuation, schedules, providers, credentials, target, production, deployment, backfill or release action"
+  ],
+  "supersedes": ".agent/gates/implementation-ready-CVG-004-report-inventory-stock.json"
+}

@@ -1,0 +1,91 @@
+{
+  "record_id": "GATE-CVG-003-AUDIT-EVENTS-ABAC-IR-001",
+  "timestamp": "2026-08-29T13:23:00-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-003 bounded ABAC enforcement for GET /audit/events",
+  "scope_ref": "CVG-003-AUDIT-EVENTS-ABAC",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "A fresh independent scout confirmed that GET /audit/events uses RBAC audit.read but bypasses the existing enforceAbac callback, while abac-006 already governs audit_entry/audit.read.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-SCOUT-CVG-003-AUDIT-EVENTS-ABAC-001",
+        "apps/api/src/routes/access-control-routes.ts",
+        "packages/modules/access-control/src/abac.ts",
+        ".agent/gates/verified-CVG-003-outbox-admin-abac-inspection.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The finding is limited to GET /audit/events and does not claim that other audit or sensitive surfaces share the same gap."
+    },
+    {
+      "id": "IR-002",
+      "description": "The authorized correction is limited to passing the existing server enforceAbac callback into AccessControlRoutesHandlers, invoking audit.read before the GET /audit/events audit read, and documenting its existing Bearer/401/403 contract.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/authority.jsonl#AUTH-CVG-003-AUDIT-EVENTS-ABAC-IR-001",
+        ".agent/tasks/CVG-003-AUDIT-EVENTS-ABAC.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "No operational-coverage source-of-truth change, reprocess/replay change, policy broadening, systemic ABAC, storage, worker or external change is authorized."
+    },
+    {
+      "id": "IR-003",
+      "description": "Focused RED tests must fail before implementation for missing ABAC invocation and fail-closed denial, while GREEN must preserve audit filters, cursor pagination, account binding, audit append and response behavior.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-003-AUDIT-EVENTS-ABAC.md",
+        "apps/api/src/routes/access-control-audit-events.test.ts",
+        "apps/api/src/server.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The gate authorizes implementation and verification only; it is not evidence of GREEN, quality, global parity or release readiness."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-003-AUDIT-EVENTS-ABAC.md",
+    ".agent/authority.jsonl#AUTH-CVG-003-AUDIT-EVENTS-ABAC-IR-001",
+    ".agent/verification.jsonl#VFY-SCOUT-CVG-003-AUDIT-EVENTS-ABAC-001",
+    "apps/api/src/routes/access-control-routes.ts",
+    "apps/api/src/routes/access-control-audit-events.test.ts",
+    "apps/api/src/server.ts",
+    "packages/modules/access-control/src/abac.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "GET /audit/operational-coverage has a separate source-of-truth/cache semantics gap and is deferred.",
+    "Reprocess/audit.write and replay-after-revocation authorization remain separate P0 follow-ups.",
+    "Systemic ABAC, other audit/log/trace/export surfaces, global parity, target operations and release evidence remain open."
+  ],
+  "conditions": [
+    "Implement only GET /audit/events callback wiring, focused tests and matching OpenAPI security/error documentation.",
+    "Use resourceType audit_entry, resourceId events and the authenticated principal account.",
+    "Preserve the existing audit service, account scope, filters, cursor, limit, append-audit behavior and response shape.",
+    "Keep /audit/operational-coverage, reprocess/replay, systemic ABAC and all provider/target/production/deployment/release work outside this gate.",
+    "Keep CVG-003/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via explicit continuation of the consolidation request and fresh bounded scout selection",
+    "scope": "CVG-003 bounded ABAC enforcement for GET /audit/events only",
+    "decision": "Authorize reversible repository-local route, server seam, focused test and OpenAPI documentation changes for the existing audit.read ABAC policy. Exclude operational-coverage source-of-truth changes, reprocess/audit.write, replay-after-revocation, systemic ABAC, policy broadening, storage, workers, migrations, providers, credentials, target, production, deployment and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-003-AUDIT-EVENTS-ABAC-IR-001",
+    "expires_or_revalidates": "Revalidate before enforcing ABAC on operational coverage or another audit family, changing policy definitions, adding replay controls or expanding beyond GET /audit/events."
+  },
+  "residual_risk": "HIGH",
+  "decision": "IMPLEMENTATION_READY",
+  "implementation_status": "AUTHORIZED_NOT_STARTED",
+  "next_action": "Write and execute intentional RED assertions for ABAC invocation and fail-closed denial before the GET /audit/events audit read, then implement the smallest callback seam.",
+  "revalidation_triggers": [
+    "GET /audit/operational-coverage or another audit route",
+    "Changes to abac-006 or policy semantics",
+    "Reprocess/replay authorization or permission revocation handling",
+    "Expansion to migrations, providers, credentials, target, production, deployment or release scope"
+  ],
+  "supersedes": null
+}

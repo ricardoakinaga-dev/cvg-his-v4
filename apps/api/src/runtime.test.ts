@@ -3,10 +3,11 @@ import test from 'node:test';
 
 import type { AuthSessionResponse } from '@cvg-his-v2/shared-contracts';
 import { ForbiddenError } from '@cvg-his-v2/shared-errors';
+import type { AccountId } from '@cvg-his-v2/shared-types';
 import { getTenantContext } from '@cvg-his-v2/tenant-context';
 
 import { createApiRuntime, type RuntimeRepositories } from './runtime.js';
-import { bootstrapServices } from './bootstrap.js';
+import { bootstrapServices, hasRequiredAdvancePaymentSchema } from './bootstrap.js';
 
 function createTestRuntime(
   repositories?: RuntimeRepositories,
@@ -27,6 +28,60 @@ const REAL_ACCOUNT_ID = '65751ed5-07d3-44a2-830a-cc9dc8a0dbe4' as never;
 const REAL_OWNER_ID = '713309e5-10dc-43c3-9bee-fd0c0dedb7c7' as never;
 const REAL_PATIENT_ID = '0cb71acc-dfc2-47b9-a82b-4a46beae728b' as never;
 const REAL_ENCOUNTER_ID = 'b9544c63-a1b2-40e7-96f9-71e02c75ccbb' as never;
+
+test('advance-payment report readiness requires tenant policies and ledger triggers', () => {
+  const snapshot = {
+    tables: [
+      { tableName: 'advance_payments', rowSecurity: true, forceRowSecurity: true },
+      { tableName: 'advance_payment_allocations', rowSecurity: true, forceRowSecurity: true }
+    ],
+    policies: [
+      {
+        tableName: 'advance_payments',
+        policyName: 'advance_payments_tenant_select',
+        usesAccountContext: true
+      },
+      {
+        tableName: 'advance_payments',
+        policyName: 'advance_payments_tenant_insert',
+        usesAccountContext: true
+      },
+      {
+        tableName: 'advance_payment_allocations',
+        policyName: 'advance_payment_allocations_tenant_select',
+        usesAccountContext: true
+      },
+      {
+        tableName: 'advance_payment_allocations',
+        policyName: 'advance_payment_allocations_tenant_insert',
+        usesAccountContext: true
+      }
+    ],
+    triggers: [
+      {
+        tableName: 'advance_payments',
+        triggerName: 'advance_payments_immutability_trigger'
+      },
+      {
+        tableName: 'advance_payment_allocations',
+        triggerName: 'advance_payment_allocations_immutability_trigger'
+      },
+      {
+        tableName: 'advance_payment_allocations',
+        triggerName: 'advance_payment_allocations_prevent_overallocation'
+      }
+    ]
+  };
+
+  assert.equal(hasRequiredAdvancePaymentSchema(snapshot), true);
+  assert.equal(
+    hasRequiredAdvancePaymentSchema({
+      ...snapshot,
+      triggers: snapshot.triggers.slice(0, 2)
+    }),
+    false
+  );
+});
 
 function assertTenantAccount(accountId: string): void {
   assert.equal(getTenantContext()?.accountId, accountId);
@@ -52,13 +107,13 @@ async function waitForAuditAction(
 test('login, session refresh and audit trail work end-to-end', async () => {
   const runtime = createTestRuntime();
 
-  const login = await runtime.auth.login(
+  const login = (await runtime.auth.login(
     {
       username: 'admin',
       password: 'seed_admin'
     },
     'corr_login_test'
-  ) as AuthSessionResponse;
+  )) as AuthSessionResponse;
 
   assert.equal(login.principal.user.username, 'admin');
   assert.equal(login.principal.access.permissionCodes.includes('users.manage'), true);
@@ -66,12 +121,12 @@ test('login, session refresh and audit trail work end-to-end', async () => {
   const principal = runtime.auth.authenticateAccessToken(login.accessToken);
   assert.equal(principal.user.id, login.principal.user.id);
 
-  const refreshed = await runtime.auth.refresh(
+  const refreshed = (await runtime.auth.refresh(
     {
       refreshToken: login.refreshToken
     },
     'corr_refresh_test'
-  ) as AuthSessionResponse;
+  )) as AuthSessionResponse;
 
   assert.equal(refreshed.principal.session.sessionId, login.principal.session.sessionId);
   assert.notEqual(refreshed.refreshToken, login.refreshToken);
@@ -83,6 +138,45 @@ test('login, session refresh and audit trail work end-to-end', async () => {
     runtime.audit.list().some((event) => event.action === 'refresh'),
     true
   );
+});
+
+test('in-memory counter-sale cancellation rolls back when audit persistence fails', async () => {
+  let auditWrites = 0;
+  const failingAuditRepository = {
+    async create(): Promise<void> {
+      auditWrites += 1;
+      if (auditWrites > 1) throw new Error('audit persistence failed');
+    },
+    async list(): Promise<readonly never[]> {
+      return [];
+    },
+    async findById(): Promise<null> {
+      return null;
+    }
+  } as never;
+  const runtime = createApiRuntime({
+    authSecret: 'test-secret',
+    accessTokenTtlSeconds: 900,
+    refreshTokenTtlSeconds: 604800,
+    repositories: { audit: failingAuditRepository }
+  });
+  const accountId = 'account-cancellation-rollback' as AccountId;
+  const userId = 'user-cancellation-rollback' as never;
+  const sale = await runtime.counterSales.open(accountId, userId);
+
+  await assert.rejects(
+    () =>
+      runtime.counterSales.cancel(sale.id, {
+        accountId,
+        cancelledByUserId: userId,
+        reason: 'Falha de persistência de auditoria',
+        correlationId: 'corr-runtime-cancellation-rollback'
+      }),
+    /audit persistence failed/
+  );
+
+  assert.equal(runtime.counterSales.getOrThrow(sale.id).status, 'open');
+  assert.deepEqual(await runtime.counterSales.listCancellationHistory(accountId, sale.id), []);
 });
 
 test('runtime initializes tenant-scoped repositories with the authenticated account context', async () => {
@@ -278,20 +372,95 @@ test('runtime exposes API keys and event bus persistence for integrations', asyn
     }
   });
 
-  const fetched = await runtime.eventBus.getEvent(event.id);
+  const fetched = await runtime.eventBus.getEvent(created.apiKey.accountId, event.id);
   assert.equal(fetched?.status, 'pending');
   assert.equal(fetched?.eventType, 'payment.pix.intent.created');
 });
 
+test('in-memory event administration is isolated by account across reads, counts and reprocess', async () => {
+  const runtime = createTestRuntime();
+  const accountA = 'outbox-admin-account-a' as AccountId;
+  const accountB = 'outbox-admin-account-b' as AccountId;
+  const correlationA = 'outbox-admin-correlation-a' as never;
+  const correlationB = 'outbox-admin-correlation-b' as never;
+  const eventA = await runtime.eventBus.publish({
+    accountId: accountA,
+    correlationId: correlationA,
+    moduleName: 'billing' as never,
+    eventType: 'outbox.admin.a',
+    payload: { accountId: accountA },
+    maxAttempts: 1
+  });
+  const eventB = await runtime.eventBus.publish({
+    accountId: accountB,
+    correlationId: correlationB,
+    moduleName: 'billing' as never,
+    eventType: 'outbox.admin.b',
+    payload: { accountId: accountB },
+    maxAttempts: 1
+  });
+  const unsubscribe = runtime.eventBus.subscribe('outbox-admin-failure', async () => {
+    throw new Error('outbox-admin-test-failure');
+  });
+
+  await runtime.eventBus.processPending(10);
+  unsubscribe();
+
+  assert.equal((await runtime.eventBus.getEvent(accountA, eventA.id))?.id, eventA.id);
+  assert.equal(await runtime.eventBus.getEvent(accountA, eventB.id), null);
+  assert.deepEqual(
+    (await runtime.eventBus.getEventsByCorrelationId(accountA, correlationA)).map(
+      (event) => event.id
+    ),
+    [eventA.id]
+  );
+  assert.deepEqual(await runtime.eventBus.getEventsByCorrelationId(accountA, correlationB), []);
+  assert.deepEqual(
+    (await runtime.eventBus.getDeadLetterEvents(accountA, 10)).map((event) => event.id),
+    [eventA.id]
+  );
+  assert.deepEqual(
+    await runtime.eventBus
+      .getDeadLetterEvents(accountA, 10)
+      .then((events) => events.map((event) => event.accountId)),
+    [accountA]
+  );
+  assert.deepEqual(await runtime.eventBus.getPendingEvents(accountA, 10), []);
+  assert.deepEqual(await runtime.eventBus.getPendingEvents(accountB, 10), []);
+
+  const reprocessedA = await runtime.eventBus.reprocessEvent(accountA, eventA.id);
+  assert.equal(reprocessedA?.id, eventA.id);
+  assert.equal(reprocessedA?.status, 'pending');
+  assert.equal(await runtime.eventBus.reprocessEvent(accountA, eventB.id), null);
+  assert.deepEqual(
+    (await runtime.eventBus.getPendingEvents(accountA, 10)).map((event) => event.id),
+    [eventA.id]
+  );
+  assert.deepEqual(await runtime.eventBus.getPendingEvents(accountB, 10), []);
+
+  assert.deepEqual(await runtime.eventBus.countEvents(accountA), {
+    pending: 1,
+    retrying: 0,
+    completed: 0,
+    failed: 0,
+    total: 1
+  });
+
+  await assert.rejects(
+    runtime.eventBus.getEvent('' as AccountId, eventA.id),
+    /Outbox administration requires an accountId/
+  );
+});
+
 test('runtime reconciles PIX confirmation into administrative financial state', async () => {
   const runtime = createTestRuntime();
-  const receptionLogin = await runtime.auth.login(
+  const receptionLogin = (await runtime.auth.login(
     {
       username: 'reception',
       password: 'seed_reception'
     },
     'corr_pix_financial_runtime'
-  ) as AuthSessionResponse;
+  )) as AuthSessionResponse;
   const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
 
   const encounter = runtime.encounters.openEncounter(reception.user.accountId, reception.user.id, {
@@ -335,7 +504,8 @@ test('runtime reconciles PIX confirmation into administrative financial state', 
   });
   await runtime.eventBus.processPending(10);
 
-  const createdTransaction = await runtime.pixTransactions.findByTransactionId('pix_intent_runtime_1');
+  const createdTransaction =
+    await runtime.pixTransactions.findByTransactionId('pix_intent_runtime_1');
   assert.equal(createdTransaction?.status, 'pending');
   assert.equal(createdTransaction?.billingSettlementStatus, 'awaiting_payment');
 
@@ -364,15 +534,14 @@ test('runtime reconciles PIX confirmation into administrative financial state', 
   assert.equal(
     summary.payments.some(
       (payment) =>
-        payment.externalReferenceType === 'pix_transaction'
-        && payment.externalReferenceId === 'pix_intent_runtime_1'
+        payment.externalReferenceType === 'pix_transaction' &&
+        payment.externalReferenceId === 'pix_intent_runtime_1'
     ),
     true
   );
 
-  const reconciledTransaction = await runtime.pixTransactions.findByTransactionId(
-    'pix_intent_runtime_1'
-  );
+  const reconciledTransaction =
+    await runtime.pixTransactions.findByTransactionId('pix_intent_runtime_1');
   assert.equal(reconciledTransaction?.status, 'completed');
   assert.equal(reconciledTransaction?.billingSettlementStatus, 'applied');
   assert.equal(reconciledTransaction?.cashReconciliationStatus, 'skipped_no_open_register');
@@ -380,13 +549,13 @@ test('runtime reconciles PIX confirmation into administrative financial state', 
 
 test('runtime reconciles card capture into administrative financial state', async () => {
   const runtime = createTestRuntime();
-  const receptionLogin = await runtime.auth.login(
+  const receptionLogin = (await runtime.auth.login(
     {
       username: 'reception',
       password: 'seed_reception'
     },
     'corr_card_financial_runtime'
-  ) as AuthSessionResponse;
+  )) as AuthSessionResponse;
   const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
 
   const encounter = runtime.encounters.openEncounter(reception.user.accountId, reception.user.id, {
@@ -435,9 +604,8 @@ test('runtime reconciles card capture into administrative financial state', asyn
   });
   await runtime.eventBus.processPending(10);
 
-  const createdTransaction = await runtime.cardTransactions.findByTransactionId(
-    'card_intent_runtime_1'
-  );
+  const createdTransaction =
+    await runtime.cardTransactions.findByTransactionId('card_intent_runtime_1');
   assert.equal(createdTransaction?.status, 'authorized_pending_capture');
   assert.equal(createdTransaction?.billingSettlementStatus, 'awaiting_capture');
 
@@ -469,51 +637,59 @@ test('runtime reconciles card capture into administrative financial state', asyn
   assert.equal(
     summary.payments.some(
       (payment) =>
-        payment.externalReferenceType === 'other'
-        && payment.externalReferenceId === 'card_intent_runtime_1'
+        payment.externalReferenceType === 'other' &&
+        payment.externalReferenceId === 'card_intent_runtime_1'
     ),
     true
   );
 
-  const reconciledTransaction = await runtime.cardTransactions.findByTransactionId(
-    'card_intent_runtime_1'
-  );
+  const reconciledTransaction =
+    await runtime.cardTransactions.findByTransactionId('card_intent_runtime_1');
   assert.equal(reconciledTransaction?.status, 'captured');
   assert.equal(reconciledTransaction?.billingSettlementStatus, 'applied');
 });
 
 test('runtime records cash withdrawal when payable is paid with cash method', async () => {
   const runtime = createTestRuntime();
-  const login = await runtime.auth.login(
+  const login = (await runtime.auth.login(
     {
       username: 'admin',
       password: 'seed_admin'
     },
     'corr_payable_cash_runtime'
-  ) as AuthSessionResponse;
+  )) as AuthSessionResponse;
   const principal = runtime.auth.authenticateAccessToken(login.accessToken);
 
   const register = await runtime.cash.openRegister(principal.user.accountId, principal.user.id, {
     openingAmount: 1000,
     notes: 'Gaveta principal'
   });
-  const payable = await runtime.financialPayables.createPayable(principal.user.accountId, principal.user.id, {
-    supplierName: 'Fornecedor de medicamentos',
-    description: 'NF caixa 001',
-    category: 'Compras',
-    costCenterCode: 'EST',
-    costCenterName: 'Estoque',
-    issuedAt: '2026-05-01',
-    dueAt: '2026-05-20',
-    totalAmount: 300
-  });
+  const payable = await runtime.financialPayables.createPayable(
+    principal.user.accountId,
+    principal.user.id,
+    {
+      supplierName: 'Fornecedor de medicamentos',
+      description: 'NF caixa 001',
+      category: 'Compras',
+      costCenterCode: 'EST',
+      costCenterName: 'Estoque',
+      issuedAt: '2026-05-01',
+      dueAt: '2026-05-20',
+      totalAmount: 300
+    }
+  );
 
-  await runtime.financialPayables.payPayable(principal.user.accountId, principal.user.id, payable.id, {
-    amountPaid: 300,
-    paymentMethod: 'cash',
-    paymentReference: 'gaveta-principal',
-    notes: 'Pagamento em dinheiro'
-  });
+  await runtime.financialPayables.payPayable(
+    principal.user.accountId,
+    principal.user.id,
+    payable.id,
+    {
+      amountPaid: 300,
+      paymentMethod: 'cash',
+      paymentReference: 'gaveta-principal',
+      notes: 'Pagamento em dinheiro'
+    }
+  );
 
   const movements = await runtime.cash.getMovements(register.id);
   const withdrawal = movements.find((movement) => movement.reference === payable.id);
@@ -564,13 +740,13 @@ test('runtime can preserve owner and patient registry seeds with repository-back
 
 test('backend enforcement denies audit access to a role without permission', async () => {
   const runtime = createTestRuntime();
-  const login = await runtime.auth.login(
+  const login = (await runtime.auth.login(
     {
       username: 'reception',
       password: 'seed_reception'
     },
     'corr_permission_test'
-  ) as AuthSessionResponse;
+  )) as AuthSessionResponse;
 
   const principal = runtime.auth.authenticateAccessToken(login.accessToken);
 
@@ -591,13 +767,13 @@ test('backend enforcement denies audit access to a role without permission', asy
 
 test('master registry supports owner, patient, relationship and search flows', async () => {
   const runtime = createTestRuntime();
-  const login = await runtime.auth.login(
+  const login = (await runtime.auth.login(
     {
       username: 'reception',
       password: 'seed_reception'
     },
     'corr_master_registry_test'
-  ) as AuthSessionResponse;
+  )) as AuthSessionResponse;
   const principal = runtime.auth.authenticateAccessToken(login.accessToken);
 
   runtime.accessControl.assertAuthorized({
@@ -671,13 +847,13 @@ test('master registry supports owner, patient, relationship and search flows', a
 
 test('operational flow supports appointment, queue, encounter lifecycle, triage and timeline', async () => {
   const runtime = createTestRuntime();
-  const receptionLogin = await runtime.auth.login(
+  const receptionLogin = (await runtime.auth.login(
     {
       username: 'reception',
       password: 'seed_reception'
     },
     'corr_operational_reception'
-  ) as AuthSessionResponse;
+  )) as AuthSessionResponse;
   const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
 
   const appointment = await runtime.scheduling.createAppointment(reception.user.accountId, {
@@ -723,23 +899,27 @@ test('operational flow supports appointment, queue, encounter lifecycle, triage 
     nextStatus: 'in_triage'
   });
 
-  const nurseLogin = await runtime.auth.login(
+  const nurseLogin = (await runtime.auth.login(
     {
       username: 'nurse',
       password: 'seed_nurse'
     },
     'corr_operational_nurse'
-  ) as AuthSessionResponse;
+  )) as AuthSessionResponse;
   const nurse = runtime.auth.authenticateAccessToken(nurseLogin.accessToken);
-  const triage = await runtime.triage.createTriage(nurse.user.id, {
-    encounterId: encounter.id,
-    patientId: encounter.patientId,
-    priority: 'high',
-    chiefComplaint: 'Vomitos e letargia',
-    initialNotes: 'Paciente chegou sonolento, sem sinais de convulsao.',
-    alerts: ['desidratacao', 'prostracao'],
-    destination: 'observation'
-  });
+  const triage = await runtime.triage.createTriage(
+    nurse.user.id,
+    {
+      encounterId: encounter.id,
+      patientId: encounter.patientId,
+      priority: 'high',
+      chiefComplaint: 'Vomitos e letargia',
+      initialNotes: 'Paciente chegou sonolento, sem sinais de convulsao.',
+      alerts: ['desidratacao', 'prostracao'],
+      destination: 'observation'
+    },
+    nurse.user.accountId
+  );
   runtime.encounters.appendTimeline(encounter.id, {
     accountId: encounter.accountId,
     eventType: 'triage_recorded',
@@ -773,20 +953,20 @@ test('operational flow supports appointment, queue, encounter lifecycle, triage 
 
 test('triage can be updated while encounter is open', async () => {
   const runtime = createTestRuntime();
-  const receptionLogin = await runtime.auth.login(
+  const receptionLogin = (await runtime.auth.login(
     {
       username: 'reception',
       password: 'seed_reception'
     },
     'corr_triage_update_reception'
-  ) as AuthSessionResponse;
-  const nurseLogin = await runtime.auth.login(
+  )) as AuthSessionResponse;
+  const nurseLogin = (await runtime.auth.login(
     {
       username: 'nurse',
       password: 'seed_nurse'
     },
     'corr_triage_update_nurse'
-  ) as AuthSessionResponse;
+  )) as AuthSessionResponse;
 
   const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
   const nurse = runtime.auth.authenticateAccessToken(nurseLogin.accessToken);
@@ -799,21 +979,29 @@ test('triage can be updated while encounter is open', async () => {
     reason: 'Triagem com necessidade de correcao'
   });
 
-  const created = await runtime.triage.createTriage(nurse.user.id, {
-    encounterId: encounter.id,
-    patientId: encounter.patientId,
-    priority: 'medium',
-    chiefComplaint: 'Dor abdominal',
-    alerts: ['dor'],
-    destination: 'observation'
-  });
+  const created = await runtime.triage.createTriage(
+    nurse.user.id,
+    {
+      encounterId: encounter.id,
+      patientId: encounter.patientId,
+      priority: 'medium',
+      chiefComplaint: 'Dor abdominal',
+      alerts: ['dor'],
+      destination: 'observation'
+    },
+    nurse.user.accountId
+  );
 
-  const updated = await runtime.triage.updateTriage(created.id, {
-    priority: 'high',
-    destination: 'in_care',
-    initialNotes: 'Piora clinica observada',
-    alerts: ['dor', 'vomito']
-  });
+  const updated = await runtime.triage.updateTriage(
+    created.id,
+    {
+      priority: 'high',
+      destination: 'in_care',
+      initialNotes: 'Piora clinica observada',
+      alerts: ['dor', 'vomito']
+    },
+    nurse.user.accountId
+  );
 
   assert.equal(updated.priority, 'high');
   assert.equal(updated.destination, 'in_care');
@@ -823,13 +1011,13 @@ test('triage can be updated while encounter is open', async () => {
 
 test('clinical record supports entries, prescriptions, conduct and attachments linked to encounter', async () => {
   const runtime = createTestRuntime();
-  const receptionLogin = await runtime.auth.login(
+  const receptionLogin = (await runtime.auth.login(
     {
       username: 'reception',
       password: 'seed_reception'
     },
     'corr_clinical_reception'
-  ) as AuthSessionResponse;
+  )) as AuthSessionResponse;
   const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
   const encounter = runtime.encounters.openEncounter(reception.user.accountId, reception.user.id, {
     patientId: 'patient_luna',
@@ -839,13 +1027,13 @@ test('clinical record supports entries, prescriptions, conduct and attachments l
     reason: 'Atendimento clinico basico'
   });
 
-  const vetLogin = await runtime.auth.login(
+  const vetLogin = (await runtime.auth.login(
     {
       username: 'vet',
       password: 'seed_vet'
     },
     'corr_clinical_vet'
-  ) as AuthSessionResponse;
+  )) as AuthSessionResponse;
   const veterinarian = runtime.auth.authenticateAccessToken(vetLogin.accessToken);
 
   const anamnesis = runtime.medicalRecords.addEntry(veterinarian.user.id, {
@@ -919,13 +1107,13 @@ test('clinical record supports entries, prescriptions, conduct and attachments l
 
 test('advanced care keeps inpatient, surgery and diagnostics tied to the same clinical case', async () => {
   const runtime = createTestRuntime();
-  const receptionLogin = await runtime.auth.login(
+  const receptionLogin = (await runtime.auth.login(
     {
       username: 'reception',
       password: 'seed_reception'
     },
     'corr_advanced_reception'
-  ) as AuthSessionResponse;
+  )) as AuthSessionResponse;
   const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
   const encounter = runtime.encounters.openEncounter(reception.user.accountId, reception.user.id, {
     patientId: 'patient_luna',
@@ -935,13 +1123,13 @@ test('advanced care keeps inpatient, surgery and diagnostics tied to the same cl
     reason: 'Caso clinico com necessidade de suporte avancado'
   });
 
-  const vetLogin = await runtime.auth.login(
+  const vetLogin = (await runtime.auth.login(
     {
       username: 'vet',
       password: 'seed_vet'
     },
     'corr_advanced_vet'
-  ) as AuthSessionResponse;
+  )) as AuthSessionResponse;
   const veterinarian = runtime.auth.authenticateAccessToken(vetLogin.accessToken);
 
   runtime.encounters.transitionEncounter(encounter.id, veterinarian.user.id, {
@@ -962,10 +1150,14 @@ test('advanced care keeps inpatient, surgery and diagnostics tied to the same cl
     `Inpatient admission at ${stay.unit}/${stay.ward}/${stay.bed}`
   );
 
-  const progress = runtime.inpatient.addProgress(veterinarian.user.id, {
-    stayId: stay.id,
-    note: 'Paciente estabilizado e monitorado em internacao.'
-  });
+  const progress = runtime.inpatient.addProgress(
+    veterinarian.user.id,
+    {
+      stayId: stay.id,
+      note: 'Paciente estabilizado e monitorado em internacao.'
+    },
+    veterinarian.user.accountId
+  );
   runtime.medicalRecords.appendAdvancedCareEvent(
     encounter.id,
     veterinarian.user.id,
@@ -1110,13 +1302,13 @@ test('advanced care keeps inpatient, surgery and diagnostics tied to the same cl
 
 test('administrative modules keep billing, inventory and notifications linked without exposing clinical permissions', async () => {
   const runtime = createTestRuntime();
-  const receptionLogin = await runtime.auth.login(
+  const receptionLogin = (await runtime.auth.login(
     {
       username: 'reception',
       password: 'seed_reception'
     },
     'corr_admin_bridge_reception'
-  ) as AuthSessionResponse;
+  )) as AuthSessionResponse;
   const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
   const encounter = runtime.encounters.openEncounter(reception.user.accountId, reception.user.id, {
     patientId: 'patient_luna',
@@ -1126,22 +1318,22 @@ test('administrative modules keep billing, inventory and notifications linked wi
     reason: 'Atendimento com consumo administrativo vinculado'
   });
 
-  const financeLogin = await runtime.auth.login(
+  const financeLogin = (await runtime.auth.login(
     {
       username: 'finance',
       password: 'seed_finance'
     },
     'corr_admin_bridge_finance'
-  ) as AuthSessionResponse;
+  )) as AuthSessionResponse;
   const finance = runtime.auth.authenticateAccessToken(financeLogin.accessToken);
 
-  const inventoryLogin = await runtime.auth.login(
+  const inventoryLogin = (await runtime.auth.login(
     {
       username: 'inventory',
       password: 'seed_inventory'
     },
     'corr_admin_bridge_inventory'
-  ) as AuthSessionResponse;
+  )) as AuthSessionResponse;
   const inventoryUser = runtime.auth.authenticateAccessToken(inventoryLogin.accessToken);
 
   const estimate = await runtime.billing.createEstimate({
@@ -1159,13 +1351,17 @@ test('administrative modules keep billing, inventory and notifications linked wi
   });
   const openedBilling = await runtime.billing.updateStatus(encounter.id, { status: 'open' });
 
-  const consumption = await runtime.inventory.consume(inventoryUser.user.id, {
-    encounterId: encounter.id,
-    inventoryItemId: 'inv_gauze',
-    quantity: 2,
-    sourceEntityType: 'encounter',
-    sourceEntityId: encounter.id
-  }, inventoryUser.user.accountId);
+  const consumption = await runtime.inventory.consume(
+    inventoryUser.user.id,
+    {
+      encounterId: encounter.id,
+      inventoryItemId: 'inv_gauze',
+      quantity: 2,
+      sourceEntityType: 'encounter',
+      sourceEntityId: encounter.id
+    },
+    inventoryUser.user.accountId
+  );
 
   const notification = await runtime.notifications.create(finance.user.id, finance.user.accountId, {
     category: 'billing',
@@ -1206,7 +1402,8 @@ test('administrative modules keep billing, inventory and notifications linked wi
     true
   );
   assert.equal(
-    runtime.inventory.getItemOrThrow('inv_gauze' as never, inventoryUser.user.accountId).onHandQuantity,
+    runtime.inventory.getItemOrThrow('inv_gauze' as never, inventoryUser.user.accountId)
+      .onHandQuantity,
     58
   );
 });
@@ -1220,10 +1417,10 @@ test('AUD-008-02: repositories persist data across runtime re-instantiation (sim
   const runtimeA = createTestRuntime(repositories);
 
   // Login and create session
-  const loginA = await runtimeA.auth.login(
+  const loginA = (await runtimeA.auth.login(
     { username: 'reception', password: 'seed_reception' },
     'corr_restart_test'
-  ) as AuthSessionResponse;
+  )) as AuthSessionResponse;
   const sessionA = loginA.principal.session;
 
   // Create owner
@@ -1298,6 +1495,32 @@ test('AUD-008-02: repositories persist data across runtime re-instantiation (sim
   // Runtime constructor adds 1 seed event, so count should be +1
   assert.equal(auditCountB, auditCountA + 1, 'Audit count should include runtimeB seed event');
 
+  const committedCoverageEvent = runtimeA.audit.write({
+    actorId: loginA.principal.user.id,
+    accountId: loginA.principal.user.accountId,
+    module: 'lgpd',
+    action: 'personal_data_exported',
+    entityType: 'owner',
+    entityId: ownerA.id,
+    payloadSummary: 'Committed restart coverage evidence',
+    riskLevel: 'high'
+  });
+  await runtimeA.audit.waitForPersistence();
+  const restartedCoverage = await runtimeB.audit.getOperationalCoverageReport(
+    loginA.principal.user.accountId,
+    [
+      {
+        id: 'lgpd-export',
+        module: 'lgpd',
+        action: 'personal_data_exported',
+        minimumRiskLevel: 'high',
+        description: 'Exportacao LGPD'
+      }
+    ]
+  );
+  assert.equal(restartedCoverage.coveredRequirements, 1);
+  assert.equal(restartedCoverage.requirements[0]?.evidenceEventId, committedCoverageEvent.eventId);
+
   // Verify owner persists in repository (accessible via repository after restart)
   const ownerBInRepo = await repositories.owner?.findById(ownerA.id);
   assert.ok(ownerBInRepo, 'Owner should persist in repository after restart');
@@ -1350,6 +1573,7 @@ test('AUD-008-02: repositories persist data across runtime re-instantiation (sim
     allOwners && allOwners.length >= 3,
     'Repository should have multiple owners from different runtime instances'
   );
+  assert.ok(allOwners?.some((owner) => owner.id === ownerD.id));
 
   // This proves:
   // 1. Repositories are the persistence boundary (not service internal Maps)
@@ -1362,10 +1586,10 @@ test('runtime initialize rehydrates session cache and encounter timeline from sh
   const repositories = bootstrap.repositories;
 
   const runtimeA = createTestRuntime(repositories);
-  const login = await runtimeA.auth.login(
+  const login = (await runtimeA.auth.login(
     { username: 'reception', password: 'seed_reception' },
     'corr_runtime_hydration'
-  ) as AuthSessionResponse;
+  )) as AuthSessionResponse;
   const principal = runtimeA.auth.authenticateAccessToken(login.accessToken);
   const owner = runtimeA.owners.create(principal.user.accountId, {
     fullName: 'Owner Runtime Hydration',
@@ -1387,17 +1611,13 @@ test('runtime initialize rehydrates session cache and encounter timeline from sh
     size: 'medium',
     primaryOwnerId: owner.id
   });
-  const encounter = runtimeA.encounters.openEncounter(
-    principal.user.accountId,
-    principal.user.id,
-    {
-      patientId: patient.id,
-      ownerId: owner.id,
-      visitType: 'walk_in',
-      origin: 'reception',
-      reason: 'Hydration runtime restart'
-    }
-  );
+  const encounter = runtimeA.encounters.openEncounter(principal.user.accountId, principal.user.id, {
+    patientId: patient.id,
+    ownerId: owner.id,
+    visitType: 'walk_in',
+    origin: 'reception',
+    reason: 'Hydration runtime restart'
+  });
 
   const runtimeB = createTestRuntime(repositories);
   await runtimeB.initialize();
@@ -1407,7 +1627,10 @@ test('runtime initialize rehydrates session cache and encounter timeline from sh
 
   assert.equal(rehydratedPrincipal.user.id, principal.user.id);
   assert.ok(timeline.length > 0);
-  assert.equal(timeline.some((event) => event.eventType === 'encounter_opened'), true);
+  assert.equal(
+    timeline.some((event) => event.eventType === 'encounter_opened'),
+    true
+  );
 });
 
 test('AUD-005-01: medical records, entries and timeline persist across runtime re-instantiation', async () => {
@@ -1424,10 +1647,10 @@ test('AUD-005-01: medical records, entries and timeline persist across runtime r
   const runtimeA = createTestRuntime(repositories);
 
   // Login
-  const loginA = await runtimeA.auth.login(
+  const loginA = (await runtimeA.auth.login(
     { username: 'reception', password: 'seed_reception' },
     'corr_medical_restart_test'
-  ) as AuthSessionResponse;
+  )) as AuthSessionResponse;
 
   // Create owner and patient
   const owner = runtimeA.owners.create(loginA.principal.user.accountId, {
@@ -1493,7 +1716,7 @@ test('AUD-005-01: medical records, entries and timeline persist across runtime r
   );
 
   // Step 3: Simulate restart - create Runtime B with the SAME repositories
-  const runtimeB = createTestRuntime(repositories);
+  void createTestRuntime(repositories);
 
   // Verify medical record persists in repository
   const recordAfterRestart = await repositories.medicalRecord?.findByEncounterId(encounter.id);
@@ -1555,7 +1778,7 @@ test('AUD-005-01: medical records, entries and timeline persist across runtime r
   );
 
   // Step 5: Create Runtime C - verify all data is accessible from repository
-  const runtimeC = createTestRuntime(repositories);
+  void createTestRuntime(repositories);
 
   const finalEntries = await repositories.clinicalEntry?.findByMedicalRecordId(record.id);
   assert.equal(
@@ -1585,10 +1808,10 @@ test('AUD-010-03: notifications API creates and worker processes via shared serv
   const runtime = createTestRuntime(repositories);
 
   // Login as finance user
-  const financeLogin = await runtime.auth.login(
+  const financeLogin = (await runtime.auth.login(
     { username: 'finance', password: 'seed_finance' },
     'corr_worker_integration'
-  ) as AuthSessionResponse;
+  )) as AuthSessionResponse;
   const finance = runtime.auth.authenticateAccessToken(financeLogin.accessToken);
 
   // API creates a notification
@@ -1642,10 +1865,10 @@ test('AUD-010-03: current limitation - separate instances do NOT share state', a
   const runtime2 = createTestRuntime();
 
   // API (runtime1) creates a notification
-  const financeLogin = await runtime1.auth.login(
+  const financeLogin = (await runtime1.auth.login(
     { username: 'finance', password: 'seed_finance' },
     'corr_separate_instances'
-  ) as AuthSessionResponse;
+  )) as AuthSessionResponse;
   const finance = runtime1.auth.authenticateAccessToken(financeLogin.accessToken);
 
   const notification = await runtime1.notifications.create(
@@ -1671,6 +1894,7 @@ test('AUD-010-03: current limitation - separate instances do NOT share state', a
   // The notification is still queued in runtime1
   const queued = runtime1.notifications.list('queued');
   assert.equal(queued.length, 1, 'Notification should still be queued in original instance');
+  assert.equal(queued[0]?.id, notification.id);
 
   // This proves: Separate instances don't share state
   // Solution: Use shared repositories or shared service instances
@@ -1683,10 +1907,10 @@ test('AUD-010-03: cross-aggregate flow - encounter to billing to notifications',
   const runtime = createTestRuntime();
 
   // Login as reception
-  const receptionLogin = await runtime.auth.login(
+  const receptionLogin = (await runtime.auth.login(
     { username: 'reception', password: 'seed_reception' },
     'corr_cross_aggregate'
-  ) as AuthSessionResponse;
+  )) as AuthSessionResponse;
   const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
 
   // Open encounter
@@ -1750,10 +1974,10 @@ test('AUD-007-01: API writes notification to repository, worker reads and proces
   const apiRuntime = createTestRuntime(repositories);
 
   // Login as finance user
-  const financeLogin = await apiRuntime.auth.login(
+  const financeLogin = (await apiRuntime.auth.login(
     { username: 'finance', password: 'seed_finance' },
     'corr_worker_repo_integration'
-  ) as AuthSessionResponse;
+  )) as AuthSessionResponse;
   const finance = apiRuntime.auth.authenticateAccessToken(financeLogin.accessToken);
 
   // API creates a notification (writes to repository)
@@ -1821,10 +2045,10 @@ test('AUD-007-01: API writes notification to repository, worker reads and proces
 
 test('scheduling hardening: cancel appointment, time conflict, and queue transitions', async () => {
   const runtime = createTestRuntime();
-  const receptionLogin = await runtime.auth.login(
+  const receptionLogin = (await runtime.auth.login(
     { username: 'reception', password: 'seed_reception' },
     'corr_scheduling_hardening'
-  ) as AuthSessionResponse;
+  )) as AuthSessionResponse;
   const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
 
   const appointment = await runtime.scheduling.createAppointment(reception.user.accountId, {
@@ -1848,10 +2072,10 @@ test('runtime gates automatic WhatsApp reminders behind feature flag state', asy
   const runtimeDisabled = createTestRuntime(undefined, {
     notificationsWhatsappRemindersEnabled: false
   });
-  const receptionDisabledLogin = await runtimeDisabled.auth.login(
+  const receptionDisabledLogin = (await runtimeDisabled.auth.login(
     { username: 'reception', password: 'seed_reception' },
     'corr_whatsapp_reminder_disabled'
-  ) as AuthSessionResponse;
+  )) as AuthSessionResponse;
   const receptionDisabled = runtimeDisabled.auth.authenticateAccessToken(
     receptionDisabledLogin.accessToken
   );
@@ -1878,10 +2102,10 @@ test('runtime gates automatic WhatsApp reminders behind feature flag state', asy
   const runtimeEnabled = createTestRuntime(undefined, {
     notificationsWhatsappRemindersEnabled: true
   });
-  const receptionEnabledLogin = await runtimeEnabled.auth.login(
+  const receptionEnabledLogin = (await runtimeEnabled.auth.login(
     { username: 'reception', password: 'seed_reception' },
     'corr_whatsapp_reminder_enabled'
-  ) as AuthSessionResponse;
+  )) as AuthSessionResponse;
   const receptionEnabled = runtimeEnabled.auth.authenticateAccessToken(
     receptionEnabledLogin.accessToken
   );
@@ -1896,14 +2120,13 @@ test('runtime gates automatic WhatsApp reminders behind feature flag state', asy
       reason: 'Reminder gated on'
     }
   );
-  assert.equal(
-    await waitForAuditAction(runtimeEnabled, 'whatsapp_reminder_scheduled'),
-    true
-  );
+  assert.equal(await waitForAuditAction(runtimeEnabled, 'whatsapp_reminder_scheduled'), true);
   assert.equal(enabledAppointment.status, 'scheduled');
   assert.equal(disabledAppointment.status, 'scheduled');
   assert.equal(
-    runtimeEnabled.audit.list().some((entry) => entry.action === 'whatsapp_reminder_skipped_flag_disabled'),
+    runtimeEnabled.audit
+      .list()
+      .some((entry) => entry.action === 'whatsapp_reminder_skipped_flag_disabled'),
     false
   );
 });
@@ -1931,10 +2154,10 @@ test('runtime records successful WhatsApp reminder delivery with vendor correlat
     const runtime = createTestRuntime(undefined, {
       notificationsWhatsappRemindersEnabled: true
     });
-    const receptionLogin = await runtime.auth.login(
+    const receptionLogin = (await runtime.auth.login(
       { username: 'reception', password: 'seed_reception' },
       'corr_whatsapp_reminder_delivery'
-    ) as AuthSessionResponse;
+    )) as AuthSessionResponse;
     const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
 
     await runtime.scheduling.createAppointment(reception.user.accountId, {
@@ -1947,7 +2170,9 @@ test('runtime records successful WhatsApp reminder delivery with vendor correlat
 
     assert.equal(await waitForAuditAction(runtime, 'whatsapp_reminder_sent'), true);
 
-    const deliveryEvent = runtime.audit.list().find((entry) => entry.action === 'whatsapp_reminder_sent');
+    const deliveryEvent = runtime.audit
+      .list()
+      .find((entry) => entry.action === 'whatsapp_reminder_sent');
     assert.ok(deliveryEvent);
     assert.equal(deliveryEvent?.payloadSummary.includes('provider=360dialog'), true);
     assert.equal(deliveryEvent?.payloadSummary.includes('messageId=wamid.runtime.123'), true);
@@ -1981,10 +2206,10 @@ test('runtime records failed WhatsApp reminder delivery when vendor dispatch thr
     const runtime = createTestRuntime(undefined, {
       notificationsWhatsappRemindersEnabled: true
     });
-    const receptionLogin = await runtime.auth.login(
+    const receptionLogin = (await runtime.auth.login(
       { username: 'reception', password: 'seed_reception' },
       'corr_whatsapp_reminder_failure'
-    ) as AuthSessionResponse;
+    )) as AuthSessionResponse;
     const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
 
     await runtime.scheduling.createAppointment(reception.user.accountId, {
@@ -1998,7 +2223,9 @@ test('runtime records failed WhatsApp reminder delivery when vendor dispatch thr
     assert.equal(await waitForAuditAction(runtime, 'whatsapp_reminder_scheduled'), true);
     assert.equal(await waitForAuditAction(runtime, 'whatsapp_reminder_failed'), true);
 
-    const failureEvent = runtime.audit.list().find((entry) => entry.action === 'whatsapp_reminder_failed');
+    const failureEvent = runtime.audit
+      .list()
+      .find((entry) => entry.action === 'whatsapp_reminder_failed');
     assert.ok(failureEvent);
     assert.equal(failureEvent?.payloadSummary.includes('provider=360dialog'), true);
     assert.equal(failureEvent?.payloadSummary.includes('error=gateway timeout'), true);
@@ -2013,10 +2240,10 @@ test('runtime records failed WhatsApp reminder delivery when vendor dispatch thr
 
 test('scheduling hardening: rejects double cancellation', async () => {
   const runtime = createTestRuntime();
-  const receptionLogin = await runtime.auth.login(
+  const receptionLogin = (await runtime.auth.login(
     { username: 'reception', password: 'seed_reception' },
     'corr_double_cancel'
-  ) as AuthSessionResponse;
+  )) as AuthSessionResponse;
   const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
 
   const appointment = await runtime.scheduling.createAppointment(reception.user.accountId, {
@@ -2043,10 +2270,10 @@ test('scheduling hardening: rejects double cancellation', async () => {
 
 test('scheduling hardening: time conflict blocks overlapping appointments', async () => {
   const runtime = createTestRuntime();
-  const receptionLogin = await runtime.auth.login(
+  const receptionLogin = (await runtime.auth.login(
     { username: 'reception', password: 'seed_reception' },
     'corr_time_conflict'
-  ) as AuthSessionResponse;
+  )) as AuthSessionResponse;
   const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
 
   await runtime.scheduling.createAppointment(reception.user.accountId, {
@@ -2083,10 +2310,10 @@ test('scheduling hardening: time conflict blocks overlapping appointments', asyn
 
 test('scheduling hardening: queue transitions enforce state machine', async () => {
   const runtime = createTestRuntime();
-  const receptionLogin = await runtime.auth.login(
+  const receptionLogin = (await runtime.auth.login(
     { username: 'reception', password: 'seed_reception' },
     'corr_queue_transitions'
-  ) as AuthSessionResponse;
+  )) as AuthSessionResponse;
   const reception = runtime.auth.authenticateAccessToken(receptionLogin.accessToken);
 
   const queueEntry = await runtime.scheduling.checkIn(reception.user.accountId, {

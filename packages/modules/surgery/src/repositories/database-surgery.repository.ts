@@ -1,5 +1,5 @@
 import { and, eq } from 'drizzle-orm';
-import type { DatabaseClient } from '@cvg-his-v2/shared-database';
+import { withTenantTransaction, type DatabaseClient } from '@cvg-his-v2/shared-database';
 import { surgeryCases } from '@cvg-his-v2/shared-database';
 import type {
   AccountId,
@@ -30,22 +30,24 @@ export class DatabaseSurgeryCaseRepository implements SurgeryCaseRepository {
     if (surgeryCase.accountId !== accountId) {
       throw new Error('Surgery case account does not match tenant context');
     }
-    await this.#db.insert(surgeryCases).values({
-      id: surgeryCase.id,
-      accountId: surgeryCase.accountId,
-      encounterId: surgeryCase.encounterId,
-      patientId: surgeryCase.patientId,
-      procedureName: surgeryCase.procedureName,
-      status: surgeryCase.status,
-      surgeonUserId: surgeryCase.surgeonUserId ?? null,
-      surgicalTeam: surgeryCase.surgicalTeam ?? null,
-      preparationNotes: surgeryCase.preparationNotes ?? null,
-      operativeNotes: surgeryCase.operativeNotes ?? null,
-      scheduledAt: surgeryCase.scheduledAt ? new Date(surgeryCase.scheduledAt) : null,
-      startedAt: surgeryCase.startedAt ? new Date(surgeryCase.startedAt) : null,
-      endedAt: surgeryCase.endedAt ? new Date(surgeryCase.endedAt) : null,
-      createdAt: new Date(surgeryCase.createdAt),
-      updatedAt: new Date(surgeryCase.updatedAt)
+    await withTenantTransaction(accountId, async (database) => {
+      await database.insert(surgeryCases).values({
+        id: surgeryCase.id,
+        accountId: surgeryCase.accountId,
+        encounterId: surgeryCase.encounterId,
+        patientId: surgeryCase.patientId,
+        procedureName: surgeryCase.procedureName,
+        status: surgeryCase.status,
+        surgeonUserId: surgeryCase.surgeonUserId ?? null,
+        surgicalTeam: surgeryCase.surgicalTeam ?? null,
+        preparationNotes: surgeryCase.preparationNotes ?? null,
+        operativeNotes: surgeryCase.operativeNotes ?? null,
+        scheduledAt: surgeryCase.scheduledAt ? new Date(surgeryCase.scheduledAt) : null,
+        startedAt: surgeryCase.startedAt ? new Date(surgeryCase.startedAt) : null,
+        endedAt: surgeryCase.endedAt ? new Date(surgeryCase.endedAt) : null,
+        createdAt: new Date(surgeryCase.createdAt),
+        updatedAt: new Date(surgeryCase.updatedAt)
+      });
     });
   }
 
@@ -54,54 +56,64 @@ export class DatabaseSurgeryCaseRepository implements SurgeryCaseRepository {
     if (surgeryCase.accountId !== accountId) {
       throw new Error('Surgery case account does not match tenant context');
     }
-    await this.#db
-      .update(surgeryCases)
-      .set({
-        status: surgeryCase.status,
-        surgeonUserId: surgeryCase.surgeonUserId ?? null,
-        surgicalTeam: surgeryCase.surgicalTeam ?? null,
-        operativeNotes: surgeryCase.operativeNotes ?? null,
-        startedAt: surgeryCase.startedAt ? new Date(surgeryCase.startedAt) : null,
-        endedAt: surgeryCase.endedAt ? new Date(surgeryCase.endedAt) : null,
-        updatedAt: new Date(surgeryCase.updatedAt)
-      })
-      .where(and(eq(surgeryCases.id, surgeryCase.id), eq(surgeryCases.accountId, accountId)));
+    await withTenantTransaction(accountId, async (database) => {
+      await database
+        .update(surgeryCases)
+        .set({
+          status: surgeryCase.status,
+          surgeonUserId: surgeryCase.surgeonUserId ?? null,
+          surgicalTeam: surgeryCase.surgicalTeam ?? null,
+          operativeNotes: surgeryCase.operativeNotes ?? null,
+          startedAt: surgeryCase.startedAt ? new Date(surgeryCase.startedAt) : null,
+          endedAt: surgeryCase.endedAt ? new Date(surgeryCase.endedAt) : null,
+          updatedAt: new Date(surgeryCase.updatedAt)
+        })
+        .where(and(eq(surgeryCases.id, surgeryCase.id), eq(surgeryCases.accountId, accountId)));
+    });
   }
 
   public async findById(id: SurgeryCaseId): Promise<SurgeryCaseSummary | null> {
     const accountId = requireAccountId();
-    const result = await this.#db
-      .select()
-      .from(surgeryCases)
-      .where(and(eq(surgeryCases.id, id), eq(surgeryCases.accountId, accountId)))
-      .limit(1);
+    return withTenantTransaction(accountId, async (database) => {
+      const result = await database
+        .select()
+        .from(surgeryCases)
+        .where(and(eq(surgeryCases.id, id), eq(surgeryCases.accountId, accountId)))
+        .limit(1);
 
-    if (result.length === 0) {
-      return null;
-    }
+      if (result.length === 0) {
+        return null;
+      }
 
-    return this.mapRowToSurgeryCase(result[0]);
+      return this.mapRowToSurgeryCase(result[0]);
+    });
   }
 
   public async findByEncounterId(encounterId: EncounterId): Promise<readonly SurgeryCaseSummary[]> {
     const accountId = requireAccountId();
-    const result = await this.#db
-      .select()
-      .from(surgeryCases)
-      .where(and(eq(surgeryCases.encounterId, encounterId), eq(surgeryCases.accountId, accountId)));
+    return withTenantTransaction(accountId, async (database) => {
+      const result = await database
+        .select()
+        .from(surgeryCases)
+        .where(
+          and(eq(surgeryCases.encounterId, encounterId), eq(surgeryCases.accountId, accountId))
+        );
 
-    return result.map((row) => this.mapRowToSurgeryCase(row));
+      return result.map((row) => this.mapRowToSurgeryCase(row));
+    });
   }
 
   public async findByAccountId(accountId: AccountId): Promise<readonly SurgeryCaseSummary[]> {
     if (accountId !== requireAccountId()) {
       throw new Error('Surgery case account does not match tenant context');
     }
-    const result = await this.#db
-      .select()
-      .from(surgeryCases)
-      .where(eq(surgeryCases.accountId, accountId));
-    return result.map((row) => this.mapRowToSurgeryCase(row));
+    return withTenantTransaction(accountId, async (database) => {
+      const result = await database
+        .select()
+        .from(surgeryCases)
+        .where(eq(surgeryCases.accountId, accountId));
+      return result.map((row) => this.mapRowToSurgeryCase(row));
+    });
   }
 
   private mapRowToSurgeryCase(row: typeof surgeryCases.$inferSelect): SurgeryCaseSummary {

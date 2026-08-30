@@ -1,6 +1,8 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import { AppError } from '@cvg-his-v2/shared-errors';
+import { isProductionLikeEnvironment } from '@cvg-his-v2/shared-config';
+import type { RateLimiterHealth } from '@cvg-his-v2/shared-rate-limiter';
 import { getClientIp } from './auth-routes.js';
 import {
   readRawRequestBody,
@@ -33,6 +35,8 @@ export interface PixProviderWebhookRateLimiter {
     readonly reset: number;
     readonly retryAfterMs: number;
   }>;
+  healthCheck?(): Promise<RateLimiterHealth>;
+  close?(): Promise<void>;
 }
 
 export interface PixProviderWebhookRouteHandlers {
@@ -111,10 +115,6 @@ function sendRateLimited(
     retryAfterMs: info.retryAfterMs,
     correlationId
   });
-}
-
-function isProductionLike(environment: string): boolean {
-  return ['production', 'prod', 'staging', 'stage'].includes(environment);
 }
 
 /**
@@ -237,7 +237,11 @@ export function assertPixProviderWebhookReadiness(options: {
   readonly keyring?: ReadonlyMap<string, PixProviderWebhookKey>;
   readonly repository?: PixProviderEventIngressRepository;
 }): void {
-  if (isProductionLike(options.environment) && options.syntheticEnabled === true) {
+  if (
+    (isProductionLikeEnvironment(options.environment) ||
+      isProductionLikeEnvironment(process.env.NODE_ENV)) &&
+    options.syntheticEnabled === true
+  ) {
     throw new Error('Production-like API cannot mount the synthetic PIX webhook capability');
   }
   if (!options.syntheticEnabled) return;

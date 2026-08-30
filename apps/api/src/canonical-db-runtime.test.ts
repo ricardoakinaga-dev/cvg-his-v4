@@ -3,11 +3,7 @@ import { createHash } from 'node:crypto';
 import test from 'node:test';
 
 import type { AuthSessionResponse } from '@cvg-his-v2/shared-contracts';
-import {
-  closeDatabaseClient,
-  getPool,
-  type TenantUnitOfWork
-} from '@cvg-his-v2/shared-database';
+import { closeDatabaseClient, getPool, type TenantUnitOfWork } from '@cvg-his-v2/shared-database';
 import { runWithTenantContext } from '@cvg-his-v2/tenant-context';
 
 import { bootstrapServices } from './bootstrap.js';
@@ -21,9 +17,7 @@ const TEST_DATABASE_URL =
 const AUTH_SECRET = 'canonical-db-runtime-test-secret';
 const TENANT_CONTEXT_ID = '00000000-0000-0000-0000-000000000001';
 
-function runtimeOptions(
-  bootstrap: Awaited<ReturnType<typeof bootstrapServices>>
-) {
+function runtimeOptions(bootstrap: Awaited<ReturnType<typeof bootstrapServices>>) {
   return {
     authSecret: AUTH_SECRET,
     accessTokenTtlSeconds: 900,
@@ -42,6 +36,14 @@ test('canonical PostgreSQL runtime survives connection close and rehydrates crit
 
   try {
     const bootstrapA = await bootstrapServices({ databaseUrl: TEST_DATABASE_URL });
+    assert.ok(
+      bootstrapA.repositories.financeCatalog,
+      'canonical database bootstrap must compose the finance catalog source'
+    );
+    assert.ok(
+      bootstrapA.repositories.advancePayments,
+      'canonical database bootstrap must compose the advance-payment report source'
+    );
     const runtimeA = createApiRuntime(runtimeOptions(bootstrapA));
     await runtimeA.initialize();
 
@@ -140,11 +142,10 @@ test('canonical PostgreSQL runtime survives connection close and rehydrates crit
             reason: 'Validacao de pipeline clinico persistente'
           }
         );
-        await runtimeA.laboratory.recordResultAndPersistForAccount(
-          accountId,
-          diagnosticOrder.id,
-          { status: 'collected', collectedByUserId: actorUserId }
-        );
+        await runtimeA.laboratory.recordResultAndPersistForAccount(accountId, diagnosticOrder.id, {
+          status: 'collected',
+          collectedByUserId: actorUserId
+        });
         const resultedDiagnostic = await runtimeA.laboratory.recordResultAndPersistForAccount(
           accountId,
           diagnosticOrder.id,
@@ -167,6 +168,8 @@ test('canonical PostgreSQL runtime survives connection close and rehydrates crit
           notes: 'Apos alimentacao'
         });
         await runtimeA.prescriptions.waitForPersistence();
+        runtimeA.prescriptions.sign(prescription.id, actorUserId, prescription.version);
+        await runtimeA.prescriptions.waitForPersistence();
         const execution = runtimeA.prescriptionExecutions.create(accountId, {
           clinicalEntryId: prescription.id,
           patientId: patient.id,
@@ -179,6 +182,7 @@ test('canonical PostgreSQL runtime survives connection close and rehydrates crit
         });
         await runtimeA.prescriptionExecutions.waitForPersistence();
         const administeredExecution = runtimeA.prescriptionExecutions.execute(
+          accountId,
           execution.id,
           actorUserId,
           { status: 'administered', vitalsSnapshot: { temperatureC: 38.5 } }
@@ -196,20 +200,32 @@ test('canonical PostgreSQL runtime survives connection close and rehydrates crit
           accountId,
           actorUserId
         );
-        const inpatientProgress = runtimeA.inpatient.addProgress(actorUserId, {
-          stayId: inpatientStay.id,
-          note: 'Paciente estavel apos observacao'
-        });
-        const dailyCharge = runtimeA.inpatient.createDailyCharge(actorUserId, {
-          stayId: inpatientStay.id,
-          description: 'Diaria de observacao',
-          unitAmount: 120
-        });
+        const inpatientProgress = runtimeA.inpatient.addProgress(
+          actorUserId,
+          {
+            stayId: inpatientStay.id,
+            note: 'Paciente estavel apos observacao'
+          },
+          accountId
+        );
+        const dailyCharge = runtimeA.inpatient.createDailyCharge(
+          actorUserId,
+          {
+            stayId: inpatientStay.id,
+            description: 'Diaria de observacao',
+            unitAmount: 120
+          },
+          accountId
+        );
         await runtimeA.inpatient.waitForPersistence();
-        const dischargedStay = runtimeA.inpatient.updateStatus(inpatientStay.id, {
-          status: 'discharged',
-          dischargeReason: 'Alta apos observacao'
-        });
+        const dischargedStay = runtimeA.inpatient.updateStatus(
+          inpatientStay.id,
+          {
+            status: 'discharged',
+            dischargeReason: 'Alta apos observacao'
+          },
+          accountId
+        );
         await runtimeA.inpatient.waitForPersistence();
 
         const surgeryCase = runtimeA.surgery.requestCase({
@@ -385,7 +401,10 @@ test('canonical PostgreSQL runtime survives connection close and rehydrates crit
       async () => {
         assert.equal(runtimeB!.owners.getOrThrow(identifiers.ownerId).accountId, accountId);
         assert.equal(runtimeB!.patients.getOrThrow(identifiers.patientId).accountId, accountId);
-        assert.equal(runtimeB!.encounters.getOrThrow(identifiers.encounterId).patientId, identifiers.patientId);
+        assert.equal(
+          runtimeB!.encounters.getOrThrow(identifiers.encounterId).patientId,
+          identifiers.patientId
+        );
 
         const record = await runtimeB!.medicalRecords.getRecordByEncounterOrThrowAsync(
           identifiers.encounterId as never
@@ -424,18 +443,24 @@ test('canonical PostgreSQL runtime survives connection close and rehydrates crit
           identifiers.executionId as never
         );
         assert.equal(execution.status, 'administered');
-        assert.equal(runtimeB!.prescriptionExecutions.getEvents(execution.id).length >= 2, true);
+        assert.equal(
+          runtimeB!.prescriptionExecutions.getEvents(accountId, execution.id).length >= 2,
+          true
+        );
 
-        const stay = runtimeB!.inpatient.getOrThrow(identifiers.inpatientStayId as never);
+        const stay = runtimeB!.inpatient.getOrThrow(
+          identifiers.inpatientStayId as never,
+          accountId
+        );
         assert.equal(stay.status, 'discharged');
         assert.ok(
           runtimeB!.inpatient
-            .listProgress(stay.id)
+            .listProgress(stay.id, accountId)
             .some((progress) => progress.id === identifiers.inpatientProgressId)
         );
         assert.ok(
           runtimeB!.inpatient
-            .listDailyCharges(stay.id)
+            .listDailyCharges(stay.id, accountId)
             .some((charge) => charge.id === identifiers.dailyChargeId)
         );
 
@@ -451,9 +476,7 @@ test('canonical PostgreSQL runtime survives connection close and rehydrates crit
         assert.ok(
           runtimeB!.inventory
             .listLots(accountId)
-            .some(
-              (lot) => lot.inventoryItemId === identifiers.inventoryItemId && lot.quantity > 0
-            )
+            .some((lot) => lot.inventoryItemId === identifiers.inventoryItemId && lot.quantity > 0)
         );
         const journal = await runtimeB!.ledger.findBySource(
           accountId,

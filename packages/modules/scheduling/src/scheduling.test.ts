@@ -22,6 +22,10 @@ class InMemorySchedulingRepository implements SchedulingRepository {
   readonly appointments = new Map<AppointmentId, SchedulingAppointmentSummary>();
   readonly queueEntries = new Map<QueueEntryId, QueueEntrySummary>();
   readonly queueTransfers = new Map<QueueTransferId, QueueTransferSummary>();
+  readonly appointmentReportCalls: Array<{
+    accountId: AccountId;
+    filters: Record<string, unknown>;
+  }> = [];
   persistCheckInCalls = 0;
 
   constructor(
@@ -55,6 +59,14 @@ class InMemorySchedulingRepository implements SchedulingRepository {
     return Array.from(this.appointments.values()).filter((item) =>
       accountId ? item.accountId === accountId : true
     );
+  }
+
+  async findAppointmentReportRows(
+    accountId: AccountId,
+    filters: Record<string, unknown> = {}
+  ): Promise<readonly SchedulingAppointmentSummary[]> {
+    this.appointmentReportCalls.push({ accountId, filters });
+    return Array.from(this.appointments.values());
   }
 
   async createQueueEntry(entry: QueueEntrySummary): Promise<void> {
@@ -1094,6 +1106,207 @@ describe('SchedulingService', () => {
     expect(queue[0]?.reason).toBe('Hydrated queue entry');
   });
 
+  it('reads the appointments report from the persisted source with strict bounded filters', async () => {
+    const repository = new InMemorySchedulingRepository([
+      {
+        id: 'appt_report_completed' as AppointmentId,
+        accountId: 'acc_cvg_demo' as AccountId,
+        patientId: 'patient_luna' as never,
+        ownerId: 'owner_maria_silva' as never,
+        scheduledAt: '2026-04-15T10:00:00.000Z',
+        visitType: 'scheduled',
+        reason: 'Consulta de rotina',
+        status: 'completed',
+        createdAt: '2026-04-01T10:00:00.000Z',
+        updatedAt: '2026-04-15T10:30:00.000Z'
+      },
+      {
+        id: 'appt_report_outside' as AppointmentId,
+        accountId: 'acc_cvg_demo' as AccountId,
+        patientId: 'patient_luna' as never,
+        ownerId: 'owner_maria_silva' as never,
+        scheduledAt: '2026-05-01T10:00:00.000Z',
+        visitType: 'scheduled',
+        reason: 'Outra consulta',
+        status: 'completed',
+        createdAt: '2026-04-01T10:00:00.000Z',
+        updatedAt: '2026-05-01T10:30:00.000Z'
+      }
+    ]);
+    const service = new SchedulingService(owners, patients, [], { repository });
+
+    const rows = await service.listPersistedReportRows('acc_cvg_demo' as AccountId, {
+      search: '  ROTINA ',
+      status: 'completed',
+      dateFrom: '2026-04-01',
+      dateTo: '2026-04-30'
+    });
+
+    expect(rows.map((row) => row.id)).toEqual(['appt_report_completed']);
+    expect(repository.appointmentReportCalls).toEqual([
+      {
+        accountId: 'acc_cvg_demo',
+        filters: {
+          search: 'ROTINA',
+          status: 'completed',
+          dateFrom: '2026-04-01',
+          dateTo: '2026-04-30',
+          limit: 10_001
+        }
+      }
+    ]);
+  });
+
+  it('rejects invalid appointments report filters before reading the source', async () => {
+    const repository = new InMemorySchedulingRepository();
+    const service = new SchedulingService(owners, patients, [], { repository });
+
+    await expect(
+      service.listPersistedReportRows('acc_cvg_demo' as AccountId, {
+        status: 'unknown' as never
+      })
+    ).rejects.toThrow('status must be scheduled, checked_in, completed or cancelled');
+    await expect(
+      service.listPersistedReportRows('acc_cvg_demo' as AccountId, {
+        dateFrom: '2026-05-01',
+        dateTo: '2026-04-01'
+      })
+    ).rejects.toThrow('dateFrom must be before or equal to dateTo');
+    expect(repository.appointmentReportCalls).toHaveLength(0);
+  });
+
+  it('aggregates professional care from the bounded persisted appointment source', async () => {
+    const makeAppointment = (
+      id: string,
+      scheduledAt: string,
+      status: SchedulingAppointmentSummary['status'],
+      overrides: Partial<SchedulingAppointmentSummary> = {}
+    ): SchedulingAppointmentSummary => ({
+      id: id as AppointmentId,
+      accountId: 'acc_cvg_demo' as AccountId,
+      patientId: `patient_${id}` as never,
+      ownerId: `owner_${id}` as never,
+      scheduledAt,
+      visitType: 'scheduled',
+      reason: 'Consulta de relatório',
+      status,
+      createdAt: '2026-05-01T00:00:00.000Z',
+      updatedAt: '2026-06-04T00:00:00.000Z',
+      ...overrides
+    });
+    const repository = new InMemorySchedulingRepository([
+      makeAppointment('zulu-completed', '2026-06-04T10:00:00.000Z', 'completed', {
+        practitionerStaffId: 'staff-z' as StaffId,
+        serviceId: 'service-1'
+      }),
+      makeAppointment('zulu-checked-in', '2026-06-03T10:00:00.000Z', 'checked_in', {
+        practitionerStaffId: 'staff-z' as StaffId,
+        serviceId: 'service-2'
+      }),
+      makeAppointment('zulu-cancelled', '2026-06-02T10:00:00.000Z', 'cancelled', {
+        practitionerStaffId: 'staff-z' as StaffId,
+        serviceId: 'service-2'
+      }),
+      makeAppointment('alpha-scheduled', '2026-06-04T09:00:00.000Z', 'scheduled', {
+        practitionerStaffId: 'staff-a' as StaffId,
+        serviceId: 'service-1'
+      }),
+      makeAppointment('alpha-confirmed', '2026-06-01T09:00:00.000Z', 'scheduled', {
+        practitionerStaffId: 'staff-a' as StaffId,
+        serviceId: 'service-3',
+        canonicalStatus: 'confirmed'
+      }),
+      makeAppointment('unassigned-scheduled', '2026-06-01T08:00:00.000Z', 'scheduled'),
+      makeAppointment('outside-period', '2026-06-30T10:00:00.000Z', 'completed', {
+        practitionerStaffId: 'staff-z' as StaffId,
+        serviceId: 'service-9'
+      }),
+      makeAppointment('foreign-account', '2026-06-03T10:00:00.000Z', 'completed', {
+        accountId: 'acc_other' as AccountId,
+        practitionerStaffId: 'staff-foreign' as StaffId
+      })
+    ]);
+    const service = new SchedulingService(owners, patients, [], { repository });
+
+    const rows = await service.listPersistedProfessionalCareReportRows(
+      'acc_cvg_demo' as AccountId,
+      { dateFrom: '2026-06-01', dateTo: '2026-06-04' }
+    );
+
+    expect(rows).toEqual([
+      {
+        professional: 'staff-z',
+        scheduled: 3,
+        completed: 1,
+        checkedIn: 1,
+        cancelled: 1,
+        services: 2
+      },
+      {
+        professional: 'staff-a',
+        scheduled: 2,
+        completed: 0,
+        checkedIn: 0,
+        cancelled: 0,
+        services: 2
+      },
+      {
+        professional: 'Sem profissional',
+        scheduled: 1,
+        completed: 0,
+        checkedIn: 0,
+        cancelled: 0,
+        services: 0
+      }
+    ]);
+    expect(repository.appointmentReportCalls).toEqual([
+      {
+        accountId: 'acc_cvg_demo',
+        filters: {
+          dateFrom: '2026-06-01',
+          dateTo: '2026-06-04',
+          limit: 10_001
+        }
+      }
+    ]);
+  });
+
+  it('rejects invalid professional care periods and the persisted source overflow sentinel', async () => {
+    const emptyRepository = new InMemorySchedulingRepository();
+    const emptyService = new SchedulingService(owners, patients, [], {
+      repository: emptyRepository
+    });
+
+    await expect(
+      emptyService.listPersistedProfessionalCareReportRows('acc_cvg_demo' as AccountId, {
+        dateFrom: '2026-06-05',
+        dateTo: '2026-06-01'
+      })
+    ).rejects.toThrow('dateFrom must be before or equal to dateTo');
+    expect(emptyRepository.appointmentReportCalls).toHaveLength(0);
+
+    const overflowRows = Array.from({ length: 10_001 }, (_, index) => ({
+      id: `professional-overflow-${index}` as AppointmentId,
+      accountId: 'acc_cvg_demo' as AccountId,
+      patientId: `patient_overflow_${index}` as never,
+      ownerId: `owner_overflow_${index}` as never,
+      scheduledAt: '2026-06-01T10:00:00.000Z',
+      visitType: 'scheduled' as const,
+      reason: 'Overflow',
+      status: 'scheduled' as const,
+      createdAt: '2026-05-01T00:00:00.000Z',
+      updatedAt: '2026-06-01T00:00:00.000Z'
+    }));
+    const overflowRepository = new InMemorySchedulingRepository(overflowRows);
+    const overflowService = new SchedulingService(owners, patients, [], {
+      repository: overflowRepository
+    });
+
+    await expect(
+      overflowService.listPersistedProfessionalCareReportRows('acc_cvg_demo' as AccountId)
+    ).rejects.toThrow('too many rows');
+  });
+
   it('hydrates queue transfer history when repository is injected', async () => {
     const queueEntry: QueueEntrySummary = {
       id: 'queue_repo_transfer_1' as QueueEntryId,
@@ -1477,17 +1690,19 @@ describe('SchedulingService', () => {
       staff: staff as never,
       agendaConfig: {
         async listAvailability() {
-          return [{
-            id: 'availability-wed',
-            accountId: 'acc_cvg_demo' as AccountId,
-            professionalUserId: 'staff_vet',
-            dayOfWeek: 3,
-            startTime: '09:00',
-            endTime: '17:00',
-            slotDurationMinutes: 30,
-            timezone: 'UTC',
-            notes: null
-          }];
+          return [
+            {
+              id: 'availability-wed',
+              accountId: 'acc_cvg_demo' as AccountId,
+              professionalUserId: 'staff_vet',
+              dayOfWeek: 3,
+              startTime: '09:00',
+              endTime: '17:00',
+              slotDurationMinutes: 30,
+              timezone: 'UTC',
+              notes: null
+            }
+          ];
         }
       }
     });

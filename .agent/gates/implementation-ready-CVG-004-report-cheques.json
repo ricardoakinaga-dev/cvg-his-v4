@@ -1,0 +1,78 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-CHEQUES-IR-001",
+  "timestamp": "2026-08-26T03:52:00-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-004 bounded read-only Reports > Cheques workbench export from persisted counter-sale payments",
+  "scope_ref": "CVG-004-REPORT-CHEQUES",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The report-parity gap, bounded read-only outcome, authority and explicit non-claims are recorded without promoting CVG-004 or global readiness.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-reports-cheques-export.md",
+        ".agent/backlog.json",
+        ".agent/authority.jsonl#AUTH-CVG-004-REPORT-CHEQUES-IR-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This gate authorizes only the repository-local read-only report slice; complete cheque lifecycle, payment-advance, target, provider and release evidence remain excluded."
+    },
+    {
+      "id": "IR-002",
+      "description": "The existing counter-sale summary/detail service and finance cheque derivation provide an authoritative local source for report rows without a new persistence model.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/spa/src/services/counterSales.ts",
+        "apps/spa/src/pages/finance/ChequesPage.vue",
+        "apps/spa/src/pages/reports/ReportWorkbenchPage.vue"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The source is application-local and read-only for this task; no claim is made for a dedicated Vetus cheque ledger or external bank reconciliation."
+    },
+    {
+      "id": "IR-003",
+      "description": "A focused report-workbench RED test can reject the current structural placeholder and define GREEN behavior for persisted check-payment rows, CSV export, filtering and errors.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/spa/src/pages/reports/__tests__/ReportWorkbenchPage.test.ts",
+        ".agent/tasks/CVG-004-reports-cheques-export.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Implementation, independent review and final SPA regression evidence are required before any bounded result is recorded."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-reports-cheques-export.md",
+    "apps/spa/src/services/counterSales.ts",
+    "apps/spa/src/pages/finance/ChequesPage.vue",
+    "apps/spa/src/pages/reports/ReportWorkbenchPage.vue",
+    "apps/spa/src/pages/reports/__tests__/ReportWorkbenchPage.test.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "The RED test, implementation, independent review and post-implementation regression are not complete at gate creation."
+  ],
+  "conditions": [],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner)",
+    "scope": "CVG-004 read-only Reports > Cheques workbench export from persisted counter-sale payments",
+    "decision": "Authorize reversible repository implementation and local SPA/TDD verification only; cheque lifecycle mutations, payment-advance reports, providers, credentials, target, production, deployment, external mutation and release remain excluded.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-CHEQUES-IR-001",
+    "expires_or_revalidates": "Revalidate before expanding into cheque lifecycle mutations, server-side audited artifacts, providers, target operations, production or release acceptance."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "next_action": "Write and run the frozen RED report-workbench test, then implement the smallest persisted check-payment projection and export path.",
+  "revalidation_triggers": [
+    "Changes to counter-sale payment persistence or cheque derivation rules",
+    "Changes to report CSV/download semantics or tenant-scoped APIs",
+    "Expansion beyond read-only reporting"
+  ],
+  "supersedes": null
+}

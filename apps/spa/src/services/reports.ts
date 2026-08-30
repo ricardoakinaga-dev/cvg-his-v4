@@ -1,6 +1,13 @@
 import { apiRequest } from './api';
 
-export type ReportCategory = 'executive' | 'financial' | 'commercial' | 'clinical' | 'inventory' | 'staff';
+export type ReportCategory =
+  | 'executive'
+  | 'financial'
+  | 'commercial'
+  | 'clinical'
+  | 'inventory'
+  | 'staff'
+  | 'registrations';
 export type ReportColumnType = 'string' | 'number' | 'currency' | 'date' | 'datetime' | 'status';
 export type ReportExecutionStatus = 'completed';
 export type ReportFormat = 'json' | 'csv' | 'xlsx' | 'pdf';
@@ -157,14 +164,19 @@ export const reportsService = {
   },
 
   async getExecution(executionId: string): Promise<ReportExecutionDetail> {
-    return apiRequest<ReportExecutionDetail>(`/reports/executions/${encodeURIComponent(executionId)}`);
+    return apiRequest<ReportExecutionDetail>(
+      `/reports/executions/${encodeURIComponent(executionId)}`
+    );
   },
 
   async exportExecution(executionId: string, format: ReportFormat): Promise<ReportExportSummary> {
-    return apiRequest<ReportExportSummary>(`/reports/executions/${encodeURIComponent(executionId)}/export`, {
-      method: 'POST',
-      body: JSON.stringify({ format })
-    });
+    return apiRequest<ReportExportSummary>(
+      `/reports/executions/${encodeURIComponent(executionId)}/export`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ format })
+      }
+    );
   },
 
   async listSchedules(): Promise<ReportScheduleSummary[]> {
@@ -179,11 +191,17 @@ export const reportsService = {
     });
   },
 
-  async updateSchedule(scheduleId: string, payload: UpdateReportSchedulePayload): Promise<ReportScheduleSummary> {
-    return apiRequest<ReportScheduleSummary>(`/reports/schedules/${encodeURIComponent(scheduleId)}`, {
-      method: 'PATCH',
-      body: JSON.stringify(payload)
-    });
+  async updateSchedule(
+    scheduleId: string,
+    payload: UpdateReportSchedulePayload
+  ): Promise<ReportScheduleSummary> {
+    return apiRequest<ReportScheduleSummary>(
+      `/reports/schedules/${encodeURIComponent(scheduleId)}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(payload)
+      }
+    );
   },
 
   async listScheduleDeliveries(scheduleId: string): Promise<ReportScheduleDeliverySummary[]> {
@@ -193,14 +211,19 @@ export const reportsService = {
     return [...(response.items ?? [])];
   },
 
-  async listScheduleDeliveryAlerts(scheduleId: string): Promise<ReportScheduleDeliveryAlertSummary[]> {
+  async listScheduleDeliveryAlerts(
+    scheduleId: string
+  ): Promise<ReportScheduleDeliveryAlertSummary[]> {
     const response = await apiRequest<ReportScheduleDeliveryAlertListResponse>(
       `/reports/schedules/${encodeURIComponent(scheduleId)}/delivery-alerts`
     );
     return [...(response.items ?? [])];
   },
 
-  async retryScheduleDelivery(scheduleId: string, deliveryId: string): Promise<ReportScheduleDeliverySummary> {
+  async retryScheduleDelivery(
+    scheduleId: string,
+    deliveryId: string
+  ): Promise<ReportScheduleDeliverySummary> {
     return apiRequest<ReportScheduleDeliverySummary>(
       `/reports/schedules/${encodeURIComponent(scheduleId)}/deliveries/${encodeURIComponent(deliveryId)}/retry`,
       { method: 'POST' }

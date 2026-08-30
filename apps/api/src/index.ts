@@ -7,8 +7,8 @@ import {
 } from '@cvg-his-v2/shared-database';
 import { createFeatureFlagMetricsCollector } from './metrics.js';
 
-import { bootstrapServices, resolveProductionReadiness } from './bootstrap.js';
-import { createApiServer } from './server.js';
+import { bootstrapServices, resolveProductionReadiness, shutdownServices } from './bootstrap.js';
+import { createApiServer, type ApiServer } from './server.js';
 import { createApiFeatureFlags, type ApiFeatureFlagsSnapshot } from './feature-flags.js';
 import { setAppState, type PersistenceMode } from './app-state.js';
 import { startApiObservability } from './observability.js';
@@ -17,6 +17,7 @@ import { resolveSetupBootstrapToken } from './setup-token.js';
 import { DatabaseVetusImportLogRepository } from './repositories/vetus-import-log-repository.js';
 import { DatabasePixProviderEventIngressRepository } from './pix-provider-event-ingress-repository.js';
 import { parsePixProviderWebhookKeyring } from './pix-provider-webhook-keyring.js';
+import { parseLaboratoryProviderKeyring } from './laboratory-provider-keyring.js';
 import {
   ClamAvAttachmentSecurityScanner,
   LocalAttachmentSecurityScanner,
@@ -26,8 +27,78 @@ import type { NfseIssuer, NfseProvider } from '@cvg-his-v2/module-fiscal';
 
 const version = '0.1.0';
 let runtimeLogger = createLogger('cvg-his-v2-api-bootstrap');
+let apiServer: ApiServer | undefined;
+let apiShutdownRequested = false;
+let apiShutdownPromise: Promise<void> | undefined;
+let apiShutdownLogger = runtimeLogger;
+let apiShutdownObservability: () => Promise<void> = async () => {};
+let apiObservabilityShutdownStarted = false;
+let apiStartupFailed = false;
 
 const NFSE_PROVIDERS: readonly NfseProvider[] = ['abrasf', 'iss_sp', 'iss_net', 'nota_rio'];
+
+async function closeApiServer(): Promise<void> {
+  const server = apiServer;
+  if (!server) return;
+
+  if (server.listening) {
+    await new Promise<void>((resolve, reject) => {
+      server.close((error) => (error ? reject(error) : resolve()));
+    });
+  }
+  await server.closeDependencies();
+}
+
+async function gracefulShutdown(signal: NodeJS.Signals): Promise<void> {
+  apiShutdownRequested = true;
+  apiShutdownPromise ??= (async () => {
+    const failures: unknown[] = [];
+    const attempt = async (operation: () => Promise<void>): Promise<void> => {
+      try {
+        await operation();
+      } catch (error: unknown) {
+        failures.push(error);
+        apiShutdownLogger.error('api shutdown operation failed', {
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+    };
+
+    apiShutdownLogger.info('draining api server', { signal });
+    await attempt(closeApiServer);
+    await attempt(shutdownServices);
+    await attempt(apiShutdownObservability);
+    if (failures.length > 0) {
+      throw failures[0];
+    }
+    apiShutdownLogger.info('api server shutdown complete', { signal });
+  })();
+  await apiShutdownPromise;
+}
+
+function requestShutdown(signal: NodeJS.Signals): void {
+  void gracefulShutdown(signal).then(
+    () => {
+      if (!apiStartupFailed) process.exitCode = 0;
+    },
+    (error: unknown) => {
+      apiShutdownLogger.error('api graceful shutdown failed', {
+        signal,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      process.exitCode = 1;
+    }
+  );
+}
+
+async function stopStartupIfRequested(): Promise<boolean> {
+  if (!apiShutdownRequested) return false;
+  await apiShutdownPromise;
+  return true;
+}
+
+process.on('SIGTERM', () => requestShutdown('SIGTERM'));
+process.on('SIGINT', () => requestShutdown('SIGINT'));
 
 function parseNfseProvider(value: string | undefined): NfseProvider | undefined {
   if (!value) return undefined;
@@ -50,13 +121,15 @@ function parseNfseIssuer(value: string | undefined): NfseIssuer | undefined {
   }
   const issuer = parsed as Partial<NfseIssuer>;
   if (
-    !issuer.cnpj
-    || !issuer.inscricaoMunicipal
-    || !issuer.razaoSocial
-    || !issuer.address
-    || typeof issuer.address !== 'object'
+    !issuer.cnpj ||
+    !issuer.inscricaoMunicipal ||
+    !issuer.razaoSocial ||
+    !issuer.address ||
+    typeof issuer.address !== 'object'
   ) {
-    throw new Error('NFSE_ISSUER_JSON must include cnpj, inscricaoMunicipal, razaoSocial and address');
+    throw new Error(
+      'NFSE_ISSUER_JSON must include cnpj, inscricaoMunicipal, razaoSocial and address'
+    );
   }
   return issuer as NfseIssuer;
 }
@@ -82,6 +155,7 @@ process.on('unhandledRejection', (error) => {
 
 async function main() {
   const startup = await resolveApiStartup(process.env);
+  if (await stopStartupIfRequested()) return;
   const config = startup.config;
   const secretsManager = startup.secretsManager;
   runtimeLogger = createLogger(config.appName);
@@ -97,19 +171,23 @@ async function main() {
     otlpHeaders: config.otlpHeaders
   });
 
-  const shutdownObservability = () =>
-    observability.shutdown().catch((error) => {
+  apiShutdownLogger = logger;
+  apiShutdownObservability = async () => {
+    if (apiObservabilityShutdownStarted) return;
+    apiObservabilityShutdownStarted = true;
+    try {
+      await observability.shutdown();
+    } catch (error: unknown) {
       logger.error('failed to shutdown api observability', {
         error: error instanceof Error ? error.message : String(error)
       });
-    });
-
-  process.once('SIGTERM', () => {
-    void shutdownObservability().finally(() => process.exit(0));
-  });
-  process.once('SIGINT', () => {
-    void shutdownObservability().finally(() => process.exit(0));
-  });
+      throw error;
+    }
+  };
+  if (apiShutdownRequested && !apiObservabilityShutdownStarted) {
+    await apiShutdownObservability();
+  }
+  if (await stopStartupIfRequested()) return;
 
   logger.info('starting api server bootstrap');
   logger.info('api observability state', {
@@ -140,6 +218,7 @@ async function main() {
     db,
     metrics: featureFlagMetrics
   });
+  if (await stopStartupIfRequested()) return;
 
   logger.info('feature flags initialized', {
     provider: featureFlags.providerName,
@@ -152,6 +231,7 @@ async function main() {
     fileStoragePath: config.fileStoragePath,
     skipDatabase: !databaseUrl
   });
+  if (await stopStartupIfRequested()) return;
 
   const productionLike = isProductionLikeEnvironment(config.environment);
   const attachmentScanner = productionLike
@@ -218,11 +298,13 @@ async function main() {
   const ownerPatientLinkDetail = `ownerPatientLinkPersistence=${readiness.ownerPatientLinkPersistence}`;
   const workerDetail = workerReady
     ? `Worker can consume notification jobs via shared database repository; ${ownerPatientLinkDetail}; ${repositoryReadinessDetail}`
-    : databaseConfigured && bootstrapResult.databaseHealthy && !bootstrapResult.repositoriesUseDatabase
+    : databaseConfigured &&
+        bootstrapResult.databaseHealthy &&
+        !bootstrapResult.repositoriesUseDatabase
       ? 'Database is healthy, but runtime repositories were explicitly disabled by API_DISABLE_INCOMPATIBLE_DB_REPOS'
       : databaseConfigured
-      ? `Worker dependency degraded: notification repository not ready for shared DB processing; ${ownerPatientLinkDetail}; ${repositoryReadinessDetail}`
-      : 'Worker dependency not configured because DATABASE_URL is absent';
+        ? `Worker dependency degraded: notification repository not ready for shared DB processing; ${ownerPatientLinkDetail}; ${repositoryReadinessDetail}`
+        : 'Worker dependency not configured because DATABASE_URL is absent';
 
   const productionReady = readiness.productionReady;
 
@@ -240,7 +322,8 @@ async function main() {
     secretsManagerProvider: secretsManager.provider,
     // GAP-09: ML services are always instantiated in createApiRuntime (no async init required)
     mlReady: true,
-    mlDetail: 'SmartSchedulingService (F3-03), ModelRegistryService (F3-02), FeatureStoreService (F3-01) wired'
+    mlDetail:
+      'SmartSchedulingService (F3-03), ModelRegistryService (F3-02), FeatureStoreService (F3-01) wired'
   });
 
   logger.info('persistence mode', {
@@ -261,12 +344,15 @@ async function main() {
   const pixProviderWebhookKeyring = config.pixSyntheticWebhookEnabled
     ? parsePixProviderWebhookKeyring(config.pixProviderWebhookKeyringJson)
     : new Map();
+  const laboratoryProviderKeyring = parseLaboratoryProviderKeyring(
+    config.laboratoryProviderKeyringJson
+  );
   const pixProviderEventIngressRepository =
     config.pixSyntheticWebhookEnabled && databaseConfigured
       ? new DatabasePixProviderEventIngressRepository()
       : undefined;
 
-  const server = createApiServer({
+  apiServer = createApiServer({
     appName: config.appName,
     environment: config.environment,
     version,
@@ -292,8 +378,11 @@ async function main() {
     sectorBedOptions: persistenceMode === 'database' && db ? { databaseClient: db } : undefined,
     unitOfWork: bootstrapResult.unitOfWork,
     tenantTransaction: bootstrapResult.repositoriesUseDatabase
-      ? async <T>(accountId: string, command: () => Promise<T>): Promise<T> =>
-          withTenantTransaction(accountId, async () => command())
+      ? async <T>(
+          accountId: string,
+          command: () => Promise<T>,
+          metadata?: { readonly actorUserId: string; readonly correlationId: string }
+        ): Promise<T> => withTenantTransaction(accountId, async () => command(), metadata)
       : undefined,
     featureFlagsProvider: config.featureFlagsProvider,
     runtimeDistributedStateEnabled: config.runtimeDistributedStateEnabled,
@@ -301,9 +390,8 @@ async function main() {
     preserveSeedMasterDataWithRepository: persistenceMode !== 'database',
     requireUuidEntityIdentifiers: persistenceMode === 'database',
     useDatabaseCatalogStores: persistenceMode === 'database',
-    vetusImportLogRepository: persistenceMode === 'database'
-      ? new DatabaseVetusImportLogRepository()
-      : undefined,
+    vetusImportLogRepository:
+      persistenceMode === 'database' ? new DatabaseVetusImportLogRepository() : undefined,
     // GAP-06: pre-resolved feature flags passed directly (already awaited above)
     featureFlags,
     pagarmeApiKey: config.pagarmeApiKey,
@@ -311,6 +399,7 @@ async function main() {
     pixMockMode: config.pixMockMode,
     pixProviderWebhookSyntheticEnabled: config.pixSyntheticWebhookEnabled,
     pixProviderWebhookKeyring,
+    laboratoryProviderKeyring,
     pixProviderEventIngressRepository,
     pixProviderSettlementDlqRepository: bootstrapResult.pixProviderSettlementDlqRepository,
     nfseProvider: parseNfseProvider(config.nfseProvider),
@@ -320,9 +409,9 @@ async function main() {
     nfseCertificate: parseNfseCertificate(config.nfseCertificateBase64),
     nfseIssuer: parseNfseIssuer(config.nfseIssuerJson),
     nfseRegime:
-      config.nfseRegime === 'simples_nacional'
-      || config.nfseRegime === 'lucro_presumido'
-      || config.nfseRegime === 'lucro_real'
+      config.nfseRegime === 'simples_nacional' ||
+      config.nfseRegime === 'lucro_presumido' ||
+      config.nfseRegime === 'lucro_real'
         ? config.nfseRegime
         : undefined,
     resendApiKey: config.resendApiKey,
@@ -339,9 +428,22 @@ async function main() {
     secretsManager
   });
 
-  await server.ready;
+  if (await stopStartupIfRequested()) return;
 
-  server.listen(config.port, config.host, () => {
+  await apiServer.ready;
+
+  if (await stopStartupIfRequested()) return;
+
+  apiServer.listen(config.port, config.host, () => {
+    if (apiShutdownRequested) {
+      void closeApiServer().catch((error: unknown) => {
+        apiShutdownLogger.error('api listener close after late signal failed', {
+          error: error instanceof Error ? error.message : String(error)
+        });
+        process.exitCode = 1;
+      });
+      return;
+    }
     logger.info('api server listening', {
       service: config.appName,
       host: config.host,
@@ -353,9 +455,16 @@ async function main() {
   });
 }
 
-main().catch((error) => {
+void main().catch(async (error) => {
+  apiStartupFailed = true;
   runtimeLogger.error('failed to start api server', {
     error: error instanceof Error ? error.message : String(error)
   });
-  process.exit(1);
+  process.exitCode = 1;
+  await gracefulShutdown('SIGTERM').catch((shutdownError: unknown) => {
+    runtimeLogger.error('api startup cleanup failed', {
+      error: shutdownError instanceof Error ? shutdownError.message : String(shutdownError)
+    });
+    process.exitCode = 1;
+  });
 });

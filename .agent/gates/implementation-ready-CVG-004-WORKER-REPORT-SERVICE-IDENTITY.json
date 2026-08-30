@@ -1,0 +1,83 @@
+{
+  "record_id": "GATE-CVG-004-WORKER-REPORT-SERVICE-IDENTITY-IR-001",
+  "timestamp": "2026-08-27T05:21:06-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-004 bounded explicit worker report actor configuration and fail-closed deployment wiring",
+  "scope_ref": "CVG-004-WORKER-REPORT-SERVICE-IDENTITY",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The worker currently falls back from WORKER_REPORTS_USER_ID to accountId in continuous and one-shot scheduled report paths, while report_executions requires a users foreign key.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/artifacts/CVG-004-report-scheduled-advance-payments-2026-08-27.md",
+        "apps/worker/src/index.ts",
+        "apps/worker/src/run-once.ts",
+        "packages/db/migrations/0048_report_engine.sql"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The finding is bounded to actor selection; it does not authorize report-schema, service-principal or audit-model changes."
+    },
+    {
+      "id": "IR-002",
+      "description": "The bounded correction has a disjoint implementation surface: shared worker config, one worker identity helper, two worker entrypoints, canonical Compose/Helm wiring and focused unit/process/static tests.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-WORKER-REPORT-SERVICE-IDENTITY.md",
+        "packages/shared/config/src/index.ts",
+        "packages/shared/config/src/config.test.ts",
+        "infra/helm/cvg-his-v2/templates/worker-deployment.yaml",
+        "docker-compose.v2.yml"
+      ],
+      "confidence": "HIGH",
+      "limitations": "No code, deployment or provider mutation is authorized beyond the listed repository-local files and tests."
+    },
+    {
+      "id": "IR-003",
+      "description": "TDD can reject missing/malformed configuration, account-id fallback, unknown foreign-key actors and missing production-like Secret wiring before implementation.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-WORKER-REPORT-SERVICE-IDENTITY.md",
+        "tests/integration/process/worker-run-once-reports.test.ts",
+        "tests/unit/infra/validate-helm-script.test.mjs"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Implementation, fresh disposable PostgreSQL proof, independent critique and post-fix quality rails remain required before bounded reconciliation."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-WORKER-REPORT-SERVICE-IDENTITY.md",
+    ".agent/artifacts/CVG-004-report-scheduled-advance-payments-2026-08-27.md",
+    "apps/worker/src/index.ts",
+    "apps/worker/src/run-once.ts",
+    "packages/shared/config/src/index.ts",
+    "infra/helm/cvg-his-v2/templates/worker-deployment.yaml",
+    "docker-compose.v2.yml"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "The identity helper, configuration field, entrypoint wiring, deployment templates and rejecting tests are not implemented at gate creation.",
+    "Per-account service-principal provisioning and scheduled audit append remain outside this slice."
+  ],
+  "conditions": [
+    "Do not put a user UUID or credential in the repository; production-like identity must come from operator-managed configuration.",
+    "Do not change report schema, create users, call providers or mutate target/production state.",
+    "Retain the global CVG-004 and ERP program as IN_PROGRESS/PARTIAL regardless of bounded evidence."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via the original consolidation brief",
+    "scope": "CVG-004 bounded explicit worker report actor configuration and fail-closed deployment wiring",
+    "decision": "Authorize reversible repository-local worker/config/deployment-template/test implementation and disposable PostgreSQL/real worker verification. Exclude report schema/audit-model changes, service-principal provisioning, providers, credentials, target, production, deployment, external mutation and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-WORKER-REPORT-SERVICE-IDENTITY-IR-001",
+    "expires_or_revalidates": "Revalidate before changing report identity/schema/audit semantics, provisioning service principals, operating a target or production environment, or expanding report scope."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "next_action": "Write and run the focused configuration/identity RED tests, then implement the smallest fail-closed resolver and deployment wiring."
+}

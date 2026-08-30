@@ -1,0 +1,89 @@
+{
+  "record_id": "GATE-CVG-OPS-CRITICAL-PROCESS-RUNNER-IR-001",
+  "timestamp": "2026-08-28T12:48:00-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-OPS bounded critical process runner timeout, signal, descendant-cleanup and failure-artifact contract",
+  "scope_ref": "CVG-OPS-CRITICAL-PROCESS-RUNNER-001",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The current ten-entry process manifest and fresh PIX timeout are confirmed as a runner-evidence gap, without changing process business semantics or promoting global readiness.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-OPS-CRITICAL-PROCESS-RUNNER-001.md",
+        ".agent/authority.jsonl#AUTH-CVG-OPS-CRITICAL-PROCESS-RUNNER-IR-001",
+        ".agent/verification.jsonl#VFY-SCOUT-CVG-OPS-CRITICAL-PROCESS-RUNNER-001",
+        ".agent/verification.jsonl#VFY-CVG-002-CLINICAL-FINANCIAL-CHILD-PROCESS-RESTART-CRITICAL-PROCESS-REGRESSION-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The runner failure is local evidence only; target, provider, remote CI, production and release remain open."
+    },
+    {
+      "id": "IR-002",
+      "description": "The authorized surface is limited to runner code, contract tests, CI artifact/timeout wiring and documentation; no process fixture or product behavior is changed to evade the timeout.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-OPS-CRITICAL-PROCESS-RUNNER-001.md",
+        "infra/scripts/run-critical-process-suite.mjs",
+        "tests/unit/infra/critical-process-suite-contract.test.ts",
+        ".github/workflows/ci.yml",
+        "docs/CI_GATES.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A fresh run is required before any bounded runner PASS."
+    },
+    {
+      "id": "IR-003",
+      "description": "Finite timeout, typed failure classification, owned descendant termination, sanitized diagnostics and failure-artifact preservation are concrete testable acceptance criteria.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-OPS-CRITICAL-PROCESS-RUNNER-001.md",
+        "docs/CI_GATES.md",
+        "infra/scripts/run-critical-process-suite.mjs"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This gate authorizes implementation and testing only; it does not claim the criteria are implemented."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-OPS-CRITICAL-PROCESS-RUNNER-001.md",
+    ".agent/authority.jsonl#AUTH-CVG-OPS-CRITICAL-PROCESS-RUNNER-IR-001",
+    ".agent/verification.jsonl#VFY-SCOUT-CVG-OPS-CRITICAL-PROCESS-RUNNER-001",
+    ".agent/verification.jsonl#VFY-CVG-002-CLINICAL-FINANCIAL-CHILD-PROCESS-RESTART-CRITICAL-PROCESS-REGRESSION-001",
+    "infra/scripts/run-critical-process-suite.mjs",
+    "tests/unit/infra/critical-process-suite-contract.test.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "The runner has not yet been corrected or rerun; current 25/25 PIX and 10/10 manifest completion are acceptance targets, not evidence.",
+    "Remote CI, target operations, providers, production, parity, accessibility, backup/restore and release remain outside scope."
+  ],
+  "conditions": [
+    "Keep timeout enforcement finite and preserve the full current manifest.",
+    "Preserve failure artifacts on any non-success and sanitize diagnostics before writing them.",
+    "Do not convert a locally complete runner into a global or release verdict."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via explicit continuation of the consolidation request and original consolidation brief",
+    "scope": "CVG-OPS bounded critical process runner timeout, signal, descendant-cleanup and failure-artifact contract",
+    "decision": "Authorize reversible repository changes to the serial critical-process runner, its contract tests, CI timeout/artifact wiring and bounded documentation only; exclude product semantics, providers, target, production and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-OPS-CRITICAL-PROCESS-RUNNER-IR-001",
+    "expires_or_revalidates": "Revalidate before changing process fixtures/business behavior, running target/production, using credentials or claiming full/global/release readiness."
+  },
+  "residual_risk": "CRITICAL",
+  "decision": "PASS",
+  "implementation_status": "READY",
+  "next_action": "Write and execute intentional RED tests, then implement the smallest runner reliability correction while retaining the ten-entry manifest and global promotion blockers.",
+  "revalidation_triggers": [
+    "Changes to PROCESS_TESTS, process fixtures, Vitest JSON report semantics or timeout policy",
+    "Changes to CI job budget, artifact retention or process-group cleanup behavior",
+    "Expansion into target, provider, production, deployment, credential or release scope"
+  ],
+  "supersedes": null
+}

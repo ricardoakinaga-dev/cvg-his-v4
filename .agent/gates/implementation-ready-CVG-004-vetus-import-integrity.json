@@ -1,0 +1,82 @@
+{
+  "record_id": "GATE-CVG-004-VETUS-IMPORT-INTEGRITY-IR-001",
+  "timestamp": "2026-08-26T16:05:00-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-004 bounded durable Vetus import idempotency and reconciliation integrity",
+  "scope_ref": "CVG-004-VETUS-IMPORT-INTEGRITY",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The import-integrity scope, authority, exclusions and non-promotion boundary are recorded.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-vetus-import-integrity.md",
+        ".agent/backlog.json",
+        ".agent/authority.jsonl#AUTH-CVG-004-VETUS-IMPORT-INTEGRITY-IR-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Only the repository-local import control plane and disposable verification are authorized; external Vetus reconciliation and target behavior remain open."
+    },
+    {
+      "id": "IR-002",
+      "description": "The existing durable import logs/batches, unique tenant source-reference indexes, RLS policies, tenant UoW and owner/patient persistence boundaries are present for an additive hardening.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/db/migrations/0098_vetus_import_logs.sql",
+        "packages/db/migrations/0102_vetus_import_batches.sql",
+        "apps/api/src/repositories/vetus-import-log-repository.ts",
+        "packages/shared/database/src/tenant-unit-of-work.ts",
+        "packages/modules/owners/src/repositories/database-owner.repository.ts",
+        "packages/modules/patients/src/repositories/database-patient.repository.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The current source-reference replay path does not yet compare durable payload fingerprints or serialize acquisition."
+    },
+    {
+      "id": "IR-003",
+      "description": "Focused RED tests can prove divergent replay rejection, durable single/batch persistence, dry-run/rejected/resume/rollback behavior and two-tenant HTTP isolation before implementation.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-vetus-import-integrity.md",
+        "apps/api/src/routes/vetus-import-routes.test.ts",
+        "tests/integration/database/inpatient-discharge-http-postgres.test.ts",
+        "tests/integration/database/tenant-unit-of-work.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A bounded result requires the new migration, implementation, fresh PostgreSQL HTTP evidence, security review and control-plane reconciliation."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-vetus-import-integrity.md",
+    "packages/db/migrations/0098_vetus_import_logs.sql",
+    "packages/db/migrations/0102_vetus_import_batches.sql",
+    "apps/api/src/routes/vetus-import-routes.ts",
+    "apps/api/src/repositories/vetus-import-log-repository.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "The additive fingerprint migration, source-reference lock, divergent replay conflict and database-backed HTTP evidence are not complete at gate creation."
+  ],
+  "conditions": [],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner)",
+    "scope": "CVG-004 bounded durable Vetus import idempotency and reconciliation integrity",
+    "decision": "Authorize reversible repository implementation, one additive canonical migration and disposable PostgreSQL/authenticated HTTP verification for internal source-payload fingerprints, divergent source-reference conflicts and transaction-safe acquisition. Exclude external Vetus/Live Pet/Live Lab, providers, credentials, target, production, deployment, backfill and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-VETUS-IMPORT-INTEGRITY-IR-001",
+    "expires_or_revalidates": "Revalidate before external import reconciliation, backfill, provider/target operation, credential handling, production/deployment or release action."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "next_action": "Write the route RED tests for divergent single/batch replay, then implement the bounded durable fingerprint/lock path before running fresh PostgreSQL HTTP verification.",
+  "revalidation_triggers": [
+    "Changes to Vetus import identity, owner/patient persistence composition or rollback semantics",
+    "Changes to migrations 0098/0102 or the additive fingerprint migration",
+    "Any external Vetus/Live Pet/Live Lab integration, provider, target, credential, production, deployment or release expansion"
+  ]
+}

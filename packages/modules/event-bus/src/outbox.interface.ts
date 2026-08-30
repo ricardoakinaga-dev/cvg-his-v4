@@ -37,11 +37,19 @@ export interface RetryClaimInput {
   readonly error: string;
 }
 
+export interface OutboxEventCounts {
+  readonly pending: number;
+  readonly retrying: number;
+  readonly completed: number;
+  readonly failed: number;
+  readonly total: number;
+}
+
 export interface OutboxRepository {
   readonly deliveryGuarantees: 'durable' | 'ephemeral';
   create(event: OutboxEvent): Promise<void>;
   update(event: OutboxEvent): Promise<void>;
-  findById(id: string): Promise<OutboxEvent | null>;
+  findById(accountId: AccountId, id: string): Promise<OutboxEvent | null>;
   /** Atomically claims eligible events with a fencing token. */
   claimPending(input: ClaimPendingInput): Promise<readonly OutboxClaim[]>;
   /** Extends a currently owned lease. Returns false after lease loss. */
@@ -53,10 +61,16 @@ export interface OutboxRepository {
   /** Moves a delivery to DLQ only while the exact lease is still owned. */
   failClaim(claim: OutboxClaim, error: string): Promise<boolean>;
   /** Atomically resets only failed/retrying events for administrative reprocessing. */
-  reprocess(eventId: string): Promise<OutboxEvent | null>;
+  reprocess(accountId: AccountId, eventId: string): Promise<OutboxEvent | null>;
   /** Reads pending and retrying events without claiming or mutating them. */
-  peekPending(limit: number): Promise<readonly OutboxEvent[]>;
+  peekPending(accountId: AccountId, limit: number): Promise<readonly OutboxEvent[]>;
   /** Returns events that exhausted all retry attempts (DLQ candidates) */
-  findFailed(limit: number): Promise<readonly OutboxEvent[]>;
-  findByCorrelationId(correlationId: CorrelationId): Promise<readonly OutboxEvent[]>;
+  findFailed(accountId: AccountId, limit: number): Promise<readonly OutboxEvent[]>;
+  findByCorrelationId(
+    accountId: AccountId,
+    correlationId: CorrelationId,
+    limit: number
+  ): Promise<readonly OutboxEvent[]>;
+  /** Returns status counts scoped to the explicit account. */
+  countByStatus(accountId: AccountId): Promise<OutboxEventCounts>;
 }

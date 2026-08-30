@@ -80,16 +80,16 @@ export type ResourceType =
 // ---------------------------------------------------------------------------
 
 export type ConditionOperator =
-  | 'eq'      // equals (strict, case-insensitive for strings)
-  | 'neq'     // not equals
-  | 'in'      // value is in list
-  | 'nin'     // value is not in list
-  | 'gt'      // greater than (numbers)
-  | 'gte'     // greater than or equal
-  | 'lt'      // less than
-  | 'lte'     // less than or equal
-  | 'has'     // array/slice contains value
-  | 'regex'   // matches regex
+  | 'eq' // equals (strict, case-insensitive for strings)
+  | 'neq' // not equals
+  | 'in' // value is in list
+  | 'nin' // value is not in list
+  | 'gt' // greater than (numbers)
+  | 'gte' // greater than or equal
+  | 'lt' // less than
+  | 'lte' // less than or equal
+  | 'has' // array/slice contains value
+  | 'regex' // matches regex
   | 'between' // numeric range [min, max] inclusive
   | 'not_between'
   | 'startsWith'
@@ -202,11 +202,13 @@ function evaluateCondition(condition: PolicyCondition, attrValue: unknown): bool
       return typeof attrValue === 'number' && typeof value === 'number' && attrValue <= value;
 
     case 'between':
-      if (typeof attrValue !== 'number' || !Array.isArray(value) || value.length !== 2) return false;
+      if (typeof attrValue !== 'number' || !Array.isArray(value) || value.length !== 2)
+        return false;
       return attrValue >= (value[0] as number) && attrValue <= (value[1] as number);
 
     case 'not_between':
-      if (typeof attrValue !== 'number' || !Array.isArray(value) || value.length !== 2) return false;
+      if (typeof attrValue !== 'number' || !Array.isArray(value) || value.length !== 2)
+        return false;
       return attrValue < (value[0] as number) || attrValue > (value[1] as number);
 
     case 'has':
@@ -233,10 +235,14 @@ function evaluateCondition(condition: PolicyCondition, attrValue: unknown): bool
     }
 
     case 'startsWith':
-      return typeof attrValue === 'string' && typeof value === 'string' && attrValue.startsWith(value);
+      return (
+        typeof attrValue === 'string' && typeof value === 'string' && attrValue.startsWith(value)
+      );
 
     case 'endsWith':
-      return typeof attrValue === 'string' && typeof value === 'string' && attrValue.endsWith(value);
+      return (
+        typeof attrValue === 'string' && typeof value === 'string' && attrValue.endsWith(value)
+      );
 
     default:
       return false;
@@ -305,7 +311,15 @@ function evaluateRule(
   for (const condition of rule.conditions) {
     const attrValue = resolveAttribute(condition.attribute, actor, resource, environment);
     const resolvedValue = resolveConditionValue(condition.value, actor, resource, environment);
-    if (!evaluateCondition({ ...condition, value: resolvedValue as string | number | readonly string[] | [number, number] }, attrValue)) {
+    if (
+      !evaluateCondition(
+        {
+          ...condition,
+          value: resolvedValue as string | number | readonly string[] | [number, number]
+        },
+        attrValue
+      )
+    ) {
       return false;
     }
   }
@@ -634,6 +648,17 @@ export const DEFAULT_ABAC_POLICIES: readonly AbacPolicy[] = [
           }
         ],
         effect: 'deny'
+      },
+      {
+        description: 'Permit auditor and admin roles to read audit trail',
+        conditions: [
+          {
+            attribute: 'actor.roleCodes',
+            operator: 'in',
+            value: ['auditor', 'admin'] as unknown as readonly string[]
+          }
+        ],
+        effect: 'permit'
       }
     ]
   },
@@ -710,6 +735,45 @@ export const DEFAULT_ABAC_POLICIES: readonly AbacPolicy[] = [
             attribute: 'environment.hourOfDay',
             operator: 'between',
             value: [8, 19] as [number, number]
+          }
+        ],
+        effect: 'permit'
+      }
+    ]
+  },
+
+  // -------------------------------------------------------------------------
+  // Administrative outbox replay: only administrators may requeue events
+  // -------------------------------------------------------------------------
+  {
+    id: 'abac-009',
+    name: 'Administrative Outbox Replay',
+    description: 'Only admin roles can reprocess failed or retrying outbox events.',
+    version: 1,
+    resourceTypes: ['audit_entry'],
+    actionCodes: ['audit.write'],
+    enabled: true,
+    tags: ['audit', 'outbox', 'replay'],
+    combiningAlgorithm: 'first-deny',
+    rules: [
+      {
+        description: 'Deny non-admin roles from reprocessing outbox events',
+        conditions: [
+          {
+            attribute: 'actor.roleCodes',
+            operator: 'nin',
+            value: ['admin'] as unknown as readonly string[]
+          }
+        ],
+        effect: 'deny'
+      },
+      {
+        description: 'Permit admin roles to reprocess outbox events',
+        conditions: [
+          {
+            attribute: 'actor.roleCodes',
+            operator: 'in',
+            value: ['admin'] as unknown as readonly string[]
           }
         ],
         effect: 'permit'

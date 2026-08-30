@@ -53,6 +53,9 @@ importers:
         specifier: ^8.13.1
         version: 8.18.0
     devDependencies:
+      '@axe-core/playwright':
+        specifier: ^4.11.2
+        version: 4.13.0(playwright-core@1.58.2)
       '@playwright/test':
         specifier: ^1.58.2
         version: 1.58.2
@@ -390,6 +393,9 @@ importers:
 
   apps/worker:
     dependencies:
+      '@cvg-his-v2/module-audit':
+        specifier: workspace:*
+        version: link:../../packages/modules/audit
       '@cvg-his-v2/module-billing':
         specifier: workspace:*
         version: link:../../packages/modules/billing
@@ -414,6 +420,12 @@ importers:
       '@cvg-his-v2/module-financial':
         specifier: workspace:*
         version: link:../../packages/modules/financial
+      '@cvg-his-v2/module-fiscal':
+        specifier: workspace:*
+        version: link:../../packages/modules/fiscal
+      '@cvg-his-v2/module-inventory':
+        specifier: workspace:*
+        version: link:../../packages/modules/inventory
       '@cvg-his-v2/module-notifications':
         specifier: workspace:*
         version: link:../../packages/modules/notifications
@@ -432,6 +444,9 @@ importers:
       '@cvg-his-v2/module-reports':
         specifier: workspace:*
         version: link:../../packages/modules/reports
+      '@cvg-his-v2/module-services':
+        specifier: workspace:*
+        version: link:../../packages/modules/services
       '@cvg-his-v2/module-staff':
         specifier: workspace:*
         version: link:../../packages/modules/staff
@@ -539,9 +554,6 @@ importers:
       '@types/pg':
         specifier: ^8.15.0
         version: 8.16.0
-      drizzle-kit:
-        specifier: ^0.30.4
-        version: 0.30.6
 
   packages/design-system:
     dependencies:
@@ -611,6 +623,9 @@ importers:
       '@cvg-his-v2/tenant-context':
         specifier: workspace:*
         version: link:../../tenant-context
+      '@cvg-his/rbac':
+        specifier: workspace:*
+        version: link:../../rbac
     devDependencies:
       vitest:
         specifier: ^3.2.7
@@ -865,6 +880,9 @@ importers:
       '@cvg-his-v2/shared-validation':
         specifier: workspace:*
         version: link:../../shared/validation
+      '@cvg-his-v2/tenant-context':
+        specifier: workspace:*
+        version: link:../../tenant-context
       drizzle-orm:
         specifier: ^0.45.2
         version: 0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.16.0)(gel@2.2.0)(pg@8.18.0)
@@ -1037,6 +1055,9 @@ importers:
       '@cvg-his-v2/shared-database':
         specifier: workspace:*
         version: link:../../shared/database
+      '@cvg-his-v2/shared-errors':
+        specifier: workspace:*
+        version: link:../../shared/errors
       '@cvg-his-v2/shared-types':
         specifier: workspace:*
         version: link:../../shared/types
@@ -1163,6 +1184,9 @@ importers:
       '@cvg-his-v2/shared-validation':
         specifier: workspace:*
         version: link:../../shared/validation
+      '@cvg-his-v2/tenant-context':
+        specifier: workspace:*
+        version: link:../../tenant-context
       drizzle-orm:
         specifier: ^0.45.2
         version: 0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.16.0)(gel@2.2.0)(pg@8.18.0)
@@ -1712,9 +1736,6 @@ importers:
       '@types/pg':
         specifier: ^8.11.10
         version: 8.16.0
-      drizzle-kit:
-        specifier: ^0.28.1
-        version: 0.28.1
 
   packages/shared/errors: {}
 
@@ -1796,6 +1817,11 @@ packages:
 
   '@asamuzakjp/nwsapi@2.3.9':
     resolution: {integrity: sha512-n8GuYSrI9bF7FFZ/SjhwevlHc8xaVlb/7HmHelnc/PZXBD2ZR49NnN9sMMuDdEGPeeRQ5d0hqlSlEpgCX3Wl0Q==}
+
+  '@axe-core/playwright@4.13.0':
+    resolution: {integrity: sha512-6YLx+kxXu5GJceG4ozFg+33a2EMTdjYwWGloJ3sb9Kta5pp+ZNS53uxGVog5JetIY8s++P5UrtX+cri+u0VAVg==}
+    peerDependencies:
+      playwright-core: '>= 1.0.0'
 
   '@azu/format-text@1.0.2':
     resolution: {integrity: sha512-Swi4N7Edy1Eqq82GxgEECXSSLyn6GOb5htRFPzBDdUkECGXtlf12ynO5oJSpWKPwCaUssOu7NfhDcCWpIC6Ywg==}
@@ -2362,17 +2388,6 @@ packages:
   '@csstools/css-tokenizer@4.0.0':
     resolution: {integrity: sha512-QxULHAm7cNu72w97JUNCBFODFaXpbDg+dP8b/oWFAZ2MTRppA3U00Y2L1HqaS4J6yBqxwa/Y3nMBaxVKbB/NsA==}
     engines: {node: '>=20.19.0'}
-
-  '@drizzle-team/brocli@0.10.2':
-    resolution: {integrity: sha512-z33Il7l5dKjUgGULTqBsQBQwckHh5AbIuxhdsIxDDiZAzBOrZO6q9ogcWC65kU382AfynTfgNumVcNIjuIua6w==}
-
-  '@esbuild-kit/core-utils@3.3.2':
-    resolution: {integrity: sha512-sPRAnw9CdSsRmEtnsl2WXWdyquogVpB3yZ3dgwJfe8zrOzTsV7cJvmwrKVa+0ma5BoiGJ+BoqkMvawbayKUsqQ==}
-    deprecated: 'Merged into tsx: https://tsx.hirok.io'
-
-  '@esbuild-kit/esm-loader@2.6.5':
-    resolution: {integrity: sha512-FxEMIkJKnodyA1OaCUoEvbYRkoZlLZ4d/eXFu9Fh8CbBBgP5EmZxrfTRyN0qpXZ4vOvqnE5YdRdcrmUUXuU+dA==}
-    deprecated: 'Merged into tsx: https://tsx.hirok.io'
 
   '@esbuild/aix-ppc64@0.25.12':
     resolution: {integrity: sha512-Hhmwd6CInZ3dwpuGTF8fJG6yoWmsToE+vYgD4nytZVxcu1ulHpUQRAB1UJ8+N1Am3Mz4+xOByoQoSZf4D+CpkA==}
@@ -3770,6 +3785,10 @@ packages:
     resolution: {integrity: sha512-byD6KPdvo72y/wj2T/4zGEvvlis+PsZsn/yPS3pEO+sFpcrqRpX/TJCxvVaEsNeMrfQbCr7w163YqoD9IYwHXw==}
     engines: {node: '>=4'}
 
+  axe-core@4.13.0:
+    resolution: {integrity: sha512-UzGt8zg7Ny8djbYMhxl2zuEevVa7r2gJjYY5Lwr1xM7+XU2nd6CkIWFTVcCIbAP63vSz71NaVyyuSk9lHKcy0A==}
+    engines: {node: '>=4'}
+
   babel-plugin-polyfill-corejs2@0.4.17:
     resolution: {integrity: sha512-aTyf30K/rqAsNwN76zYrdtx8obu0E4KoUME29B1xj+B3WxgvWkp943vYQ+z8Mv3lw9xHXMHpvSPOBxzAkIa94w==}
     peerDependencies:
@@ -4039,14 +4058,6 @@ packages:
     resolution: {integrity: sha512-uBq4egWHTcTt33a72vpSG0z3HnPuIl6NqYcTrKEg2azoEyl2hpW0zqlxysq2pK9HlDIHyHyakeYaYnSAwd8bow==}
     engines: {node: '>=12'}
 
-  drizzle-kit@0.28.1:
-    resolution: {integrity: sha512-JimOV+ystXTWMgZkLHYHf2w3oS28hxiH1FR0dkmJLc7GHzdGJoJAQtQS5DRppnabsRZwE2U1F6CuezVBgmsBBQ==}
-    hasBin: true
-
-  drizzle-kit@0.30.6:
-    resolution: {integrity: sha512-U4wWit0fyZuGuP7iNmRleQyK2V8wCuv57vf5l3MnG4z4fzNTjY/U13M8owyQ5RavqvqxBifWORaR3wIUzlN64g==}
-    hasBin: true
-
   drizzle-orm@0.45.2:
     resolution: {integrity: sha512-kY0BSaTNYWnoDMVoyY8uxmyHjpJW1geOmBMdSSicKo9CIIWkSxMIj2rkeSR51b8KAPB7m+qysjuHme5nKP+E5Q==}
     peerDependencies:
@@ -4214,11 +4225,6 @@ packages:
   es-to-primitive@1.3.0:
     resolution: {integrity: sha512-w+5mJ3GuFL+NjVtJlvydShqE1eN3h3PbI7/5LAsYJP/2qtuMXjfL2LpHSRqo4b4eSF5K/DH1JXKUAHSB2UW50g==}
     engines: {node: '>= 0.4'}
-
-  esbuild-register@3.6.0:
-    resolution: {integrity: sha512-H2/S7Pm8a9CL1uhp9OvjwrBh5Pvx0H8qVOxNu8Wed9Y7qv56MPtq+GGM8RJpq6glYJn9Wspr8uw7l55uyinNeg==}
-    peerDependencies:
-      esbuild: 0.25.12
 
   esbuild@0.25.12:
     resolution: {integrity: sha512-bbPBYYrtZbkt6Os6FiTLCTFxvq4tt3JKall1vRwshA3fdVztsLAatFaZobhkBC8/BrPetoa0oksYoKXoG4ryJg==}
@@ -6173,6 +6179,11 @@ snapshots:
 
   '@asamuzakjp/nwsapi@2.3.9': {}
 
+  '@axe-core/playwright@4.13.0(playwright-core@1.58.2)':
+    dependencies:
+      axe-core: 4.13.0
+      playwright-core: 1.58.2
+
   '@azu/format-text@1.0.2': {}
 
   '@azu/style-format@1.0.1':
@@ -6883,18 +6894,6 @@ snapshots:
 
   '@csstools/css-tokenizer@4.0.0': {}
 
-  '@drizzle-team/brocli@0.10.2': {}
-
-  '@esbuild-kit/core-utils@3.3.2':
-    dependencies:
-      esbuild: 0.25.12
-      source-map-support: 0.5.21
-
-  '@esbuild-kit/esm-loader@2.6.5':
-    dependencies:
-      '@esbuild-kit/core-utils': 3.3.2
-      get-tsconfig: 4.13.6
-
   '@esbuild/aix-ppc64@0.25.12':
     optional: true
 
@@ -7402,7 +7401,8 @@ snapshots:
 
   '@opentelemetry/semantic-conventions@1.40.0': {}
 
-  '@petamoriken/float16@3.9.3': {}
+  '@petamoriken/float16@3.9.3':
+    optional: true
 
   '@pkgjs/parseargs@0.11.0':
     optional: true
@@ -8299,6 +8299,8 @@ snapshots:
 
   axe-core@4.11.2: {}
 
+  axe-core@4.13.0: {}
+
   babel-plugin-polyfill-corejs2@0.4.17(@babel/core@7.29.6):
     dependencies:
       '@babel/compat-data': 7.29.0
@@ -8559,25 +8561,6 @@ snapshots:
 
   dotenv@16.6.1: {}
 
-  drizzle-kit@0.28.1:
-    dependencies:
-      '@drizzle-team/brocli': 0.10.2
-      '@esbuild-kit/esm-loader': 2.6.5
-      esbuild: 0.25.12
-      esbuild-register: 3.6.0(esbuild@0.25.12)
-    transitivePeerDependencies:
-      - supports-color
-
-  drizzle-kit@0.30.6:
-    dependencies:
-      '@drizzle-team/brocli': 0.10.2
-      '@esbuild-kit/esm-loader': 2.6.5
-      esbuild: 0.25.12
-      esbuild-register: 3.6.0(esbuild@0.25.12)
-      gel: 2.2.0
-    transitivePeerDependencies:
-      - supports-color
-
   drizzle-orm@0.45.2(@opentelemetry/api@1.9.1)(@types/pg@8.16.0)(gel@2.2.0)(pg@8.18.0):
     optionalDependencies:
       '@opentelemetry/api': 1.9.1
@@ -8618,7 +8601,8 @@ snapshots:
 
   entities@7.0.1: {}
 
-  env-paths@3.0.0: {}
+  env-paths@3.0.0:
+    optional: true
 
   environment@1.1.0: {}
 
@@ -8703,13 +8687,6 @@ snapshots:
       is-callable: 1.2.7
       is-date-object: 1.1.0
       is-symbol: 1.1.1
-
-  esbuild-register@3.6.0(esbuild@0.25.12):
-    dependencies:
-      debug: 4.4.3
-      esbuild: 0.25.12
-    transitivePeerDependencies:
-      - supports-color
 
   esbuild@0.25.12:
     optionalDependencies:
@@ -8953,6 +8930,7 @@ snapshots:
       which: 4.0.0
     transitivePeerDependencies:
       - supports-color
+    optional: true
 
   generator-function@2.0.1: {}
 
@@ -9271,7 +9249,8 @@ snapshots:
 
   isexe@2.0.0: {}
 
-  isexe@3.1.5: {}
+  isexe@3.1.5:
+    optional: true
 
   istanbul-lib-coverage@3.2.2: {}
 
@@ -10016,7 +9995,8 @@ snapshots:
 
   shebang-regex@3.0.0: {}
 
-  shell-quote@1.9.0: {}
+  shell-quote@1.9.0:
+    optional: true
 
   side-channel-list@1.0.1:
     dependencies:
@@ -10796,6 +10776,7 @@ snapshots:
   which@4.0.0:
     dependencies:
       isexe: 3.1.5
+    optional: true
 
   why-is-node-running@2.3.0:
     dependencies:

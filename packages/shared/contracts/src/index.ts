@@ -27,6 +27,7 @@ import type {
   InventoryReservationSummary,
   InventoryStockMovementSummary,
   LaboratoryEquipmentSummary,
+  LaboratoryResultValue,
   LaboratoryReferenceValueSummary,
   LaboratoryReportTypeSummary,
   AuditEventSummary,
@@ -36,6 +37,7 @@ import type {
   AuthenticatedPrincipal,
   HealthStatus,
   MedicalRecordSummary,
+  MasterSearchOwnerResult,
   OwnerPatientLinkSummary,
   OwnerSummary,
   QueueEntrySummary,
@@ -79,6 +81,10 @@ export interface HealthResponse extends HealthStatus {
     };
     readonly worker: {
       readonly state: 'ready' | 'degraded' | 'not-configured';
+      readonly detail: string;
+    };
+    readonly redis?: {
+      readonly state: 'healthy' | 'unhealthy' | 'not-configured' | 'disabled';
       readonly detail: string;
     };
     readonly secretsManager?: {
@@ -330,7 +336,7 @@ export interface OwnerPatientLinkListResponse {
 }
 
 export interface MasterSearchResponse {
-  readonly owners: readonly OwnerSummary[];
+  readonly owners: readonly MasterSearchOwnerResult[];
   readonly patients: readonly PatientSummary[];
   readonly links: readonly OwnerPatientLinkSummary[];
 }
@@ -746,6 +752,10 @@ export interface CancelFiscalNfseDocumentRequest {
 export interface FiscalNfseDocumentFilters {
   readonly status?: FiscalNfseDocumentStatus;
   readonly customerSearch?: string;
+  readonly search?: string;
+  readonly competenciaFrom?: string;
+  readonly competenciaTo?: string;
+  readonly limit?: number;
 }
 
 export interface FiscalIcmsMatrixRowSummary {
@@ -1193,6 +1203,7 @@ export type UpdateLaboratoryReferenceValueRequest = Partial<CreateLaboratoryRefe
 export interface RecordDiagnosticResultRequest {
   readonly status: 'collected' | 'resulted' | 'cancelled';
   readonly resultSummary?: string;
+  readonly resultValues?: readonly LaboratoryResultValue[];
   readonly resultAttachmentId?: string;
   readonly collectedByUserId?: string;
   readonly releasedByUserId?: string;
@@ -1324,6 +1335,47 @@ export interface CreateCashMovementRequest {
 export interface CloseCashRegisterRequest {
   readonly closingAmount: number;
   readonly notes?: string | null;
+}
+
+export type AdvancePaymentStatus = 'available' | 'partially_compensated' | 'compensated';
+
+export interface AdvancePaymentSummary {
+  readonly id: string;
+  readonly accountId: string;
+  readonly ownerId: string;
+  readonly ownerName: string;
+  readonly documentId: string;
+  readonly issuedAt: string;
+  readonly amountCents: number;
+  readonly compensatedAmountCents: number;
+  readonly balanceCents: number;
+  readonly currency: 'BRL';
+  /** Persisted source discriminator; manual is the only source accepted by the current write command. */
+  readonly sourceType: string;
+  readonly sourceId: string;
+  readonly reference: string | null;
+  readonly notes: string | null;
+  readonly status: AdvancePaymentStatus;
+  readonly createdByUserId: string;
+  readonly createdAt: string;
+}
+
+export interface AdvancePaymentListResponse {
+  readonly items: readonly AdvancePaymentSummary[];
+}
+
+export interface CreateAdvancePaymentRequest {
+  readonly ownerId: string;
+  readonly amountCents: number;
+  readonly sourceId: string;
+  readonly reference?: string;
+  readonly notes?: string;
+}
+
+export interface CreateAdvancePaymentAllocationRequest {
+  readonly amountCents: number;
+  readonly reference: string;
+  readonly notes?: string;
 }
 
 export interface CreateInventoryConsumptionRequest {
@@ -1530,10 +1582,16 @@ export interface ExecutePrescriptionRequest {
   readonly status: 'administered' | 'not-administered';
   readonly notes?: string;
   readonly vitalsSnapshot?: Record<string, unknown>;
+  readonly expectedVersion?: number;
 }
 
 export interface SuspendPrescriptionRequest {
   readonly reason: string;
+  readonly expectedVersion?: number;
+}
+
+export interface ResumePrescriptionRequest {
+  readonly expectedVersion?: number;
 }
 
 export interface LogAdministrationEventRequest {

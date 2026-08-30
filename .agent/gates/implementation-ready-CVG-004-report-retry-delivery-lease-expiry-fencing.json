@@ -1,0 +1,95 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-RETRY-DELIVERY-LEASE-EXPIRY-FENCING-IR-001",
+  "timestamp": "2026-08-30T02:57:16-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-004 failed report-delivery retry finalization lease-expiry fencing",
+  "scope_ref": "CVG-004-REPORT-RETRY-DELIVERY-LEASE-EXPIRY-FENCING",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "Fresh repository-local reconciliation identified that in-memory retry claims reject expiry while PostgreSQL saveClaimedDelivery checks account, delivery id and token but not active claim_until.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-SCOUT-CVG-004-REPORT-RETRY-DELIVERY-LEASE-EXPIRY-FENCING-001",
+        "packages/modules/reports/src/index.ts",
+        "tests/integration/database/reports-delivery-postgres.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Selection is direct source/test evidence; it is not implementation, independent approval or production certification."
+    },
+    {
+      "id": "IR-002",
+      "description": "The existing report delivery lease schema already persists claim_token, claim_until and claim_worker_id, so the correction can remain a repository-local conditional UPDATE without a migration.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/authority.jsonl#AUTH-CVG-004-REPORT-RETRY-DELIVERY-LEASE-EXPIRY-FENCING-IR-001",
+        "packages/db/migrations/0143_reports_delivery_leases.sql",
+        "packages/modules/reports/src/index.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The SQL behavior remains unverified until the intentional RED/GREEN PostgreSQL test runs."
+    },
+    {
+      "id": "IR-003",
+      "description": "The bounded fix is an active-expiry predicate on retry finalization, preserving the existing boolean contract, active-claim success, takeover rejection and service/provider APIs.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-retry-delivery-lease-expiry-fencing.md",
+        ".agent/gates/verified-CVG-004-report-scheduled-delivery-lease-fencing-v2.json",
+        ".agent/gates/verified-CVG-004-report-scheduled-execution-export-lease-fencing.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Provider side effects, retry policy, renewal, target and global readiness remain explicit non-claims."
+    },
+    {
+      "id": "IR-004",
+      "description": "The test boundary covers the stale pre-takeover expiry case plus active success and existing post-takeover stale-token behavior before bounded closure.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-retry-delivery-lease-expiry-fencing.md",
+        "tests/integration/database/reports-delivery-postgres.test.ts",
+        "packages/modules/reports/src/reports.test.ts"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "RED/GREEN implementation, regression, coverage, review and final control-plane reconciliation remain open."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-report-retry-delivery-lease-expiry-fencing.md",
+    ".agent/authority.jsonl#AUTH-CVG-004-REPORT-RETRY-DELIVERY-LEASE-EXPIRY-FENCING-IR-001",
+    ".agent/verification.jsonl#VFY-SCOUT-CVG-004-REPORT-RETRY-DELIVERY-LEASE-EXPIRY-FENCING-001",
+    "packages/modules/reports/src/index.ts",
+    "packages/db/migrations/0143_reports_delivery_leases.sql",
+    "tests/integration/database/reports-delivery-postgres.test.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "Intentional RED/GREEN, focused PostgreSQL proof, regression, quality, independent review and final gate evidence remain open.",
+    "Provider side effects/idempotency, retry policy, renewal, target/production/deployment/release and global ERP remain out of scope."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via explicit continuation and direct read-only residual reconciliation",
+    "scope": "Repository-local PostgreSQL retry-delivery lease-expiry predicate and bounded active/stale finalization proof",
+    "decision": "Authorize only the active claim_until predicate on saveClaimedDelivery and its focused tests. Preserve existing claim/retry/provider contracts and exclude provider behavior, renewal, target, production, deployment, release and global ERP promotion.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-RETRY-DELIVERY-LEASE-EXPIRY-FENCING-IR-001",
+    "expires_or_revalidates": "Revalidate before changing retry policy, redrive/reconciliation states, claim renewal/clock semantics, provider invocation, migration shape or target/production/deployment/release scope."
+  },
+  "residual_risk": "HIGH",
+  "decision": "IMPLEMENTATION_READY",
+  "implementation_status": "IMPLEMENTATION_READY",
+  "next_action": "Write and run the intentional RED test for expiry-before-takeover, then add the active-expiry predicate and run focused PostgreSQL regressions. Keep all global/non-local boundaries blocked.",
+  "revalidation_triggers": [
+    "Changing failed-delivery claim selection, retry policy, redrive or reconciliation state",
+    "Changing lease renewal, claim clock semantics or migration shape",
+    "Changing provider invocation, idempotency or external delivery semantics",
+    "Adding target, production, deployment, backup/restore, release or global parity behavior"
+  ],
+  "supersedes": null
+}

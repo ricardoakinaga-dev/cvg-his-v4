@@ -4,6 +4,7 @@ export type {
   ClaimPendingInput,
   OutboxClaim,
   OutboxEvent,
+  OutboxEventCounts,
   OutboxRepository,
   RetryClaimInput
 } from './outbox.interface.js';

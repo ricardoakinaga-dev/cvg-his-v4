@@ -8,6 +8,7 @@ import {
   getPool
 } from '@cvg-his-v2/shared-database';
 import type { AccountId } from '@cvg-his-v2/shared-types';
+import { runWithTenantContext } from '@cvg-his-v2/tenant-context';
 
 import {
   DatabaseDiagnosticOrderRepository,
@@ -95,6 +96,11 @@ test.skipIf(!runPostgresTest)('persists the canonical laboratory lifecycle and c
     }
   ]);
 
+  return runWithTenantContext({
+    tenantId,
+    accountId,
+    correlationId: `corr-${accountId}`
+  }, async () => {
   const service = new DiagnosticsService(
     {
       getOrThrow(encounterId: string) {
@@ -130,6 +136,15 @@ test.skipIf(!runPostgresTest)('persists the canonical laboratory lifecycle and c
   const reported = await workflow.transitionOrderAndPersistForAccount(accountId, order.id, {
     status: 'reported',
     resultSummary: 'Laudo sem alterações',
+    resultValues: [
+      {
+        parameter: 'Hemoglobina',
+        value: '13.2',
+        unit: 'g/dL',
+        reference: '8-18 g/dL',
+        outOfRange: false
+      }
+    ],
     actorUserId: signerUserId,
     idempotencyKey: 'laboratory-report-1'
   });
@@ -137,10 +152,28 @@ test.skipIf(!runPostgresTest)('persists the canonical laboratory lifecycle and c
   expect(reported.reportedByUserId).toBe(signerUserId);
   expect(reported.signedByUserId).toBe(signerUserId);
   expect(reported.signatureHash).toMatch(/^[a-f0-9]{64}$/);
+  expect(reported.resultValues).toEqual([
+    {
+      parameter: 'Hemoglobina',
+      value: '13.2',
+      unit: 'g/dL',
+      reference: '8-18 g/dL',
+      outOfRange: false
+    }
+  ]);
 
   const replayedReport = await workflow.transitionOrderAndPersistForAccount(accountId, order.id, {
     status: 'reported',
     resultSummary: 'Laudo sem alterações',
+    resultValues: [
+      {
+        parameter: 'Hemoglobina',
+        value: '13.2',
+        unit: 'g/dL',
+        reference: '8-18 g/dL',
+        outOfRange: false
+      }
+    ],
     actorUserId: signerUserId,
     idempotencyKey: 'laboratory-report-1'
   });
@@ -157,6 +190,26 @@ test.skipIf(!runPostgresTest)('persists the canonical laboratory lifecycle and c
   expect(delivered.deliveredAt).toBe('2026-08-24T12:00:00.000Z');
   expect(delivered.deliveredByUserId).toBe('delivery-db');
   expect(delivered.deliveryChannel).toBe('portal');
+
+  const reportedRehydrated = new DiagnosticsService(
+    {
+      getOrThrow(encounterId: string) {
+        if (encounterId !== encounter.id) throw new Error('Encounter not found');
+        return encounter;
+      }
+    } as never,
+    { diagnosticOrderRepository: repository }
+  );
+  await reportedRehydrated.hydrateFromDatabase(accountId);
+  expect(reportedRehydrated.getLaboratoryOrderOrThrow(accountId, order.id).resultValues).toEqual([
+    {
+      parameter: 'Hemoglobina',
+      value: '13.2',
+      unit: 'g/dL',
+      reference: '8-18 g/dL',
+      outOfRange: false
+    }
+  ]);
 
   const recollected = await workflow.recollectOrderAndPersistForAccount(accountId, order.id, {
     reason: 'Amostra inadequada após entrega',
@@ -193,6 +246,7 @@ test.skipIf(!runPostgresTest)('persists the canonical laboratory lifecycle and c
     reason: 'Amostra inadequada após entrega',
     actorUserId: 'recollector-db'
   });
+  expect(persisted.resultValues).toBeUndefined();
 
   const persistedRows = await pool.query<{
     status: string;
@@ -210,4 +264,5 @@ test.skipIf(!runPostgresTest)('persists the canonical laboratory lifecycle and c
     collection_attempt: 2,
     delivery_channel: null
   }]);
+  });
 });

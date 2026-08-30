@@ -12,6 +12,38 @@ export type CounterSalePaymentMethod =
   | 'insurance'
   | 'other';
 
+export const COUNTER_SALE_CANCELLATION_REASON_MAX_LENGTH = 500;
+
+export interface CounterSaleCancellationHistory {
+  readonly eventId: string;
+  readonly accountId: string;
+  readonly counterSaleId: string;
+  readonly cancelledByUserId: string;
+  readonly cancelledAt: string;
+  readonly reason: string;
+  readonly correlationId: string;
+}
+
+export function normalizeCounterSaleCancellationReason(reason: string): string {
+  if (typeof reason !== 'string') {
+    throw new Error('O motivo do cancelamento é obrigatório.');
+  }
+  if (/[\u0000-\u001f\u007f-\u009f]/u.test(reason)) {
+    throw new Error('O motivo do cancelamento não pode conter caracteres de controle.');
+  }
+
+  const normalizedReason = reason.trim();
+  if (!normalizedReason) {
+    throw new Error('O motivo do cancelamento é obrigatório.');
+  }
+  if (normalizedReason.length > COUNTER_SALE_CANCELLATION_REASON_MAX_LENGTH) {
+    throw new Error(
+      `O motivo do cancelamento deve ter no máximo ${COUNTER_SALE_CANCELLATION_REASON_MAX_LENGTH} caracteres.`
+    );
+  }
+  return normalizedReason;
+}
+
 export interface CounterSaleSummary {
   readonly id: string;
   readonly accountId: string;
@@ -82,6 +114,7 @@ export interface CounterSaleDetail extends CounterSaleSummary {
   readonly items: readonly CounterSaleItemSummary[];
   readonly payments: readonly CounterSalePaymentSummary[];
   readonly receipt: CounterSaleReceiptSummary | null;
+  readonly cancellationHistory: readonly CounterSaleCancellationHistory[];
 }
 
 export interface CounterSaleCloseResponse extends CounterSaleSummary {
@@ -205,7 +238,10 @@ export const counterSalesService = {
     });
   },
 
-  async addItem(id: string, payload: CreateCounterSaleItemPayload): Promise<CounterSaleItemSummary> {
+  async addItem(
+    id: string,
+    payload: CreateCounterSaleItemPayload
+  ): Promise<CounterSaleItemSummary> {
     return apiRequest<CounterSaleItemSummary>(`/counter-sales/${id}/items`, {
       method: 'POST',
       body: JSON.stringify(payload)
@@ -255,9 +291,11 @@ export const counterSalesService = {
     });
   },
 
-  async cancel(id: string): Promise<CounterSaleSummary> {
+  async cancel(id: string, reason: string): Promise<CounterSaleSummary> {
+    const normalizedReason = normalizeCounterSaleCancellationReason(reason);
     return apiRequest<CounterSaleSummary>(`/counter-sales/${id}/cancel`, {
-      method: 'POST'
+      method: 'POST',
+      body: JSON.stringify({ reason: normalizedReason })
     });
   },
 

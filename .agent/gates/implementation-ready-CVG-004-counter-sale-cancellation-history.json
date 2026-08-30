@@ -1,0 +1,93 @@
+{
+  "record_id": "GATE-CVG-004-COUNTER-SALE-CANCELLATION-HISTORY-IR-001",
+  "timestamp": "2026-08-29T21:45:00-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-004 bounded durable provenance and atomic cancellation for counter sales",
+  "scope_ref": "CVG-004-COUNTER-SALE-CANCELLATION-HISTORY",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The bounded cancellation route, reason, actor, transaction, history and non-promotion boundaries are frozen.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-COUNTER-SALE-CANCELLATION-HISTORY.md",
+        ".agent/authority.jsonl#AUTH-CVG-004-COUNTER-SALE-CANCELLATION-HISTORY-IR-001",
+        ".agent/backlog.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Only repository-local implementation and disposable verification are authorized; parent CVG-004 and global ERP remain open."
+    },
+    {
+      "id": "IR-002",
+      "description": "Current counter-sales code proves status-only cancellation, account-unscoped update row count, and fire-and-forget post-command audit; existing audit_events/UoW seams can carry the bounded fix.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/db/src/schema/counterSales.ts",
+        "packages/db/src/schema/audit_events.ts",
+        "packages/modules/counter-sales/src/index.ts",
+        "packages/modules/counter-sales/src/repositories/database-counter-sales.repository.ts",
+        "apps/api/src/routes/counter-sales-routes.ts",
+        "apps/api/src/helpers/audit-helper.ts",
+        "packages/shared/database/src/tenant-unit-of-work.ts",
+        "apps/api/src/runtime.ts",
+        ".agent/artifacts/CVG-004-report-deleted-sales-snapshot-2026-08-27.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Existing audit_events does not itself establish legal tamper evidence or retention policy."
+    },
+    {
+      "id": "IR-003",
+      "description": "Focused RED/GREEN module and route tests, restricted PostgreSQL atomicity/RLS tests, contract/OpenAPI checks and SPA reason wiring are feasible without migrations or external authority.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-COUNTER-SALE-CANCELLATION-HISTORY.md",
+        "packages/modules/counter-sales/src/counter-sales.test.ts",
+        "tests/unit/modules/counter-sales-service.test.ts",
+        "apps/api/src/routes/counter-sales-routes.test.ts",
+        "tests/integration/database/counter-sales-payment-authority-postgres.test.ts",
+        "apps/spa/src/pages/sales/__tests__/CounterSalesPage.test.ts",
+        "packages/contracts/src/counterSales.ts",
+        "apps/api/src/openapi.yaml"
+      ],
+      "confidence": "HIGH",
+      "limitations": "All implementation, concurrency and review evidence remains pending and must be recorded before closure."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-COUNTER-SALE-CANCELLATION-HISTORY.md",
+    "packages/modules/counter-sales/src/index.ts",
+    "packages/modules/counter-sales/src/repositories/database-counter-sales.repository.ts",
+    "apps/api/src/routes/counter-sales-routes.ts",
+    "packages/shared/database/src/tenant-unit-of-work.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "Intentional RED, implementation, atomic PostgreSQL/RLS proof, SPA/contract regression and independent review are pending."
+  ],
+  "conditions": [
+    "Do not backfill or infer provenance for cancellations that predate the new writer.",
+    "Do not use updated_at as cancelled_at or accept actor/account from the request body.",
+    "Keep global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via explicit continuation request and convergent fresh independent scouting",
+    "scope": "Repository-local counter-sale cancellation reason validation, principal-derived provenance, tenant-scoped atomic status/audit write, committed history read, minimal SPA/contract wiring and tests",
+    "decision": "Authorize reversible implementation and disposable verification for the frozen bounded contract. Exclude fiscal, payments/refunds, audit-framework redesign, historical backfill, providers, credentials, FIDO2, target, production, deployment, release and global ERP acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-COUNTER-SALE-CANCELLATION-HISTORY-IR-001",
+    "expires_or_revalidates": "Revalidate before changing cancellation semantics, adding backfill/legal retention, touching fiscal/payment workflows, or entering target/production/deployment/release scope."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "next_action": "Write intentional RED tests, implement the minimum transaction/history seam, run independent review and reconcile a bounded gate without promoting CVG-004 or global ERP.",
+  "revalidation_triggers": [
+    "Changing counter-sale close/reopen/payment semantics",
+    "Adding fiscal/invoice/refund or external provider effects",
+    "Changing audit retention/tamper evidence or target/production/release boundaries"
+  ]
+}

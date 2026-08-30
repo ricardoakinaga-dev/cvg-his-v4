@@ -1,0 +1,85 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-CHEQUES-IR-002",
+  "timestamp": "2026-08-26T04:02:23-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-004 bounded server-side read-only Reports > Cheques execution/export from persisted counter-sale payments",
+  "scope_ref": "CVG-004-REPORT-CHEQUES",
+  "version": 2,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The report-parity gap, corrected server-side bounded outcome, authority and explicit non-claims are recorded without promoting CVG-004 or global readiness.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-reports-cheques-export.md",
+        ".agent/backlog.json",
+        ".agent/authority.jsonl#AUTH-CVG-004-REPORT-CHEQUES-IR-002",
+        ".agent/gates/implementation-ready-CVG-004-report-cheques.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This gate authorizes only persisted read-only report facts and audited local execution/export; complete cheque lifecycle, payment-advance, target, provider and release evidence remain excluded."
+    },
+    {
+      "id": "IR-002",
+      "description": "The existing counter-sale payment table, tenant-aware repository boundary and audited ReportsService provide a coherent source and persistence boundary without a new cheque migration.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/db/src/schema/counterSales.ts",
+        "packages/modules/counter-sales/src/repositories/database-counter-sales.repository.ts",
+        "packages/modules/counter-sales/src/index.ts",
+        "packages/modules/reports/src/index.ts",
+        "apps/api/src/routes/reports-routes.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The persisted source contains payment method, amount, reference, notes and recorded time only; unsupported bank, maturity, settlement and return facts must not be inferred."
+    },
+    {
+      "id": "IR-003",
+      "description": "Focused RED tests can reject the absent financial-cheques definition/source and the placeholder workbench behavior before implementation.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/api/src/routes/reports-routes.test.ts",
+        "packages/modules/counter-sales/src/counter-sales.test.ts",
+        "apps/spa/src/pages/reports/__tests__/ReportWorkbenchPage.test.ts",
+        ".agent/tasks/CVG-004-reports-cheques-export.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Implementation, independent review and final API/SPA regression evidence are required before a bounded result is recorded."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-reports-cheques-export.md",
+    "packages/db/src/schema/counterSales.ts",
+    "packages/modules/counter-sales/src/repositories/database-counter-sales.repository.ts",
+    "packages/modules/counter-sales/src/index.ts",
+    "packages/modules/reports/src/index.ts",
+    "apps/api/src/routes/reports-routes.ts",
+    "apps/spa/src/pages/reports/ReportWorkbenchPage.vue"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "The server-side source, implementation, independent review and post-implementation regression are not complete at gate creation."
+  ],
+  "conditions": [],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner)",
+    "scope": "CVG-004 server-side read-only Reports > Cheques execution/export from persisted counter-sale payments",
+    "decision": "Authorize the bounded server-side report catalog, account-scoped payment query, audited report execution/export and SPA rendering for persisted check payments; all unsupported lifecycle and external scopes remain excluded.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-CHEQUES-IR-002",
+    "expires_or_revalidates": "Revalidate before expanding into cheque lifecycle mutations, unsupported fields, providers, target operations, production or release acceptance."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "next_action": "Write and run the API/module RED tests, then replace the client-side inferred projection with the persisted server-side report source and audited export path.",
+  "revalidation_triggers": [
+    "Changes to counter-sale payment persistence or tenant repository queries",
+    "Changes to report definition, execution/export or SPA rendering contracts",
+    "Expansion beyond persisted read-only payment facts"
+  ],
+  "supersedes": "GATE-CVG-004-REPORT-CHEQUES-IR-001"
+}

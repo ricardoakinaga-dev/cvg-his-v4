@@ -22,6 +22,7 @@ describe('worker health contract', () => {
         lastTickAt: '2026-04-17T00:00:00.000Z',
         lastError: null,
         initialized: true,
+        draining: false,
         requiredEventBusConsumers: ['payments'],
         registeredEventBusConsumers: ['payments'],
         deliveryGuaranteesReady: true,
@@ -51,6 +52,7 @@ describe('worker health contract', () => {
         lastTickAt: null,
         lastError: 'connection refused',
         initialized: true,
+        draining: false,
         requiredEventBusConsumers: ['payments'],
         registeredEventBusConsumers: ['payments'],
         deliveryGuaranteesReady: true,
@@ -94,6 +96,7 @@ describe('worker health contract', () => {
         lastTickAt: '2026-07-12T00:00:00.000Z',
         lastError: null,
         initialized: true,
+        draining: false,
         requiredEventBusConsumers: ['payments', 'billing', 'webhooks'],
         registeredEventBusConsumers: [],
         deliveryGuaranteesReady: true,
@@ -124,6 +127,7 @@ describe('worker health contract', () => {
         lastTickAt: '2026-07-12T00:00:00.000Z',
         lastError: null,
         initialized: true,
+        draining: false,
         requiredEventBusConsumers: ['payments'],
         registeredEventBusConsumers: ['payments'],
         deliveryGuaranteesReady: true,
@@ -136,5 +140,35 @@ describe('worker health contract', () => {
     expect(response.readiness.ready).toBe(false);
     expect(response.dependencies.worker.state).toBe('degraded');
     expect(response.dependencies.worker.detail).toContain('webhook delivery executor');
+  });
+
+  it('immediately removes readiness while the worker is draining', () => {
+    const response = createWorkerReadinessResponse(
+      'worker',
+      'production',
+      '0.1.0',
+      { headers: {} } as never,
+      {
+        databaseConfigured: true,
+        databaseHealthy: true,
+        databaseDetail: 'database connected',
+        persistenceMode: 'database',
+        ticksCompleted: 5,
+        lastTickAt: '2026-07-12T00:00:00.000Z',
+        lastError: null,
+        initialized: true,
+        draining: true,
+        requiredEventBusConsumers: ['payments'],
+        registeredEventBusConsumers: ['payments'],
+        deliveryGuaranteesReady: true,
+        durableConsumerGuardReady: true,
+        webhookDeliveryExecutorReady: true
+      }
+    );
+
+    expect(response.ok).toBe(false);
+    expect(response.readiness.ready).toBe(false);
+    expect(response.readiness.productionReady).toBe(false);
+    expect(response.dependencies.worker.detail).toContain('draining');
   });
 });

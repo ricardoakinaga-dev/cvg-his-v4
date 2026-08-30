@@ -33,6 +33,7 @@ import type {
   UpdateFiscalNfseLayoutRequest
 } from '@cvg-his-v2/shared-contracts';
 import { getPool } from '@cvg-his-v2/shared-database';
+import { ValidationError } from '@cvg-his-v2/shared-errors';
 import { readJsonBody as readLimitedJsonBody } from '../helpers/common.js';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
@@ -42,7 +43,10 @@ import { appendAudit } from '../helpers/audit-helper.js';
 export interface FiscalRoutesHandlers {
   fiscal: FiscalService;
   audit: AuditService;
-  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
+  requirePrincipal: (
+    request: IncomingMessage,
+    permissionCode: string
+  ) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
   fiscalBackofficeEnabled: boolean;
 }
 
@@ -65,11 +69,28 @@ function parseOptionalBoolean(value: string | null): boolean | undefined {
   return undefined;
 }
 
+const MAX_NFSE_DOCUMENT_LIST_ROWS = 1_000;
+
+function parseNfseDocumentListLimit(value: string | null): number {
+  if (value === null || value === '') return MAX_NFSE_DOCUMENT_LIST_ROWS;
+  if (!/^\d+$/.test(value)) {
+    throw new ValidationError('limit must be a positive integer', { value });
+  }
+
+  const limit = Number(value);
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > MAX_NFSE_DOCUMENT_LIST_ROWS) {
+    throw new ValidationError(`limit must be between 1 and ${MAX_NFSE_DOCUMENT_LIST_ROWS}`, {
+      value
+    });
+  }
+  return limit;
+}
+
 function mapFiscalDocumentStateError(message: string): number {
   if (
-    message.includes('Cannot issue document in status')
-    || message.includes('Cannot cancel document in status')
-    || message.includes('NFS-e operation is already in progress')
+    message.includes('Cannot issue document in status') ||
+    message.includes('Cannot cancel document in status') ||
+    message.includes('NFS-e operation is already in progress')
   ) {
     return 409;
   }
@@ -131,12 +152,14 @@ export async function handleFiscalRoutes(
   if (isWriteOperation && !fiscalBackofficeEnabled) {
     response.statusCode = 403;
     response.setHeader('content-type', 'application/json');
-    response.end(JSON.stringify({ code: 'FLAG_DISABLED', message: 'Fiscal backoffice is not enabled' }));
+    response.end(
+      JSON.stringify({ code: 'FLAG_DISABLED', message: 'Fiscal backoffice is not enabled' })
+    );
     return true;
   }
 
   if (pathname === '/fiscal/summary' && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'fiscal.read');
+    const principal = await requirePrincipal(request, 'fiscal.read');
     const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -163,7 +186,7 @@ export async function handleFiscalRoutes(
     const url = new URL(request.url ?? pathname, 'http://localhost');
 
     if (request.method === 'GET') {
-      const principal = requirePrincipal(request, 'fiscal.read');
+      const principal = await requirePrincipal(request, 'fiscal.read');
       const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
       const payload: FiscalIcmsTableListResponse = {
         items: await scopedFiscal.listIcmsTables({
@@ -174,7 +197,7 @@ export async function handleFiscalRoutes(
     }
 
     if (request.method === 'POST') {
-      const principal = requirePrincipal(request, 'fiscal.manage');
+      const principal = await requirePrincipal(request, 'fiscal.manage');
       const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
       const payload = (await readJsonBody(request)) as CreateFiscalIcmsTableRequest;
       const created = await scopedFiscal.createIcmsTable(payload);
@@ -199,7 +222,7 @@ export async function handleFiscalRoutes(
 
   const icmsTableMatch = pathname.match(/^\/fiscal\/icms\/([^/]+)$/);
   if (icmsTableMatch && request.method === 'PATCH') {
-    const principal = requirePrincipal(request, 'fiscal.manage');
+    const principal = await requirePrincipal(request, 'fiscal.manage');
     const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
     const payload = (await readJsonBody(request)) as UpdateFiscalIcmsTableRequest;
     const updated = await scopedFiscal.updateIcmsTable(
@@ -230,7 +253,7 @@ export async function handleFiscalRoutes(
     const url = new URL(request.url ?? pathname, 'http://localhost');
 
     if (request.method === 'GET') {
-      const principal = requirePrincipal(request, 'fiscal.read');
+      const principal = await requirePrincipal(request, 'fiscal.read');
       const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
       const payload: FiscalIpiTableListResponse = {
         items: await scopedFiscal.listIpiTables({
@@ -241,7 +264,7 @@ export async function handleFiscalRoutes(
     }
 
     if (request.method === 'POST') {
-      const principal = requirePrincipal(request, 'fiscal.manage');
+      const principal = await requirePrincipal(request, 'fiscal.manage');
       const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
       const payload = (await readJsonBody(request)) as CreateFiscalIpiTableRequest;
       const created = await scopedFiscal.createIpiTable(payload);
@@ -266,7 +289,7 @@ export async function handleFiscalRoutes(
 
   const ipiTableMatch = pathname.match(/^\/fiscal\/ipi\/([^/]+)$/);
   if (ipiTableMatch && request.method === 'PATCH') {
-    const principal = requirePrincipal(request, 'fiscal.manage');
+    const principal = await requirePrincipal(request, 'fiscal.manage');
     const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
     const payload = (await readJsonBody(request)) as UpdateFiscalIpiTableRequest;
     const updated = await scopedFiscal.updateIpiTable(
@@ -297,7 +320,7 @@ export async function handleFiscalRoutes(
     const url = new URL(request.url ?? pathname, 'http://localhost');
 
     if (request.method === 'GET') {
-      const principal = requirePrincipal(request, 'fiscal.read');
+      const principal = await requirePrincipal(request, 'fiscal.read');
       const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
       const payload: FiscalPisTableListResponse = {
         items: await scopedFiscal.listPisTables({
@@ -308,7 +331,7 @@ export async function handleFiscalRoutes(
     }
 
     if (request.method === 'POST') {
-      const principal = requirePrincipal(request, 'fiscal.manage');
+      const principal = await requirePrincipal(request, 'fiscal.manage');
       const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
       const payload = (await readJsonBody(request)) as CreateFiscalPisTableRequest;
       const created = await scopedFiscal.createPisTable(payload);
@@ -333,7 +356,7 @@ export async function handleFiscalRoutes(
 
   const pisTableMatch = pathname.match(/^\/fiscal\/pis\/([^/]+)$/);
   if (pisTableMatch && request.method === 'PATCH') {
-    const principal = requirePrincipal(request, 'fiscal.manage');
+    const principal = await requirePrincipal(request, 'fiscal.manage');
     const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
     const payload = (await readJsonBody(request)) as UpdateFiscalPisTableRequest;
     const updated = await scopedFiscal.updatePisTable(
@@ -364,7 +387,7 @@ export async function handleFiscalRoutes(
     const url = new URL(request.url ?? pathname, 'http://localhost');
 
     if (request.method === 'GET') {
-      const principal = requirePrincipal(request, 'fiscal.read');
+      const principal = await requirePrincipal(request, 'fiscal.read');
       const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
       const payload: FiscalCofinsTableListResponse = {
         items: await scopedFiscal.listCofinsTables({
@@ -375,7 +398,7 @@ export async function handleFiscalRoutes(
     }
 
     if (request.method === 'POST') {
-      const principal = requirePrincipal(request, 'fiscal.manage');
+      const principal = await requirePrincipal(request, 'fiscal.manage');
       const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
       const payload = (await readJsonBody(request)) as CreateFiscalCofinsTableRequest;
       const created = await scopedFiscal.createCofinsTable(payload);
@@ -400,7 +423,7 @@ export async function handleFiscalRoutes(
 
   const cofinsTableMatch = pathname.match(/^\/fiscal\/cofins\/([^/]+)$/);
   if (cofinsTableMatch && request.method === 'PATCH') {
-    const principal = requirePrincipal(request, 'fiscal.manage');
+    const principal = await requirePrincipal(request, 'fiscal.manage');
     const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
     const payload = (await readJsonBody(request)) as UpdateFiscalCofinsTableRequest;
     const updated = await scopedFiscal.updateCofinsTable(
@@ -409,7 +432,10 @@ export async function handleFiscalRoutes(
     );
 
     if (!updated) {
-      return json(response, 404, { code: 'COFINS_TABLE_NOT_FOUND', message: 'COFINS table not found' });
+      return json(response, 404, {
+        code: 'COFINS_TABLE_NOT_FOUND',
+        message: 'COFINS table not found'
+      });
     }
 
     appendAudit(audit, {
@@ -431,7 +457,7 @@ export async function handleFiscalRoutes(
     const url = new URL(request.url ?? pathname, 'http://localhost');
 
     if (request.method === 'GET') {
-      const principal = requirePrincipal(request, 'fiscal.read');
+      const principal = await requirePrincipal(request, 'fiscal.read');
       const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
       const payload: FiscalIbsCbsTableListResponse = {
         items: await scopedFiscal.listIbsCbsTables({
@@ -442,7 +468,7 @@ export async function handleFiscalRoutes(
     }
 
     if (request.method === 'POST') {
-      const principal = requirePrincipal(request, 'fiscal.manage');
+      const principal = await requirePrincipal(request, 'fiscal.manage');
       const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
       const payload = (await readJsonBody(request)) as CreateFiscalIbsCbsTableRequest;
       const created = await scopedFiscal.createIbsCbsTable(payload);
@@ -467,7 +493,7 @@ export async function handleFiscalRoutes(
 
   const ibsCbsTableMatch = pathname.match(/^\/fiscal\/ibs-cbs\/([^/]+)$/);
   if (ibsCbsTableMatch && request.method === 'PATCH') {
-    const principal = requirePrincipal(request, 'fiscal.manage');
+    const principal = await requirePrincipal(request, 'fiscal.manage');
     const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
     const payload = (await readJsonBody(request)) as UpdateFiscalIbsCbsTableRequest;
     const updated = await scopedFiscal.updateIbsCbsTable(
@@ -476,7 +502,10 @@ export async function handleFiscalRoutes(
     );
 
     if (!updated) {
-      return json(response, 404, { code: 'IBS_CBS_TABLE_NOT_FOUND', message: 'IBS/CBS table not found' });
+      return json(response, 404, {
+        code: 'IBS_CBS_TABLE_NOT_FOUND',
+        message: 'IBS/CBS table not found'
+      });
     }
 
     appendAudit(audit, {
@@ -498,17 +527,20 @@ export async function handleFiscalRoutes(
     if (request.method !== 'GET') {
       return false;
     }
-    const principal = requirePrincipal(request, 'fiscal.read');
+    const principal = await requirePrincipal(request, 'fiscal.read');
     const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const payload: FiscalPisCofinsRuleListResponse = {
       items: await scopedFiscal.listPisCofinsRules({
         regime:
-          (url.searchParams.get('regime') as 'simples_nacional' | 'lucro_presumido' | 'lucro_real' | null)
-          ?? undefined,
+          (url.searchParams.get('regime') as
+            | 'simples_nacional'
+            | 'lucro_presumido'
+            | 'lucro_real'
+            | null) ?? undefined,
         appliesTo:
-          (url.searchParams.get('appliesTo') as 'mercadoria' | 'servico' | 'ambos' | null)
-          ?? undefined
+          (url.searchParams.get('appliesTo') as 'mercadoria' | 'servico' | 'ambos' | null) ??
+          undefined
       })
     };
     return json(response, 200, payload);
@@ -518,22 +550,22 @@ export async function handleFiscalRoutes(
     const url = new URL(request.url ?? pathname, 'http://localhost');
 
     if (request.method === 'GET') {
-      const principal = requirePrincipal(request, 'fiscal.read');
+      const principal = await requirePrincipal(request, 'fiscal.read');
       const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
       const payload: FiscalCfopListResponse = {
         items: await scopedFiscal.listCfop({
           search: url.searchParams.get('search') ?? undefined,
           section: (url.searchParams.get('section') as 'entrada' | 'saida' | null) ?? undefined,
           documentType:
-            (url.searchParams.get('documentType') as 'nfe' | 'nfce' | 'nfse' | 'cte' | null)
-            ?? undefined
+            (url.searchParams.get('documentType') as 'nfe' | 'nfce' | 'nfse' | 'cte' | null) ??
+            undefined
         })
       };
       return json(response, 200, payload);
     }
 
     if (request.method === 'POST') {
-      const principal = requirePrincipal(request, 'fiscal.manage');
+      const principal = await requirePrincipal(request, 'fiscal.manage');
       const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
       const payload = (await readJsonBody(request)) as CreateFiscalCfopRequest;
       const created = await scopedFiscal.createCfop(payload);
@@ -558,7 +590,7 @@ export async function handleFiscalRoutes(
 
   const cfopMatch = pathname.match(/^\/fiscal\/cfop\/([^/]+)$/);
   if (cfopMatch && request.method === 'PATCH') {
-    const principal = requirePrincipal(request, 'fiscal.manage');
+    const principal = await requirePrincipal(request, 'fiscal.manage');
     const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
     const payload = (await readJsonBody(request)) as UpdateFiscalCfopRequest;
     const updated = await scopedFiscal.updateCfop(decodeURIComponent(cfopMatch[1] ?? ''), payload);
@@ -583,7 +615,7 @@ export async function handleFiscalRoutes(
   }
 
   if (pathname === '/fiscal/nfse' && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'fiscal.read');
+    const principal = await requirePrincipal(request, 'fiscal.read');
     const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const payload: FiscalNfseLayoutListResponse = {
@@ -597,7 +629,7 @@ export async function handleFiscalRoutes(
   }
 
   if (pathname === '/fiscal/nfse' && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'fiscal.manage');
+    const principal = await requirePrincipal(request, 'fiscal.manage');
     const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
     const payload = (await readJsonBody(request)) as CreateFiscalNfseLayoutRequest;
     const created = await scopedFiscal.createNfseLayout(payload);
@@ -618,21 +650,23 @@ export async function handleFiscalRoutes(
   }
 
   if (pathname === '/fiscal/nfse/documents' && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'fiscal.read');
+    const principal = await requirePrincipal(request, 'fiscal.read');
     const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const payload: FiscalNfseDocumentListResponse = {
       items: await scopedFiscal.listNfseDocuments({
-        status: (url.searchParams.get('status') as 'draft' | 'issued' | 'cancelled' | 'error' | null)
-          ?? undefined,
-        customerSearch: url.searchParams.get('customerSearch') ?? undefined
+        status:
+          (url.searchParams.get('status') as 'draft' | 'issued' | 'cancelled' | 'error' | null) ??
+          undefined,
+        customerSearch: url.searchParams.get('customerSearch') ?? undefined,
+        limit: parseNfseDocumentListLimit(url.searchParams.get('limit'))
       })
     };
     return json(response, 200, payload);
   }
 
   if (pathname === '/fiscal/nfse/documents' && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'fiscal.manage');
+    const principal = await requirePrincipal(request, 'fiscal.manage');
     const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
 
     try {
@@ -662,7 +696,7 @@ export async function handleFiscalRoutes(
 
   const nfseDocumentGetMatch = pathname.match(/^\/fiscal\/nfse\/documents\/([^/]+)$/);
   if (nfseDocumentGetMatch && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'fiscal.read');
+    const principal = await requirePrincipal(request, 'fiscal.read');
     const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
     const documentId = requireNonEmptyString(nfseDocumentGetMatch[1], 'documentId');
     const found = await scopedFiscal.getNfseDocument(documentId);
@@ -677,9 +711,11 @@ export async function handleFiscalRoutes(
     return json(response, 200, found);
   }
 
-  const nfseDocumentActionMatch = pathname.match(/^\/fiscal\/nfse\/documents\/([^/]+)\/(issue|cancel)$/);
+  const nfseDocumentActionMatch = pathname.match(
+    /^\/fiscal\/nfse\/documents\/([^/]+)\/(issue|cancel)$/
+  );
   if (nfseDocumentActionMatch && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'fiscal.manage');
+    const principal = await requirePrincipal(request, 'fiscal.manage');
     const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
     const documentId = requireNonEmptyString(nfseDocumentActionMatch[1], 'documentId');
     const action = nfseDocumentActionMatch[2];
@@ -790,7 +826,7 @@ export async function handleFiscalRoutes(
 
   const nfseLayoutMatch = pathname.match(/^\/fiscal\/nfse\/([^/]+)$/);
   if (nfseLayoutMatch && request.method === 'PATCH') {
-    const principal = requirePrincipal(request, 'fiscal.manage');
+    const principal = await requirePrincipal(request, 'fiscal.manage');
     const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
     const layoutId = requireNonEmptyString(nfseLayoutMatch[1], 'layoutId');
     const payload = (await readJsonBody(request)) as UpdateFiscalNfseLayoutRequest;
@@ -822,7 +858,7 @@ export async function handleFiscalRoutes(
     if (request.method !== 'GET') {
       return false;
     }
-    const principal = requirePrincipal(request, 'fiscal.read');
+    const principal = await requirePrincipal(request, 'fiscal.read');
     const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const payload: FiscalNcmEntryListResponse = {
@@ -837,7 +873,7 @@ export async function handleFiscalRoutes(
     const url = new URL(request.url ?? pathname, 'http://localhost');
 
     if (request.method === 'GET') {
-      const principal = requirePrincipal(request, 'fiscal.read');
+      const principal = await requirePrincipal(request, 'fiscal.read');
       const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
       const payload: FiscalIcmsMatrixListResponse = {
         items: await scopedFiscal.listIcmsMatrix({
@@ -845,15 +881,15 @@ export async function handleFiscalRoutes(
           ufOrigin: url.searchParams.get('ufOrigin') ?? undefined,
           ufDestination: url.searchParams.get('ufDestination') ?? undefined,
           operationType:
-            (url.searchParams.get('operationType') as 'interna' | 'interestadual' | null)
-            ?? undefined
+            (url.searchParams.get('operationType') as 'interna' | 'interestadual' | null) ??
+            undefined
         })
       };
       return json(response, 200, payload);
     }
 
     if (request.method === 'POST') {
-      const principal = requirePrincipal(request, 'fiscal.manage');
+      const principal = await requirePrincipal(request, 'fiscal.manage');
       const scopedFiscal = getScopedFiscalService(fiscal, principal.user.accountId);
       const payload = (await readJsonBody(request)) as CreateFiscalIcmsMatrixRequest;
       const created = await scopedFiscal.createIcmsMatrix(payload);

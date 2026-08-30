@@ -5,10 +5,15 @@ import { fileURLToPath } from 'node:url';
 import type { PoolClient } from 'pg';
 
 import { closeDbConnection, pool } from './connection.js';
+import { assertMigrationChecksums, type AppliedMigration } from './migration-integrity.js';
+import { APPLIED_MIGRATIONS_QUERY, MIGRATIONS_TABLE } from './migration-query.js';
+
+export { assertMigrationChecksums } from './migration-integrity.js';
+export type { AppliedMigration } from './migration-integrity.js';
+export { APPLIED_MIGRATIONS_QUERY } from './migration-query.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const migrationsFolder = resolve(__dirname, '../migrations');
-const MIGRATIONS_TABLE = 'drizzle_migrations';
 const OPTIONAL_RLS_TABLES = [
   'counter_sales',
   'counter_sale_items',
@@ -56,11 +61,11 @@ async function ensureMigrationsTable(client: PoolClient): Promise<void> {
   `);
 }
 
-async function getAppliedMigrations(client: PoolClient): Promise<Set<string>> {
-  const result = await client.query<{ migration_name: string }>(
-    `SELECT migration_name FROM ${MIGRATIONS_TABLE} ORDER BY id ASC`
+export async function getAppliedMigrations(client: PoolClient): Promise<AppliedMigration[]> {
+  const result = await client.query<AppliedMigration>(
+    APPLIED_MIGRATIONS_QUERY
   );
-  return new Set(result.rows.map((row) => row.migration_name));
+  return result.rows;
 }
 
 function splitSqlStatements(sql: string): string[] {
@@ -206,7 +211,8 @@ export async function runMigrations(): Promise<void> {
     await client.query("SELECT pg_advisory_lock(hashtext('cvg-his-v2:migrations'))");
     await ensureMigrationsTable(client);
     const files = getMigrationFiles();
-    const appliedMigrations = await getAppliedMigrations(client);
+    const appliedRecords = await getAppliedMigrations(client);
+    const appliedMigrations = assertMigrationChecksums(files, appliedRecords);
 
     for (const file of files) {
       if (appliedMigrations.has(file.name)) {

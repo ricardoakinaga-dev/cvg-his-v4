@@ -1,0 +1,86 @@
+{
+  "record_id": "GATE-CVG-003-AUTH-LINEARIZATION-IR-001",
+  "timestamp": "2026-08-26T03:28:47-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-003 bounded transaction-level authorization linearization for protected application writes",
+  "scope_ref": "CVG-003-AUTH-LINEARIZATION",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The final-guard-to-protected-write race, bounded scope, owner, authority and explicit non-claims are recorded without promoting CVG-003 or product readiness.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-003-auth-linearization.md",
+        ".agent/artifacts/CVG-003-access-restore-security-2026-08-26.md",
+        ".agent/backlog.json",
+        ".agent/authority.jsonl#AUTH-CVG-003-AUTH-LINEARIZATION-IR-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This gate authorizes only the protected application-write boundary; read-only access, direct SQL/admin writes, target behavior, providers, production and release remain excluded."
+    },
+    {
+      "id": "IR-002",
+      "description": "The existing mutating-route tenant unit-of-work, active transaction scope and final requirePrincipal boundary provide a coherent insertion point for an account-scoped transaction advisory lock.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/api/src/server.ts",
+        "apps/api/src/helpers/tenant-command.ts",
+        "packages/shared/database/src/tenant-unit-of-work.ts",
+        "packages/shared/database/src/transaction-scope.ts",
+        "packages/modules/access-control/src/index.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The lock is valid only while the existing application transaction is active; no new transaction protocol is introduced for GET/read-only routes or bypass paths."
+    },
+    {
+      "id": "IR-003",
+      "description": "Rejecting unit and real PostgreSQL/two-instance HTTP tests exist for fail-closed scope handling and revocation committing during a paused protected write; the current implementation fails the behavioral race before the lock is added.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/shared/database/src/tenant-authorization-lock.test.ts",
+        "tests/integration/database/inpatient-clinical-financial-vertical-http-postgres.test.ts",
+        ".agent/tasks/CVG-003-auth-linearization.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The RED evidence is disposable local PostgreSQL/HTTP evidence. GREEN implementation, independent review, regressions and artifact reconciliation are required before a verified slice can be recorded."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-003-auth-linearization.md",
+    ".agent/artifacts/CVG-003-access-restore-security-2026-08-26.md",
+    "apps/api/src/server.ts",
+    "packages/shared/database/src/tenant-unit-of-work.ts",
+    "packages/shared/database/src/transaction-scope.ts",
+    "packages/shared/database/src/tenant-authorization-lock.test.ts",
+    "tests/integration/database/inpatient-clinical-financial-vertical-http-postgres.test.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "The lock helper and final-guard wiring are not implemented yet.",
+    "Independent review and post-implementation regression evidence are not complete."
+  ],
+  "conditions": [],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner)",
+    "scope": "CVG-003 transaction-level authorization linearization for protected application writes",
+    "decision": "Authorize reversible repository implementation and disposable PostgreSQL/two-instance HTTP verification of the bounded account-scoped transaction advisory-lock authorization boundary; direct SQL, read-only authorization, providers, credentials, production, deployment, external mutation and release remain excluded.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-003-AUTH-LINEARIZATION-IR-001",
+    "expires_or_revalidates": "Revalidate before expanding to read authorization, worker/direct SQL paths, target operations, external providers, credentials, production, deployment or release acceptance."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "next_action": "Implement the smallest transaction-scoped advisory-lock helper and place it before the final fresh authorization read, then run the RED unit and HTTP tests to GREEN.",
+  "revalidation_triggers": [
+    "Changes to tenant unit-of-work transaction scope or protected mutation dispatch",
+    "Changes to access-control hydration, revocation mutation or final requirePrincipal ordering",
+    "PostgreSQL compatibility, security-review finding or regression involving advisory locks",
+    "Expansion beyond protected application writes"
+  ],
+  "supersedes": null
+}

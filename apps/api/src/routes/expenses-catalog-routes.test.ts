@@ -14,13 +14,22 @@ class MockResponse extends Writable {
   readonly #chunks: Buffer[] = [];
   readonly #headers = new Map<string, string>();
 
-  _write(chunk: string | Buffer, _encoding: BufferEncoding, callback: (error?: Error | null) => void): void {
+  _write(
+    chunk: string | Buffer,
+    _encoding: BufferEncoding,
+    callback: (error?: Error | null) => void
+  ): void {
     this.#chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
     callback();
   }
 
-  override end(chunk?: string | Buffer | (() => void), encoding?: BufferEncoding | (() => void), callback?: () => void): this {
-    const finalCallback = typeof chunk === 'function' ? chunk : typeof encoding === 'function' ? encoding : callback;
+  override end(
+    chunk?: string | Buffer | (() => void),
+    encoding?: BufferEncoding | (() => void),
+    callback?: () => void
+  ): this {
+    const finalCallback =
+      typeof chunk === 'function' ? chunk : typeof encoding === 'function' ? encoding : callback;
     if (chunk !== undefined && typeof chunk !== 'function') {
       this.#chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
     }
@@ -122,9 +131,83 @@ test('expenses catalog routes fail fast on default runtime when database mode is
     assert.equal(response.statusCode, 503);
     assert.deepEqual(response.bodyJson(), {
       code: 'FINANCE_CATALOG_DB_REQUIRED',
-      message: 'Finance catalog runtime requires database-backed persistence in the default API runtime',
+      message:
+        'Finance catalog runtime requires database-backed persistence in the default API runtime',
       correlationId: 'corr-exp-runtime-1'
     });
+  } finally {
+    setAppState({
+      initialized: false,
+      databaseConfigured: false,
+      databaseHealthy: false,
+      persistenceMode: 'not-initialized',
+      databaseDetail: 'Not initialized'
+    });
+  }
+});
+
+test('expenses catalog routes use the composed database store in configured runtime', async () => {
+  const { audit } = createAuditCollector();
+  let calls = 0;
+  setAppState({
+    initialized: true,
+    databaseConfigured: true,
+    databaseHealthy: true,
+    persistenceMode: 'database',
+    databaseDetail: 'Database runtime ready'
+  });
+
+  try {
+    const response = new MockResponse();
+    const handled = await handleExpensesCatalogRoutes(
+      '/expenses-catalog',
+      { method: 'GET', url: '/expenses-catalog?page=1&pageSize=10' } as never,
+      response as never,
+      'corr-exp-runtime-composed',
+      {
+        audit: audit as never,
+        requirePrincipal: () => createPrincipal(),
+        store: {
+          async list(accountId: string) {
+            calls += 1;
+            assert.equal(accountId, 'acc-1');
+            return {
+              items: [
+                {
+                  id: 'DES-composed',
+                  accountId,
+                  name: 'Despesa persistida',
+                  kind: 'Fixo',
+                  category: 'Tecnologia',
+                  costCenterCode: 'CC-ADM',
+                  costCenterName: 'Administrativo Central',
+                  description: 'Fonte do repositório composto',
+                  createdBy: 'user-1',
+                  createdAt: '2026-05-01T00:00:00.000Z',
+                  updatedAt: '2026-05-01T00:00:00.000Z'
+                }
+              ],
+              categories: ['Tecnologia'],
+              costCenters: [],
+              page: 1,
+              pageSize: 10,
+              totalItems: 1,
+              totalPages: 1,
+              sort: 'name',
+              order: 'asc'
+            };
+          }
+        } as never
+      }
+    );
+
+    assert.equal(handled, true);
+    assert.equal(response.statusCode, 200);
+    assert.equal(calls, 1);
+    assert.equal(
+      response.bodyJson<{ items: Array<{ id: string }> }>().items[0]?.id,
+      'DES-composed'
+    );
   } finally {
     setAppState({
       initialized: false,
@@ -192,7 +275,13 @@ test('expenses catalog routes list paginated items with server-side filters and 
     assert.equal(handled, true);
     assert.equal(response.statusCode, 200);
     const body = response.bodyJson<{
-      items: Array<{ id: string; name: string; category: string; costCenterCode?: string; costCenterName?: string }>;
+      items: Array<{
+        id: string;
+        name: string;
+        category: string;
+        costCenterCode?: string;
+        costCenterName?: string;
+      }>;
       categories: string[];
       costCenters: Array<{ code: string; name: string }>;
       page: number;
@@ -247,7 +336,10 @@ test('expenses catalog routes list paginated items with server-side filters and 
     assert.equal(centersBody.pageSize, 1);
     assert.equal(centersBody.totalItems, 3);
     assert.equal(centersBody.totalPages, 3);
-    assert.deepEqual(centersBody.items.map((item) => item.code), ['CLI-ATD']);
+    assert.deepEqual(
+      centersBody.items.map((item) => item.code),
+      ['CLI-ATD']
+    );
   } finally {
     await rm(tempDir, { recursive: true, force: true });
   }
@@ -278,7 +370,11 @@ test('expenses catalog routes persist to disk across runtime restart, support co
       }
     );
     assert.equal(createCenterResponse.statusCode, 201);
-    const createdCenter = createCenterResponse.bodyJson<{ code: string; name: string; owner: string }>();
+    const createdCenter = createCenterResponse.bodyJson<{
+      code: string;
+      name: string;
+      owner: string;
+    }>();
     assert.equal(createdCenter.code, 'ADM-FIN');
     assert.equal(createdCenter.name, 'Administrativo Financeiro');
 
@@ -324,7 +420,13 @@ test('expenses catalog routes persist to disk across runtime restart, support co
       }
     );
     assert.equal(createResponse.statusCode, 201);
-    const created = createResponse.bodyJson<{ id: string; name: string; category: string; costCenterCode: string; costCenterName: string }>();
+    const created = createResponse.bodyJson<{
+      id: string;
+      name: string;
+      category: string;
+      costCenterCode: string;
+      costCenterName: string;
+    }>();
     assert.equal(created.name, 'Hospedagem Cloud');
     assert.equal(created.category, 'Tecnologia');
     assert.equal(created.costCenterCode, 'ADM-FIN');
@@ -376,7 +478,11 @@ test('expenses catalog routes persist to disk across runtime restart, support co
       }
     );
     assert.equal(updateResponse.statusCode, 200);
-    const updated = updateResponse.bodyJson<{ name: string; costCenterCode: string; costCenterName: string }>();
+    const updated = updateResponse.bodyJson<{
+      name: string;
+      costCenterCode: string;
+      costCenterName: string;
+    }>();
     assert.equal(updated.name, 'Hospedagem Cloud Premium');
     assert.equal(updated.costCenterCode, 'LAB-OP');
     assert.equal(updated.costCenterName, 'Laboratório');
@@ -433,7 +539,9 @@ test('expenses catalog routes persist to disk across runtime restart, support co
         storagePath
       }
     );
-    const listedAfterRestart = listAfterRestartResponse.bodyJson<{ items: Array<{ id: string; name: string; costCenterCode: string }> }>();
+    const listedAfterRestart = listAfterRestartResponse.bodyJson<{
+      items: Array<{ id: string; name: string; costCenterCode: string }>;
+    }>();
     assert.equal(listedAfterRestart.items.length, 1);
     assert.equal(listedAfterRestart.items[0].name, 'Hospedagem Cloud Premium');
     assert.equal(listedAfterRestart.items[0].costCenterCode, 'LAB-OP');
@@ -468,7 +576,9 @@ test('expenses catalog routes persist to disk across runtime restart, support co
         (event) =>
           event.action === 'update_cost_center_catalog_item' &&
           event.payloadSummary.includes('owner: Gerência Financeira → Diretoria Financeira') &&
-          event.payloadSummary.includes('description: Rateio administrativo do financeiro → Rateio administrativo consolidado')
+          event.payloadSummary.includes(
+            'description: Rateio administrativo do financeiro → Rateio administrativo consolidado'
+          )
       )
     );
     assert.ok(
@@ -487,7 +597,9 @@ test('expenses catalog routes persist to disk across runtime restart, support co
           event.action === 'update_expense_catalog_item' &&
           event.payloadSummary.includes('name: Hospedagem Cloud → Hospedagem Cloud Premium') &&
           event.payloadSummary.includes('costCenterCode: ADM-FIN → LAB-OP') &&
-          event.payloadSummary.includes('description: Infraestrutura de produção → Infraestrutura revisada')
+          event.payloadSummary.includes(
+            'description: Infraestrutura de produção → Infraestrutura revisada'
+          )
       )
     );
     assert.ok(events.some((event) => event.action === 'remove_cost_center_catalog_item'));

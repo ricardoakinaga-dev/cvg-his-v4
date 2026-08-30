@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { AccountId, AuditEventId, AuditEventSummary } from '@cvg-his-v2/shared-types';
-import { AuditService } from './index.js';
+import {
+  AuditService,
+  decodeAuditCursor,
+  encodeAuditCursor,
+  paginateAuditEvents
+} from './index.js';
 import { InMemoryAuditRepository } from './repositories/in-memory-audit.repository.js';
 
 describe('AuditService', () => {
@@ -107,6 +112,102 @@ describe('AuditService', () => {
     expect(events[1].payloadSummary).toBe('First');
   });
 
+  it('paginates audit events with an opaque stable cursor and account filtering', async () => {
+    const accountId = 'acc_cursor' as AccountId;
+    const otherAccountId = 'acc_other' as AccountId;
+    const first = service.write({
+      actorId: 'user_1',
+      accountId,
+      module: 'audit',
+      action: 'first',
+      entityType: 'audit-event',
+      entityId: 'first',
+      payloadSummary: 'First cursor event',
+      riskLevel: 'low'
+    });
+    const second = service.write({
+      actorId: 'user_1',
+      accountId,
+      module: 'audit',
+      action: 'second',
+      entityType: 'audit-event',
+      entityId: 'second',
+      payloadSummary: 'Second cursor event',
+      riskLevel: 'low'
+    });
+    service.write({
+      actorId: 'user_2',
+      accountId: otherAccountId,
+      module: 'audit',
+      action: 'foreign',
+      entityType: 'audit-event',
+      entityId: 'foreign',
+      payloadSummary: 'Foreign cursor event',
+      riskLevel: 'low'
+    });
+
+    const firstPage = await service.listPage({ accountId, limit: 1 });
+
+    expect(firstPage.items).toHaveLength(1);
+    expect([first.eventId, second.eventId]).toContain(firstPage.items[0]?.eventId);
+    expect(firstPage.nextCursor).toBeDefined();
+    expect(firstPage.nextCursor).not.toContain(firstPage.items[0]?.eventId ?? '');
+
+    const secondPage = await service.listPage({
+      accountId,
+      limit: 2,
+      cursor: decodeAuditCursor(firstPage.nextCursor as string)
+    });
+
+    expect(secondPage.items).toHaveLength(1);
+    expect(secondPage.items[0]?.accountId).toBe(accountId);
+    expect(secondPage.items[0]?.eventId).not.toBe(firstPage.items[0]?.eventId);
+    expect(secondPage.nextCursor).toBeUndefined();
+  });
+
+  it('rejects malformed audit cursors', () => {
+    expect(() => decodeAuditCursor('not-a-cursor')).toThrow('Invalid audit cursor');
+    expect(() =>
+      decodeAuditCursor(
+        encodeAuditCursor({
+          occurredAt: 'not-a-date',
+          eventId: 'event-1' as AuditEventId
+        })
+      )
+    ).toThrow('Invalid audit cursor');
+  });
+
+  it('uses the event id as a tie-breaker when timestamps are equal', () => {
+    const accountId = 'acc_tie' as AccountId;
+    const events = (['event-b', 'event-a'] as const).map((eventId) => ({
+      eventId: eventId as AuditEventId,
+      occurredAt: '2026-08-25T12:00:00.000Z',
+      actorId: 'user-1',
+      accountId,
+      module: 'audit',
+      action: 'read',
+      entityType: 'audit-event',
+      entityId: eventId,
+      correlationId: `corr-${eventId}`,
+      payloadSummary: eventId,
+      riskLevel: 'low' as const
+    }));
+
+    const firstPage = paginateAuditEvents(events, { accountId, limit: 1 });
+    const secondPage = paginateAuditEvents(events, {
+      accountId,
+      limit: 1,
+      cursor: {
+        occurredAt: firstPage.items[0]!.occurredAt,
+        eventId: firstPage.items[0]!.eventId
+      }
+    });
+
+    expect(firstPage.items.map((event) => event.eventId)).toEqual(['event-b']);
+    expect(secondPage.items.map((event) => event.eventId)).toEqual(['event-a']);
+    expect(secondPage.hasMore).toBe(false);
+  });
+
   it('seeds system event with system actor', () => {
     service.seedSystemEvent('System started');
     const events = service.list();
@@ -125,7 +226,7 @@ describe('AuditService', () => {
     expect(events[0].payloadSummary).toBe('Database connected');
   });
 
-  it('builds an operational audit coverage report by account', () => {
+  it('builds an operational audit coverage report by account', async () => {
     service.write({
       actorId: 'user_1',
       accountId: 'acc_1' as AccountId,
@@ -147,7 +248,7 @@ describe('AuditService', () => {
       riskLevel: 'high'
     });
 
-    const report = service.getOperationalCoverageReport('acc_1' as AccountId, [
+    const report = await service.getOperationalCoverageReport('acc_1' as AccountId, [
       {
         id: 'lgpd-export',
         module: 'lgpd',
@@ -175,7 +276,7 @@ describe('AuditService', () => {
     expect(report.requirements[1].covered).toBe(false);
   });
 
-  it('includes report delivery alerts in the default operational coverage requirements', () => {
+  it('includes report delivery alerts in the default operational coverage requirements', async () => {
     service.write({
       actorId: 'user_reports',
       accountId: 'acc_1' as AccountId,
@@ -187,7 +288,7 @@ describe('AuditService', () => {
       riskLevel: 'high'
     });
 
-    const report = service.getOperationalCoverageReport('acc_1' as AccountId);
+    const report = await service.getOperationalCoverageReport('acc_1' as AccountId);
     const requirement = report.requirements.find(
       (item) => item.id === 'reports-delivery-alerts-read'
     );
@@ -195,6 +296,104 @@ describe('AuditService', () => {
     expect(requirement).toBeDefined();
     expect(requirement?.covered).toBe(true);
     expect(requirement?.evidenceEventId).toBeDefined();
+  });
+
+  it('builds operational coverage from committed repository rows even when the hot cache is empty', async () => {
+    const accountId = 'acc_committed_coverage' as AccountId;
+    const repository = new InMemoryAuditRepository();
+    await repository.create({
+      eventId: 'evt_committed_coverage' as AuditEventId,
+      occurredAt: '2026-08-29T14:00:00.000Z',
+      actorId: 'user-coverage',
+      accountId,
+      module: 'lgpd',
+      action: 'personal_data_exported',
+      entityType: 'owner',
+      entityId: 'owner-coverage',
+      correlationId: 'corr-coverage',
+      payloadSummary: 'Committed coverage evidence',
+      riskLevel: 'high'
+    });
+
+    const freshService = new AuditService({ auditRepository: repository });
+    const report = await freshService.getOperationalCoverageReport(accountId, [
+      {
+        id: 'lgpd-export',
+        module: 'lgpd',
+        action: 'personal_data_exported',
+        minimumRiskLevel: 'high',
+        description: 'Exportacao LGPD'
+      }
+    ]);
+
+    expect(report.totalEvents).toBe(1);
+    expect(report.coveredRequirements).toBe(1);
+    expect(report.requirements[0]?.evidenceEventId).toBe('evt_committed_coverage');
+  });
+
+  it('excludes cache-only events and reads the complete committed snapshot beyond 100 rows', async () => {
+    const accountId = 'acc_complete_coverage' as AccountId;
+    const repository = new InMemoryAuditRepository();
+    const serviceWithStaleCache = new AuditService({ auditRepository: repository });
+    serviceWithStaleCache.write({
+      actorId: 'user-stale',
+      accountId,
+      module: 'audit',
+      action: 'stale_cache_only',
+      entityType: 'audit-event',
+      entityId: 'stale-cache-only',
+      payloadSummary: 'Must not be measured',
+      riskLevel: 'low'
+    });
+    await serviceWithStaleCache.waitForPersistence();
+    repository.clear();
+
+    for (let index = 0; index < 101; index += 1) {
+      await repository.create({
+        eventId: `evt_complete_${index}` as AuditEventId,
+        occurredAt: new Date(Date.UTC(2026, 7, 29, 14, 0, index)).toISOString(),
+        actorId: 'user-complete',
+        accountId,
+        module: 'audit',
+        action: `committed_${index}`,
+        entityType: 'audit-event',
+        entityId: `committed-${index}`,
+        correlationId: `corr-complete-${index}`,
+        payloadSummary: 'Committed complete snapshot event',
+        riskLevel: 'low'
+      });
+    }
+
+    const report = await serviceWithStaleCache.getOperationalCoverageReport(accountId, []);
+
+    expect(report.totalEvents).toBe(101);
+    expect(report.eventsByModule.audit).toBe(101);
+    expect(report.requirements).toEqual([]);
+  });
+
+  it('fails closed when a configured repository cannot provide operational coverage', async () => {
+    const unavailableRepository = {
+      async create(): Promise<void> {},
+      async list(): Promise<readonly AuditEventSummary[]> {
+        return [];
+      },
+      async listForCacheRefresh(): Promise<readonly AuditEventSummary[]> {
+        throw new Error('audit-store-down');
+      },
+      async findById(): Promise<AuditEventSummary | null> {
+        return null;
+      }
+    };
+    const serviceWithUnavailableRepository = new AuditService({
+      auditRepository: unavailableRepository
+    });
+
+    await expect(
+      serviceWithUnavailableRepository.getOperationalCoverageReport('acc_unavailable' as AccountId)
+    ).rejects.toMatchObject({
+      name: 'AuditCoverageUnavailableError',
+      code: 'AUDIT_COVERAGE_UNAVAILABLE'
+    });
   });
 });
 
@@ -249,6 +448,121 @@ describe('AuditService with repository', () => {
     await new Promise((r) => setTimeout(r, 10));
     const fromRepo = await repo.list();
     expect(fromRepo).toHaveLength(2);
+  });
+
+  it('removes a failed synchronous audit write from the hot cache', async () => {
+    const failingRepository = {
+      async create(): Promise<void> {
+        throw new Error('audit-store-down');
+      },
+      async list(): Promise<readonly AuditEventSummary[]> {
+        return [];
+      },
+      async findById(): Promise<AuditEventSummary | null> {
+        return null;
+      }
+    };
+    const failingService = new AuditService({ auditRepository: failingRepository });
+
+    await expect(
+      failingService.writeAndWait({
+        actorId: 'user_1',
+        accountId: 'acc_1' as AccountId,
+        module: 'access-control',
+        action: 'permission_granted',
+        entityType: 'access-permission-assignment',
+        entityId: 'team-1',
+        payloadSummary: 'Permission assignment changed',
+        riskLevel: 'high'
+      })
+    ).rejects.toThrow('audit-store-down');
+
+    expect(failingService.list()).toEqual([]);
+  });
+
+  it('does not let a previous persistence failure poison the next synchronous write', async () => {
+    let attempts = 0;
+    const persisted: AuditEventSummary[] = [];
+    const repository = {
+      async create(event: AuditEventSummary): Promise<void> {
+        attempts += 1;
+        if (attempts === 1) throw new Error('first-audit-store-down');
+        persisted.push(event);
+      },
+      async list(): Promise<readonly AuditEventSummary[]> {
+        return persisted;
+      },
+      async findById(): Promise<AuditEventSummary | null> {
+        return null;
+      }
+    };
+    const auditService = new AuditService({ auditRepository: repository });
+
+    await expect(
+      auditService.writeAndWait({
+        actorId: 'user_1',
+        accountId: 'acc_1' as AccountId,
+        module: 'counter-sales',
+        action: 'cancelled',
+        entityType: 'counter-sale',
+        entityId: 'sale-1',
+        payloadSummary: 'First cancellation',
+        riskLevel: 'high'
+      })
+    ).rejects.toThrow('first-audit-store-down');
+
+    const second = await auditService.writeAndWait({
+      actorId: 'user_1',
+      accountId: 'acc_1' as AccountId,
+      module: 'counter-sales',
+      action: 'cancelled',
+      entityType: 'counter-sale',
+      entityId: 'sale-2',
+      payloadSummary: 'Second cancellation',
+      riskLevel: 'high'
+    });
+
+    expect(persisted.map((event) => event.eventId)).toEqual([second.eventId]);
+    expect(auditService.list().map((event) => event.eventId)).toEqual([second.eventId]);
+  });
+
+  it('does not let a failed legacy bootstrap seed poison the first tenant write', async () => {
+    let attempts = 0;
+    const persisted: AuditEventSummary[] = [];
+    const repository = {
+      async create(event: AuditEventSummary): Promise<void> {
+        attempts += 1;
+        if (event.action === 'bootstrap') {
+          throw new Error('legacy-bootstrap-is-read-only');
+        }
+        persisted.push(event);
+      },
+      async list(): Promise<readonly AuditEventSummary[]> {
+        return persisted;
+      },
+      async findById(): Promise<AuditEventSummary | null> {
+        return null;
+      }
+    };
+    const auditService = new AuditService({ auditRepository: repository });
+
+    auditService.seedSystemEvent('System started');
+    await expect(auditService.waitForPersistence()).resolves.toBeUndefined();
+
+    const tenantEvent = await auditService.writeAndWait({
+      actorId: 'user_1',
+      accountId: 'acc_1' as AccountId,
+      module: 'inpatient',
+      action: 'admit',
+      entityType: 'inpatient-stay',
+      entityId: 'stay-1',
+      payloadSummary: 'Patient admitted',
+      riskLevel: 'high'
+    });
+
+    expect(attempts).toBe(2);
+    expect(persisted).toEqual([tenantEvent]);
+    expect(auditService.list()).toEqual([tenantEvent]);
   });
 
   it('rebuilds one account cache from committed rows after a rollback', async () => {

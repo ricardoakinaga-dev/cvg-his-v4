@@ -1,0 +1,84 @@
+{
+  "record_id": "GATE-CVG-004-PUBLIC-WORKER-EVENT-CHAIN-IR-001",
+  "timestamp": "2026-08-26T07:23:18-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-004 bounded authenticated billing API to durable outbox to real worker process proof",
+  "scope_ref": "CVG-004-PUBLIC-WORKER-EVENT-CHAIN",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The public worker-chain gap, bounded contract, owner and exclusions are recorded without promoting CVG-004 or global readiness.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-public-worker-event-chain.md",
+        ".agent/backlog.json",
+        ".agent/authority.jsonl#AUTH-CVG-004-PUBLIC-WORKER-EVENT-CHAIN-IR-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The gate authorizes only one local authenticated billing event path and its disposable process proof."
+    },
+    {
+      "id": "IR-002",
+      "description": "The API publishes billing.record.created, the outbox repository is durable, the worker registers required consumers and the durable inbox guard is available in the current runtime.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/api/src/runtime.ts",
+        "apps/api/src/routes/billing-routes.ts",
+        "packages/modules/event-bus/src/event-bus.service.ts",
+        "packages/modules/event-consumers/src/consumer-registry.ts",
+        "apps/worker/src/index.ts",
+        "apps/worker/src/bootstrap.ts",
+        "tests/integration/process/worker-runtime-entrypoint.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Current evidence shows the components separately; the new process contract must prove their public-to-worker composition."
+    },
+    {
+      "id": "IR-003",
+      "description": "A focused RED process contract can reject synthetic outbox seeding, missing restricted roles, missing health consumers, incomplete inbox claims and duplicate processing.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-public-worker-event-chain.md",
+        "tests/integration/process/public-api-worker-event-chain.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Implementation and real PostgreSQL/process verification are required before a bounded PASS can be recorded."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-public-worker-event-chain.md",
+    "apps/api/src/runtime.ts",
+    "apps/api/src/routes/billing-routes.ts",
+    "packages/modules/event-bus/src/event-bus.service.ts",
+    "packages/modules/event-consumers/src/consumer-registry.ts",
+    "apps/worker/src/index.ts",
+    "tests/integration/process/worker-runtime-entrypoint.test.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "The RED process contract, implementation/fixture completion, real process execution and independent critique are not complete at gate creation."
+  ],
+  "conditions": [],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner)",
+    "scope": "CVG-004 bounded authenticated billing API to durable outbox to real worker process proof",
+    "decision": "Authorize reversible repository implementation and disposable PostgreSQL/process verification of one account-scoped billing.record.created chain; providers, credentials, target, production, deployment, external mutation, long-lived consumer policy and release remain excluded.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-PUBLIC-WORKER-EVENT-CHAIN-IR-001",
+    "expires_or_revalidates": "Revalidate before adding provider delivery, target behavior, new event families, long-lived consumer policy, migration or release acceptance."
+  },
+  "residual_risk": "CRITICAL",
+  "decision": "PASS",
+  "next_action": "Write and run the focused RED process contract, then implement only the minimal fixture/runtime hardening needed to prove the public billing event chain.",
+  "revalidation_triggers": [
+    "Changes to billing route publication, outbox transaction semantics, consumer registration or worker bootstrap",
+    "Expansion beyond the billing.record.created success/restart/idempotency path",
+    "Any provider, target, production, deployment or long-lived worker behavior change"
+  ],
+  "supersedes": null
+}

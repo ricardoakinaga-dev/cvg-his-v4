@@ -1,0 +1,172 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-SCHEDULED-INVENTORY-MOVEMENTS-VFY-001",
+  "timestamp": "2026-08-28T12:19:12-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-004 bounded tenant-scoped scheduled inventory-movements report source through the real worker",
+  "scope_ref": "CVG-004-REPORT-SCHEDULED-INVENTORY-MOVEMENTS",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-001-CONTRACT",
+      "description": "The scheduled inventory-movements path preserves the exact thirteen-field catalog contract, nullable-reference normalization, strict case-insensitive search, inclusive UTC date filters, deterministic occurredAt DESC/movementId ASC ordering and the explicit raw-ledger exclusions.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-scheduled-inventory-movements.md",
+        ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-INVENTORY-MOVEMENTS-IR-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-MOVEMENTS-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-MOVEMENTS-GREEN-001",
+        "packages/modules/reports/src/index.ts",
+        "apps/worker/src/runner.ts",
+        "packages/modules/inventory/src/inventory-movements-report.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The projection is the existing persisted operational movement ledger; it does not establish complete Vetus dynamic event parity, lot/consumption reconstruction, invoice/NF semantics or historical valuation."
+    },
+    {
+      "id": "V-002-DATABASE-SOURCE",
+      "description": "The source reads persisted inventory_stock_movements with explicit tenant context, account predicates, same-account item labels, parameterized escaped literal ILIKE, inclusive UTC boundaries, deterministic ordering and a 10,001-row database read bound; missing labels and malformed facts fail closed.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/inventory/src/inventory-movements-report.ts",
+        "packages/modules/inventory/src/inventory-movements-report.test.ts",
+        "packages/modules/inventory/src/repositories/database-inventory.repository.ts",
+        "packages/db/migrations/0052_inventory_stock_movements.sql",
+        "packages/db/migrations/0062_inventory_runtime_persistence.sql",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-MOVEMENTS-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-MOVEMENTS-PROCESS-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The database proof is disposable local PostgreSQL; target grants, runtime roles, scale and production database operations remain outside this gate."
+    },
+    {
+      "id": "V-003-WORKER-WIRING",
+      "description": "The worker composes the asynchronous persisted source, validates filters, tenant ownership, canonical timestamps, signed/two-decimal values and source bounds, emits exactly thirteen fields and retains existing durable schedule, export, audit, recipient and one-shot semantics.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/worker/src/runner.ts",
+        "apps/worker/src/bootstrap.ts",
+        "apps/worker/src/runner.test.ts",
+        "apps/worker/src/run-once.ts",
+        "apps/worker/src/jobs/scheduled-report-job.ts",
+        "apps/worker/package.json",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-MOVEMENTS-FULL-MODULE-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Continuous distributed worker operations and real delivery providers are not certified by this bounded gate."
+    },
+    {
+      "id": "V-004-POSTGRES-PROCESS",
+      "description": "Fresh disposable PostgreSQL process evidence proves concurrent two-account run-once isolation, raw signed movement facts, inclusive UTC dates, literal search, exact rows, durable execution and non-PII audit/log behavior; source and worker tests prove overflow and malformed fail-closed handling.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-MOVEMENTS-PROCESS-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-MOVEMENTS-GREEN-001",
+        "tests/integration/process/worker-run-once-reports.test.ts",
+        "apps/worker/src/run-once.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The process uses disposable local PostgreSQL and mock delivery; it does not certify target roles, external providers, production or release behavior."
+    },
+    {
+      "id": "V-005-QUALITY",
+      "description": "Intentional RED/GREEN, focused coverage, full module/worker regressions, typecheck/build, secrets, formatting and diff hygiene satisfy the bounded repository quality bar.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-MOVEMENTS-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-MOVEMENTS-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-MOVEMENTS-FULL-MODULE-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-MOVEMENTS-HYGIENE-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Local validators do not replace remote CI, target operations, external homologation or release acceptance."
+    },
+    {
+      "id": "V-006-INDEPENDENT-REVIEW",
+      "description": "A fresh compatible read-only independent review returned bounded approval without a CRITICAL, HIGH, MEDIUM or LOW finding; an incompatible configured reviewer attempt is recorded as unavailable and never as approval.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-MOVEMENTS-REVIEW-UNAVAILABLE-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-MOVEMENTS-REVIEW-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Approval is limited to this bounded local slice and is not global ERP, target, production or release approval."
+    },
+    {
+      "id": "V-007-GLOBAL-NON-PROMOTION",
+      "description": "The bounded result is reconciled without promoting CVG-004, general Vetus parity, clinical parity, enterprise readiness, target operations or release acceptance.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-MOVEMENTS-GLOBAL-RETEST-001",
+        ".agent/state.json",
+        ".agent/backlog.json",
+        ".gauntlet/state.md",
+        ".gauntlet/progress.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "General Vetus parity remains 4/11 verified, clinical parity 2/3 verified and enterprise readiness 95/100 with 42 PASS, 3 WARN and 1 FAIL."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-report-scheduled-inventory-movements.md",
+    ".agent/artifacts/CVG-004-report-scheduled-inventory-movements-2026-08-28.md",
+    ".agent/gates/implementation-ready-CVG-004-report-scheduled-inventory-movements.json",
+    ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-INVENTORY-MOVEMENTS-IR-001",
+    "packages/modules/reports/src/index.ts",
+    "packages/modules/inventory/src/inventory-movements-report.ts",
+    "packages/modules/inventory/src/inventory-movements-report.test.ts",
+    "packages/modules/inventory/src/repositories/database-inventory.repository.ts",
+    "packages/modules/inventory/src/index.ts",
+    "packages/db/migrations/0052_inventory_stock_movements.sql",
+    "packages/db/migrations/0062_inventory_runtime_persistence.sql",
+    "apps/worker/src/runner.ts",
+    "apps/worker/src/runner.test.ts",
+    "apps/worker/src/bootstrap.ts",
+    "apps/worker/src/run-once.ts",
+    "apps/worker/src/jobs/scheduled-report-job.ts",
+    "tests/integration/process/worker-run-once-reports.test.ts",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-MOVEMENTS-RED-001",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-MOVEMENTS-GREEN-001",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-MOVEMENTS-FULL-MODULE-001",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-MOVEMENTS-PROCESS-001",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-MOVEMENTS-REVIEW-001",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-MOVEMENTS-GLOBAL-RETEST-001",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-MOVEMENTS-HYGIENE-001",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-MOVEMENTS-FINAL-001"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "The report is a raw persisted operational ledger projection only; dynamic Vetus event semantics, lots, consumption reconstruction, invoices/NF and historical valuation remain outside scope.",
+    "Disposable local services do not certify target RLS/runtime roles, backup/restore, RTO/RPO, distributed worker operations, remote CI, accessibility, operational LGPD, providers, production or release acceptance.",
+    "Complete Vetus inventory and scheduled-report parity remains unverified even though this exact worker slice is bounded and reviewed."
+  ],
+  "conditions": [
+    "Keep the result limited to the authenticated tenant-scoped scheduled read path over inventory_stock_movements plus same-account inventory_items labels and the exact thirteen-field contract.",
+    "Keep CVG-004/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+    "Revalidate before changing inventory schema/RLS, adding joins/fields/filters, changing schedule/audit behavior, adding fiscal/historical/lot/consumption interpretation, providers, credentials, target, production, deployment, backfill or release action."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via explicit continuation request and original consolidation brief",
+    "scope": "CVG-004 bounded tenant-scoped scheduled inventory-movements report source through the real worker",
+    "decision": "Authorize only reversible inventory-module and worker implementation plus focused/disposable PostgreSQL and process verification of the existing raw persisted inventory_stock_movements operational ledger joined to same-account inventory_items. Preserve the exact thirteen fields, strict filters, deterministic order, 10,000-row bound, tenant context and durable schedule/audit/one-shot semantics. Exclude lot/consumption reconstruction, Vetus event interpretation, as-of or historical valuation, fiscal/NF, API/SPA changes, migrations/backfill, providers, credentials, target, production, deployment, external mutation and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-INVENTORY-MOVEMENTS-IR-001",
+    "expires_or_revalidates": "Revalidate before changing inventory_stock_movements/inventory_items schema, RLS or numeric/timestamp semantics, adding fields/joins/filters, changing schedule/audit behavior, adding fiscal/historical/lot/consumption interpretation, provider delivery, target operations or production behavior."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_BOUNDED",
+  "next_action": "Keep CVG-004/global ERP IN_PROGRESS/PARTIAL with promotion BLOCKED; choose any next gap only through fresh scouting and a new implementation-ready authority.",
+  "revalidation_triggers": [
+    "Changes to inventory_stock_movements/inventory_items schema, account RLS/FORCE-RLS or persisted movement numeric/timestamp semantics",
+    "Changes to worker bootstrap, schedule claiming, report execution/export/audit or one-shot failure behavior",
+    "Expansion beyond the scheduled inventory-movements read path or exact thirteen-field raw-ledger contract"
+  ],
+  "supersedes": ".agent/gates/implementation-ready-CVG-004-report-scheduled-inventory-movements.json"
+}

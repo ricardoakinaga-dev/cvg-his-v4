@@ -1,0 +1,105 @@
+{
+  "record_id": "GATE-CVG-003-PRESCRIPTION-EXECUTION-COMMAND-EVENT-TENANT-ISOLATION-VFY-001",
+  "timestamp": "2026-08-29T10:38:10-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-003 bounded account-scoped prescription-execution command and administration-event detail boundary",
+  "scope_ref": "CVG-003-PRESCRIPTION-EXECUTION-COMMAND-EVENT-TENANT-ISOLATION",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "VFY-001",
+      "description": "getEvents, execute, suspend, resume and logEvent require non-empty AccountId and verify ownership before event access, transition validation, state mutation or persistence enqueue.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/prescription-executions/src/index.ts",
+        "packages/modules/prescription-executions/src/prescription-executions.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-EXECUTION-COMMAND-EVENT-TENANT-ISOLATION-GREEN-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The guard is proven at the repository-local application-service boundary; direct SQL and privileged writer paths remain outside this gate."
+    },
+    {
+      "id": "VFY-002",
+      "description": "The detail route and all four action routes forward the authenticated principal account to the scoped service boundary, with no stale first-party unscoped caller remaining.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/api/src/routes/prescription-executions-routes.ts",
+        "apps/api/src/routes/prescription-executions-routes.test.ts",
+        "apps/api/src/canonical-db-runtime.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-EXECUTION-COMMAND-EVENT-TENANT-ISOLATION-QUALITY-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The route proof is local HTTP-shaped and canonical-runtime evidence; target ingress and distributed deployment remain outside scope."
+    },
+    {
+      "id": "VFY-003",
+      "description": "Same-account behavior, event history, CAS transitions, persistence rollback and canonical PostgreSQL rehydration remain green after the signature correction.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-EXECUTION-COMMAND-EVENT-TENANT-ISOLATION-GREEN-001",
+        "apps/api/src/canonical-db-runtime.test.ts",
+        "packages/modules/prescription-executions/src/repositories/database-prescription-execution.repository.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Canonical evidence used a clean disposable PostgreSQL database and seed credentials; it is not production or target acceptance."
+    },
+    {
+      "id": "VFY-004",
+      "description": "Focused quality and independent review evidence are current: module/API typechecks, formatting/lint/diff hygiene, security/RLS scans and two fresh read-only approvals.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-EXECUTION-COMMAND-EVENT-TENANT-ISOLATION-QUALITY-001",
+        ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-EXECUTION-COMMAND-EVENT-TENANT-ISOLATION-REVIEW-001",
+        ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-EXECUTION-COMMAND-EVENT-TENANT-ISOLATION-REVIEW-002",
+        ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-EXECUTION-COMMAND-EVENT-TENANT-ISOLATION-GLOBAL-RETEST-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The scans and reviews are bounded to this repository snapshot and do not replace remote CI, operational acceptance or a complete workspace quality verdict."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-003-PRESCRIPTION-EXECUTION-COMMAND-EVENT-TENANT-ISOLATION.md",
+    ".agent/authority.jsonl#AUTH-CVG-003-PRESCRIPTION-EXECUTION-COMMAND-EVENT-TENANT-ISOLATION-IR-001",
+    ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-EXECUTION-COMMAND-EVENT-TENANT-ISOLATION-RED-001",
+    ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-EXECUTION-COMMAND-EVENT-TENANT-ISOLATION-GREEN-001",
+    ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-EXECUTION-COMMAND-EVENT-TENANT-ISOLATION-QUALITY-001",
+    ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-EXECUTION-COMMAND-EVENT-TENANT-ISOLATION-REVIEW-001",
+    ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-EXECUTION-COMMAND-EVENT-TENANT-ISOLATION-REVIEW-002",
+    ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-EXECUTION-COMMAND-EVENT-TENANT-ISOLATION-GLOBAL-RETEST-001"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "Global Vetus functional parity is not verified: 4/11 areas verified; clinical parity is not verified: 2/3 areas verified.",
+    "Enterprise readiness remains 95/100 with 42 PASS, 3 WARN and 1 FAIL; remote CI, real backup/restore and real deploy/cutover remain warnings.",
+    "Direct SQL/privileged writers, target RLS/runtime roles, distributed operations, external providers, accessibility, LGPD operational acceptance, complete parity and release evidence remain open."
+  ],
+  "conditions": [
+    "Close only this application-service/HTTP command-detail slice as PASS_BOUNDED.",
+    "Keep AccountId-first signatures and principal-derived route forwarding mandatory for future callers.",
+    "Keep CVG-003/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+    "Do not infer target, production, provider, deployment or release acceptance from this gate."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via explicit continuation request and original consolidation brief",
+    "scope": "CVG-003 bounded prescription-execution command and administration-event detail tenant isolation",
+    "decision": "Authorize only reversible repository-local service, route, first-party caller and test correction with principal-derived AccountId at the command/detail boundary; exclude direct SQL, migrations, target, providers, credentials, production, deployment, external mutation and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-003-PRESCRIPTION-EXECUTION-COMMAND-EVENT-TENANT-ISOLATION-IR-001",
+    "expires_or_revalidates": "Revalidate before any new command/event path or expansion beyond the application service/HTTP boundary."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_WITH_CONDITIONS",
+  "implementation_status": "COMPLETE_BOUNDED",
+  "next_action": "Close only this slice as PASS_BOUNDED, reconcile state/backlog and return to fresh scouting; do not promote CVG-003 or global ERP readiness.",
+  "revalidation_triggers": [
+    "New prescription-execution command, event detail or event query path",
+    "Changes to runtime hydration, principal/account propagation, authorization, persistence or transition semantics",
+    "Expansion to direct SQL, migrations, target, provider, credential, production, deployment or release scope"
+  ],
+  "supersedes": null
+}

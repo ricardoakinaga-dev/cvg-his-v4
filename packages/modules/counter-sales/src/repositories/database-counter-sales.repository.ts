@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 
 import { getPool } from '@cvg-his-v2/shared-database';
-import { ConflictError, NotFoundError } from '@cvg-his-v2/shared-errors';
+import { ConflictError, NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
 import { withTenantQuery } from '@cvg-his-v2/tenant-context';
 import type { AccountId, UserId } from '@cvg-his-v2/shared-types';
 
@@ -81,15 +81,49 @@ export interface CounterSalePaymentRecord {
   readonly createdAt: string;
 }
 
+export interface CounterSaleChequePaymentRecord extends CounterSalePaymentRecord {
+  readonly saleNumber: string;
+  readonly saleStatus: CounterSaleRecord['status'];
+}
+
+/** Prevents report snapshots from materializing an unbounded tenant result set. */
+export const MAX_COUNTER_SALE_REPORT_ROWS = 10_000;
+/** @deprecated Use MAX_COUNTER_SALE_REPORT_ROWS for all counter-sale reports. */
+export const MAX_CHEQUE_REPORT_ROWS = MAX_COUNTER_SALE_REPORT_ROWS;
+
+export interface CounterSaleListFilters {
+  readonly status?: string;
+  readonly search?: string;
+  readonly ownerId?: string;
+  readonly dateFrom?: string;
+  readonly dateTo?: string;
+  /** Internal bounded-read control; callers must pass a positive safe integer. */
+  readonly limit?: number;
+}
+
+export interface CounterSaleCancellationHistoryRecord {
+  readonly eventId: string;
+  readonly accountId: AccountId;
+  readonly counterSaleId: string;
+  readonly cancelledByUserId: UserId;
+  readonly cancelledAt: string;
+  readonly reason: string;
+  readonly correlationId: string;
+}
+
 export interface CounterSalesRepository {
   create(sale: CounterSaleRecord): Promise<void>;
   update(sale: CounterSaleRecord): Promise<void>;
   findById(id: string): Promise<CounterSaleRecord | null>;
   /** Locks and returns the authoritative sale row for a close command. */
-  lockSaleForUpdate?(id: string): Promise<CounterSaleRecord | null>;
+  lockSaleForUpdate?(id: string, accountId?: AccountId): Promise<CounterSaleRecord | null>;
+  listCancellationHistory?(
+    accountId: AccountId,
+    counterSaleId: string
+  ): Promise<readonly CounterSaleCancellationHistoryRecord[]>;
   findByAccountId(
     accountId: AccountId,
-    filters?: { status?: string; search?: string; ownerId?: string }
+    filters?: CounterSaleListFilters
   ): Promise<readonly CounterSaleRecord[]>;
   createItem(item: CounterSaleItemRecord): Promise<void>;
   updateItem(item: CounterSaleItemRecord): Promise<void>;
@@ -105,6 +139,10 @@ export interface CounterSalesRepository {
     payment: CounterSalePaymentRecord;
   }>;
   findPaymentsBySaleId(counterSaleId: string): Promise<readonly CounterSalePaymentRecord[]>;
+  listChequePayments?(
+    accountId: AccountId,
+    filters?: { readonly dateFrom?: string; readonly dateTo?: string }
+  ): Promise<readonly CounterSaleChequePaymentRecord[]>;
   createReceipt(receipt: CounterSaleReceiptRecord): Promise<CounterSaleReceiptRecord>;
   findReceipt(counterSaleId: string): Promise<CounterSaleReceiptRecord | null>;
   getOpenSalesCount(accountId: AccountId): Promise<number>;
@@ -320,10 +358,11 @@ export class DatabaseCounterSalesRepository implements CounterSalesRepository {
 
   async update(sale: CounterSaleRecord): Promise<void> {
     return withTenantQuery(getPool(), async (client) => {
-      await client.query(
-        `UPDATE counter_sales SET status = $2, subtotal = $3, discount_amount = $4, total = $5, paid_amount = $6, balance_due = $7, notes = $8, closed_by_user_id = $9, closed_at = $10, updated_at = $11 WHERE id = $1`,
+      const result = await client.query(
+        `UPDATE counter_sales SET status = $3, subtotal = $4, discount_amount = $5, total = $6, paid_amount = $7, balance_due = $8, notes = $9, closed_by_user_id = $10, closed_at = $11, updated_at = $12 WHERE id = $1 AND account_id = $2`,
         [
           sale.id,
+          sale.accountId,
           sale.status,
           sale.subtotal.toString(),
           sale.discountAmount.toString(),
@@ -336,6 +375,12 @@ export class DatabaseCounterSalesRepository implements CounterSalesRepository {
           new Date(sale.updatedAt)
         ]
       );
+      if (result.rowCount !== 1) {
+        throw new NotFoundError('Counter sale not found', {
+          saleId: sale.id,
+          accountId: sale.accountId
+        });
+      }
     });
   }
 
@@ -347,20 +392,71 @@ export class DatabaseCounterSalesRepository implements CounterSalesRepository {
     });
   }
 
-  async lockSaleForUpdate(id: string): Promise<CounterSaleRecord | null> {
+  async lockSaleForUpdate(id: string, accountId?: AccountId): Promise<CounterSaleRecord | null> {
     return withTenantQuery(getPool(), async (client) => {
-      const result = await client.query(
-        'SELECT * FROM counter_sales WHERE id = $1 FOR UPDATE',
-        [id]
-      );
+      const result = accountId
+        ? await client.query(
+            'SELECT * FROM counter_sales WHERE id = $1 AND account_id = $2 FOR UPDATE',
+            [id, accountId]
+          )
+        : await client.query('SELECT * FROM counter_sales WHERE id = $1 FOR UPDATE', [id]);
       if (result.rows.length === 0) return null;
       return this.mapSale(result.rows[0]);
     });
   }
 
+  async listCancellationHistory(
+    accountId: AccountId,
+    counterSaleId: string
+  ): Promise<readonly CounterSaleCancellationHistoryRecord[]> {
+    return withTenantQuery(getPool(), async (client) => {
+      const result = await client.query(
+        `SELECT id, account_id, entity_id, actor_user_id, occurred_at, reason, correlation_id
+           FROM audit_events
+          WHERE account_id = $1
+            AND entity_type = 'counter-sale'
+            AND entity_id = $2
+            AND action = 'cancelled'
+            AND actor_user_id IS NOT NULL
+            AND reason IS NOT NULL
+            AND correlation_id IS NOT NULL
+            AND correlation_id <> ''
+          ORDER BY occurred_at DESC, id DESC
+          LIMIT 100`,
+        [accountId, counterSaleId]
+      );
+      return result.rows.flatMap((row: Record<string, unknown>) => {
+        if (
+          typeof row.id !== 'string' ||
+          typeof row.account_id !== 'string' ||
+          typeof row.entity_id !== 'string' ||
+          typeof row.actor_user_id !== 'string' ||
+          typeof row.reason !== 'string' ||
+          typeof row.correlation_id !== 'string' ||
+          row.correlation_id.length === 0
+        ) {
+          return [];
+        }
+        const occurredAt = new Date(row.occurred_at as string | Date);
+        if (Number.isNaN(occurredAt.getTime())) return [];
+        return [
+          {
+            eventId: row.id,
+            accountId: row.account_id as AccountId,
+            counterSaleId: row.entity_id,
+            cancelledByUserId: row.actor_user_id as UserId,
+            cancelledAt: occurredAt.toISOString(),
+            reason: row.reason,
+            correlationId: row.correlation_id
+          }
+        ];
+      });
+    });
+  }
+
   async findByAccountId(
     accountId: AccountId,
-    filters?: { status?: string; search?: string; ownerId?: string }
+    filters?: CounterSaleListFilters
   ): Promise<readonly CounterSaleRecord[]> {
     return withTenantQuery(getPool(), async (client) => {
       let sql = 'SELECT * FROM counter_sales WHERE account_id = $1';
@@ -383,7 +479,27 @@ export class DatabaseCounterSalesRepository implements CounterSalesRepository {
         paramIdx++;
       }
 
-      sql += ' ORDER BY created_at DESC';
+      if (filters?.dateFrom) {
+        sql += ` AND created_at >= $${paramIdx}::date`;
+        params.push(filters.dateFrom);
+        paramIdx++;
+      }
+      if (filters?.dateTo) {
+        sql += ` AND created_at < ($${paramIdx}::date + INTERVAL '1 day')`;
+        params.push(filters.dateTo);
+        paramIdx++;
+      }
+
+      sql += ' ORDER BY created_at DESC, id DESC';
+      if (filters?.limit !== undefined) {
+        if (!Number.isSafeInteger(filters.limit) || filters.limit < 1) {
+          throw new ValidationError('Counter-sale query limit must be a positive safe integer', {
+            limit: filters.limit
+          });
+        }
+        sql += ` LIMIT $${paramIdx}`;
+        params.push(filters.limit);
+      }
       const result = await client.query(sql, params);
       return result.rows.map((r: Record<string, unknown>) => this.mapSale(r));
     });
@@ -577,7 +693,10 @@ export class DatabaseCounterSalesRepository implements CounterSalesRepository {
         });
       }
 
-      if (!resolvedPaymentRow && normalized.amountCents > authoritativeTotals.totalCents - paidBeforeCents) {
+      if (
+        !resolvedPaymentRow &&
+        normalized.amountCents > authoritativeTotals.totalCents - paidBeforeCents
+      ) {
         throw new ConflictError('Payment amount exceeds balance due', {
           balanceDue: (authoritativeTotals.totalCents - paidBeforeCents) / 100,
           paymentAmount: payment.amount
@@ -675,7 +794,8 @@ export class DatabaseCounterSalesRepository implements CounterSalesRepository {
         ]
       );
       const updatedRow = updatedSale.rows[0] as Record<string, unknown> | undefined;
-      if (!updatedRow) throw new NotFoundError('Counter sale not found', { saleId: payment.counterSaleId });
+      if (!updatedRow)
+        throw new NotFoundError('Counter sale not found', { saleId: payment.counterSaleId });
 
       return {
         sale: this.mapSale(updatedRow),
@@ -691,6 +811,39 @@ export class DatabaseCounterSalesRepository implements CounterSalesRepository {
         [counterSaleId]
       );
       return result.rows.map((r: Record<string, unknown>) => this.mapPayment(r));
+    });
+  }
+
+  async listChequePayments(
+    accountId: AccountId,
+    filters: { readonly dateFrom?: string; readonly dateTo?: string } = {}
+  ): Promise<readonly CounterSaleChequePaymentRecord[]> {
+    return withTenantQuery(getPool(), async (client) => {
+      const params: unknown[] = [accountId];
+      let sql = `SELECT csp.*, cs.number AS sale_number, cs.status AS sale_status
+                 FROM counter_sale_payments csp
+                 JOIN counter_sales cs
+                   ON cs.id = csp.counter_sale_id
+                  AND cs.account_id = csp.account_id
+                 WHERE csp.account_id = $1 AND csp.method = 'check'`;
+
+      if (filters.dateFrom) {
+        params.push(filters.dateFrom);
+        sql += ` AND csp.created_at >= ($${params.length}::date AT TIME ZONE 'UTC')`;
+      }
+      if (filters.dateTo) {
+        params.push(filters.dateTo);
+        sql += ` AND csp.created_at < (($${params.length}::date + INTERVAL '1 day') AT TIME ZONE 'UTC')`;
+      }
+
+      params.push(MAX_CHEQUE_REPORT_ROWS + 1);
+      sql += ` ORDER BY csp.created_at ASC, csp.id ASC LIMIT $${params.length}::integer`;
+      const result = await client.query(sql, params);
+      return result.rows.map((row: Record<string, unknown>) => ({
+        ...this.mapPayment(row),
+        saleNumber: row.sale_number as string,
+        saleStatus: row.sale_status as CounterSaleRecord['status']
+      }));
     });
   }
 
@@ -719,10 +872,12 @@ export class DatabaseCounterSalesRepository implements CounterSalesRepository {
       );
       const row =
         (inserted.rows[0] as Record<string, unknown> | undefined) ??
-        (await client.query(
-          'SELECT * FROM counter_sale_receipts WHERE account_id = $1 AND counter_sale_id = $2',
-          [receipt.accountId, receipt.counterSaleId]
-        )).rows[0] as Record<string, unknown> | undefined;
+        ((
+          await client.query(
+            'SELECT * FROM counter_sale_receipts WHERE account_id = $1 AND counter_sale_id = $2',
+            [receipt.accountId, receipt.counterSaleId]
+          )
+        ).rows[0] as Record<string, unknown> | undefined);
       if (!row) throw new Error('Counter sale receipt could not be persisted');
       return this.mapReceipt(row);
     });

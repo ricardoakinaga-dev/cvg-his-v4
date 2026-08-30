@@ -16,6 +16,7 @@ export const vetusImportLogs = pgTable(
     accountId: uuid('account_id').notNull().references(() => accounts.id, { onDelete: 'cascade' }),
     sourceSystem: varchar('source_system', { length: 80 }).notNull(),
     sourceReference: varchar('source_reference', { length: 255 }),
+    requestHash: varchar('request_hash', { length: 64 }),
     status: varchar('status', { length: 20 }).notNull(),
     ownerId: uuid('owner_id').notNull(),
     ownerName: varchar('owner_name', { length: 255 }).notNull(),

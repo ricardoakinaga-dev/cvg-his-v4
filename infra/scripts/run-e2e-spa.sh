@@ -5,6 +5,8 @@
 # Usage:
 #   ./infra/scripts/run-e2e-spa.sh            # full run (build + test + cleanup)
 #   ./infra/scripts/run-e2e-spa.sh --no-cleanup  # keep containers running after tests
+#   E2E_PLAYWRIGHT_TARGET=e2e/spa/access-role-matrix-db.spec.ts ./infra/scripts/run-e2e-spa.sh
+#                                                # run one deterministic target
 #
 # Prerequisites:
 #   - Docker + Docker Compose
@@ -26,6 +28,7 @@ COMPOSE_FILE="$ROOT_DIR/docker-compose.e2e.yml"
 COMPOSE_PROJECT_NAME="cvg-his-v2-e2e"
 COMPOSE_NETWORK_NAME="${COMPOSE_PROJECT_NAME}_default"
 CLEANUP=true
+PLAYWRIGHT_TARGET_ARGS=()
 DATABASE_URL_E2E="postgres://postgres:postgres@localhost:5434/cvg_his_e2e"
 E2E_ADMIN_EMAIL="${E2E_ADMIN_EMAIL:-admin@cvg-his.local}"
 E2E_ADMIN_USERNAME="${E2E_ADMIN_USERNAME:-${E2E_ADMIN_EMAIL%@*}}"
@@ -115,6 +118,10 @@ if [[ "${1:-}" == "--no-cleanup" ]]; then
   CLEANUP=false
 fi
 
+if [[ -n "${E2E_PLAYWRIGHT_TARGET:-}" ]]; then
+  PLAYWRIGHT_TARGET_ARGS=("$E2E_PLAYWRIGHT_TARGET")
+fi
+
 cleanup() {
   if [ "$CLEANUP" = true ]; then
     echo ""
@@ -193,9 +200,12 @@ fi
 # 3. Build database and API scripts once so migrate/seed/restart checks can run
 # from emitted JS. The release gate may already have built them, but this script
 # is intentionally self-contained when invoked directly.
-echo "   🧱 Building database scripts..."
+echo "   🧱 Building access catalog, database and API scripts..."
+pnpm --filter @cvg-his/rbac build >/dev/null
+pnpm --filter @cvg-his-v2/module-access-control build >/dev/null
 pnpm --filter @cvg-his/db build >/dev/null
 pnpm --filter @cvg-his-v2/api build >/dev/null
+pnpm --filter @cvg-his-v2/spa build >/dev/null
 
 # 4. Apply DB schema before API startup so cache-hydrated runtime sees seeded users.
 # Retry briefly because PostgreSQL can report healthy before it is fully ready for reset/migrate work.
@@ -278,9 +288,9 @@ E2E_REDIS_URL="redis://127.0.0.1:6381" \
 E2E_DATABASE_MODE="1" \
 API_DISABLE_INCOMPATIBLE_DB_REPOS="0" \
 AUTH_RATE_LIMIT_MAX_REQUESTS="200" \
-API_URL="http://localhost:${API_E2E_PORT}" \
+  API_URL="http://localhost:${API_E2E_PORT}" \
 SPA_URL="http://localhost:${SPA_E2E_PORT}" \
-  npx playwright test --config playwright-spa.config.ts
+  npx playwright test --config playwright-spa.config.ts "${PLAYWRIGHT_TARGET_ARGS[@]}"
 
 echo ""
 echo "✅ E2E tests completed"

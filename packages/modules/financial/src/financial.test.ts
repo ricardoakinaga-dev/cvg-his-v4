@@ -15,6 +15,11 @@ import {
   type EncounterReceivableRecord
 } from './index.js';
 
+test('financial module exposes the shared advance-payment report source boundary', async () => {
+  const financialModule = await import('./index.js');
+  assert.equal('DatabaseAdvancePaymentsReportSource' in financialModule, true);
+});
+
 test('FinancialLedgerService validates, normalizes, persists and deduplicates balanced entries', async () => {
   const repository = new InMemoryFinancialLedgerRepository();
   const service = new FinancialLedgerService(repository);
@@ -47,8 +52,15 @@ test('FinancialLedgerService validates, normalizes, persists and deduplicates ba
     ]
   });
   assert.equal(replay.id, entry.id);
-  assert.equal(await service.findBySource('acc_cvg_demo' as never, 'receivable_payment', 'payment_1') !== null, true);
-  assert.equal((await service.listByAccount('acc_cvg_demo' as never, '2026-04-01', '2026-04-30')).length, 1);
+  assert.equal(
+    (await service.findBySource('acc_cvg_demo' as never, 'receivable_payment', 'payment_1')) !==
+      null,
+    true
+  );
+  assert.equal(
+    (await service.listByAccount('acc_cvg_demo' as never, '2026-04-01', '2026-04-30')).length,
+    1
+  );
   assert.equal((await service.listByAccount('acc_other' as never)).length, 0);
 
   const generated = await repository.postEntry({
@@ -57,7 +69,10 @@ test('FinancialLedgerService validates, normalizes, persists and deduplicates ba
     sourceId: 'payment_2'
   });
   assert.ok(generated.id);
-  assert.equal(await repository.findBySource('acc_cvg_demo' as never, 'receivable_payment', 'missing'), null);
+  assert.equal(
+    await repository.findBySource('acc_cvg_demo' as never, 'receivable_payment', 'missing'),
+    null
+  );
 });
 
 test('FinancialLedgerService uses the repository transaction when available', async () => {
@@ -92,43 +107,93 @@ test('FinancialLedgerService rejects malformed journal entries', async () => {
   ];
 
   await assert.rejects(
-    () => service.postEntry({ accountId: 'acc' as never, sourceType: 'x', sourceId: 'x', description: 'x', lines: [] }),
+    () =>
+      service.postEntry({
+        accountId: 'acc' as never,
+        sourceType: 'x',
+        sourceId: 'x',
+        description: 'x',
+        lines: []
+      }),
     /at least two lines/
   );
   await assert.rejects(
-    () => service.postEntry({ accountId: 'acc' as never, sourceType: 'x', sourceId: 'x', description: 'x', lines: [
-      { accountCode: '1.1', debit: -1, credit: 0 },
-      { accountCode: '4.1', debit: 0, credit: 1 }
-    ] }),
+    () =>
+      service.postEntry({
+        accountId: 'acc' as never,
+        sourceType: 'x',
+        sourceId: 'x',
+        description: 'x',
+        lines: [
+          { accountCode: '1.1', debit: -1, credit: 0 },
+          { accountCode: '4.1', debit: 0, credit: 1 }
+        ]
+      }),
     /finite and non-negative/
   );
   await assert.rejects(
-    () => service.postEntry({ accountId: 'acc' as never, sourceType: 'x', sourceId: 'x', description: 'x', lines: [
-      { accountCode: '1.1', debit: 1, credit: 1 },
-      { accountCode: '4.1', debit: 0, credit: 2 }
-    ] }),
+    () =>
+      service.postEntry({
+        accountId: 'acc' as never,
+        sourceType: 'x',
+        sourceId: 'x',
+        description: 'x',
+        lines: [
+          { accountCode: '1.1', debit: 1, credit: 1 },
+          { accountCode: '4.1', debit: 0, credit: 2 }
+        ]
+      }),
     /either debit or credit/
   );
   await assert.rejects(
-    () => service.postEntry({ accountId: 'acc' as never, sourceType: 'x', sourceId: 'x', description: 'x', lines: [
-      { accountCode: '1.1', debit: 0, credit: 0 },
-      { accountCode: '4.1', debit: 0, credit: 1 }
-    ] }),
+    () =>
+      service.postEntry({
+        accountId: 'acc' as never,
+        sourceType: 'x',
+        sourceId: 'x',
+        description: 'x',
+        lines: [
+          { accountCode: '1.1', debit: 0, credit: 0 },
+          { accountCode: '4.1', debit: 0, credit: 1 }
+        ]
+      }),
     /either debit or credit/
   );
   await assert.rejects(
-    () => service.postEntry({ accountId: 'acc' as never, sourceType: 'x', sourceId: 'x', description: 'x', lines: [
-      { accountCode: '1.1', debit: 10, credit: 0 },
-      { accountCode: '4.1', debit: 0, credit: 9 }
-    ] }),
+    () =>
+      service.postEntry({
+        accountId: 'acc' as never,
+        sourceType: 'x',
+        sourceId: 'x',
+        description: 'x',
+        lines: [
+          { accountCode: '1.1', debit: 10, credit: 0 },
+          { accountCode: '4.1', debit: 0, credit: 9 }
+        ]
+      }),
     /must balance/
   );
   await assert.rejects(
-    () => service.postEntry({ accountId: 'acc' as never, sourceType: 'x', sourceId: 'x', description: 'x', occurredAt: 'not-a-date', lines: balancedLines }),
+    () =>
+      service.postEntry({
+        accountId: 'acc' as never,
+        sourceType: 'x',
+        sourceId: 'x',
+        description: 'x',
+        occurredAt: 'not-a-date',
+        lines: balancedLines
+      }),
     /valid ISO date/
   );
   await assert.rejects(
-    () => service.postEntry({ accountId: ' ' as never, sourceType: 'x', sourceId: 'x', description: 'x', lines: balancedLines }),
+    () =>
+      service.postEntry({
+        accountId: ' ' as never,
+        sourceType: 'x',
+        sourceId: 'x',
+        description: 'x',
+        lines: balancedLines
+      }),
     /accountId/
   );
 });
@@ -415,19 +480,13 @@ test('EncounterFinancialService rejects inconsistent close and overpayment attem
   await assert.rejects(
     () =>
       service.closeEncounterFinancial(encounter.id, 'user_finance' as never, {
-        installments: [
-          { amount: 100 },
-          { amount: 50 }
-        ]
+        installments: [{ amount: 100 }, { amount: 50 }]
       }),
     /Installment total must match encounter financial total/
   );
 
   await service.closeEncounterFinancial(encounter.id, 'user_finance' as never, {
-    installments: [
-      { amount: 100 },
-      { amount: 90 }
-    ]
+    installments: [{ amount: 100 }, { amount: 90 }]
   });
 
   const account = await repository.findFinancialAccountByEncounter(encounter.id);
@@ -542,7 +601,10 @@ test('EncounterFinancialService records payment by billing record and settles re
 
   assert.equal(summary.financialStatus, 'paid');
   assert.equal(summary.balanceDue, 0);
-  assert.equal(summary.receivables.every((item) => item.status === 'settled'), true);
+  assert.equal(
+    summary.receivables.every((item) => item.status === 'settled'),
+    true
+  );
   assert.equal(summary.payments.length, 2);
 });
 
@@ -570,26 +632,39 @@ test('FinancialPayablesService creates, lists and pays supplier obligations', as
   assert.equal(payable.status, 'open');
   assert.equal(payable.paidAmount, 0);
   assert.equal(payable.outstandingAmount, 600);
-  assert.equal((await service.listPayables('acc_cvg_demo' as never, { search: 'medicamentos' })).data.length, 1);
+  assert.equal(
+    (await service.listPayables('acc_cvg_demo' as never, { search: 'medicamentos' })).data.length,
+    1
+  );
 
-  const partial = await service.payPayable('acc_cvg_demo' as never, 'user_finance' as never, payable.id, {
-    amountPaid: 250,
-    paymentMethod: 'cash',
-    paymentReference: 'gaveta-principal',
-    notes: 'Parcial'
-  });
+  const partial = await service.payPayable(
+    'acc_cvg_demo' as never,
+    'user_finance' as never,
+    payable.id,
+    {
+      amountPaid: 250,
+      paymentMethod: 'cash',
+      paymentReference: 'gaveta-principal',
+      notes: 'Parcial'
+    }
+  );
   assert.equal(partial.status, 'partial');
   assert.equal(partial.paidAmount, 250);
   assert.equal(partial.outstandingAmount, 350);
   assert.equal(partial.paymentMethod, 'cash');
   assert.equal(partial.paymentReference, 'gaveta-principal');
 
-  const paid = await service.payPayable('acc_cvg_demo' as never, 'user_finance' as never, payable.id, {
-    amountPaid: 350,
-    paymentMethod: 'bank_transfer',
-    paymentReference: 'ted-123',
-    notes: 'Quitacao'
-  });
+  const paid = await service.payPayable(
+    'acc_cvg_demo' as never,
+    'user_finance' as never,
+    payable.id,
+    {
+      amountPaid: 350,
+      paymentMethod: 'bank_transfer',
+      paymentReference: 'ted-123',
+      notes: 'Quitacao'
+    }
+  );
   assert.equal(paid.status, 'paid');
   assert.equal(paid.paidAmount, 600);
   assert.equal(paid.outstandingAmount, 0);
@@ -597,8 +672,14 @@ test('FinancialPayablesService creates, lists and pays supplier obligations', as
   assert.equal(paid.paymentMethod, 'bank_transfer');
   assert.equal(paid.paymentReference, 'ted-123');
   assert.equal(paidEvents.length, 2);
-  assert.deepEqual(paidEvents.map((event) => (event as { amountPaid: number }).amountPaid), [250, 350]);
-  assert.deepEqual(paidEvents.map((event) => (event as { paymentMethod: string }).paymentMethod), ['cash', 'bank_transfer']);
+  assert.deepEqual(
+    paidEvents.map((event) => (event as { amountPaid: number }).amountPaid),
+    [250, 350]
+  );
+  assert.deepEqual(
+    paidEvents.map((event) => (event as { paymentMethod: string }).paymentMethod),
+    ['cash', 'bank_transfer']
+  );
 
   const summary = await service.listPayables('acc_cvg_demo' as never);
   assert.equal(summary.total, 1);
@@ -620,17 +701,28 @@ test('FinancialPayablesService prevents invalid payment and cancellation flows',
   });
 
   await assert.rejects(
-    () => service.payPayable('acc_cvg_demo' as never, 'user_finance' as never, payable.id, { amountPaid: 101 }),
+    () =>
+      service.payPayable('acc_cvg_demo' as never, 'user_finance' as never, payable.id, {
+        amountPaid: 101
+      }),
     /Payment exceeds outstanding payable balance/
   );
 
-  const cancelled = await service.cancelPayable('acc_cvg_demo' as never, 'user_finance' as never, payable.id, 'Duplicado');
+  const cancelled = await service.cancelPayable(
+    'acc_cvg_demo' as never,
+    'user_finance' as never,
+    payable.id,
+    'Duplicado'
+  );
   assert.equal(cancelled.status, 'cancelled');
   assert.equal(cancelled.cancelledByUserId, 'user_finance');
   assert.equal(cancelled.notes, 'Duplicado');
 
   await assert.rejects(
-    () => service.payPayable('acc_cvg_demo' as never, 'user_finance' as never, payable.id, { amountPaid: 10 }),
+    () =>
+      service.payPayable('acc_cvg_demo' as never, 'user_finance' as never, payable.id, {
+        amountPaid: 10
+      }),
     /Only open or partial payables can be paid/
   );
 });
@@ -648,12 +740,17 @@ test('FinancialPayablesService reconciles non-cash payable payments', async () =
     totalAmount: 300
   });
 
-  const paid = await service.payPayable('acc_cvg_demo' as never, 'user_finance' as never, payable.id, {
-    amountPaid: 300,
-    paymentMethod: 'bank_transfer',
-    paymentReference: 'extrato-123',
-    notes: 'TED fornecedor'
-  });
+  const paid = await service.payPayable(
+    'acc_cvg_demo' as never,
+    'user_finance' as never,
+    payable.id,
+    {
+      amountPaid: 300,
+      paymentMethod: 'bank_transfer',
+      paymentReference: 'extrato-123',
+      notes: 'TED fornecedor'
+    }
+  );
   assert.equal(paid.reconciliationStatus, 'pending');
 
   const pending = await service.listPayableReconciliation('acc_cvg_demo' as never, {
@@ -765,19 +862,28 @@ test('FinancialIncomeStatementService consolidates realized result from receivab
     }
   ]);
 
-  const inventory = await new FinancialPayablesService(payables).createPayable(accountId, 'user_finance' as never, {
-    supplierName: 'Fornecedor Estoque',
-    description: 'Compra mensal',
-    category: 'Estoque',
-    costCenterCode: 'EST',
-    costCenterName: 'Estoque',
-    issuedAt: '2026-05-02',
-    dueAt: '2026-05-15',
-    totalAmount: 500
-  });
-  await new FinancialPayablesService(payables).payPayable(accountId, 'user_finance' as never, inventory.id, {
-    amountPaid: 300
-  });
+  const inventory = await new FinancialPayablesService(payables).createPayable(
+    accountId,
+    'user_finance' as never,
+    {
+      supplierName: 'Fornecedor Estoque',
+      description: 'Compra mensal',
+      category: 'Estoque',
+      costCenterCode: 'EST',
+      costCenterName: 'Estoque',
+      issuedAt: '2026-05-02',
+      dueAt: '2026-05-15',
+      totalAmount: 500
+    }
+  );
+  await new FinancialPayablesService(payables).payPayable(
+    accountId,
+    'user_finance' as never,
+    inventory.id,
+    {
+      amountPaid: 300
+    }
+  );
   await new FinancialPayablesService(payables).createPayable(accountId, 'user_finance' as never, {
     supplierName: 'Laboratorio',
     description: 'Exames terceirizados',

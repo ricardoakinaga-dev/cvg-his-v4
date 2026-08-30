@@ -1,0 +1,98 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-CHEQUES-WORKER-TENANT-SCOPE-VFY-001",
+  "timestamp": "2026-08-27T18:18:00-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-004 local two-account concurrent one-shot scheduled Cheques worker scope",
+  "scope_ref": "CVG-004-REPORT-CHEQUES-WORKER-TENANT-SCOPE",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "TENANT-001",
+      "description": "The disposable process fixture contains two accounts, distinct persisted check payments and schedules, and account-mapped non-interactive report service principals.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "tests/integration/process/worker-run-once-reports.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-CHEQUES-WORKER-TENANT-SCOPE-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The fixture is local and synthetic; it does not prove production provisioning or target roles."
+    },
+    {
+      "id": "TENANT-002",
+      "description": "Two real run-once worker processes complete concurrently and each persisted execution contains exactly the cheque payment belonging to its own account.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "tests/integration/process/worker-run-once-reports.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-CHEQUES-WORKER-TENANT-SCOPE-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The evidence covers one one-shot process per account, not the continuous worker topology."
+    },
+    {
+      "id": "TENANT-003",
+      "description": "No execution for account A contains account B's payment or vice versa, as checked by an inverse-payment query after both workers finish.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "tests/integration/process/worker-run-once-reports.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-CHEQUES-WORKER-TENANT-SCOPE-REVIEW-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "No claim is made for direct SQL/admin bypasses or a target cluster."
+    },
+    {
+      "id": "TENANT-004",
+      "description": "The complete scheduled-report process boundary remains green after the two-account assertion is added.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-CHEQUES-WORKER-TENANT-SCOPE-001",
+        "tests/integration/process/worker-run-once-reports.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The full file remains a local disposable PostgreSQL process proof."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-reports-cheques-export.md",
+    ".agent/artifacts/CVG-004-reports-cheques-worker-tenant-scope-2026-08-27.md",
+    "tests/integration/process/worker-run-once-reports.test.ts",
+    "apps/worker/src/run-once.ts",
+    "apps/worker/src/runner.ts",
+    "apps/worker/src/worker-report-identity.ts",
+    "packages/modules/counter-sales/src/repositories/database-counter-sales.repository.ts",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-CHEQUES-WORKER-TENANT-SCOPE-REVIEW-001",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-CHEQUES-WORKER-TENANT-SCOPE-GLOBAL-001",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-CHEQUES-WORKER-TENANT-SCOPE-FINAL-001",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-CHEQUES-WORKER-TENANT-SCOPE-HYGIENE-001"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "Continuous multi-account worker topology, target RLS/roles, remote CI, external delivery, providers, restore/RTO-RPO, remaining report families, global parity and release acceptance remain open."
+  ],
+  "conditions": [
+    "Keep the result limited to the local one-shot scheduled financial-cheques report source.",
+    "Do not infer production readiness, target behavior, provider delivery or release acceptance from this gate.",
+    "Revalidate before broadening scheduled worker topology or adding provider/external behavior."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner)",
+    "scope": "CVG-004 server-side read-only Reports > Cheques execution/export from persisted counter-sale payments",
+    "decision": "Authorize bounded repository-local report and worker verification using persisted tenant-scoped check payments; lifecycle, providers, credentials, target, production, deployment, external mutation and release remain excluded.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-CHEQUES-IR-002",
+    "expires_or_revalidates": "Revalidate before continuous multi-account operations, provider delivery, target, production or release scope."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_BOUNDED",
+  "next_action": "Keep CVG-004 and the global program IN_PROGRESS/PARTIAL; select the next separately authorized gap, with the two remaining Reports workbench placeholders as the current local candidate.",
+  "revalidation_triggers": [
+    "Changes to report source account predicates or worker service-principal resolution",
+    "Changes to schedule claiming or continuous worker topology",
+    "Expansion to providers, target, production, deployment or release acceptance"
+  ],
+  "supersedes": null
+}

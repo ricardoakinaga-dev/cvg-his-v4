@@ -16,7 +16,7 @@ import { readJsonBody } from '../helpers/common.js';
 export interface CommissionRoutesHandlers {
   commissions: CommissionsService;
   audit: AuditService;
-  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
+  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
   runCommand?: TenantCommandRunner;
 }
 
@@ -56,7 +56,7 @@ export async function handleCommissionRoutes(
   const url = new URL(request.url ?? pathname, 'http://localhost');
 
   if (pathname === '/commission-rules' && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'staff.read');
+    const principal = await requirePrincipal(request, 'staff.read');
     return json(response, 200, {
       items: commissions.listRules(principal.user.accountId, {
         active: parseBoolean(url.searchParams.get('active'))
@@ -65,7 +65,7 @@ export async function handleCommissionRoutes(
   }
 
   if (pathname === '/commission-rules' && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'staff.manage');
+    const principal = await requirePrincipal(request, 'staff.manage');
     const payload = await readJsonBody(request) as CreateCommissionRuleInput;
     const rule = await runCommand({
       request,
@@ -94,14 +94,14 @@ export async function handleCommissionRoutes(
   }
 
   if (pathname === '/commission-calculations' && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'staff.read');
+    const principal = await requirePrincipal(request, 'staff.read');
     return json(response, 200, {
       items: commissions.listCalculations(principal.user.accountId)
     });
   }
 
   if (pathname === '/commission-calculations' && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'staff.manage');
+    const principal = await requirePrincipal(request, 'staff.manage');
     const payload = await readJsonBody(request) as CalculateCommissionsInput;
     const calculation = await runCommand({
       request,
@@ -131,13 +131,13 @@ export async function handleCommissionRoutes(
 
   const calculationId = parseCalculationId(pathname);
   if (calculationId && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'staff.read');
+    const principal = await requirePrincipal(request, 'staff.read');
     return json(response, 200, commissions.detail(principal.user.accountId, calculationId));
   }
 
   const reviewId = parseCalculationId(pathname, '/review');
   if (reviewId && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'staff.manage');
+    const principal = await requirePrincipal(request, 'staff.manage');
     const calculation = await runCommand({
       request,
       accountId: principal.user.accountId,
@@ -166,7 +166,7 @@ export async function handleCommissionRoutes(
 
   const payId = parseCalculationId(pathname, '/pay');
   if (payId && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'staff.manage');
+    const principal = await requirePrincipal(request, 'staff.manage');
     const payload = await readJsonBody(request) as {
       readonly paymentMethod?: 'cash' | 'bank_transfer' | 'pix' | 'card' | 'cheque' | 'other' | null;
       readonly paymentReference?: string | null;
@@ -207,7 +207,7 @@ export async function handleCommissionRoutes(
 
   const cancelId = parseCalculationId(pathname, '/cancel');
   if (cancelId && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'staff.manage');
+    const principal = await requirePrincipal(request, 'staff.manage');
     const calculation = await runCommand({
       request,
       accountId: principal.user.accountId,

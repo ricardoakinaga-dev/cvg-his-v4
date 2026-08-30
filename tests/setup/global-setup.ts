@@ -3,12 +3,14 @@ import {
   resetTestDatabase,
   closePools,
   dropTestDatabase,
-  withTestDatabaseLock
+  withTestDatabaseLock,
+  withTestClusterSetupLock,
+  getAdminPool,
+  getTestPool
 } from '../db/db-admin.js';
 import { applyDrizzleMigration, applySeed } from '../db/db-schema.js';
 import { verifyIntegrity } from '../db/db-integrity.js';
 import { TEST_DB_IS_EPHEMERAL, TEST_DB_NAME, TEST_DB_URL } from './env.js';
-import { getAdminPool } from '../db/db-admin.js';
 import { RLS_TEST_ROLE } from '../helpers/rls-helpers.js';
 import { Pool } from 'pg';
 
@@ -35,7 +37,9 @@ async function ensureRlsTestRole(): Promise<void> {
     await testPool.query(
       `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ${RLS_TEST_ROLE}`
     );
-    await testPool.query(`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${RLS_TEST_ROLE}`);
+    await testPool.query(
+      `GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${RLS_TEST_ROLE}`
+    );
     await testPool.query(`GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA app TO ${RLS_TEST_ROLE}`);
     await testPool.query(
       `ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO ${RLS_TEST_ROLE}`
@@ -54,6 +58,7 @@ async function ensureRlsTestRole(): Promise<void> {
 export default async function globalSetup() {
   console.log('[test-setup] Initializing test environment...');
   const requireTestDb = process.env.REQUIRE_TEST_DB === '1';
+  let cleanupRequired = false;
 
   try {
     // Keep every setup path (pool, migrations and seed) on the same resolved
@@ -66,17 +71,37 @@ export default async function globalSetup() {
     );
 
     await withTestDatabaseLock(async () => {
+      if (!TEST_DB_IS_EPHEMERAL) {
+        const database = await getAdminPool().query(
+          'SELECT 1 FROM pg_database WHERE datname = $1',
+          [TEST_DB_NAME]
+        );
+        if (database.rowCount === 0) {
+          throw new Error(
+            `[test-setup] Explicit database ${TEST_DB_NAME} does not exist; refusing to create it`
+          );
+        }
+        await getTestPool().query('SELECT 1');
+        console.log(
+          `[test-setup] Preserving explicit database ${TEST_DB_NAME}; skipped reset, migrations, seed and grants`
+        );
+        return;
+      }
+
       await ensureTestDatabase();
       await resetTestDatabase();
+      cleanupRequired = true;
       console.log('[test-setup] Test database reset');
 
-      await applyDrizzleMigration();
+      await withTestClusterSetupLock(async () => {
+        await applyDrizzleMigration();
+        await ensureRlsTestRole();
+      });
       console.log('[test-setup] Migrations applied');
 
       await applySeed();
       console.log('[test-setup] Seed applied');
 
-      await ensureRlsTestRole();
       console.log('[test-setup] RLS test role ensured');
 
       const { ok, issues, stats } = await verifyIntegrity();
@@ -101,6 +126,8 @@ export default async function globalSetup() {
     }
     console.warn('[test-setup] Database not available, skipping DB-dependent setup:', message);
   }
+
+  return cleanupRequired ? globalTeardown : undefined;
 }
 
 export async function globalTeardown() {

@@ -36,6 +36,9 @@ worker:
   accountIds:
     existingSecret: cvg-his-v2-staging-worker-secrets
     secretKey: WORKER_ACCOUNT_IDS
+  reportsUser:
+    existingSecret: cvg-his-v2-staging-worker-secrets
+    secretKey: WORKER_REPORTS_USER_ID
   env:
     NODE_ENV: staging
 

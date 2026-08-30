@@ -2,7 +2,8 @@ const TRACKED_COMMAND_PATTERNS = [
   /\bvitest\b/i,
   /test-critical-bootstrap\.mjs/i,
   /\bpnpm\b.*\btest:critical\b/i,
-  /\bpnpm\b.*\btest:coverage\b/i
+  /\bpnpm\b.*\btest:coverage\b/i,
+  /api-process\.ts/i
 ];
 
 export function parseProcessTable(output) {

@@ -1,0 +1,147 @@
+{
+  "record_id": "GATE-CVG-002-ENCOUNTER-ACTIVE-UNIQUENESS-VFY-001",
+  "timestamp": "2026-08-27T05:00:11-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-002 bounded one-active-encounter-per-account-patient invariant and stable conflict mapping",
+  "scope_ref": "CVG-002-ENCOUNTER-ACTIVE-UNIQUENESS",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-001-MIGRATION-INVARIANT",
+      "description": "The canonical additive migration fails closed on historical active duplicates, rejects an incompatible same-name index, and creates a valid partial unique index on account and patient for non-closed encounters.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002-ENCOUNTER-ACTIVE-UNIQUENESS-GREEN-001",
+        "packages/db/migrations/0151_encounter_active_patient_uniqueness.sql",
+        "packages/db/src/schema/encounters.ts",
+        "tests/integration/database/encounter-active-uniqueness.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The migration does not remediate existing duplicates; a human-approved data task is required before applying it to an environment containing them."
+    },
+    {
+      "id": "V-002-DATABASE-CONFLICT-MAPPING",
+      "description": "Only the named PostgreSQL active-encounter unique violation is translated to ConflictError, while unrelated errors and tenant checks remain preserved across create, update and reopen persistence paths.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002-ENCOUNTER-ACTIVE-UNIQUENESS-GREEN-001",
+        "packages/modules/encounters/src/repositories/database-encounter.repository.ts",
+        "packages/modules/encounters/src/database-encounter.repository.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The proof is local and disposable; target driver, deployed role and network behavior remain outside this gate."
+    },
+    {
+      "id": "V-003-TENANT-LIFECYCLE",
+      "description": "Independent database-backed runtimes serialize concurrent opens, preserve account scope, allow a new encounter after close, and reject reopening when another active encounter exists.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002-ENCOUNTER-ACTIVE-UNIQUENESS-GREEN-001",
+        "tests/integration/database/encounter-active-uniqueness.test.ts",
+        "packages/modules/encounters/src/index.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Separate patient records are used for separate accounts because the existing composite patient/account foreign key rejects reuse of one global patient UUID across accounts."
+    },
+    {
+      "id": "V-004-API-CONFLICT-AND-ROLLBACK",
+      "description": "The authoritative API path exposes database-origin active-encounter conflicts as HTTP 409 and restores speculative queue state when persistence fails.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002-ENCOUNTER-ACTIVE-UNIQUENESS-GREEN-001",
+        "apps/api/src/server.ts",
+        "apps/api/src/server.test.ts",
+        "packages/modules/encounters/src/index.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The HTTP proof is compiled and local; it does not certify a multi-process deployed cluster or external queue/cache behavior."
+    },
+    {
+      "id": "V-005-QUALITY-REGRESSION",
+      "description": "Focused tests, full workspace tests, build, typecheck, coverage, security and static contract rails pass after the implementation.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002-ENCOUNTER-ACTIVE-UNIQUENESS-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-002-ENCOUNTER-ACTIVE-UNIQUENESS-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-002-ENCOUNTER-ACTIVE-UNIQUENESS-QUALITY-001",
+        ".agent/artifacts/CVG-002-encounter-active-uniqueness-2026-08-27.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Remote CI, browser acceptance for this slice, target operations, providers and release acceptance remain outside the bounded test rails."
+    },
+    {
+      "id": "V-006-INDEPENDENT-REVIEW-CONDITION",
+      "description": "A fresh independent read-only review found no Critical or High issue in the bounded implementation; its Medium findings were remediated and the remaining low-level limitations stay explicit.",
+      "required": true,
+      "status": "CONDITIONAL",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002-ENCOUNTER-ACTIVE-UNIQUENESS-REVIEW-001",
+        ".agent/tasks/CVG-002-ENCOUNTER-ACTIVE-UNIQUENESS.md",
+        ".agent/artifacts/CVG-002-encounter-active-uniqueness-2026-08-27.md"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "A separate reviewer-role attempt was unavailable because the account model policy rejected the requested model; it is not approval. Low-level test-pool/session portability remains bounded evidence debt."
+    },
+    {
+      "id": "V-007-GLOBAL-NON-PROMOTION",
+      "description": "The bounded clinical result is reconciled without promoting the parent CVG-002, strict Vetus parity, clinical parity, enterprise readiness or release gate.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002-ENCOUNTER-ACTIVE-UNIQUENESS-GLOBAL-RETEST-001",
+        ".agent/verification.jsonl#VFY-CVG-002-ENCOUNTER-ACTIVE-UNIQUENESS-FINAL-001",
+        ".agent/state.json",
+        ".agent/backlog.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "General parity remains 98/100 with 4/11 verified, clinical parity 100/100 with 2/3 verified, and enterprise readiness 95/100 with 42 PASS / 3 WARN / 1 FAIL."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-002-ENCOUNTER-ACTIVE-UNIQUENESS.md",
+    ".agent/artifacts/CVG-002-encounter-active-uniqueness-2026-08-27.md",
+    ".agent/authority.jsonl#AUTH-CVG-002-ENCOUNTER-ACTIVE-UNIQUENESS-IR-001",
+    "packages/db/migrations/0151_encounter_active_patient_uniqueness.sql",
+    "packages/modules/encounters/src/repositories/database-encounter.repository.ts",
+    "packages/modules/encounters/src/database-encounter.repository.test.ts",
+    "tests/integration/database/encounter-active-uniqueness.test.ts",
+    "apps/api/src/server.test.ts"
+  ],
+  "confidence": "MEDIUM",
+  "gaps": [
+    "Historical duplicate rows require a separately authorized remediation task; this gate never deletes, closes, merges or rewrites them.",
+    "The existing composite patient/account foreign key prevents one global patient UUID from being reused across accounts; cross-account proof uses separate patient records.",
+    "Local PostgreSQL does not certify target TCP/RLS/roles, deployed replicas, Redis/cache behavior, providers, production, recovery, remote CI or release acceptance.",
+    "The independent review is conditional and a second requested reviewer role was unavailable; no unconditional post-fix approval is inferred.",
+    "Full encounter transaction atomicity and broader ERP/Vetus readiness remain outside this bounded task."
+  ],
+  "conditions": [
+    "Keep this result limited to the canonical active encounter uniqueness invariant and its conflict boundary.",
+    "Remediate or explicitly accept historical duplicates through a separate human-approved task before applying migration 0151 to an affected environment.",
+    "Revalidate before changing encounter lifecycle semantics, patient/account keys, queue ordering, target roles/RLS, providers, production, deployment or release scope."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via the original consolidation brief",
+    "scope": "CVG-002 bounded active-encounter uniqueness and conflict mapping",
+    "decision": "Authorize reversible repository implementation, one additive canonical packages/db migration, focused API/domain tests and disposable PostgreSQL concurrency verification for the invariant that a tenant patient has at most one non-closed encounter. Exclude historical duplicate remediation, provider, credentials, target, production, deployment, external mutation and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-002-ENCOUNTER-ACTIVE-UNIQUENESS-IR-001",
+    "expires_or_revalidates": "Revalidate before historical data remediation, another encounter transaction family, target operation, provider, credential, production, deployment or release action."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_BOUNDED",
+  "next_action": "Keep parent CVG-002 and the global program IN_PROGRESS/PARTIAL; preserve target/provider/operations/parity/readiness/release gaps and revalidate this bounded gate on the listed triggers.",
+  "revalidation_triggers": [
+    "Changes to encounter status semantics, patient/account foreign keys, migration source or migration checksums",
+    "Changes to queue association ordering, repository error mapping, reopen timeline behavior or distributed cache behavior",
+    "Applying migration 0151 to an environment with historical duplicate active encounters",
+    "Changes to target roles/RLS, providers, credentials, production, deployment or release scope"
+  ],
+  "supersedes": ".agent/gates/implementation-ready-CVG-002-ENCOUNTER-ACTIVE-UNIQUENESS.json"
+}

@@ -9,18 +9,24 @@
 
     <section class="advance-summary-grid" aria-label="Resumo de pagamentos antecipados">
       <DsStatCard :label="`${filteredRows.length} lançamento(s)`" value="Total" />
-      <DsStatCard :label="formatCurrency(totalAmount)" value="Total" />
-      <DsStatCard :label="formatCurrency(totalCompensated)" value="Compensado" />
+      <DsStatCard :label="formatCurrencyCents(totalAmountCents)" value="Total" />
+      <DsStatCard :label="formatCurrencyCents(totalCompensatedCents)" value="Compensado" />
       <DsStatCard
-        :label="formatCurrency(totalBalance)"
+        :label="formatCurrencyCents(totalBalanceCents)"
         value="Saldo"
-        :error="totalBalance > 0 ? 'Compensação futura' : undefined"
+        :error="totalBalanceCents > 0 ? 'Compensação futura' : undefined"
       />
     </section>
 
     <section class="advance-actions" aria-label="Ações de pagamento antecipado">
-      <DsButton variant="primary" disabled>Gerar Pagamento Antecipado</DsButton>
-      <DsButton variant="secondary" :disabled="selectedIds.size === 0">Compensar Em Lote</DsButton>
+      <DsButton variant="primary" @click="openIssueModal">Gerar Pagamento Antecipado</DsButton>
+      <DsButton
+        variant="secondary"
+        :disabled="selectedIds.size !== 1"
+        @click="openCompensationModal"
+      >
+        Compensar Selecionado
+      </DsButton>
       <DsButton variant="secondary" tag="a" to="/owners">Clientes</DsButton>
       <DsButton variant="ghost" :loading="loading" @click="loadAdvancePayments">Atualizar</DsButton>
     </section>
@@ -31,15 +37,15 @@
         v-model="filters.search"
         label="Cliente"
         type="search"
-        placeholder="Buscar por cliente, documento ou contato"
+        placeholder="Buscar por cliente ou documento"
       />
       <DsInput id="advance-issued-from" v-model="filters.issuedFrom" label="Emissão de" type="date" />
       <DsInput id="advance-issued-to" v-model="filters.issuedTo" label="Até" type="date" />
       <DsInput id="advance-status" v-model="filters.status" label="Status" type="select">
         <option value="">Todos</option>
         <option value="available">Disponível</option>
+        <option value="partially_compensated">Parcialmente compensado</option>
         <option value="compensated">Compensado</option>
-        <option value="cancelled">Cancelado</option>
       </DsInput>
       <div class="advance-filters__actions">
         <DsButton type="submit" :loading="loading">Pesquisar</DsButton>
@@ -50,6 +56,7 @@
     <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
       {{ error }}
     </DsAlert>
+    <p v-if="successMessage" class="advance-success" role="status">{{ successMessage }}</p>
 
     <DataTable
       :columns="columns"
@@ -57,7 +64,7 @@
       :loading="loading"
       empty-icon="⏩"
       empty-title="Nenhum pagamento antecipado encontrado"
-      empty-description="Os lançamentos aparecem quando clientes possuem saldo de crédito financeiro."
+      empty-description="Os lançamentos aparecem somente quando o recebimento antecipado foi persistido no ledger financeiro."
       caption="Pagamentos antecipados"
       variant="hoverable"
     >
@@ -77,17 +84,17 @@
         {{ formatDate(advanceRow(row).issuedAt) }}
       </template>
       <template #cell-total="{ row }">
-        {{ formatCurrency(advanceRow(row).total) }}
+        {{ formatCurrencyCents(advanceRow(row).totalCents) }}
       </template>
       <template #cell-compensated="{ row }">
-        {{ formatCurrency(advanceRow(row).compensated) }}
+        {{ formatCurrencyCents(advanceRow(row).compensatedCents) }}
       </template>
       <template #cell-balance="{ row }">
-        <strong>{{ formatCurrency(advanceRow(row).balance) }}</strong>
+        <strong>{{ formatCurrencyCents(advanceRow(row).balanceCents) }}</strong>
       </template>
       <template #cell-origin="{ row }">
         <span class="origin-cell">{{ advanceRow(row).origin }}</span>
-        <small>{{ advanceRow(row).notes }}</small>
+        <small>{{ advanceRow(row).notes || 'Sem observações' }}</small>
       </template>
       <template #cell-status="{ row }">
         <StatusBadge
@@ -99,6 +106,74 @@
         <RouterLink :to="`/owners/${advanceRow(row).ownerId}`" class="open-link">Abrir</RouterLink>
       </template>
     </DataTable>
+
+    <DsModal
+      :open="issueModalOpen"
+      :teleport="false"
+      title="Gerar pagamento antecipado"
+      size="md"
+      @close="closeIssueModal"
+    >
+      <DsAlert v-if="issueError" variant="danger">{{ issueError }}</DsAlert>
+      <p class="modal-helper">
+        Registre o fato financeiro em centavos de BRL. A compensação futura será lançada separadamente e não altera este registro.
+      </p>
+      <DsInput id="advance-owner" v-model="issueForm.ownerId" type="select" label="Cliente" required>
+        <option value="" disabled>Selecione um cliente</option>
+        <option v-for="owner in ownerOptions" :key="owner.id" :value="owner.id">
+          {{ owner.fullName }}{{ owner.documentId ? ` · ${owner.documentId}` : '' }}
+        </option>
+      </DsInput>
+      <DsInput
+        id="advance-amount-cents"
+        v-model.number="issueForm.amountCents"
+        type="number"
+        label="Valor (centavos de BRL)"
+        min="1"
+        step="1"
+        required
+      />
+      <p class="modal-amount-preview">Valor exibido: {{ formatCurrencyCents(issueForm.amountCents || 0) }}</p>
+      <DsInput id="advance-source-id" v-model="issueForm.sourceId" label="Identificador da origem" placeholder="Ex.: recibo-caixa-2026-0001" required />
+      <DsInput id="advance-reference" v-model="issueForm.reference" label="Referência" placeholder="Ex.: Caixa 1" />
+      <DsInput id="advance-notes" v-model="issueForm.notes" type="textarea" label="Observações" :rows="3" />
+      <template #footer>
+        <DsButton variant="secondary" @click="closeIssueModal">Cancelar</DsButton>
+        <DsButton variant="primary" :loading="submitting" :disabled="!canSubmitIssue" @click="submitIssue">
+          Registrar recebimento
+        </DsButton>
+      </template>
+    </DsModal>
+
+    <DsModal
+      :open="compensationModalOpen"
+      :teleport="false"
+      title="Compensar pagamento antecipado"
+      size="sm"
+      @close="closeCompensationModal"
+    >
+      <DsAlert v-if="compensationError" variant="danger">{{ compensationError }}</DsAlert>
+      <p v-if="selectedPayment" class="modal-helper">
+        {{ selectedPayment.ownerName }} · saldo disponível {{ formatCurrencyCents(selectedPayment.balanceCents) }}.
+      </p>
+      <DsInput
+        id="advance-compensation-amount-cents"
+        v-model.number="compensationForm.amountCents"
+        type="number"
+        label="Valor (centavos de BRL)"
+        min="1"
+        step="1"
+        required
+      />
+      <DsInput id="advance-compensation-reference" v-model="compensationForm.reference" label="Referência da compensação" placeholder="Ex.: atendimento-2026-0001" required />
+      <DsInput id="advance-compensation-notes" v-model="compensationForm.notes" type="textarea" label="Observações" :rows="3" />
+      <template #footer>
+        <DsButton variant="secondary" @click="closeCompensationModal">Cancelar</DsButton>
+        <DsButton variant="primary" :loading="submitting" :disabled="!canSubmitCompensation" @click="submitCompensation">
+          Registrar compensação
+        </DsButton>
+      </template>
+    </DsModal>
   </div>
 </template>
 
@@ -111,29 +186,34 @@ import type { DataTableColumn, DataTableRow } from '@/components/DataTable.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
 import { ownerService } from '@/services/owner';
 import type { OwnerSummary } from '@/types/owner';
+import {
+  advancePaymentsService,
+  type AdvancePaymentStatus,
+  type AdvancePaymentSummary
+} from '@/services/advance-payments';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
+import DsModal from '@cvg-his-v2/design-system/vue/DsModal.vue';
 import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
 
-type AdvanceStatus = 'available' | 'compensated' | 'cancelled';
-type FilterStatus = '' | AdvanceStatus;
+type FilterStatus = '' | AdvancePaymentStatus;
 
-interface AdvancePaymentRow {
-  id: string;
-  ownerId: string;
-  client: string;
-  document: string;
-  issuedAt: string | null;
-  total: number;
-  compensated: number;
-  balance: number;
-  origin: string;
-  status: AdvanceStatus;
-  notes: string;
+interface AdvancePaymentRow extends DataTableRow {
+  readonly id: string;
+  readonly ownerId: string;
+  readonly client: string;
+  readonly document: string;
+  readonly issuedAt: string;
+  readonly totalCents: number;
+  readonly compensatedCents: number;
+  readonly balanceCents: number;
+  readonly origin: string;
+  readonly status: AdvancePaymentStatus;
+  readonly notes: string;
 }
 
-const columns: DataTableColumn[] = [
+const columns: readonly DataTableColumn[] = [
   { key: 'select', label: '', width: '48px' },
   { key: 'client', label: 'Cliente' },
   { key: 'issuedAt', label: 'Emissão' },
@@ -151,28 +231,60 @@ const filters = reactive({
   issuedTo: '',
   status: '' as FilterStatus
 });
-const owners = ref<OwnerSummary[]>([]);
+const payments = ref<readonly AdvancePaymentSummary[]>([]);
+const ownerOptions = ref<OwnerSummary[]>([]);
 const loading = ref(false);
+const ownerLoading = ref(false);
+const submitting = ref(false);
 const error = ref('');
+const successMessage = ref('');
+const issueError = ref('');
+const compensationError = ref('');
+const issueModalOpen = ref(false);
+const compensationModalOpen = ref(false);
 const selectedIds = ref(new Set<string>());
+const issueForm = reactive({
+  ownerId: '',
+  amountCents: null as number | null,
+  sourceId: '',
+  reference: '',
+  notes: ''
+});
+const compensationForm = reactive({
+  amountCents: null as number | null,
+  reference: '',
+  notes: ''
+});
 
-const rows = computed(() =>
-  owners.value
-    .map(toAdvancePaymentRow)
-    .filter((row): row is AdvancePaymentRow => row !== null) as unknown as DataTableRow[]
+const rows = computed<readonly DataTableRow[]>(() => payments.value.map(toAdvancePaymentRow));
+const filteredRows = computed(() => rows.value);
+const totalAmountCents = computed(() => payments.value.reduce((sum, item) => sum + item.amountCents, 0));
+const totalCompensatedCents = computed(() =>
+  payments.value.reduce((sum, item) => sum + item.compensatedAmountCents, 0)
 );
-const filteredRows = computed(() =>
-  rows.value.filter((row) => {
-    const advance = advanceRow(row);
-    if (filters.status && advance.status !== filters.status) return false;
-    return matchesIssuedFilters(advance);
-  })
+const totalBalanceCents = computed(() => payments.value.reduce((sum, item) => sum + item.balanceCents, 0));
+const selectedPayment = computed(() => {
+  if (selectedIds.value.size !== 1) return undefined;
+  const selectedId = [...selectedIds.value][0];
+  return payments.value.find((item) => item.id === selectedId);
+});
+const canSubmitIssue = computed(() =>
+  Boolean(
+    issueForm.ownerId &&
+      issueForm.sourceId.trim() &&
+      Number.isSafeInteger(issueForm.amountCents) &&
+      (issueForm.amountCents as number) > 0
+  ) && !submitting.value && !ownerLoading.value
 );
-const totalAmount = computed(() => filteredRows.value.reduce((sum, row) => sum + advanceRow(row).total, 0));
-const totalCompensated = computed(() =>
-  filteredRows.value.reduce((sum, row) => sum + advanceRow(row).compensated, 0)
+const canSubmitCompensation = computed(() =>
+  Boolean(
+    selectedPayment.value &&
+      compensationForm.reference.trim() &&
+      Number.isSafeInteger(compensationForm.amountCents) &&
+      (compensationForm.amountCents as number) > 0 &&
+      (compensationForm.amountCents as number) <= selectedPayment.value.balanceCents
+  ) && !submitting.value
 );
-const totalBalance = computed(() => filteredRows.value.reduce((sum, row) => sum + advanceRow(row).balance, 0));
 const headerSecondaryActions = computed(() => [
   {
     key: 'refresh-advance-payments',
@@ -190,20 +302,20 @@ onMounted(() => {
 async function loadAdvancePayments() {
   loading.value = true;
   error.value = '';
+  successMessage.value = '';
   try {
-    owners.value = await ownerService.list({
-      search: filters.search.trim(),
-      status: 'active',
-      financialResponsible: true,
-      page: 1,
-      pageSize: 50
+    payments.value = await advancePaymentsService.list({
+      ...(filters.search.trim() ? { search: filters.search.trim() } : {}),
+      ...(filters.status ? { status: filters.status } : {}),
+      ...(filters.issuedFrom ? { dateFrom: filters.issuedFrom } : {}),
+      ...(filters.issuedTo ? { dateTo: filters.issuedTo } : {})
     });
     selectedIds.value = new Set(
-      [...selectedIds.value].filter((id) => rows.value.some((row) => advanceRow(row).id === id))
+      [...selectedIds.value].filter((id) => payments.value.some((item) => item.id === id))
     );
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Não foi possível carregar pagamentos antecipados.';
-    owners.value = [];
+    payments.value = [];
   } finally {
     loading.value = false;
   }
@@ -217,64 +329,141 @@ function clearFilters() {
   void loadAdvancePayments();
 }
 
-function matchesIssuedFilters(row: AdvancePaymentRow): boolean {
-  if (!row.issuedAt) return !filters.issuedFrom && !filters.issuedTo;
-  const issued = row.issuedAt.slice(0, 10);
-  if (filters.issuedFrom && issued < filters.issuedFrom) return false;
-  if (filters.issuedTo && issued > filters.issuedTo) return false;
-  return true;
+async function openIssueModal() {
+  issueModalOpen.value = true;
+  issueError.value = '';
+  if (ownerOptions.value.length > 0) return;
+  ownerLoading.value = true;
+  try {
+    ownerOptions.value = await ownerService.list({
+      search: '',
+      status: 'active',
+      page: 1,
+      pageSize: 100
+    });
+  } catch (err) {
+    issueError.value = err instanceof Error ? err.message : 'Não foi possível carregar os clientes.';
+  } finally {
+    ownerLoading.value = false;
+  }
+}
+
+function closeIssueModal() {
+  if (submitting.value) return;
+  issueModalOpen.value = false;
+  issueError.value = '';
+  issueForm.ownerId = '';
+  issueForm.amountCents = null;
+  issueForm.sourceId = '';
+  issueForm.reference = '';
+  issueForm.notes = '';
+}
+
+async function submitIssue() {
+  if (!canSubmitIssue.value) return;
+  submitting.value = true;
+  issueError.value = '';
+  try {
+    await advancePaymentsService.create({
+      ownerId: issueForm.ownerId,
+      amountCents: issueForm.amountCents as number,
+      sourceId: issueForm.sourceId.trim(),
+      ...(issueForm.reference.trim() ? { reference: issueForm.reference.trim() } : {}),
+      ...(issueForm.notes.trim() ? { notes: issueForm.notes.trim() } : {})
+    });
+    closeIssueModal();
+    successMessage.value = 'Pagamento antecipado registrado com sucesso.';
+    await loadAdvancePayments();
+  } catch (err) {
+    issueError.value = err instanceof Error ? err.message : 'Não foi possível registrar o recebimento.';
+  } finally {
+    submitting.value = false;
+  }
+}
+
+function openCompensationModal() {
+  const payment = selectedPayment.value;
+  if (!payment) return;
+  compensationModalOpen.value = true;
+  compensationError.value = '';
+  compensationForm.amountCents = payment.balanceCents;
+  compensationForm.reference = '';
+  compensationForm.notes = '';
+}
+
+function closeCompensationModal() {
+  if (submitting.value) return;
+  compensationModalOpen.value = false;
+  compensationError.value = '';
+  compensationForm.amountCents = null;
+  compensationForm.reference = '';
+  compensationForm.notes = '';
+}
+
+async function submitCompensation() {
+  const payment = selectedPayment.value;
+  if (!payment || !canSubmitCompensation.value) return;
+  submitting.value = true;
+  compensationError.value = '';
+  try {
+    await advancePaymentsService.compensate(payment.id, {
+      amountCents: compensationForm.amountCents as number,
+      reference: compensationForm.reference.trim(),
+      ...(compensationForm.notes.trim() ? { notes: compensationForm.notes.trim() } : {})
+    });
+    closeCompensationModal();
+    successMessage.value = 'Compensação registrada com sucesso.';
+    await loadAdvancePayments();
+  } catch (err) {
+    compensationError.value = err instanceof Error ? err.message : 'Não foi possível registrar a compensação.';
+  } finally {
+    submitting.value = false;
+  }
 }
 
 function toggleSelection(id: string) {
   const next = new Set(selectedIds.value);
-  if (next.has(id)) {
-    next.delete(id);
-  } else {
-    next.add(id);
-  }
+  if (next.has(id)) next.delete(id);
+  else next.add(id);
   selectedIds.value = next;
 }
 
-function toAdvancePaymentRow(owner: OwnerSummary): AdvancePaymentRow | null {
-  const creditBalance = owner.financialProfile?.creditBalance ?? 0;
-  if (creditBalance <= 0) return null;
-
+function toAdvancePaymentRow(item: AdvancePaymentSummary): AdvancePaymentRow {
   return {
-    id: `advance-${owner.id}`,
-    ownerId: owner.id,
-    client: owner.fullName,
-    document: owner.documentId || 'Sem documento',
-    issuedAt: owner.updatedAt || owner.createdAt || null,
-    total: creditBalance,
-    compensated: 0,
-    balance: creditBalance,
-    origin: 'Crédito do cliente',
-    status: 'available',
-    notes: 'Saldo financeiro disponível para compensação futura'
+    id: item.id,
+    ownerId: item.ownerId,
+    client: item.ownerName,
+    document: item.documentId || 'Sem documento',
+    issuedAt: item.issuedAt,
+    totalCents: item.amountCents,
+    compensatedCents: item.compensatedAmountCents,
+    balanceCents: item.balanceCents,
+    origin: `${item.sourceType === 'manual' ? 'Manual' : item.sourceType} · ${item.sourceId}`,
+    status: item.status,
+    notes: item.notes ?? ''
   };
 }
 
-function formatCurrency(value: number): string {
+function formatCurrencyCents(value: number | null): string {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL'
-  }).format(value);
+  }).format((value ?? 0) / 100);
 }
 
-function formatDate(value: string | null): string {
-  if (!value) return '-';
+function formatDate(value: string): string {
   return new Intl.DateTimeFormat('pt-BR', { timeZone: 'UTC' }).format(new Date(value));
 }
 
-function advanceStatusLabel(status: AdvanceStatus): string {
+function advanceStatusLabel(status: AdvancePaymentStatus): string {
+  if (status === 'partially_compensated') return 'Parcialmente compensado';
   if (status === 'compensated') return 'Compensado';
-  if (status === 'cancelled') return 'Cancelado';
   return 'Disponível';
 }
 
-function advanceStatusVariant(status: AdvanceStatus) {
+function advanceStatusVariant(status: AdvancePaymentStatus) {
   if (status === 'compensated') return 'success';
-  if (status === 'cancelled') return 'danger';
+  if (status === 'partially_compensated') return 'warning';
   return 'info';
 }
 
@@ -318,6 +507,15 @@ function advanceRow(row: unknown): AdvancePaymentRow {
   gap: 8px;
 }
 
+.advance-success {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid #86efac;
+  border-radius: 8px;
+  background: #f0fdf4;
+  color: #166534;
+}
+
 .origin-cell,
 .open-link {
   font-weight: 700;
@@ -341,6 +539,18 @@ function advanceRow(row: unknown): AdvancePaymentRow {
 
 .open-link:hover {
   text-decoration: underline;
+}
+
+.modal-helper,
+.modal-amount-preview {
+  margin: 0 0 14px;
+  color: var(--color-text-muted, #64748b);
+  line-height: 1.5;
+}
+
+.modal-amount-preview {
+  font-weight: 700;
+  color: var(--color-text, #0f172a);
 }
 
 @media (max-width: 980px) {

@@ -176,6 +176,7 @@ interface FindingRow {
   unit: string;
   minValue: number;
   maxValue: number;
+  outOfRange?: boolean;
   statusLabel: string;
   statusVariant: StatusVariant;
 }
@@ -273,7 +274,7 @@ const filteredUrinalysis = computed(() => {
     if (animal && !normalizeSearch(result.animalName).includes(animal) && !normalizeSearch(result.patientId).includes(animal)) {
       return false;
     }
-    if (body && !normalizeSearch(result.resultSummary).includes(body)) return false;
+    if (body && !laboratoryResultSearchText(result).includes(body)) return false;
     if (appliedFilters.finalizedAt && result.analysisAt.slice(0, 10) !== appliedFilters.finalizedAt) return false;
     if (appliedFilters.enteredAt && result.enteredAt.slice(0, 10) !== appliedFilters.enteredAt) return false;
     if (!appliedFilters.closed && result.status === 'resulted') return false;
@@ -282,21 +283,42 @@ const filteredUrinalysis = computed(() => {
 });
 
 const findingRows = computed<FindingRow[]>(() =>
-  referenceValues.value.map((reference) => ({
-    id: reference.id,
-    section: classifyUrinalysisSection(reference.parameter),
-    finding: displayFinding(reference.parameter),
-    value: resolveLatestValue(reference.parameter),
-    unit: reference.unit,
-    minValue: reference.minValue,
-    maxValue: reference.maxValue,
-    statusLabel: resolveLatestValue(reference.parameter) === '-' ? 'Achado esperado' : 'Registrado',
-    statusVariant: 'info'
-  }))
+  referenceValues.value.map((reference) => {
+    const structuredValue = resolveLatestStructuredValue(reference.parameter);
+    const value = structuredValue?.value ?? resolveLatestValue(reference.parameter);
+    return {
+      id: reference.id,
+      section: classifyUrinalysisSection(reference.parameter),
+      finding: displayFinding(reference.parameter),
+      value,
+      unit: structuredValue?.unit ?? reference.unit,
+      minValue: reference.minValue,
+      maxValue: reference.maxValue,
+      outOfRange: structuredValue?.outOfRange,
+      statusLabel: structuredValue
+        ? structuredValue.outOfRange ? 'Fora da faixa' : 'Registrado'
+        : value === '-' ? 'Achado esperado' : 'Registrado',
+      statusVariant: structuredValue
+        ? structuredValue.outOfRange ? 'warning' : 'success'
+        : 'info'
+    };
+  })
 );
 
 function normalizeSearch(value: string | undefined): string {
   return (value ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
+}
+
+function laboratoryResultSearchText(result: DiagnosticOrderSummary): string {
+  return [
+    result.resultSummary,
+    ...(result.resultValues ?? []).flatMap((value) => [
+      value.parameter,
+      value.value,
+      value.unit,
+      value.reference
+    ])
+  ].filter(Boolean).join(' ').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
 }
 
 function shortId(id: string): string {
@@ -332,12 +354,23 @@ function classifyUrinalysisSection(parameter: string): string {
 }
 
 function resolveLatestValue(parameter: string): string {
+  const structuredValue = resolveLatestStructuredValue(parameter);
+  if (structuredValue) return structuredValue.value;
+
   const latestSummary = filteredUrinalysis.value[0]?.resultSummary;
   if (!latestSummary) return '-';
 
   const escaped = parameter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const match = latestSummary.match(new RegExp(`${escaped}\\s*[:=]\\s*([\\w.,]+)`, 'i'));
   return match?.[1] ?? '-';
+}
+
+function resolveLatestStructuredValue(parameter: string) {
+  const normalizedParameter = normalizeSearch(parameter);
+  return filteredUrinalysis.value
+    .find((item) => item.resultValues?.length)
+    ?.resultValues
+    ?.find((item) => normalizeSearch(item.parameter) === normalizedParameter);
 }
 
 function formatReference(row: FindingRow): string {

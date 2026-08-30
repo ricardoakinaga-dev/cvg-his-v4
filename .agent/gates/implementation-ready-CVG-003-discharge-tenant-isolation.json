@@ -1,0 +1,89 @@
+{
+  "record_id": "GATE-CVG-003-DISCHARGE-TENANT-ISOLATION-IR-001",
+  "timestamp": "2026-08-26T22:15:51-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-003 bounded account-scoped discharge collection, detail, update and repository lookup/delete boundary",
+  "scope_ref": "CVG-003-DISCHARGE-TENANT-ISOLATION",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "DischargesService keeps hydrated rows in a shared map while detail/update/encounter methods and repository lookup/delete contracts permit missing account context.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-003-discharge-tenant-isolation.md",
+        "packages/modules/discharges/src/index.ts",
+        "packages/modules/discharges/src/repositories/database-discharge.repository.ts",
+        "packages/modules/discharges/src/repositories/in-memory-discharge.repository.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The gate covers the local application/repository boundary; existing database RLS and the controller's later account check do not replace a required service contract."
+    },
+    {
+      "id": "IR-002",
+      "description": "The authorized correction is limited to explicit AccountId propagation, account predicates, defensive copies, cache rollback and route/test updates inside the existing monolith.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/discharges/src/index.ts",
+        "packages/modules/discharges/src/repositories/database-discharge.repository.ts",
+        "apps/api/src/routes/discharges-routes.ts",
+        "packages/modules/discharges/src/discharges.test.ts",
+        "apps/api/src/routes/discharges-routes.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "No migration, provider, credential, target, production, deployment, external mutation or release acceptance is authorized."
+    },
+    {
+      "id": "IR-003",
+      "description": "RED tests will fail before implementation for the account-first service contract, two-account isolation and principal account forwarding; local disposable verification is the acceptance mechanism.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-003-discharge-tenant-isolation.md",
+        "packages/modules/discharges/src/discharges.test.ts",
+        "apps/api/src/routes/discharges-routes.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Green tests, quality checks, independent review and final control-plane reconciliation are required before any bounded verified decision."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-003-discharge-tenant-isolation.md",
+    "packages/modules/discharges/src/index.ts",
+    "packages/modules/discharges/src/repositories/database-discharge.repository.ts",
+    "apps/api/src/routes/discharges-routes.ts",
+    "packages/modules/discharges/src/discharges.test.ts",
+    "apps/api/src/routes/discharges-routes.test.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "The corrected service/repository/route signatures and negative tests still require implementation.",
+    "Disposable PostgreSQL persistence, independent read-only review and final reconciliation are not complete.",
+    "CVG-003 clinical parity, target/provider behavior, operations and release evidence remain open."
+  ],
+  "conditions": [
+    "Preserve the existing PostgreSQL/Vue monolith and package boundaries.",
+    "Do not retain an unscoped public service detail/update/encounter/delete path.",
+    "Do not modify migrations, target infrastructure, providers, credentials or external systems."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via the original consolidation brief",
+    "scope": "CVG-003 bounded discharge collection, detail, update and repository tenant isolation",
+    "decision": "Authorize reversible repository-local discharge service/repository/route/test correction and local verification of account-scoped discharge boundaries; exclude migrations, direct privileged SQL, target, providers, credentials, production, deployment, external mutation and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-003-DISCHARGE-TENANT-ISOLATION-IR-001",
+    "expires_or_revalidates": "Revalidate before expanding beyond discharge application/repository/authenticated HTTP boundaries."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "next_action": "Write and execute TDD RED regressions, then implement the smallest account-scoped service/repository/route correction and verify without promoting CVG-003 or global readiness.",
+  "revalidation_triggers": [
+    "New discharge collection, detail, update or delete path",
+    "Changes to hydration, tenant context, authorization, inpatient transition ordering or discharge persistence",
+    "Expansion to target, provider, credential, production, deployment or release acceptance"
+  ],
+  "supersedes": null
+}

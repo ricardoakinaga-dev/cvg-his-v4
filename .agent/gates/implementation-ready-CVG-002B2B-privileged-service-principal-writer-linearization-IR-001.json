@@ -1,0 +1,91 @@
+{
+  "record_id": "GATE-CVG-002B2B-PRIVILEGED-SERVICE-PRINCIPAL-WRITER-LINEARIZATION-IR-001",
+  "timestamp": "2026-08-29T09:03:09-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-002B2B repository-local privileged service-principal writer linearization",
+  "scope_ref": "CVG-002B2B-PRIVILEGED-SERVICE-PRINCIPAL-WRITER-LINEARIZATION",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001-CONCRETE-GAP",
+      "description": "The settlement worker acquires the account authorization advisory lock before resolving its service principal, but direct privileged writes to account_service_principals and relevant users identity fields do not currently acquire the same lock.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-002B2B.md",
+        ".agent/verification.jsonl#VFY-SCOUT-CVG-002B2B-PRIVILEGED-SERVICE-PRINCIPAL-WRITER-LINEARIZATION-001",
+        "packages/shared/database/src/transaction-scope.ts",
+        "apps/worker/src/jobs/pix-provider-event-delivery-repository.ts",
+        "packages/db/migrations/0112_pix_service_principals.sql",
+        "tests/integration/database/pix-provider-settlement-consumer.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The gap is a repository-local authorization race; it does not imply that the existing worker lock or service-principal schema is invalid."
+    },
+    {
+      "id": "IR-002-BOUNDED-IMPLEMENTATION",
+      "description": "A single additive migration and disposable PostgreSQL contention suite can install and prove database-enforced account-scoped writer locks without changing settlement semantics or requiring external credentials.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-002B2B-PRIVILEGED-SERVICE-PRINCIPAL-WRITER-LINEARIZATION.md",
+        "packages/db/migrations/0112_pix_service_principals.sql",
+        "packages/shared/database/src/transaction-scope.ts",
+        "tests/integration/database/pix-provider-settlement-consumer.test.ts"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "Implementation feasibility is bounded planning evidence; RED/GREEN and independent review remain pending."
+    },
+    {
+      "id": "IR-003-AUTHORITY-NON-PROMOTION",
+      "description": "The proposed work is limited to reversible local database lock enforcement and tests, with no PIX/provider/credential/target/production/deployment/release expansion.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/authority.jsonl#AUTH-CVG-002B2B-PRIVILEGED-SERVICE-PRINCIPAL-WRITER-LINEARIZATION-IR-001",
+        ".agent/tasks/CVG-002B2B-PRIVILEGED-SERVICE-PRINCIPAL-WRITER-LINEARIZATION.md",
+        ".agent/state.json",
+        ".agent/backlog.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Global ERP remains IN_PROGRESS/PARTIAL and promotion remains BLOCKED."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-002B2B-PRIVILEGED-SERVICE-PRINCIPAL-WRITER-LINEARIZATION.md",
+    ".agent/authority.jsonl#AUTH-CVG-002B2B-PRIVILEGED-SERVICE-PRINCIPAL-WRITER-LINEARIZATION-IR-001",
+    "packages/shared/database/src/transaction-scope.ts",
+    "apps/worker/src/jobs/pix-provider-event-delivery-repository.ts",
+    "packages/db/migrations/0112_pix_service_principals.sql",
+    "tests/integration/database/pix-provider-settlement-consumer.test.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "The trigger migration and dedicated contention tests do not exist yet.",
+    "RED/GREEN, full regressions, independent review and final reconciliation remain pending."
+  ],
+  "conditions": [
+    "Begin with intentional TDD RED before implementing the trigger/migration.",
+    "Preserve existing settlement lock order, principal resolver and PIX UoW semantics.",
+    "Do not add principal provisioning, provider calls, credentials, target, production, deployment or release scope.",
+    "Keep CVG-002B2B/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via explicit continuation of the consolidation request",
+    "scope": "CVG-002B2B repository-local privileged service-principal writer linearization",
+    "decision": "Authorize only additive repository-local lock enforcement and disposable PostgreSQL/process verification for service-principal mapping and user identity writes; preserve settlement semantics and global non-promotion.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-002B2B-PRIVILEGED-SERVICE-PRINCIPAL-WRITER-LINEARIZATION-IR-001",
+    "expires_or_revalidates": "Revalidate before changing the lock key/order, principal mapping, settlement semantics, providers, credentials, target, production, deployment or release."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "next_action": "Execute intentional TDD RED for direct service-principal/user-identity writer contention, then implement the narrow additive migration and rerun bounded regressions.",
+  "revalidation_triggers": [
+    "Changes to the account authorization lock key or lock order",
+    "New mapping or identity writers",
+    "Any PIX settlement, provider, target, production, deployment or release scope"
+  ],
+  "supersedes": null
+}

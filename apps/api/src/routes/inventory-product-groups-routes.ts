@@ -38,7 +38,7 @@ export interface InventoryProductGroupPersistence {
 
 export interface InventoryProductGroupHandlers {
   audit: AuditService;
-  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
+  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
   store?: InventoryProductGroupPersistence;
 }
 
@@ -238,7 +238,7 @@ export async function handleInventoryProductGroupsRoutes(
   }
 
   if (collectionPaths.has(pathname) && request.method === 'GET') {
-    const principal = handlers.requirePrincipal(request, 'inventory.read');
+    const principal = await handlers.requirePrincipal(request, 'inventory.read');
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const items = await store.list(principal.user.accountId, {
       search: url.searchParams.get('search') ?? url.searchParams.get('q') ?? undefined,
@@ -259,7 +259,7 @@ export async function handleInventoryProductGroupsRoutes(
   }
 
   if (collectionPaths.has(pathname) && request.method === 'POST') {
-    const principal = handlers.requirePrincipal(request, 'inventory.manage');
+    const principal = await handlers.requirePrincipal(request, 'inventory.manage');
     const payload = normalizePayload((await readJsonBody(request)) as Partial<InventoryProductGroupPayload>);
     const validationError = validatePayload(payload);
     if (validationError) {
@@ -281,7 +281,7 @@ export async function handleInventoryProductGroupsRoutes(
   }
 
   if (groupId && request.method === 'PATCH') {
-    const principal = handlers.requirePrincipal(request, 'inventory.manage');
+    const principal = await handlers.requirePrincipal(request, 'inventory.manage');
     const payload = normalizePayload((await readJsonBody(request)) as Partial<InventoryProductGroupPayload>);
     const validationError = validatePayload(payload);
     if (validationError) {
@@ -310,7 +310,7 @@ export async function handleInventoryProductGroupsRoutes(
   }
 
   if (groupId && request.method === 'DELETE') {
-    const principal = handlers.requirePrincipal(request, 'inventory.manage');
+    const principal = await handlers.requirePrincipal(request, 'inventory.manage');
     try {
       const item = await store.remove(principal.user.accountId, groupId);
       appendAudit(handlers.audit, {

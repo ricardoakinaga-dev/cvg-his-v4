@@ -176,6 +176,45 @@ describe('HTTP command helper boundaries', () => {
     expect(nestedCommand).toHaveBeenCalledOnce();
   });
 
+  it('runs authorization before idempotency lookup and command execution', async () => {
+    const phases: string[] = [];
+    const runner = createTenantCommandRunner({
+      environment: 'production',
+      unitOfWork: {
+        async execute(_context, _payload, command, beforeIdempotency) {
+          phases.push('transaction-started');
+          await beforeIdempotency?.({} as never);
+          phases.push('idempotency-lookup');
+          const value = await command({} as never);
+          return { value, replayed: false };
+        }
+      }
+    });
+
+    await runner({
+      request: request({ 'idempotency-key': 'request-authorized' }),
+      accountId: '00000000-0000-0000-0000-000000000001',
+      actorUserId: '00000000-0000-0000-0000-000000000002',
+      correlationId: 'corr-authorized',
+      operation: 'encounter.cash-receipt.reverse',
+      payload: {},
+      beforeIdempotency: async () => {
+        phases.push('authorization');
+      },
+      command: async () => {
+        phases.push('command');
+        return 'committed';
+      }
+    });
+
+    expect(phases).toEqual([
+      'transaction-started',
+      'authorization',
+      'idempotency-lookup',
+      'command'
+    ]);
+  });
+
   it('requires idempotency keys in production and allows non-UoW development commands', async () => {
     const productionRunner = createTenantCommandRunner({
       environment: 'production',
@@ -215,14 +254,20 @@ describe('HTTP command helper boundaries', () => {
     await expect(readJsonBody(bodyRequest)).resolves.toEqual({ name: 'patient' });
     await expect(readJsonBodyOrEmpty(bodyRequest)).resolves.toEqual({ name: 'patient' });
 
-    await expect(readJsonBody(readableRequest([Buffer.from('{"binary":true}')])))
-      .resolves.toEqual({ binary: true });
+    await expect(readJsonBody(readableRequest([Buffer.from('{"binary":true}')]))).resolves.toEqual({
+      binary: true
+    });
 
     await expect(readJsonBodyOrEmpty(readableRequest([]))).resolves.toEqual({});
-    await expect(readJsonBody(readableRequest(['not-json']))).rejects.toBeInstanceOf(ValidationError);
-    await expect(readJsonBodyOrEmpty(readableRequest(['not-json'])))
-      .rejects.toBeInstanceOf(ValidationError);
-    await expect(readJsonBody(readableRequest(['12345']), 2)).rejects.toBeInstanceOf(ValidationError);
+    await expect(readJsonBody(readableRequest(['not-json']))).rejects.toBeInstanceOf(
+      ValidationError
+    );
+    await expect(readJsonBodyOrEmpty(readableRequest(['not-json']))).rejects.toBeInstanceOf(
+      ValidationError
+    );
+    await expect(readJsonBody(readableRequest(['12345']), 2)).rejects.toBeInstanceOf(
+      ValidationError
+    );
 
     const empty = readableRequest([]);
     await expect(readJsonBody(empty)).rejects.toBeInstanceOf(ValidationError);

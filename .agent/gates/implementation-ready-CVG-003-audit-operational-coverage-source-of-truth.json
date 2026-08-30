@@ -1,0 +1,119 @@
+{
+  "record_id": "GATE-CVG-003-AUDIT-OPERATIONAL-COVERAGE-SOURCE-OF-TRUTH-IR-001",
+  "timestamp": "2026-08-29T15:10:00-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-003 bounded durable source-of-truth for GET /audit/operational-coverage",
+  "scope_ref": "CVG-003-AUDIT-OPERATIONAL-COVERAGE-SOURCE-OF-TRUTH",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "Fresh independent scouting identifies repository/cache divergence as the next P1 local quality gap and ranks replay, atomicity and generic ABAC disclosure separately.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-SCOUT-CVG-003-AUDIT-OPERATIONAL-COVERAGE-SOURCE-OF-TRUTH-001",
+        ".agent/tasks/CVG-003-AUDIT-OPERATIONAL-COVERAGE-SOURCE-OF-TRUTH.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Scouting selects a bounded local slice; it does not certify implementation, global parity or release readiness."
+    },
+    {
+      "id": "IR-002",
+      "description": "The frozen contract makes repository mode use a complete committed account snapshot, preserves no-repository cache compatibility, and forbids stale-cache fallback.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/authority.jsonl#AUTH-CVG-003-AUDIT-OPERATIONAL-COVERAGE-SOURCE-OF-TRUTH-IR-001",
+        ".agent/tasks/CVG-003-AUDIT-OPERATIONAL-COVERAGE-SOURCE-OF-TRUTH.md",
+        "packages/modules/audit/src/index.ts",
+        "packages/modules/audit/src/repositories/database-audit.repository.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Implementation and RED/GREEN evidence are pending; this gate authorizes the contract only."
+    },
+    {
+      "id": "IR-003",
+      "description": "The route preserves authentication, principal account scope, report JSON shape and pre-read-audit snapshot timing, and maps source failure to a sanitized 503.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/authority.jsonl#AUTH-CVG-003-AUDIT-OPERATIONAL-COVERAGE-SOURCE-OF-TRUTH-IR-001",
+        "apps/api/src/routes/access-control-routes.ts",
+        "apps/api/src/routes/access-control-audit-events.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The existing route contract must be proven by intentional RED/GREEN and authenticated integration tests."
+    },
+    {
+      "id": "IR-004",
+      "description": "The bounded database query preserves legacy account identity compatibility and deterministic complete snapshot semantics without migrations or unrelated audit changes.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/authority.jsonl#AUTH-CVG-003-AUDIT-OPERATIONAL-COVERAGE-SOURCE-OF-TRUTH-IR-001",
+        "packages/modules/audit/src/repositories/database-audit.repository.ts",
+        "packages/modules/audit/src/repositories/in-memory-audit.repository.ts"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "The database harness and current legacy-row behavior must be verified before bounded closure."
+    },
+    {
+      "id": "IR-005",
+      "description": "TDD RED/GREEN, security and compatibility reviews, full regression, coverage, quality checks, global retest and control-plane reconciliation are required before bounded closure; global promotion remains blocked.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/instruction-scope.md",
+        ".agent/state.json",
+        ".agent/backlog.json",
+        ".agent/tasks/CVG-003-AUDIT-OPERATIONAL-COVERAGE-SOURCE-OF-TRUTH.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This is an implementation-ready gate, not a completion or production-readiness verdict."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-003-AUDIT-OPERATIONAL-COVERAGE-SOURCE-OF-TRUTH.md",
+    ".agent/verification.jsonl#VFY-SCOUT-CVG-003-AUDIT-OPERATIONAL-COVERAGE-SOURCE-OF-TRUTH-001",
+    "packages/modules/audit/src/index.ts",
+    "packages/modules/audit/src/repositories/database-audit.repository.ts",
+    "packages/modules/audit/src/repositories/in-memory-audit.repository.ts",
+    "apps/api/src/routes/access-control-routes.ts",
+    "apps/api/src/routes/access-control-audit-events.test.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "Intentional RED and implementation are pending.",
+    "Repository failure mapping, legacy rows and complete snapshot behavior need executable proof.",
+    "Independent review, full regression, coverage and final control-plane validation are pending.",
+    "Replay-after-revocation, durable reprocess audit atomicity, systemic ABAC, external parity, target and release evidence remain open."
+  ],
+  "conditions": [
+    "Use complete committed repository state in repository mode and no stale-cache fallback.",
+    "Preserve no-repository behavior, account scope, JSON shape and pre-read-audit snapshot timing.",
+    "Map unavailable/incomplete source reads to sanitized 503 AUDIT_COVERAGE_UNAVAILABLE.",
+    "Keep requirements catalog, unrelated routes, mutation semantics, migrations, providers, credentials, target, production, deployment and release scope outside this gate.",
+    "Keep global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via explicit continuation request and fresh independent scouting",
+    "scope": "CVG-003 bounded durable source-of-truth for GET /audit/operational-coverage",
+    "decision": "Authorize only reversible repository-local report, route, repository-query, focused test and matching OpenAPI changes that derive operational coverage from a complete committed account snapshot in repository mode, preserve in-memory compatibility and fail closed with sanitized 503 on unavailable/incomplete source reads. Exclude mutation semantics, unrelated audit routes, replay/idempotency, durable reprocess atomicity, systemic ABAC, migrations, providers, credentials, target, production, deployment and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-003-AUDIT-OPERATIONAL-COVERAGE-SOURCE-OF-TRUTH-IR-001",
+    "expires_or_revalidates": "Revalidate before changing requirements, report JSON shape, audit snapshot timing, global cache-recovery semantics, mutation transactions, other audit routes or any external/production boundary."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "implementation_status": "READY",
+  "next_action": "Write and execute intentional RED tests for persisted-not-cached coverage, stale-cache exclusion, complete >100-row snapshots, repository failure and route 503/audit ordering before implementing the bounded slice.",
+  "revalidation_triggers": [
+    "Changes to the operational requirements catalog or report JSON shape",
+    "Changes to global cache recovery, mutation transactions or audit persistence semantics",
+    "Changes to other audit/log/trace/export routes, replay/idempotency or ABAC",
+    "Expansion to migrations, providers, credentials, target, production, deployment or release scope"
+  ],
+  "supersedes": null
+}

@@ -49,7 +49,12 @@ beforeAll(async () => {
   await pool.query(
     `INSERT INTO users (id, account_id, username, email, password_hash, full_name)
      VALUES ($1, $2, $3, $4, 'hash', 'Inpatient billing rollback operator')`,
-    [userId, accountId, `inpatient_billing_rollback_${suffix}`, `inpatient-billing-rollback-${suffix}@example.test`]
+    [
+      userId,
+      accountId,
+      `inpatient_billing_rollback_${suffix}`,
+      `inpatient-billing-rollback-${suffix}@example.test`
+    ]
   );
   await pool.query(
     `INSERT INTO owners (id, account_id, full_name)

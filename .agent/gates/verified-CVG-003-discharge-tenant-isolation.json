@@ -1,0 +1,151 @@
+{
+  "record_id": "GATE-CVG-003-DISCHARGE-TENANT-ISOLATION-VFY-001",
+  "timestamp": "2026-08-26T22:58:00-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-003 bounded account-scoped discharge collection, detail, update and repository lookup/delete application boundary",
+  "scope_ref": "CVG-003-DISCHARGE-TENANT-ISOLATION",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-001-SERVICE-SCOPE",
+      "description": "Discharge hydration, refresh, collection, detail, encounter lookup, creation, update and cache removal require a valid AccountId; records are filtered before return or mutation and returned summaries are defensive copies.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-DISCHARGE-TENANT-ISOLATION-GREEN-002",
+        "packages/modules/discharges/src/index.ts",
+        "packages/modules/discharges/src/discharges.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The service cache is process-local; cross-process freshness is proven only through the tested authenticated route and disposable PostgreSQL composition."
+    },
+    {
+      "id": "V-002-REPOSITORY-SCOPE",
+      "description": "In-memory and PostgreSQL detail, encounter, collection, update and delete operations use explicit account scope; PostgreSQL INSERT also requires the requested account to equal app.current_account_id(), and update atomically matches the previous version.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-DISCHARGE-TENANT-ISOLATION-GREEN-002",
+        "packages/modules/discharges/src/repositories/database-discharge.repository.ts",
+        "packages/modules/discharges/src/repositories/in-memory-discharge.repository.ts",
+        "tests/integration/database/inpatient-discharge-http-postgres.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The direct integration uses the local test database administrative connection; a separately connected production runtime role remains an operational acceptance item."
+    },
+    {
+      "id": "V-003-HTTP-SCOPE",
+      "description": "Authenticated discharge GET/PATCH routes derive scope from the principal, PATCH rehydrates the account before detail/update, and two-account requests cannot disclose or mutate another account despite spoofed headers.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-DISCHARGE-TENANT-ISOLATION-GREEN-002",
+        "apps/api/src/routes/discharges-routes.ts",
+        "apps/api/src/routes/discharges-routes.test.ts",
+        "tests/integration/database/inpatient-discharge-http-postgres.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This is local HTTP-to-disposable-PostgreSQL evidence, not browser-to-target deployment evidence."
+    },
+    {
+      "id": "V-004-ROLLBACK-CONCURRENCY",
+      "description": "Failed speculative writes restore the prior cache, a failed queue does not poison later writes, command commit/rollback refreshes discharge/inpatient/audit caches, and concurrent repository updates produce one success and one conflict.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-DISCHARGE-TENANT-ISOLATION-GREEN-002",
+        "packages/modules/discharges/src/index.ts",
+        "packages/modules/discharges/src/discharges.test.ts",
+        "apps/api/src/server.ts",
+        "tests/integration/database/inpatient-discharge-http-postgres.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Full inpatient/discharge command atomicity still depends on the canonical tenant UoW; this gate does not claim arbitrary callers outside that wrapper."
+    },
+    {
+      "id": "V-005-QUALITY",
+      "description": "TDD RED history is retained; corrected focused tests, full API regression, builds, typechecks, scoped lint, formatting, secrets scan and official coverage pass.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-DISCHARGE-TENANT-ISOLATION-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-003-DISCHARGE-TENANT-ISOLATION-RED-002",
+        ".agent/verification.jsonl#VFY-CVG-003-DISCHARGE-TENANT-ISOLATION-GREEN-002",
+        ".agent/verification.jsonl#VFY-CVG-003-DISCHARGE-TENANT-ISOLATION-QUALITY-002",
+        ".agent/verification.jsonl#VFY-CVG-003-DISCHARGE-TENANT-ISOLATION-QUALITY-003",
+        ".agent/artifacts/CVG-003-discharge-tenant-isolation-2026-08-26.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Coverage excludes designated database integration suites per the repository coverage command; aggregate lint and remote CI remain outside this bounded gate."
+    },
+    {
+      "id": "V-006-INDEPENDENT-REVIEW",
+      "description": "A fresh independent read-only follow-up review inspected the post-fix service, repositories, route, server recovery and tests and found no Critical, High or technical Medium blocker.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-DISCHARGE-TENANT-ISOLATION-REVIEW-001",
+        ".agent/verification.jsonl#VFY-CVG-003-DISCHARGE-TENANT-ISOLATION-REVIEW-002"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The initial review remains recorded as CONDITIONAL criticism evidence; the follow-up review did not run commands and does not replace target/runtime-role acceptance."
+    },
+    {
+      "id": "V-007-GLOBAL-BOUNDARY",
+      "description": "The bounded result is reconciled without promoting CVG-003, clinical parity, enterprise readiness or release; global partial/open metrics remain explicit.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-DISCHARGE-TENANT-ISOLATION-GLOBAL-RETEST-001",
+        ".agent/verification.jsonl#VFY-CVG-003-DISCHARGE-TENANT-ISOLATION-GLOBAL-RETEST-002",
+        ".agent/verification.jsonl#VFY-CVG-003-DISCHARGE-TENANT-ISOLATION-FINAL-001",
+        ".agent/state.json",
+        ".agent/backlog.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "General parity remains 98/100 with 4/11 verified, clinical parity 100/100 with 2/3 verified, and readiness 95/100 with 42 PASS, 3 WARN and 1 FAIL."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-003-discharge-tenant-isolation.md",
+    ".agent/artifacts/CVG-003-discharge-tenant-isolation-2026-08-26.md",
+    ".agent/authority.jsonl#AUTH-CVG-003-DISCHARGE-TENANT-ISOLATION-IR-001",
+    ".agent/verification.jsonl#VFY-CVG-003-DISCHARGE-TENANT-ISOLATION-FINAL-001",
+    "packages/modules/discharges/src/index.ts",
+    "packages/modules/discharges/src/repositories/database-discharge.repository.ts",
+    "packages/modules/discharges/src/repositories/in-memory-discharge.repository.ts",
+    "apps/api/src/routes/discharges-routes.ts",
+    "apps/api/src/server.ts",
+    "tests/integration/database/inpatient-discharge-http-postgres.test.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "The HTTP and PostgreSQL evidence is disposable and does not certify target TCP/RLS or a separately connected production runtime role.",
+    "No HTTP DELETE route is part of this slice; repository delete scope is tested.",
+    "The optional encounter query/filter surface was not expanded.",
+    "Aggregate lint, remote CI, providers, browser accessibility, operations, backup/restore, remaining Vetus parity and release acceptance remain open."
+  ],
+  "conditions": [
+    "Keep AccountId required at every discharge service and repository boundary.",
+    "Preserve principal-derived route scope, explicit active-account INSERT validation and atomic previous-version matching.",
+    "Revalidate before changing hydration, tenant context, transaction ownership, direct SQL, target, provider or production scope."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via the original consolidation brief",
+    "scope": "CVG-003 bounded discharge collection, detail, update and repository tenant isolation",
+    "decision": "Authorize reversible repository-local discharge service/repository/route/test correction and local verification of account-scoped discharge boundaries; exclude migrations, direct privileged SQL, target, providers, credentials, production, deployment, external mutation and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-003-DISCHARGE-TENANT-ISOLATION-IR-001",
+    "expires_or_revalidates": "Revalidate before expanding beyond discharge application/repository/authenticated HTTP boundaries."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_BOUNDED",
+  "next_action": "Keep CVG-003 and the global program IN_PROGRESS/PARTIAL. Continue with the next separately authorized gap; do not promote this bounded result to clinical parity, enterprise readiness or release.",
+  "revalidation_triggers": [
+    "New discharge collection, detail, update or delete path",
+    "Changes to hydration, tenant context, authorization, transaction ownership, inpatient transition ordering or discharge persistence",
+    "Expansion to target, provider, credential, production, deployment or release acceptance"
+  ],
+  "supersedes": ".agent/gates/implementation-ready-CVG-003-discharge-tenant-isolation.json"
+}

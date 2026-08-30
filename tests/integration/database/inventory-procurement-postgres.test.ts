@@ -26,6 +26,8 @@ const FOREIGN_ACCOUNT_ID = randomUUID() as AccountId;
 const USER_ID = randomUUID() as UserId;
 const ITEM_ID = `proc-item-${randomUUID()}`;
 const LOT_ID = `proc-lot-${randomUUID()}`;
+const SECOND_ITEM_ID = `proc-item-second-${randomUUID()}`;
+const SECOND_LOT_ID = `proc-lot-second-${randomUUID()}`;
 const NOW = '2026-08-24T12:00:00.000Z';
 
 describe('inventory procurement persistence on PostgreSQL', () => {
@@ -35,15 +37,39 @@ describe('inventory procurement persistence on PostgreSQL', () => {
 
   async function command<T>(operation: () => Promise<T> | T): Promise<T> {
     const correlationId = `inventory-procurement-${randomUUID()}`;
-    return runWithTenantContext(
-      { tenantId: TENANT_ID, accountId: ACCOUNT_ID, correlationId },
-      () =>
-        runInTenantTransactionContext(
-          getPool(),
-          { accountId: ACCOUNT_ID, actorUserId: USER_ID, correlationId },
-          async () => operation()
-        )
+    return runWithTenantContext({ tenantId: TENANT_ID, accountId: ACCOUNT_ID, correlationId }, () =>
+      runInTenantTransactionContext(
+        getPool(),
+        { accountId: ACCOUNT_ID, actorUserId: USER_ID, correlationId },
+        async () => operation()
+      )
     );
+  }
+
+  async function hydrateIndependentProcurement(): Promise<ProcurementService> {
+    const isolatedInventory = new InventoryService({ getOrThrow() {} } as never, [], {
+      repository: new DatabaseInventoryRepository()
+    });
+    await runWithTenantContext(
+      {
+        tenantId: TENANT_ID,
+        accountId: ACCOUNT_ID,
+        correlationId: `inventory-race-hydrate-${randomUUID()}`
+      },
+      () => isolatedInventory.hydrateFromDatabase(ACCOUNT_ID)
+    );
+    const isolatedProcurement = new ProcurementService(isolatedInventory, {
+      repository: new DatabaseProcurementRepository()
+    });
+    await runWithTenantContext(
+      {
+        tenantId: TENANT_ID,
+        accountId: ACCOUNT_ID,
+        correlationId: `procurement-race-hydrate-${randomUUID()}`
+      },
+      () => isolatedProcurement.hydrateFromDatabase(ACCOUNT_ID)
+    );
+    return isolatedProcurement;
   }
 
   beforeAll(async () => {
@@ -74,16 +100,28 @@ describe('inventory procurement persistence on PostgreSQL', () => {
       `INSERT INTO inventory_items (
          id, account_id, sku, name, unit, on_hand_quantity, reorder_level,
          unit_cost_amount, created_at, updated_at
-       ) VALUES ($1, $2, 'PROC-001', 'Produto de procurement', 'un', 10, 1, 5, $3, $3)`,
-      [ITEM_ID, ACCOUNT_ID, NOW]
+       ) VALUES ($1, $2, 'PROC-001', 'Produto de procurement', 'un', 10, 1, 5, $3, $3),
+              ($4, $2, 'PROC-002', 'Produto de procurement dois', 'un', 20, 1, 7, $3, $3)`,
+      [ITEM_ID, ACCOUNT_ID, NOW, SECOND_ITEM_ID]
     );
     await pool.query(
       `INSERT INTO inventory_lots (
          id, account_id, inventory_item_id, lot_number, quantity, reserved_quantity,
          unit, location, supplier, manufacture_date, expiry_date, status, created_at, updated_at
        ) VALUES ($1, $2, $3, 'LOT-INITIAL', 10, 0, 'un', 'Deposito A', 'Fornecedor inicial',
+                 $4, $5, 'active', $6, $6),
+                ($7, $2, $8, 'LOT-INITIAL-02', 20, 0, 'un', 'Deposito A', 'Fornecedor inicial',
                  $4, $5, 'active', $6, $6)`,
-      [LOT_ID, ACCOUNT_ID, ITEM_ID, '2026-01-01T00:00:00.000Z', '2027-01-01T00:00:00.000Z', NOW]
+      [
+        LOT_ID,
+        ACCOUNT_ID,
+        ITEM_ID,
+        '2026-01-01T00:00:00.000Z',
+        '2027-01-01T00:00:00.000Z',
+        NOW,
+        SECOND_LOT_ID,
+        SECOND_ITEM_ID
+      ]
     );
 
     const inventoryRepository = new DatabaseInventoryRepository();
@@ -91,7 +129,11 @@ describe('inventory procurement persistence on PostgreSQL', () => {
       repository: inventoryRepository
     });
     await runWithTenantContext(
-      { tenantId: TENANT_ID, accountId: ACCOUNT_ID, correlationId: `inventory-hydrate-${randomUUID()}` },
+      {
+        tenantId: TENANT_ID,
+        accountId: ACCOUNT_ID,
+        correlationId: `inventory-hydrate-${randomUUID()}`
+      },
       () => inventory.hydrateFromDatabase(ACCOUNT_ID)
     );
     procurement = new ProcurementService(inventory, {
@@ -223,5 +265,145 @@ describe('inventory procurement persistence on PostgreSQL', () => {
       () => new DatabaseProcurementRepository().findPurchases(FOREIGN_ACCOUNT_ID)
     );
     expect(foreignPurchases).toEqual([]);
+  });
+
+  it('linearizes concurrent receives of different purchase lines', async () => {
+    const created = await command(() =>
+      procurement.createPurchase(ACCOUNT_ID, USER_ID, {
+        supplierName: 'Fornecedor concorrente',
+        invoiceNumber: 'NF-PROC-RACE',
+        lines: [
+          {
+            inventoryItemId: ITEM_ID,
+            quantity: 1,
+            unitCostAmount: 11,
+            lotNumber: 'LOT-RACE-01'
+          },
+          {
+            inventoryItemId: SECOND_ITEM_ID,
+            quantity: 1,
+            unitCostAmount: 14,
+            lotNumber: 'LOT-RACE-02'
+          }
+        ]
+      })
+    );
+    const approved = await command(() =>
+      procurement.approvePurchase(ACCOUNT_ID, USER_ID, created.id)
+    );
+    const firstProcurement = await hydrateIndependentProcurement();
+    const secondProcurement = await hydrateIndependentProcurement();
+    const [firstLine, secondLine] = approved.lines;
+    assert.ok(firstLine);
+    assert.ok(secondLine);
+
+    const outcomes = await Promise.allSettled([
+      command(() =>
+        firstProcurement.receivePurchase(ACCOUNT_ID, USER_ID, approved.id, {
+          lines: [{ lineId: firstLine.id, quantity: 1 }]
+        })
+      ),
+      command(() =>
+        secondProcurement.receivePurchase(ACCOUNT_ID, USER_ID, approved.id, {
+          lines: [{ lineId: secondLine.id, quantity: 1 }]
+        })
+      )
+    ]);
+    assert.deepEqual(
+      outcomes.map((outcome) => outcome.status),
+      ['fulfilled', 'fulfilled']
+    );
+
+    const purchaseState = await pool.query(
+      `SELECT p.status, p.received_amount, l.inventory_item_id, l.received_quantity
+         FROM inventory_purchases p
+         JOIN inventory_purchase_lines l ON l.account_id = p.account_id AND l.purchase_id = p.id
+        WHERE p.account_id = $1 AND p.id = $2
+        ORDER BY l.inventory_item_id`,
+      [ACCOUNT_ID, approved.id]
+    );
+    assert.deepEqual(purchaseState.rows, [
+      {
+        status: 'received',
+        received_amount: '25.00',
+        inventory_item_id: ITEM_ID,
+        received_quantity: '1.00'
+      },
+      {
+        status: 'received',
+        received_amount: '25.00',
+        inventory_item_id: SECOND_ITEM_ID,
+        received_quantity: '1.00'
+      }
+    ]);
+
+    const movementState = await pool.query(
+      `SELECT inventory_item_id, quantity_delta
+         FROM inventory_stock_movements
+        WHERE account_id = $1 AND reference = $2
+        ORDER BY inventory_item_id`,
+      [ACCOUNT_ID, 'NF-PROC-RACE']
+    );
+    assert.deepEqual(movementState.rows, [
+      { inventory_item_id: ITEM_ID, quantity_delta: '1.00' },
+      { inventory_item_id: SECOND_ITEM_ID, quantity_delta: '1.00' }
+    ]);
+  });
+
+  it('rejects a concurrent same-line over-receipt without a second movement', async () => {
+    const created = await command(() =>
+      procurement.createPurchase(ACCOUNT_ID, USER_ID, {
+        supplierName: 'Fornecedor over-receipt',
+        invoiceNumber: 'NF-PROC-SAME-LINE',
+        lines: [
+          {
+            inventoryItemId: ITEM_ID,
+            quantity: 1,
+            unitCostAmount: 13,
+            lotNumber: 'LOT-SAME-LINE'
+          }
+        ]
+      })
+    );
+    const approved = await command(() =>
+      procurement.approvePurchase(ACCOUNT_ID, USER_ID, created.id)
+    );
+    const isolatedFirst = await hydrateIndependentProcurement();
+    const isolatedSecond = await hydrateIndependentProcurement();
+    const line = approved.lines[0];
+    assert.ok(line);
+
+    const outcomes = await Promise.allSettled([
+      command(() =>
+        isolatedFirst.receivePurchase(ACCOUNT_ID, USER_ID, approved.id, {
+          lines: [{ lineId: line.id, quantity: 1 }]
+        })
+      ),
+      command(() =>
+        isolatedSecond.receivePurchase(ACCOUNT_ID, USER_ID, approved.id, {
+          lines: [{ lineId: line.id, quantity: 1 }]
+        })
+      )
+    ]);
+    assert.deepEqual(outcomes.map((outcome) => outcome.status).sort(), ['fulfilled', 'rejected']);
+
+    const purchaseState = await pool.query(
+      `SELECT p.status, p.received_amount, l.received_quantity
+         FROM inventory_purchases p
+         JOIN inventory_purchase_lines l ON l.account_id = p.account_id AND l.purchase_id = p.id
+        WHERE p.account_id = $1 AND p.id = $2`,
+      [ACCOUNT_ID, approved.id]
+    );
+    assert.deepEqual(purchaseState.rows, [
+      { status: 'received', received_amount: '13.00', received_quantity: '1.00' }
+    ]);
+
+    const movementState = await pool.query(
+      `SELECT inventory_item_id, quantity_delta
+         FROM inventory_stock_movements
+        WHERE account_id = $1 AND reference = $2`,
+      [ACCOUNT_ID, 'NF-PROC-SAME-LINE']
+    );
+    assert.deepEqual(movementState.rows, [{ inventory_item_id: ITEM_ID, quantity_delta: '1.00' }]);
   });
 });

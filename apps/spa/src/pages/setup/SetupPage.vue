@@ -5,8 +5,8 @@
         <span class="setup-context__brand">CVG HIS</span>
         <h2>Um início seguro para a operação da clínica.</h2>
         <p>
-          Este assistente cria a primeira clínica e o administrador principal uma única vez.
-          Nenhuma credencial de instalação fica salva no navegador.
+          Este assistente cria a primeira clínica e o administrador principal uma única vez. Nenhuma
+          credencial de instalação fica salva no navegador.
         </p>
         <ul>
           <li>Provisionamento único e auditável</li>
@@ -63,14 +63,24 @@
           </DsButton>
         </div>
 
-        <div v-else-if="pageState === 'already-complete'" class="setup-state" role="status" aria-live="polite">
+        <div
+          v-else-if="pageState === 'already-complete'"
+          class="setup-state"
+          role="status"
+          aria-live="polite"
+        >
           <DsAlert variant="info" title="Instalação pronta">
             Esta instalação já foi configurada. Entre com uma conta cadastrada.
           </DsAlert>
           <RouterLink class="setup-link" to="/login">Ir para o login</RouterLink>
         </div>
 
-        <div v-else-if="pageState === 'completed'" class="setup-state" role="status" aria-live="polite">
+        <div
+          v-else-if="pageState === 'completed'"
+          class="setup-state"
+          role="status"
+          aria-live="polite"
+        >
           <div class="setup-success__icon" aria-hidden="true">✓</div>
           <strong>Configuração concluída</strong>
           <p>A conta principal foi criada. Faça login para iniciar sua sessão com segurança.</p>
@@ -79,7 +89,13 @@
           </RouterLink>
         </div>
 
-        <form v-else class="setup-form" novalidate @submit.prevent="handleSetup">
+        <form
+          v-else
+          class="setup-form"
+          aria-labelledby="setup-title"
+          novalidate
+          @submit.prevent="handleSetup"
+        >
           <DsInput
             id="setup-token"
             v-model="form.setupToken"
@@ -267,9 +283,8 @@ async function loadSetupState(): Promise<void> {
 }
 
 function countPasswordClasses(password: string): number {
-  return [/[a-z]/, /[A-Z]/, /[0-9]/, /[^a-zA-Z0-9]/].filter((pattern) =>
-    pattern.test(password)
-  ).length;
+  return [/[a-z]/, /[A-Z]/, /[0-9]/, /[^a-zA-Z0-9]/].filter((pattern) => pattern.test(password))
+    .length;
 }
 
 function validateForm(): FieldErrors {
@@ -284,7 +299,8 @@ function validateForm(): FieldErrors {
   }
   if (!clinicName) errors.clinicName = 'Informe o nome da clínica.';
   if (!/^[a-zA-Z0-9._-]{3,128}$/.test(username)) {
-    errors.adminUsername = 'Use de 3 a 128 caracteres entre letras, números, ponto, hífen ou sublinhado.';
+    errors.adminUsername =
+      'Use de 3 a 128 caracteres entre letras, números, ponto, hífen ou sublinhado.';
   }
   if (fullName.length > 255) errors.adminFullName = 'Use no máximo 255 caracteres.';
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 320) {
@@ -342,9 +358,12 @@ async function handleSetup(): Promise<void> {
     await nextTick();
     titleElement.value?.focus();
   } catch {
-    formError.value = 'Não foi possível concluir a instalação. Verifique os dados e tente novamente.';
+    formError.value =
+      'Não foi possível concluir a instalação. Verifique os dados e tente novamente.';
   } finally {
     form.setupToken = '';
+    form.adminPassword = '';
+    form.adminPasswordConfirm = '';
     submitting.value = false;
   }
 }
@@ -406,7 +425,7 @@ onMounted(loadSetupState);
 
 .setup-context p,
 .setup-context li {
-  color: rgba(248, 250, 252, 0.82);
+  color: #f8fafc;
   line-height: 1.6;
 }
 

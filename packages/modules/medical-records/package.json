@@ -20,6 +20,7 @@
     "@cvg-his-v2/shared-types": "workspace:*",
     "@cvg-his-v2/shared-utils": "workspace:*",
     "@cvg-his-v2/shared-validation": "workspace:*",
+    "@cvg-his-v2/tenant-context": "workspace:*",
     "drizzle-orm": "^0.36.4"
   },
   "scripts": {

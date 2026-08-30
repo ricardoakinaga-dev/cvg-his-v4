@@ -28,13 +28,17 @@ process.env.SPA_URL = process.env.SPA_URL || E2E_SPA_URL;
  */
 export default defineConfig({
   testDir: './e2e/spa',
-  testIgnore: E2E_DATABASE_MODE ? [] : ['**/tenant-isolation-db.spec.ts'],
+  testIgnore: E2E_DATABASE_MODE
+    ? []
+    : ['**/tenant-isolation-db.spec.ts', '**/access-role-matrix-db.spec.ts'],
   fullyParallel: false,
   forbidOnly: true,
   retries: 0,
   workers: 1,
   reporter: [['list']],
-  outputDir: `/tmp/playwright-results-${Date.now()}`,
+  // Keep failure artifacts in the workspace so CI can publish them from the
+  // same path used by the visual-regression job.
+  outputDir: 'test-results',
   timeout: 90_000,
   expect: {
     timeout: 15_000
@@ -69,8 +73,7 @@ export default defineConfig({
   globalSetup: './e2e/fixtures/spa-global-setup.ts',
   webServer: [
     {
-      command:
-        `env -u DATABASE_URL -u DATABASE_URL_TEST API_DISABLE_INCOMPATIBLE_DB_REPOS="${E2E_DISABLE_INCOMPATIBLE_DB_REPOS}" NODE_ENV=test AUTH_SECRET="e2e-test-secret-key-do-not-use-in-production-12345678" AUTH_RATE_LIMIT_MAX_REQUESTS="${process.env.AUTH_RATE_LIMIT_MAX_REQUESTS || '200'}" CORS_ALLOWED_ORIGINS="http://127.0.0.1:3112,http://localhost:3112" DATABASE_URL="${E2E_DATABASE_URL}" DATABASE_URL_TEST="${E2E_DATABASE_URL}" REDIS_URL="${E2E_REDIS_URL}" PORT=3111 HOST=127.0.0.1 node apps/api/dist/index.js`,
+      command: `env -u DATABASE_URL -u DATABASE_URL_TEST API_DISABLE_INCOMPATIBLE_DB_REPOS="${E2E_DISABLE_INCOMPATIBLE_DB_REPOS}" NODE_ENV=test AUTH_SECRET="e2e-test-secret-key-do-not-use-in-production-12345678" AUTH_RATE_LIMIT_MAX_REQUESTS="${process.env.AUTH_RATE_LIMIT_MAX_REQUESTS || '200'}" CORS_ALLOWED_ORIGINS="http://127.0.0.1:3112,http://localhost:3112" DATABASE_URL="${E2E_DATABASE_URL}" DATABASE_URL_TEST="${E2E_DATABASE_URL}" REDIS_URL="${E2E_REDIS_URL}" PORT=3111 HOST=127.0.0.1 node apps/api/dist/index.js`,
       url: `${process.env.API_URL || E2E_API_URL}/health`,
       reuseExistingServer: true,
       timeout: 90_000,
@@ -78,8 +81,7 @@ export default defineConfig({
       stderr: 'pipe'
     },
     {
-      command:
-        `SPA_E2E_HOST=127.0.0.1 SPA_E2E_PORT=3112 SPA_E2E_API_TARGET=${process.env.API_URL || E2E_API_URL} node infra/scripts/serve-spa-e2e.mjs`,
+      command: `SPA_E2E_HOST=127.0.0.1 SPA_E2E_PORT=3112 SPA_E2E_API_TARGET=${process.env.API_URL || E2E_API_URL} node infra/scripts/serve-spa-e2e.mjs`,
       url: process.env.SPA_URL || E2E_SPA_URL,
       reuseExistingServer: true,
       timeout: 60_000,

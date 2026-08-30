@@ -4,7 +4,7 @@ import { ForbiddenError } from '@cvg-his-v2/shared-errors';
 
 import { AccessControlService } from './index.js';
 import { AbacEngine } from './abac.js';
-import type { AccountId, UserId, UserSummary } from '@cvg-his-v2/shared-types';
+import type { AccessTeamSummary, AccountId, UserId, UserSummary } from '@cvg-his-v2/shared-types';
 import type {
   AccessControlRepository,
   AccessMembershipRecord,
@@ -124,6 +124,383 @@ describe('AccessControlService', () => {
     expect(assignments.some((assignment) => assignment.permissionCode === 'users.read')).toBe(
       false
     );
+  });
+
+  it('fails closed after an account cache is invalidated', () => {
+    service.invalidateAccount(accountId);
+
+    expect(() => service.getEffectivePermissions({ accountId, userId })).toThrow(ForbiddenError);
+    expect(() =>
+      service.assertAuthorized({
+        actor: makeActor('active'),
+        access: { roleCodes: [], permissionCodes: ['users.read'], capabilities: [] },
+        permissionCode: 'users.read',
+        accountId
+      })
+    ).toThrow(ForbiddenError);
+  });
+
+  it('fails closed while an account mutation is awaiting commit', () => {
+    const actor = makeActor('active');
+    const access = service.createProfile({ roleCodes: ['admin'] });
+
+    service.beginAccountMutation(accountId);
+    expect(() =>
+      service.assertAuthorized({
+        actor,
+        access,
+        permissionCode: 'users.manage',
+        accountId
+      })
+    ).toThrow(ForbiddenError);
+
+    service.completeAccountMutation(accountId);
+    expect(() =>
+      service.assertAuthorized({
+        actor,
+        access,
+        permissionCode: 'users.manage',
+        accountId
+      })
+    ).not.toThrow();
+  });
+
+  it('does not mark a hydration fresh when the database changes during the read', async () => {
+    const teams: readonly AccessTeamSummary[] = [
+      {
+        id: 'team_stable' as never,
+        accountId,
+        code: 'stable',
+        name: 'Stable team',
+        status: 'active',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z'
+      }
+    ];
+    let tokenReads = 0;
+    let teamReads = 0;
+    const repository = {
+      findAllRoles: async () => [],
+      findAllPermissions: async () => [],
+      findAllTeams: async () => {
+        teamReads += 1;
+        return teamReads === 1
+          ? ([
+              {
+                ...teams[0],
+                id: 'team_stale' as never,
+                code: 'stale',
+                name: 'Stale team'
+              }
+            ] satisfies readonly AccessTeamSummary[])
+          : teams;
+      },
+      findAllSectors: async () => [],
+      findTeamMemberships: async () => [],
+      findSectorMemberships: async () => [],
+      findPermissionAssignments: async () => [],
+      findUserIdsByAccount: async () => [],
+      findRolesByUser: async () => [],
+      getAccountChangeToken: async () => {
+        tokenReads += 1;
+        return tokenReads === 1 ? 'before-change' : 'after-change';
+      }
+    } as unknown as AccessControlRepository;
+
+    const hydratedService = new AccessControlService({ repository });
+    await hydratedService.hydrateFromDatabase(accountId);
+
+    expect(tokenReads).toBe(4);
+    expect(teamReads).toBe(2);
+    expect(hydratedService.listTeams(accountId).map((team) => team.code)).toEqual(['stable']);
+  });
+
+  it('coalesces concurrent hydrations so an older read cannot overwrite a newer one', async () => {
+    let releaseFirstRead: () => void = () => undefined;
+    let markFirstReadStarted: () => void = () => undefined;
+    const firstReadStarted = new Promise<void>((resolve) => {
+      markFirstReadStarted = resolve;
+    });
+    const release = new Promise<void>((resolve) => {
+      releaseFirstRead = resolve;
+    });
+    let teamReads = 0;
+    const repository = {
+      findAllRoles: async () => [],
+      findAllPermissions: async () => [],
+      findAllTeams: async () => {
+        teamReads += 1;
+        if (teamReads === 1) {
+          markFirstReadStarted();
+          await release;
+        }
+        return [
+          {
+            id: 'team_serialized' as never,
+            accountId,
+            code: 'serialized',
+            name: 'Serialized team',
+            status: 'active' as const,
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z'
+          }
+        ] satisfies readonly AccessTeamSummary[];
+      },
+      findAllSectors: async () => [],
+      findTeamMemberships: async () => [],
+      findSectorMemberships: async () => [],
+      findPermissionAssignments: async () => [],
+      findUserIdsByAccount: async () => [],
+      findRolesByUser: async () => [],
+      getAccountChangeToken: async () => 'stable'
+    } as unknown as AccessControlRepository;
+
+    const hydratedService = new AccessControlService({ repository });
+    const firstHydration = hydratedService.hydrateFromDatabase(accountId);
+    await firstReadStarted;
+
+    const secondHydration = hydratedService.hydrateFromDatabase(accountId);
+    expect(secondHydration).toBe(firstHydration);
+
+    releaseFirstRead();
+    await Promise.all([firstHydration, secondHydration]);
+    expect(teamReads).toBe(1);
+    expect(hydratedService.listTeams(accountId).map((team) => team.code)).toEqual(['serialized']);
+  });
+
+  it('does not publish an in-flight hydration after the account is invalidated', async () => {
+    let releaseFirstRead: () => void = () => undefined;
+    let markFirstReadStarted: () => void = () => undefined;
+    let markSecondReadStarted: () => void = () => undefined;
+    const firstReadStarted = new Promise<void>((resolve) => {
+      markFirstReadStarted = resolve;
+    });
+    const secondReadStarted = new Promise<void>((resolve) => {
+      markSecondReadStarted = resolve;
+    });
+    const release = new Promise<void>((resolve) => {
+      releaseFirstRead = resolve;
+    });
+    let teamReads = 0;
+    const repository = {
+      findAllRoles: async () => [],
+      findAllPermissions: async () => [],
+      findAllTeams: async () => {
+        teamReads += 1;
+        if (teamReads === 1) {
+          markFirstReadStarted();
+          await release;
+          return [
+            {
+              id: 'team_stale' as never,
+              accountId,
+              code: 'stale',
+              name: 'Stale team',
+              status: 'active' as const,
+              createdAt: '2026-01-01T00:00:00.000Z',
+              updatedAt: '2026-01-01T00:00:00.000Z'
+            }
+          ] satisfies readonly AccessTeamSummary[];
+        }
+        markSecondReadStarted();
+        return [
+          {
+            id: 'team_fresh' as never,
+            accountId,
+            code: 'fresh',
+            name: 'Fresh team',
+            status: 'active' as const,
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z'
+          }
+        ] satisfies readonly AccessTeamSummary[];
+      },
+      findAllSectors: async () => [],
+      findTeamMemberships: async () =>
+        teamReads === 1
+          ? [
+              {
+                userId,
+                subjectType: 'team' as const,
+                subjectId: 'team_stale' as never,
+                createdAt: '2026-01-01T00:00:00.000Z'
+              }
+            ]
+          : [],
+      findSectorMemberships: async () => [],
+      findPermissionAssignments: async () =>
+        teamReads === 1
+          ? [
+              {
+                accountId,
+                subjectType: 'team' as const,
+                subjectId: 'team_stale',
+                permissionCode: 'inventory.read',
+                effect: 'allow' as const,
+                createdAt: '2026-01-01T00:00:00.000Z',
+                updatedAt: '2026-01-01T00:00:00.000Z'
+              } satisfies AccessPermissionAssignmentRecord
+            ]
+          : [],
+      findUserIdsByAccount: async () => [],
+      findRolesByUser: async () => [],
+      getAccountChangeToken: async () => 'stable'
+    } as unknown as AccessControlRepository;
+
+    const hydratedService = new AccessControlService({ repository });
+    const firstHydration = hydratedService.hydrateFromDatabase(accountId);
+    const firstRequest = hydratedService.ensureFreshForRequest(accountId);
+    await firstReadStarted;
+
+    hydratedService.invalidateAccount(accountId);
+    expect(() => hydratedService.getEffectivePermissions({ accountId, userId })).toThrow(
+      ForbiddenError
+    );
+    const secondHydration = hydratedService.hydrateFromDatabase(accountId);
+    expect(secondHydration).not.toBe(firstHydration);
+    await secondReadStarted;
+    await secondHydration;
+
+    releaseFirstRead();
+    await expect(firstHydration).rejects.toMatchObject({
+      code: 'ACCESS_CONTROL_STATE_UNAVAILABLE'
+    });
+    await expect(firstRequest).rejects.toMatchObject({
+      code: 'ACCESS_CONTROL_STATE_UNAVAILABLE'
+    });
+    expect(hydratedService.listTeams(accountId).map((team) => team.code)).toEqual(['fresh']);
+
+    const access = hydratedService.createProfile({ accountId, userId, roleCodes: [] });
+    expect(
+      access.effectivePermissions?.find(
+        (permission) => permission.permissionCode === 'inventory.read'
+      )?.effective
+    ).toBe(false);
+    expect(() =>
+      hydratedService.assertAuthorized({
+        actor: makeActor('active'),
+        access,
+        permissionCode: 'inventory.read',
+        accountId
+      })
+    ).toThrow(ForbiddenError);
+  });
+
+  it('retries when the account changes while user roles are being read', async () => {
+    let accountToken = 'before-change';
+    let teamReads = 0;
+    let releaseRoleRead: () => void = () => undefined;
+    let markRoleReadStarted: () => void = () => undefined;
+    const roleReadStarted = new Promise<void>((resolve) => {
+      markRoleReadStarted = resolve;
+    });
+    const roleReadRelease = new Promise<void>((resolve) => {
+      releaseRoleRead = resolve;
+    });
+    const repository = {
+      findAllRoles: async () => [],
+      findAllPermissions: async () => [],
+      findAllTeams: async () => {
+        teamReads += 1;
+        const code = teamReads === 1 ? 'stale' : 'fresh';
+        return [
+          {
+            id: `team_${code}` as never,
+            accountId,
+            code,
+            name: `${code} team`,
+            status: 'active' as const,
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z'
+          }
+        ] satisfies readonly AccessTeamSummary[];
+      },
+      findAllSectors: async () => [],
+      findTeamMemberships: async () => [],
+      findSectorMemberships: async () => [],
+      findPermissionAssignments: async () => [],
+      findUserIdsByAccount: async () => [userId],
+      findRolesByUser: async () => {
+        if (teamReads === 1) {
+          markRoleReadStarted();
+          await roleReadRelease;
+          accountToken = 'after-change';
+        }
+        return [];
+      },
+      getAccountChangeToken: async () => accountToken
+    } as unknown as AccessControlRepository;
+
+    const hydratedService = new AccessControlService({ repository });
+    const hydration = hydratedService.hydrateFromDatabase(accountId);
+    await roleReadStarted;
+    releaseRoleRead();
+    await hydration;
+
+    expect(teamReads).toBe(2);
+    expect(hydratedService.listTeams(accountId).map((team) => team.code)).toEqual(['fresh']);
+  });
+
+  it('keeps each account on the catalog snapshot used for its hydration', async () => {
+    const accountA = 'account_catalog_a' as AccountId;
+    const accountB = 'account_catalog_b' as AccountId;
+    const userA = 'user_catalog_a' as UserId;
+    const userB = 'user_catalog_b' as UserId;
+    const createdAt = '2026-01-01T00:00:00.000Z';
+    let catalogVersion: 'old' | 'new' = 'old';
+    const oldRole: RoleRecord = {
+      id: 'role_catalog_old' as never,
+      code: 'catalog-admin',
+      name: 'Catalog admin',
+      createdAt,
+      permissionCodes: ['inventory.read']
+    };
+    const newRole: RoleRecord = {
+      id: 'role_catalog_new' as never,
+      code: 'catalog-admin',
+      name: 'Catalog admin',
+      createdAt,
+      permissionCodes: ['billing.read']
+    };
+    const repository = {
+      findAllRoles: async () => (catalogVersion === 'old' ? [oldRole] : [newRole]),
+      findAllPermissions: async () =>
+        (catalogVersion === 'old' ? ['inventory.read'] : ['billing.read']).map((key, index) => ({
+          id: `permission_catalog_${catalogVersion}_${index}` as never,
+          key,
+          createdAt
+        })),
+      findAllTeams: async () => [],
+      findAllSectors: async () => [],
+      findTeamMemberships: async () => [],
+      findSectorMemberships: async () => [],
+      findPermissionAssignments: async () => [],
+      findUserIdsByAccount: async () => [],
+      findRolesByUser: async () => [],
+      getAccountChangeToken: async (targetAccountId: AccountId) =>
+        `${targetAccountId}:${catalogVersion}`
+    } as unknown as AccessControlRepository;
+
+    const hydratedService = new AccessControlService({ repository });
+    await hydratedService.hydrateFromDatabase(accountA);
+    catalogVersion = 'new';
+    await hydratedService.hydrateFromDatabase(accountB);
+
+    const profileA = hydratedService.createProfile({
+      accountId: accountA,
+      userId: userA,
+      roleCodes: ['catalog-admin']
+    });
+    const profileB = hydratedService.createProfile({
+      accountId: accountB,
+      userId: userB,
+      roleCodes: ['catalog-admin']
+    });
+
+    expect(profileA.permissionCodes).toContain('inventory.read');
+    expect(profileA.permissionCodes).not.toContain('billing.read');
+    expect(profileB.permissionCodes).toContain('billing.read');
+    expect(profileB.permissionCodes).not.toContain('inventory.read');
   });
 
   it('lists memberships by user', async () => {
@@ -419,9 +796,7 @@ describe('AccessControlService', () => {
       async removeRoleFromUser(_userId, _roleId) {},
       async findRolesByUser(targetUserId) {
         const code =
-          targetUserId === userA || targetUserId === roleOnlyUserA
-            ? 'veterinarian'
-            : 'reception';
+          targetUserId === userA || targetUserId === roleOnlyUserA ? 'veterinarian' : 'reception';
         return [
           {
             id: `role_${code}` as never,
@@ -470,8 +845,7 @@ describe('AccessControlService', () => {
           {
             userId: targetAccountId === accountA ? userA : userB,
             subjectType: 'sector',
-            subjectId:
-              targetAccountId === accountA ? ('sector_a' as never) : ('sector_b' as never),
+            subjectId: targetAccountId === accountA ? ('sector_a' as never) : ('sector_b' as never),
             createdAt
           }
         ];
@@ -530,9 +904,9 @@ describe('AccessControlService', () => {
     expect(assignments.userPermissions.some((assignment) => assignment.subjectId === userA)).toBe(
       true
     );
-    expect(assignments.teamPermissions.some((assignment) => assignment.subjectId === 'team_a')).toBe(
-      true
-    );
+    expect(
+      assignments.teamPermissions.some((assignment) => assignment.subjectId === 'team_a')
+    ).toBe(true);
     expect(
       assignments.sectorPermissions.some((assignment) => assignment.subjectId === 'sector_a')
     ).toBe(true);
@@ -643,6 +1017,126 @@ describe('AccessControlService', () => {
         }
       )
     ).not.toThrow();
+  });
+
+  it('permits auditor and admin roles while denying other roles for audit.read', () => {
+    const engine = new AbacEngine();
+    const environment = {
+      timestamp: new Date('2026-04-18T10:00:00.000Z').toISOString(),
+      dayOfWeek: 5 as const,
+      hourOfDay: 10
+    };
+    const resource = {
+      resourceType: 'audit_entry' as const,
+      resourceId: 'outbox-stats',
+      accountId
+    };
+
+    for (const roleCodes of [['admin'], ['auditor']] as const) {
+      expect(() =>
+        engine.enforce(
+          'audit.read',
+          {
+            userId,
+            accountId,
+            roleCodes,
+            branchIds: [],
+            teamIds: [],
+            sectorIds: [],
+            sectorCodes: [],
+            isActive: true
+          },
+          resource,
+          environment
+        )
+      ).not.toThrow();
+    }
+
+    expect(() =>
+      engine.enforce(
+        'audit.read',
+        {
+          userId,
+          accountId,
+          roleCodes: ['ops'],
+          branchIds: [],
+          teamIds: [],
+          sectorIds: [],
+          sectorCodes: [],
+          isActive: true
+        },
+        resource,
+        environment
+      )
+    ).toThrow(ForbiddenError);
+  });
+
+  it('permits only admin for audit.write outbox reprocess and preserves unmatched-action defaults', () => {
+    const engine = new AbacEngine();
+    const environment = {
+      timestamp: new Date('2026-04-18T10:00:00.000Z').toISOString(),
+      dayOfWeek: 5 as const,
+      hourOfDay: 10
+    };
+    const resource = {
+      resourceType: 'audit_entry' as const,
+      resourceId: 'event-reprocess-1',
+      accountId
+    };
+
+    expect(() =>
+      engine.enforce(
+        'audit.write',
+        {
+          userId,
+          accountId,
+          roleCodes: ['admin'],
+          branchIds: [],
+          teamIds: [],
+          sectorIds: [],
+          sectorCodes: [],
+          isActive: true
+        },
+        resource,
+        environment
+      )
+    ).not.toThrow();
+
+    expect(() =>
+      engine.enforce(
+        'audit.write',
+        {
+          userId,
+          accountId,
+          roleCodes: ['ops'],
+          branchIds: [],
+          teamIds: [],
+          sectorIds: [],
+          sectorCodes: [],
+          isActive: true
+        },
+        resource,
+        environment
+      )
+    ).toThrow(ForbiddenError);
+
+    expect(
+      engine.evaluate(
+        'unrelated.action',
+        {
+          userId,
+          accountId,
+          roleCodes: ['ops'],
+          branchIds: [],
+          teamIds: [],
+          sectorIds: [],
+          sectorCodes: [],
+          isActive: true
+        },
+        resource,
+        environment
+      ).permitted
+    ).toBe(true);
   });
 
   it('handles sector deny precedence over team allow', async () => {

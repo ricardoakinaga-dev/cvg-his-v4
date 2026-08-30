@@ -1,0 +1,95 @@
+{
+  "record_id": "GATE-CVG-003-ACCESS-ROLE-MATRIX-IR-001",
+  "timestamp": "2026-08-26T10:42:32-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-003 bounded canonical seven-profile access matrix and persisted seed alignment",
+  "scope_ref": "CVG-003-ACCESS-ROLE-MATRIX",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The catalog drift, missing MFA/flag permission codes, bounded owner and explicit non-claims are recorded without promoting global parity or readiness.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-003-access-role-matrix.md",
+        ".agent/artifacts/CVG-004-access-matrix-e2e-2026-08-26.md",
+        ".agent/backlog.json",
+        ".agent/authority.jsonl#AUTH-CVG-003-ACCESS-ROLE-MATRIX-IR-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The gate authorizes only the local application catalog, seed/migration rail and disposable verification; direct SQL, target, production, providers and release remain excluded."
+    },
+    {
+      "id": "IR-002",
+      "description": "The runtime AccessControlService catalog, setup provisioning projection, packages/db seed and migration runner are identified as the four coherent policy boundaries to align.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/access-control/src/index.ts",
+        "apps/api/src/setup-provisioning.ts",
+        "packages/db/src/seed.ts",
+        "packages/db/src/migrate.ts",
+        "apps/api/src/routes/auth-routes.ts",
+        "apps/api/src/routes/feature-flags-routes.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The source-of-truth extraction must preserve the existing package layering and fail closed if a persisted installation is incomplete."
+    },
+    {
+      "id": "IR-003",
+      "description": "Explicit RED unit and migration contract tests plus a disposable PostgreSQL/Redis seven-profile E2E are authorized as the acceptance mechanism; implementation is not yet complete.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-003-access-role-matrix.md",
+        "packages/modules/access-control/src/access-catalog.contract.test.ts",
+        "packages/db/src/access-control-catalog.test.ts",
+        "e2e/spa/access-role-matrix-db.spec.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Green results, independent security review and artifact reconciliation are required before a bounded verified gate can be recorded."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-003-access-role-matrix.md",
+    ".agent/artifacts/CVG-004-access-matrix-e2e-2026-08-26.md",
+    "packages/modules/access-control/src/index.ts",
+    "apps/api/src/setup-provisioning.ts",
+    "packages/db/src/seed.ts",
+    "apps/api/src/routes/auth-routes.ts",
+    "apps/api/src/routes/feature-flags-routes.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "The shared catalog extraction, database projection, migration and seven-profile E2E have not been implemented.",
+    "Independent security review and post-implementation regression evidence are not complete.",
+    "Existing installations may contain role links from the previous baseline until migration 0147 is applied."
+  ],
+  "conditions": [
+    "Do not delete or rewrite prior migrations.",
+    "Reconcile only the seven named system roles in role_permissions; preserve user_roles and user/team/sector subject assignments.",
+    "Run RED before implementation and use disposable PostgreSQL/Redis only for E2E.",
+    "Do not stage or modify unrelated user-owned worktree changes."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via the original consolidation brief",
+    "scope": "CVG-003 canonical seven-profile access matrix and persisted seed alignment",
+    "decision": "Authorize reversible repository implementation, one idempotent role-catalog migration and disposable PostgreSQL/Redis API/SPA verification of the seven interactive profiles; preserve external, target, production, provider, credential and release boundaries.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-003-ACCESS-ROLE-MATRIX-IR-001",
+    "expires_or_revalidates": "Revalidate before expanding to direct SQL, target operations, external providers, credentials, production, deployment or release acceptance."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "next_action": "Run the new contract tests in RED, then extract the dependency-free catalog and align runtime, seed and migration rails.",
+  "revalidation_triggers": [
+    "New protected route permission or profile",
+    "Changes to access-control hydration or setup provisioning",
+    "Changes to seed/migration ordering or role mutation semantics",
+    "Security finding involving MFA, flags, LGPD or tenant access assignments",
+    "Expansion beyond the local application boundary"
+  ],
+  "supersedes": null
+}

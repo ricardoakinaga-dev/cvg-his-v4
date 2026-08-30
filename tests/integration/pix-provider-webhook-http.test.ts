@@ -1,7 +1,7 @@
 import { createHmac } from 'node:crypto';
 import { request } from 'node:http';
 import { connect } from 'node:net';
-import type { AddressInfo, Socket } from 'node:net';
+import type { AddressInfo } from 'node:net';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -204,6 +204,19 @@ afterEach(async () => {
 });
 
 describe('synthetic PIX provider HTTP callback', () => {
+  it('rejects a synthetic capability when NODE_ENV is production-like', async () => {
+    const previousEnvironment = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'staging';
+    try {
+      await expect(startServer({ environment: 'development' })).rejects.toThrow(
+        'Production-like API cannot mount the synthetic PIX webhook capability'
+      );
+    } finally {
+      if (previousEnvironment === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = previousEnvironment;
+    }
+  });
+
   it('authenticates raw chunked bytes, persists before ACK, and does not require a bearer token', async () => {
     const { port, persisted } = await startServer();
     const rawBody = Buffer.from(JSON.stringify(claims()), 'utf8');

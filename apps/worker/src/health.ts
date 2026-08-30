@@ -12,6 +12,7 @@ export interface WorkerHealthDeps {
   readonly lastTickAt: string | null;
   readonly lastError: string | null;
   readonly initialized: boolean;
+  readonly draining: boolean;
   readonly requiredEventBusConsumers: readonly string[];
   readonly registeredEventBusConsumers: readonly string[];
   readonly deliveryGuaranteesReady: boolean;
@@ -49,6 +50,7 @@ export function createWorkerHealthResponse(
   );
   const consumersReady = deps.requiredEventBusConsumers.length > 0 && missingConsumers.length === 0;
   const ready =
+    !deps.draining &&
     deps.databaseConfigured &&
     deps.databaseHealthy &&
     deps.persistenceMode === 'database' &&
@@ -90,8 +92,13 @@ export function createWorkerHealthResponse(
             : 'Worker repositories running in-memory only'
       },
       worker: {
-        state: loopHealthy && consumersReady && deps.webhookDeliveryExecutorReady ? 'ready' : 'degraded',
-        detail: !deps.deliveryGuaranteesReady
+        state:
+          !deps.draining && loopHealthy && consumersReady && deps.webhookDeliveryExecutorReady
+            ? 'ready'
+            : 'degraded',
+        detail: deps.draining
+          ? 'Worker is draining and no longer accepts readiness traffic'
+          : !deps.deliveryGuaranteesReady
           ? 'Worker is not ready: delivery guarantee schema is unavailable'
           : !deps.durableConsumerGuardReady
             ? 'Worker is not ready: durable consumer guard is unavailable'

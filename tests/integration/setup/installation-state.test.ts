@@ -6,6 +6,11 @@ import { resolve } from 'node:path';
 import { Pool, type PoolClient } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
+import {
+  INITIAL_PERMISSION_SEEDS,
+  INITIAL_ROLE_PERMISSION_MAP,
+  INITIAL_ROLE_SEEDS
+} from '../../../apps/api/src/setup-provisioning.js';
 import { TEST_DB_URL } from '../../setup/env.js';
 
 const ROOT = resolve(import.meta.dirname, '../../..');
@@ -273,6 +278,53 @@ describe('durable one-time installation state', () => {
       'SELECT app.is_initial_setup_required() AS required'
     );
     expect(afterUserDeletion.rows).toEqual([{ required: false }]);
+  });
+
+  it('provisions migration-added provider permissions from the real first-run catalog', async () => {
+    const providerPermission = INITIAL_PERMISSION_SEEDS.find(
+      (permission) => permission.key === 'laboratory.results.write'
+    );
+    expect(providerPermission).toBeDefined();
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await setRuntimeRole(client);
+      await callProvision(client, {
+        roleCatalog: INITIAL_ROLE_SEEDS,
+        permissionCatalog: INITIAL_PERMISSION_SEEDS,
+        rolePermissionMap: INITIAL_ROLE_PERMISSION_MAP
+      });
+      await client.query('COMMIT');
+    } finally {
+      client.release();
+    }
+
+    const persisted = await pool.query<{
+      key: string;
+      description: string;
+      admin_assignment: boolean;
+    }>(
+      `SELECT permission.key,
+              permission.description,
+              EXISTS (
+                SELECT 1
+                FROM role_permissions assignment
+                JOIN roles role_record ON role_record.id = assignment.role_id
+                WHERE role_record.name = 'admin'
+                  AND assignment.permission_id = permission.id
+              ) AS admin_assignment
+         FROM permissions permission
+        WHERE permission.key = $1`,
+      ['laboratory.results.write']
+    );
+    expect(persisted.rows).toEqual([
+      {
+        key: 'laboratory.results.write',
+        description: 'Accept authenticated laboratory provider results for human review.',
+        admin_assignment: true
+      }
+    ]);
   });
 
   it('rejects a second attempt with a stable SQLSTATE after serializing on the advisory lock', async () => {

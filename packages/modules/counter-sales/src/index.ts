@@ -1,5 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import { AuthenticationError, ConflictError, NotFoundError } from '@cvg-his-v2/shared-errors';
+import {
+  AuthenticationError,
+  ConflictError,
+  NotFoundError,
+  ValidationError
+} from '@cvg-his-v2/shared-errors';
 import type { AccountId, UserId } from '@cvg-his-v2/shared-types';
 import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
 import type {
@@ -7,7 +12,13 @@ import type {
   CounterSaleRecord,
   CounterSaleItemRecord,
   CounterSalePaymentRecord,
-  CounterSaleReceiptRecord
+  CounterSaleReceiptRecord,
+  CounterSaleListFilters,
+  CounterSaleCancellationHistoryRecord
+} from './repositories/database-counter-sales.repository.js';
+import {
+  MAX_CHEQUE_REPORT_ROWS,
+  MAX_COUNTER_SALE_REPORT_ROWS
 } from './repositories/database-counter-sales.repository.js';
 
 export interface CounterSaleSummary {
@@ -89,6 +100,11 @@ export interface CounterSalePaymentSummary {
   readonly createdAt: string;
 }
 
+export interface CounterSaleChequePaymentSummary extends CounterSalePaymentSummary {
+  readonly saleNumber: string;
+  readonly saleStatus: CounterSaleSummary['status'];
+}
+
 export interface CounterSalePaymentInput {
   readonly method: CounterSalePaymentSummary['method'];
   readonly amount: number;
@@ -136,8 +152,79 @@ export interface CounterSaleCloseEffects {
   readonly journalEntryId?: string;
 }
 
+export interface CounterSaleCancellationInput {
+  readonly accountId: AccountId;
+  readonly cancelledByUserId: UserId;
+  readonly reason: string;
+  readonly correlationId: string;
+}
+
+export interface CounterSaleCancellationTransactionInput {
+  readonly accountId: AccountId;
+  readonly sale: CounterSaleSummary;
+  readonly cancelledByUserId: UserId;
+  readonly reason: string;
+  readonly correlationId: string;
+}
+
+export interface CounterSaleCancellationExecution {
+  readonly before: CounterSaleSummary;
+  readonly sale: CounterSaleSummary;
+  readonly transitioned: boolean;
+}
+
+export interface CounterSaleCancellationHistory {
+  readonly eventId: string;
+  readonly accountId: AccountId;
+  readonly counterSaleId: string;
+  readonly cancelledByUserId: UserId;
+  readonly cancelledAt: string;
+  readonly reason: string;
+  readonly correlationId: string;
+}
+
 export interface CounterSaleSettlementInput {
   readonly payments: readonly CounterSalePaymentInput[];
+}
+
+function normalizeCancellationInput(
+  input: CounterSaleCancellationInput
+): CounterSaleCancellationInput {
+  if (typeof input !== 'object' || input === null) {
+    throw new ValidationError('Counter sale cancellation body is required');
+  }
+
+  const accountId = typeof input.accountId === 'string' ? input.accountId.trim() : '';
+  if (accountId.length === 0 || accountId.length > 255) {
+    throw new ValidationError('Counter sale cancellation account is required');
+  }
+
+  const rawReason = typeof input.reason === 'string' ? input.reason : '';
+  if (/[\u0000-\u001f\u007f-\u009f]/u.test(rawReason)) {
+    throw new ValidationError('Counter sale cancellation reason cannot contain control characters');
+  }
+  const reason = rawReason.trim();
+  if (reason.length === 0 || reason.length > 500) {
+    throw new ValidationError('Counter sale cancellation reason must contain 1 to 500 characters');
+  }
+
+  const cancelledByUserId =
+    typeof input.cancelledByUserId === 'string' ? input.cancelledByUserId.trim() : '';
+  if (cancelledByUserId.length === 0 || cancelledByUserId.length > 255) {
+    throw new ValidationError('Counter sale cancellation actor is required');
+  }
+
+  const correlationId = typeof input.correlationId === 'string' ? input.correlationId.trim() : '';
+  if (correlationId.length === 0 || correlationId.length > 255) {
+    throw new ValidationError('Counter sale cancellation correlation is required');
+  }
+
+  return {
+    accountId: accountId as AccountId,
+    cancelledByUserId: cancelledByUserId as UserId,
+    reason,
+    correlationId
+  };
 }
 
 export interface CounterSalesServiceOptions {
@@ -154,6 +241,15 @@ export interface CounterSalesServiceOptions {
     input: CounterSaleCloseTransactionInput,
     result: CounterSaleClosePreview
   ) => Promise<CounterSaleCloseEffects | void>;
+  /**
+   * Owns the transaction boundary for cancellation. Database-backed callers
+   * must persist the status transition and its audit event through this hook
+   * before the command returns.
+   */
+  readonly cancelTransaction?: (
+    input: CounterSaleCancellationTransactionInput,
+    execute: () => Promise<CounterSaleCancellationExecution>
+  ) => Promise<CounterSaleCancellationExecution>;
   readonly inventoryService?: {
     consumeForSale: (
       accountId: AccountId,
@@ -183,6 +279,7 @@ export class CounterSalesService {
   readonly #useUuidIdentifiers: boolean;
   readonly #closeTransaction?: CounterSalesServiceOptions['closeTransaction'];
   readonly #onClose?: CounterSalesServiceOptions['onClose'];
+  readonly #cancelTransaction?: CounterSalesServiceOptions['cancelTransaction'];
   readonly #inventoryService?: CounterSalesServiceOptions['inventoryService'];
   readonly #cashService?: CounterSalesServiceOptions['cashService'];
   readonly #sales = new Map<string, CounterSaleSummary>();
@@ -202,6 +299,8 @@ export class CounterSalesService {
     }
   >();
   readonly #closeLocks = new Map<string, Promise<CounterSaleCloseResult>>();
+  readonly #cancelLocks = new Map<string, Promise<CounterSaleSummary>>();
+  readonly #cancellationHistory = new Map<string, readonly CounterSaleCancellationHistory[]>();
   #numberCounter = 0;
 
   public constructor(options?: CounterSalesServiceOptions) {
@@ -209,6 +308,7 @@ export class CounterSalesService {
     this.#useUuidIdentifiers = Boolean(options?.repository);
     this.#closeTransaction = options?.closeTransaction;
     this.#onClose = options?.onClose;
+    this.#cancelTransaction = options?.cancelTransaction;
     this.#inventoryService = options?.inventoryService;
     this.#cashService = options?.cashService;
   }
@@ -290,11 +390,11 @@ export class CounterSalesService {
     }
   }
 
-  async #refreshSaleFromDatabase(saleId: string): Promise<void> {
+  async #refreshSaleFromDatabase(saleId: string, expectedAccountId?: AccountId): Promise<void> {
     const repository = this.#repository;
     if (!repository?.lockSaleForUpdate) return;
 
-    const sale = await repository.lockSaleForUpdate(saleId);
+    const sale = await repository.lockSaleForUpdate(saleId, expectedAccountId);
     if (!sale) throw new NotFoundError('Counter sale not found', { saleId });
 
     const [items, payments, receipt] = await Promise.all([
@@ -423,10 +523,7 @@ export class CounterSalesService {
   ): Promise<{ sale: CounterSaleSummary; item: CounterSaleItemSummary }> {
     const sale = this.#sales.get(saleId);
     if (!sale) throw new NotFoundError('Counter sale not found', { saleId });
-    if (
-      parent !== undefined &&
-      (parent.saleId !== saleId || parent.accountId !== sale.accountId)
-    ) {
+    if (parent !== undefined && (parent.saleId !== saleId || parent.accountId !== sale.accountId)) {
       throw new AuthenticationError('Counter sale not found for current account', { saleId });
     }
     if (sale.status !== 'open')
@@ -689,9 +786,12 @@ export class CounterSalesService {
     const sale = this.#sales.get(saleId);
     if (!sale) throw new NotFoundError('Counter sale not found', { saleId });
     if (this.#repository && !this.#closeTransaction) {
-      throw new ConflictError('Database-backed counter sale settlement requires a transaction boundary', {
-        saleId
-      });
+      throw new ConflictError(
+        'Database-backed counter sale settlement requires a transaction boundary',
+        {
+          saleId
+        }
+      );
     }
     if (input.payments.length === 0) {
       throw new ConflictError('Counter sale settlement requires at least one payment');
@@ -742,9 +842,12 @@ export class CounterSalesService {
 
   async #closeInternal(saleId: string, closedByUserId: UserId): Promise<CounterSaleCloseResult> {
     if (this.#repository && !this.#closeTransaction) {
-      throw new ConflictError('Database-backed counter sale close requires a transaction boundary', {
-        saleId
-      });
+      throw new ConflictError(
+        'Database-backed counter sale close requires a transaction boundary',
+        {
+          saleId
+        }
+      );
     }
 
     await this.#refreshSaleFromDatabase(saleId);
@@ -779,11 +882,15 @@ export class CounterSalesService {
         });
       }
 
-      const items = Array.from(this.#items.values()).filter((item) => item.counterSaleId === saleId);
+      const items = Array.from(this.#items.values()).filter(
+        (item) => item.counterSaleId === saleId
+      );
       // Block 1: Automatic inventory consumption for product items
       const inventoryConsumptions: InventoryConsumption[] = [];
       if (this.#inventoryService) {
-        const productItems = items.filter((item) => item.itemType === 'product' && item.codeSnapshot);
+        const productItems = items.filter(
+          (item) => item.itemType === 'product' && item.codeSnapshot
+        );
         for (const item of productItems) {
           try {
             const consumption = await this.#inventoryService.consumeForSale(
@@ -889,25 +996,152 @@ export class CounterSalesService {
     }
   }
 
-  async cancel(saleId: string): Promise<CounterSaleSummary> {
-    const sale = this.#sales.get(saleId);
-    if (!sale) throw new NotFoundError('Counter sale not found', { saleId });
-    if (sale.status === 'closed') throw new ConflictError('Cannot cancel a closed sale');
+  async cancel(saleId: string, input: CounterSaleCancellationInput): Promise<CounterSaleSummary> {
+    const normalizedInput = normalizeCancellationInput(input);
+    const cancellationLockKey = JSON.stringify([normalizedInput.accountId, saleId]);
+    const activeCancellation = this.#cancelLocks.get(cancellationLockKey);
+    if (activeCancellation) return activeCancellation;
 
-    const now = nowIso();
-    const updated: CounterSaleSummary = {
-      ...sale,
-      status: 'cancelled',
-      updatedAt: now
-    };
-    this.#sales.set(saleId, updated);
+    const operation = this.#cancelInternal(saleId, normalizedInput);
+    const trackedOperation = operation.finally(() => {
+      if (this.#cancelLocks.get(cancellationLockKey) === trackedOperation) {
+        this.#cancelLocks.delete(cancellationLockKey);
+      }
+    });
+    this.#cancelLocks.set(cancellationLockKey, trackedOperation);
+    return trackedOperation;
+  }
 
-    if (this.#repository) {
-      const record: CounterSaleRecord = updated;
-      await this.#repository.update(record);
+  async #cancelInternal(
+    saleId: string,
+    input: CounterSaleCancellationInput
+  ): Promise<CounterSaleSummary> {
+    if (this.#repository && !this.#cancelTransaction) {
+      throw new ConflictError(
+        'Database-backed counter sale cancellation requires a transaction boundary',
+        { saleId }
+      );
     }
 
-    return updated;
+    await this.#refreshSaleFromDatabase(saleId, input.accountId);
+    const initialSale = this.#sales.get(saleId);
+    if (!initialSale) throw new NotFoundError('Counter sale not found', { saleId });
+    if (initialSale.accountId !== input.accountId) {
+      throw new AuthenticationError('Counter sale not found for current account', { saleId });
+    }
+    if (initialSale.status === 'closed') {
+      throw new ConflictError('Cannot cancel a closed sale');
+    }
+    if (initialSale.status === 'cancelled') return initialSale;
+
+    const executeCancellation = async (): Promise<CounterSaleCancellationExecution> => {
+      // The production wrapper enters the tenant UoW before invoking this
+      // callback. Refreshing again makes the row lock authoritative for
+      // concurrent requests with different idempotency keys.
+      if (this.#repository) await this.#refreshSaleFromDatabase(saleId, input.accountId);
+      const sale = this.#sales.get(saleId);
+      if (!sale) throw new NotFoundError('Counter sale not found', { saleId });
+      if (sale.status === 'closed') {
+        throw new ConflictError('Cannot cancel a closed sale');
+      }
+      if (sale.status === 'cancelled') {
+        return { before: sale, sale, transitioned: false };
+      }
+
+      const now = nowIso();
+      const updated: CounterSaleSummary = {
+        ...sale,
+        status: 'cancelled',
+        updatedAt: now
+      };
+      if (this.#repository) {
+        const record: CounterSaleRecord = updated;
+        await this.#repository.update(record);
+      }
+      return { before: sale, sale: updated, transitioned: true };
+    };
+
+    try {
+      const execution = this.#cancelTransaction
+        ? await this.#cancelTransaction(
+            {
+              accountId: input.accountId,
+              sale: initialSale,
+              cancelledByUserId: input.cancelledByUserId,
+              reason: input.reason,
+              correlationId: input.correlationId
+            },
+            executeCancellation
+          )
+        : await executeCancellation();
+
+      this.#sales.set(saleId, execution.sale);
+      if (execution.transitioned && !this.#repository) {
+        this.#recordInMemoryCancellation(input, execution);
+      }
+      return execution.sale;
+    } catch (error) {
+      // The transaction wrapper rolls back durable writes. Restore this
+      // projection too, so a failed audit append cannot expose a phantom
+      // cancellation to subsequent reads.
+      this.#sales.set(saleId, initialSale);
+      throw error;
+    }
+  }
+
+  #recordInMemoryCancellation(
+    input: CounterSaleCancellationInput,
+    execution: CounterSaleCancellationExecution
+  ): void {
+    const history: CounterSaleCancellationHistory = {
+      eventId: randomUUID(),
+      accountId: execution.sale.accountId,
+      counterSaleId: execution.sale.id,
+      cancelledByUserId: input.cancelledByUserId,
+      cancelledAt: nowIso(),
+      reason: input.reason,
+      correlationId: input.correlationId
+    };
+    const current = this.#cancellationHistory.get(execution.sale.id) ?? [];
+    this.#cancellationHistory.set(execution.sale.id, [...current, history]);
+  }
+
+  async listCancellationHistory(
+    accountId: AccountId,
+    saleId: string
+  ): Promise<readonly CounterSaleCancellationHistory[]> {
+    const sale = this.#sales.get(saleId);
+    if (sale && sale.accountId !== accountId) {
+      throw new AuthenticationError('Counter sale not found for current account', { saleId });
+    }
+
+    if (this.#repository?.listCancellationHistory) {
+      const rows = await this.#repository.listCancellationHistory(accountId, saleId);
+      return rows.map((row) => this.#toCancellationHistory(row));
+    }
+
+    return (this.#cancellationHistory.get(saleId) ?? [])
+      .filter((event) => event.accountId === accountId)
+      .map((event) => ({ ...event }))
+      .sort(
+        (left, right) =>
+          right.cancelledAt.localeCompare(left.cancelledAt) ||
+          right.eventId.localeCompare(left.eventId)
+      );
+  }
+
+  #toCancellationHistory(
+    row: CounterSaleCancellationHistoryRecord
+  ): CounterSaleCancellationHistory {
+    return {
+      eventId: row.eventId,
+      accountId: row.accountId,
+      counterSaleId: row.counterSaleId,
+      cancelledByUserId: row.cancelledByUserId,
+      cancelledAt: row.cancelledAt,
+      reason: row.reason,
+      correlationId: row.correlationId
+    };
   }
 
   async reopen(saleId: string): Promise<CounterSaleSummary> {
@@ -915,11 +1149,13 @@ export class CounterSalesService {
     if (!sale) throw new NotFoundError('Counter sale not found', { saleId });
     if (sale.status !== 'closed')
       throw new ConflictError('Can only reopen closed sales', { status: sale.status });
-    const receipt = this.#receipts.get(saleId) ?? (this.#repository
-      ? await this.#repository.findReceipt(saleId).then((record) =>
-          record ? this.#toReceiptSummary(record) : undefined
-        )
-      : undefined);
+    const receipt =
+      this.#receipts.get(saleId) ??
+      (this.#repository
+        ? await this.#repository
+            .findReceipt(saleId)
+            .then((record) => (record ? this.#toReceiptSummary(record) : undefined))
+        : undefined);
     if (receipt) {
       throw new ConflictError('Cannot reopen a sale after its financial receipt was issued', {
         saleId,
@@ -949,6 +1185,17 @@ export class CounterSalesService {
     return this.#sales.get(id);
   }
 
+  async getByIdForAccount(accountId: AccountId, saleId: string): Promise<CounterSaleSummary> {
+    if (this.#repository) await this.#refreshSaleFromDatabase(saleId, accountId);
+
+    const sale = this.#sales.get(saleId);
+    if (!sale) throw new NotFoundError('Counter sale not found', { saleId });
+    if (sale.accountId !== accountId) {
+      throw new AuthenticationError('Counter sale not found for current account', { saleId });
+    }
+    return sale;
+  }
+
   getReceipt(saleId: string): CounterSaleReceiptSummary | undefined {
     return this.#receipts.get(saleId);
   }
@@ -973,9 +1220,63 @@ export class CounterSalesService {
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }
 
+  async listChequePayments(
+    accountId: AccountId,
+    filters: { readonly dateFrom?: string; readonly dateTo?: string } = {}
+  ): Promise<readonly CounterSaleChequePaymentSummary[]> {
+    if (this.#repository?.listChequePayments) {
+      const rows = await this.#repository.listChequePayments(accountId, filters);
+      if (rows.length > MAX_CHEQUE_REPORT_ROWS) {
+        throw new ValidationError('Cheque report exceeds the maximum supported row count', {
+          maxRows: MAX_CHEQUE_REPORT_ROWS
+        });
+      }
+      return rows.map((row) => ({ ...row }));
+    }
+
+    const from = filters.dateFrom
+      ? Date.parse(`${filters.dateFrom}T00:00:00.000Z`)
+      : Number.NEGATIVE_INFINITY;
+    const toExclusive = filters.dateTo
+      ? Date.parse(`${filters.dateTo}T00:00:00.000Z`) + 24 * 60 * 60 * 1000
+      : Number.POSITIVE_INFINITY;
+    let rows: CounterSaleChequePaymentSummary[] = [];
+    for (const payment of this.#payments.values()) {
+      if (payment.accountId !== accountId || payment.method !== 'check') continue;
+      const sale = this.#sales.get(payment.counterSaleId);
+      if (!sale || sale.accountId !== accountId) continue;
+      const timestamp = Date.parse(payment.createdAt);
+      if (!Number.isFinite(timestamp) || timestamp < from || timestamp >= toExclusive) continue;
+      const row = {
+        ...payment,
+        saleNumber: sale.number,
+        saleStatus: sale.status
+      } satisfies CounterSaleChequePaymentSummary;
+      rows = [...rows, row]
+        .sort(
+          (left, right) =>
+            left.createdAt.localeCompare(right.createdAt) || left.id.localeCompare(right.id)
+        )
+        .slice(0, MAX_CHEQUE_REPORT_ROWS + 1);
+    }
+
+    if (rows.length > MAX_CHEQUE_REPORT_ROWS) {
+      throw new ValidationError('Cheque report exceeds the maximum supported row count', {
+        maxRows: MAX_CHEQUE_REPORT_ROWS
+      });
+    }
+    return rows;
+  }
+
   list(
     accountId: AccountId,
-    filters?: { status?: string; search?: string; ownerId?: string; dateFrom?: string; dateTo?: string }
+    filters?: {
+      status?: string;
+      search?: string;
+      ownerId?: string;
+      dateFrom?: string;
+      dateTo?: string;
+    }
   ): CounterSaleSummary[] {
     let items = Array.from(this.#sales.values()).filter((s) => s.accountId === accountId);
 
@@ -1001,6 +1302,42 @@ export class CounterSalesService {
     }
 
     return items.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  /**
+   * Reads a report source from the authoritative repository instead of the
+   * process-local projection. This keeps on-demand reports fresh across API
+   * instances while retaining the existing synchronous list API for screens
+   * that intentionally use the hydrated operational projection.
+   */
+  async listPersisted(
+    accountId: AccountId,
+    filters?: CounterSaleListFilters
+  ): Promise<readonly CounterSaleSummary[]> {
+    if (!this.#repository) {
+      throw new ConflictError('Persisted counter-sale reports require a database repository');
+    }
+
+    const sales = await this.#repository.findByAccountId(accountId, {
+      ...(filters?.status ? { status: filters.status } : {}),
+      ...(filters?.search ? { search: filters.search } : {}),
+      ...(filters?.ownerId ? { ownerId: filters.ownerId } : {}),
+      ...(filters?.dateFrom ? { dateFrom: filters.dateFrom } : {}),
+      ...(filters?.dateTo ? { dateTo: filters.dateTo } : {}),
+      limit: MAX_COUNTER_SALE_REPORT_ROWS + 1
+    });
+    const filteredSales = sales.filter(
+      (sale) =>
+        sale.accountId === accountId &&
+        (!filters?.dateFrom || sale.createdAt.slice(0, 10) >= filters.dateFrom) &&
+        (!filters?.dateTo || sale.createdAt.slice(0, 10) <= filters.dateTo)
+    );
+    if (filteredSales.length > MAX_COUNTER_SALE_REPORT_ROWS) {
+      throw new ValidationError('Counter-sale report exceeds the maximum supported row count', {
+        maxRows: MAX_COUNTER_SALE_REPORT_ROWS
+      });
+    }
+    return filteredSales.map((sale) => ({ ...sale }));
   }
 
   async getCommercialDashboard(

@@ -47,7 +47,10 @@ export interface DischargesHandlers {
   encounters: EncountersService;
   inpatient: InpatientService;
   audit: AuditService;
-  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
+  requirePrincipal: (
+    request: IncomingMessage,
+    permissionCode: string
+  ) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
   runCommand?: TenantCommandRunner;
 }
 
@@ -68,7 +71,7 @@ export async function handleDischargesRoutes(
 
   // GET /discharges — list all discharges for account
   if (pathname === '/discharges' && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'encounters.read');
+    const principal = await requirePrincipal(request, 'discharges.read');
     // Discharge lists are read by any API replica. Rehydrate the account slice
     // from committed rows so a replica started before a discharge does not
     // serve an incomplete high-value clinical record.
@@ -92,7 +95,7 @@ export async function handleDischargesRoutes(
 
   // POST /discharges — create a new discharge
   if (pathname === '/discharges' && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'encounters.manage');
+    const principal = await requirePrincipal(request, 'discharges.manage');
     const payload = (await readJsonBody(request)) as CreateDischargeRequest;
     validateRequestBody(
       payload as unknown as Record<string, unknown>,
@@ -153,11 +156,15 @@ export async function handleDischargesRoutes(
           createdDischarge = created;
 
           if (activeStay) {
-            inpatient.updateStatus(activeStay.id, {
-              status: 'discharged',
-              dischargeReason:
-                payload.outcome ?? payload.clinicalSummary ?? 'Alta documental registrada'
-            });
+            inpatient.updateStatus(
+              activeStay.id,
+              {
+                status: 'discharged',
+                dischargeReason:
+                  payload.outcome ?? payload.clinicalSummary ?? 'Alta documental registrada'
+              },
+              principal.user.accountId as never
+            );
           }
 
           await Promise.all([discharges.waitForPersistence(), inpatient.waitForPersistence()]);
@@ -180,7 +187,7 @@ export async function handleDischargesRoutes(
     } catch (error) {
       const restoreCaches = (): void => {
         if (createdDischarge) {
-          discharges.removeFromCache(createdDischarge.id);
+          discharges.removeFromCache(principal.user.accountId as never, createdDischarge.id);
         }
         if (previousStay) {
           inpatient.restoreStayCache(previousStay);
@@ -218,13 +225,10 @@ export async function handleDischargesRoutes(
 
   // GET /discharges/:dischargeId — get discharge by ID
   if (pathname.startsWith('/discharges/') && request.method === 'GET' && !pathname.includes('?')) {
-    const principal = requirePrincipal(request, 'encounters.read');
+    const principal = await requirePrincipal(request, 'discharges.read');
     await discharges.refreshAccount(principal.user.accountId as never);
     const dischargeId = requireNonEmptyString(pathname.split('/')[2], 'dischargeId');
-    const discharge = discharges.getByIdForAccount(
-      principal.user.accountId as never,
-      dischargeId as never
-    );
+    const discharge = discharges.getById(principal.user.accountId as never, dischargeId as never);
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
@@ -243,17 +247,20 @@ export async function handleDischargesRoutes(
 
   // PATCH /discharges/:dischargeId — update a discharge
   if (pathname.startsWith('/discharges/') && request.method === 'PATCH') {
-    const principal = requirePrincipal(request, 'encounters.manage');
+    const principal = await requirePrincipal(request, 'discharges.manage');
     const dischargeId = requireNonEmptyString(pathname.split('/')[2], 'dischargeId');
     const body = await readJsonBody(request);
     const { expectedVersion, ...payload } = body as UpdateDischargeRequest & {
       expectedVersion?: number;
     };
-    const current = discharges.getByIdForAccount(
+    await discharges.refreshAccount(principal.user.accountId as never);
+    const current = discharges.getById(principal.user.accountId as never, dischargeId as never);
+    const discharge = discharges.update(
       principal.user.accountId as never,
-      dischargeId as never
+      dischargeId as never,
+      payload,
+      expectedVersion
     );
-    const discharge = discharges.update(dischargeId as never, payload, expectedVersion);
     if (discharge.accountId !== current.accountId) {
       throw new Error('Discharge account context changed unexpectedly');
     }

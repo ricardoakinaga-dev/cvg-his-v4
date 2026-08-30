@@ -1,0 +1,117 @@
+{
+  "record_id": "GATE-CVG-004-ADVANCE-PAYMENT-WRITE-VFY-001",
+  "timestamp": "2026-08-26T15:29:19-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-004 bounded manual advance-payment issuance and append-only compensation",
+  "scope_ref": "CVG-004-ADVANCE-PAYMENT-WRITE",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-001-WRITE-CONTRACT",
+      "description": "Authenticated billing.manage commands validate exact BRL cents, bounded text, UUIDs, exact payload fields, idempotency and malformed encoded paths before writing.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-ADVANCE-PAYMENT-WRITE-API-001",
+        "apps/api/src/routes/advance-payments-routes.ts",
+        "apps/api/src/routes/advance-payments-routes.test.ts",
+        "apps/api/src/openapi.yaml",
+        "packages/shared/contracts/src/index.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Only manual issuance and append-only compensation are in scope; no cancellation, refund, reversal or settlement semantics are asserted."
+    },
+    {
+      "id": "V-002-CANONICAL-UOW",
+      "description": "The repository uses the existing tenant unit of work, requires an active transaction, derives tenant/actor identity server-side and persists exact ledger facts with account-scoped idempotency.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-ADVANCE-PAYMENT-WRITE-DB-001",
+        "apps/api/src/repositories/database-advance-payments-report.repository.ts",
+        "apps/api/src/repositories/advance-payments-report-source.ts",
+        "packages/shared/database/src/tenant-unit-of-work.ts",
+        "packages/db/migrations/0148_advance_payments.sql"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Evidence is local and disposable; target transaction settings, grants and migration execution remain unverified."
+    },
+    {
+      "id": "V-003-AUDIT-OUTBOX-RLS",
+      "description": "Issuance and compensation append transaction-scoped audit/outbox events, preserve immutability, reject over-allocation and enforce tenant/account isolation through the canonical database rail.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-ADVANCE-PAYMENT-WRITE-DB-001",
+        "tests/integration/rls/advance-payments-report-source.test.ts",
+        "packages/db/migrations/0148_advance_payments.sql",
+        "apps/api/src/repositories/database-advance-payments-report.repository.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The PostgreSQL proof is a fresh local database and does not certify production backup/restore, RTO/RPO or target operations."
+    },
+    {
+      "id": "V-004-SPA-CANONICAL-DATA",
+      "description": "Finance > Pagamento Antecipado consumes persisted canonical summaries, exposes explicit loading/empty/error/retry feedback and supports bounded issue/compensation commands without synthetic owner credit balance state.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-ADVANCE-PAYMENT-WRITE-SPA-001",
+        "apps/spa/src/pages/finance/AdvancePaymentsPage.vue",
+        "apps/spa/src/services/advance-payments.ts",
+        "apps/spa/src/pages/finance/__tests__/AdvancePaymentsPage.test.ts",
+        "apps/spa/src/services/__tests__/advance-payments.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "No provider, bank, cash, PIX, accounting or target-environment UX acceptance is asserted."
+    },
+    {
+      "id": "V-005-REGRESSION-SECURITY",
+      "description": "Full workspace quality gates, official coverage, build, security and structural controls pass after the bounded write implementation.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-ADVANCE-PAYMENT-WRITE-QUALITY-001",
+        ".agent/verification.jsonl#VFY-CVG-004-ADVANCE-PAYMENT-WRITE-SECURITY-001",
+        ".agent/artifacts/CVG-004-advance-payment-write-2026-08-26.md",
+        "package.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Repository-local controls do not prove full Vetus parity, external homologation, accessibility, remote CI, operations or release acceptance."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-advance-payment-write-lifecycle.md",
+    ".agent/artifacts/CVG-004-advance-payment-write-2026-08-26.md",
+    ".agent/verification.jsonl#VFY-CVG-004-ADVANCE-PAYMENT-WRITE-FINAL-001",
+    "apps/api/src/routes/advance-payments-routes.ts",
+    "apps/api/src/repositories/database-advance-payments-report.repository.ts",
+    "apps/spa/src/pages/finance/AdvancePaymentsPage.vue",
+    "tests/integration/rls/advance-payments-report-source.test.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "CVG-004 parent parity remains IN_PROGRESS/PARTIAL.",
+    "Cancellation, refund, reversal, cash/bank/PIX, accounting-journal and receivable-settlement lifecycle remain outside this bounded gate.",
+    "Providers, Live Lab, Vetus import, distributed worker failure/observability, remaining reports, target RLS/restore/RTO-RPO, remote CI, accessibility, operations and release remain open."
+  ],
+  "conditions": [],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner)",
+    "scope": "CVG-004 bounded manual advance-payment issuance and append-only compensation",
+    "decision": "Authorize reversible repository implementation and local/disposable PostgreSQL, API and SPA verification using the existing 0148 ledger. Require billing.manage, exact BRL cents, tenant UoW/idempotency, transaction-scoped audit/outbox and RLS. Exclude cash/journal/receivable links, refund/cancellation, providers, credentials, target, production, deployment, external mutation and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-ADVANCE-PAYMENT-WRITE-IR-001",
+    "expires_or_revalidates": "Revalidate before adding refund/cancellation/reversal, cash/bank/PIX/receivable/journal integration, backfill, provider, target operation, production/deployment action or release acceptance."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_BOUNDED",
+  "next_action": "Keep CVG-004 and the global program IN_PROGRESS/PARTIAL. Select the next separately authorized gap; do not promote this bounded result to full Vetus parity, enterprise readiness or release.",
+  "revalidation_triggers": [
+    "Changes to advance-payment persistence, allocation semantics, idempotency, audit/outbox or finance authorization",
+    "Any cancellation, refund, reversal, cash/bank/PIX, receivable or accounting-journal integration",
+    "Any provider, target, production, deployment or release expansion"
+  ],
+  "supersedes": ".agent/gates/implementation-ready-CVG-004-advance-payment-write.json"
+}

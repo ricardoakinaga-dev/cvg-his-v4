@@ -1,0 +1,114 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-RETRY-DELIVERY-LEASE-EXPIRY-FENCING-VFY-001",
+  "timestamp": "2026-08-30T03:22:15-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-004 failed report-delivery retry finalization lease-expiry fencing",
+  "scope_ref": "CVG-004-REPORT-RETRY-DELIVERY-LEASE-EXPIRY-FENCING",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "VFY-001",
+      "description": "DatabaseReportRepository.saveClaimedDelivery requires account_id, delivery id, the opaque claim token and an active claim_until > clock_timestamp() without changing the existing boolean/service contract.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-RETRY-DELIVERY-LEASE-EXPIRY-FENCING-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-RETRY-DELIVERY-LEASE-EXPIRY-FENCING-REVIEW-001",
+        "packages/modules/reports/src/index.ts",
+        "packages/modules/reports/src/reports.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The correction fences the durable write; it does not make an external provider side effect exactly-once."
+    },
+    {
+      "id": "VFY-002",
+      "description": "Disposable PostgreSQL proof covers successful active finalization, rejection after expiry before takeover with row preservation, and existing stale-token rejection after takeover.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-RETRY-DELIVERY-LEASE-EXPIRY-FENCING-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-RETRY-DELIVERY-LEASE-EXPIRY-FENCING-REGRESSION-001",
+        "tests/integration/database/reports-delivery-postgres.test.ts",
+        "packages/db/migrations/0143_reports_delivery_leases.sql"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The disposable database validates repository behavior and does not certify production topology or distributed clock quality."
+    },
+    {
+      "id": "VFY-003",
+      "description": "Account and tenant boundaries remain explicit, the existing lease schema is reused without a migration, and no retry-selection, provider, renewal or schedule API behavior changed.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-RETRY-DELIVERY-LEASE-EXPIRY-FENCING-REVIEW-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-RETRY-DELIVERY-LEASE-EXPIRY-FENCING-QUALITY-001",
+        "packages/tenant-context/src/tenant-db.ts",
+        "packages/db/migrations/0143_reports_delivery_leases.sql",
+        "packages/modules/reports/src/index.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Target-role/RLS execution, provider behavior, production and deployment remain outside this repository-local gate."
+    },
+    {
+      "id": "VFY-004",
+      "description": "TDD RED/GREEN and bounded regression pass for ReportsService, the complete worker package, the PostgreSQL delivery suite and the API suite, with full workspace typecheck and build passing.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-RETRY-DELIVERY-LEASE-EXPIRY-FENCING-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-RETRY-DELIVERY-LEASE-EXPIRY-FENCING-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-RETRY-DELIVERY-LEASE-EXPIRY-FENCING-REGRESSION-001",
+        ".agent/artifacts/CVG-004-report-retry-delivery-lease-expiry-fencing-2026-08-30.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The bounded regression is not a remote CI, production, deployment or end-to-end provider approval."
+    },
+    {
+      "id": "VFY-005",
+      "description": "Official coverage and static quality checks pass at or above the project bar, including secrets, OpenAPI, migration source-of-truth, RLS, formatting and diff hygiene.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-RETRY-DELIVERY-LEASE-EXPIRY-FENCING-QUALITY-001",
+        ".agent/artifacts/CVG-004-report-retry-delivery-lease-expiry-fencing-2026-08-30.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Coverage and static validation are repository-local and do not replace external homologation or operational acceptance."
+    },
+    {
+      "id": "VFY-006",
+      "description": "Independent bounded review found no Critical or High issue, and the fresh parity audit preserves the explicit global non-promotion boundary.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-RETRY-DELIVERY-LEASE-EXPIRY-FENCING-REVIEW-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-RETRY-DELIVERY-LEASE-EXPIRY-FENCING-GLOBAL-NON-PROMOTION-001",
+        ".agent/gates/verified-CVG-004-report-scheduled-execution-export-lease-fencing.json",
+        ".agent/tasks/CVG-004-report-retry-delivery-lease-expiry-fencing.md"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "The review approves only this local lease fence; provider/idempotency, target, production, release and global ERP readiness remain unapproved."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-report-retry-delivery-lease-expiry-fencing.md",
+    ".agent/authority.jsonl#AUTH-CVG-004-REPORT-RETRY-DELIVERY-LEASE-EXPIRY-FENCING-IR-001",
+    ".agent/artifacts/CVG-004-report-retry-delivery-lease-expiry-fencing-2026-08-30.md",
+    "packages/modules/reports/src/index.ts",
+    "packages/modules/reports/src/reports.test.ts",
+    "tests/integration/database/reports-delivery-postgres.test.ts",
+    "packages/db/migrations/0143_reports_delivery_leases.sql"
+  ],
+  "confidence": "MEDIUM",
+  "residual_risk": "HIGH",
+  "decision": "PASS_BOUNDED",
+  "implementation_status": "COMPLETE_BOUNDED",
+  "next_action": "Reconcile the control plane, then return to fresh residual scouting under a new authority. Keep parent CVG-004/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+  "conditions": [
+    "Do not extend this gate to provider idempotency/cancellation, retry-policy redesign, redrive/reconciliation, lease renewal, target-role/RLS proof, production, deployment, release or global ERP without fresh authority.",
+    "Keep the previously verified schedule-delivery and scheduled execution/export gates closed and unchanged.",
+    "Keep parent CVG-004/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
+  ],
+  "authority_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-RETRY-DELIVERY-LEASE-EXPIRY-FENCING-IR-001",
+  "supersedes": ".agent/gates/implementation-ready-CVG-004-report-retry-delivery-lease-expiry-fencing.json"
+}

@@ -143,14 +143,17 @@ describe('runtime operational coverage', () => {
       billingSettlementStatus: 'pending_billing'
     });
 
-    const summary = await runtime.encounterFinancial.recordPaymentForBillingRecord(billingRecord.id, {
-      amountPaid: 80,
-      method: 'credit_card',
-      paidAt: '2026-04-18T12:00:00.000Z',
-      paidByUserId: USER_ID,
-      externalReferenceType: 'other',
-      externalReferenceId: 'card_runtime_1'
-    });
+    const summary = await runtime.encounterFinancial.recordPaymentForBillingRecord(
+      billingRecord.id,
+      {
+        amountPaid: 80,
+        method: 'credit_card',
+        paidAt: '2026-04-18T12:00:00.000Z',
+        paidByUserId: USER_ID,
+        externalReferenceType: 'other',
+        externalReferenceId: 'card_runtime_1'
+      }
+    );
 
     expect(summary.financialStatus).toBe('paid');
     await expect(runtime.cardTransactions.findByTransactionId('card_runtime_1')).resolves.toEqual(
@@ -158,7 +161,9 @@ describe('runtime operational coverage', () => {
         billingSettlementStatus: 'applied'
       })
     );
-    await expect(runtime.cardTransactions.findByTransactionId('card_runtime_1')).resolves.toMatchObject({
+    await expect(
+      runtime.cardTransactions.findByTransactionId('card_runtime_1')
+    ).resolves.toMatchObject({
       billingSettledAt: expect.any(String)
     });
   });
@@ -215,7 +220,9 @@ describe('runtime operational coverage', () => {
         billingSettlementStatus: 'pending_billing'
       })
     );
-    const unchanged = await runtime.cardTransactions.findByTransactionId('card_runtime_unsupported');
+    const unchanged = await runtime.cardTransactions.findByTransactionId(
+      'card_runtime_unsupported'
+    );
     expect(unchanged).not.toHaveProperty('billingSettledAt');
   });
 
@@ -255,13 +262,16 @@ describe('runtime operational coverage', () => {
       billingSettlementStatus: 'pending_billing'
     });
 
-    const summary = await runtime.encounterFinancial.recordPaymentForBillingRecord(billingRecord.id, {
-      amountPaid: 55,
-      method: 'credit_card',
-      paidAt: '2026-04-18T14:00:00.000Z',
-      paidByUserId: USER_ID,
-      externalReferenceType: 'other'
-    });
+    const summary = await runtime.encounterFinancial.recordPaymentForBillingRecord(
+      billingRecord.id,
+      {
+        amountPaid: 55,
+        method: 'credit_card',
+        paidAt: '2026-04-18T14:00:00.000Z',
+        paidByUserId: USER_ID,
+        externalReferenceType: 'other'
+      }
+    );
 
     expect(summary.financialStatus).toBe('paid');
     await expect(
@@ -292,7 +302,7 @@ describe('runtime operational coverage', () => {
     });
 
     const processed = await runtime.notifications.processPending({ limit: 10 }, ACCOUNT_ID);
-    const pendingEvents = await inMemoryRepos.outbox.findPending(10);
+    const pendingEvents = await inMemoryRepos.outbox.findPending(ACCOUNT_ID, 10);
     const sentEvent = pendingEvents.find((event) => event.eventType === 'notification.sent');
 
     expect(processed).toHaveLength(1);
@@ -390,11 +400,11 @@ describe('runtime operational coverage', () => {
     });
 
     await runtime.scheduling.cancelAppointment(appointment.id, 'Cliente desistiu');
-    const pendingEvents = await inMemoryRepos.outbox.findPending(10);
+    const pendingEvents = await inMemoryRepos.outbox.findPending(ACCOUNT_ID, 10);
     const statusChangedEvent = pendingEvents.find(
       (event) =>
-        event.eventType === 'appointment.status_changed'
-        && (event.payload as { id?: string }).id === appointment.id
+        event.eventType === 'appointment.status_changed' &&
+        (event.payload as { id?: string }).id === appointment.id
     );
 
     expect(statusChangedEvent).toEqual(
@@ -439,12 +449,12 @@ describe('runtime operational coverage', () => {
     });
     await runtime.encounters.waitForPersistence();
 
-    const pendingEvents = await inMemoryRepos.outbox.findPending(10);
+    const pendingEvents = await inMemoryRepos.outbox.findPending(ACCOUNT_ID, 10);
     const statusChangedEvent = pendingEvents.find(
       (event) =>
-        event.eventType === 'encounter.status_changed'
-        && (event.payload as { id?: string; newStatus?: string }).id === encounter.id
-        && (event.payload as { newStatus?: string }).newStatus === 'observation'
+        event.eventType === 'encounter.status_changed' &&
+        (event.payload as { id?: string; newStatus?: string }).id === encounter.id &&
+        (event.payload as { newStatus?: string }).newStatus === 'observation'
     );
 
     expect(observed.status).toBe('observation');
@@ -484,11 +494,11 @@ describe('runtime operational coverage', () => {
     });
     await runtime.patients.waitForPersistence();
 
-    const pendingEvents = await inMemoryRepos.outbox.findPending(10);
+    const pendingEvents = await inMemoryRepos.outbox.findPending(ACCOUNT_ID, 10);
     const createdEvent = pendingEvents.find(
       (event) =>
-        event.eventType === 'patient.created'
-        && (event.payload as { id?: string }).id === patient.id
+        event.eventType === 'patient.created' &&
+        (event.payload as { id?: string }).id === patient.id
     );
 
     expect(createdEvent).toEqual(

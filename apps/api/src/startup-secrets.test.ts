@@ -95,7 +95,8 @@ test('buildApiManagedSecretDescriptors maps API secrets to environment-scoped Va
       ['NFSE_CERTIFICATE_BASE64', 'production/nfse', false],
       ['NFSE_ISSUER_JSON', 'production/nfse', false],
       ['SETUP_BOOTSTRAP_TOKEN', 'production/api_setup', false],
-      ['PIX_WEBHOOK_KEYRING_JSON', 'production/pix_webhook', false]
+      ['PIX_WEBHOOK_KEYRING_JSON', 'production/pix_webhook', false],
+      ['LABORATORY_PROVIDER_KEYRING_JSON', 'production/laboratory_provider', false]
     ]
   );
 });
@@ -169,6 +170,16 @@ test('resolveApiStartup preserves explicit env secrets instead of overriding the
   } finally {
     vault.close();
   }
+});
+
+test('resolveApiStartup fails closed when Vault is enabled without production configuration', async () => {
+  await assert.rejects(
+    () => resolveApiStartup({
+      NODE_ENV: 'production',
+      VAULT_ENABLED: 'true'
+    }),
+    /Vault configuration incomplete.*Refusing env-based fallback in production-like environment/
+  );
 });
 
 test('buildSecretRotationStatusReport summarizes readiness for audited secret rotation', () => {

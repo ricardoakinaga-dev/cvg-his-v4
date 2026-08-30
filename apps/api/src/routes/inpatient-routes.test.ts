@@ -4,7 +4,7 @@ import test from 'node:test';
 
 import { AuditService } from '@cvg-his-v2/module-audit';
 import { EncountersService } from '@cvg-his-v2/module-encounters';
-import { InpatientService } from '@cvg-his-v2/module-inpatient';
+import { InpatientService, SectorBedService } from '@cvg-his-v2/module-inpatient';
 import { OwnersService } from '@cvg-his-v2/module-owners';
 import { PatientsService } from '@cvg-his-v2/module-patients';
 import type {
@@ -139,10 +139,14 @@ function createInpatientService(): InpatientService {
     ward: 'Ala A',
     bed: 'B12'
   });
-  service.addProgress('user-1' as never, {
-    stayId: stay.id,
-    note: 'Pendente avaliacao de retorno e ajuste de fluidoterapia'
-  });
+  service.addProgress(
+    'user-1' as never,
+    {
+      stayId: stay.id,
+      note: 'Pendente avaliacao de retorno e ajuste de fluidoterapia'
+    },
+    stay.accountId
+  );
   return service;
 }
 
@@ -180,6 +184,44 @@ test('handleInpatientRoutes generates handover preview with latest progress and 
   assert.equal(payload.items[0]?.requiresAttention, true);
 });
 
+test('handleInpatientRoutes propagates the principal account into stay reads', async () => {
+  const calls: string[] = [];
+  const stay = {
+    id: 'stay-account-boundary',
+    accountId: 'acc_cvg_demo'
+  } as InpatientStaySummary;
+  const inpatient = {
+    getOrThrow: (_stayId: string, accountId?: string) => {
+      calls.push(`get:${accountId ?? 'missing'}`);
+      return stay;
+    },
+    listProgress: (_stayId: string, accountId?: string) => {
+      calls.push(`progress:${accountId ?? 'missing'}`);
+      return [];
+    }
+  };
+  const response = new MockResponse();
+
+  await handleInpatientRoutes(
+    `/inpatient/${stay.id}/progress`,
+    new MockRequest({
+      method: 'GET',
+      url: `/inpatient/${stay.id}/progress`
+    }) as never,
+    response as never,
+    'corr-inpatient-stay-account-boundary',
+    {
+      inpatient: inpatient as never,
+      sectorBedService: {} as never,
+      audit: { write: () => {} } as never,
+      requirePrincipal: () => createPrincipal()
+    }
+  );
+
+  assert.deepEqual(calls, ['get:acc_cvg_demo', 'progress:acc_cvg_demo']);
+  assert.equal(response.statusCode, 200);
+});
+
 test('handleInpatientRoutes hides inpatient resources from another account', async () => {
   const inpatient = createInpatientService();
   const stay = inpatient.list()[0];
@@ -206,10 +248,14 @@ test('handleInpatientRoutes admits the patient from an existing encounter', asyn
   const inpatient = createInpatientService();
   const existingStay = inpatient.list()[0];
   assert.ok(existingStay);
-  inpatient.updateStatus(existingStay.id, {
-    status: 'discharged',
-    dischargeReason: 'Alta antes da readmissao de teste'
-  });
+  inpatient.updateStatus(
+    existingStay.id,
+    {
+      status: 'discharged',
+      dischargeReason: 'Alta antes da readmissao de teste'
+    },
+    existingStay.accountId
+  );
   const response = new MockResponse();
 
   const handled = await handleInpatientRoutes(
@@ -248,10 +294,14 @@ test('handleInpatientRoutes executes admission through the tenant command seam',
   const inpatient = createInpatientService();
   const existingStay = inpatient.list()[0];
   assert.ok(existingStay);
-  inpatient.updateStatus(existingStay.id, {
-    status: 'discharged',
-    dischargeReason: 'Alta antes da admissao idempotente'
-  });
+  inpatient.updateStatus(
+    existingStay.id,
+    {
+      status: 'discharged',
+      dischargeReason: 'Alta antes da admissao idempotente'
+    },
+    existingStay.accountId
+  );
 
   let commandCalls = 0;
   let operation = '';
@@ -293,6 +343,63 @@ test('handleInpatientRoutes executes admission through the tenant command seam',
   assert.equal(response.statusCode, 201);
   assert.equal(commandCalls, 1);
   assert.equal(operation, 'inpatient.admissions.create');
+});
+
+test('handleInpatientRoutes removes an admission cache entry after command rollback', async () => {
+  const inpatient = createInpatientService();
+  const existingStay = inpatient.list()[0];
+  assert.ok(existingStay);
+  inpatient.updateStatus(
+    existingStay.id,
+    {
+      status: 'discharged',
+      dischargeReason: 'Alta antes do rollback de admissao'
+    },
+    existingStay.accountId
+  );
+  const before = inpatient
+    .list({ includeDischarged: true })
+    .map((stay) => `${stay.id}:${stay.status}`)
+    .sort();
+  const runCommand = async <T>(input: { readonly command: () => Promise<T> }): Promise<T> => {
+    await input.command();
+    throw new Error('injected failure after inpatient admission');
+  };
+
+  await assert.rejects(
+    handleInpatientRoutes(
+      '/inpatient',
+      new MockRequest({
+        method: 'POST',
+        url: '/inpatient',
+        body: {
+          encounterId: existingStay.encounterId,
+          patientId: existingStay.patientId,
+          unit: 'Internacao clinica',
+          ward: 'Ala B',
+          bed: 'B-03'
+        }
+      }) as never,
+      new MockResponse() as never,
+      'corr-inpatient-admission-rollback',
+      {
+        inpatient,
+        sectorBedService: {} as never,
+        audit: { write: () => {} } as never,
+        requirePrincipal: () => createPrincipal(),
+        runCommand: runCommand as never
+      }
+    ),
+    /injected failure after inpatient admission/
+  );
+
+  assert.deepEqual(
+    inpatient
+      .list({ includeDischarged: true })
+      .map((stay) => `${stay.id}:${stay.status}`)
+      .sort(),
+    before
+  );
 });
 
 test('handleInpatientRoutes appends inpatient progress to clinical record timeline', async () => {
@@ -607,6 +714,8 @@ test('handleInpatientRoutes refreshes inpatient caches after progress and occurr
   const inpatient = createInpatientService();
   const stay = inpatient.list()[0];
   assert.ok(stay);
+  const beforeProgress = inpatient.listProgress(stay.id, stay.accountId);
+  const beforeOccurrences = inpatient.listOccurrences(stay.id, stay.accountId);
   const refreshInpatient = test.mock.fn(async () => {});
   inpatient.refreshAccount = refreshInpatient as never;
   const runCommand = async <T>(input: { readonly command: () => Promise<T> }): Promise<T> => {
@@ -662,6 +771,8 @@ test('handleInpatientRoutes refreshes inpatient caches after progress and occurr
   );
 
   assert.equal(refreshInpatient.mock.callCount(), 2);
+  assert.deepEqual(inpatient.listProgress(stay.id, stay.accountId), beforeProgress);
+  assert.deepEqual(inpatient.listOccurrences(stay.id, stay.accountId), beforeOccurrences);
 });
 
 test('handleInpatientRoutes refreshes inpatient caches after bed and status rollback', async () => {
@@ -845,6 +956,43 @@ test('handleInpatientRoutes creates and bills daily inpatient charges', async ()
     billResponse.bodyJson<{ status: string; billingRecordId: string }>().billingRecordId,
     'bill_inpatient_1'
   );
+});
+
+test('handleInpatientRoutes restores daily-charge cache after command rollback', async () => {
+  const inpatient = createInpatientService();
+  const stay = inpatient.list()[0];
+  assert.ok(stay);
+  const runCommand = async <T>(input: { readonly command: () => Promise<T> }): Promise<T> => {
+    await input.command();
+    throw new Error('injected failure after daily charge');
+  };
+
+  await assert.rejects(
+    handleInpatientRoutes(
+      `/inpatient/${stay.id}/daily-charges`,
+      new MockRequest({
+        method: 'POST',
+        url: `/inpatient/${stay.id}/daily-charges`,
+        body: {
+          description: 'Diária removida após rollback',
+          quantity: 1,
+          unitAmount: 180
+        }
+      }) as never,
+      new MockResponse() as never,
+      'corr-inpatient-daily-charge-rollback',
+      {
+        inpatient,
+        sectorBedService: {} as never,
+        audit: { write: () => {} } as never,
+        requirePrincipal: () => createPrincipal(),
+        runCommand: runCommand as never
+      }
+    ),
+    /injected failure after daily charge/
+  );
+
+  assert.deepEqual(inpatient.listDailyCharges(stay.id, stay.accountId), []);
 });
 
 test('handleInpatientRoutes executes daily-charge creation through the tenant command seam', async () => {
@@ -1315,13 +1463,17 @@ test('handleInpatientRoutes treats a repeated daily-charge billing request as id
 test('handleInpatientRoutes lists inpatient daily charge worklist with totals', async () => {
   const inpatient = createInpatientService();
   const stay = inpatient.list()[0];
-  inpatient.createDailyCharge('user-1' as never, {
-    stayId: stay.id,
-    description: 'Diaria UTI',
-    chargeDate: '2026-05-28',
-    quantity: 2,
-    unitAmount: 180
-  });
+  inpatient.createDailyCharge(
+    'user-1' as never,
+    {
+      stayId: stay.id,
+      description: 'Diaria UTI',
+      chargeDate: '2026-05-28',
+      quantity: 2,
+      unitAmount: 180
+    },
+    stay.accountId
+  );
   const response = new MockResponse();
 
   const handled = await handleInpatientRoutes(
@@ -1457,4 +1609,39 @@ test('handleInpatientRoutes lists beds with Vetus-like filters', async () => {
     payload.items.map((item) => item.id),
     ['bed-1']
   );
+});
+
+test('handleInpatientRoutes does not disclose a foreign sector-filtered bed list', async () => {
+  const sectorBedService = new SectorBedService();
+  const accountB = 'acc_foreign_b' as never;
+  const sectorB = await sectorBedService.createSector(accountB, {
+    code: 'FOREIGN',
+    name: 'Setor estrangeiro',
+    kind: 'observation'
+  });
+  await sectorBedService.createBed(accountB, {
+    sectorId: sectorB.id,
+    code: 'B-01',
+    name: 'Leito estrangeiro'
+  });
+  const response = new MockResponse();
+
+  const handled = await handleInpatientRoutes(
+    '/beds',
+    new MockRequest({
+      method: 'GET',
+      url: `/beds?sectorId=${encodeURIComponent(sectorB.id)}`
+    }) as never,
+    response as never,
+    'corr-beds-cross-account-sector',
+    {
+      inpatient: createInpatientService(),
+      sectorBedService,
+      audit: { write: () => {} } as never,
+      requirePrincipal: () => createPrincipal('acc_foreign_a')
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.deepEqual(response.bodyJson<{ items: unknown[] }>().items, []);
 });

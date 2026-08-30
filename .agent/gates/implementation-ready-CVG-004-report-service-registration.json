@@ -1,0 +1,84 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-SERVICE-REGISTRATION-IR-001",
+  "timestamp": "2026-08-26T06:50:00-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-004 bounded audited read-only services registry report execution/export from the tenant-scoped services source",
+  "scope_ref": "CVG-004-REPORT-SERVICE-REGISTRATION",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The services report gap, bounded contract, owner, authority and explicit exclusions are recorded without promoting CVG-004 or global readiness.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-service-registration.md",
+        ".agent/backlog.json",
+        ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SERVICE-REGISTRATION-IR-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This gate authorizes only on-demand read-only services registry facts; suppliers, payment advance, personalized reports, worker scheduling, providers, target and release remain excluded."
+    },
+    {
+      "id": "IR-002",
+      "description": "The existing services table, tenant-aware repository, runtime hydration and service.read permission provide a coherent local source and authorization boundary.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/db/src/schema/services.ts",
+        "packages/modules/services/src/repositories/database-services.repository.ts",
+        "packages/modules/services/src/index.ts",
+        "apps/api/src/runtime.ts",
+        "apps/api/src/routes/reports-routes.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The route tests and browser contract remain local evidence; no target-backed PostgreSQL browser or multi-process claim is made."
+    },
+    {
+      "id": "IR-003",
+      "description": "Focused RED tests can reject the absent catalog/source/export contract before implementation.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-service-registration.md",
+        "packages/modules/reports/src/reports.test.ts",
+        "apps/api/src/routes/reports-routes.test.ts",
+        "apps/spa/src/pages/reports/__tests__/ReportWorkbenchPage.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Implementation, independent critique and post-implementation regressions are required before a bounded result can be recorded."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-report-service-registration.md",
+    "packages/db/src/schema/services.ts",
+    "packages/modules/services/src/repositories/database-services.repository.ts",
+    "packages/modules/services/src/index.ts",
+    "apps/api/src/runtime.ts",
+    "apps/api/src/routes/reports-routes.ts",
+    "apps/spa/src/pages/reports/ReportWorkbenchPage.vue"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "The RED tests, implementation, independent critique and post-implementation regression are not complete at gate creation."
+  ],
+  "conditions": [],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner)",
+    "scope": "CVG-004 bounded on-demand read-only services registry report execution/export",
+    "decision": "Authorize reversible repository implementation and local API/SPA/browser verification using only tenant-scoped persisted services facts and the existing audited ReportsService; suppliers, payment advance, personalized reports, worker scheduling, providers, credentials, target, production, deployment, external mutation and release remain excluded.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SERVICE-REGISTRATION-IR-001",
+    "expires_or_revalidates": "Revalidate before adding scheduled delivery, supplier or payment-advance sources, unsupported fields, providers, target operations, production or release acceptance."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "next_action": "Write and run the focused API/module/SPA RED tests, then implement the smallest account-scoped services report definition, source mapping and audited export action.",
+  "revalidation_triggers": [
+    "Changes to services persistence, tenant repository queries or service.read authorization",
+    "Changes to ReportsService execution/export or report-workbench behavior",
+    "Expansion beyond on-demand read-only services facts"
+  ],
+  "supersedes": null
+}

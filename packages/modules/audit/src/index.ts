@@ -1,14 +1,99 @@
+import { Buffer } from 'node:buffer';
 import { randomUUID } from 'node:crypto';
 
 import type { AccountId, AuditEventId, AuditEventSummary } from '@cvg-his-v2/shared-types';
 import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
 
+export interface AuditCursor {
+  readonly occurredAt: string;
+  readonly eventId: AuditEventId;
+}
+
+export interface AuditListFilters {
+  readonly module?: string;
+  readonly entity?: string;
+  readonly correlationId?: string;
+  readonly query?: string;
+  readonly entityTypes?: readonly string[];
+}
+
+export interface AuditListPageQuery {
+  readonly accountId?: AccountId;
+  readonly cursor?: AuditCursor;
+  readonly filters?: AuditListFilters;
+  readonly limit: number;
+}
+
+export interface AuditRepositoryPage {
+  readonly items: readonly AuditEventSummary[];
+  readonly hasMore: boolean;
+}
+
+export interface AuditListPage {
+  readonly items: readonly AuditEventSummary[];
+  readonly nextCursor?: string;
+}
+
 export interface AuditRepository {
   create(event: AuditEventSummary): Promise<void>;
   list(accountId?: AccountId, limit?: number): Promise<readonly AuditEventSummary[]>;
+  listPage?(query: AuditListPageQuery): Promise<AuditRepositoryPage>;
   /** Full tenant snapshot used to repair the hot cache after rollback. */
   listForCacheRefresh?(accountId?: AccountId): Promise<readonly AuditEventSummary[]>;
   findById(id: AuditEventId): Promise<AuditEventSummary | null>;
+}
+
+export function encodeAuditCursor(cursor: AuditCursor): string {
+  return Buffer.from(JSON.stringify(cursor), 'utf8').toString('base64url');
+}
+
+export function decodeAuditCursor(value: string): AuditCursor {
+  try {
+    if (value.length === 0 || value.length > 1024) {
+      throw new Error('invalid length');
+    }
+    const decoded = JSON.parse(Buffer.from(value, 'base64url').toString('utf8')) as unknown;
+    if (
+      decoded === null ||
+      typeof decoded !== 'object' ||
+      typeof (decoded as { occurredAt?: unknown }).occurredAt !== 'string' ||
+      typeof (decoded as { eventId?: unknown }).eventId !== 'string'
+    ) {
+      throw new Error('invalid shape');
+    }
+
+    const cursor = decoded as AuditCursor;
+    if (
+      Number.isNaN(Date.parse(cursor.occurredAt)) ||
+      cursor.eventId.length === 0 ||
+      cursor.eventId.length > 128
+    ) {
+      throw new Error('invalid values');
+    }
+
+    return cursor;
+  } catch {
+    throw new Error('Invalid audit cursor');
+  }
+}
+
+export function paginateAuditEvents(
+  events: readonly AuditEventSummary[],
+  query: AuditListPageQuery
+): AuditRepositoryPage {
+  const filters = query.filters;
+  const filtered = events
+    .filter((event) => !query.accountId || event.accountId === query.accountId)
+    .filter((event) => matchesAuditFilters(event, filters))
+    .filter((event) => !query.cursor || isAfterAuditCursor(event, query.cursor));
+  const ordered = [...filtered].sort(compareAuditEvents);
+  const limit = normalizeAuditPageLimit(query.limit);
+  const page = ordered.slice(0, limit + 1);
+
+  return {
+    items: page.slice(0, limit),
+    hasMore: page.length > limit
+  };
 }
 
 export interface AuditWriteInput {
@@ -52,6 +137,15 @@ export interface OperationalAuditCoverageReport {
 
 export interface AuditServiceOptions {
   readonly auditRepository?: AuditRepository;
+}
+
+export class AuditCoverageUnavailableError extends Error {
+  public readonly code = 'AUDIT_COVERAGE_UNAVAILABLE';
+
+  public constructor() {
+    super('Operational audit coverage source unavailable');
+    this.name = 'AuditCoverageUnavailableError';
+  }
 }
 
 export const DEFAULT_OPERATIONAL_AUDIT_REQUIREMENTS: readonly OperationalAuditRequirement[] = [
@@ -132,7 +226,8 @@ export class AuditService {
   #events: AuditEventSummary[] = [];
   readonly #auditRepository?: AuditRepository;
   #persistenceQueue: Promise<void> = Promise.resolve();
-  #persistenceError?: unknown;
+  #persistenceError?: { readonly eventId: AuditEventId; readonly error: unknown };
+  readonly #persistencePromises = new WeakMap<AuditEventSummary, Promise<void>>();
 
   public constructor(options: AuditServiceOptions = {}) {
     this.#auditRepository = options.auditRepository;
@@ -158,14 +253,12 @@ export class AuditService {
     // Persist to database if repository is available
     if (this.#auditRepository) {
       const persist = this.#persistenceQueue.then(async () => {
-        try {
-          await this.#auditRepository!.create(event);
-        } catch (error) {
-          this.#persistenceError = error;
-          throw error;
-        }
+        await this.#auditRepository!.create(event);
       });
-      this.#persistenceQueue = persist.catch(() => undefined);
+      this.#persistencePromises.set(event, persist);
+      this.#persistenceQueue = persist.catch((error: unknown) => {
+        this.#persistenceError = { eventId: event.eventId, error };
+      });
       void this.#persistenceQueue;
     }
 
@@ -175,7 +268,7 @@ export class AuditService {
   public async waitForPersistence(): Promise<void> {
     await this.#persistenceQueue;
     if (this.#persistenceError !== undefined) {
-      const error = this.#persistenceError;
+      const { error } = this.#persistenceError;
       this.#persistenceError = undefined;
       throw error instanceof Error ? error : new Error(String(error));
     }
@@ -183,12 +276,44 @@ export class AuditService {
 
   public async writeAndWait(input: AuditWriteInput): Promise<AuditEventSummary> {
     const event = this.write(input);
-    await this.waitForPersistence();
+    const persistence = this.#persistencePromises.get(event);
+    if (!persistence) return event;
+
+    try {
+      await persistence;
+    } catch (error) {
+      // A synchronous audit write is part of the surrounding command
+      // transaction. Do not leave a phantom event in the hot cache when the
+      // database insert rolls back or rejects.
+      this.removeFromCache(event.eventId);
+      if (this.#persistenceError?.eventId === event.eventId) {
+        this.#persistenceError = undefined;
+      }
+      throw error;
+    }
     return event;
   }
 
   public list(): readonly AuditEventSummary[] {
     return [...this.#events];
+  }
+
+  public async listPage(query: AuditListPageQuery): Promise<AuditListPage> {
+    const normalizedQuery = {
+      ...query,
+      limit: normalizeAuditPageLimit(query.limit)
+    };
+    const result = this.#auditRepository?.listPage
+      ? await this.#auditRepository.listPage(normalizedQuery)
+      : paginateAuditEvents(this.#events, normalizedQuery);
+    const items = result.items.slice(0, normalizedQuery.limit);
+    const lastItem = items.at(-1);
+    const nextCursor =
+      result.hasMore && lastItem
+        ? encodeAuditCursor({ occurredAt: lastItem.occurredAt, eventId: lastItem.eventId })
+        : undefined;
+
+    return nextCursor ? { items, nextCursor } : { items };
   }
 
   public removeFromCache(eventId: AuditEventId): void {
@@ -215,11 +340,11 @@ export class AuditService {
     );
   }
 
-  public getOperationalCoverageReport(
+  public async getOperationalCoverageReport(
     accountId?: AccountId,
     requirements: readonly OperationalAuditRequirement[] = DEFAULT_OPERATIONAL_AUDIT_REQUIREMENTS
-  ): OperationalAuditCoverageReport {
-    const events = this.list().filter((event) => !accountId || event.accountId === accountId);
+  ): Promise<OperationalAuditCoverageReport> {
+    const events = await this.readCoverageEvents(accountId);
     const riskRank = { low: 1, medium: 2, high: 3 } as const;
     const eventsByModule = events.reduce<Record<string, number>>((acc, event) => {
       acc[event.module] = (acc[event.module] ?? 0) + 1;
@@ -269,8 +394,33 @@ export class AuditService {
     };
   }
 
+  private async readCoverageEvents(accountId?: AccountId): Promise<readonly AuditEventSummary[]> {
+    if (!this.#auditRepository) {
+      return this.#events.filter((event) => !accountId || event.accountId === accountId);
+    }
+
+    if (!this.#auditRepository.listForCacheRefresh) {
+      throw new AuditCoverageUnavailableError();
+    }
+
+    try {
+      const events = await this.#auditRepository.listForCacheRefresh(accountId);
+      if (!Array.isArray(events)) {
+        throw new Error('Audit repository returned an invalid coverage snapshot');
+      }
+      return events
+        .filter((event) => !accountId || event.accountId === accountId)
+        .sort(compareAuditEvents);
+    } catch (error) {
+      if (error instanceof AuditCoverageUnavailableError) {
+        throw error;
+      }
+      throw new AuditCoverageUnavailableError();
+    }
+  }
+
   public seedSystemEvent(summary: string): void {
-    this.write({
+    const event = this.write({
       actorId: 'system',
       accountId: 'acc_cvg_demo' as AccountId,
       module: 'audit',
@@ -280,7 +430,69 @@ export class AuditService {
       payloadSummary: summary,
       riskLevel: 'low'
     });
+
+    // The bootstrap marker predates tenant-scoped UUID accounts. Database
+    // repositories may therefore reject its legacy identity under RLS. A
+    // failed bootstrap marker must not poison the first real tenant command;
+    // command-level audit writes remain synchronous and fail closed.
+    const persistence = this.#persistencePromises.get(event);
+    if (!persistence) return;
+    void persistence.catch(() => {
+      this.removeFromCache(event.eventId);
+      if (this.#persistenceError?.eventId === event.eventId) {
+        this.#persistenceError = undefined;
+      }
+    });
   }
+}
+
+function normalizeAuditPageLimit(value: number): number {
+  return Math.max(1, Math.min(200, Math.trunc(Number.isFinite(value) ? value : 100)));
+}
+
+function matchesAuditFilters(event: AuditEventSummary, filters?: AuditListFilters): boolean {
+  if (!filters) return true;
+
+  const moduleFilter = filters.module?.toLowerCase() ?? '';
+  const entityFilter = filters.entity?.toLowerCase() ?? '';
+  const correlationFilter = filters.correlationId?.toLowerCase() ?? '';
+  const queryFilter = filters.query?.toLowerCase() ?? '';
+  const entityTypes = (filters.entityTypes ?? []).map((value) => value.toLowerCase());
+  const searchable = [
+    event.module,
+    event.action,
+    event.actorId,
+    event.entityType,
+    event.entityId,
+    event.correlationId,
+    event.payloadSummary
+  ].map((value) => String(value ?? '').toLowerCase());
+
+  return (
+    (!moduleFilter || event.module.toLowerCase().includes(moduleFilter)) &&
+    (!entityFilter ||
+      [event.entityType, event.entityId, event.payloadSummary].some((value) =>
+        String(value ?? '')
+          .toLowerCase()
+          .includes(entityFilter)
+      )) &&
+    (!correlationFilter || event.correlationId.toLowerCase().includes(correlationFilter)) &&
+    (entityTypes.length === 0 || entityTypes.includes(event.entityType.toLowerCase())) &&
+    (!queryFilter || searchable.some((value) => value.includes(queryFilter)))
+  );
+}
+
+function isAfterAuditCursor(event: AuditEventSummary, cursor: AuditCursor): boolean {
+  const eventTime = Date.parse(event.occurredAt);
+  const cursorTime = Date.parse(cursor.occurredAt);
+  return eventTime < cursorTime || (eventTime === cursorTime && event.eventId < cursor.eventId);
+}
+
+function compareAuditEvents(left: AuditEventSummary, right: AuditEventSummary): number {
+  const timeDifference = Date.parse(right.occurredAt) - Date.parse(left.occurredAt);
+  if (timeDifference !== 0) return timeDifference;
+  if (right.eventId === left.eventId) return 0;
+  return right.eventId < left.eventId ? -1 : 1;
 }
 
 export { DatabaseAuditRepository } from './repositories/database-audit.repository.js';

@@ -409,12 +409,18 @@ const NFSE_LAYOUTS: readonly FiscalNfseLayoutSummary[] = [
   }
 ] as const;
 
-const inMemoryNfseLayouts: FiscalNfseLayoutSummary[] = NFSE_LAYOUTS.map((layout) => ({ ...layout }));
+const inMemoryNfseLayouts: FiscalNfseLayoutSummary[] = NFSE_LAYOUTS.map((layout) => ({
+  ...layout
+}));
 const inMemoryIcmsTables: FiscalIcmsTableSummary[] = ICMS_TABLES.map((table) => ({ ...table }));
 const inMemoryIpiTables: FiscalIpiTableSummary[] = IPI_TABLES.map((table) => ({ ...table }));
 const inMemoryPisTables: FiscalPisTableSummary[] = PIS_TABLES.map((table) => ({ ...table }));
-const inMemoryCofinsTables: FiscalCofinsTableSummary[] = COFINS_TABLES.map((table) => ({ ...table }));
-const inMemoryIbsCbsTables: FiscalIbsCbsTableSummary[] = IBS_CBS_TABLES.map((table) => ({ ...table }));
+const inMemoryCofinsTables: FiscalCofinsTableSummary[] = COFINS_TABLES.map((table) => ({
+  ...table
+}));
+const inMemoryIbsCbsTables: FiscalIbsCbsTableSummary[] = IBS_CBS_TABLES.map((table) => ({
+  ...table
+}));
 const inMemoryCfopEntries: FiscalCfopSummary[] = CFOP_TABLE.map((entry) => ({
   ...entry,
   documentTypesLabel: entry.applicableTo.join(', ').toUpperCase()
@@ -579,13 +585,15 @@ function normalizeCfopPayload(
   current?: FiscalCfopSummary
 ): FiscalCfopSummary {
   const code = payload.code === undefined ? current?.code : assertNonEmpty(payload.code, 'code');
-  const description = payload.description === undefined
-    ? current?.description
-    : assertNonEmpty(payload.description, 'description');
+  const description =
+    payload.description === undefined
+      ? current?.description
+      : assertNonEmpty(payload.description, 'description');
   const section = payload.section ?? current?.section ?? 'saida';
-  const category = payload.category === undefined
-    ? (current?.category ?? 'geral')
-    : assertNonEmpty(payload.category, 'category');
+  const category =
+    payload.category === undefined
+      ? (current?.category ?? 'geral')
+      : assertNonEmpty(payload.category, 'category');
   const applicableTo = payload.applicableTo ?? current?.applicableTo ?? FISCAL_DOCUMENT_TYPES;
 
   if (!code || !description) {
@@ -597,8 +605,10 @@ function normalizeCfopPayload(
   }
 
   if (
-    applicableTo.length === 0
-    || applicableTo.some((item: (typeof FISCAL_DOCUMENT_TYPES)[number]) => !FISCAL_DOCUMENT_TYPES.includes(item))
+    applicableTo.length === 0 ||
+    applicableTo.some(
+      (item: (typeof FISCAL_DOCUMENT_TYPES)[number]) => !FISCAL_DOCUMENT_TYPES.includes(item)
+    )
   ) {
     throw new Error('applicableTo must include valid fiscal document types');
   }
@@ -616,7 +626,11 @@ function normalizeCfopPayload(
   };
 }
 
-function assertPositiveInteger(value: number | undefined, field: string, fallback?: number): number {
+function assertPositiveInteger(
+  value: number | undefined,
+  field: string,
+  fallback?: number
+): number {
   if (value === undefined) {
     if (fallback === undefined) {
       throw new Error(`${field} is required`);
@@ -658,8 +672,14 @@ function normalizeServices(
     pisValue: assertNonNegative(service.pisValue, 'service.pisValue'),
     cofinsValue: assertNonNegative(service.cofinsValue, 'service.cofinsValue'),
     csllValue: assertNonNegative(service.csllValue, 'service.csllValue'),
-    irrfValue: service.irrfValue === undefined ? undefined : assertNonNegative(service.irrfValue, 'service.irrfValue'),
-    inssValue: service.inssValue === undefined ? undefined : assertNonNegative(service.inssValue, 'service.inssValue')
+    irrfValue:
+      service.irrfValue === undefined
+        ? undefined
+        : assertNonNegative(service.irrfValue, 'service.irrfValue'),
+    inssValue:
+      service.inssValue === undefined
+        ? undefined
+        : assertNonNegative(service.inssValue, 'service.inssValue')
   }));
 }
 
@@ -799,20 +819,20 @@ export class FiscalService {
     return this.dbRepo != null && this.accountId != null;
   }
 
+  public get persistenceMode(): 'database' | 'in-memory' {
+    return this.hasDbRepo() ? 'database' : 'in-memory';
+  }
+
   /**
    * Rebuilds the tenant-scoped service while preserving the runtime NFS-e
    * boundary. API routes use this instead of silently dropping credentials or
    * the explicit simulation policy when switching to the database repository.
    */
   public forAccount(accountId: AccountId): FiscalService {
-    return new FiscalService(
-      this.dbRepo,
-      accountId,
-      {
-        allowNfseSimulation: this.allowNfseSimulation,
-        nfse: this.nfseRuntime
-      }
-    );
+    return new FiscalService(this.dbRepo, accountId, {
+      allowNfseSimulation: this.allowNfseSimulation,
+      nfse: this.nfseRuntime
+    });
   }
 
   private inMemoryNfseStore(): NfseIssuerDocument[] {
@@ -831,7 +851,9 @@ export class FiscalService {
     return created;
   }
 
-  public async listIcmsRules(filters: FiscalIcmsRuleFilters = {}): Promise<FiscalIcmsRuleSummary[]> {
+  public async listIcmsRules(
+    filters: FiscalIcmsRuleFilters = {}
+  ): Promise<FiscalIcmsRuleSummary[]> {
     if (this.hasDbRepo()) {
       return this.dbRepo!.listIcmsRules({
         accountId: this.accountId!,
@@ -841,15 +863,18 @@ export class FiscalService {
         operationType: filters.operationType
       });
     }
-    return inMemoryIcmsRules.filter((rule) =>
-      matchesExact(rule.ufOrigin, filters.ufOrigin)
-      && matchesExact(rule.ufDestination, filters.ufDestination)
-      && matchesExact(rule.ncm, filters.ncm)
-      && (!filters.operationType || rule.operationType === filters.operationType)
+    return inMemoryIcmsRules.filter(
+      (rule) =>
+        matchesExact(rule.ufOrigin, filters.ufOrigin) &&
+        matchesExact(rule.ufDestination, filters.ufDestination) &&
+        matchesExact(rule.ncm, filters.ncm) &&
+        (!filters.operationType || rule.operationType === filters.operationType)
     );
   }
 
-  public async listIcmsTables(filters: FiscalIcmsTableFilters = {}): Promise<FiscalIcmsTableSummary[]> {
+  public async listIcmsTables(
+    filters: FiscalIcmsTableFilters = {}
+  ): Promise<FiscalIcmsTableSummary[]> {
     if (this.hasDbRepo()) {
       return this.dbRepo!.listIcmsTables({
         accountId: this.accountId!,
@@ -928,7 +953,9 @@ export class FiscalService {
     return next;
   }
 
-  public async listIpiTables(filters: FiscalIpiTableFilters = {}): Promise<FiscalIpiTableSummary[]> {
+  public async listIpiTables(
+    filters: FiscalIpiTableFilters = {}
+  ): Promise<FiscalIpiTableSummary[]> {
     if (this.hasDbRepo()) {
       return this.dbRepo!.listIpiTables({
         accountId: this.accountId!,
@@ -1007,7 +1034,9 @@ export class FiscalService {
     return next;
   }
 
-  public async listPisTables(filters: FiscalPisTableFilters = {}): Promise<FiscalPisTableSummary[]> {
+  public async listPisTables(
+    filters: FiscalPisTableFilters = {}
+  ): Promise<FiscalPisTableSummary[]> {
     if (this.hasDbRepo()) {
       return this.dbRepo!.listPisTables({
         accountId: this.accountId!,
@@ -1086,7 +1115,9 @@ export class FiscalService {
     return next;
   }
 
-  public async listCofinsTables(filters: FiscalCofinsTableFilters = {}): Promise<FiscalCofinsTableSummary[]> {
+  public async listCofinsTables(
+    filters: FiscalCofinsTableFilters = {}
+  ): Promise<FiscalCofinsTableSummary[]> {
     if (this.hasDbRepo()) {
       return this.dbRepo!.listCofinsTables({
         accountId: this.accountId!,
@@ -1219,8 +1250,14 @@ export class FiscalService {
     const nextPayload: UpdateFiscalIbsCbsTableRequest = {
       code: payload.code === undefined ? undefined : assertNonEmpty(payload.code, 'code'),
       description: payload.description?.trim(),
-      ibsPercent: payload.ibsPercent === undefined ? undefined : assertPercent(payload.ibsPercent, 'ibsPercent'),
-      cbsPercent: payload.cbsPercent === undefined ? undefined : assertPercent(payload.cbsPercent, 'cbsPercent')
+      ibsPercent:
+        payload.ibsPercent === undefined
+          ? undefined
+          : assertPercent(payload.ibsPercent, 'ibsPercent'),
+      cbsPercent:
+        payload.cbsPercent === undefined
+          ? undefined
+          : assertPercent(payload.cbsPercent, 'cbsPercent')
     };
 
     if (this.hasDbRepo()) {
@@ -1263,9 +1300,10 @@ export class FiscalService {
         appliesTo: filters.appliesTo
       });
     }
-    return PIS_COFINS_RULES.filter((rule) =>
-      (!filters.regime || rule.regime === filters.regime)
-      && (!filters.appliesTo || rule.appliesTo === filters.appliesTo)
+    return PIS_COFINS_RULES.filter(
+      (rule) =>
+        (!filters.regime || rule.regime === filters.regime) &&
+        (!filters.appliesTo || rule.appliesTo === filters.appliesTo)
     );
   }
 
@@ -1282,12 +1320,11 @@ export class FiscalService {
 
     return inMemoryCfopEntries
       .filter((entry) => !filters.section || entry.section === filters.section)
+      .filter((entry) => !filters.documentType || entry.applicableTo.includes(filters.documentType))
       .filter(
-        (entry) => !filters.documentType || entry.applicableTo.includes(filters.documentType)
-      )
-      .filter((entry) =>
-        normalizedSearch.length === 0
-          || `${entry.code} ${entry.description} ${entry.category} ${entry.section}`
+        (entry) =>
+          normalizedSearch.length === 0 ||
+          `${entry.code} ${entry.description} ${entry.category} ${entry.section}`
             .toLowerCase()
             .includes(normalizedSearch)
       );
@@ -1339,7 +1376,9 @@ export class FiscalService {
     return next;
   }
 
-  public async listNcmEntries(filters: FiscalNcmEntryFilters = {}): Promise<FiscalNcmEntrySummary[]> {
+  public async listNcmEntries(
+    filters: FiscalNcmEntryFilters = {}
+  ): Promise<FiscalNcmEntrySummary[]> {
     if (this.hasDbRepo()) {
       return this.dbRepo!.listNcmEntries({
         accountId: this.accountId!,
@@ -1354,7 +1393,9 @@ export class FiscalService {
     );
   }
 
-  public async listIcmsMatrix(filters: FiscalIcmsMatrixFilters = {}): Promise<FiscalIcmsMatrixRowSummary[]> {
+  public async listIcmsMatrix(
+    filters: FiscalIcmsMatrixFilters = {}
+  ): Promise<FiscalIcmsMatrixRowSummary[]> {
     const rules = await this.listIcmsRules(filters);
     const rows = new Map<string, FiscalIcmsMatrixRowSummary>();
 
@@ -1373,14 +1414,15 @@ export class FiscalService {
       }
     }
 
-    return Array.from(rows.values()).filter((row) =>
-      matchesContains(
-        `${row.id} ${row.ufOrigin} ${row.ufDestination} ${row.operationType} ${row.rate}`,
-        filters.search
-      )
-      && matchesExact(row.ufOrigin, filters.ufOrigin)
-      && matchesExact(row.ufDestination, filters.ufDestination)
-      && (!filters.operationType || row.operationType === filters.operationType)
+    return Array.from(rows.values()).filter(
+      (row) =>
+        matchesContains(
+          `${row.id} ${row.ufOrigin} ${row.ufDestination} ${row.operationType} ${row.rate}`,
+          filters.search
+        ) &&
+        matchesExact(row.ufOrigin, filters.ufOrigin) &&
+        matchesExact(row.ufDestination, filters.ufDestination) &&
+        (!filters.operationType || row.operationType === filters.operationType)
     );
   }
 
@@ -1389,7 +1431,11 @@ export class FiscalService {
   ): Promise<FiscalIcmsMatrixRowSummary> {
     const ufOrigin = assertUf(payload.ufOrigin, 'ufOrigin');
     const ufDestination = assertUf(payload.ufDestination, 'ufDestination');
-    const operationType = normalizeIcmsOperationType(payload.operationType, ufOrigin, ufDestination);
+    const operationType = normalizeIcmsOperationType(
+      payload.operationType,
+      ufOrigin,
+      ufDestination
+    );
     const rate = assertPercent(payload.rate, 'rate');
     const cst = payload.cst === undefined ? '000' : assertNonEmpty(payload.cst, 'cst');
 
@@ -1435,7 +1481,9 @@ export class FiscalService {
     };
   }
 
-  public async listNfseLayouts(filters: FiscalNfseLayoutFilters = {}): Promise<FiscalNfseLayoutSummary[]> {
+  public async listNfseLayouts(
+    filters: FiscalNfseLayoutFilters = {}
+  ): Promise<FiscalNfseLayoutSummary[]> {
     if (this.hasDbRepo()) {
       return this.dbRepo!.listNfseLayouts({
         accountId: this.accountId!,
@@ -1444,13 +1492,14 @@ export class FiscalService {
         active: filters.active
       });
     }
-    return inMemoryNfseLayouts.filter((layout) =>
-      matchesContains(
-        `${layout.id} ${layout.city} ${layout.state} ${layout.municipalityCode} ${layout.provider} ${layout.version} ${layout.serviceCode} ${layout.serviceFocus}`,
-        filters.search
-      )
-      && matchesExact(layout.state, filters.state)
-      && (filters.active === undefined || layout.active === filters.active)
+    return inMemoryNfseLayouts.filter(
+      (layout) =>
+        matchesContains(
+          `${layout.id} ${layout.city} ${layout.state} ${layout.municipalityCode} ${layout.provider} ${layout.version} ${layout.serviceCode} ${layout.serviceFocus}`,
+          filters.search
+        ) &&
+        matchesExact(layout.state, filters.state) &&
+        (filters.active === undefined || layout.active === filters.active)
     );
   }
 
@@ -1521,21 +1570,43 @@ export class FiscalService {
       const documents = await this.dbRepo!.listNfseDocuments({
         accountId: this.accountId!,
         status: filters.status,
-        customerSearch: filters.customerSearch
+        customerSearch: filters.customerSearch,
+        search: filters.search,
+        competenciaFrom: filters.competenciaFrom,
+        competenciaTo: filters.competenciaTo,
+        limit: filters.limit
       });
       return documents.map((document) => toFiscalDocumentSummary(document));
     }
 
-    const normalizedSearch = normalizeTerm(filters.customerSearch);
+    const normalizedSearch = normalizeTerm(filters.search ?? filters.customerSearch);
 
-    return this.inMemoryNfseStore()
+    const documents = this.inMemoryNfseStore()
       .filter((document) => !filters.status || document.status === filters.status)
-      .filter((document) =>
-        normalizedSearch.length === 0
-        || normalizeTerm(document.customer.name).includes(normalizedSearch)
-        || normalizeTerm(document.customer.document).includes(normalizedSearch)
+      .filter(
+        (document) =>
+          normalizedSearch.length === 0 ||
+          [
+            document.customer.name,
+            document.customer.document,
+            ...document.services.flatMap((service) => [
+              service.description,
+              service.codigoServico,
+              service.cnae
+            ])
+          ].some((value) => normalizeTerm(value).includes(normalizedSearch))
+      )
+      .filter(
+        (document) => !filters.competenciaFrom || document.competencia >= filters.competenciaFrom
+      )
+      .filter((document) => !filters.competenciaTo || document.competencia <= filters.competenciaTo)
+      .sort(
+        (left, right) =>
+          right.createdAt.localeCompare(left.createdAt) || right.id.localeCompare(left.id)
       )
       .map((document) => toFiscalDocumentSummary(document));
+
+    return filters.limit === undefined ? documents : documents.slice(0, filters.limit);
   }
 
   public async getNfseDocument(id: string): Promise<FiscalNfseDocumentSummary | null> {
@@ -1561,17 +1632,13 @@ export class FiscalService {
     };
     const services = normalizeServices(payload.services);
     const provider = this.nfseRuntime?.provider ?? payload.provider ?? 'abrasf';
-    const documentNumber = assertPositiveInteger(
-      payload.numero,
-      'numero',
-      nextDocumentNumber()
-    );
+    const documentNumber = assertPositiveInteger(payload.numero, 'numero', nextDocumentNumber());
     const competencia = payload.competencia?.trim() || todayDate();
     const municipalityCode =
       this.nfseRuntime?.municipalityCode ?? (payload.municipalityCode?.trim() || '3550308');
     const apiUrl =
-      this.nfseRuntime?.apiUrl
-      ?? (payload.apiUrl?.trim() || 'https://simulator.example.invalid/nfse');
+      this.nfseRuntime?.apiUrl ??
+      (payload.apiUrl?.trim() || 'https://simulator.example.invalid/nfse');
 
     const draft = toEmitter(
       provider,
@@ -1771,7 +1838,8 @@ export class FiscalService {
       pisCofinsRules: pisCofinsRules.length,
       ncmEntries: ncmEntries.length,
       readOnly: false,
-      backendScope: 'Consulta HTTP real para tabelas fiscais prioritárias com backoffice inicial de layouts NFS-e',
+      backendScope:
+        'Consulta HTTP real para tabelas fiscais prioritárias com backoffice inicial de layouts NFS-e',
       pendingScopes: [
         'cadastros fiscais persistidos',
         'emissão NFS-e transacional',

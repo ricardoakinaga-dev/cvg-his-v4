@@ -1,13 +1,14 @@
-import { eq, desc } from 'drizzle-orm';
+import { and, desc, eq, ilike, isNull, lt, or, sql } from 'drizzle-orm';
 import type { DatabaseClient } from '@cvg-his-v2/shared-database';
 import { auditEvents } from '@cvg-his-v2/shared-database';
 import type { AccountId, AuditEventId, AuditEventSummary } from '@cvg-his-v2/shared-types';
+import type {
+  AuditListPageQuery,
+  AuditRepository as AuditServiceRepository,
+  AuditRepositoryPage
+} from '../index.js';
 
-export interface AuditRepository {
-  create(event: AuditEventSummary): Promise<void>;
-  list(accountId?: AccountId, limit?: number): Promise<readonly AuditEventSummary[]>;
-  findById(id: AuditEventId): Promise<AuditEventSummary | null>;
-}
+export interface AuditRepository extends AuditServiceRepository {}
 
 export class DatabaseAuditRepository implements AuditRepository {
   readonly #db: DatabaseClient;
@@ -54,14 +55,112 @@ export class DatabaseAuditRepository implements AuditRepository {
     return filtered.slice(0, limit);
   }
 
+  public async listPage(query: AuditListPageQuery): Promise<AuditRepositoryPage> {
+    const limit = Math.max(1, Math.min(200, Math.trunc(query.limit)));
+    const conditions = [];
+    const filters = query.filters;
+
+    if (query.accountId) {
+      conditions.push(
+        or(
+          eq(auditEvents.accountId, query.accountId),
+          and(
+            isNull(auditEvents.accountId),
+            sql`${auditEvents.metadata}->>'legacyAccountId' = ${query.accountId}`
+          )
+        )
+      );
+    }
+
+    if (query.cursor) {
+      const occurredAt = new Date(query.cursor.occurredAt);
+      conditions.push(
+        or(
+          lt(auditEvents.occurredAt, occurredAt),
+          and(eq(auditEvents.occurredAt, occurredAt), lt(auditEvents.id, query.cursor.eventId))
+        )
+      );
+    }
+
+    if (filters?.module) {
+      const pattern = `%${filters.module.toLowerCase()}%`;
+      conditions.push(
+        sql`lower(coalesce(${auditEvents.metadata}->>'module', split_part(${auditEvents.action}, '_', 1))) like ${pattern}`
+      );
+    }
+
+    if (filters?.entity) {
+      const pattern = `%${filters.entity.toLowerCase()}%`;
+      conditions.push(
+        or(
+          ilike(auditEvents.entityType, pattern),
+          ilike(auditEvents.entityId, pattern),
+          sql`lower(coalesce(${auditEvents.metadata}->>'payloadSummary', '')) like ${pattern}`
+        )
+      );
+    }
+
+    if (filters?.correlationId) {
+      conditions.push(ilike(auditEvents.correlationId, `%${filters.correlationId.toLowerCase()}%`));
+    }
+
+    const entityTypes = (filters?.entityTypes ?? [])
+      .map((value) => value.toLowerCase())
+      .filter(Boolean);
+    if (entityTypes.length > 0) {
+      conditions.push(
+        or(
+          ...entityTypes.map((entityType) => sql`lower(${auditEvents.entityType}) = ${entityType}`)
+        )
+      );
+    }
+
+    if (filters?.query) {
+      const pattern = `%${filters.query.toLowerCase()}%`;
+      conditions.push(
+        or(
+          sql`lower(coalesce(${auditEvents.metadata}->>'module', '')) like ${pattern}`,
+          ilike(auditEvents.action, pattern),
+          sql`lower(coalesce(${auditEvents.actorUserId}::text, ${auditEvents.metadata}->>'legacyActorId', '')) like ${pattern}`,
+          ilike(auditEvents.entityType, pattern),
+          ilike(auditEvents.entityId, pattern),
+          ilike(auditEvents.correlationId, pattern),
+          sql`lower(coalesce(${auditEvents.metadata}->>'payloadSummary', '')) like ${pattern}`
+        )
+      );
+    }
+
+    const baseQuery = this.#db.select().from(auditEvents);
+    const filteredQuery = conditions.length > 0 ? baseQuery.where(and(...conditions)) : baseQuery;
+    const rows = await filteredQuery
+      .orderBy(desc(auditEvents.occurredAt), desc(auditEvents.id))
+      .limit(limit + 1);
+
+    return {
+      items: rows.slice(0, limit).map((row) => mapAuditRow(row)),
+      hasMore: rows.length > limit
+    };
+  }
+
   public async listForCacheRefresh(accountId?: AccountId): Promise<readonly AuditEventSummary[]> {
     const rows = accountId
       ? await this.#db
           .select()
           .from(auditEvents)
-          .where(eq(auditEvents.accountId, accountId))
-          .orderBy(desc(auditEvents.occurredAt))
-      : await this.#db.select().from(auditEvents).orderBy(desc(auditEvents.occurredAt));
+          .where(
+            or(
+              eq(auditEvents.accountId, accountId),
+              and(
+                isNull(auditEvents.accountId),
+                sql`${auditEvents.metadata}->>'legacyAccountId' = ${accountId}`
+              )
+            )
+          )
+          .orderBy(desc(auditEvents.occurredAt), desc(auditEvents.id))
+      : await this.#db
+          .select()
+          .from(auditEvents)
+          .orderBy(desc(auditEvents.occurredAt), desc(auditEvents.id));
     const summaries = rows.map((row) => mapAuditRow(row));
     return accountId ? summaries.filter((event) => event.accountId === accountId) : summaries;
   }

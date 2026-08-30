@@ -219,14 +219,20 @@ function makeCardCompletedEvent(billingRecordId: string, accountId = 'acc_test')
 async function seedPixTransaction(
   repository: PixTransactionRepository,
   transactionId = 'pix_intent_1',
-  billingRecordId = 'br_test_123'
+  billingRecordId: string | undefined = 'br_test_123',
+  options: {
+    readonly paymentAttemptId?: string;
+    readonly amount?: number;
+    readonly withoutBilling?: boolean;
+  } = {}
 ) {
   await repository.create({
     transactionId,
     provider: 'local-pix',
     accountId: 'acc_test',
-    billingRecordId,
-    amount: 150,
+    billingRecordId: options.withoutBilling ? undefined : billingRecordId,
+    paymentAttemptId: options.paymentAttemptId,
+    amount: options.amount ?? 150,
     currency: 'BRL',
     description: 'PIX Consulta',
     qrCodePayload: 'pix|acc_test|150',
@@ -239,6 +245,136 @@ async function seedPixTransaction(
     cashReconciliationStatus: 'pending'
   });
 }
+
+test('PaymentsEventHandlers refuses legacy PIX confirmation without an authoritative intent', async () => {
+  const billing = createMockBillingService();
+  const encounterFinancial = createMockEncounterFinancialService();
+  const pixTransactions = new InMemoryPixTransactionRepository();
+  const cardTransactions = new InMemoryCardTransactionRepository();
+  const handlers = new PaymentsEventHandlers({
+    billing,
+    encounterFinancial,
+    pixTransactions,
+    cardTransactions
+  });
+
+  await assert.rejects(
+    handlers.handlers(makePixConfirmedEvent('br_missing_123')),
+    /no authoritative PIX transaction intent/
+  );
+
+  assert.equal(await pixTransactions.findByTransactionId('pix_intent_1'), null);
+  assert.equal(billing.settles.length, 0);
+  assert.equal(encounterFinancial.payments.length, 0);
+});
+
+test('PaymentsEventHandlers rejects attempt-linked legacy PIX confirmation before mutation', async () => {
+  const billing = createMockBillingService();
+  const encounterFinancial = createMockEncounterFinancialService();
+  const pixTransactions = new InMemoryPixTransactionRepository();
+  const cardTransactions = new InMemoryCardTransactionRepository();
+  await seedPixTransaction(pixTransactions, 'pix_attempt_1', 'br_test_123', {
+    paymentAttemptId: 'attempt_b2_123'
+  });
+  const handlers = new PaymentsEventHandlers({
+    billing,
+    encounterFinancial,
+    pixTransactions,
+    cardTransactions
+  });
+
+  await assert.rejects(
+    handlers.handle(
+      Object.assign(makePixConfirmedEvent('br_test_123'), {
+        payload: {
+          ...makePixConfirmedEvent('br_test_123').payload,
+          intentId: 'pix_attempt_1'
+        }
+      })
+    ),
+    /attempt-linked PIX confirmation must use the dedicated settlement flow/
+  );
+
+  const transaction = await pixTransactions.findByTransactionId('pix_attempt_1');
+  assert.equal(transaction?.status, 'pending');
+  assert.equal(transaction?.billingSettlementStatus, 'awaiting_payment');
+  assert.equal(billing.settles.length, 0);
+  assert.equal(encounterFinancial.payments.length, 0);
+});
+
+test('PaymentsEventHandlers rejects a legacy PIX event with a mismatched envelope account before mutation', async () => {
+  const billing = createMockBillingService();
+  const encounterFinancial = createMockEncounterFinancialService();
+  const pixTransactions = new InMemoryPixTransactionRepository();
+  const cardTransactions = new InMemoryCardTransactionRepository();
+  await seedPixTransaction(pixTransactions);
+  const handlers = new PaymentsEventHandlers({
+    billing,
+    encounterFinancial,
+    pixTransactions,
+    cardTransactions
+  });
+  const event = Object.assign(makePixConfirmedEvent('br_test_123'), {
+    accountId: 'acc_other' as never
+  }) as OutboxEvent;
+
+  await assert.rejects(handlers.handle(event), /account/);
+
+  const transaction = await pixTransactions.findByTransactionId('pix_intent_1');
+  assert.equal(transaction?.status, 'pending');
+  assert.equal(transaction?.billingSettlementStatus, 'awaiting_payment');
+  assert.equal(billing.settles.length, 0);
+  assert.equal(encounterFinancial.payments.length, 0);
+});
+
+test('PaymentsEventHandlers validates the authoritative PIX amount before mutation', async () => {
+  const billing = createMockBillingService();
+  const encounterFinancial = createMockEncounterFinancialService();
+  const pixTransactions = new InMemoryPixTransactionRepository();
+  const cardTransactions = new InMemoryCardTransactionRepository();
+  await seedPixTransaction(pixTransactions, 'pix_amount_mismatch', 'br_test_123', {
+    amount: 125
+  });
+  const handlers = new PaymentsEventHandlers({
+    billing,
+    encounterFinancial,
+    pixTransactions,
+    cardTransactions
+  });
+  const event = Object.assign(makePixConfirmedEvent('br_test_123'), {
+    payload: { ...makePixConfirmedEvent('br_test_123').payload, intentId: 'pix_amount_mismatch' }
+  }) as OutboxEvent;
+
+  await assert.rejects(handlers.handle(event), /amount does not match the billing record/);
+
+  const transaction = await pixTransactions.findByTransactionId('pix_amount_mismatch');
+  assert.equal(transaction?.status, 'pending');
+  assert.equal(transaction?.billingSettlementStatus, 'awaiting_payment');
+  assert.equal(billing.settles.length, 0);
+  assert.equal(encounterFinancial.payments.length, 0);
+});
+
+test('PaymentsEventHandlers refuses settlement when the authoritative status update disappears', async () => {
+  const billing = createMockBillingService();
+  const encounterFinancial = createMockEncounterFinancialService();
+  const pixTransactions = new InMemoryPixTransactionRepository();
+  const cardTransactions = new InMemoryCardTransactionRepository();
+  await seedPixTransaction(pixTransactions);
+  pixTransactions.updateStatus = async () => null;
+  const handlers = new PaymentsEventHandlers({
+    billing,
+    encounterFinancial,
+    pixTransactions,
+    cardTransactions
+  });
+
+  await assert.rejects(
+    handlers.handle(makePixConfirmedEvent('br_test_123')),
+    /could not mark its authoritative transaction as completed/
+  );
+  assert.equal(billing.settles.length, 0);
+  assert.equal(encounterFinancial.payments.length, 0);
+});
 
 test('PaymentsEventHandlers handles payment.pix.confirmed and settles billing record', async () => {
   const billing = createMockBillingService();
@@ -273,7 +409,9 @@ test('PaymentsEventHandlers handles payment.pix.confirmed without billingRecordI
   const encounterFinancial = createMockEncounterFinancialService();
   const pixTransactions = new InMemoryPixTransactionRepository();
   const cardTransactions = new InMemoryCardTransactionRepository();
-  await seedPixTransaction(pixTransactions, 'pix_intent_no_billing', undefined);
+  await seedPixTransaction(pixTransactions, 'pix_intent_no_billing', undefined, {
+    withoutBilling: true
+  });
   const handlers = new PaymentsEventHandlers({
     billing,
     encounterFinancial,

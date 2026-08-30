@@ -1,0 +1,122 @@
+{
+  "record_id": "GATE-CVG-003-PATIENT-MASTER-SEARCH-OWNER-READ-BOUNDARY-VFY-001",
+  "timestamp": "2026-08-30T07:33:06-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-003 /master-search owner-read permission composition",
+  "scope_ref": "CVG-003-PATIENT-MASTER-SEARCH-OWNER-READ-BOUNDARY",
+  "version": 1,
+  "active_plan": ".agent/plans/premium-enterprise-mvp.md",
+  "active_task": ".agent/tasks/CVG-003-PATIENT-MASTER-SEARCH-OWNER-READ-BOUNDARY.md",
+  "verification_state": "VERIFIED_BOUNDED",
+  "next_gate": "SCOUT",
+  "criteria": [
+    {
+      "id": "VFY-001",
+      "description": "GET /master-search requires patients.read and owners.read before executing the search or returning a payload.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-PATIENT-MASTER-SEARCH-OWNER-READ-BOUNDARY-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-003-PATIENT-MASTER-SEARCH-OWNER-READ-BOUNDARY-REVIEW-001",
+        "apps/api/src/routes/patients-routes.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The authorization composition is proven only for this route and method."
+    },
+    {
+      "id": "VFY-002",
+      "description": "A patient-only caller fails closed with the existing authorization error and cannot receive a successful master-search payload or success audit event.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-PATIENT-MASTER-SEARCH-OWNER-READ-BOUNDARY-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-003-PATIENT-MASTER-SEARCH-OWNER-READ-BOUNDARY-GREEN-001",
+        "apps/api/src/routes/patients-routes.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "No claim is made about other endpoints that return owner data."
+    },
+    {
+      "id": "VFY-003",
+      "description": "Callers with both read permissions retain the existing same-account filtering, query behavior, owner/patient/link payload and audit semantics.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-PATIENT-MASTER-SEARCH-OWNER-READ-BOUNDARY-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-003-PATIENT-MASTER-SEARCH-OWNER-READ-BOUNDARY-REVIEW-001",
+        "apps/api/src/routes/patients-routes.ts",
+        "apps/api/src/routes/patients-routes.test.ts"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "This does not certify data minimization or a broader owner/patient projection policy."
+    },
+    {
+      "id": "VFY-004",
+      "description": "Focused route tests, compiled API regression, workspace typecheck and workspace build pass without a regression attributable to this boundary.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-PATIENT-MASTER-SEARCH-OWNER-READ-BOUNDARY-REGRESSION-001",
+        "apps/api/src/routes/patients-routes.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The repository remains a mixed dirty worktree and this is not a release or target-runtime certification."
+    },
+    {
+      "id": "VFY-005",
+      "description": "Coverage and bounded repository quality/security checks pass, with the known unrelated global lint baseline explicitly isolated.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-PATIENT-MASTER-SEARCH-OWNER-READ-BOUNDARY-QUALITY-001",
+        ".agent/artifacts/CVG-003-patient-master-search-owner-read-boundary-2026-08-30.md"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "Global lint remains blocked by unrelated no-control-regex findings at packages/contracts/src/counterSales.ts:38,77; active-slice targeted formatting/lint is green."
+    },
+    {
+      "id": "VFY-006",
+      "description": "Independent review approves this bounded implementation and global parity evidence prevents a broader ERP promotion claim.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-PATIENT-MASTER-SEARCH-OWNER-READ-BOUNDARY-REVIEW-001",
+        ".agent/verification.jsonl#VFY-CVG-003-PATIENT-MASTER-SEARCH-OWNER-READ-BOUNDARY-GLOBAL-NON-PROMOTION-001"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "Parity remains NOT VERIFIED and global ERP status remains IN_PROGRESS/PARTIAL with promotion BLOCKED."
+    }
+  ],
+  "evidence": [
+    ".agent/artifacts/CVG-003-patient-master-search-owner-read-boundary-2026-08-30.md",
+    ".agent/tasks/CVG-003-PATIENT-MASTER-SEARCH-OWNER-READ-BOUNDARY.md",
+    "apps/api/src/routes/patients-routes.ts",
+    "apps/api/src/routes/patients-routes.test.ts",
+    ".agent/verification.jsonl#VFY-CVG-003-PATIENT-MASTER-SEARCH-OWNER-READ-BOUNDARY-REGRESSION-001",
+    ".agent/verification.jsonl#VFY-CVG-003-PATIENT-MASTER-SEARCH-OWNER-READ-BOUNDARY-QUALITY-001",
+    ".agent/verification.jsonl#VFY-CVG-003-PATIENT-MASTER-SEARCH-OWNER-READ-BOUNDARY-REVIEW-001",
+    ".agent/verification.jsonl#VFY-CVG-003-PATIENT-MASTER-SEARCH-OWNER-READ-BOUNDARY-GLOBAL-NON-PROMOTION-001"
+  ],
+  "confidence": "MEDIUM",
+  "gaps": [
+    "This gate covers only the /master-search authorization composition and does not certify other registry routes, owner-data minimization, RLS, providers, target, production, deployment, release or global ERP readiness.",
+    "Global parity remains NOT VERIFIED; external homologation, target operations, accessibility, LGPD, backup/restore, distributed operations and release evidence remain open."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-003-PATIENT-MASTER-SEARCH-OWNER-READ-BOUNDARY-IR-001",
+    "scope": "Repository-local authorization boundary for owner data returned by GET /master-search",
+    "decision": "Close only the second owners.read authorization check and its focused deny/allow tests; preserve existing payload, filtering and audit behavior.",
+    "revalidation_trigger": "Any change to other registry routes, data projection/redaction, schema/RLS, providers, target, production, deployment, release or global parity."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_BOUNDED",
+  "implementation_status": "COMPLETE_BOUNDED",
+  "next_action": "Return to fresh residual scouting under a new authority. Keep parent CVG-003/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+  "revalidation_triggers": [
+    "Changing owner/patient CRUD or response projection/redaction",
+    "Changing schema, RLS, providers, target, production, deployment, release or global parity behavior"
+  ],
+  "supersedes": ".agent/gates/implementation-ready-CVG-003-PATIENT-MASTER-SEARCH-OWNER-READ-BOUNDARY.json"
+}

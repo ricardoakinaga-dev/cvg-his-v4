@@ -21,7 +21,9 @@
     <details class="counter-sales-report">
       <summary class="counter-sales-report__summary">
         <span>Relatório executivo próprio</span>
-        <small>Indicadores e análise ficam recolhidos para não disputar atenção com a comanda.</small>
+        <small
+          >Indicadores e análise ficam recolhidos para não disputar atenção com a comanda.</small
+        >
       </summary>
       <DsCard title="Relatório executivo próprio">
         <div class="report-toolbar">
@@ -176,12 +178,7 @@
     </details>
 
     <section v-if="integrationWarnings.length > 0" class="counter-sales-alerts">
-      <DsAlert
-        v-for="warning in integrationWarnings"
-        :key="warning"
-        variant="warning"
-        dismissible
-      >
+      <DsAlert v-for="warning in integrationWarnings" :key="warning" variant="warning" dismissible>
         {{ warning }}
       </DsAlert>
     </section>
@@ -208,7 +205,9 @@
         <p>
           Tutor {{ contextualOwnerLabel }} indicado para abertura manual.
           <span v-if="workflowContext.patientId">Paciente {{ contextualPatientLabel }}.</span>
-          <span v-if="workflowContext.encounterId">Atendimento {{ workflowContext.encounterId }}.</span>
+          <span v-if="workflowContext.encounterId"
+            >Atendimento {{ workflowContext.encounterId }}.</span
+          >
           Nenhuma comanda foi criada automaticamente.
         </p>
       </div>
@@ -269,19 +268,12 @@
       <DsInput v-model="filters.dateFrom" type="date" label="Período de" />
       <DsInput v-model="filters.dateTo" type="date" label="até" />
       <div class="counter-sales-toolbar__actions">
-        <DsButton variant="secondary" :loading="loadingPage" @click="loadPage">
-          Filtrar
-        </DsButton>
+        <DsButton variant="secondary" :loading="loadingPage" @click="loadPage"> Filtrar </DsButton>
       </div>
     </section>
 
     <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">{{ error }}</DsAlert>
-    <DsAlert
-      v-if="successMessage"
-      variant="success"
-      dismissible
-      @dismiss="successMessage = ''"
-    >
+    <DsAlert v-if="successMessage" variant="success" dismissible @dismiss="successMessage = ''">
       {{ successMessage }}
     </DsAlert>
 
@@ -454,7 +446,12 @@
                     </div>
 
                     <div class="patient-context-card__actions">
-                      <DsButton size="sm" variant="ghost" tag="a" :to="`/patients/${context.patient.id}`">
+                      <DsButton
+                        size="sm"
+                        variant="ghost"
+                        tag="a"
+                        :to="`/patients/${context.patient.id}`"
+                      >
                         Cadastro
                       </DsButton>
                       <DsButton
@@ -647,20 +644,20 @@
                 <div class="item-total-grid">
                   <div class="summary-card">
                     <span class="summary-card__label">Produtos</span>
-                    <strong class="summary-card__value">{{ formatCurrency(selectedProductsTotal) }}</strong>
+                    <strong class="summary-card__value">{{
+                      formatCurrency(selectedProductsTotal)
+                    }}</strong>
                   </div>
                   <div class="summary-card">
                     <span class="summary-card__label">Serviços</span>
-                    <strong class="summary-card__value">{{ formatCurrency(selectedServicesTotal) }}</strong>
+                    <strong class="summary-card__value">{{
+                      formatCurrency(selectedServicesTotal)
+                    }}</strong>
                   </div>
                 </div>
 
                 <div v-if="selectedSale.items.length > 0" class="item-list">
-                  <article
-                    v-for="item in selectedSale.items"
-                    :key="item.id"
-                    class="line-item-card"
-                  >
+                  <article v-for="item in selectedSale.items" :key="item.id" class="line-item-card">
                     <div class="line-item-card__header">
                       <div>
                         <strong>{{ item.nameSnapshot }}</strong>
@@ -750,7 +747,35 @@
                     <span>{{ event.description }}</span>
                   </article>
                 </div>
-                <div v-else class="counter-sales-empty">Nenhum registro de esteira para esta comanda.</div>
+                <div v-else class="counter-sales-empty">
+                  Nenhum registro de esteira para esta comanda.
+                </div>
+              </section>
+
+              <section class="workbench-section" data-testid="counter-sale-cancellation-history">
+                <header class="workbench-section__header">
+                  <div>
+                    <span class="workbench-section__eyebrow">audit</span>
+                    <h3>Histórico de cancelamentos</h3>
+                  </div>
+                  <span class="workbench-section__hint">
+                    {{ selectedCancellationHistory.length }} registro(s)
+                  </span>
+                </header>
+                <div v-if="selectedCancellationHistory.length > 0" class="timeline-stack">
+                  <article
+                    v-for="event in selectedCancellationHistory"
+                    :key="event.eventId"
+                    class="timeline-card timeline-card--cancellation"
+                  >
+                    <strong>Cancelamento em {{ formatDateTime(event.cancelledAt) }}</strong>
+                    <span>Motivo: {{ event.reason }}</span>
+                    <span>Registrado por: {{ openedByLabel(event.cancelledByUserId) }}</span>
+                  </article>
+                </div>
+                <div v-else class="counter-sales-empty">
+                  Nenhum histórico de cancelamento disponível para esta comanda.
+                </div>
               </section>
             </div>
 
@@ -834,7 +859,11 @@
                     </div>
                   </div>
 
-                  <div v-if="selectedSale.receipt" class="receipt-summary" data-testid="counter-sale-receipt">
+                  <div
+                    v-if="selectedSale.receipt"
+                    class="receipt-summary"
+                    data-testid="counter-sale-receipt"
+                  >
                     <div>
                       <span class="summary-card__label">Comprovante financeiro</span>
                       <strong>{{ formatCurrency(selectedSale.receipt.amount) }}</strong>
@@ -877,7 +906,7 @@
                       v-if="selectedSale.status === 'open'"
                       variant="danger"
                       :loading="transitioningSale"
-                      @click="cancelSale"
+                      @click="openCancelModal"
                     >
                       Cancelar Comanda
                     </DsButton>
@@ -927,7 +956,12 @@
                     max="12"
                   />
                   <DsInput v-model="paymentForm.reference" label="Referência" />
-                  <DsInput v-model="paymentForm.notes" type="textarea" label="Observação" :rows="3" />
+                  <DsInput
+                    v-model="paymentForm.notes"
+                    type="textarea"
+                    label="Observação"
+                    :rows="3"
+                  />
 
                   <DsButton
                     variant="secondary"
@@ -979,18 +1013,16 @@
                 </header>
 
                 <div class="quote-list">
-                  <article
-                    v-for="quote in selectedOwnerQuotes"
-                    :key="quote.id"
-                    class="quote-card"
-                  >
+                  <article v-for="quote in selectedOwnerQuotes" :key="quote.id" class="quote-card">
                     <div class="quote-card__header">
                       <strong>{{ quote.number }}</strong>
                       <strong>{{ formatCurrency(quote.total) }}</strong>
                     </div>
                     <div class="quote-card__meta">
                       <span>{{ quote.validUntil || 'Sem validade' }}</span>
-                      <span>{{ quote.convertedToSaleId ? 'Convertido' : 'Pronto para conversão' }}</span>
+                      <span>{{
+                        quote.convertedToSaleId ? 'Convertido' : 'Pronto para conversão'
+                      }}</span>
                     </div>
                     <DsButton
                       size="sm"
@@ -1007,12 +1039,8 @@
           </div>
 
           <div class="command-bottom-actions">
-            <DsButton variant="ghost" @click="selectedSaleId = ''">
-              Voltar para Comandas
-            </DsButton>
-            <DsButton variant="secondary" tag="a" to="/queue">
-              Encaminhar Esteira
-            </DsButton>
+            <DsButton variant="ghost" @click="selectedSaleId = ''"> Voltar para Comandas </DsButton>
+            <DsButton variant="secondary" tag="a" to="/queue"> Encaminhar Esteira </DsButton>
             <DsButton variant="secondary" :loading="printingSale" @click="printSelectedSale">
               Imprimir
             </DsButton>
@@ -1039,7 +1067,11 @@
 
     <DsModal :open="createModalOpen" title="Abrir nova comanda" size="lg" @close="closeCreateModal">
       <div class="create-sale-modal">
-        <div class="create-sale-modal__tabs" role="tablist" aria-label="Fluxo de abertura de comanda">
+        <div
+          class="create-sale-modal__tabs"
+          role="tablist"
+          aria-label="Fluxo de abertura de comanda"
+        >
           <button
             type="button"
             class="create-sale-modal__tab"
@@ -1092,19 +1124,13 @@
                 <span>{{ ownerPatientsLabel(owner.id) }}</span>
               </div>
               <div class="modal-owner-card__actions">
-                <DsButton
-                  size="sm"
-                  variant="secondary"
-                  @click="selectedOwnerId = owner.id"
-                >
+                <DsButton size="sm" variant="secondary" @click="selectedOwnerId = owner.id">
                   {{ selectedOwnerId === owner.id ? 'Cliente selecionado' : 'Selecionar cliente' }}
                 </DsButton>
-                <DsButton
-                  size="sm"
-                  variant="ghost"
-                  @click="toggleOwnerDetails(owner.id)"
-                >
-                  {{ expandedOwnerId === owner.id ? 'Ocultar informações' : 'Ver mais informações' }}
+                <DsButton size="sm" variant="ghost" @click="toggleOwnerDetails(owner.id)">
+                  {{
+                    expandedOwnerId === owner.id ? 'Ocultar informações' : 'Ver mais informações'
+                  }}
                 </DsButton>
               </div>
               <div v-if="expandedOwnerId === owner.id" class="modal-owner-card__details">
@@ -1180,6 +1206,50 @@
         </DsButton>
       </template>
     </DsModal>
+
+    <DsModal
+      :open="cancelModalOpen"
+      :teleport="false"
+      title="Cancelar comanda"
+      size="sm"
+      @close="closeCancelModal"
+    >
+      <div class="cancel-sale-modal">
+        <p v-if="selectedSale" class="cancel-sale-modal__description">
+          Informe o motivo para cancelar a comanda {{ selectedSale.number }}. Este registro ficará
+          disponível no histórico da comanda.
+        </p>
+        <DsInput
+          id="counter-sale-cancel-reason"
+          v-model="cancelReason"
+          type="textarea"
+          label="Motivo do cancelamento"
+          placeholder="Descreva o motivo do cancelamento"
+          :rows="4"
+          :maxlength="CANCELLATION_REASON_MAX_LENGTH"
+          :error="cancellationReasonError"
+          required
+          @blur="cancelReasonTouched = true"
+        />
+        <p class="cancel-sale-modal__hint">
+          Obrigatório · {{ cancelReason.trim().length }} /
+          {{ CANCELLATION_REASON_MAX_LENGTH }} caracteres
+        </p>
+      </div>
+      <template #footer>
+        <DsButton variant="ghost" :disabled="transitioningSale" @click="closeCancelModal">
+          Voltar
+        </DsButton>
+        <DsButton
+          variant="danger"
+          :loading="transitioningSale"
+          :disabled="!canConfirmCancellation"
+          @click="confirmCancelSale"
+        >
+          {{ transitioningSale ? 'Cancelando...' : 'Confirmar cancelamento' }}
+        </DsButton>
+      </template>
+    </DsModal>
   </div>
 </template>
 
@@ -1218,6 +1288,9 @@ import type { PatientSummary } from '@/types/patient';
 
 type CatalogItemType = 'all' | 'product' | 'service';
 
+const CANCELLATION_REASON_MAX_LENGTH = 500;
+const CANCELLATION_REASON_CONTROL_CHARACTERS = /[\u0000-\u001f\u007f-\u009f]/u;
+
 interface CatalogOption {
   id: string;
   type: 'product' | 'service';
@@ -1252,6 +1325,9 @@ const creatingSale = ref(false);
 const savingItem = ref(false);
 const savingPayment = ref(false);
 const transitioningSale = ref(false);
+const cancelModalOpen = ref(false);
+const cancelReason = ref('');
+const cancelReasonTouched = ref(false);
 const ownersLoading = ref(false);
 const printingSale = ref(false);
 const error = ref('');
@@ -1328,11 +1404,11 @@ const selectedSale = computed(
 const canEditSelectedSale = computed(() => selectedSale.value?.status === 'open');
 const selectedOwner = computed(() => {
   const ownerId = selectedSale.value?.ownerId;
-  return ownerId ? ownerMap.value[ownerId] ?? null : null;
+  return ownerId ? (ownerMap.value[ownerId] ?? null) : null;
 });
 const selectedOwnerPatients = computed(() => {
   const ownerId = selectedSale.value?.ownerId;
-  return ownerId ? patientMap.value[ownerId] ?? [] : [];
+  return ownerId ? (patientMap.value[ownerId] ?? []) : [];
 });
 const selectedOwnerQuotes = computed(() => {
   const ownerId = selectedSale.value?.ownerId;
@@ -1346,13 +1422,16 @@ const contextualOwnerLabel = computed(() => {
 const contextualPatientLabel = computed(() => {
   if (!workflowContext.patientId) return 'não informado';
   const patients = Object.values(patientMap.value).flat();
-  return patients.find((patient) => patient.id === workflowContext.patientId)?.name || workflowContext.patientId;
+  return (
+    patients.find((patient) => patient.id === workflowContext.patientId)?.name ||
+    workflowContext.patientId
+  );
 });
-const selectedProductItems = computed(() =>
-  selectedSale.value?.items.filter((item) => item.itemType === 'product') ?? []
+const selectedProductItems = computed(
+  () => selectedSale.value?.items.filter((item) => item.itemType === 'product') ?? []
 );
-const selectedServiceItems = computed(() =>
-  selectedSale.value?.items.filter((item) => item.itemType === 'service') ?? []
+const selectedServiceItems = computed(
+  () => selectedSale.value?.items.filter((item) => item.itemType === 'service') ?? []
 );
 const selectedProductsTotal = computed(() =>
   selectedProductItems.value.reduce((sum, item) => sum + item.lineTotal, 0)
@@ -1361,6 +1440,28 @@ const selectedServicesTotal = computed(() =>
   selectedServiceItems.value.reduce((sum, item) => sum + item.lineTotal, 0)
 );
 const selectedSaleNotesLength = computed(() => selectedSale.value?.notes?.length ?? 0);
+const selectedCancellationHistory = computed(() => selectedSale.value?.cancellationHistory ?? []);
+const cancellationReasonError = computed(() => {
+  if (!cancelReasonTouched.value) return undefined;
+  const normalizedReason = cancelReason.value.trim();
+  if (CANCELLATION_REASON_CONTROL_CHARACTERS.test(cancelReason.value)) {
+    return 'O motivo do cancelamento não pode conter caracteres de controle.';
+  }
+  if (!normalizedReason) return 'O motivo do cancelamento é obrigatório.';
+  if (normalizedReason.length > CANCELLATION_REASON_MAX_LENGTH) {
+    return `O motivo do cancelamento deve ter no máximo ${CANCELLATION_REASON_MAX_LENGTH} caracteres.`;
+  }
+  return undefined;
+});
+const canConfirmCancellation = computed(() => {
+  const length = cancelReason.value.trim().length;
+  return (
+    !transitioningSale.value &&
+    !CANCELLATION_REASON_CONTROL_CHARACTERS.test(cancelReason.value) &&
+    length >= 1 &&
+    length <= CANCELLATION_REASON_MAX_LENGTH
+  );
+});
 
 const selectedPatientContexts = computed<SelectedPatientContext[]>(() => {
   const recordByEncounterId = new Map(
@@ -1384,7 +1485,7 @@ const selectedPatientContexts = computed<SelectedPatientContext[]>(() => {
     return {
       patient,
       encounter,
-      medicalRecord: encounter ? recordByEncounterId.get(encounter.id) ?? null : null
+      medicalRecord: encounter ? (recordByEncounterId.get(encounter.id) ?? null) : null
     };
   });
 });
@@ -1415,7 +1516,8 @@ const inventoryBySku = computed(
 
 const lowStockAlerts = computed(() => commercialDashboard.value?.lowStockAlerts ?? []);
 const approvedQuotesCount = computed(
-  () => quotes.value.filter((quote) => quote.status === 'approved' && !quote.convertedToSaleId).length
+  () =>
+    quotes.value.filter((quote) => quote.status === 'approved' && !quote.convertedToSaleId).length
 );
 const convertedQuotesCount = computed(
   () => quotes.value.filter((quote) => Boolean(quote.convertedToSaleId)).length
@@ -1481,7 +1583,9 @@ const catalogOptions = computed<CatalogOption[]>(() => {
     code: product.code,
     description: product.description,
     basePrice: product.basePrice,
-    onHandQuantity: product.code ? inventoryBySku.value.get(product.code)?.onHandQuantity : undefined
+    onHandQuantity: product.code
+      ? inventoryBySku.value.get(product.code)?.onHandQuantity
+      : undefined
   }));
   const serviceOptions = serviceCatalog.value.map((service) => ({
     id: service.id,
@@ -1499,8 +1603,7 @@ const visibleCatalogOptions = computed(() => {
   const search = catalogForm.search.trim().toLowerCase();
   return catalogOptions.value
     .filter((option) => {
-      const matchesType =
-        catalogForm.itemType === 'all' || option.type === catalogForm.itemType;
+      const matchesType = catalogForm.itemType === 'all' || option.type === catalogForm.itemType;
       const matchesSearch =
         !search ||
         option.name.toLowerCase().includes(search) ||
@@ -1516,8 +1619,9 @@ const barcodeMatchedOption = computed(() => {
   if (!normalizedCode) return null;
 
   return (
-    catalogOptions.value.find((option) => normalizeCatalogCode(option.code ?? '') === normalizedCode) ??
-    null
+    catalogOptions.value.find(
+      (option) => normalizeCatalogCode(option.code ?? '') === normalizedCode
+    ) ?? null
   );
 });
 
@@ -1532,17 +1636,13 @@ const filteredSales = computed(() => {
       (owner?.fullName ?? '').toLowerCase().includes(search) ||
       ownerPrimaryContactLabel(sale.ownerId).toLowerCase().includes(search);
     const matchesStatus = filters.status === 'all' || sale.status === filters.status;
-    const matchesDateFrom =
-      !filters.dateFrom || sale.createdAt >= `${filters.dateFrom}T00:00:00`;
-    const matchesDateTo =
-      !filters.dateTo || sale.createdAt <= `${filters.dateTo}T23:59:59`;
+    const matchesDateFrom = !filters.dateFrom || sale.createdAt >= `${filters.dateFrom}T00:00:00`;
+    const matchesDateTo = !filters.dateTo || sale.createdAt <= `${filters.dateTo}T23:59:59`;
     return matchesSearch && matchesStatus && matchesDateFrom && matchesDateTo;
   });
 });
 
-const openSalesCount = computed(
-  () => sales.value.filter((sale) => sale.status === 'open').length
-);
+const openSalesCount = computed(() => sales.value.filter((sale) => sale.status === 'open').length);
 const closedSalesCount = computed(
   () => sales.value.filter((sale) => sale.status === 'closed').length
 );
@@ -1551,9 +1651,7 @@ const openBalanceTotal = computed(() =>
     .filter((sale) => sale.status === 'open')
     .reduce((sum, sale) => sum + sale.balanceDue, 0)
 );
-const grossSalesTotal = computed(() =>
-  sales.value.reduce((sum, sale) => sum + sale.total, 0)
-);
+const grossSalesTotal = computed(() => sales.value.reduce((sum, sale) => sum + sale.total, 0));
 
 const operationalAlerts = computed<OperationalAlert[]>(() => {
   const alerts: OperationalAlert[] = [];
@@ -1567,7 +1665,8 @@ const operationalAlerts = computed<OperationalAlert[]>(() => {
   }
 
   const lowStock = visibleCatalogOptions.value.filter(
-    (option) => option.type === 'product' && option.onHandQuantity !== undefined && option.onHandQuantity <= 3
+    (option) =>
+      option.type === 'product' && option.onHandQuantity !== undefined && option.onHandQuantity <= 3
   );
   if (lowStock.length > 0) {
     alerts.push({
@@ -1646,7 +1745,9 @@ async function loadPage() {
       warnings.push('Pipeline comercial indisponível; a comanda continua operando sem quotes.');
     }
     if (encountersResult.status !== 'fulfilled') {
-      warnings.push('Contexto de atendimento indisponível; os atalhos assistenciais foram reduzidos.');
+      warnings.push(
+        'Contexto de atendimento indisponível; os atalhos assistenciais foram reduzidos.'
+      );
     }
     if (recordsResult.status !== 'fulfilled') {
       warnings.push('Prontuário não respondeu; o vínculo clínico está em visão parcial.');
@@ -1962,7 +2063,10 @@ async function applySaleAdjustment(kind: 'expense' | 'discount') {
       unitPrice: kind === 'expense' ? 10 : 0,
       quantity: 1,
       discountAmount: kind === 'expense' ? 0 : 10,
-      notes: kind === 'expense' ? 'Ajuste lançado pelo resumo da conta' : 'Desconto lançado pelo resumo da conta'
+      notes:
+        kind === 'expense'
+          ? 'Ajuste lançado pelo resumo da conta'
+          : 'Desconto lançado pelo resumo da conta'
     });
     successMessage.value =
       kind === 'expense' ? 'Despesa extra incluída na comanda.' : 'Desconto incluído na comanda.';
@@ -2052,15 +2156,48 @@ async function closeSale() {
   }
 }
 
-async function cancelSale() {
-  if (!selectedSale.value) return;
+function openCancelModal() {
+  if (!selectedSale.value || selectedSale.value.status !== 'open' || transitioningSale.value)
+    return;
+  cancelReason.value = '';
+  cancelReasonTouched.value = false;
+  cancelModalOpen.value = true;
+}
+
+function closeCancelModal() {
+  if (transitioningSale.value) return;
+  cancelModalOpen.value = false;
+  cancelReason.value = '';
+  cancelReasonTouched.value = false;
+}
+
+async function confirmCancelSale() {
+  const sale = selectedSale.value;
+  if (!sale) return;
+
+  cancelReasonTouched.value = true;
+  if (CANCELLATION_REASON_CONTROL_CHARACTERS.test(cancelReason.value)) {
+    error.value = 'O motivo do cancelamento não pode conter caracteres de controle.';
+    return;
+  }
+  const reason = cancelReason.value.trim();
+  if (!reason) {
+    error.value = 'O motivo do cancelamento é obrigatório.';
+    return;
+  }
+  if (reason.length > CANCELLATION_REASON_MAX_LENGTH) {
+    error.value = `O motivo do cancelamento deve ter no máximo ${CANCELLATION_REASON_MAX_LENGTH} caracteres.`;
+    return;
+  }
+
   transitioningSale.value = true;
   error.value = '';
   try {
-    await counterSalesService.cancel(selectedSale.value.id);
-    successMessage.value = `Comanda ${selectedSale.value.number} cancelada.`;
+    await counterSalesService.cancel(sale.id, reason);
+    successMessage.value = `Comanda ${sale.number} cancelada.`;
+    cancelModalOpen.value = false;
     await loadPage();
-    await selectSale(selectedSale.value.id);
+    await selectSale(sale.id);
   } catch (actionError) {
     error.value = actionError instanceof Error ? actionError.message : 'Erro ao cancelar comanda';
   } finally {
@@ -2288,7 +2425,7 @@ function buildOperationalPrintHtml(
   patientContexts: readonly SelectedPatientContext[]
 ) {
   const ownerContact = owner
-    ? owner.contacts.find((contact) => contact.primary) ?? owner.contacts[0] ?? null
+    ? (owner.contacts.find((contact) => contact.primary) ?? owner.contacts[0] ?? null)
     : null;
   const patientLines = patientContexts
     .map((context) => {
@@ -2477,16 +2614,18 @@ function statusBadgeVariant(status: CounterSaleStatus): 'warning' | 'success' | 
 }
 
 function paymentMethodLabel(method: CounterSalePaymentMethod | string): string {
-  return {
-    cash: 'Dinheiro',
-    credit_card: 'Cartão crédito',
-    debit_card: 'Cartão débito',
-    pix: 'PIX',
-    bank_transfer: 'Transferência',
-    check: 'Cheque',
-    insurance: 'Convênio',
-    other: 'Outro'
-  }[method as CounterSalePaymentMethod] ?? method;
+  return (
+    {
+      cash: 'Dinheiro',
+      credit_card: 'Cartão crédito',
+      debit_card: 'Cartão débito',
+      pix: 'PIX',
+      bank_transfer: 'Transferência',
+      check: 'Cheque',
+      insurance: 'Convênio',
+      other: 'Outro'
+    }[method as CounterSalePaymentMethod] ?? method
+  );
 }
 
 function paymentMethodShare(total: number): string {
@@ -2760,7 +2899,9 @@ function formatDateTime(value: string): string {
 
 .counter-sale-card__header {
   display: grid;
-  grid-template-columns: 110px minmax(120px, 0.85fr) minmax(150px, 1fr) minmax(150px, 1fr) minmax(180px, 1.35fr) minmax(130px, 0.8fr) max-content;
+  grid-template-columns:
+    110px minmax(120px, 0.85fr) minmax(150px, 1fr) minmax(150px, 1fr) minmax(180px, 1.35fr)
+    minmax(130px, 0.8fr) max-content;
   align-items: center;
 }
 
@@ -3055,10 +3196,27 @@ function formatDateTime(value: string): string {
 .sidebar-summary,
 .sidebar-owner,
 .payment-form,
-.create-sale-modal {
+.create-sale-modal,
+.cancel-sale-modal {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.cancel-sale-modal__description,
+.cancel-sale-modal__hint {
+  margin: 0;
+  color: var(--color-text-secondary, #475569);
+  font-size: 13px;
+}
+
+.cancel-sale-modal__hint {
+  font-size: 12px;
+}
+
+.timeline-card--cancellation {
+  border-left-color: #dc2626;
+  background: rgba(254, 242, 242, 0.82);
 }
 
 .receipt-summary {
@@ -3283,6 +3441,11 @@ function formatDateTime(value: string): string {
 :root[data-theme='dark'] .counter-sales-page .timeline-card {
   border-left-color: var(--color-info-400);
   background: var(--color-info-50);
+}
+
+:root[data-theme='dark'] .counter-sales-page .timeline-card--cancellation {
+  border-left-color: var(--color-danger-400);
+  background: var(--color-danger-50);
 }
 
 :root[data-theme='dark'] .counter-sales-page .create-sale-modal__tabs {

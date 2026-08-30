@@ -196,6 +196,22 @@ describe('PatientsService', () => {
       });
       expect(authoritative.getOrThrow(cached.id).status).toBe('inactive');
     });
+
+    it('refreshes the account cache and removes stale patients and links', async () => {
+      const persisted = createPatient(service, owners, { name: 'Persisted patient' });
+      const stale = createPatient(service, owners, { name: 'Stale patient' });
+      await service.waitForPersistence();
+      await patientRepo.delete(stale.id);
+      for (const link of linkRepo.getAll().filter((item) => item.patientId === stale.id)) {
+        await linkRepo.delete(link.id);
+      }
+
+      await service.refreshFromDatabase(ACCOUNT_ID);
+
+      expect(service.getOrThrow(persisted.id).name).toBe('Persisted patient');
+      expect(() => service.getOrThrow(stale.id)).toThrow(NotFoundError);
+      expect(service.listLinks({ patientId: stale.id })).toHaveLength(0);
+    });
   });
 
   describe('create()', () => {

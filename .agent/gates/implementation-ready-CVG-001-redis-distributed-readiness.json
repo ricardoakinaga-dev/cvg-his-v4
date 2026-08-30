@@ -1,0 +1,84 @@
+{
+  "record_id": "GATE-CVG-001-REDIS-DISTRIBUTED-READINESS-IR-001",
+  "timestamp": "2026-08-27T09:35:30-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-001 actual Redis dependency health and distributed session process proof",
+  "scope_ref": "CVG-001-REDIS-DISTRIBUTED-READINESS",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "Gap, owner, authority, bounded local resources and exclusions are explicit.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-001-REDIS-DISTRIBUTED-READINESS.md",
+        ".agent/tasks/CVG-001.md",
+        ".agent/instruction-scope.md",
+        ".agent/authority.jsonl#AUTH-CVG-001-REDIS-DISTRIBUTED-READINESS-IR-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Only reversible repository changes and disposable PostgreSQL/Redis/process fixtures are authorized; target, provider, credentials, production, deployment and release remain excluded."
+    },
+    {
+      "id": "IR-002",
+      "description": "Current operational state derives Redis health from URL presence, while rate limiting and database-backed sessions provide the smallest local correction boundary.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/api/src/chaos-operational-state.ts",
+        "apps/api/src/routes/health-routes.ts",
+        "apps/api/src/http/auth-rate-limiter.ts",
+        "packages/shared/rate-limiter/src/index.ts",
+        "tests/integration/process/setup-installation-to-session.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The current process proof does not enable or exercise a real Redis dependency; no implementation or outage claim is made at gate creation."
+    },
+    {
+      "id": "IR-003",
+      "description": "Acceptance is testable through focused unit contracts and a disposable two-API process with Redis outage/recovery, restart, and no-fallback assertions.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-001-REDIS-DISTRIBUTED-READINESS.md",
+        "packages/shared/rate-limiter/src/rate-limiter.test.ts",
+        "tests/unit/api/health-routes-contract.test.ts",
+        "tests/integration/process/setup-installation-to-session.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Fresh RED/GREEN execution, real disposable Redis, regressions and independent review are required before a bounded verification decision."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-001-REDIS-DISTRIBUTED-READINESS.md",
+    ".agent/tasks/CVG-001.md",
+    "apps/api/src/chaos-operational-state.ts",
+    "apps/api/src/routes/health-routes.ts",
+    "packages/shared/rate-limiter/src/index.ts",
+    "tests/integration/process/setup-installation-to-session.test.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "Redis health is not yet probed by readiness.",
+    "No two-process outage/recovery/restart evidence exists for this slice.",
+    "No RED/GREEN implementation evidence exists at gate creation."
+  ],
+  "conditions": [
+    "Use only an explicitly named disposable Redis/PostgreSQL fixture and remove it after the run.",
+    "Do not use an existing project Redis container or production-like database for test keys or outage simulation.",
+    "Preserve fail-closed behavior and do not add an in-memory fallback when distributed state is required."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via the original consolidation brief",
+    "scope": "CVG-001 actual Redis dependency health and distributed session process proof",
+    "decision": "Authorize reversible repository implementation and disposable PostgreSQL/Redis/process verification of the bounded Redis readiness and two-API session continuity contract. Exclude target, providers, credentials, production, deployment, external mutation and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-001-REDIS-DISTRIBUTED-READINESS-IR-001",
+    "expires_or_revalidates": "Revalidate before managed Redis, HA topology, Pub/Sub/session cache redesign, target operations, credentials, production/deployment or release acceptance."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "next_action": "Write and execute the intentional RED tests, then implement the minimal Redis health/readiness and fail-closed HTTP contract."
+}

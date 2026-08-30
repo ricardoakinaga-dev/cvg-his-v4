@@ -1,0 +1,137 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+import { describe, expect, it } from 'vitest';
+
+const root = resolve(import.meta.dirname, '../../..');
+const workflow = readFileSync(resolve(root, '.github/workflows/ci.yml'), 'utf8');
+const playwrightConfig = readFileSync(resolve(root, 'playwright-spa.config.ts'), 'utf8');
+
+describe('CI repository guardrails', () => {
+  it('blocks build on lint and exercises the process runner on Windows', () => {
+    expect(workflow).toContain('  lint:');
+    expect(workflow).toContain('run: pnpm lint');
+    expect(workflow).toContain('needs: [typecheck, validate-openapi, lint]');
+    expect(workflow).toContain('  critical-process-runner-windows:');
+    expect(workflow).toContain('runs-on: windows-2022');
+    expect(workflow).toContain(
+      'run: node --test tests/unit/infra/critical-process-suite-windows-contract.test.mjs'
+    );
+  });
+
+  it('keeps visual regression blocking when the workflow runs it', () => {
+    const jobStart = workflow.indexOf('  test-visual:');
+    expect(jobStart).toBeGreaterThan(-1);
+    const nextJobOffset = workflow.slice(jobStart + 3).search(/\n {2}[a-z0-9-]+:\n/);
+    const job = workflow.slice(
+      jobStart,
+      nextJobOffset === -1 ? undefined : jobStart + 3 + nextJobOffset
+    );
+    expect(job).toContain('name: Visual Regression');
+    expect(job).toContain('Run visual regression tests');
+    expect(job).not.toContain('continue-on-error: true');
+  });
+
+  it('publishes Playwright failure artifacts from the configured output directory', () => {
+    expect(playwrightConfig).toContain("outputDir: 'test-results'");
+
+    const visualJobStart = workflow.indexOf('  test-visual:');
+    expect(visualJobStart).toBeGreaterThan(-1);
+    const nextJobOffset = workflow.slice(visualJobStart + 3).search(/\n {2}[a-z0-9-]+:\n/);
+    const visualJob = workflow.slice(
+      visualJobStart,
+      nextJobOffset === -1 ? undefined : visualJobStart + 3 + nextJobOffset
+    );
+    expect(visualJob).toContain('path: test-results/');
+  });
+
+  it('runs the canonical operational validators as a blocking job', () => {
+    const jobStart = workflow.indexOf('  repository-guards:');
+    expect(jobStart).toBeGreaterThan(-1);
+
+    const nextJobOffset = workflow.slice(jobStart + 3).search(/\n {2}[a-z0-9-]+:\n/);
+    const job = workflow.slice(
+      jobStart,
+      nextJobOffset === -1 ? undefined : jobStart + 3 + nextJobOffset
+    );
+
+    expect(job).toContain('needs: [typecheck]');
+    expect(job).toContain('run: pnpm test:db:start');
+    expect(job).toContain('pnpm validate:openapi');
+    expect(job).toContain('pnpm validate:migration-source');
+    expect(job).toContain('pnpm validate:rls');
+    expect(job).toContain('pnpm validate:deploy-surface');
+    expect(job).toContain('CVG_HELM_VERSION: v3.15.4');
+    expect(job).toContain('sha256sum --check');
+    expect(job).toContain('test "$(command -v helm)" = "/usr/local/bin/helm"');
+    expect(job).toContain('HELM_BIN=/usr/local/bin/helm REQUIRE_HELM=1 pnpm validate:helm');
+    expect(job).toContain('pnpm deploy:check');
+    expect(job).toContain('pnpm ops:backup:check');
+    expect(job).toContain(
+      'REQUIRE_TEST_DB=1 pnpm vitest run tests/unit/infra/requirement-evidence-matrix.test.ts --config vitest.config.ts'
+    );
+    expect(job).toContain('node --test tests/unit/infra/gauntlet-subcriteria-evidence.test.mjs');
+    expect(job).toContain('pnpm vetus:parity:test');
+    expect(job).toContain(
+      'pnpm vitest run tests/integration/process/runtime-lifecycle.test.ts --config vitest.integration.config.ts'
+    );
+    expect(job).toContain(
+      'REQUIRE_TEST_DB=1 pnpm vitest run tests/integration/database/migration-integrity-runtime.test.ts --config vitest.integration.config.ts'
+    );
+    expect(job).toContain(
+      'REQUIRE_TEST_DB=1 pnpm vitest run tests/integration/rls/force-rls-catalog.test.ts tests/integration/rls/rls-isolation.test.ts tests/integration/rls/rls-access-governance.test.ts tests/integration/rls/runtime-role-sensitive-acl.test.ts --config vitest.integration.config.ts'
+    );
+    expect(job).toContain(
+      'REQUIRE_TEST_DB=1 pnpm vitest run tests/integration/setup/production-like-runtime-bootstrap.test.ts --config vitest.integration.config.ts'
+    );
+    expect(job).toContain(
+      'REQUIRE_TEST_DB=1 pnpm vitest run tests/integration/database/inpatient-clinical-financial-vertical-http-postgres.test.ts --config vitest.integration.config.ts'
+    );
+    expect(job).toContain(
+      'docker compose --env-file .env.v2.example -f docker-compose.v2.yml config --quiet'
+    );
+    expect(job).toContain('run: pnpm test:db:stop');
+  });
+
+  it('runs the full workspace suite against the required isolated PostgreSQL', () => {
+    const jobStart = workflow.indexOf('  unit-tests:');
+    expect(jobStart).toBeGreaterThan(-1);
+
+    const nextJobOffset = workflow.slice(jobStart + 3).search(/\n {2}[a-z0-9-]+:\n/);
+    const job = workflow.slice(
+      jobStart,
+      nextJobOffset === -1 ? undefined : jobStart + 3 + nextJobOffset
+    );
+
+    expect(job).toContain('run: pnpm test:db:start');
+    expect(job).toContain('run: pnpm test');
+    expect(job).toContain('REQUIRE_TEST_DB: 1');
+    expect(job).toContain('name: Run critical process runner contract');
+    expect(job).toContain(
+      'run: pnpm exec vitest run tests/unit/infra/critical-process-suite-contract.test.ts --config vitest.config.ts --no-file-parallelism'
+    );
+    expect(job).toContain('name: Run CI workflow contract');
+    expect(job).toContain(
+      'run: pnpm exec vitest run tests/unit/infra/ci-contract.test.ts --config vitest.config.ts --no-file-parallelism'
+    );
+    expect(job).toContain('run: pnpm test:db:stop');
+  });
+
+  it('budgets shared memory for every GitHub PostgreSQL service', () => {
+    expect((workflow.match(/--shm-size 1g/g) ?? []).length).toBeGreaterThanOrEqual(5);
+  });
+
+  it('uses the canonical TypeScript migration entrypoint in API contract setup', () => {
+    const jobStart = workflow.indexOf('  api-contract-tests:');
+    expect(jobStart).toBeGreaterThan(-1);
+
+    const nextJobOffset = workflow.slice(jobStart + 3).search(/\n {2}[a-z0-9-]+:\n/);
+    const job = workflow.slice(
+      jobStart,
+      nextJobOffset === -1 ? undefined : jobStart + 3 + nextJobOffset
+    );
+
+    expect(job).toContain('run: pnpm exec tsx packages/db/src/migrate.ts');
+    expect(job).not.toContain('run: node packages/db/src/migrate.ts');
+  });
+});

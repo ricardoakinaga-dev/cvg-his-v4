@@ -5,39 +5,56 @@ import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
 
 import type { PersistenceMode } from './app-state.js';
 
+type RateLimiterMode = 'redis' | 'in-memory' | 'fail-closed';
+
+export interface HealthDependencies {
+  databaseConfigured: boolean;
+  databaseHealthy: boolean;
+  databaseDetail: string;
+  persistenceMode: PersistenceMode;
+  repositoriesReady: boolean;
+  repositoryCount: number;
+  workerReady: boolean;
+  workerDetail: string;
+  productionReady: boolean;
+  initialized: boolean;
+  secretsManagerProvider?: 'vault' | 'env';
+  /** GAP-09: ML services wired to runtime */
+  mlReady: boolean;
+  mlDetail: string;
+  /** Redis is required only when distributed runtime state is enabled. */
+  redisConfigured?: boolean;
+  redisHealthy?: boolean;
+  redisDetail?: string;
+  runtimeDistributedStateEnabled?: boolean;
+  rateLimiterMode?: RateLimiterMode;
+}
+
 export function createHealthResponse(
   appName: string,
   environment: string,
   version: string,
   request: IncomingMessage,
-  deps: {
-    databaseConfigured: boolean;
-    databaseHealthy: boolean;
-    databaseDetail: string;
-    persistenceMode: PersistenceMode;
-    repositoriesReady: boolean;
-    repositoryCount: number;
-    workerReady: boolean;
-    workerDetail: string;
-    productionReady: boolean;
-    initialized: boolean;
-    secretsManagerProvider?: 'vault' | 'env';
-    /** GAP-09: ML services wired to runtime */
-    mlReady: boolean;
-    mlDetail: string;
-  }
+  deps: HealthDependencies
 ): HealthResponse {
   const correlationId = request.headers['x-correlation-id'];
 
   let dbState: 'healthy' | 'unhealthy' | 'not-configured' | 'in-memory-fallback';
-  let dbDetail = deps.databaseDetail;
+  let dbDetail: string;
 
-  // Priority: if DB is configured, show its actual state
-  if (deps.databaseConfigured) {
+  // An unavailable operational mode is fail-closed even when the process was
+  // initialized with local repositories. Never describe this state as a
+  // healthy in-memory fallback.
+  if (deps.persistenceMode === 'unavailable') {
+    dbState = 'unhealthy';
+    dbDetail = 'Database persistence is unavailable.';
+  } else if (deps.databaseConfigured) {
     if (deps.databaseHealthy) {
       dbState = 'healthy';
+      dbDetail = 'Database connection is healthy.';
     } else {
       dbState = 'unhealthy';
+      dbDetail = 'Database is unavailable.';
     }
   } else {
     // No DB configured - using in-memory fallback
@@ -56,7 +73,31 @@ export function createHealthResponse(
     ok = deps.databaseHealthy && deps.repositoriesReady; // Database mode
   }
 
-  const readinessReady = deps.productionReady && deps.workerReady;
+  const runtimeDistributedStateEnabled = deps.runtimeDistributedStateEnabled === true;
+  const redisConfigured = deps.redisConfigured === true;
+  const redisHealthy = deps.redisHealthy === true;
+  const redisReady = !runtimeDistributedStateEnabled || (redisConfigured && redisHealthy);
+  const redisState: 'healthy' | 'unhealthy' | 'not-configured' | 'disabled' =
+    !runtimeDistributedStateEnabled
+      ? 'disabled'
+      : !redisConfigured
+        ? 'not-configured'
+        : redisHealthy
+          ? 'healthy'
+          : 'unhealthy';
+  const redisDetail = !runtimeDistributedStateEnabled
+    ? 'Distributed runtime state is disabled.'
+    : !redisConfigured
+      ? 'Redis not configured for this runtime.'
+      : redisHealthy
+        ? 'Redis rate limiter backend is healthy.'
+        : 'Redis rate limiter backend is unavailable.';
+
+  if (runtimeDistributedStateEnabled && !redisReady) {
+    ok = false;
+  }
+
+  const readinessReady = deps.productionReady && deps.workerReady && redisReady;
 
   return {
     ok,
@@ -91,6 +132,10 @@ export function createHealthResponse(
           : 'not-configured',
         detail: deps.workerDetail
       },
+      redis: {
+        state: redisState,
+        detail: redisDetail
+      },
       secretsManager: {
         state: deps.secretsManagerProvider ? 'configured' : 'not-configured',
         detail: deps.secretsManagerProvider ?? 'using env vars'
@@ -109,21 +154,7 @@ export function createReadinessResponse(
   environment: string,
   version: string,
   request: IncomingMessage,
-  deps: {
-    databaseConfigured: boolean;
-    databaseHealthy: boolean;
-    databaseDetail: string;
-    persistenceMode: PersistenceMode;
-    repositoriesReady: boolean;
-    repositoryCount: number;
-    workerReady: boolean;
-    workerDetail: string;
-    productionReady: boolean;
-    initialized: boolean;
-    secretsManagerProvider?: 'vault' | 'env';
-    mlReady: boolean;
-    mlDetail: string;
-  }
+  deps: HealthDependencies
 ): HealthResponse {
   return createHealthResponse(appName, environment, version, request, deps);
 }
@@ -133,7 +164,8 @@ export function createLivenessResponse(
   environment: string,
   version: string,
   request: IncomingMessage,
-  initialized: boolean
+  initialized: boolean,
+  persistenceMode: PersistenceMode = 'not-initialized'
 ): HealthResponse {
   const correlationId = request.headers['x-correlation-id'];
 
@@ -151,7 +183,7 @@ export function createLivenessResponse(
     readiness: {
       ready: initialized,
       productionReady: false,
-      persistenceMode: initialized ? 'in-memory' : 'not-initialized'
+      persistenceMode
     },
     dependencies: {
       database: {

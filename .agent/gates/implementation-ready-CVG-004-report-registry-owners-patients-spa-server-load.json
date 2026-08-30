@@ -1,0 +1,92 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-REGISTRY-OWNERS-PATIENTS-SPA-SERVER-LOAD-IR-001",
+  "timestamp": "2026-08-29T23:34:00-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-004 register-owners and register-patients Workbench server-backed initial load",
+  "scope_ref": "CVG-004-REPORT-REGISTRY-OWNERS-PATIENTS-SPA-SERVER-LOAD",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "Fresh local residual reconciliation found that register-owners and register-patients declare serverReportId and export through ReportsService while loadReport still calls ownerService.list() and patientService.list(); the candidate is bounded to the shared SPA caller seam.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-registry-owners-patients-spa-server-load.md",
+        ".agent/verification.jsonl#VFY-SCOUT-CVG-004-REPORT-REGISTRY-OWNERS-PATIENTS-SPA-SERVER-LOAD-001",
+        "apps/spa/src/pages/reports/ReportWorkbenchPage.vue",
+        "apps/spa/src/pages/reports/__tests__/ReportWorkbenchPage.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This selection is based on direct local source/test inspection because the replacement scouts produced no verdict; it is not independent approval."
+    },
+    {
+      "id": "IR-002",
+      "description": "The existing server report definitions and API mappings expose stable seven-field owner and eight-field patient projections that can be consumed without API/catalog/source redesign.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/authority.jsonl#AUTH-CVG-004-REPORT-REGISTRY-OWNERS-PATIENTS-SPA-SERVER-LOAD-IR-001",
+        "packages/modules/reports/src/index.ts",
+        "apps/api/src/routes/reports-routes.ts",
+        ".agent/tasks/CVG-004-report-registration-exports.md",
+        ".agent/gates/verified-CVG-004-report-registration-exports.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The gate reuses the existing report/API contracts and does not reauthorize their source semantics."
+    },
+    {
+      "id": "IR-003",
+      "description": "Focused RED tests can reject owner/patient local list loading, absent server execution, malformed rows and missing date-filter propagation while retaining existing table/card and audited export assertions.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-registry-owners-patients-spa-server-load.md",
+        "apps/spa/src/pages/reports/__tests__/ReportWorkbenchPage.test.ts",
+        "apps/spa/src/pages/reports/ReportWorkbenchPage.vue"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Implementation, focused GREEN, regression, quality and final control-plane evidence are required before bounded closure."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-report-registry-owners-patients-spa-server-load.md",
+    ".agent/authority.jsonl#AUTH-CVG-004-REPORT-REGISTRY-OWNERS-PATIENTS-SPA-SERVER-LOAD-IR-001",
+    ".agent/verification.jsonl#VFY-SCOUT-CVG-004-REPORT-REGISTRY-OWNERS-PATIENTS-SPA-SERVER-LOAD-001",
+    "apps/spa/src/pages/reports/ReportWorkbenchPage.vue",
+    "apps/spa/src/pages/reports/__tests__/ReportWorkbenchPage.test.ts",
+    "packages/modules/reports/src/index.ts",
+    "apps/api/src/routes/reports-routes.ts"
+  ],
+  "confidence": "MEDIUM",
+  "gaps": [
+    "The replacement scouts produced no verdict; selection is direct local reconciliation rather than independent consensus.",
+    "RED/GREEN, SPA build, coverage, static quality, review availability and final control-plane closure are not complete at gate creation.",
+    "API/source, CRUD, target, production, accessibility, remote CI, release and global Vetus parity remain outside scope."
+  ],
+  "conditions": [
+    "Use registration-owners and registration-patients ReportsService executions as the only Workbench load sources for these two keys.",
+    "Validate exactly the existing seven/eight server fields and preserve current labels/cards without adding a new filter family.",
+    "Do not modify API/source, report catalog, owner/patient CRUD, workers, providers, target, production or release semantics.",
+    "Keep parent CVG-004/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via explicit continuation and direct read-only residual reconciliation",
+    "scope": "SPA-only register-owners/register-patients Workbench server-backed loading, exact existing projections, date filters and audited export",
+    "decision": "Authorize reversible SPA Workbench implementation and focused regression to consume existing registration-owners and registration-patients ReportsService executions, validate their exact projections and remove local list loading. Exclude API/source redesign, CRUD, worker/provider, credentials, target, production, accessibility and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-REGISTRY-OWNERS-PATIENTS-SPA-SERVER-LOAD-IR-001",
+    "expires_or_revalidates": "Revalidate before changing owner/patient report source semantics, adding fields/filters, changing CRUD or ReportsService audit/export behavior, or entering target/production/release scope."
+  },
+  "residual_risk": "MEDIUM",
+  "decision": "IMPLEMENTATION_READY",
+  "implementation_status": "AUTHORIZED_NOT_STARTED",
+  "next_action": "Write and run intentional RED tests for server-backed owner/patient registry loading, exact response validation and date-filter propagation, then implement the narrow SPA change.",
+  "revalidation_triggers": [
+    "Changes to registration-owners or registration-patients API/source, schema or authorization",
+    "Changes to the existing report field projections or ReportsService execution/export/audit semantics",
+    "Expansion into search/filter redesign, CRUD, worker/provider, target, production, deployment or release scope"
+  ],
+  "supersedes": null
+}

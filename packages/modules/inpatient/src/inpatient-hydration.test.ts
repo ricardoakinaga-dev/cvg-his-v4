@@ -91,8 +91,8 @@ test('InpatientService hydrates durable stay aggregate after an API restart', as
   await service.hydrateAccount(stay.accountId);
 
   assert.deepEqual(service.list({ accountId: stay.accountId }), [stay]);
-  assert.deepEqual(service.listProgress(stay.id), [progress]);
-  assert.deepEqual(service.listOccurrences(stay.id), [occurrence]);
-  assert.deepEqual(service.listDailyCharges(stay.id), [charge]);
+  assert.deepEqual(service.listProgress(stay.id, stay.accountId), [progress]);
+  assert.deepEqual(service.listOccurrences(stay.id, stay.accountId), [occurrence]);
+  assert.deepEqual(service.listDailyCharges(stay.id, stay.accountId), [charge]);
   assert.equal(writes, 0, 'Hydration must never reinsert already durable rows');
 });

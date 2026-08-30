@@ -1,0 +1,90 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-SERVICE-REGISTRATION-SPA-SERVER-LOAD-IR-001",
+  "timestamp": "2026-08-29T23:00:00-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-004 register-services Reports Workbench server-backed initial load",
+  "scope_ref": "CVG-004-REPORT-SERVICE-REGISTRATION-SPA-SERVER-LOAD",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The register-services SPA load inconsistency, bounded contract, owner, authority and exclusions are recorded without promoting CVG-004 or global readiness.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-service-registration-spa-server-load.md",
+        ".agent/backlog.json",
+        ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SERVICE-REGISTRATION-SPA-SERVER-LOAD-IR-001",
+        ".agent/verification.jsonl#VFY-SCOUT-CVG-004-REPORT-SERVICE-REGISTRATION-SPA-SERVER-LOAD-001"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "The replacement scouts were unavailable/no-verdict; selection is based on direct source/test inspection and explicit bounded authority, not independent consensus."
+    },
+    {
+      "id": "IR-002",
+      "description": "The existing Reports Workbench spec and export already identify registration-services as a server report, while the load branch still imports and calls servicesService.list(); the existing API/catalog contract is available for reuse without redesign.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/spa/src/pages/reports/ReportWorkbenchPage.vue",
+        "apps/spa/src/pages/reports/__tests__/ReportWorkbenchPage.test.ts",
+        "packages/modules/reports/src/index.ts",
+        "apps/api/src/routes/reports-routes.ts",
+        ".agent/tasks/CVG-004-report-service-registration.md",
+        ".agent/gates/verified-CVG-004-report-service-registration.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This gate does not reauthorize or reprove the existing API/database source; it only authorizes the SPA caller alignment and regression."
+    },
+    {
+      "id": "IR-003",
+      "description": "Focused RED tests can reject local services loading, absent server execution, malformed rows and missing date-filter propagation before implementation while retaining the audited export assertion.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-service-registration-spa-server-load.md",
+        "apps/spa/src/pages/reports/__tests__/ReportWorkbenchPage.test.ts",
+        "apps/spa/src/pages/reports/ReportWorkbenchPage.vue"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Implementation, focused GREEN, SPA build/regression and final hygiene are required before bounded closure."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-report-service-registration-spa-server-load.md",
+    ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SERVICE-REGISTRATION-SPA-SERVER-LOAD-IR-001",
+    ".agent/verification.jsonl#VFY-SCOUT-CVG-004-REPORT-SERVICE-REGISTRATION-SPA-SERVER-LOAD-001",
+    "apps/spa/src/pages/reports/ReportWorkbenchPage.vue",
+    "apps/spa/src/pages/reports/__tests__/ReportWorkbenchPage.test.ts",
+    "packages/modules/reports/src/index.ts",
+    "apps/api/src/routes/reports-routes.ts"
+  ],
+  "confidence": "MEDIUM",
+  "gaps": [
+    "The RED/GREEN implementation, focused SPA regression, typecheck/build, independent review and final closure are not complete at gate creation."
+  ],
+  "conditions": [
+    "Keep the exact six registration-services fields and existing server filters; do not add a new report source or filter family.",
+    "Do not retain a local servicesService.list() fallback for malformed or unavailable server rows.",
+    "Do not claim independent scout consensus or production/global approval.",
+    "Keep CVG-004/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via explicit continuation and direct read-only residual reconciliation",
+    "scope": "CVG-004 register-services Reports Workbench server-backed initial load",
+    "decision": "Authorize reversible SPA Workbench implementation and focused regression to load the existing registration-services report through ReportsService, validate its six fields and preserve audited export. Exclude API/source redesign, service CRUD, scheduled delivery, providers, credentials, target, production, deployment, external mutation, accessibility and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SERVICE-REGISTRATION-SPA-SERVER-LOAD-IR-001",
+    "expires_or_revalidates": "Revalidate before changing the registration-services API/catalog/source, adding fields/filters, changing service CRUD, adding worker delivery or entering target/production/deployment/release scope."
+  },
+  "residual_risk": "MEDIUM",
+  "decision": "PASS",
+  "next_action": "Write and run intentional RED tests for server-backed register-services loading, exact row validation and date-filter propagation, then implement the narrow SPA change.",
+  "revalidation_triggers": [
+    "Changes to registration-services API/source, service schema, tenant authorization or RLS",
+    "Changes to ReportsService execution/export/audit semantics",
+    "Expansion beyond the on-demand six-field register-services SPA load path"
+  ],
+  "supersedes": null
+}

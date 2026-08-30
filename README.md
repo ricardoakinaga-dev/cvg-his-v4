@@ -1,6 +1,9 @@
-# CVG-HIS V2
+# CVG-HIS V4
 
-Monorepo do sistema HIS veterinario V2.
+Monorepo do sistema HIS veterinário V4. Os nomes V2 ainda presentes em
+packages, imagens e Compose são identificadores de compatibilidade governados
+por [RELEASE_IDENTITY.md](docs/engineering/RELEASE_IDENTITY.md), não uma
+segunda versão do produto.
 
 Este README foi ajustado para que a instalacao, a atualizacao das imagens e o deploy nao usem artefatos errados, trilhas legadas ou sequencias ambiguas.
 
@@ -15,6 +18,8 @@ Para instalacao e publicacao da stack real, use apenas:
 - `apps/spa/Dockerfile`
 - `packages/db/src/migrate.ts`
 - `packages/db/src/seed.ts`
+- `infra/helm/cvg-his-v2`
+- `docs/engineering/RELEASE_IDENTITY.md`
 - `OPENCLAW_DEPLOY_DIRETRIZES.md`
 - `INSTALACAO_V2_OPENCLAW.md`
 
@@ -37,7 +42,7 @@ Regra operacional: o deploy correto deve reconstruir as imagens a partir do codi
 
 ## Servicos canonicos da stack V2
 
-Os servicos definidos hoje em [`docker-compose.v2.yml`](/root/.openclaw/workspace/cvg-his-v2/docker-compose.v2.yml) sao:
+Os serviços definidos hoje em [`docker-compose.v2.yml`](docker-compose.v2.yml) são:
 
 - `postgres`
 - `redis`
@@ -113,7 +118,7 @@ docker compose --env-file .env.v2 -f docker-compose.v2.yml up -d postgres redis
 
 ### 6. Aplicar migrations oficiais
 
-O caminho canonico de schema para deploy atual e Drizzle via [`packages/db/src/migrate.ts`](/root/.openclaw/workspace/cvg-his-v2/packages/db/src/migrate.ts).
+O caminho canônico de schema para deploy atual é Drizzle via [`packages/db/src/migrate.ts`](packages/db/src/migrate.ts).
 
 ```bash
 DATABASE_URL=postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@127.0.0.1:5432/$POSTGRES_DB \
@@ -177,8 +182,15 @@ Os artefatos vivos de cutover e proxy agora seguem a mesma topologia do compose 
 Antes de publicar trafego, rode o guardrail documental e operacional:
 
 ```bash
+pnpm validate:deploy-surface
 pnpm deploy:check
+pnpm validate:helm
 ```
+
+No CI, o gate usa Helm v3.15.4 instalado com SHA-256 pinado e executa
+`HELM_BIN=/usr/local/bin/helm REQUIRE_HELM=1 pnpm validate:helm`; localmente,
+sem `REQUIRE_HELM=1`, a validação estática continua disponível quando o
+binário não está instalado.
 
 Exemplo seguro para o cutover:
 
@@ -217,15 +229,16 @@ pnpm deploy:check
 Checks operacionais:
 
 - `pnpm deploy:check` valida se compose, proxy, env example e docs vivas continuam alinhados a `apps/spa` e ao runner canonico de migrations
+- `pnpm validate:deploy-surface` impede que CI ou automação ativa volte a usar o track Helm legado
 - `pnpm test:smoke` executa a trilha funcional principal da SPA sem os cenarios visuais
 
 ## Documentacao operacional
 
-- [OPENCLAW_DEPLOY_DIRETRIZES.md](/root/.openclaw/workspace/cvg-his-v2/OPENCLAW_DEPLOY_DIRETRIZES.md)
-- [INSTALACAO_V2_OPENCLAW.md](/root/.openclaw/workspace/cvg-his-v2/INSTALACAO_V2_OPENCLAW.md)
-- [docs/132-superficie-canonica-deploy-e-migracao.md](/root/.openclaw/workspace/cvg-his-v2/docs/132-superficie-canonica-deploy-e-migracao.md)
-- [docker-compose.v2.yml](/root/.openclaw/workspace/cvg-his-v2/docker-compose.v2.yml)
-- [.env.v2.example](/root/.openclaw/workspace/cvg-his-v2/.env.v2.example)
-- [infra/scripts/cutover-v2.sh](/root/.openclaw/workspace/cvg-his-v2/infra/scripts/cutover-v2.sh)
-- [infra/scripts/check-cutover-readiness.mjs](/root/.openclaw/workspace/cvg-his-v2/infra/scripts/check-cutover-readiness.mjs)
-- [infra/docker/Caddyfile.v2](/root/.openclaw/workspace/cvg-his-v2/infra/docker/Caddyfile.v2)
+- [OPENCLAW_DEPLOY_DIRETRIZES.md](OPENCLAW_DEPLOY_DIRETRIZES.md)
+- [INSTALACAO_V2_OPENCLAW.md](INSTALACAO_V2_OPENCLAW.md)
+- [docs/132-superficie-canonica-deploy-e-migracao.md](docs/132-superficie-canonica-deploy-e-migracao.md)
+- [docker-compose.v2.yml](docker-compose.v2.yml)
+- [.env.v2.example](.env.v2.example)
+- [infra/scripts/cutover-v2.sh](infra/scripts/cutover-v2.sh)
+- [infra/scripts/check-cutover-readiness.mjs](infra/scripts/check-cutover-readiness.mjs)
+- [infra/docker/Caddyfile.v2](infra/docker/Caddyfile.v2)

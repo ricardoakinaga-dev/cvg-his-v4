@@ -25,6 +25,18 @@ Deliver a behaviorally proven Premium Enterprise veterinary ERP MVP with secure 
 | `QB-OPS-01`    | Operations            | Deploy/rollback, backup/restore, failover, alerts/traces and agreed performance SLOs pass in an authorized target-like environment.                                                                  | all approved operational procedures pass                            | runtime observations and durable external artifacts             | yes      | P0 release | no current target evidence; runbook conflict                                                                                                                                                      | human environment/RTO/RPO authority required                                                          | BLOCKED |
 | `QB-MKT-01`    | Competitive outcome   | MVP presents one unified multi-location workspace with contextual patient/client records, automation/charge capture, client communication/portal and comparable reporting/integration extensibility. | critical differentiated workflows are usable, not menu placeholders | product journey review against sourced market matrix            | yes      | P1         | broad surfaces exist; functional depth unverified                                                                                                                                                 | market claims guide priorities, not release proof                                                     | NOT_RUN |
 
+## Current quality-bar reconciliation — CVG-001 setup browser evidence — 2026-08-25
+
+The original table rows above are retained as the frozen baseline. The current
+statuses below supersede the stale `NOT_RUN` notes for the rows exercised by the
+latest bounded slice:
+
+| Bar          | Current status | Evidence and remaining boundary                                                                                                                                                   |
+| ------------ | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `QB-SEC-02`  | `PARTIAL`      | Fresh PostgreSQL/two-API setup negative HTTP matrix, installer capability ACL and database isolation fixtures pass; all admin paths and target RLS/FORCE RLS catalog remain open. |
+| `QB-DATA-01` | `PARTIAL`      | Fresh install creates one durable graph, propagates the sentinel across two APIs and rejects a second setup; concurrent install/failure/failpoint invariants remain open.         |
+| `QB-UX-01`   | `PARTIAL`      | Built-SPA wizard passes keyboard/focus/form naming and axe WCAG 2A/2AA in 2/2 tests; broader critical desktop/mobile flows remain open.                                           |
+
 ## Gauntlet Score
 
 | Dimension             | Status  | Actual evidence                                                                                                                                                                       | Target                              | Confidence | Trend     |
@@ -52,6 +64,11 @@ Round 0 completed discovery and froze Quality Bar v1. Rounds 1-3 delivered local
 
 ## Open Gaps
 
+The older bullets in this section remain useful history, but the current
+decision is that setup already has bounded PostgreSQL/HTTP and built-SPA
+evidence. The remaining CVG-001 work is to extend that proof to all auth/admin
+paths, shared Redis/failover and broader critical browser journeys.
+
 - Preserve the current fail-closed setup behavior and prove every setup/install/session entry point against real PostgreSQL/Redis; the prior raw-token/setup-predicate finding is historical and the full criterion remains PARTIAL until that evidence exists.
 - Prove a durable, one-time, atomic installation sentinel and least-privilege bootstrap against real PostgreSQL.
 - Certify session refresh/revocation and MFA rollout across two physical replicas and Redis races in a target-like environment.
@@ -59,9 +76,29 @@ Round 0 completed discovery and froze Quality Bar v1. Rounds 1-3 delivered local
 - Keep the API-key capability, signed callback, non-interactive principal and bounded consumer connected; then close real process crash/restart and Redis failover/clock-skew evidence, followed by SPA flow, card, stock and the full scheduled/walk-in journey.
 - Add a dedicated HTTP-to-UoW-to-PostgreSQL receipt E2E and the remaining critical browser E2E gates.
 
-## Latest bounded checkpoint
+## Latest bounded checkpoint — DB-002 stale migration artifacts — 2026-08-25
 
-`EVT-0072`–`EVT-0090` follow the earlier `EVT-0068`–`EVT-0071` callback, database, principal and consumer checkpoints. The recovery implementation/docs are published through `13dbd01`; the API-key implementation is published in `62db87e`, the DLQ implementation in `35f68fd`, the replicated-observability correction in `1217882` and the prior ledger reconciliation in `d525acc`; this continuation extends that base with the current checkpoint documents, while the design-system tsbuildinfo cache remains excluded. Fresh bounded evidence is worker 54/54, shared transaction context 4/4, API route 4/4, disposable PostgreSQL worker fencing/restart 6/6, service principals/RLS 5/5, HTTP→PostgreSQL legacy/rate-limit 4/4, API-key service 13/13, mapper 4/4, auth helper 3/3, ACL 1/1, fail-closed chaos policy 22/22, DLQ operator 3/3 and OpenAPI 337 paths/390 schemas. Automatic attempts-exhausted promotions now emit safe terminal telemetry and aggregate metrics without unbounded labels; API-key rate-limit consumption is atomic in the local PostgreSQL concurrency proof and the runtime has no silent in-memory fallback when distributed state is required. Real Redis failover/clock-skew remains unproven.
+`EVT-0316`–`EVT-0318` extend DB-001 after a scout identified stale source
+companions. The RED contract first reproduced `migrate.js`, then the expanded
+contract reproduced `migrate.d.ts`; the GREEN removes the five source-level
+stale artifacts (`migrate.js`, three `.d.ts`/`.map` companions and
+`drizzle.config.ts`) while keeping `packages/db/src/migrate.ts` as the sole
+source runner and `packages/db/dist/migrate.js` as generated Compose/Helm
+output. `pnpm validate:migration-source`, the focused migration/CI suite
+15/15, both database builds, generated runner syntax and the active-consumer
+scan passed; SQL migration trees were unchanged. `EVT-0319` then confirmed full
+workspace typecheck and lint 70/70 plus control-plane JSON/JSONL parsing and
+diff checks. Hegel independently approved the extension with E conditional only
+for dirty/untracked persistence. This remains dirty local evidence; the support closure,
+tests and docs are untracked/unstaged until explicit publication authority.
+Target RLS/FORCE RLS, positive staging migration, restore/RTO-RPO, remote CI,
+providers, Redis, parity, WCAG, coverage, operations and release remain open.
+
+## Previous bounded checkpoint — DB-001 migration source — 2026-08-25
+
+`EVT-0312`–`EVT-0314` extend the previous API persistence/RLS checkpoint with DB-001. The canonical migration/seed rail is `packages/db/src/migrate.ts` + `src/seed.ts`; `packages/shared/database` remains a runtime client and historical SQL holder, while its executable `db:*` commands fail closed. `pnpm validate:migration-source` passed, the focused guardrail/CI contracts passed 5/5, both database packages built, the canonical consumers in CI/Compose/Helm/cutover/test bootstrap were verified, and Aristotle independently approved the bar without P0/P1 findings. The migration source is bounded local evidence; a positive new migration in staging, target RLS/FORCE RLS, representative restore/RTO-RPO, remote CI, provider, Redis, parity, WCAG, coverage, operations and release remain unproven. The tracked `packages/db/src/migrate.js` and historical config remain a separate residual task.
+
+## Previous bounded checkpoint — API-key/worker and clinical continuations
 
 The recovery test uses two independent PostgreSQL pools: A loses its pool after claim and before B1/CAS; B takes over after lease expiry with a new fence and applies B1 once. The HTTP boundary proves owner `410`, foreign-account opaque `404` and direct legacy `200` with exactly one gateway/outbox effect, plus eight concurrent low-limit requests yielding two `201` and six `429` across two API instances. The harness now uses the real PostgreSQL API-key repository and capability; the remaining production gaps are target-like DLQ exercise, Redis failover/clock-skew, real SIGKILL/restart evidence and the broader release gates.
 
@@ -71,8 +108,8 @@ The callback/worker slice remains below the `VERIFIED` bar: a real SIGKILL/proce
 
 - State: ACTIVE
 - Reason: Required P0 criteria fail or have not run; target-environment work is externally blocked but local safe work remains.
-- Last integrated verification: B2b parser/ingress checkpoint `VFY-CVG-002B2B-PARSER-INGRESS-001` passed focused 77/77, PostgreSQL ingress 11/11, B1 18/18 and B2a 33/33 with independent APPROVE; B2a's VERIFIED gate still records coverage 1.646/1.646 at 83% lines/80,3% branches plus typecheck/lint, OpenAPI, RLS, dependency/secret scans and independent review PASS. Earlier SPA 1.001/1.001 evidence remains bounded and current.
-- Next largest locally actionable gap: prove real SIGKILL/restart and Redis failover/clock-skew under the now fail-closed policy; rerun bounded regressions if behavior changes. Coherent SPA remains separate `B2c` work.
+- Last integrated verification: `VFY-CVG-002C6-DB-SOURCE-ARTIFACT-FINAL-001` passed the final local guard/test/build/typecheck/lint/control-plane checks; `VFY-CVG-002C6-DB-SOURCE-ARTIFACT-REVIEW-001` independently approved DB-002-A–D and left E conditional only for dirty/untracked persistence. The preceding API persistence/RLS fixture remained green at 371/371 including database-persistence 17/17.
+- Next largest locally actionable gap: repeat the consolidated Owner→Patient→Encounter→care→inpatient→billing→stock→receipt proof and RLS/roles catalog in the authorized target environment, then execute representative restore/RTO-RPO. Keep real Redis failover/clock-skew, provider, parity, WCAG, coverage, operations and release gates open; retain the diagnostics injected-client compatibility observation, migration-positive-staging gap, stale-artifact publication boundary and user-owned tsbuildinfo cache as bounded follow-up risks.
 
 ## Local security gate — CVG-001 startup fail-closed (23/08/2026)
 
@@ -1441,3 +1478,1766 @@ independent reviewer was available. Temporary SQL constraints are not a
 production fault-injection platform. Provider/production/Redis, global
 RLS/FORCE RLS, DR/RPO, complete Vetus parity, WCAG, coverage, operations and
 release remain open. No global gate is promoted; stop decision remains ACTIVE.
+
+## Current bounded verification — consolidated clinical HTTP/cache rollback — 2026-08-25
+
+The cross-domain correction now snapshots the medical-record cache before
+inpatient status, transfer and progress commands. If the clinical projection
+fails after creating a record in memory, the synchronous catch removes that
+speculative record or restores the previous record/entries/timeline before the
+deferred committed-row refresh.
+
+Fresh evidence is route 24/24, medical-records 17/17, inpatient 17/17, API
+boundary 366/366, API typecheck/build and the complete clinical-financial
+HTTP/PostgreSQL vertical 11/11 on a fresh database with two API instances,
+two tenants and restricted runtime roles. The vertical verifies the
+HTTP-created Owner→Patient→Encounter chain through care, inpatient, billing,
+stock, discharge, close and receipt, including exact SQL links/totals,
+cross-tenant negatives, same-key close retry and clinical-timeline failpoint
+retry.
+
+Noether performed a fresh independent read-only review and returned
+`CONDITIONAL_PASS`, with no BLOCKER/HIGH/MEDIUM finding. LOW observations are
+direct unit coverage for `restoreEncounterSnapshot` and best-effort refresh
+observability. The separate API db-persistence fixture remains harness debt:
+its 16 tests require seeded tenant/auth principals and are not promoted by
+this slice. Target RLS/FORCE RLS, representative restore/RTO-RPO, providers,
+Redis failover, remote CI, Vetus parity, WCAG, coverage, operations and
+release remain open; no global gate or go-live decision is promoted.
+
+## Current bounded verification — CVG-001 setup-to-session — 2026-08-25
+
+The setup lifecycle now has a real process proof across two hot API instances.
+The RED reproduced a 503 under the intended `NOINHERIT` runtime role because
+installer membership was not effective for the capability function. The GREEN
+boundary uses `BEGIN`, `SET LOCAL ROLE cvg_installer`, the operation and
+`COMMIT`/rollback on one connection; it does not change the safe login-role
+inheritance contract.
+
+The final process test passed 1/1 with a fresh database and random fixture
+roles. It verified status propagation, exactly one installation, login and
+session across replicas, refresh rotation, stale refresh rejection, logout
+revocation on both replicas and second-setup `409`; generated secrets were not
+returned or present in captured output. Setup unit tests passed 26/26,
+installation/ACL integration 9/9, CI/runtime-role contracts 15/15, cleanup
+5/5, full typecheck 70/70 and diff-check. Independent security/reliability
+review approved the bounded implementation.
+
+This does not close the full Quality Bar. Wizard Playwright/axe, invalid and
+oversize input coverage, target RLS/FORCE RLS, Redis/failover, production,
+global coverage, operations and release remain open. Stop decision remains
+ACTIVE; no global gate, commit or push is promoted.
+
+## Current bounded verification — CVG-001 setup wizard accessibility — 2026-08-25
+
+The setup UI now exposes visible hints to assistive technology. `DsInput`
+assigns deterministic hint/error IDs and selects the currently visible
+description through `aria-describedby` for all supported control variants.
+The component RED failed before the association existed; GREEN and the final
+tests passed for input, textarea, select and error-over-hint precedence.
+
+The focused component suite passed 9/9, design-system 26/26, SetupPage 8/8;
+design-system typecheck, SPA vue-tsc, targeted lint, Prettier and diff-check
+passed. Independent review approved after the initial coverage finding was
+closed. The browser Playwright/axe wizard proof, invalid/oversize HTTP matrix,
+target RLS/FORCE RLS, Redis/failover, DR/RPO, global coverage and release remain
+open; no global gate is promoted.
+
+## Current bounded verification — CVG-001 setup negative HTTP matrix — 2026-08-25
+
+The setup process now has a negative HTTP matrix before mutation. Against a
+fresh disposable PostgreSQL database and two restricted API processes it
+returned `400 INVALID_JSON_BODY` for malformed JSON, `400 INVALID_SETUP_PAYLOAD`
+for non-object/invalid fields, `401 INVALID_SETUP_TOKEN` without echo and `413
+SETUP_PAYLOAD_TOO_LARGE`; the status remained setup-required before the valid
+POST. The valid setup/session lifecycle continued to pass in the same 1/1 run.
+
+The first assertion RED was corrected to the route's intentional generic parse
+message. Independent read-only review approved the route-aligned coverage.
+This remains bounded local evidence; browser Playwright/axe, target
+RLS/FORCE RLS, Redis/failover, restore/RTO-RPO, production, coverage and
+release remain open.
+
+## Current bounded verification — CVG-001 setup browser/axe — 2026-08-25
+
+The stale browser-open notes above are superseded for this bounded wizard
+slice. The built SPA passed `pnpm test:e2e:spa:setup` 4/4 in Chromium after a
+real axe RED found and fixed light-theme contrast. The final contract covers
+exact status and setup URLs, GET/POST methods, no request cookies and exact
+payloads on success and retry; it also covers form naming, keyboard/focus,
+`aria-describedby`, `aria-invalid`, 390px layout, WCAG 2.1/2.2 AA axe tags and
+cleanup of all credential fields after success/failure.
+
+SetupPage 8/8, DsInput 9/9 and SPA typecheck/build passed; the test is selected
+by the package setup script and CI enterprise list. Kepler independently
+re-reviewed the corrected worktree and returned `APPROVE_BOUNDED` with no
+HIGH/MEDIUM findings. `QB-UX-01` and related quality rows remain `PARTIAL`:
+this does not certify all critical flows, dark-theme/manual review, target
+RLS/FORCE RLS, Redis/failover, DR/RPO, parity, coverage, operations or release.
+
+## Current bounded verification — SPA enterprise and clinical browser continuation — 2026-08-25
+
+The selected enterprise browser gate passed 15/15 against the built SPA,
+including dashboard/report exports, 360 reception/mobile and the four setup
+wizard cases. The standalone critical journey passed 1/1 from Owner and Patient
+through Encounter, clinical entry, billing item and close, with test-resource
+cleanup. Appointment passed 2/2 and inpatient passed 2/2.
+
+The adjacent billing suite is not promoted: 5/6 cases passed and the cash
+settlement case stopped at `R$ 0,00` because the default local harness runs
+with incompatible DB repositories disabled, so the persistent encounter cash
+receipt route is absent. `API_DISABLE_INCOMPATIBLE_DB_REPOS=0` could not start
+against the local unseeded database (`user_admin` session fixture missing).
+`QB-CORE-01`/`QB-UX-01` remain `PARTIAL`; run the seeded Docker/CI E2E before
+claiming billing receipt browser evidence. Target RLS/FORCE RLS, Redis/failover,
+DR/RPO, parity, global coverage, operations and release remain open.
+
+## Current bounded verification — SPA DB-backed Docker runner — 2026-08-25
+
+O runner canônico `pnpm test:e2e:spa:docker` foi executado em uma stack Docker
+descartável de PostgreSQL e Redis. O caminho aplicou migrations 0000–0143,
+seed primário/secundário, verificou restart/rehydration do runtime e iniciou a
+API/SPA com os repositórios persistentes habilitados.
+
+O primeiro bootstrap expôs signer laboratorial ausente e a criação de roles
+runtime não montada; os contratos de seed/Compose/role corrigiram as lacunas.
+A primeira suíte pós-fix marcou 59/60 porque o stub visual comparava `/queue`
+com uma requisição real `/api/queue`; a análise do diff descartou regressão de
+tema e o stub foi endurecido com teste de contrato. Sem atualizar snapshots, a
+repetição passou **60/60 em aproximadamente 4 minutos**, incluindo cash
+settlement persistente.
+
+Este GREEN é bounded ao runner local. O stop decision permanece ACTIVE:
+RLS/FORCE RLS no PostgreSQL alvo, restore/RTO-RPO, Redis/failover, providers,
+CI remoto, parity, cobertura, operações e release continuam sem promoção.
+
+## Current bounded verification — restore drill timing — 2026-08-25
+
+O contrato de restore começou RED porque o script não possuía campos de
+tempo. Após a implementação, o contrato passou e o shell manteve `sh -n`
+verde. O drill real foi repetido com bundle/PG16 descartáveis e produziu
+`checksumVerification=passed`, `storageListingMatch=true`, 2 tabelas, 2
+arquivos, `elapsedMs=8657` e fases de 995 ms, 6961 ms, 581 ms e 14 ms.
+
+Isso fecha apenas a observabilidade do drill local. O stop decision permanece
+ACTIVE: backup representativo, RTO/RPO, retenção e restore/failover no ambiente
+autorizado ainda não foram executados.
+
+## Current bounded verification — local FORCE RLS catalog — 2026-08-25
+
+The first catalog contract was intentionally RED: 123 public tables carrying
+`account_id` had RLS enabled but not `relforcerowsecurity`; `installation_state`
+was the documented global exception. Migration `0144_force_rls_tenant_tables.sql`
+now applies `FORCE ROW LEVEL SECURITY` to every public base/partitioned tenant
+table and excludes only that setup singleton.
+
+The fresh catalog contract passed 2/2. The adjacent RLS/isolation/sensitive-ACL/
+installation regression passed 4 files and 26/26 tests, with migration-source
+and static RLS guards green. This is local bounded evidence only: target
+ownership/grants, NOBYPASSRLS runtime roles, cross-tenant proof, staging,
+restore/RTO-RPO, Redis, providers, parity, coverage, operations and release
+remain open. The CI repository-guards command now includes the catalog
+contract; its focused composition test passed 4/4.
+
+## Current bounded verification — representative restore drill — 2026-08-25
+
+The official `pnpm ops:restore:drill:fixture:representative` command passed
+end-to-end. The representative fixture applies canonical migrations 0000–0144
+in disposable PostgreSQL, restores 176 public tables and 3 storage files, and
+passes 19 graph assertions after `SET ROLE restore_probe` with
+`rolsuper=false,rolbypassrls=false` and `app.current_account_id`; checksums, TOC,
+globals and listing match are green. Report timing is `elapsedMs=28610`.
+
+This is bounded local evidence only. Target backup/RTO-RPO, retention,
+ownership/grants, failover, Game Day, remote CI, providers, parity, coverage,
+operations and release remain open; CVG-002C6 remains `IN_PROGRESS` and stop
+decision remains ACTIVE.
+
+## Current bounded verification — behavioral evidence spine — 2026-08-25
+
+CVG-003 now has a revision-bound local matrix at
+`docs/engineering/REQUIREMENT_EVIDENCE_MATRIX.md`. Its contract maps every
+frozen Quality Bar ID to observable rejecting evidence, artifact/ledger and an
+honest status; the focused test passed 2/2. Repository-guards now runs that
+contract with `REQUIRE_TEST_DB=1`, and the CI composition contract passed 4/4.
+
+This closes only the core matrix/indexing gap. It does not turn `PARTIAL` or
+`BLOCKED` rows into release evidence; subordinate Gauntlet criteria, target
+operations, providers, parity, global WCAG/coverage and release remain open.
+
+## Current bounded verification — subordinate Gauntlet evidence index — 2026-08-25
+
+`docs/engineering/GAUNTLET_SUBCRITERIA_EVIDENCE.md` now indexes the 30 unique
+`QB-*` identifiers present across `.gauntlet/state.md`, including
+`QB-REL-CRITICAL-HARNESS` from the historical continuity record. Each row has
+five auditable cells: frozen source/criterion, rejecting observable behavior,
+artifact/ledger reference and an honest bounded status/limit.
+
+The Node contract passed 2/2 after a deliberate RED for the missing document
+and a parser RED that exposed the table-only 29-ID blind spot. The parser now
+collects all frozen `QB-*` tokens and the repository-guards workflow invokes
+the contract. The combined matrix/CI contract passed 2 files/6 tests.
+
+This remains an audit index, not behavior or release proof. `PASS_BOUNDED`
+rows are local scope only; `PARTIAL`, `BLOCKED`, `FAIL` and `NOT_RUN` remain
+open. Confucius returned `APPROVE_BOUNDED` without a blocking finding, and the
+final formatting, test, validator, ledger, diff, staging and Docker-residue
+controls passed. Target evidence and publication authorization remain
+required; stop decision remains ACTIVE.
+
+## Current bounded verification — critical process regression — 2026-08-25
+
+The canonical `test:critical:process` runner passed all eight serial process
+boundaries after migrations `0000`–`0144`: setup/session `1/1`, inpatient
+SIGKILL/takeover `10/10`, clinical-financial restart `1/1`, cash SIGKILL `1/1`,
+cash concurrency `1/1`, PIX settlement `8/8`, worker entrypoint `1/1` and
+webhook delivery `1/1`. Each child used a distinct ephemeral database suffix.
+
+Artifact: `.agent/artifacts/CVG-002C6-critical-process-regression-2026-08-25.md`.
+The eight exact databases created by this run were removed in a separate
+cleanup step and no critical-process/restore Docker residue remained. An
+independent review returned `APPROVE_BOUNDED`, with the explicit caveat that
+cleanup is not automatic runner behavior.
+
+This strengthens only local process-harness continuity. Target execution,
+ownership/grants/cross-tenant RLS, provider/Redis failover, RTO/RPO, parity,
+global WCAG/coverage, operations and release remain open; stop decision remains
+ACTIVE.
+
+## Current bounded verification — critical base regression — 2026-08-26
+
+A first full local base run exposed one honest RED in the marketing fixture:
+`OWNER_A` and `OWNER_B` were generated and passed to consent, but no `owners`
+rows existed. The tenant-scoped MarketingService validation correctly rejected
+the missing Owner. The GREEN was limited to inserting both Owners in account A;
+the focused test then passed 1/1.
+
+The repeated suite covering `tests/integration/database`,
+`tests/integration/setup` and `tests/integration/foundational.test.ts` passed
+**40/40 files and 447/447 tests** in 698,27 s after migrations `0000`–`0144`.
+The exact disposable database was dropped, the matching suffix query was
+empty and no critical-process/restore/restore-drill container remained.
+
+Artifact: `.agent/artifacts/CVG-002C6-critical-base-regression-2026-08-26.md`.
+Confucius returned `APPROVE_BOUNDED`; the review confirmed the command, the
+fixture-only correction, cleanup wording and bounded limits, with the caveat
+that raw stdout is not attached for a second independent check of the aggregate
+447/447 and duration values. This remains local evidence only; target,
+providers/Redis, RTO/RPO, parity, coverage, operations and release remain open.
+
+## Current bounded verification — CVG-003 spine reconciliation — 2026-08-26
+
+The requirement matrix and subordinate Gauntlet index now cite the fresh
+critical-base artifact for `QB-CLIN-01`/`QB-CORE-01` and `QB-REL-01`. The
+reconciliation preserved the existing `PARTIAL` and `BOUNDED PASS` states.
+
+The combined matrix/CI contract passed 2 files and 6 tests in 52,07 s; the
+subordinate Node contract passed 2/2. The disposable database was removed
+explicitly. Artifact:
+`.agent/artifacts/CVG-003-evidence-spine-reconciliation-2026-08-26.md`.
+
+Confucius first found a wording-precision issue and then returned
+`APPROVE_BOUNDED` after the artifact distinguished documentary reference
+changes from the existing read-only verification contracts. This remains local
+audit-spine evidence only; product, target, provider/Redis, RTO/RPO, parity,
+coverage, operations and release remain open.
+
+## Checkpoint — CVG-003 access-control/audit/cache — 2026-08-26
+
+The authorization, audit-persistence and cross-instance cache slice is
+`PASS_BOUNDED`. The initial independent critique found the token/data H-01
+race; the implementation now reads the change token before and after the
+account-scoped snapshot, retries unstable reads, coalesces hydrations per
+account, awaits audit persistence, fails closed during pending mutations,
+refreshes after commit, and bounds audit inputs.
+
+Fresh evidence: access-control 32/32, API 373/373, disposable PostgreSQL/HTTP
+vertical 14/14, green builds/typecheck, and protected-route revocation denied
+on the secondary instance. Turing's final independent review returned
+`APPROVE_BOUNDED`. Artifact:
+`.agent/artifacts/CVG-003-access-control-audit-cache-2026-08-26.md`.
+
+Global state remains `IN_PROGRESS`/`PARTIAL`; target ownership/grants/RLS,
+Redis/failover, providers, RTO/RPO, remote CI, parity, coverage, operations,
+rollout and go-live evidence remain open. No commit, push, staging, or
+production action was performed.
+
+## Current bounded verification — release identity/deploy surface — 2026-08-26
+
+The release identity contract now declares `CVG-HIS-V4`, the V4 repository
+metadata, `docker-compose.v2.yml`, and `infra/helm/cvg-his-v2` as canonical
+surfaces while retaining V2 names only as compatibility identifiers.
+`charts/helm` is explicitly non-canonical and its README no longer contains
+installation commands or `/health/startup`. The active deploy guard scanned 68
+files, passed the current tree, and rejected an artificial active reference to
+the legacy track; repository-guards executes the guard.
+
+The focused Vitest contract passed 2 files/6 tests with disposable PostgreSQL
+setup, `deploy:check` passed 12/12, OpenAPI passed 345 paths/40 tags/396
+schemas, and YAML/JSON/diff checks passed. Helm validation was static only
+because the Helm binary was unavailable. No independent reviewer returned in
+this round, so the result is `PASS_BOUNDED` local control-plane evidence, not
+approval. Target render/rollout, remote CI, rollback, provider/Redis,
+RTO/RPO, parity, coverage, operations and go-live remain open.
+
+## Current bounded verification — executable Helm gate — 2026-08-26
+
+The Helm validator now has an explicit fail-closed mode. With REQUIRE_HELM=1,
+missing Helm or a version other than v3.15.4 exits non-zero. The repository
+guard installs the pinned Linux archive, verifies SHA-256
+11400fecfc07fd6f034863e4e0c4c4445594673fd2a129e701fe41f31170cfa9, and runs
+the required validator. The local official Helm v3.15.4 run passed lint/template
+for dev, staging and prod.
+
+The missing-executable contract passed 2/2, the CI contract 4/4, the deploy
+surface contract 3/3 and syntax/YAML/diff checks passed. This is bounded
+control-plane evidence only: GitHub execution, cluster render, target identity,
+rollout/rollback, providers, Redis, RTO/RPO, parity, coverage and go-live
+remain open. No independent approval is claimed for this slice.
+
+## Final control — Helm executable gate — 2026-08-26
+
+Estado: `PASS_BOUNDED` local/declared-CI. Validator 5/5; CI/deploy contracts
+8/8; official Helm v3.15.4 via explicit `HELM_BIN` passed dev/staging/prod;
+SHA/path/version and fail-closed behavior are guarded. Averroes returned
+`CONDITIONAL PASS` after the HIGH/MEDIUM findings were resolved; only minor
+constant duplication and worktree/untracked hygiene caveats remain. Target
+render, remote workflow, rollout/rollback and go-live remain open.
+
+## Final control — access/final-guard/restore-security — 2026-08-26
+
+Estado: `PASS_BOUNDED` local. Access-control 35/35, API typecheck, webhook
+2/2, deterministic PostgreSQL/HTTP revocation interleaving, restore security
+13/13 and representative restore 176/3/19 passaram. Hooke e Averroes deram
+`PASS`; a varredura confirmou 406 guards de rotas e 79 guards no servidor,
+todos aguardados. Permanece aberta a linearização de autorização por
+transação/versionamento após a leitura final, além de target, CI remoto,
+providers, Redis, parity, coverage, operations e release. O programa segue
+`IN_PROGRESS/PARTIAL`; nenhum target ou sistema de produção foi tocado.
+
+## Final control — structured laboratory results — 2026-08-26
+
+Estado: `PASS_BOUNDED` local para CVG-004. `resultValues` é validado,
+defensivamente copiado/congelado, persistido em `diagnostic_orders` e
+`diagnostic_order_workflows` pela migration 0145, incluído na assinatura e
+exposto pelo API/OpenAPI, relatório imprimível e páginas analíticas. A
+compatibilidade com `resultSummary` permanece; recolhimento limpa valores
+antigos e a busca de laboratório é estruturada e accent-insensitive.
+
+Diagnostics passou 30/30 com 1 arquivo PostgreSQL skipado pelo pacote; a prova
+PostgreSQL passou 1/1; API 21/21; SPA 7/7; OpenAPI 345/40/397;
+migration-source, typecheck/build, revisão independente e diff check passaram.
+Russell retornou `PASS` após três achados MEDIUM e um LOW serem corrigidos.
+Artefato: `.agent/artifacts/CVG-004-laboratory-structured-results-2026-08-26.md`.
+
+Este resultado não promove a paridade geral: 4/11 áreas Vetus continuam
+verificadas e o status funcional permanece `NOT VERIFIED`; clínica continua
+2/3 com provider/homologação bloqueados. Target, CI remoto, RTO/RPO, providers,
+Redis, cobertura, operações e release permanecem abertos. Nenhum commit, push,
+staging, deploy ou sistema de produção foi tocado.
+
+Follow-up bounded: `LaboratoryResultsPage` também inclui parâmetro, valor,
+unidade e referência na busca local de corpo, com fallback e normalização sem
+acentos. O teste do consumidor geral passou 5/5; a suíte analítica 7/7 e o
+typecheck SPA permaneceram verdes. A revisão narrow não encontrou novo
+problema; nenhum bloqueador externo foi promovido.
+
+## Current bounded verification — CVG-003 transaction authorization linearization — 2026-08-26
+
+Recovery reconciled the stale pointers and preserved the historic ledger field
+conventions. The selected P0 slice adds an account-scoped PostgreSQL
+transaction advisory lock before the final fresh authorization read, inside
+the existing tenant unit of work. The helper fails closed when no active scope
+exists or the account does not match; read-only and direct SQL/admin paths are
+outside the scope.
+
+Intentional RED unit and two-instance PostgreSQL/HTTP race evidence showed the
+old final-guard-only gap. GREEN evidence passed shared transaction controls
+8/8, API regression 374/374 and the exact race 1/1 selected with 15 unrelated
+tests intentionally skipped. Parfit's independent review returned PASS with no
+Critical/High/Medium finding. This is `PASS_BOUNDED` local evidence only.
+
+Global state remains `IN_PROGRESS/PARTIAL`: general Vetus parity is 4/11 and
+`NOT VERIFIED`, clinical parity is 2/3, readiness is 95/100, and target,
+provider/homologation, Redis, restore/RTO-RPO, remote CI, coverage, operations
+and release remain open. Keep `next_gate=VERIFIED` as the next target rather
+than a passed gate; reconcile the ledgers and choose the next bounded control.
+
+## Current bounded verification — CVG-004 audited server-side Cheques report — 2026-08-26
+
+The corrected implementation adds the financial-cheques catalog and a
+tenant-scoped persisted counter-sale payment source. It filters method=check
+by payment createdAt, maps only stored payment/sale facts, uses the existing
+audited report execution/export path and rejects snapshots above 10,000 rows
+after reading at most one extra row. SQL date bounds are explicit UTC
+half-open timestamps. The SPA consumes the persisted execution, clears stale
+rows and success state, validates malformed responses and does not hydrate
+sale details or infer lifecycle fields.
+
+Local GREEN evidence is current: counter-sales 39/39, reports 12/12, compiled
+reports routes 11/11, API 375/375, ReportWorkbench 34/34, builds/typechecks and
+the relevant contract/security/diff checks passed. Zeno's independent review
+returned PASS with no Critical/High/Medium finding. This is PASS_BOUNDED for
+the local report slice only; focused tests do not directly execute the live SQL
+method against seeded report rows, and the production-like runtime refuses the
+in-memory fallback. The general parity gate is still 4/11 at 98/100 evidence
+and NOT VERIFIED, clinical parity is 2/3 and NOT VERIFIED, and enterprise
+readiness is 95/100 with 42 PASS, 3 WARN and 1 FAIL. Keep next_gate=VERIFIED
+as a target, not a passed gate; Pagamento Antecipado, registration/custom
+reports, worker delivery, providers, target, operations, coverage,
+accessibility and release evidence remain open.
+
+## Current bounded verification — CVG-004 scheduled Cheques worker source — 2026-08-26
+
+The worker now resolves the existing `financial-cheques` report from the
+tenant-aware persisted counter-sale payment source, forwards schedule date
+filters and maps only the report catalog facts. The database bootstrap reuses
+the `CounterSalesService` instance for commercial and Cheques sources; missing
+Cheques source configuration fails closed.
+
+The intentional RED compilation failed before the source contract existed; a
+follow-up RED caught a numeric schedule date before strict boundary validation.
+Final direct coverage also rejects impossible calendar dates and inverted
+intervals. GREEN passed the worker package suite with 23 runner tests and all
+auxiliary worker suites. The real PostgreSQL one-shot worker process suite
+passed 6/6, including a persisted check payment and the saved report execution
+row. The retry path now omits a delivery when source resolution fails before
+execution, while post-execution export/provider failures retain the stable
+execution identity needed by the retry worker. The independent review returned
+PASS with no Critical/High/Medium finding; the one-tenant process fixture is a
+documented LOW limitation. This is `PASS_BOUNDED` only for the local scheduled
+Cheques source; it does not claim external provider delivery or complete
+report/Vetus parity.
+
+Global state remains `IN_PROGRESS/PARTIAL`: general parity is 4/11 at 98/100
+evidence and `NOT VERIFIED`, clinical parity is 2/3, readiness is 95/100, and
+Pagamento Antecipado, registration/custom reports, remaining report families,
+providers, target, operations, coverage, accessibility and release remain
+open. No external mutation was made.
+
+## Current bounded verification — CVG-004 persisted inventory purchases SPA — 2026-08-26
+
+The persisted purchase queue contract is now consumed by the SPA through the
+existing account-scoped service. The list preserves stored line facts and
+statuses, computes open value from persisted totals/receipts, clears stale
+derived rows on failed refresh and avoids inventing delivery dates. The new
+read-only detail route renders the entity, all lines, audit timestamps, and
+missing/retry states without introducing a mutation.
+
+RED was the focused page failure before `listPurchases` consumption. GREEN was
+25 inventory test files/103 tests, SPA typecheck/build and focused Playwright
+1/1; the inventory module remained 24/24. OpenAPI, security, secrets,
+migration-source, deploy-surface, Prettier and diff-check were green. The
+browser proof uses an API stub and is not a PostgreSQL browser-persistence or
+two-tenant/restart/concurrency/failure claim.
+
+`PASS_BOUNDED` applies only to this local SPA integration. Global parity,
+clinical parity, readiness, Pagamento Antecipado, remaining Vetus families,
+providers, target, backup/restore, CI, coverage, accessibility, operations and
+release remain open; no commit, push, staging, deploy, provider, target or
+production action occurred. Artifact:
+`.agent/artifacts/CVG-004-inventory-purchases-spa-2026-08-26.md`.
+
+Two independent reviews in this slice found and drove corrections for the
+persisted open-value calculation, detail navigation and error/retry state.
+Two subsequent narrow final-review attempts did not return and were shut down;
+they are not counted as approval. The bounded local result rests on the
+corrections, direct post-correction inspection and green local gates.
+
+## Current bounded verification — CVG-004 audited registry exports — 2026-08-26
+
+The owner and patient registry reports now use the existing audited
+server-side execution/export path. `registration-owners` and
+`registration-patients` require the existing tenant permissions, filter stored
+`createdAt` with strict ISO dates, leave optional facts blank and reject more
+than 10,000 rows. The SPA buttons assert the audited execution and CSV export
+requests while keeping the table views read-only.
+
+RED caught the missing SPA action and API definition. GREEN passed Reports
+13/13, compiled report routes 12/12, ReportWorkbench 35/35, builds/typechecks
+and Playwright 2/2. The browser uses API stubs; live PostgreSQL browser
+persistence, two-tenant restart/concurrency/failure, providers, target,
+operations and release remain unproven. Global parity is still 4/11 at 98/100
+evidence, clinical parity 2/3 and readiness 95/100.
+
+The specialized reviewer was rejected by account model policy and the default
+reviewer timed out without a report; no reviewer PASS is inferred. This is
+`PASS_BOUNDED` local evidence for Clients/Animals only. Services, suppliers,
+Pagamento Antecipado, personalized and remaining report families remain open;
+no commit, push, staging, deploy or production action occurred.
+
+## Current bounded verification — CVG-004 audited services registry export — 2026-08-26
+
+O cadastro persistido de Serviços foi conectado ao caminho server-side auditado
+como `registration-services`. A rota exige `service.read`, usa o
+`ServicesService` hidratado em modo database para a conta autenticada, valida
+datas ISO estritas, limita 10.000 linhas, mantém opcionais vazios e recusa
+fallback em memória. A SPA conserva a tabela read-only e solicita execução e
+exportação CSV auditadas.
+
+RED confirmou a ausência do catálogo, da fonte API e da ação SPA. GREEN passou
+Services 17/17, Reports 14/14, rotas compiladas 14/14, páginas Reports 56/56,
+build/typecheck e Playwright 3/3 depois do rebuild do `dist`; o timeout inicial
+foi somente artefato stale. A tentativa de revisão independente foi rejeitada
+por incompatibilidade do modelo da conta e não gera aprovação.
+
+O bounded local é `PASS_BOUNDED`; CVG-004 e o programa seguem
+`IN_PROGRESS/PARTIAL`. A auditoria global permanece 98/100 com 4/11 áreas
+verificadas, clínica 100/100 com 2/3 e readiness 95/100 (42 PASS, 3 WARN,
+1 FAIL). Worker público, laboratório, fornecedores, Pagamento Antecipado,
+personalizados/demais relatórios, providers, target, dois tenants, backup,
+restore, CI remoto, coverage, acessibilidade, operações e release continuam
+abertos. Nenhuma mutação externa ocorreu.
+
+## Current bounded verification — CVG-004 public API to durable worker chain — 2026-08-26
+
+O fluxo autenticado `POST /billing/estimate` agora tem uma prova local de
+composição: uma linha `billing.record.created` pendente é persistida no
+outbox, o processo real restrito de `apps/worker/src/index.ts` reporta
+`payments`, `billing` e `webhooks`, processa o evento pelo guard durável e o
+completa. Após restart permanecem um evento, três claims no inbox e um registro
+de billing; a segunda conta do fixture não recebe evento. Os papéis API/worker
+são verificados como logináveis, sem superuser, `BYPASSRLS`, herança,
+replicação, criação de role ou criação de database.
+
+A execução final fresca passou 1/1 depois da correção de uma falha somente do
+harness, em que o polling consultava um UUID placeholder em vez do ID real do
+outbox; ela não é contada como RED de produto. Não há aprovação independente:
+os scouts de orquestração não iniciaram porque a capacidade Spark configurada
+estava esgotada. O resultado é `PASS_BOUNDED` somente para essa cadeia local.
+
+Paridade geral/clínica, readiness, observabilidade distribuída do worker,
+retry/DLQ com falha injetada, conectores externos, importação Vetus,
+fornecedores, Pagamento Antecipado, relatórios personalizados/demais,
+providers, target, dois tenants, backup/restore, CI, coverage, acessibilidade,
+operações e release continuam abertos. Não houve commit, push, staging,
+deploy, provider, target ou produção.
+
+## Current bounded verification — CVG-004 public laboratory structured-results process — 2026-08-26
+
+La prueba local autenticada de laboratorio pasó 1/1 en tres bases PostgreSQL
+efímeras nuevas, incluida la ejecución equivalente al runner crítico. Cubre
+orden, transiciones `collected`/`in_analysis`/`reported`/`recollected`, rechazo
+de firmante falsificado, identidad del firmante derivada por servidor, ALT
+estructurado en persistencia y búsquedas, replay idempotente, limpieza de
+resultado/firma al recollectar, roles runtime restringidos y aislamiento entre
+cuentas. La prueba ya estaba verde antes de cambios de producción:
+`BASELINE_PASS_NO_PRODUCT_RED`.
+
+El manifiesto crítico quedó con 9 procesos seriales. El revisor independiente
+expiró sin informe y no se infiere aprobación. El resultado es
+`PASS_BOUNDED` solo para esta composición local; paridad Vetus general/clínica,
+proveedor/Live Lab, worker distribuido, importación, release y demás gates
+externos siguen abiertos. No hubo commit, push, staging, deploy, provider,
+target, credencial, migración ni mutación de producción.
+
+## Current bounded checkpoint — CVG-004 supplier/expense registry export — 2026-08-26
+
+`registration-suppliers` is now verified only as a local, on-demand,
+read-only ReportsService export over authenticated-account finance catalog
+facts. The source is fail-closed when the database repository is not composed;
+filters, strict persisted dates, deterministic pagination and the 10,000-row
+guard are enforced before audit persistence. Migration 0146 is additive with
+tenant RLS/FORCE RLS. The SPA executes and exports through the existing audited
+server path, and `description` remains `Descrição` rather than an inferred
+supplier attribute.
+
+Current bounded result: `PASS_BOUNDED`. Reports 15/15, API 382/382, SPA 36/36,
+finance/global RLS 4/4, migration unit 1/1, canonical runtime 1/1, and official
+coverage 82.07% statements / 80.06% branches / 88.53% functions / 82.07% lines.
+The independent critique’s seven P1/P2 findings were addressed. The parent
+CVG-004 and global gates remain `IN_PROGRESS/PARTIAL`; general parity is
+98/100 with 4/11 verified, clinical parity 100/100 with 2/3 verified, and
+readiness 95/100 (42 PASS, 3 WARN, 1 FAIL). No external, target, provider,
+production, commit, push, deploy or release action occurred.
+
+## Current bounded checkpoint — CVG-004 inventory transaction-context repair — 2026-08-26
+
+The latest critical regression found a concrete fail-closed composition defect:
+inventory consumption entered the non-idempotent tenant-command fallback, but
+the fallback did not install `TenantTransactionContext`; Flow 7 returned
+`503 TRANSACTION_REQUIRED`. The contract test first failed at TypeScript RED,
+then the repair propagated actor/correlation metadata to the existing context
+aware transaction helper.
+
+Fresh local evidence is green: helper 8/8, API 383/383, Flow 7 1/1, critical
+HTTP 11/11, full Docker SPA PostgreSQL/Redis 64/64, full typecheck and lint,
+coverage 82.06% statements / 80.06% branches / 88.53% functions / 82.06%
+lines, OpenAPI/RLS/secrets/migration-source/deploy-surface. The gate is
+`PASS_BOUNDED` only for this fallback composition. The current SPA runner
+provisions `admin_b` and `reception`, correcting the stale note, but the access
+area remains blocked until all seven profiles and sensitive operations are
+covered.
+
+General parity remains 98/100 with 4/11 verified; clinical parity 100/100 with
+2/3; readiness 95/100 with 42 PASS, 3 WARN and 1 FAIL. No independent reviewer
+was available, so no approval is inferred. Target, provider, Redis failover,
+backup/restore, remote CI, full access governance, operations and release gates
+remain open. No external mutation occurred.
+
+## Current bounded checkpoint — CVG-003 canonical seven-profile access matrix — 2026-08-26
+
+`PASS_BOUNDED` applies to the local application access boundary. The shared v2
+catalog has 64 permission seeds and seven exact role projections; migration
+0147 aligns only the seven system roles, and dedicated route tests cover
+prescription executions, discharges and LGPD requests. Fresh disposable
+PostgreSQL/Redis E2E passed 1/1 across the seven profiles, governance
+allow/deny boundaries and cross-account access-subject isolation. API passed
+385/385 and catalog contracts 4/4.
+
+The full SPA aggregate had one queue visual `networkidle` timeout among 65
+tests; the same target passed 1/1 immediately afterward. It is retained as a
+transient flake rather than hidden as a 65/65 pass. The independent reviewer
+was unavailable and no approval is inferred. Parent CVG-003, global parity,
+target/provider/operational LGPD, worker failure, accessibility, operations
+and release gates remain open. No external mutation occurred.
+
+## Current bounded checkpoint — CVG-004 audited advance-payment report — 2026-08-26
+
+The local advance-payment report slice is `PASS_BOUNDED`. Migration 0148,
+the tenant-scoped source, API route, SPA workbench and audited export path are
+covered by fresh focused evidence: reports/migration 17/17, API 389/389, SPA
+38/38, disposable PostgreSQL 5/5 and canonical runtime 1/1. Full typecheck,
+lint, coverage, security and structural controls remain green. The initial
+independent critique found and the implementation corrected the SPA filter
+gap and table-only bootstrap composition; no reviewer approval is inferred.
+
+Parent CVG-004 and global parity/readiness remain `IN_PROGRESS/PARTIAL`.
+Advance-payment writes, providers, target operations, accessibility,
+operations and release evidence remain open. No commit, push, deploy, provider,
+target or production mutation occurred.
+
+## Current bounded checkpoint — CVG-004 advance-payment write lifecycle — 2026-08-26
+
+`PASS_BOUNDED` applies only to manual advance-payment issuance and append-only
+compensation through the canonical 0148 ledger. The authenticated
+`billing.manage` commands validate exact BRL cents and idempotency, execute in
+the tenant UoW, derive tenant/actor identity server-side, append audit/outbox
+events transactionally and rely on the database over-allocation guard. The
+Finance SPA reads persisted summaries rather than synthetic owner credit
+metadata and exposes explicit pending/empty/error/retry/success states.
+
+Fresh local evidence passed API 5/5 and 394/394, focused SPA/service 7/7 and
+full SPA 1,036/1,036, disposable PostgreSQL 7/7, typecheck, lint, build,
+coverage 1,954 passed/1 skipped at 82.09% statements, 80.07% branches, 88.53%
+functions and 82.09% lines, plus OpenAPI/RLS/migration/deploy/Helm/security and
+parity-contract controls. TDD found and fixed malformed encoded UUID handling
+and unsafe persisted bigint conversion. The global readiness command remains
+95/100 (42 PASS, 3 WARN, 1 FAIL), so parent/global status stays
+`IN_PROGRESS/PARTIAL`; no external mutation occurred.
+
+## Current bounded verification — CVG-004 Vetus import integrity — 2026-08-26
+
+The bounded import control plane is `PASS_BOUNDED`. The additive canonical
+0149 stores internal fingerprints for normalized single/batch commands, rejects
+divergent source references with 409, locks source acquisition in the tenant
+transaction, preserves rejected row numbers on resume, and protects batch
+response size before the final audit write. Fresh authenticated HTTP→PostgreSQL
+evidence passed 7/7 with two API instances and migrations through 0149;
+focused route/cache/UoW passed 25/25; full API passed 401/401; workspace
+typecheck/lint passed across 70 projects; official coverage is 81.98% statements,
+80.08% branches, 88.56% functions and 81.98% lines.
+
+Commit/rollback recovery refreshes owner, patient and audit caches. The
+per-account queue waits for all sibling refreshes to settle, including when one
+fails, and the final independent reviewer returned `PASS_BOUNDED` with no
+current High/Medium findings. This remains a local bounded control-plane
+result. General Vetus parity/readiness, browser/target/provider evidence,
+external reconciliation, distributed worker failure, backup/restore,
+accessibility, operations, remote CI and release remain open. Parent/global
+state is still `IN_PROGRESS/PARTIAL`; no commit, push, staging, deploy or
+external mutation occurred.
+
+## Current bounded verification — CVG-002B2B signed synthetic PIX composition — 2026-08-26
+
+The signed synthetic PIX composition is `PASS_BOUNDED` only. The current
+evidence proves raw-body HMAC ingress, durable receipt/delivery replay,
+cross-tenant spoof rejection, retry before attempt correlation, actual worker
+shared-B1 settlement, service-principal revocation linearization and
+independent-process SIGKILL/restart fencing. Focused, process and package
+results are recorded in the task, artifact, gate and verification ledger.
+
+The fixes include production-like environment aliases and process-environment
+guards, append-only API lookup compatible with SELECT-only ACL, worker
+schema/RLS/ACL readiness, the shared tenant authorization lock, transactional
+fixtures and explicit ephemeral-database teardown. Global setup and db-admin
+also preserve an explicitly non-ephemeral database without reset, creation,
+migrations, seed, grants or drop, and the guarded process suites/hooks skip in
+that mode. The final independent read-only review returned `PASS_BOUNDED`
+with no Critical, High or remaining Medium finding. This bounded review must
+not be read as global readiness. Privileged SQL writers outside runtime roles
+remain a residual until their writer protocol is enforced.
+
+Parent CVG-002B2B, CVG-002 and global state remain `IN_PROGRESS/PARTIAL`.
+General parity is 98/100 with 4/11 verified, clinical parity is 100/100 with
+2/3 verified, and enterprise readiness is 95/100 with 42 PASS, 3 WARN and 1
+FAIL. Real providers, target, external reconciliation, browser/accessibility,
+backup/restore, remote CI, operations and release remain open. No commit,
+push, staging, deploy or external mutation occurred.
+
+## Current bounded verification — CVG-003 prescription collection tenant isolation — 2026-08-26
+
+The prescription collection isolation slice is `PASS_BOUNDED`. The service
+requires the authenticated account for encounter/patient filters and applies
+the predicate before returning summaries; the route validates query values and
+passes only principal-derived tenant context. The two-account hydration
+regression with shared clinical identifiers passed for both filters.
+
+Fresh evidence is 37/37 focused integration/service tests, 32/32 prescription
+unit tests, 401/401 full API tests, module/API typechecks, Prettier, ESLint and
+diff hygiene, with official coverage 1,959 passed/1 skipped at 81.98%
+statements, 80.08% branches, 88.56% functions and 81.98% lines. The final
+independent reviewer returned `PASS_BOUNDED` with no current blocker finding.
+
+The gate remains bounded to local application service/HTTP behavior and does
+not claim PostgreSQL-specific HTTP evidence, all clinical routes, target RLS,
+providers, direct SQL writers, accessibility, operations or release. Parent
+CVG-003 and global state stay `IN_PROGRESS/PARTIAL`; parity is 98/100 (4/11),
+clinical parity 100/100 (2/3), and enterprise readiness 95/100 (42 PASS, 3
+WARN, 1 FAIL). No commit, push, deploy or external mutation occurred.
+
+## Current bounded verification — CVG-003 prescription-execution collection tenant isolation — 2026-08-26
+
+The prescription-execution collection slice is `PASS_BOUNDED`. The service
+requires principal-derived account context for encounter/patient filters and
+applies the account predicate before returning records; missing context fails
+closed. The route rejects empty values and never broadens a filtered request
+to the account list. Unit hydration and HTTP-shaped tests cover two accounts
+with shared encounter/patient identifiers.
+
+Fresh evidence passed module 15/15, route 2/2, HTTP-shaped integration 1/1,
+full API 402/402, module/API typechecks, Prettier, ESLint and diff hygiene.
+Official coverage is 1,960 passed/1 skipped at 81.98% statements, 80.08%
+branches, 88.56% functions and 81.98% lines. Independent review returned
+`PASS_BOUNDED` with no current blocker finding.
+
+The gate is limited to local application service/HTTP behavior and does not
+claim PostgreSQL-specific collection proof, all administration-event detail
+ownership, target RLS, providers, operations, accessibility or release.
+Parent CVG-003 and global state remain `IN_PROGRESS/PARTIAL`; parity is
+98/100 (4/11), clinical parity 100/100 (2/3), readiness 95/100 (42 PASS, 3
+WARN, 1 FAIL). No external mutation occurred.
+
+## Current bounded verification — CVG-003 triage collection, history and update tenant isolation — 2026-08-26
+
+O slice de triagem foi reconciliado como `PASS_BOUNDED`, com residual `HIGH`.
+`AccountId` é obrigatório na hidratação, coleção, detalhe, histórico, criação
+e atualização; os queries do repositório são account-scoped; filtro vazio
+falha fechado; cópias defensivas, rollback de cache e ordenação POST passaram.
+O fixture HTTP usa duas contas e cobre coleção própria, histórico/PATCH/POST
+cruzados; módulo `10/10`, serviço `3/3`, API `405/405`, PostgreSQL `17/17`,
+typechecks, Prettier, ESLint escopado e cobertura oficial `1.964/1 skipped`
+(`82,03% / 80,20% / 88,59% / 82,03%`) passaram.
+
+A revisão independente retornou `PASS_BOUNDED`, sem Critical/High, mantendo
+residuais de atomicidade dependente do wrapper transacional, HTTP local sem
+prova TCP/RLS do target, lint agregado com 45 diagnósticos não relacionados e
+um gap de teste separado para mutação de snapshot persistido. CVG-003 e o
+programa global permanecem `IN_PROGRESS/PARTIAL`; paridade geral `98/100`
+(`4/11`), clínica `100/100` (`2/3`) e readiness `95/100` (`42 PASS / 3 WARN /
+1 FAIL`). Não houve mutação externa.
+
+## Current bounded verification — CVG-003 discharge tenant isolation — 2026-08-26
+
+O slice `CVG-003-DISCHARGE-TENANT-ISOLATION` foi reconciliado como
+`PASS_BOUNDED`. O serviço e os dois repositórios exigem `AccountId` não vazio;
+leituras, atualização, lookup por encounter e delete aplicam escopo de conta;
+modelos retornados são cópias defensivas; e a fila não fica envenenada por uma
+falha de persistência. O PATCH reidrata a conta antes de ler e atualizar,
+permitindo atender uma réplica secundária; o INSERT compara a conta solicitada
+com `app.current_account_id()`; e o update usa `version` anterior como guarda
+atômica.
+
+Evidência fresca: módulo `17/17`, rota `2/2`, integração HTTP→PostgreSQL
+descartável `6/6`, API `406/406`, concorrência de repositório com um conflito,
+criação com conta ativa incompatível, builds/typechecks, lint isolado,
+Prettier, secrets e diff hygiene. Cobertura oficial: `1.970/1 skipped`,
+`82,03%` statements, `80,22%` branches, `88,59%` functions e `82,03%` lines.
+A primeira revisão independente ficou registrada como `CONDITIONAL`; o
+follow-up pós-fix confirmou Critical `0`, High `0`, Medium técnico `0` e Low
+`0`.
+
+O resultado continua limitado ao boundary local serviço/repositório/HTTP e ao
+PostgreSQL descartável. Não prova target TCP/RLS, papel runtime
+`NOBYPASSRLS` conectado separadamente, browser, demais rotas clínicas,
+providers, operações, CI remoto, restore, paridade Vetus restante ou release.
+CVG-003 e o programa global permanecem `IN_PROGRESS/PARTIAL`; geral `98/100`
+(`4/11`), clínica `100/100` (`2/3`) e readiness `95/100` (`42 PASS / 3 WARN /
+1 FAIL`). Nenhuma mutação externa ocorreu.
+
+Artefatos: `.agent/tasks/CVG-003-discharge-tenant-isolation.md`,
+`.agent/gates/verified-CVG-003-discharge-tenant-isolation.json`,
+`.agent/artifacts/CVG-003-discharge-tenant-isolation-2026-08-26.md` e
+`.agent/verification.jsonl#VFY-CVG-003-DISCHARGE-TENANT-ISOLATION-FINAL-001`.
+
+## Bounded checkpoint — CVG-004 financial cash-receipt reversal — 2026-08-27
+
+The authorized full-BRL cash-receipt reversal slice is `PASS_BOUNDED` with
+residual risk `HIGH`. The API, command, repository, additive migration and
+runtime role configuration now provide an authenticated, idempotent,
+tenant-scoped append-only reversal with compensating cash/journal artifacts,
+projection recovery, audit/outbox evidence and later-receipt support. The
+original receipt/payment/movement/journal proof remains immutable.
+
+Fresh local evidence is focused unit `30/30`, PostgreSQL command/HTTP/RLS
+`44/44`, runtime-role ACL `1/1`, compiled API `408/408`, global typecheck,
+package lint/build, OpenAPI/migration/Helm/static security checks and official
+coverage `80.72%` statements, `80.22%` branches and `88.06%` functions. The
+independent post-fix review returned `PASS_BOUNDED` with zero Critical, High,
+Medium or Low findings.
+
+This checkpoint does not promote the frozen quality bars or global readiness.
+Strict parity remains `98/100` with `4/11` verified, clinical parity remains
+`100/100` with `2/3` verified and enterprise readiness remains `95/100` with
+`42 PASS / 3 WARN / 1 FAIL`. Target TCP/RLS, production roles, providers,
+non-cash settlement, browser acceptance, accessibility, remote CI, operations,
+backup/restore, remaining parity and release acceptance remain open. No
+external mutation or production action occurred.
+
+## Bounded checkpoint — CVG-004 scheduled financial-payables report — 2026-08-27
+
+The authorized scheduled-payables worker slice is `PASS_BOUNDED` with `HIGH`
+residual risk. `financial-payables` now reads the tenant-scoped persisted
+subledger, validates strict status/search/date filters, applies inclusive
+`dueAt`, checks account/status defensively and maps exactly the existing eleven
+catalog columns. Missing/unsupported/unknown worker sources fail closed.
+
+Fresh evidence passed worker `74/74`, reports `16/16`, real run-once
+PostgreSQL `9/9`, API `408/408`, global typecheck, worker build, coverage
+`1,982/1 skipped` at `80.72/80.23/88.05/80.72`, security, OpenAPI,
+migration-source, RLS, deploy-surface, Helm static, Prettier and diff hygiene.
+Ramanujan's independent review was `CONDITIONAL` with no Critical/High and
+its evidence gaps were remediated or explicitly scoped. The post-remediation
+review attempts were unavailable due account model policy and usage limits;
+there is no independent post-fix approval claim.
+
+This does not promote CVG-004, global parity, clinical parity, enterprise
+readiness or release. Global metrics remain parity `98/100` (`4/11`), clinical
+`100/100` (`2/3`) and readiness `95/100` (`42 PASS / 3 WARN / 1 FAIL`). Other
+scheduled reports, providers, target RLS, browser/accessibility, distributed
+worker operations, remote CI, backup/restore, remaining parity and release
+remain open. No commit, push, deploy, credential/provider action or external
+mutation occurred.
+
+## Bounded checkpoint — CVG-004 scheduled financial-advance-payments report
+
+The bounded scheduled advance-payment worker path is `PASS_BOUNDED` with
+`HIGH` residual risk. The shared financial-module source, worker filters and
+bootstrap schema guard passed the frozen read-only contract. Evidence is
+worker `77/77`, module `16/16`, API `408/408`, process `10/10`, canonical RLS
+`9/9`, coverage `1,983/1 skipped` (`80.42% / 80.21% / 87.74% / 80.42%`),
+typecheck across 70 projects, security and static validation.
+
+Hubble's independent review is conditional with no Critical finding; actor,
+audit, duplicate API projection, bootstrap completeness and edge-test
+residuals remain open. General parity is `98/100` (`4/11`), clinical parity
+`100/100` (`2/3`) and readiness `95/100` (`42 PASS / 3 WARN / 1 FAIL`). Keep
+CVG-004 and the global state `IN_PROGRESS/PARTIAL`, and do not promote this
+checkpoint to production, parity, readiness or release.
+
+## Bounded checkpoint — CVG-002 active encounter uniqueness — 2026-08-27
+
+`CVG-002-ENCOUNTER-ACTIVE-UNIQUENESS` is `PASS_BOUNDED` with `HIGH` residual
+risk. The canonical 0151 migration now fails closed on historical active
+duplicates and enforces a valid/ready partial unique index on
+`(account_id, patient_id)` for non-closed encounters. Repository create,
+update and reopen map only the named PostgreSQL conflict; service timeline and
+API queue state are restored when persistence fails.
+
+Evidence passed repository `5/5`, PostgreSQL `7/7`, module `32/32`, database
+package `22/22`, compiled API `410/410`, full workspace test/build/typecheck,
+coverage `80.45%` statements/lines, `80.20%` branches and `87.75%` functions,
+security and static validators. Lovelace found no Critical/High issue in the
+bounded review; Medium findings were fixed. A separate reviewer-role attempt
+was unavailable under account model policy and is explicitly not approval.
+
+The migration remains blocked by historical data requiring human remediation,
+and local evidence does not certify target roles/RLS, distributed replicas or
+cache, providers, remote CI, operations, accessibility or release. Global
+metrics stay parity `98/100` (`4/11`), clinical `100/100` (`2/3`) and readiness
+`95/100` (`42 PASS / 3 WARN / 1 FAIL`). Parent CVG-002 and global state remain
+`IN_PROGRESS/PARTIAL`; no external mutation occurred.
+
+Evidence: `.agent/tasks/CVG-002-ENCOUNTER-ACTIVE-UNIQUENESS.md`,
+`.agent/gates/verified-CVG-002-ENCOUNTER-ACTIVE-UNIQUENESS.json`,
+`.agent/artifacts/CVG-002-encounter-active-uniqueness-2026-08-27.md` and
+`.agent/verification.jsonl#VFY-CVG-002-ENCOUNTER-ACTIVE-UNIQUENESS-FINAL-001`.
+
+## Bounded checkpoint — CVG-004 worker report service identity — 2026-08-27
+
+The worker report actor fallback is removed within a `PASS_BOUNDED` boundary:
+one resolver and shared config validate a non-nil UUID, the continuous and
+run-once paths use it, and production-like Compose/Helm wiring requires the
+operator-managed Secret. Focused worker/config/process/Helm proof and the
+workspace quality rails passed locally. The independent review is conditional
+and retains the per-account service-principal mapping as `P1 — BOUNDED/OPEN`.
+
+Global promotion remains blocked. General parity is `98/100` (`4/11`), clinical
+parity `100/100` (`2/3`) and enterprise readiness `95/100`
+(`42 PASS / 3 WARN / 1 FAIL`). No production/target/provider/credential,
+deployment, external mutation or release action occurred.
+
+Evidence: `.agent/tasks/CVG-004-WORKER-REPORT-SERVICE-IDENTITY.md`,
+`.agent/gates/verified-CVG-004-WORKER-REPORT-SERVICE-IDENTITY.json`,
+`.agent/artifacts/CVG-004-worker-report-service-identity-2026-08-27.md` and
+`.agent/verification.jsonl#VFY-CVG-004-WORKER-REPORT-SERVICE-IDENTITY-FINAL-001`.
+
+## Bounded checkpoint — CVG-004 tenant-aware worker report principal — 2026-08-27
+
+`CVG-004-WORKER-REPORT-TENANT-AWARE-PRINCIPAL` is `PASS_BOUNDED` with
+residual risk `HIGH`. The additive 0152 migration extends service-principal
+purpose, binds report audit actors to their owning account with composite FKs
+and rechecks active report mapping in a transaction-time trigger. The worker
+resolver, continuous path and run-once path all fail closed unless the
+configured UUID is an active non-interactive report service principal for the
+current account.
+
+Evidence passed schema `4/4`, resolver/trigger `9/9`, FKs `6/6`, run-once
+PostgreSQL `13/13`, process fixture regressions, full workspace tests,
+coverage `80.45%` statements/lines, `80.19%` branches and `87.74%` functions,
+typecheck, build, lint, security and static validators. The independent review
+is conditional and not production approval. One worker/account mapping is the
+current supported topology.
+
+Global promotion remains blocked: parity `98/100` (`4/11`), clinical parity
+`100/100` (`2/3`) and readiness `95/100` (`42 PASS / 3 WARN / 1 FAIL`). Target
+roles/RLS, provisioning, distributed worker operations, providers, remote CI,
+restore, accessibility, remaining parity and release remain open. No
+commit, push, deploy, credential/provider action or external mutation occurred.
+
+Evidence: `.agent/tasks/CVG-004-worker-report-tenant-aware-principal.md`,
+`.agent/gates/verified-CVG-004-worker-report-tenant-aware-principal.json`,
+`.agent/artifacts/CVG-004-worker-report-tenant-aware-principal-2026-08-27.md` e
+`.agent/verification.jsonl#VFY-CVG-004-WORKER-REPORT-TENANT-AWARE-PRINCIPAL-FINAL-001`.
+
+## Bounded checkpoint — CVG-001 Redis distributed readiness — 2026-08-27
+
+The authorized Redis slice is `PASS_BOUNDED` with residual risk `HIGH`.
+Local evidence covers bounded Redis `PING`/command timeouts, actual readiness
+aggregation, fail-closed auth, idempotent API dependency cleanup and a real
+two-API disposable PostgreSQL/Redis process proof. The final critical runner
+verified `9/9` entries with zero failed, pending or todo tests; the complete
+quality and security rails also passed.
+
+Global state remains `IN_PROGRESS/PARTIAL` and promotion remains `BLOCKED`:
+Vetus parity `98/100` (`4/11`), clinical parity `100/100` (`2/3`) and
+enterprise readiness `95/100` (`42 PASS / 3 WARN / 1 FAIL`). Managed Redis/HA,
+target/RLS, providers, remote CI, restore, accessibility and release evidence
+remain open. No commit, push, deploy, credential/provider action or external
+mutation occurred.
+
+Evidence: `.agent/tasks/CVG-001-REDIS-DISTRIBUTED-READINESS.md`,
+`.agent/gates/verified-CVG-001-redis-distributed-readiness.json`,
+`.agent/artifacts/CVG-001-redis-distributed-readiness-2026-08-27.md` e
+`.agent/verification.jsonl#VFY-CVG-001-REDIS-DISTRIBUTED-READINESS-FINAL-001`.
+
+## Bounded checkpoint — CVG-006 database-chaos fail-closed — 2026-08-27
+
+The authorized `CVG-006-DATABASE-CHAOS-FAIL-CLOSED` slice is reconciled as
+`PASS_BOUNDED` with residual risk `HIGH`. Database failure no longer projects
+an initialized database runtime as in-memory: it reports `unavailable`, closes
+readiness, keeps `/live` independent and blocks tenant mutations and durable
+public webhooks before dispatch. Production-like chaos start/stop is rejected,
+and the health, metrics, OpenAPI, alert and runbook contracts are aligned.
+
+Fresh evidence passed focused contracts `77/77`, API `414/414`, full workspace
+tests, official coverage `80.48%` statements, `80.23%` branches and `87.76%`
+functions, typecheck, build, lint, security and static validators. The
+independent review was conditional with no Critical/High finding and does not
+approve production.
+
+Global state remains `IN_PROGRESS/PARTIAL` and promotion remains `BLOCKED`:
+Vetus parity `98/100` (`4/11`), clinical parity `100/100` (`2/3`) and
+enterprise readiness `95/100` (`42 PASS / 3 WARN / 1 FAIL`). Real target,
+provider, failover, restore/RTO-RPO, distributed-worker, accessibility,
+remote-CI and release evidence remain open. No external mutation occurred.
+
+Evidence: `.agent/tasks/CVG-006-DATABASE-CHAOS-FAIL-CLOSED.md`,
+`.agent/gates/verified-CVG-006-database-chaos-fail-closed.json`,
+`.agent/artifacts/CVG-006-database-chaos-fail-closed-2026-08-27.md` e
+`.agent/verification.jsonl#VFY-CVG-006-DATABASE-CHAOS-FAIL-CLOSED-FINAL-001`.
+
+## Bounded checkpoint — CVG-002B2B legacy PIX settlement barrier — 2026-08-27
+
+The authorized `CVG-002B2B-LEGACY-PIX-SETTLEMENT-BARRIER` slice is
+`PASS_BOUNDED` with residual risk `HIGH`. The shared legacy PIX consumer now
+requires authoritative no-attempt state and validates account, billing,
+currency and exact value before status or financial mutation. Unknown and
+attempt-linked events fail through the worker to DLQ; the dedicated B1 flow is
+unchanged.
+
+The focused consumer passed `14/14`, the module `2/2`, PostgreSQL worker
+composition `6/6`, API `428/428`, and workspace tests exited `0` with SPA
+`1036/1036`. Coverage is `80.50%` statements/lines, `80.19%` branches and
+`87.76%` functions; typecheck, build, lint, security and static rails passed.
+Independent review found no Critical, High or Medium functional finding, and
+its harness condition was cleared.
+
+Global state remains `IN_PROGRESS/PARTIAL` and promotion remains `BLOCKED`:
+Vetus `98/100` (`4/11`), clinical `100/100` (`2/3`) and readiness `95/100`
+(`42 PASS / 3 WARN / 1 FAIL`). Providers, target, distributed worker
+failpoints, restore/RTO-RPO, remote CI, accessibility, operational LGPD and
+release acceptance remain open. No external mutation occurred.
+
+Evidence: `.agent/tasks/CVG-002B2B-LEGACY-PIX-SETTLEMENT-BARRIER.md`,
+`.agent/gates/verified-CVG-002B2B-legacy-pix-settlement-barrier.json`,
+`.agent/artifacts/CVG-002B2B-legacy-pix-settlement-barrier-2026-08-27.md` e
+`.agent/verification.jsonl#VFY-CVG-002B2B-LEGACY-PIX-SETTLEMENT-BARRIER-FINAL-001`.
+
+## Bounded reconciliation — CVG-003 prescription-execution clinical integrity — 2026-08-27
+
+The authorized `CVG-003-PRESCRIPTION-EXECUTION-INTEGRITY` slice is
+`PASS_BOUNDED` with residual risk `HIGH`. Signed active prescription linkage,
+account/patient/encounter coherence, canonical medication data, optimistic CAS
+and compound execution/administration-event persistence are verified locally.
+The PostgreSQL path uses source/signature locks, a tenant composite FK and
+transaction rollback; the in-memory path serializes mutations and restores
+state on event failure. HTTP action matching is exact, request boundaries are
+strict and authorization is evaluated before idempotency replay.
+
+Evidence is module `27/27`, route `5/5`, API integration `1/1`, disposable
+PostgreSQL integrity/RLS/FK `5/5`, compiled API server `45/45` including the
+permission-revoked replay test and workspace `pnpm test` exit `0`. Official
+coverage is `80.51%` statements/lines, `80.22%` branches and `87.70%`
+functions; the global coverage configuration excludes the slice's primary
+files. Security, OpenAPI, RLS, migration-source and diff checks passed. The
+independent review found no technical Critical or High finding; its prior
+governance-only condition is now reconciled in the control plane.
+
+The global state remains `IN_PROGRESS/PARTIAL` and promotion remains
+`BLOCKED`: Vetus parity `98/100` (`4/11`), clinical parity `100/100` (`2/3`)
+and enterprise readiness `95/100` (`42 PASS / 3 WARN / 1 FAIL`). Target
+roles/RLS, providers/homologation, backup/restore/RTO-RPO, distributed worker
+recovery, remote CI, accessibility, operational LGPD, remaining parity and
+release acceptance remain open. No provider, target, credential, deployment,
+commit, push or external mutation occurred.
+
+Evidence: `.agent/tasks/CVG-003-PRESCRIPTION-EXECUTION-INTEGRITY.md`,
+`.agent/gates/verified-CVG-003-prescription-execution-integrity.json`,
+`.agent/artifacts/CVG-003-prescription-execution-integrity-2026-08-27.md` e
+`.agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-EXECUTION-INTEGRITY-FINAL-001`.
+
+## Bounded verification — CVG-002B2B live-worker contention — 2026-08-27
+
+The existing synthetic PIX worker contract was verified with two independent
+live processes contending for one durable delivery. A held the processing
+lease, B remained live and returned `idle`, and A later applied the settlement
+once. The fresh PostgreSQL process file passed `9/9`; final reconciliation
+confirmed one receipt, settled billing/attempt, completed PIX and applied
+settlement with no duplicate effect.
+
+This is a bounded local verification, not a production gate. The independent
+reviewer role was unavailable because `gpt-5.3-codex` is unsupported for the
+active account, so no reviewer approval is claimed. B2B/global status remains
+`IN_PROGRESS/PARTIAL` and promotion remains `BLOCKED`; B1 failpoints,
+principal matrix, privileged writer enforcement, providers, target, DR,
+accessibility, operations, parity, CI and release remain open.
+
+Evidence: `.agent/tasks/CVG-002B2B.md`,
+`.agent/gates/verified-CVG-002B2B-live-worker-contention.json`,
+`.agent/artifacts/CVG-002B2B-live-worker-concurrency-2026-08-27.md` e
+`.agent/verification.jsonl#VFY-CVG-002B2B-LIVE-WORKER-CONTENTION-001`.
+
+## Bounded verification — CVG-002B2B internal B1 SIGKILL matrix — 2026-08-27
+
+The authorized local worker harness now pauses at each of the sixteen internal
+B1 transaction checkpoints. A fresh focused PostgreSQL process run passed
+`16/16`: every killed worker left the intermediate graph uncommitted, the
+expired lease was taken over by a second process, and the final state contained
+one receipt and one applied settlement. The root workspace regression and
+coverage remained green after the test assertion was added.
+
+The bounded result is `PASS_BOUNDED` with HIGH residual risk, not a production
+gate. The independent reviewer could not start because the active ChatGPT
+account does not support `gpt-5.3-codex`; no approval is claimed. Global state
+remains `IN_PROGRESS/PARTIAL` and promotion remains `BLOCKED`; principal
+login/cache/MFA, privileged writers, providers, target, DR, accessibility,
+operations, parity, CI and release remain open.
+
+Evidence: `.agent/tasks/CVG-002B2B.md`,
+`.agent/gates/verified-CVG-002B2B-b1-sigkill-failpoints.json`,
+`.agent/artifacts/CVG-002B2B-b1-sigkill-failpoints-2026-08-27.md` e
+`.agent/verification.jsonl#VFY-CVG-002B2B-B1-SIGKILL-FAILPOINTS-001`.
+
+## Bounded reconciliation — CVG-004 two-tenant scheduled Cheques worker — 2026-08-27
+
+The authorized local `financial-cheques` worker scope is now
+`PASS_BOUNDED` with HIGH residual risk. Two persisted tenant fixtures and two
+distinct non-interactive principals were used by two real concurrent one-shot
+worker processes. Schedule-to-execution joins and an inverse-payment query
+prove that each execution contains only its own account's check payment.
+
+The focused process assertion passed `1/1`, the complete run-once boundary
+passed `14/14`, and the independent review returned `APPROVE_BOUNDED`. This
+does not certify continuous topology, target RLS/roles, providers, restore,
+remote CI, operations, remaining report families or release readiness.
+
+Global state remains `IN_PROGRESS/PARTIAL` and promotion remains `BLOCKED`:
+general Vetus parity is `98/100` (`4/11` verified), clinical parity is
+`100/100` (`2/3` verified), and enterprise readiness is `95/100` (`42 PASS`,
+`3 WARN`, `1 FAIL`). No production, target, credential, deployment, commit,
+push or external mutation occurred.
+
+Evidence: `.agent/tasks/CVG-004-reports-cheques-export.md`,
+`.agent/gates/verified-CVG-004-report-cheques-worker-tenant-scope.json`,
+`.agent/artifacts/CVG-004-reports-cheques-worker-tenant-scope-2026-08-27.md` e
+`.agent/verification.jsonl#VFY-CVG-004-REPORT-CHEQUES-WORKER-TENANT-SCOPE-FINAL-001`.
+
+## Bounded verification — CVG-004 Vetus assisted-import browser E2E — 2026-08-27
+
+The local browser proof for the existing Vetus assisted-import workflow is
+now `PASS_BOUNDED` with HIGH residual risk. The official runner passed `1/1`
+with fresh disposable PostgreSQL/Redis, migrations `0000`–`0153`, canonical
+two-tenant seed, real browser authentication and database-backed API runtime.
+The flow validates one CSV row, performs durable dry-run and import, then
+rolls the batch back in the UI and verifies the persisted owner and patient
+are both `inactive` through authenticated API reads.
+
+The independent reviewer returned `APPROVE_BOUNDED` after the test added the
+domain-state assertion and accessible CSV selector. This is local composition
+evidence only: external Vetus/Live Pet/Live Lab connectors, providers,
+target, distributed worker operations, backup/restore, operational LGPD,
+remote CI, accessibility, full parity and release remain open.
+
+Global state remains `IN_PROGRESS/PARTIAL` and promotion remains `BLOCKED`:
+Vetus parity `98/100` (`4/11`), clinical parity `100/100` (`2/3`) and
+enterprise readiness `95/100` (`42 PASS / 3 WARN / 1 FAIL`). No external
+mutation occurred.
+
+Evidence: `.agent/tasks/CVG-004-vetus-import-integrity.md`,
+`.agent/gates/verified-CVG-004-vetus-import-integrity.json`,
+`.agent/artifacts/CVG-004-vetus-import-browser-e2e-2026-08-27.md` e
+`.agent/verification.jsonl#VFY-CVG-004-VETUS-IMPORT-BROWSER-E2E-FINAL-001`.
+
+## Bounded verification — CVG-004 deleted-sales report snapshot/export — 2026-08-27
+
+The bounded current cancelled-counter-sale report snapshot/export is now
+`PASS_BOUNDED` with HIGH residual risk. The source is the authoritative,
+tenant-scoped database repository; the API and export reads recheck
+`billing.read` and the report definition permission. SQL applies persisted
+status/search/opening-date filters, deterministic ordering and a 10,001-row
+read bound. The SPA labels `createdAt` as opening date and documents that
+cancelled-at, actor and reason are unavailable.
+
+Focused suites, workspace regression, official coverage, disposable
+PostgreSQL and the official authenticated Docker browser flow passed; the
+independent reviewer returned `APPROVE_BOUNDED`. Strict parity remains `4/4`,
+but general parity is `98/100` (`4/11` verified), clinical parity is `100/100`
+(`2/3` verified), and enterprise readiness is `95/100` (`42 PASS`, `3 WARN`,
+`1 FAIL`). These global gates remain open and promotion is blocked.
+
+Evidence: `.agent/tasks/CVG-004-report-deleted-sales-snapshot.md`,
+`.agent/gates/verified-CVG-004-report-deleted-sales-snapshot.json`,
+`.agent/artifacts/CVG-004-report-deleted-sales-snapshot-2026-08-27.md` e
+`.agent/verification.jsonl#VFY-CVG-004-REPORT-DELETED-SALES-SNAPSHOT-FINAL-001`.
+
+## Bounded verification — CVG-004 NFS-e service-invoice report/export — 2026-08-27
+
+The bounded persisted NFS-e service-invoice report/export is now
+PASS_BOUNDED with HIGH residual risk. The Reports Workbench, API and
+scheduled worker use the authenticated tenant's persisted
+fiscal_nfse_documents source through FiscalService. Status, competence and
+search filters are strict; SQL search escapes ILIKE wildcards; ordering is
+deterministic; source reads are bounded; and execution/export remains audited
+through ReportsService.
+
+Reports/Fiscal module tests passed 36/36, compiled Reports API 26/26, Fiscal
+routes 16/16 and SPA Workbench 40/40. Worker suites, vue-tsc and builds
+passed. Disposable PostgreSQL fiscal/RLS integration passed 2/2, the selected
+real worker-process execution passed 1/1, and the official authenticated
+browser flow passed 1/1 with cleanup. Coverage passed at 80.60% statements,
+80.09% branches, 87.64% functions and 80.60% lines with 2,038 tests passed
+and 1 skipped.
+
+The independent reviewer returned APPROVE_BOUNDED after confirming closure of
+worker wiring, adversarial RLS proof, the shared fiscal endpoint limit,
+literal SQL wildcard escaping and whitespace-prefixed CSV formula
+neutralization. OpenAPI, RLS, migration-source, deploy-surface, secrets,
+formatting and diff hygiene passed.
+
+This closes only the local persisted document report. Exact Vetus dynamic
+executor parity, fiscal writes/provider/municipality homologation,
+commercial/financial reconciliation, external credentials, target
+operations, backup/restore/RTO-RPO, distributed worker observability,
+accessibility, operational LGPD, remote CI, remaining reports and release
+acceptance remain open. Global parity and readiness remain non-promotable;
+CVG-004 and the ERP remain IN_PROGRESS/PARTIAL.
+
+Evidence: `.agent/tasks/CVG-004-report-service-invoices.md`,
+`.agent/gates/verified-CVG-004-report-service-invoices.json`,
+`.agent/artifacts/CVG-004-report-service-invoices-2026-08-27.md` e
+`.agent/verification.jsonl#VFY-CVG-004-REPORT-SERVICE-INVOICES-FINAL-001`.
+
+## Gauntlet checkpoint — 2026-08-27 — CVG-004 scheduled deleted-sales
+
+The selected bounded slice closed as `PASS_BOUNDED` after intentional RED,
+worker GREEN/regression, two-account disposable PostgreSQL process proof,
+coverage, validators and independent post-fix review. The worker is
+database-only for the persisted current cancelled-sales snapshot and retains
+the exact eleven-field report contract. Global promotion remains `BLOCKED`:
+Vetus/clinical parity, providers, target, production, distributed operations,
+remaining report families and release acceptance are still open.
+
+## 2026-08-27 — implementation-ready inventory-products report
+
+The next bounded gauntlet slice is `CVG-004-REPORT-INVENTORY-PRODUCTS`.
+Authority is confirmed for an on-demand, database-backed, tenant-scoped report
+over persisted `inventory_items` with exactly eight fields, strict createdAt
+and search filters, deterministic ordering and a 10,000-row bound. The current
+SPA local item/lot projection, scheduled worker, historical/as-of semantics,
+valuation, providers, target and release remain out of scope. RED/GREEN and
+verification are pending; global promotion remains blocked.
+
+## Gauntlet checkpoint — 2026-08-27 — CVG-004 inventory-products
+
+The bounded inventory-products slice is reconciled as `PASS_BOUNDED` after
+intentional TDD RED/GREEN, focused package/API/SPA regression, disposable
+PostgreSQL proof 3/3, authenticated browser E2E 1/1, coverage, validators and
+independent `APPROVE_BOUNDED` re-review. The source is persisted
+`inventory_items` only, with the exact eight-field contract, strict filters,
+deterministic order, overflow detection and audited export. Global promotion
+remains `BLOCKED`; Vetus/clinical parity, providers, target operations,
+remaining reports, worker operations, accessibility, LGPD, remote CI and
+release acceptance remain open.
+Evidence: `.agent/gates/verified-CVG-004-report-inventory-products.json`.
+
+## Restart checkpoint — CVG-004 inventory-stock — 2026-08-28
+
+Lifecycle is `VERIFY / RECONCILE`. The server-backed current-stock report is
+implemented and its local technical proof is green, but the gate remains
+`PENDING_RECONCILIATION` until the final independent review and control-plane
+hygiene are recorded. Resume instructions and evidence are in
+`.agent/artifacts/CVG-004-report-inventory-stock-2026-08-28.md`; the source of
+truth is `.agent/state.json`.
+
+No scheduled worker, historical/as-of stock, lot/movement/NF semantics,
+valuation, provider, target, production, deployment or release authority is
+implied. Keep CVG-004/ERP `IN_PROGRESS/PARTIAL` and promotion `BLOCKED`.
+
+## Final bounded reconciliation — CVG-004 inventory-stock — 2026-08-28
+
+The bounded on-demand `inventory-stock` report/export is `PASS_BOUNDED` with
+`HIGH` residual risk. The exact ten-field persisted `inventory_items` contract,
+tenant boundary, strict filters, current stock derivation, overflow guard,
+awaited audit/export and SPA server-only path remain the certified scope.
+
+The first fresh independent reviewer found no functional CRITICAL/HIGH/MEDIUM
+issue; its reported `BLOCKED` decision was limited to the pre-closure
+gate/state/hygiene records and is now reconciled. A second fresh read-only
+review returned `APPROVE` for V-001 through V-008. Final control-plane
+parsing, reference, formatting, secret-scan, diff and empty-index checks
+passed.
+
+Global CVG-004/ERP remains `IN_PROGRESS/PARTIAL`, general Vetus parity remains
+4/11, clinical parity 2/3 and enterprise readiness 95/100 (42 PASS, 3 WARN,
+1 FAIL). Promotion remains `BLOCKED`; no provider, target, production,
+deployment or release acceptance is implied.
+
+Evidence: `.agent/gates/verified-CVG-004-report-inventory-stock.json`,
+`.agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-STOCK-FINAL-002`,
+`.agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-STOCK-REVIEW-FINAL-002` and
+`.agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-STOCK-HYGIENE-002`.
+
+## Final bounded reconciliation — 2026-08-28 — CVG-004 inventory-movements
+
+The selected movement slice is now `PASS_BOUNDED` with `HIGH` residual risk.
+It implements only the authenticated, tenant-scoped, on-demand raw
+`inventory_stock_movements` ledger joined to same-account `inventory_items`,
+with the exact thirteen-field contract, strict inclusive filters,
+deterministic order, SQL-bounded overflow detection, durable execution/export
+and server-only Workbench consumption.
+
+The gauntlet recorded intentional RED, GREEN and remediation after fresh
+independent findings: missing same-account joins, post-load bounds, malformed
+row shapes, non-durable ReportsService execution and a final in-memory guard.
+Current proof is module/API/SPA regression, disposable PostgreSQL 4/4,
+authenticated browser E2E 1/1, coverage above the 80% bar, builds,
+security/format/diff/index hygiene and a fresh independent final `APPROVE`.
+
+Global CVG-004/ERP remains `IN_PROGRESS/PARTIAL`, promotion remains `BLOCKED`,
+and invoice/NF semantics remain outside authority. Exact Vetus dynamic
+executor parity, history, valuation, providers, target/production operations,
+backup/restore/RTO-RPO, accessibility, operational LGPD, remote CI and release
+acceptance remain open. The next slice requires fresh scouting and a new
+implementation-ready authority.
+
+Evidence: `.agent/gates/verified-CVG-004-report-inventory-movements.json`,
+`.agent/artifacts/CVG-004-report-inventory-movements-2026-08-28.md`,
+`.agent/verification.jsonl#VFY-CVG-004-REPORT-INVENTORY-MOVEMENTS-REVIEW-FINAL-001`.
+
+## Final bounded reconciliation — 2026-08-28 — CVG-004 inventory-invoices
+
+The selected purchase-entry slice is `PASS_BOUNDED` with `MEDIUM` confidence
+and `HIGH` residual risk. It reads only tenant-scoped persisted
+`inventory_purchases` headers with non-empty stored invoice references and
+returns the exact twelve operational purchase/receipt fields. The API uses
+`billing.read` plus `inventory.read`, validates source/output/filter bounds,
+persists execution and audit through `ReportsService`, and the Workbench uses
+the server execution without local item/lot/consumption reconstruction.
+
+Focused/regression evidence passed: reports 22/22, inventory 33/33, compiled
+API 39/39, SPA 174 files/1,042 tests, disposable PostgreSQL 5/5 and official
+authenticated browser E2E 1/1. Coverage remained above 80% in all dimensions;
+secrets, formatting, diff and empty-index hygiene passed. Independent
+post-remediation approval was unavailable and is explicitly retained as a
+limitation, not approval. Global CVG-004/ERP remains `IN_PROGRESS/PARTIAL` and
+promotion remains `BLOCKED`; fiscal NF, providers, target, remote CI,
+accessibility, LGPD and release remain open.
+
+Evidence: `.agent/gates/verified-CVG-004-report-inventory-invoices.json`,
+`.agent/artifacts/CVG-004-report-inventory-invoices-2026-08-28.md`.
+
+## Implementation-ready checkpoint — 2026-08-28 — scheduled financial-receivables
+
+Two independent read-only scouts ranked the missing scheduled
+`financial-receivables` worker branch as the next bounded gap. The existing
+on-demand catalog/API contract and worker financial database boundary make a
+local implementation possible without provider credentials. A new authority
+freezes the shared persisted tenant-scoped source, exact sixteen-column output,
+strict status/search/date filters, deterministic ordering, a 10,000-row bound,
+PII-safe logging, two-account isolation and no empty-success fallback.
+
+The parent CVG-004/global ERP remains `IN_PROGRESS/PARTIAL` and promotion
+remains `BLOCKED`; settlement, providers, target, production, accessibility,
+remote CI and release work remain outside this slice.
+
+Evidence: `.agent/gates/implementation-ready-CVG-004-report-scheduled-receivables.json`,
+`.agent/tasks/CVG-004-report-scheduled-receivables.md` and
+`.agent/verification.jsonl#VFY-SCOUT-CVG-004-REPORT-SCHEDULED-RECEIVABLES-001`.
+
+## Final bounded reconciliation — 2026-08-28 — CVG-004 scheduled financial-receivables
+
+The scheduled financial-receivables worker slice is `PASS_BOUNDED` with
+`MEDIUM` confidence and `HIGH` residual risk. It adds the tenant-scoped
+read-only financial source and exact sixteen-column worker mapping, strict
+status/search/date validation, explicit UTC report-date boundaries with
+`issuedAt` fallback, a 10,000-row fail-closed bound and durable non-PII audit
+for execution/export. One-shot scheduled failures now return code 1; the
+continuous worker remains tick-and-continue.
+
+The fresh process proof passed `19/19` against disposable PostgreSQL with two
+accounts, exact rows, cross-account negatives, overflow, fallback, audit and
+delivery/lease recovery. Financial module `20/20`, worker suites,
+build/typecheck, secrets, formatting and diff hygiene passed. Darwin's fresh
+independent read-only review returned `PASS` without a scoped
+Critical/High/Medium issue.
+
+This closes only the bounded scheduled report path. Global CVG-004/ERP remains
+`IN_PROGRESS/PARTIAL`, general parity remains `4/11`, clinical parity `2/3`,
+readiness `95/100` (`42 PASS`, `3 WARN`, `1 FAIL`) and promotion remains
+`BLOCKED`. No settlement, provider, target, production, deployment, remote CI,
+accessibility or release authority is inferred.
+
+Evidence: `.agent/gates/verified-CVG-004-report-scheduled-receivables.json`,
+`.agent/artifacts/CVG-004-report-scheduled-receivables-2026-08-28.md` and
+`.agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-RECEIVABLES-FINAL-001`.
+
+## Implementation-ready checkpoint — CVG-004 scheduled registration-services — 2026-08-28
+
+A fresh local inspection selected the missing scheduled `registration-services`
+worker source as the next bounded gap after scheduled financial-receivables.
+The existing catalog/API contract exposes exactly six persisted service fields,
+and the `services` relation/repository/RLS provide a credential-free local
+source; the worker resolver and database source composition do not yet cover
+this report id.
+
+The new authority and implementation-ready gate freeze only a shared
+tenant-scoped read source, strict inclusive UTC `createdAt` date filters,
+deterministic ordering, a 10,000-row fail-closed bound, malformed/foreign-row
+rejection, exact catalog mapping, existing PII-safe schedule audit and the
+real two-account one-shot proof. No migration, CRUD, supplier/owner/patient
+expansion, provider, target, production, deployment or release behavior is
+authorized.
+
+Delegated fresh explorer attempts were unavailable and are not represented as
+consensus or approval. The parent CVG-004/global ERP remains
+`IN_PROGRESS/PARTIAL` and promotion remains `BLOCKED`.
+
+Evidence: `.agent/gates/implementation-ready-CVG-004-report-scheduled-services.json`,
+`.agent/tasks/CVG-004-report-scheduled-services.md`,
+`.agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-SERVICES-IR-001` and
+`.agent/verification.jsonl#VFY-SCOUT-CVG-004-REPORT-SCHEDULED-SERVICES-001`.
+
+## Bounded closure — CVG-004 scheduled registration-services — 2026-08-28
+
+The scheduled `registration-services` worker path is `PASS_BOUNDED` with
+`MEDIUM` confidence and `HIGH` residual risk. The implementation is limited
+to the shared tenant-safe services projection, strict inclusive UTC date
+filters, deterministic ordering, a 10,000-row fail-closed bound, exact six
+catalog fields, durable non-PII audit and existing one-shot semantics.
+
+Fresh local evidence passed module `21/21`, worker `97/97`, builds/typechecks
+and the disposable PostgreSQL two-account process `20/20`. Independent review
+was attempted but unavailable and is recorded as a condition, not approval.
+
+Global CVG-004/ERP remains `IN_PROGRESS/PARTIAL`, global promotion remains
+`BLOCKED`, and general parity `4/11`, clinical parity `2/3` and readiness
+`95/100` (`42 PASS`, `3 WARN`, `1 FAIL`) remain open. No commit, push, deploy
+or external mutation occurred.
+
+Evidence: `.agent/gates/verified-CVG-004-report-scheduled-services.json`,
+`.agent/artifacts/CVG-004-report-scheduled-services-2026-08-28.md` and
+`.agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-SERVICES-FINAL-001`.
+
+## Bounded closure — CVG-004 scheduled registration-suppliers — 2026-08-28
+
+The scheduled `registration-suppliers` path is `PASS_BOUNDED` with `MEDIUM`
+confidence and `HIGH` residual risk. It is limited to the shared,
+tenant-scoped persisted financial catalog source, exact nine-field mapping,
+strict existing filters, inclusive UTC date semantics, deterministic ordering,
+fail-closed 10,000-row bounds and durable non-PII schedule audit.
+
+Financial module `24/24`, worker regression suites and post-format disposable
+PostgreSQL process `21/21` passed, including two-account isolation, filters,
+exact rows, excluded-row behavior and audit. The independent reviewer timed out
+and was shut down without a verdict; this is a condition, not approval.
+
+Global CVG-004/ERP remains `IN_PROGRESS/PARTIAL`, global promotion remains
+`BLOCKED`, and general parity `4/11`, clinical parity `2/3` and readiness
+`95/100` (`42 PASS`, `3 WARN`, `1 FAIL`) remain open. Providers, target
+operations, distributed workers, accessibility, operational LGPD, remote CI,
+remaining parity and release acceptance remain open. No commit, push, deploy or
+external mutation occurred.
+
+Evidence: `.agent/gates/verified-CVG-004-report-scheduled-suppliers.json`,
+`.agent/artifacts/CVG-004-report-scheduled-suppliers-2026-08-28.md`,
+`.agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-SUPPLIERS-FINAL-001`.
+
+## Implementation-ready checkpoint — CVG-004 scheduled registration-owners — 2026-08-28
+
+Local fresh scouting selected the missing scheduled `registration-owners`
+worker source after the suppliers slice closed. The existing seven-field
+on-demand contract and persisted owners table with RLS/FORCE-RLS provide a
+smaller tenant-safe path without patient joins or microchip exposure.
+
+The authority freezes only the shared read-only owners projection, explicit
+tenant context/predicate, strict inclusive UTC `createdAt` filters,
+deterministic `fullName ASC, id ASC` order, a 10,000-row fail-closed bound,
+validated metadata fallback and exact seven-field mapping. Existing schedule
+audit and one-shot semantics remain unchanged; no migration or lifecycle
+expansion is authorized.
+
+Both delegated scouts errored before execution because the
+`gpt-5.3-codex-spark` usage limit was reached. This is local repository
+evidence, not scout consensus or approval. RED is the next checkpoint.
+
+Evidence: `.agent/gates/implementation-ready-CVG-004-report-scheduled-owners.json`,
+`.agent/tasks/CVG-004-report-scheduled-owners.md`,
+`.agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-OWNERS-IR-001` and
+`.agent/verification.jsonl#VFY-SCOUT-CVG-004-REPORT-SCHEDULED-OWNERS-001`.
+
+## Bounded closure — CVG-004 scheduled registration-owners — 2026-08-28
+
+The scheduled `registration-owners` path is closed as `PASS_BOUNDED` with
+`MEDIUM` confidence and `HIGH` residual risk. The owners source and worker
+preserve the existing seven-field catalog contract, explicit tenant context
+and predicate, strict inclusive UTC dates, deterministic ordering, metadata
+fallback, fail-closed malformed/foreign results and the existing durable
+audit/one-shot behavior. No patient join, microchip exposure, owner CRUD,
+migration, provider, target or production behavior was added.
+
+Owners module `49/49`, worker runner `46/46` plus all configured worker suites,
+and the disposable PostgreSQL process `22/22` passed. Review attempts were
+unavailable and are recorded as a condition, not approval. Global
+CVG-004/ERP remains `IN_PROGRESS/PARTIAL`, general parity `4/11`, clinical
+parity `2/3`, readiness `95/100` (`42 PASS`, `3 WARN`, `1 FAIL`) and promotion
+`BLOCKED`.
+
+Evidence: `.agent/gates/verified-CVG-004-report-scheduled-owners.json`,
+`.agent/artifacts/CVG-004-report-scheduled-owners-2026-08-28.md`,
+`.agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-OWNERS-FINAL-001`.
+
+## Bounded closure — CVG-004 scheduled registration-patients — 2026-08-28
+
+The scheduled `registration-patients` path is closed as `PASS_BOUNDED` with
+`MEDIUM` confidence and `HIGH` residual risk. The shared patients source is
+read-only, tenant-scoped by explicit context plus predicate, limited to the
+persisted `patients` relation and the exact eight catalog fields, and bounded
+to 10,000 rows with strict inclusive UTC `createdAt` dates and deterministic
+`name ASC, id ASC` ordering. Legacy code and nullable report cells use the
+authorized fallbacks; patient PII is not written to schedule audit or worker
+logs.
+
+TDD RED was recorded before implementation. Patients module `55/55`, focused
+source coverage (`94.07%` statements/lines, `90.41%` branches, `100%`
+functions), configured worker suites and disposable PostgreSQL process `23/23`
+passed, including two-account isolation, exact rows, fallback, durable
+execution and audit redaction. The independent reviewer was unavailable and
+is recorded as a condition, not approval. Global CVG-004/ERP remains
+`IN_PROGRESS/PARTIAL`, general parity `4/11`, clinical parity `2/3`, readiness
+`95/100` and promotion `BLOCKED`.
+
+Evidence: `.agent/gates/verified-CVG-004-report-scheduled-patients.json`,
+`.agent/artifacts/CVG-004-report-scheduled-patients-2026-08-28.md`,
+`.agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-PATIENTS-FINAL-001`.
+
+## Bounded closure — CVG-004 scheduled commission-calculations — 2026-08-28
+
+The scheduled commission-calculations path is closed as `PASS_BOUNDED` with
+`MEDIUM` confidence and `HIGH` residual risk. The explicit persisted source
+uses tenant context plus predicates on `commission_calculations` and
+`commission_lines`, same-account line aggregation, strict status/date
+overlap, deterministic `created_at DESC, id DESC` order and a 10,000-row
+fail-closed bound. The worker emits exactly the existing six catalog fields
+and retains durable schedule/audit/one-shot behavior.
+
+The source and worker GREEN evidence passed commissions `18/18`, focused
+coverage `94.02%` statements/lines, `88%` branches and `100%` functions,
+worker runner `51/51` plus all configured worker suites, and disposable
+PostgreSQL process `24/24` across two accounts. Independent review was
+unavailable and is recorded as a condition, not approval. Global
+CVG-004/ERP remains `IN_PROGRESS/PARTIAL`, general parity `4/11`, clinical
+parity `2/3`, readiness `95/100` and promotion `BLOCKED`.
+
+Evidence: `.agent/gates/verified-CVG-004-report-scheduled-commissions.json`,
+`.agent/artifacts/CVG-004-report-scheduled-commissions-2026-08-28.md`,
+`.agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-COMMISSIONS-FINAL-001`.
+
+## 2026-08-28 — scheduled inventory-products bounded closure
+
+The current bounded slice is `CVG-004-REPORT-SCHEDULED-INVENTORY-PRODUCTS`,
+reconciled as `PASS_BOUNDED` with `HIGH` confidence for the local slice and
+`HIGH` residual risk. The verified gate covers only the persisted
+`inventory_items` scheduled read path, exact eight-field mapping, explicit
+tenant context/predicate, escaped literal search, inclusive UTC dates,
+deterministic order, fail-closed bound and unchanged durable audit semantics.
+
+TDD RED preceded implementation. Inventory module `37/37`, source coverage
+`92.07%` statements/lines, `89.85%` branches and `100%` functions, module
+typecheck/build, worker suites and disposable PostgreSQL process `25/25`
+passed. Independent review returned `APPROVE_BOUNDED` with no
+CRITICAL/HIGH/MEDIUM issue; its LOW `ILIKE ESCAPE` testing gap was closed by a
+real process assertion. Global parity/readiness remain open and promotion is
+`BLOCKED`; the next gate is fresh scouting under a new authority.
+
+## Bounded closure — CVG-004 scheduled inventory-stock — 2026-08-28
+
+The scheduled `inventory-stock` worker path is `PASS_BOUNDED` with `HIGH`
+confidence for the bounded local slice and `HIGH` residual risk. It is limited
+to the exact ten-field current persisted-item contract, explicit tenant-safe
+`inventory_items` source, current stock value/status derivation, strict
+inclusive UTC dates, case-insensitive search, deterministic ordering, the
+10,000-row bound and unchanged durable schedule/audit semantics.
+
+Inventory module `43/43`, focused source coverage `96.15%` statements/lines,
+`91.42%` branches and `100%` functions, module build/typecheck, worker suites
+and focused disposable PostgreSQL process passed. Independent review returned
+`APPROVE_BOUNDED` with no severity finding. Global CVG-004/ERP remains
+`IN_PROGRESS/PARTIAL`, general parity `4/11`, clinical parity `2/3`, readiness
+`95/100` and promotion `BLOCKED`; target, providers, distributed operations,
+accessibility, operational LGPD, remote CI, backup/restore, remaining parity
+and release acceptance remain open.
+
+## Current checkpoint — 2026-08-28 — CVG-002 child-process closure
+
+`CVG-002-CLINICAL-FINANCIAL-CHILD-PROCESS-RESTART` is closed only as a local
+`PASS_BOUNDED` slice under the verified gate. The focused real API child proof
+passed `1/1` with restricted disposable roles, exact billing-item failpoint,
+SIGKILL rollback, distinct-PID restart, replay/conflict, tenant-B isolation and
+complete clinical-financial SQL reconciliation. Independent final review is
+`APPROVE_BOUNDED`.
+
+The critical runner remains conditional: entries `1–7` passed, while the
+existing PIX entry 8 timed out at `15/25` with `spawnSync pnpm ETIMEDOUT`, so
+later entries and full-runner/provider/distributed claims remain open. Global
+parity is `4/11`, clinical parity `2/3`, readiness `95/100` (`42 PASS`,
+`3 WARN`, `1 FAIL`) and promotion is `BLOCKED`. The parent and ERP remain
+`IN_PROGRESS/PARTIAL`; the next action is fresh scouting under new authority.
+
+## Current Gauntlet checkpoint — 2026-08-28
+
+The scheduled `inventory-movements` report is closed only as a local
+`PASS_BOUNDED` slice under
+`.agent/gates/verified-CVG-004-report-scheduled-inventory-movements.json`.
+Its source, worker branch/bootstrap, module/worker suites and full
+two-account disposable PostgreSQL report process passed; independent review
+returned `APPROVE_BOUNDED` and final hygiene passed. The incompatible first
+reviewer attempt is explicitly unavailable, not approval.
+
+CVG-004/ERP remains `IN_PROGRESS/PARTIAL`, general parity is `4/11`,
+clinical parity `2/3`, readiness is `95/100` (`42 PASS`, `3 WARN`,
+`1 FAIL`) and promotion is `BLOCKED`. Target, provider, distributed
+operations, accessibility, operational LGPD, remote CI, backup/restore,
+remaining parity and release acceptance remain open. No external mutation,
+commit, push or deploy occurred.
+
+## Current bounded checkpoint — 2026-08-28 — critical process runner
+
+`CVG-OPS-CRITICAL-PROCESS-RUNNER-001` is `PASS_BOUNDED` under its verified
+gate. The final4 disposable matrix passed `10/10` serial entries, including
+PIX `25/25`; combined runner/CI contracts passed `31/31`; Windows native
+contracts are assigned to the `windows-2022` CI job and skip locally on Linux.
+All per-entry ephemeral databases and post-run owned process/artifact checks
+are clean. Independent final review is `APPROVE_BOUNDED` with no P0/P1/P2
+finding.
+
+The parent/global ERP remains `IN_PROGRESS/PARTIAL`; general parity is `4/11`,
+clinical parity `2/3`, readiness `95/100` (`42 PASS`, `3 WARN`, `1 FAIL`) and
+promotion is `BLOCKED`. This checkpoint does not approve providers, target,
+production, remote CI, accessibility, operational LGPD, backup/restore or
+release. No commit, push, deploy or external mutation occurred.
+
+Evidence: `.agent/gates/verified-CVG-OPS-CRITICAL-PROCESS-RUNNER-001.json`,
+`.agent/artifacts/CVG-OPS-CRITICAL-PROCESS-RUNNER-2026-08-28.md`,
+`.agent/verification.jsonl#VFY-CVG-OPS-CRITICAL-PROCESS-RUNNER-FINAL-001`.
+
+## Current bounded checkpoint — 2026-08-29 — scheduled inventory-invoices
+
+`CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES` is `PASS_BOUNDED` under its
+verified gate. The source, worker, bootstrap and scheduled-job failure path
+passed focused and complete regressions; the disposable process passed `28/28`
+with a non-UTC PostgreSQL session, including the UTC boundary record,
+two-account isolation and null-ID failed delivery persistence. Independent
+review is `APPROVE_BOUNDED` with no P0/P1/P2 finding, and final hygiene passed.
+
+Global ERP remains `IN_PROGRESS/PARTIAL`; general Vetus parity is `4/11`,
+clinical parity `2/3`, readiness `95/100` (`42 PASS`, `3 WARN`, `1 FAIL`) and
+promotion is `BLOCKED`. This checkpoint approves no provider, fiscal, target,
+production, distributed, accessibility, operational-LGPD, backup/restore,
+remote-CI or release behavior. No commit, push, deploy or external mutation
+occurred. Next state is fresh scouting with a new implementation-ready
+authority.
+
+Evidence: `.agent/gates/verified-CVG-004-report-scheduled-inventory-invoices.json`,
+`.agent/artifacts/CVG-004-report-scheduled-inventory-invoices-2026-08-29.md`,
+`.agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-FINAL-001`.
+
+## Current bounded checkpoint — 2026-08-29 — local laboratory provider ingress
+
+`CVG-005-LAB-PROVIDER-INGRESS-LOCAL` is reconciled as `PASS_BOUNDED` under
+`.agent/gates/verified-CVG-005-lab-provider-ingress-local.json`, with overall
+confidence `MEDIUM` because the post-fix independent-review criterion is
+conditional. The implementation is repository-local: strict raw-body HMAC,
+account-bound freshness/keyring, durable atomic replay/conflict ledger,
+`pending_human_review`, awaited redacted audit, no diagnostic-order mutation,
+and runtime API/worker DELETE/TRUNCATE denial for the append-only ledger.
+
+The initial review found P1 clean-install catalog drift and P2 runtime ACL
+drift; both were corrected and directly proven by API `474/474` plus serial
+PostgreSQL setup/ingress/runtime-ACL `3 files / 15 tests`. Aggregate coverage
+was `80.16%` statements, `81.08%` branches and `88.31%` functions; workspace
+typecheck/lint/build and static/security gates passed. Two post-fix reviewer
+attempts timed out and were shut down, so no independent approval is claimed.
+
+Global ERP remains `IN_PROGRESS/PARTIAL`; general Vetus parity is `4/11`,
+clinical parity `2/3`, readiness `95/100` (`42 PASS`, `3 WARN`, `1 FAIL`) and
+promotion is `BLOCKED`. This checkpoint does not approve Live Lab/provider
+homologation, external credentials, target, production, remote CI,
+accessibility, LGPD, backup/restore, distributed operations or release. The
+recursive `pnpm test` attempt that saturated local resources and exited `130`
+is not treated as a pass. Next state is fresh scouting under a new authority;
+obtain independent review before any production/release claim.
+
+Evidence: `.agent/gates/verified-CVG-005-lab-provider-ingress-local.json`,
+`.agent/artifacts/CVG-005-lab-provider-ingress-local-2026-08-29.md`,
+`.agent/verification.jsonl#VFY-CVG-005-LAB-PROVIDER-INGRESS-LOCAL-FINAL-001`.
+
+## Current execution state — 2026-08-29 — service-principal interactive boundary
+
+Fresh scouting has selected
+`CVG-002B2B-SERVICE-PRINCIPAL-INTERACTIVE-BOUNDARY` as the next narrow P0
+identity-safety slice. The repository-backed `UsersService.resolveById` still
+uses the generic materializer and can index a non-interactive service
+principal; existing username/hydration and AuthService session/MFA checks are
+the surrounding guardrails. A new implementation-ready authority is
+confirmed, with intentional RED next.
+
+This state authorizes only interactive resolver/cache correction and focused
+auth/users evidence. The dedicated worker service-principal resolver, PIX
+settlement UoW, provider, credentials, target, production and release remain
+out of scope. Global ERP remains `IN_PROGRESS/PARTIAL`, and promotion remains
+`BLOCKED`.
+
+Evidence: `.agent/gates/implementation-ready-CVG-002B2B-service-principal-interactive-boundary-IR-001.json`,
+`.agent/authority.jsonl#AUTH-CVG-002B2B-SERVICE-PRINCIPAL-INTERACTIVE-BOUNDARY-IR-001`,
+`.agent/verification.jsonl#VFY-SCOUT-CVG-002B2B-SERVICE-PRINCIPAL-INTERACTIVE-BOUNDARY-001`.
+
+## Current bounded checkpoint — 2026-08-29 — privileged service-principal writer linearization
+
+`CVG-002B2B-PRIVILEGED-SERVICE-PRINCIPAL-WRITER-LINEARIZATION` is closed as
+`PASS_BOUNDED` under
+`.agent/gates/verified-CVG-002B2B-privileged-service-principal-writer-linearization.json`.
+The additive migration 0155 serializes direct mapping INSERT/UPDATE/DELETE and
+the four named `users` identity fields with account-scoped writer gates plus
+the worker's account lock. The temporary global mutex design was rejected and
+removed; independent accounts remain concurrent and contested cross-account
+writes fail fast with retryable `40001`.
+
+The final PostgreSQL writer suite passed `13/13`, including migration replay,
+all watched fields, rollback, account isolation, deterministic cross-account
+ordering and hostile `pg_temp` shadowing. The real PIX consumer passed `8/8`:
+trigger-backed writer commit caused worker re-read/fail-closed behavior with
+zero B1 calls. Static migration contracts passed `2/2`; worker baseline passed
+`116/116`; migration-source, RLS (`163/164`), secret, lint and diff checks
+passed. Two fresh independent read-only reviewers returned
+`APPROVE_BOUNDED` with no P0/P1/P2.
+
+Global ERP remains `IN_PROGRESS/PARTIAL`; Vetus is `4/11`, clinical parity is
+`2/3`, readiness is `95/100` (`42 PASS`, `3 WARN`, `1 FAIL`) and promotion is
+`BLOCKED`. This checkpoint does not approve providers, credentials, target,
+production, deployment, distributed operations, backup/restore, accessibility,
+LGPD, complete parity, remote CI or release. No commit, push or external
+mutation occurred. Next state is fresh scouting under a new authority.
+
+Evidence: `.agent/gates/verified-CVG-002B2B-privileged-service-principal-writer-linearization.json`,
+`.agent/verification.jsonl#VFY-CVG-002B2B-PRIVILEGED-SERVICE-PRINCIPAL-WRITER-LINEARIZATION-FINAL-001`,
+`.agent/execution-log.jsonl#EVT-0927`.
+
+## Current bounded checkpoint — 2026-08-29 — prescription-execution command/event boundary
+
+Fresh scouting selected
+`CVG-003-PRESCRIPTION-EXECUTION-COMMAND-EVENT-TENANT-ISOLATION` under a new
+implementation-ready authority. The service methods `getEvents`, `execute`,
+`suspend`, `resume` and `logEvent` still resolve by execution id alone, so the
+HTTP pre-check is not sufficient protection for direct service callers.
+
+The authority is limited to principal-derived `AccountId` propagation through
+the existing service and routes, with no migration, provider, target,
+production or release expansion. Intentional RED is recorded: module `27/28`
+and route `4/5`, exactly at missing-scope validation and route forwarding.
+
+Evidence: `.agent/gates/implementation-ready-CVG-003-prescription-execution-command-event-tenant-isolation.json`,
+`.agent/authority.jsonl#AUTH-CVG-003-PRESCRIPTION-EXECUTION-COMMAND-EVENT-TENANT-ISOLATION-IR-001`,
+`.agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-EXECUTION-COMMAND-EVENT-TENANT-ISOLATION-RED-001`,
+`.agent/execution-log.jsonl#EVT-0929`.
+
+## Bounded closure — 2026-08-29 — prescription-execution command/event boundary
+
+`CVG-003-PRESCRIPTION-EXECUTION-COMMAND-EVENT-TENANT-ISOLATION` is closed
+locally as `PASS_BOUNDED` under
+`.agent/gates/verified-CVG-003-prescription-execution-command-event-tenant-isolation.json`.
+The service now requires principal-derived `AccountId` for event detail and
+all four administration commands, and routes forward that account explicitly.
+
+Evidence passed: module `28/28`, focused HTTP routes `7/7`, canonical
+PostgreSQL runtime `1/1` after clean disposable reset/seed, full API `476/476`,
+typecheck/format/lint/diff/security/RLS checks and two fresh independent
+`APPROVE_BOUNDED` reviews with no P0/P1/P2. Global ERP remains
+`IN_PROGRESS/PARTIAL`, Vetus is `4/11`, clinical parity `2/3`, readiness
+`95/100` and promotion `BLOCKED`.
+
+Evidence: `.agent/gates/verified-CVG-003-prescription-execution-command-event-tenant-isolation.json`,
+`.agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-EXECUTION-COMMAND-EVENT-TENANT-ISOLATION-FINAL-001`,
+`.agent/execution-log.jsonl#EVT-0935`.
+
+## Bounded checkpoint — 2026-08-29 — operational coverage source of truth
+
+`CVG-003-AUDIT-OPERATIONAL-COVERAGE-SOURCE-OF-TRUTH` and its
+`CVG-003-AUDIT-OPERATIONAL-COVERAGE-LEGACY-RLS` dependency are reconciled as
+`COMPLETE_BOUNDED` / `PASS_BOUNDED`. The final local evidence is restricted
+PostgreSQL `2/2`, audit module `27/27`, focused route `14/14`, runtime restart
+`1/1`, full API `496/496`, official coverage `80.09%` statements/lines,
+`80.97%` branches and `88.28%` functions, green static gates and an
+independent `APPROVE` review with no findings. The legacy policy is forward
+only, exact-tenant read-only compatibility, and the repository predicates have
+the explicit NULL-account defense-in-depth guard.
+
+The active state is now `CVG-003-FRESH-SCOUT-NEXT-GAP` in `SCOUT`; no new
+implementation is authorized until fresh evidence, residual ranking and an
+implementation-ready gate exist. Global ERP remains `IN_PROGRESS/PARTIAL`,
+Vetus `4/11`, clinical `2/3`, readiness `95/100` and promotion `BLOCKED`.
+
+Evidence: `.agent/state.json`, `.agent/backlog.json`,
+`.agent/gates/verified-CVG-003-audit-operational-coverage-source-of-truth.json`,
+`.agent/gates/verified-CVG-003-audit-operational-coverage-legacy-rls.json`,
+`.agent/execution-log.jsonl#EVT-1024`.

@@ -1,9 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import {
-  getPool,
-  type TenantTransactionContext
-} from '@cvg-his-v2/shared-database';
+import { getPool, type TenantTransactionContext } from '@cvg-his-v2/shared-database';
 import { AppError } from '@cvg-his-v2/shared-errors';
 import { withTenantQuery } from '@cvg-his-v2/tenant-context';
 
@@ -23,6 +20,12 @@ export interface EncounterCashReceiptRecord {
   readonly receivedAt: string;
   readonly receivedByUserId: string;
   readonly notes?: string;
+  readonly reversalId?: string;
+  readonly reversalCashMovementId?: string;
+  readonly reversalJournalEntryId?: string;
+  readonly reversalReason?: string;
+  readonly reversedByUserId?: string;
+  readonly reversedAt?: string;
 }
 
 export interface CreateEncounterCashReceiptInput {
@@ -95,6 +98,14 @@ function sameMoney(left: string | number, right: string | number): boolean {
 
 function mapReceipt(row: ReceiptRow): EncounterCashReceiptRecord {
   const notes = (row.notes as string | null) ?? undefined;
+  const reversalId = (row.reversal_id as string | null) ?? undefined;
+  const reversalCashMovementId = (row.reversal_cash_movement_id as string | null) ?? undefined;
+  const reversalJournalEntryId = (row.reversal_journal_entry_id as string | null) ?? undefined;
+  const reversalReason = (row.reversal_reason as string | null) ?? undefined;
+  const reversedByUserId = (row.reversed_by_user_id as string | null) ?? undefined;
+  const reversedAt = row.reversed_at
+    ? new Date(row.reversed_at as string | Date).toISOString()
+    : undefined;
   return {
     id: row.id as string,
     accountId: row.account_id as string,
@@ -110,7 +121,13 @@ function mapReceipt(row: ReceiptRow): EncounterCashReceiptRecord {
     currency: 'BRL',
     receivedAt: new Date(row.received_at as string | Date).toISOString(),
     receivedByUserId: row.received_by_user_id as string,
-    ...(notes ? { notes } : {})
+    ...(notes ? { notes } : {}),
+    ...(reversalId ? { reversalId } : {}),
+    ...(reversalCashMovementId ? { reversalCashMovementId } : {}),
+    ...(reversalJournalEntryId ? { reversalJournalEntryId } : {}),
+    ...(reversalReason ? { reversalReason } : {}),
+    ...(reversedByUserId ? { reversedByUserId } : {}),
+    ...(reversedAt ? { reversedAt } : {})
   };
 }
 
@@ -123,15 +140,28 @@ export class DatabaseEncounterCashReceiptRepository implements EncounterCashRece
     transaction: TenantTransactionContext,
     input: CreateEncounterCashReceiptInput
   ): Promise<EncounterCashReceiptRecord> {
-    if (transaction.accountId !== input.accountId || transaction.actorUserId !== input.actorUserId) {
-      fail('CASH_RECEIPT_CONTEXT_MISMATCH', 'Receipt context does not match the active transaction', 403);
+    if (
+      transaction.accountId !== input.accountId ||
+      transaction.actorUserId !== input.actorUserId
+    ) {
+      fail(
+        'CASH_RECEIPT_CONTEXT_MISMATCH',
+        'Receipt context does not match the active transaction',
+        403
+      );
     }
 
     const client = transaction.client;
-    const existingReceipt = await client.query<ReceiptRow>(
-      `SELECT *
-         FROM encounter_cash_receipts
-        WHERE account_id = $1 AND encounter_id = $2
+    const existingReceipt = await client.query<Pick<ReceiptRow, 'id'>>(
+      `SELECT receipt.id
+         FROM encounter_cash_receipts AS receipt
+        WHERE receipt.account_id = $1 AND receipt.encounter_id = $2
+          AND NOT EXISTS (
+            SELECT 1
+              FROM encounter_cash_receipt_reversals AS reversal
+             WHERE reversal.account_id = receipt.account_id
+               AND reversal.receipt_id = receipt.id
+          )
         FOR UPDATE`,
       [input.accountId, input.encounterId]
     );
@@ -152,17 +182,17 @@ export class DatabaseEncounterCashReceiptRepository implements EncounterCashRece
       fail('BILLING_NOT_RECEIVABLE', 'Billing record is not eligible for cash receipt', 409);
     }
     if (billing.active_payment_attempt_id !== null) {
-      fail(
-        'BILLING_PAYMENT_RESERVED',
-        'Billing record already has a payment in progress',
-        409
-      );
+      fail('BILLING_PAYMENT_RESERVED', 'Billing record already has a payment in progress', 409);
     }
     if (billing.currency !== 'BRL' || money(billing.subtotal_amount) <= 0) {
       fail('BILLING_NOT_RECEIVABLE', 'Billing must contain a positive BRL balance', 409);
     }
     if (!sameMoney(billing.subtotal_amount, input.expectedAmount)) {
-      fail('CASH_RECEIPT_AMOUNT_MISMATCH', 'Expected amount no longer matches the billing total', 409);
+      fail(
+        'CASH_RECEIPT_AMOUNT_MISMATCH',
+        'Expected amount no longer matches the billing total',
+        409
+      );
     }
 
     const itemCount = await client.query<{ readonly count: string }>(
@@ -188,7 +218,12 @@ export class DatabaseEncounterCashReceiptRepository implements EncounterCashRece
 
     const amount = money(input.expectedAmount);
     const financialAccount = await this.#lockOrCreateFinancialAccount(transaction, input, amount);
-    const receivable = await this.#lockOrCreateReceivable(transaction, input, financialAccount, amount);
+    const receivable = await this.#lockOrCreateReceivable(
+      transaction,
+      input,
+      financialAccount,
+      amount
+    );
 
     const registerResult = await client.query<CashRegisterRow>(
       `SELECT id, status, opening_amount
@@ -370,9 +405,18 @@ export class DatabaseEncounterCashReceiptRepository implements EncounterCashRece
   ): Promise<EncounterCashReceiptRecord | null> {
     return withTenantQuery(getPool(), async (client) => {
       const result = await client.query<ReceiptRow>(
-        `SELECT *
-           FROM encounter_cash_receipts
-          WHERE account_id = $1 AND encounter_id = $2 AND id = $3
+        `SELECT receipt.*,
+                reversal.id AS reversal_id,
+                reversal.reversal_cash_movement_id,
+                reversal.reversal_journal_entry_id,
+                reversal.reason AS reversal_reason,
+                reversal.reversed_by_user_id,
+                reversal.reversed_at
+           FROM encounter_cash_receipts AS receipt
+           LEFT JOIN encounter_cash_receipt_reversals AS reversal
+             ON reversal.account_id = receipt.account_id
+            AND reversal.receipt_id = receipt.id
+          WHERE receipt.account_id = $1 AND receipt.encounter_id = $2 AND receipt.id = $3
           LIMIT 1`,
         [accountId, encounterId, receiptId]
       );
@@ -386,9 +430,15 @@ export class DatabaseEncounterCashReceiptRepository implements EncounterCashRece
   ): Promise<EncounterCashReceiptRecord | null> {
     return withTenantQuery(getPool(), async (client) => {
       const result = await client.query<ReceiptRow>(
-        `SELECT *
-           FROM encounter_cash_receipts
-          WHERE account_id = $1 AND encounter_id = $2
+        `SELECT receipt.*
+           FROM encounter_cash_receipts AS receipt
+          WHERE receipt.account_id = $1 AND receipt.encounter_id = $2
+            AND NOT EXISTS (
+              SELECT 1
+                FROM encounter_cash_receipt_reversals AS reversal
+               WHERE reversal.account_id = receipt.account_id
+                 AND reversal.receipt_id = receipt.id
+            )
           LIMIT 1`,
         [accountId, encounterId]
       );
@@ -411,12 +461,16 @@ export class DatabaseEncounterCashReceiptRepository implements EncounterCashRece
     const existing = result.rows[0];
     if (existing) {
       if (
-        existing.financial_status !== 'pending'
-        || !sameMoney(existing.total_snapshot, amount)
-        || !sameMoney(existing.paid_amount, 0)
-        || !sameMoney(existing.balance_due, amount)
+        existing.financial_status !== 'pending' ||
+        !sameMoney(existing.total_snapshot, amount) ||
+        !sameMoney(existing.paid_amount, 0) ||
+        !sameMoney(existing.balance_due, amount)
       ) {
-        fail('FINANCIAL_ACCOUNT_NOT_RECEIVABLE', 'Financial account cannot be settled by this receipt', 409);
+        fail(
+          'FINANCIAL_ACCOUNT_NOT_RECEIVABLE',
+          'Financial account cannot be settled by this receipt',
+          409
+        );
       }
       return existing;
     }
@@ -455,15 +509,19 @@ export class DatabaseEncounterCashReceiptRepository implements EncounterCashRece
       [input.accountId, input.encounterId, financialAccount.id]
     );
     if (result.rows.length > 1) {
-      fail('RECEIVABLE_NOT_ELIGIBLE', 'Installment receivables require a dedicated payment flow', 409);
+      fail(
+        'RECEIVABLE_NOT_ELIGIBLE',
+        'Installment receivables require a dedicated payment flow',
+        409
+      );
     }
     const existing = result.rows[0];
     if (existing) {
       if (
-        existing.status !== 'open'
-        || !sameMoney(existing.amount_original, amount)
-        || !sameMoney(existing.amount_paid, 0)
-        || !sameMoney(existing.amount_outstanding, amount)
+        existing.status !== 'open' ||
+        !sameMoney(existing.amount_original, amount) ||
+        !sameMoney(existing.amount_paid, 0) ||
+        !sameMoney(existing.amount_outstanding, amount)
       ) {
         fail('RECEIVABLE_NOT_ELIGIBLE', 'Receivable cannot be settled by this receipt', 409);
       }

@@ -5,7 +5,7 @@ import {
   withTenantTransaction,
   type DatabaseClient
 } from '@cvg-his-v2/shared-database';
-import { ConflictError } from '@cvg-his-v2/shared-errors';
+import { ConflictError, ValidationError } from '@cvg-his-v2/shared-errors';
 import { withTenantQuery } from '@cvg-his-v2/tenant-context';
 import type {
   AccountId,
@@ -27,11 +27,35 @@ export interface InventoryLotReservationUpdate {
   readonly reservedDelta: number;
 }
 
+function escapeIlikePattern(value: string): string {
+  return value.replace(/[\\%_]/g, '\\$&');
+}
+
+export interface InventoryItemListFilters {
+  readonly search?: string;
+  readonly dateFrom?: string;
+  readonly dateTo?: string;
+  readonly limit?: number;
+}
+
+export const MAX_INVENTORY_ITEM_READ_ROWS = 10_001;
+
+export interface InventoryStockMovementReportSourceRow {
+  readonly movement: InventoryStockMovementSummary;
+  readonly sku: string | null;
+  readonly name: string | null;
+  readonly unit: string | null;
+}
+
 export interface InventoryRepository {
+  readonly stockMovementsEnabled?: boolean;
   createItem(item: InventoryItemSummary): Promise<void>;
   updateItem(item: InventoryItemSummary): Promise<void>;
   findItemById(id: InventoryItemId): Promise<InventoryItemSummary | null>;
-  findAllItems(accountId: AccountId): Promise<readonly InventoryItemSummary[]>;
+  findAllItems(
+    accountId: AccountId,
+    filters?: InventoryItemListFilters
+  ): Promise<readonly InventoryItemSummary[]>;
   findLots?(accountId: AccountId): Promise<readonly InventoryLotSummary[]>;
   upsertLots?(lots: readonly InventoryLotSummary[]): Promise<void>;
   findReservations?(accountId: AccountId): Promise<readonly InventoryReservationSummary[]>;
@@ -59,6 +83,10 @@ export interface InventoryRepository {
   findConsumptions(accountId: AccountId): Promise<readonly InventoryConsumptionSummary[]>;
   createStockMovement(movement: InventoryStockMovementSummary): Promise<void>;
   findStockMovements(accountId: AccountId): Promise<readonly InventoryStockMovementSummary[]>;
+  findStockMovementReportRows?(
+    accountId: AccountId,
+    filters?: InventoryItemListFilters
+  ): Promise<readonly InventoryStockMovementReportSourceRow[]>;
   consumeAtomically?(
     item: InventoryItemSummary,
     consumption: InventoryConsumptionSummary,
@@ -87,6 +115,10 @@ export class DatabaseInventoryRepository implements InventoryRepository {
 
   public constructor(options: { readonly stockMovementsEnabled?: boolean } = {}) {
     this.#stockMovementsEnabled = options.stockMovementsEnabled !== false;
+  }
+
+  public get stockMovementsEnabled(): boolean {
+    return this.#stockMovementsEnabled;
   }
 
   private async persistLots(
@@ -322,11 +354,51 @@ export class DatabaseInventoryRepository implements InventoryRepository {
     });
   }
 
-  async findAllItems(accountId: AccountId): Promise<readonly InventoryItemSummary[]> {
+  async findAllItems(
+    accountId: AccountId,
+    filters: InventoryItemListFilters = {}
+  ): Promise<readonly InventoryItemSummary[]> {
     return withTenantQuery(getPool(), async (client) => {
+      const conditions: string[] = ['account_id = $1'];
+      const params: unknown[] = [accountId];
+
+      if (filters.search?.trim()) {
+        conditions.push(
+          `(sku ILIKE $${params.length + 1} ESCAPE E'\\\\' OR name ILIKE $${params.length + 1} ESCAPE E'\\\\')`
+        );
+        params.push(`%${escapeIlikePattern(filters.search.trim())}%`);
+      }
+      if (filters.dateFrom) {
+        conditions.push(`created_at >= ($${params.length + 1}::date AT TIME ZONE 'UTC')`);
+        params.push(filters.dateFrom);
+      }
+      if (filters.dateTo) {
+        conditions.push(
+          `created_at < (($${params.length + 1}::date + INTERVAL '1 day') AT TIME ZONE 'UTC')`
+        );
+        params.push(filters.dateTo);
+      }
+
+      let limitClause = '';
+      if (filters.limit !== undefined) {
+        if (
+          !Number.isSafeInteger(filters.limit) ||
+          filters.limit < 1 ||
+          filters.limit > MAX_INVENTORY_ITEM_READ_ROWS
+        ) {
+          throw new ValidationError('Inventory item read limit must be between 1 and 10001', {
+            limit: filters.limit
+          });
+        }
+        limitClause = ` LIMIT $${params.length + 1}`;
+        params.push(filters.limit);
+      }
+
       const result = await client.query(
-        'SELECT * FROM inventory_items WHERE account_id = $1 ORDER BY name',
-        [accountId]
+        `SELECT * FROM inventory_items
+         WHERE ${conditions.join(' AND ')}
+         ORDER BY name ASC, id ASC${limitClause}`,
+        params
       );
       return result.rows.map((r: Record<string, unknown>) => this.mapItem(r));
     });
@@ -607,6 +679,60 @@ export class DatabaseInventoryRepository implements InventoryRepository {
         [accountId]
       );
       return result.rows.map((r: Record<string, unknown>) => this.mapStockMovement(r));
+    });
+  }
+
+  async findStockMovementReportRows(
+    accountId: AccountId,
+    filters: InventoryItemListFilters = {}
+  ): Promise<readonly InventoryStockMovementReportSourceRow[]> {
+    if (!this.#stockMovementsEnabled) return [];
+    return withTenantQuery(getPool(), async (client) => {
+      const conditions: string[] = ['movement.account_id = $1'];
+      const params: unknown[] = [accountId];
+
+      if (filters.search?.trim()) {
+        conditions.push(
+          `(item.sku ILIKE $${params.length + 1} ESCAPE E'\\\\' OR item.name ILIKE $${params.length + 1} ESCAPE E'\\\\')`
+        );
+        params.push(`%${escapeIlikePattern(filters.search.trim())}%`);
+      }
+      if (filters.dateFrom) {
+        conditions.push(`movement.created_at >= ($${params.length + 1}::date AT TIME ZONE 'UTC')`);
+        params.push(filters.dateFrom);
+      }
+      if (filters.dateTo) {
+        conditions.push(
+          `movement.created_at < (($${params.length + 1}::date + INTERVAL '1 day') AT TIME ZONE 'UTC')`
+        );
+        params.push(filters.dateTo);
+      }
+
+      const limit = filters.limit ?? MAX_INVENTORY_ITEM_READ_ROWS;
+      if (!Number.isSafeInteger(limit) || limit < 1 || limit > MAX_INVENTORY_ITEM_READ_ROWS) {
+        throw new ValidationError(
+          'Inventory movement report read limit must be between 1 and 10001',
+          { limit }
+        );
+      }
+      const limitClause = ` LIMIT $${params.length + 1}`;
+      params.push(limit);
+
+      const result = await client.query(
+        `SELECT movement.*, item.sku AS item_sku, item.name AS item_name, item.unit AS item_unit
+           FROM inventory_stock_movements AS movement
+           LEFT JOIN inventory_items AS item
+             ON item.account_id = movement.account_id AND item.id = movement.inventory_item_id
+          WHERE ${conditions.join(' AND ')}
+          ORDER BY movement.created_at DESC, movement.id ASC${limitClause}`,
+        params
+      );
+      return result.rows.map((row: Record<string, unknown>) => ({
+        movement: this.mapStockMovement(row),
+        sku: (row.item_sku as string | null) ?? null,
+        name: (row.item_name as string | null) ?? null,
+        unit: (row.item_unit as string | null) ?? null
+      }));
     });
   }
 

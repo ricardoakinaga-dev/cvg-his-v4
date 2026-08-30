@@ -1,6 +1,7 @@
 /**
  * Database failure experiment.
- * Simulates PostgreSQL unavailability by forcing in-memory persistence mode.
+ * Signals PostgreSQL unavailability; the API must fail closed and must not
+ * switch an already database-backed runtime to non-durable persistence.
  */
 import type { Experiment, ExperimentResult, ExperimentStopResult } from '../chaos-engine.js';
 import { chaosFaultInjectedTotal, chaosExperimentActive } from '../metrics.js';
@@ -45,7 +46,7 @@ async function stop(): Promise<ExperimentStopResult> {
 export const databaseFailureExperiment: Experiment = {
   id: DATABASE_FAILURE_ID,
   name: 'Database Failure',
-  description: 'Simulates PostgreSQL unavailability by forcing in-memory mode',
+  description: 'Simulates PostgreSQL unavailability; runtime persistence becomes unavailable',
   start,
   stop
 };

@@ -1,0 +1,69 @@
+{
+  "record_id": "GATE-CVG-003-INPATIENT-STAY-SERVICE-TENANT-BOUNDARY-IR-001",
+  "task": "CVG-003-INPATIENT-STAY-SERVICE-TENANT-BOUNDARY",
+  "gate_id": "IMPLEMENTATION_READY",
+  "decision": "PASS",
+  "timestamp": "2026-08-30T09:47:34-03:00",
+  "scope": "Repository-local AccountId propagation through InpatientService stay operations and authenticated first-party callers",
+  "criteria": [
+    {
+      "id": "IR-001-DIRECT-GAP",
+      "description": "InpatientService identifier-based reads and mutations resolve stays from a multi-tenant in-memory cache through getOrThrow(stayId) without an account predicate, while callers rely on manual pre-checks.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-SCOUT-CVG-003-INPATIENT-STAY-SERVICE-TENANT-BOUNDARY-001",
+        "packages/modules/inpatient/src/index.ts",
+        "apps/api/src/routes/inpatient-routes.ts",
+        "apps/api/src/routes/inventory-routes.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The direct gap is repository-local; route-level checks currently reduce public HTTP exposure and the gate does not assert target RLS or production behavior."
+    },
+    {
+      "id": "IR-002-MINIMAL-FIX",
+      "description": "The authorized correction is limited to required AccountId parameters, account matching/not-found behavior, and first-party caller propagation; payloads, response shapes, persistence and clinical-financial semantics remain unchanged.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-003-INPATIENT-STAY-SERVICE-TENANT-BOUNDARY.md",
+        "packages/modules/inpatient/src/index.ts",
+        "apps/api/src/routes/inpatient-routes.ts",
+        "apps/api/src/routes/discharges-routes.ts",
+        "apps/api/src/routes/inventory-routes.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "No schema, provider, target, production, deployment, release or global ERP action is authorized."
+    },
+    {
+      "id": "IR-003-TEST-FIRST",
+      "description": "Intentional RED unit/module and authenticated route assertions are required before GREEN; a disposable PostgreSQL proof must confirm the account-scoped persisted aggregate remains compatible.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-003-INPATIENT-STAY-SERVICE-TENANT-BOUNDARY.md",
+        "packages/modules/inpatient/src/inpatient.test.ts",
+        "apps/api/src/routes/inpatient-routes.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This implementation-ready gate does not claim that the correction, regression, quality or independent review has passed."
+    },
+    {
+      "id": "IR-004-NO-SCHEMA",
+      "description": "The stay and child clinical tables already contain account_id, tenant constraints/RLS and repository predicates; no migration is expected for an application service-boundary correction.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/inpatient/src/repositories/database-inpatient.repository.ts",
+        "packages/db/src/schema/inpatient.ts",
+        "packages/db/migrations/0073_inpatient_tenant_integrity.sql",
+        "packages/db/migrations/0074_inpatient_reference_hardening.sql"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Target catalog, grants and RLS still require separate operational evidence."
+    }
+  ],
+  "next_gate": "TDD_RED",
+  "implementation_status": "AUTHORIZED",
+  "global_boundary": "CVG-003 and global ERP remain IN_PROGRESS/PARTIAL; promotion BLOCKED."
+}

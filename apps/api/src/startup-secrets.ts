@@ -1,5 +1,13 @@
-import { loadApiConfig, type ApiAppConfig } from '@cvg-his-v2/shared-config';
-import { createSecretsManager, type SecretDescriptor, type SecretsManager } from '@cvg-his-v2/secrets';
+import {
+  loadApiConfig,
+  type ApiAppConfig,
+  validateSetupBootstrapToken
+} from '@cvg-his-v2/shared-config';
+import {
+  createSecretsManager,
+  type SecretDescriptor,
+  type SecretsManager
+} from '@cvg-his-v2/secrets';
 
 export interface ApiStartupResolution {
   readonly config: ApiAppConfig;
@@ -31,7 +39,8 @@ const API_SECRET_PATHS: Readonly<Record<string, string>> = {
   NFSE_CERTIFICATE_BASE64: 'nfse',
   NFSE_ISSUER_JSON: 'nfse',
   SETUP_BOOTSTRAP_TOKEN: 'api_setup',
-  PIX_WEBHOOK_KEYRING_JSON: 'pix_webhook'
+  PIX_WEBHOOK_KEYRING_JSON: 'pix_webhook',
+  LABORATORY_PROVIDER_KEYRING_JSON: 'laboratory_provider'
 };
 
 function isTruthy(value: string | undefined): boolean {
@@ -66,9 +75,9 @@ export function buildApiManagedSecretDescriptors(env: NodeJS.ProcessEnv): Secret
     key,
     path: `${environment}/${pathSuffix}`,
     required:
-      (key === 'AUTH_SECRET' || key === 'DATABASE_URL') && productionLike
-      || (key === 'PIX_WEBHOOK_KEYRING_JSON' && isTruthy(env.PIX_SYNTHETIC_WEBHOOK_ENABLED))
-      || (key === 'MFA_SECRET_ENCRYPTION_KEY' && enableMfa)
+      ((key === 'AUTH_SECRET' || key === 'DATABASE_URL') && productionLike) ||
+      (key === 'PIX_WEBHOOK_KEYRING_JSON' && isTruthy(env.PIX_SYNTHETIC_WEBHOOK_ENABLED)) ||
+      (key === 'MFA_SECRET_ENCRYPTION_KEY' && enableMfa)
   }));
 }
 
@@ -96,9 +105,12 @@ export async function resolveApiEnvironmentWithSecrets(
   return resolvedEnv;
 }
 
-export async function resolveApiStartup(env: NodeJS.ProcessEnv = process.env): Promise<ApiStartupResolution> {
+export async function resolveApiStartup(
+  env: NodeJS.ProcessEnv = process.env
+): Promise<ApiStartupResolution> {
   const secretsManager = await createSecretsManager({
     vaultEnabled: isTruthy(env.VAULT_ENABLED),
+    environment: normalizeVaultEnvironment(env.NODE_ENV),
     vaultUrl: env.VAULT_URL,
     vaultRoleId: env.VAULT_ROLE_ID,
     vaultSecretId: env.VAULT_SECRET_ID,
@@ -106,6 +118,9 @@ export async function resolveApiStartup(env: NodeJS.ProcessEnv = process.env): P
     vaultSecretPathPrefix: env.VAULT_SECRET_PATH_PREFIX
   });
   const resolvedEnv = await resolveApiEnvironmentWithSecrets(env, secretsManager);
+  if (hasConfiguredValue(resolvedEnv.SETUP_BOOTSTRAP_TOKEN)) {
+    validateSetupBootstrapToken(resolvedEnv.SETUP_BOOTSTRAP_TOKEN);
+  }
 
   return {
     config: loadApiConfig(resolvedEnv),
@@ -130,8 +145,8 @@ export function buildSecretRotationStatusReport(input: {
     previousAuthSecretConfigured,
     mfaEncryptionKeyVersion,
     rotationReady:
-      hasConfiguredValue(input.env.AUTH_SECRET)
-      && authSecretVersion !== undefined
-      && (previousAuthSecretConfigured || !isProductionLikeEnvironment(environment))
+      hasConfiguredValue(input.env.AUTH_SECRET) &&
+      authSecretVersion !== undefined &&
+      (previousAuthSecretConfigured || !isProductionLikeEnvironment(environment))
   };
 }

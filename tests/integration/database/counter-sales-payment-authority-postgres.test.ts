@@ -2,15 +2,13 @@ import { randomUUID } from 'node:crypto';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import {
-  createDatabaseClient,
-  getPool
-} from '../../../packages/shared/database/src/index.js';
+import { createDatabaseClient, getPool } from '../../../packages/shared/database/src/index.js';
 import type {
   CounterSaleItemRecord,
   CounterSaleRecord,
   CounterSalePaymentRecord
 } from '../../../packages/modules/counter-sales/src/repositories/database-counter-sales.repository.js';
+import { CounterSalesService } from '../../../packages/modules/counter-sales/src/index.js';
 import { DatabaseCounterSalesRepository } from '../../../packages/modules/counter-sales/src/repositories/database-counter-sales.repository.js';
 import { runWithTenantContext } from '../../../packages/tenant-context/src/index.js';
 import type { AccountId, UserId } from '../../../packages/shared/types/src/index.js';
@@ -160,6 +158,57 @@ describe('counter-sale payment authority on PostgreSQL', () => {
   afterAll(async () => {
     await pool.query('DELETE FROM accounts WHERE id IN ($1, $2)', [ACCOUNT_A, ACCOUNT_B]);
     await pool.query('DELETE FROM tenants WHERE id = $1', [TENANT_ID]);
+  });
+
+  it('reads a bounded cancelled-sales snapshot with SQL period and tenant filters', async () => {
+    const firstInPeriod = await createSale(repository, ACCOUNT_A, USER_A, randomUUID(), 100);
+    const lastMomentInPeriod = await createSale(repository, ACCOUNT_A, USER_A, randomUUID(), 125);
+    const outsidePeriod = await createSale(repository, ACCOUNT_A, USER_A, randomUUID(), 150);
+    const foreignAccount = await createSale(repository, ACCOUNT_B, USER_B, randomUUID(), 175);
+
+    await pool.query(
+      `UPDATE counter_sales
+          SET status = 'cancelled', created_at = $3, updated_at = $4
+        WHERE account_id = $1 AND id = $2`,
+      [ACCOUNT_A, firstInPeriod.sale.id, '2026-05-01T00:00:00.000Z', '2026-05-01T00:01:00.000Z']
+    );
+    await pool.query(
+      `UPDATE counter_sales
+          SET status = 'cancelled', created_at = $3, updated_at = $4
+        WHERE account_id = $1 AND id = $2`,
+      [
+        ACCOUNT_A,
+        lastMomentInPeriod.sale.id,
+        '2026-05-31T23:59:59.999Z',
+        '2026-05-31T23:59:59.999Z'
+      ]
+    );
+    await pool.query(
+      `UPDATE counter_sales
+          SET status = 'cancelled', created_at = $3, updated_at = $4
+        WHERE account_id = $1 AND id = $2`,
+      [ACCOUNT_A, outsidePeriod.sale.id, '2026-06-01T00:00:00.000Z', '2026-06-01T00:00:00.000Z']
+    );
+    await pool.query(
+      `UPDATE counter_sales
+          SET status = 'cancelled', created_at = $3, updated_at = $4
+        WHERE account_id = $1 AND id = $2`,
+      [ACCOUNT_B, foreignAccount.sale.id, '2026-05-15T00:00:00.000Z', '2026-05-15T00:00:00.000Z']
+    );
+
+    const service = new CounterSalesService({ repository });
+    const rows = await asAccount(ACCOUNT_A, () =>
+      service.listPersisted(ACCOUNT_A, {
+        status: 'cancelled',
+        dateFrom: '2026-05-01',
+        dateTo: '2026-05-31'
+      })
+    );
+
+    expect(rows.map((row) => row.id)).toEqual([lastMomentInPeriod.sale.id, firstInPeriod.sale.id]);
+    expect(rows.every((row) => row.accountId === ACCOUNT_A && row.status === 'cancelled')).toBe(
+      true
+    );
   });
 
   it('recomputes total from committed items and rejects the concurrent excess payment', async () => {

@@ -1,0 +1,154 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-SCHEDULE-LEASE-FENCING-VFY-001",
+  "timestamp": "2026-08-29T22:55:40-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "Durable scheduled-report claim-token propagation and fenced schedule finalization",
+  "scope_ref": "CVG-004-REPORT-SCHEDULE-LEASE-FENCING",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "VFY-001",
+      "description": "ReportsService exposes a token-bearing due-schedule claim, preserves the legacy summary wrapper for compatibility, and applies the same opaque-token and expiry guard to the in-memory finalization path.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-schedule-lease-fencing.md",
+        "packages/modules/reports/src/index.ts",
+        "packages/modules/reports/src/reports.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULE-LEASE-FENCING-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULE-LEASE-FENCING-GREEN-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The legacy summary-only wrapper intentionally drops the token; finalization callers must use claimDueSchedulesWithLease. No lease renewal is included."
+    },
+    {
+      "id": "VFY-002",
+      "description": "Database finalization is parameterized and account-scoped, requires schedule id, claim token and an active claim_until, clears claim columns only on the successful fenced update, and reports lease loss without a saveSchedule fallback.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/reports/src/index.ts",
+        "packages/db/migrations/0142_reports_schedule_claims.sql",
+        "tests/integration/database/reports-schedule-lease-fencing-postgres.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULE-LEASE-FENCING-POSTGRES-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The proof is repository-local and disposable-PostgreSQL; target roles, network policy and production topology remain open."
+    },
+    {
+      "id": "VFY-003",
+      "description": "The scheduled-report worker carries the claim token through successful and failed schedule finalization and suppresses stale failed-delivery persistence when finalization loses the lease.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/worker/src/jobs/scheduled-report-job.ts",
+        "apps/worker/src/jobs/scheduled-report-job.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULE-LEASE-FENCING-GREEN-001"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "External provider/export/delivery/audit side effects that occur before schedule finalization are outside this bounded fence."
+    },
+    {
+      "id": "VFY-004",
+      "description": "A real disposable PostgreSQL takeover proof rejects stale-worker finalization while preserving the new claim, then permits the current worker to finalize and clear the claim; the existing delivery persistence contract remains green.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "tests/integration/database/reports-schedule-lease-fencing-postgres.test.ts",
+        "tests/integration/database/reports-delivery-postgres.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULE-LEASE-FENCING-POSTGRES-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The takeover test uses one disposable account and controlled expiry; it is not a multi-process race, clock-topology or deployment certificate."
+    },
+    {
+      "id": "VFY-005",
+      "description": "TDD RED preceded implementation and focused reports/worker tests, worker package regression, compiled API regression, workspace typecheck/build and the production SPA build are green.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULE-LEASE-FENCING-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULE-LEASE-FENCING-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULE-LEASE-FENCING-REGRESSION-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Local regression does not certify remote CI, target operations, external providers, backup/restore or release acceptance."
+    },
+    {
+      "id": "VFY-006",
+      "description": "Official coverage remains above the project threshold and repository quality gates for OpenAPI, migration source-of-truth, RLS, secrets, formatting and diff hygiene are green; the fresh parity audit is recorded without promotion.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULE-LEASE-FENCING-QUALITY-001",
+        ".agent/artifacts/CVG-004-report-schedule-lease-fencing-2026-08-29.md",
+        "coverage/coverage-final.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Coverage and static quality are workspace-local and are not a release certificate."
+    },
+    {
+      "id": "VFY-007",
+      "description": "Independent review findings and the global decision are reconciled transparently: no end-to-end approval or global ERP promotion is inferred, while the frozen local token/finalization contract is closed from direct evidence.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULE-LEASE-FENCING-REVIEW-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULE-LEASE-FENCING-GLOBAL-NON-PROMOTION-001",
+        ".agent/tasks/CVG-004-report-schedule-lease-fencing.md",
+        ".agent/artifacts/CVG-004-report-schedule-lease-fencing-2026-08-29.md"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "The reviewer identified high residual risk around pre-finalization external side effects and medium residual risk around absent renewal; those are explicit follow-up scope, not silently accepted production claims."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-report-schedule-lease-fencing.md",
+    ".agent/artifacts/CVG-004-report-schedule-lease-fencing-2026-08-29.md",
+    ".agent/gates/implementation-ready-CVG-004-report-schedule-lease-fencing.json",
+    ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULE-LEASE-FENCING-IR-001",
+    "packages/modules/reports/src/index.ts",
+    "apps/worker/src/jobs/scheduled-report-job.ts",
+    "apps/worker/src/jobs/scheduled-report-job.test.ts",
+    "packages/modules/reports/src/reports.test.ts",
+    "tests/integration/database/reports-schedule-lease-fencing-postgres.test.ts",
+    "tests/integration/database/reports-delivery-postgres.test.ts",
+    ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULE-LEASE-FENCING-CONTROL-PLANE-001"
+  ],
+  "confidence": "MEDIUM",
+  "gaps": [
+    "Provider/export/delivery/audit or other external side effects may occur before schedule finalization and are not end-to-end lease-fenced by this slice.",
+    "No heartbeat or lease-renewal protocol is included for long-running jobs.",
+    "The PostgreSQL proof is a controlled one-account takeover test, not a real multi-process race or distributed-clock certificate.",
+    "The compatibility summary wrapper drops claim tokens; all finalization callers must migrate to the token-bearing method.",
+    "Target database roles, production deployment, remote CI, backup/restore, retention, accessibility, legal acceptance, complete Vetus parity and global ERP readiness remain open."
+  ],
+  "conditions": [
+    "Use claimDueSchedulesWithLease for every worker/finalizer path and pass its token to recordScheduleExecution.",
+    "Do not reintroduce worker completion through unfenced saveSchedule.",
+    "Preserve existing report payload, delivery and provider semantics; authorize any end-to-end external-side-effect fencing or renewal as a separate slice.",
+    "Keep the parent CVG-004/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+    "Do not infer target, production, deployment or release acceptance from this local gate."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED_REVALIDATED",
+    "actor": "Ricardo (repository owner), via explicit continuation and bounded local reconciliation",
+    "scope": "Repository-local durable scheduled-report claim token, account/schedule/active-lease finalization fence, in-memory equivalent, worker propagation and disposable PostgreSQL takeover proof",
+    "decision": "Authorize bounded closure of the frozen claim/finalization contract. Exclude provider/export/delivery/audit side-effect fencing, heartbeat/renewal, target, production, deployment, backup, release and global ERP promotion.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULE-LEASE-FENCING-IR-001",
+    "expires_or_revalidates": "Revalidate before changing report payload/delivery/provider semantics, adding lease renewal, changing the compatibility API, entering target/production/deployment/release scope or claiming global parity."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_BOUNDED",
+  "implementation_status": "COMPLETE_BOUNDED",
+  "next_action": "Close this bounded task, reconcile the control plane and return to fresh read-only residual scouting under a new implementation-ready authority. Keep parent CVG-004/global ERP IN_PROGRESS/PARTIAL with promotion BLOCKED.",
+  "revalidation_triggers": [
+    "Changing claim token generation, claim expiry, account/schedule ownership or finalization SQL",
+    "Changing worker success/failure delivery ordering or external provider behavior",
+    "Adding lease heartbeat/renewal, distributed clock coordination or multi-process deployment behavior",
+    "Changing report payloads, delivery leases, schedule APIs or ReportsService audit semantics",
+    "Changing target, production, deployment, backup/restore or release boundaries"
+  ],
+  "supersedes": ".agent/gates/implementation-ready-CVG-004-report-schedule-lease-fencing.json"
+}

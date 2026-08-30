@@ -1,0 +1,129 @@
+{
+  "record_id": "GATE-CVG-006-DATABASE-CHAOS-FAIL-CLOSED-VERIFIED-001",
+  "timestamp": "2026-08-27T13:09:16-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "Local database-failure chaos state, fail-closed health/readiness, durable HTTP mutation containment, production-like chaos guard and operational contracts",
+  "scope_ref": "CVG-006-DATABASE-CHAOS-FAIL-CLOSED",
+  "version": 1,
+  "decision": "PASS_BOUNDED",
+  "confidence": "HIGH",
+  "residual_risk": "HIGH",
+  "criteria": [
+    {
+      "id": "VB-001",
+      "description": "An initialized database runtime under database-failure exposes unavailable persistence and does not fall back to in-memory persistence.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/api/src/app-state.ts",
+        "apps/api/src/chaos-operational-state.ts",
+        "tests/unit/api/chaos-operational-state.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-006-DATABASE-CHAOS-FAIL-CLOSED-GREEN-001"
+      ],
+      "limitations": "This proves the local chaos projection only; it does not prove a real database outage, failover or target recovery behavior."
+    },
+    {
+      "id": "VB-002",
+      "description": "Health/readiness/liveness preserve their transport contracts while reporting unavailable persistence and closing readiness.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/api/src/health.ts",
+        "apps/api/src/routes/health-routes.ts",
+        "tests/unit/api/health.test.ts",
+        "tests/unit/api/health-routes-contract.test.ts",
+        "apps/api/src/server.test.ts"
+      ],
+      "limitations": "The compact /health transport remains 200 with ok=false when degraded; /ready and /health/ready are the admission gates and /live is liveness-only."
+    },
+    {
+      "id": "VB-003",
+      "description": "Authenticated tenant mutations and public durable webhook mutations are rejected with a stable 503 before durable handlers can acknowledge work during database-failure.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/api/src/database-chaos-write-guard.ts",
+        "apps/api/src/server.ts",
+        "apps/api/src/server.test.ts",
+        "tests/unit/api/database-chaos-write-guard.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-006-DATABASE-CHAOS-FAIL-CLOSED-GREEN-001"
+      ],
+      "limitations": "The local HTTP proof covers bearer-authenticated application mutation, synthetic PIX and WhatsApp inbound. API-key mutation during the active chaos window is not separately exercised."
+    },
+    {
+      "id": "VB-004",
+      "description": "Production-like HTTP start/stop chaos mutations are disabled before experiment execution, while authenticated listing remains read-only.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/api/src/server.ts",
+        "apps/api/src/server.test.ts",
+        "tests/unit/api/database-chaos-write-guard.test.ts"
+      ],
+      "limitations": "The proof uses local production-like configuration and does not authorize or exercise target production operations."
+    },
+    {
+      "id": "VB-005",
+      "description": "Metrics, OpenAPI, alerts, experiment description and runbooks consistently describe unavailable persistence and fail-closed recovery.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/api/src/metrics.ts",
+        "apps/api/src/openapi.yaml",
+        "infra/observability/prometheus-alerts.yml",
+        "infra/observability/README.md",
+        "packages/chaos/src/experiments/database-failure.ts",
+        "packages/chaos/src/runbooks/database-failure-runbook.md",
+        "docs/game-day/README.md",
+        "tests/unit/infra/database-chaos-fail-closed-contract.test.ts"
+      ],
+      "limitations": "Static and local contract evidence does not replace a target alert delivery or game-day execution."
+    },
+    {
+      "id": "VB-006",
+      "description": "TDD, API regression, workspace regression, coverage, build, lint, typecheck, security and static quality rails pass locally.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/artifacts/CVG-006-database-chaos-fail-closed-2026-08-27.md",
+        ".agent/verification.jsonl#VFY-CVG-006-DATABASE-CHAOS-FAIL-CLOSED-QUALITY-001",
+        ".agent/verification.jsonl#VFY-CVG-006-DATABASE-CHAOS-FAIL-CLOSED-HYGIENE-001"
+      ],
+      "limitations": "Remote CI, target operations, real providers, production and release acceptance remain unverified."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-006-DATABASE-CHAOS-FAIL-CLOSED.md",
+    ".agent/gates/implementation-ready-CVG-006-database-chaos-fail-closed.json",
+    ".agent/authority.jsonl#AUTH-CVG-006-DATABASE-CHAOS-FAIL-CLOSED-IR-001",
+    ".agent/artifacts/CVG-006-database-chaos-fail-closed-2026-08-27.md",
+    ".agent/verification.jsonl#VFY-CVG-006-DATABASE-CHAOS-FAIL-CLOSED-FINAL-001"
+  ],
+  "review": {
+    "status": "CONDITIONAL",
+    "evidence_refs": [
+      ".agent/verification.jsonl#VFY-CVG-006-DATABASE-CHAOS-FAIL-CLOSED-REVIEW-001"
+    ],
+    "summary": "Independent read-only review found no Critical or High issue after the write guard, contract and documentation remediation; the review remains conditional and is not production approval.",
+    "approval": false
+  },
+  "global_status": {
+    "program": "IN_PROGRESS",
+    "verification": "PARTIAL",
+    "vetus_parity": "98/100; 4/11 verified",
+    "clinical_parity": "100/100; 2/3 verified",
+    "enterprise_readiness": "95/100; 42 PASS / 3 WARN / 1 FAIL",
+    "promotion": "BLOCKED"
+  },
+  "conditions": [
+    "Keep database-failure fail-closed: do not acknowledge clinical, financial or durable webhook mutations while persistence is unavailable.",
+    "Keep in-memory mode limited to explicit local bootstrap without a configured database; do not interpret it as outage recovery.",
+    "Obtain separate authority before real database failure injection, target operations, provider credentials, deployment, recovery automation or release acceptance.",
+    "Close the global Vetus, clinical, enterprise-readiness, target, operational and release gates separately; this slice does not promote them."
+  ],
+  "non_claims": [
+    "No real database outage, failover, backup/restore, RTO/RPO or automated recovery evidence",
+    "No target role/RLS, managed Redis, provider, staging, production, remote CI or release evidence",
+    "No global parity or enterprise-readiness approval"
+  ]
+}

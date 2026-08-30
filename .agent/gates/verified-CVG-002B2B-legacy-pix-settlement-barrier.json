@@ -1,0 +1,121 @@
+{
+  "record_id": "GATE-CVG-002B2B-LEGACY-PIX-SETTLEMENT-BARRIER-VERIFIED-001",
+  "timestamp": "2026-08-27T14:24:13-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "Local fail-closed barrier for legacy payment.pix.confirmed settlement",
+  "scope_ref": "CVG-002B2B-LEGACY-PIX-SETTLEMENT-BARRIER",
+  "version": 1,
+  "decision": "PASS_BOUNDED",
+  "confidence": "HIGH",
+  "residual_risk": "HIGH",
+  "criteria": [
+    {
+      "id": "VB-001",
+      "description": "An unknown legacy PIX confirmation fails before creating or updating a transaction and cannot fabricate an amount-zero placeholder.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/event-consumers/src/payments.consumer.ts",
+        "apps/api/src/consumers/payments.consumer.test.ts",
+        "tests/integration/database/worker-event-consumers-postgres.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-LEGACY-PIX-SETTLEMENT-BARRIER-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-LEGACY-PIX-SETTLEMENT-BARRIER-POSTGRES-001"
+      ],
+      "limitations": "The proof is local and disposable; it does not certify provider or target behavior."
+    },
+    {
+      "id": "VB-002",
+      "description": "An attempt-linked transaction is rejected before mutation so B2 settlement remains owned by pix.payment.confirmed.v1 and the B1 core.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/event-consumers/src/payments.consumer.ts",
+        "apps/api/src/consumers/payments.consumer.test.ts",
+        "tests/integration/database/worker-event-consumers-postgres.test.ts",
+        "tests/integration/database/pix-provider-settlement-consumer.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-LEGACY-PIX-SETTLEMENT-BARRIER-POSTGRES-001"
+      ],
+      "limitations": "All B1 failpoints and independent live-worker crash/recovery scenarios remain outside this slice."
+    },
+    {
+      "id": "VB-003",
+      "description": "Event, payload, transaction and billing account invariants plus currency and exact amount are checked before status update or financial settlement.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/event-consumers/src/payments.consumer.ts",
+        "apps/api/src/consumers/payments.consumer.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-LEGACY-PIX-SETTLEMENT-BARRIER-REVIEW-REMEDIATION-001"
+      ],
+      "limitations": "This covers the shared legacy consumer boundary; it does not replace database/provider reconciliation."
+    },
+    {
+      "id": "VB-004",
+      "description": "A valid authoritative no-attempt legacy confirmation continues to settle, while the no-billing compatibility path remains a non-financial settlement.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/api/src/consumers/payments.consumer.test.ts",
+        "packages/modules/event-consumers/src/payments.consumer.ts",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-LEGACY-PIX-SETTLEMENT-BARRIER-GREEN-001"
+      ],
+      "limitations": "Provider-backed refunds, chargebacks, bank settlement and broader financial reconciliation remain open."
+    },
+    {
+      "id": "VB-005",
+      "description": "Invalid legacy events propagate through the event bus so retry/DLQ semantics are preserved instead of turning invalid input into success.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/worker/src/consumer-composition.ts",
+        "packages/modules/event-consumers/src/payments.consumer.ts",
+        "tests/integration/database/worker-event-consumers-postgres.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-LEGACY-PIX-SETTLEMENT-BARRIER-POSTGRES-001"
+      ],
+      "limitations": "The disposable worker proof does not certify all production retry, SIGKILL, observability or deployment topologies."
+    },
+    {
+      "id": "VB-006",
+      "description": "The focused consumer is wired into the official API package test command and the full local quality rails pass after the bounded change.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/api/package.json",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-LEGACY-PIX-SETTLEMENT-BARRIER-REVIEW-REMEDIATION-001",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-LEGACY-PIX-SETTLEMENT-BARRIER-QUALITY-001"
+      ],
+      "limitations": "The unrelated consumer-registry test remains outside the API script because broad inclusion exposes a pre-existing fixture mismatch; that adjacent issue is not changed by this slice."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-002B2B-LEGACY-PIX-SETTLEMENT-BARRIER.md",
+    ".agent/gates/implementation-ready-CVG-002B2B-legacy-pix-settlement-barrier.json",
+    ".agent/artifacts/CVG-002B2B-legacy-pix-settlement-barrier-2026-08-27.md",
+    "packages/modules/event-consumers/src/payments.consumer.ts",
+    "apps/api/src/consumers/payments.consumer.test.ts",
+    "tests/integration/database/worker-event-consumers-postgres.test.ts"
+  ],
+  "review": {
+    "status": "CONDITIONAL_REVIEW_CLEARED",
+    "evidence_refs": [
+      ".agent/verification.jsonl#VFY-CVG-002B2B-LEGACY-PIX-SETTLEMENT-BARRIER-REVIEW-001",
+      ".agent/verification.jsonl#VFY-CVG-002B2B-LEGACY-PIX-SETTLEMENT-BARRIER-REVIEW-REMEDIATION-001"
+    ],
+    "summary": "Independent read-only review found no Critical, High or Medium functional finding. The only low-level condition was that the focused payment-consumer test was not part of the official API command; the script now builds the shared module and executes that test, followed by API 428/428."
+  },
+  "global_status": {
+    "state": "OPEN",
+    "promotion": "BLOCKED",
+    "vetus_parity": "98/100; 4/11 verified; NOT VERIFIED",
+    "clinical_parity": "100/100; 2/3 verified; NOT VERIFIED",
+    "enterprise_readiness": "95/100; 42 PASS / 3 WARN / 1 FAIL"
+  },
+  "conditions": [
+    "Keep the legacy consumer and valid no-attempt compatibility path; do not change pix.payment.confirmed.v1 or the B1 settlement primitive without fresh authority.",
+    "Keep CVG-002B2B, the parent CVG-002 and the global ERP program IN_PROGRESS/PARTIAL until provider, target, distributed worker, parity, operations and release evidence exists."
+  ],
+  "non_claims": [
+    "No provider, credential, target, staging, production, deploy, commit, push or external mutation was performed.",
+    "This bounded gate is not production approval, complete ERP delivery, Vetus parity approval or release approval."
+  ]
+}

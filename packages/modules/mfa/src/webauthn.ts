@@ -13,6 +13,8 @@ import { randomBytes } from 'node:crypto';
 
 export interface WebAuthnCredential {
   id: string;
+  accountId: string;
+  userId: string;
   publicKey: string;
   counter: number;
   deviceType: 'platform' | 'cross-platform';
@@ -81,15 +83,111 @@ export function generateWebAuthnChallenge(): string {
   return base64URLEncode(randomBytes(32));
 }
 
+export type WebAuthnChallengePurpose = 'registration' | 'authentication';
+
+export interface WebAuthnChallengeKey {
+  readonly accountId: string;
+  readonly userId: string;
+  readonly purpose: WebAuthnChallengePurpose;
+}
+
+export interface IssueWebAuthnChallengeInput {
+  readonly key: WebAuthnChallengeKey;
+  readonly challenge: string;
+  readonly ttlMs: number;
+}
+
+export type WebAuthnChallengeConsumeResult =
+  | { readonly ok: true; readonly challenge: string }
+  | {
+      readonly ok: false;
+      readonly code: 'INVALID_CHALLENGE' | 'CHALLENGE_EXPIRED';
+      readonly message: string;
+    };
+
+/** Shared durable boundary for single-use registration and assertion challenges. */
+export interface WebAuthnChallengeStore {
+  issue(input: IssueWebAuthnChallengeInput): Promise<void>;
+  consume(key: WebAuthnChallengeKey): Promise<WebAuthnChallengeConsumeResult>;
+}
+
+function assertChallengeTtl(ttlMs: number): void {
+  if (!Number.isSafeInteger(ttlMs) || ttlMs <= 0) {
+    throw new Error('WebAuthn challenge TTL must be a positive integer number of milliseconds');
+  }
+}
+
+function challengeKey(key: WebAuthnChallengeKey): string {
+  return JSON.stringify([key.accountId, key.userId, key.purpose]);
+}
+
+interface InMemoryWebAuthnChallengeValue {
+  readonly challenge: string;
+  readonly expiresAt: number;
+}
+
+/** Explicit local/test double; production-like runtimes must use a database store. */
+export class InMemoryWebAuthnChallengeStore implements WebAuthnChallengeStore {
+  readonly #store = new Map<string, InMemoryWebAuthnChallengeValue>();
+
+  async issue(input: IssueWebAuthnChallengeInput): Promise<void> {
+    assertChallengeTtl(input.ttlMs);
+    if (!input.challenge) {
+      throw new Error('WebAuthn challenge must not be empty');
+    }
+
+    this.#store.set(challengeKey(input.key), {
+      challenge: input.challenge,
+      expiresAt: Date.now() + input.ttlMs
+    });
+  }
+
+  async consume(key: WebAuthnChallengeKey): Promise<WebAuthnChallengeConsumeResult> {
+    const stored = this.#store.get(challengeKey(key));
+    if (!stored) {
+      return {
+        ok: false,
+        code: 'INVALID_CHALLENGE',
+        message: 'No pending WebAuthn challenge'
+      };
+    }
+
+    this.#store.delete(challengeKey(key));
+    if (stored.expiresAt <= Date.now()) {
+      return {
+        ok: false,
+        code: 'CHALLENGE_EXPIRED',
+        message: 'WebAuthn challenge has expired'
+      };
+    }
+
+    return { ok: true, challenge: stored.challenge };
+  }
+}
+
 /**
  * WebAuthn Relying Party credentials storage interface.
  */
 export interface WebAuthnRepository {
-  findByUserId(userId: string): Promise<WebAuthnCredential[]>;
-  findByCredentialId(credentialId: string): Promise<WebAuthnCredential | null>;
-  save(userId: string, credential: Omit<WebAuthnCredential, 'id'>): Promise<string>;
-  updateCounter(credentialId: string, counter: number): Promise<void>;
-  delete(credentialId: string): Promise<void>;
+  findByUserId(accountId: string, userId: string): Promise<WebAuthnCredential[]>;
+  findByCredentialId(
+    accountId: string,
+    userId: string,
+    credentialId: string
+  ): Promise<WebAuthnCredential | null>;
+  save(
+    accountId: string,
+    userId: string,
+    credential: Omit<WebAuthnCredential, 'id' | 'accountId' | 'userId'>
+  ): Promise<string>;
+  updateCounter(
+    accountId: string,
+    userId: string,
+    credentialId: string,
+    expectedCounter: number,
+    counter: number
+  ): Promise<boolean>;
+  delete(accountId: string, userId: string, credentialId: string): Promise<void>;
 }
 
 /**
@@ -97,41 +195,62 @@ export interface WebAuthnRepository {
  * Replace with DatabaseWebAuthnRepository in production.
  */
 export class InMemoryWebAuthnRepository implements WebAuthnRepository {
-  private store = new Map<string, WebAuthnCredential>();
+  readonly #store = new Map<string, WebAuthnCredential>();
 
-  async findByUserId(userId: string): Promise<WebAuthnCredential[]> {
-    const results: WebAuthnCredential[] = [];
-    for (const cred of this.store.values()) {
-      if (cred.publicKey.startsWith(`user:${userId}:`)) {
-        results.push(cred);
-      }
-    }
-    return results;
+  async findByUserId(accountId: string, userId: string): Promise<WebAuthnCredential[]> {
+    return [...this.#store.values()].filter(
+      (credential) => credential.accountId === accountId && credential.userId === userId
+    );
   }
 
-  async findByCredentialId(credentialId: string): Promise<WebAuthnCredential | null> {
-    return this.store.get(credentialId) ?? null;
+  async findByCredentialId(
+    accountId: string,
+    userId: string,
+    credentialId: string
+  ): Promise<WebAuthnCredential | null> {
+    const credential = this.#store.get(credentialId);
+    return credential?.accountId === accountId && credential.userId === userId ? credential : null;
   }
 
   async save(
+    accountId: string,
     userId: string,
-    data: Omit<WebAuthnCredential, 'id'>
+    data: Omit<WebAuthnCredential, 'id' | 'accountId' | 'userId'>
   ): Promise<string> {
     const id = `webauthn_${Date.now().toString(36)}_${randomBytes(8).toString('hex')}`;
-    this.store.set(id, { id, ...data });
+    this.#store.set(id, { id, accountId, userId, ...data });
     return id;
   }
 
-  async updateCounter(credentialId: string, counter: number): Promise<void> {
-    const cred = this.store.get(credentialId);
-    if (cred) {
-      cred.counter = counter;
-      cred.lastUsedAt = new Date().toISOString();
+  async updateCounter(
+    accountId: string,
+    userId: string,
+    credentialId: string,
+    expectedCounter: number,
+    counter: number
+  ): Promise<boolean> {
+    const credential = this.#store.get(credentialId);
+    if (
+      credential?.accountId === accountId &&
+      credential.userId === userId &&
+      credential.counter === expectedCounter &&
+      counter > expectedCounter
+    ) {
+      this.#store.set(credentialId, {
+        ...credential,
+        counter,
+        lastUsedAt: new Date().toISOString()
+      });
+      return true;
     }
+    return false;
   }
 
-  async delete(credentialId: string): Promise<void> {
-    this.store.delete(credentialId);
+  async delete(accountId: string, userId: string, credentialId: string): Promise<void> {
+    const credential = this.#store.get(credentialId);
+    if (credential?.accountId === accountId && credential.userId === userId) {
+      this.#store.delete(credentialId);
+    }
   }
 }
 
@@ -143,7 +262,11 @@ export interface WebAuthnService {
    * Generate registration options (PublicKeyCredentialCreationOptions).
    * Call this and send the encoded options to the client.
    */
-  generateRegistrationOptions(userId: string, options: WebAuthnRegistrationOptions): Promise<{
+  generateRegistrationOptions(
+    accountId: string,
+    userId: string,
+    options: WebAuthnRegistrationOptions
+  ): Promise<{
     publicKeyOptions: Record<string, unknown>;
     challenge: string;
   }>;
@@ -153,6 +276,7 @@ export interface WebAuthnService {
    * Store the credential on success.
    */
   verifyRegistration(
+    accountId: string,
     userId: string,
     response: { credentialId: string; attestationObject: string; clientDataJSON: string },
     expectedChallenge: string
@@ -162,6 +286,7 @@ export interface WebAuthnService {
    * Generate authentication options (PublicKeyCredentialRequestOptions).
    */
   generateAuthenticationOptions(
+    accountId: string,
     userId: string,
     options: WebAuthnAssertionOptions
   ): Promise<{ publicKeyOptions: Record<string, unknown>; challenge: string }>;
@@ -170,8 +295,15 @@ export interface WebAuthnService {
    * Verify authentication assertion from client.
    */
   verifyAuthentication(
+    accountId: string,
+    userId: string,
     credentialId: string,
-    response: { authenticatorData: string; clientDataJSON: string; signature: string; userHandle?: string },
+    response: {
+      authenticatorData: string;
+      clientDataJSON: string;
+      signature: string;
+      userHandle?: string;
+    },
     expectedChallenge: string,
     expectedRpId: string
   ): Promise<{ success: boolean; newCounter?: number }>;
@@ -183,18 +315,23 @@ export interface WebAuthnService {
  * NOTE: This is a foundational implementation. Production use requires:
  * 1. A proper FIDO2 attestation verifier (e.g., @simplewebauthn/server)
  * 2. Credential ID stored as binary (not base64url string)
- * 3. Persistent storage for public key bytes and sign counter
+ * 3. Credential public key bytes and sign counter validation
  * 4. Real-time signature verification using stored credential public key
+ *
+ * The durable credential/challenge repositories in this slice do not remove
+ * the need for that verifier. Production-like runtimes therefore keep this
+ * feature disabled until the verifier is supplied.
  */
 export class WebAuthnServiceImpl implements WebAuthnService {
   constructor(private readonly repository: WebAuthnRepository) {}
 
   async generateRegistrationOptions(
+    accountId: string,
     userId: string,
     options: WebAuthnRegistrationOptions
   ): Promise<{ publicKeyOptions: Record<string, unknown>; challenge: string }> {
     const challenge = generateWebAuthnChallenge();
-    const credentialProps = await this.repository.findByUserId(userId);
+    const credentialProps = await this.repository.findByUserId(accountId, userId);
 
     const pubKeyOptions: Record<string, unknown> = {
       challenge: base64URLEncode(new TextEncoder().encode(challenge)),
@@ -208,11 +345,11 @@ export class WebAuthnServiceImpl implements WebAuthnService {
         displayName: options.userName
       },
       pubKeyCredParams: [
-        { type: 'public-key', alg: -7 },   // ES256
-        { type: 'public-key', alg: -257 }  // RS256
+        { type: 'public-key', alg: -7 }, // ES256
+        { type: 'public-key', alg: -257 } // RS256
       ],
       timeout: options.timeout ?? 60000,
-      excludeCredentials: credentialProps.map(c => ({
+      excludeCredentials: credentialProps.map((c) => ({
         id: c.id,
         type: 'public-key' as const
       })),
@@ -235,13 +372,14 @@ export class WebAuthnServiceImpl implements WebAuthnService {
   }
 
   async verifyRegistration(
+    accountId: string,
     userId: string,
     response: { credentialId: string; attestationObject: string; clientDataJSON: string },
     _expectedChallenge: string
   ): Promise<{ credentialId: string }> {
     // In production: parse attestation object, verify signature chain,
     // store credential ID and public key. This requires a full FIDO2 verifier.
-    const credentialId = await this.repository.save(userId, {
+    const credentialId = await this.repository.save(accountId, userId, {
       publicKey: `user:${userId}:${response.credentialId}`,
       counter: 0,
       deviceType: 'cross-platform',
@@ -253,10 +391,12 @@ export class WebAuthnServiceImpl implements WebAuthnService {
   }
 
   async generateAuthenticationOptions(
-    _userId: string,
+    accountId: string,
+    userId: string,
     options: WebAuthnAssertionOptions
   ): Promise<{ publicKeyOptions: Record<string, unknown>; challenge: string }> {
     const challenge = generateWebAuthnChallenge();
+    const credentials = await this.repository.findByUserId(accountId, userId);
 
     const pubKeyOptions: Record<string, unknown> = {
       challenge: base64URLEncode(new TextEncoder().encode(challenge)),
@@ -268,16 +408,30 @@ export class WebAuthnServiceImpl implements WebAuthnService {
       }
     };
 
+    if (credentials.length > 0) {
+      pubKeyOptions.allowCredentials = credentials.map((credential) => ({
+        id: credential.id,
+        type: 'public-key' as const
+      }));
+    }
+
     return { publicKeyOptions: pubKeyOptions, challenge };
   }
 
   async verifyAuthentication(
+    accountId: string,
+    userId: string,
     credentialId: string,
-    _response: { authenticatorData: string; clientDataJSON: string; signature: string; userHandle?: string },
+    _response: {
+      authenticatorData: string;
+      clientDataJSON: string;
+      signature: string;
+      userHandle?: string;
+    },
     _expectedChallenge: string,
     _expectedRpId: string
   ): Promise<{ success: boolean; newCounter?: number }> {
-    const cred = await this.repository.findByCredentialId(credentialId);
+    const cred = await this.repository.findByCredentialId(accountId, userId, credentialId);
     if (!cred) {
       return { success: false };
     }
@@ -286,7 +440,19 @@ export class WebAuthnServiceImpl implements WebAuthnService {
     // and check that authenticator counter > stored counter
 
     const newCounter = cred.counter + 1;
-    await this.repository.updateCounter(credentialId, newCounter);
+    if (!Number.isSafeInteger(newCounter)) {
+      return { success: false };
+    }
+    const counterUpdated = await this.repository.updateCounter(
+      accountId,
+      userId,
+      credentialId,
+      cred.counter,
+      newCounter
+    );
+    if (!counterUpdated) {
+      return { success: false };
+    }
 
     return { success: true, newCounter };
   }

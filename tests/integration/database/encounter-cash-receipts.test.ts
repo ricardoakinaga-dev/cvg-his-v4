@@ -285,7 +285,8 @@ describe('encounter cash receipt migration and constraints', () => {
     const uniqueSql = uniqueConstraints.rows.map((row) => row.definition).join('\n');
     const foreignKeySql = foreignKeys.rows.map((row) => row.definition).join('\n');
 
-    expect(uniqueSql).toContain('(account_id, encounter_id)');
+    expect(uniqueSql).toContain('(account_id, id)');
+    expect(uniqueSql).not.toContain('(account_id, encounter_id)');
     expect(uniqueSql).toContain('(receivable_payment_id)');
     expect(uniqueSql).toContain('(cash_movement_id)');
     expect(uniqueSql).toContain('(journal_entry_id)');
@@ -304,6 +305,14 @@ describe('encounter cash receipt migration and constraints', () => {
     expect(foreignKeySql).toContain(
       'FOREIGN KEY (account_id, journal_entry_id) REFERENCES financial_journal_entries(account_id, id)'
     );
+
+    const activeEncounterIndex = await queryOne<{ definition: string }>(
+      `SELECT pg_get_indexdef(indexrelid) AS definition
+         FROM pg_index
+        WHERE indrelid = 'encounter_cash_receipts'::regclass
+          AND indexrelid::regclass::text = 'idx_encounter_cash_receipts_account_encounter'`
+    );
+    expect(activeEncounterIndex?.definition).toContain('(account_id, encounter_id)');
   });
 
   it('adds an explicit abort guard before enforcing one open cash register per account', () => {

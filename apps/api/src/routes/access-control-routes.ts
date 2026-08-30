@@ -5,11 +5,19 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { URL } from 'node:url';
 
-import type { AccessControlService } from '@cvg-his-v2/module-access-control';
-import type { AuditService } from '@cvg-his-v2/module-audit';
+import type { AccessControlService, ResourceAttributes } from '@cvg-his-v2/module-access-control';
+import {
+  decodeAuditCursor,
+  encodeAuditCursor,
+  paginateAuditEvents,
+  type AuditListPage,
+  type AuditListPageQuery,
+  type AuditService
+} from '@cvg-his-v2/module-audit';
 import type { UsersService } from '@cvg-his-v2/module-users';
-import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
-import { AuthenticationError, ValidationError } from '@cvg-his-v2/shared-errors';
+import type { JsonValue } from '@cvg-his-v2/shared-database';
+import type { AccountId, AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
+import { AppError, AuthenticationError, ValidationError } from '@cvg-his-v2/shared-errors';
 import {
   requireBoolean,
   requireEnum,
@@ -17,20 +25,34 @@ import {
   requireStringArray
 } from '@cvg-his-v2/shared-validation';
 
-import { appendAudit } from '../helpers/audit-helper.js';
+import { appendAuditAndWait } from '../helpers/audit-helper.js';
 import { readJsonBody } from '../helpers/common.js';
+import type { TenantCommandInput, TenantCommandRunner } from '../helpers/tenant-command.js';
 
 export interface AccessControlRoutesHandlers {
   accessControl: AccessControlService;
   users: UsersService;
   audit: AuditService;
-  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
+  requirePrincipal: (
+    request: IncomingMessage,
+    permissionCode: string
+  ) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
+  enforceAbac: (
+    actionCode: string,
+    principal: AuthenticatedPrincipal,
+    resource: ResourceAttributes,
+    request: IncomingMessage
+  ) => void;
+  runCommand?: TenantCommandRunner;
+  beginAccessControlMutation?: (accountId: AccountId) => void;
+  refreshAccessControl?: (accountId: AccountId) => Promise<void>;
 }
 
 const SUBJECT_TYPES = ['user', 'team', 'sector'] as const;
 const ASSIGNMENT_EFFECTS = ['allow', 'deny', 'inherit'] as const;
 const MAX_ACCESS_FIELD_LENGTH = 255;
 const MAX_ACCESS_MEMBERSHIPS = 100;
+const MAX_AUDIT_FILTER_VALUES = 20;
 
 type AccessSubjectType = (typeof SUBJECT_TYPES)[number];
 type AssignmentEffect = (typeof ASSIGNMENT_EFFECTS)[number];
@@ -42,7 +64,11 @@ function requireObjectPayload(payload: unknown): Record<string, unknown> {
   return payload as Record<string, unknown>;
 }
 
-function requireBoundedString(value: unknown, field: string, maxLength = MAX_ACCESS_FIELD_LENGTH): string {
+function requireBoundedString(
+  value: unknown,
+  field: string,
+  maxLength = MAX_ACCESS_FIELD_LENGTH
+): string {
   const resolved = requireNonEmptyString(value, field);
   if (resolved.length > maxLength) {
     throw new ValidationError(`Field ${field} must have at most ${maxLength} characters`);
@@ -62,9 +88,35 @@ function requireNullableBoundedString(
 function requireBoundedStringArray(value: unknown, field: string): readonly string[] {
   const values = requireStringArray(value, field);
   if (values.length > MAX_ACCESS_MEMBERSHIPS) {
-    throw new ValidationError(`Field ${field} cannot contain more than ${MAX_ACCESS_MEMBERSHIPS} items`);
+    throw new ValidationError(
+      `Field ${field} cannot contain more than ${MAX_ACCESS_MEMBERSHIPS} items`
+    );
   }
-  return [...new Set(values)];
+  return [
+    ...new Set(values.map((item, index) => requireBoundedString(item, `${field}[${index}]`)))
+  ];
+}
+
+function normalizeAuditFilter(value: string | null, field: string): string | undefined {
+  const normalized = (value ?? '').trim();
+  return normalized ? requireBoundedString(normalized, field).toLowerCase() : undefined;
+}
+
+function enforceAuditEventsAbac(
+  enforceAbac: AccessControlRoutesHandlers['enforceAbac'],
+  principal: AuthenticatedPrincipal,
+  request: IncomingMessage
+): void {
+  enforceAbac(
+    'audit.read',
+    principal,
+    {
+      resourceType: 'audit_entry',
+      resourceId: 'events',
+      accountId: principal.user.accountId
+    },
+    request
+  );
 }
 
 function parseEntityCreatePayload(payload: unknown): {
@@ -101,7 +153,7 @@ function parseSubjectType(value: unknown): AccessSubjectType {
   return requireEnum(value, 'subjectType', SUBJECT_TYPES);
 }
 
-function appendAccessMutationAudit(
+async function appendAccessMutationAudit(
   audit: AuditService,
   principal: AuthenticatedPrincipal,
   action: string,
@@ -109,8 +161,8 @@ function appendAccessMutationAudit(
   entityId: string,
   payloadSummary: string,
   correlationId: string
-): void {
-  appendAudit(audit, {
+): Promise<void> {
+  await appendAuditAndWait(audit, {
     actorId: principal.user.id,
     accountId: principal.user.accountId,
     module: 'access-control',
@@ -150,7 +202,9 @@ function assertSectorForCurrentAccount(
   sectorId: string,
   principal: AuthenticatedPrincipal
 ) {
-  if (!accessControl.listSectors(principal.user.accountId).some((sector) => sector.id === sectorId)) {
+  if (
+    !accessControl.listSectors(principal.user.accountId).some((sector) => sector.id === sectorId)
+  ) {
     throw new AuthenticationError('Access sector not found for current account');
   }
 }
@@ -185,12 +239,38 @@ export async function handleAccessControlRoutes(
   correlationId: string,
   handlers: AccessControlRoutesHandlers
 ): Promise<boolean> {
-  const { accessControl, users, audit, requirePrincipal: rp } = handlers;
+  const { accessControl, users, audit, requirePrincipal: rp, enforceAbac } = handlers;
+  const runCommand =
+    handlers.runCommand ??
+    (async <T>(input: TenantCommandInput<T>): Promise<T> => {
+      let result: T;
+      try {
+        result = await input.command();
+      } catch (error) {
+        await input.onRollback?.();
+        throw error;
+      }
+      await input.onCommit?.();
+      return result;
+    });
+  const runAccessMutation = async <T>(input: TenantCommandInput<T>): Promise<T> => {
+    const refresh = handlers.refreshAccessControl
+      ? () => handlers.refreshAccessControl!(input.accountId as AccountId)
+      : undefined;
+    if (refresh && handlers.beginAccessControlMutation) {
+      handlers.beginAccessControlMutation(input.accountId as AccountId);
+    }
+    return runCommand({
+      ...input,
+      onRollback: refresh,
+      onCommit: refresh
+    });
+  };
 
   // GET /access-control — full access control state
   if (pathname === '/access-control' && request.method === 'GET') {
-    const principal = rp(request, 'access.read');
-    appendAudit(audit, {
+    const principal = await rp(request, 'access.read');
+    await appendAuditAndWait(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
       module: 'access-control',
@@ -232,13 +312,19 @@ export async function handleAccessControlRoutes(
         assignments: {
           userPermissions: accessControl
             .listAssignments()
-            .userPermissions.filter((assignment) => assignment.accountId === principal.user.accountId),
+            .userPermissions.filter(
+              (assignment) => assignment.accountId === principal.user.accountId
+            ),
           teamPermissions: accessControl
             .listAssignments()
-            .teamPermissions.filter((assignment) => assignment.accountId === principal.user.accountId),
+            .teamPermissions.filter(
+              (assignment) => assignment.accountId === principal.user.accountId
+            ),
           sectorPermissions: accessControl
             .listAssignments()
-            .sectorPermissions.filter((assignment) => assignment.accountId === principal.user.accountId)
+            .sectorPermissions.filter(
+              (assignment) => assignment.accountId === principal.user.accountId
+            )
         },
         legacyRoles: users
           .list()
@@ -254,9 +340,9 @@ export async function handleAccessControlRoutes(
 
   // GET /access-control/module-permission-matrix — RBAC/ABAC coverage by module, action and subject override
   if (pathname === '/access-control/module-permission-matrix' && request.method === 'GET') {
-    const principal = rp(request, 'access.read');
+    const principal = await rp(request, 'access.read');
     const items = accessControl.getModulePermissionMatrix(principal.user.accountId);
-    appendAudit(audit, {
+    await appendAuditAndWait(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
       module: 'access-control',
@@ -280,9 +366,9 @@ export async function handleAccessControlRoutes(
 
   // GET /access-control/teams
   if (pathname === '/access-control/teams' && request.method === 'GET') {
-    const principal = rp(request, 'access.read');
+    const principal = await rp(request, 'access.read');
     const items = accessControl.listTeams(principal.user.accountId);
-    appendAccessMutationAudit(
+    await appendAccessMutationAudit(
       audit,
       principal,
       'teams_read',
@@ -298,18 +384,29 @@ export async function handleAccessControlRoutes(
 
   // POST /access-control/teams
   if (pathname === '/access-control/teams' && request.method === 'POST') {
-    const principal = rp(request, 'users.manage');
+    const principal = await rp(request, 'users.manage');
     const payload = parseEntityCreatePayload(await readJsonBody(request));
-    const team = await accessControl.createTeam(principal.user.accountId, payload);
-    appendAccessMutationAudit(
-      audit,
-      principal,
-      'team_created',
-      'access-team',
-      team.id,
-      `Access team created code=${team.code}`,
-      correlationId
-    );
+    const team = await runAccessMutation({
+      request,
+      accountId: principal.user.accountId,
+      actorUserId: principal.user.id,
+      correlationId,
+      operation: 'access-control.team-create',
+      payload: payload as unknown as JsonValue,
+      command: async () => {
+        const created = await accessControl.createTeam(principal.user.accountId, payload);
+        await appendAccessMutationAudit(
+          audit,
+          principal,
+          'team_created',
+          'access-team',
+          created.id,
+          `Access team created code=${created.code}`,
+          correlationId
+        );
+        return created;
+      }
+    });
     response.statusCode = 201;
     response.end(JSON.stringify(team));
     return true;
@@ -317,20 +414,34 @@ export async function handleAccessControlRoutes(
 
   // PATCH /access-control/teams/:teamId
   if (pathname.startsWith('/access-control/teams/') && request.method === 'PATCH') {
-    const principal = rp(request, 'users.manage');
+    const principal = await rp(request, 'users.manage');
     const teamId = requireNonEmptyString(pathname.split('/')[3], 'teamId');
     assertTeamForCurrentAccount(accessControl, teamId, principal);
     const payload = parseEntityPatchPayload(await readJsonBody(request));
-    const team = await accessControl.updateTeam(teamId as never, payload);
-    appendAccessMutationAudit(
-      audit,
-      principal,
-      'team_updated',
-      'access-team',
-      team.id,
-      `Access team updated code=${team.code} status=${team.status}`,
-      correlationId
-    );
+    const team = await runAccessMutation({
+      request,
+      accountId: principal.user.accountId,
+      actorUserId: principal.user.id,
+      correlationId,
+      operation: 'access-control.team-update',
+      payload: {
+        teamId,
+        ...(payload as unknown as Record<string, unknown>)
+      } as unknown as JsonValue,
+      command: async () => {
+        const updated = await accessControl.updateTeam(teamId as never, payload);
+        await appendAccessMutationAudit(
+          audit,
+          principal,
+          'team_updated',
+          'access-team',
+          updated.id,
+          `Access team updated code=${updated.code} status=${updated.status}`,
+          correlationId
+        );
+        return updated;
+      }
+    });
     response.statusCode = 200;
     response.end(JSON.stringify(team));
     return true;
@@ -338,9 +449,9 @@ export async function handleAccessControlRoutes(
 
   // GET /access-control/org-sectors
   if (pathname === '/access-control/org-sectors' && request.method === 'GET') {
-    const principal = rp(request, 'access.read');
+    const principal = await rp(request, 'access.read');
     const items = accessControl.listSectors(principal.user.accountId);
-    appendAccessMutationAudit(
+    await appendAccessMutationAudit(
       audit,
       principal,
       'sectors_read',
@@ -356,18 +467,29 @@ export async function handleAccessControlRoutes(
 
   // POST /access-control/org-sectors
   if (pathname === '/access-control/org-sectors' && request.method === 'POST') {
-    const principal = rp(request, 'users.manage');
+    const principal = await rp(request, 'users.manage');
     const payload = parseEntityCreatePayload(await readJsonBody(request));
-    const sector = await accessControl.createSector(principal.user.accountId, payload);
-    appendAccessMutationAudit(
-      audit,
-      principal,
-      'sector_created',
-      'access-sector',
-      sector.id,
-      `Access sector created code=${sector.code}`,
-      correlationId
-    );
+    const sector = await runAccessMutation({
+      request,
+      accountId: principal.user.accountId,
+      actorUserId: principal.user.id,
+      correlationId,
+      operation: 'access-control.sector-create',
+      payload: payload as unknown as JsonValue,
+      command: async () => {
+        const created = await accessControl.createSector(principal.user.accountId, payload);
+        await appendAccessMutationAudit(
+          audit,
+          principal,
+          'sector_created',
+          'access-sector',
+          created.id,
+          `Access sector created code=${created.code}`,
+          correlationId
+        );
+        return created;
+      }
+    });
     response.statusCode = 201;
     response.end(JSON.stringify(sector));
     return true;
@@ -375,20 +497,34 @@ export async function handleAccessControlRoutes(
 
   // PATCH /access-control/org-sectors/:sectorId
   if (pathname.startsWith('/access-control/org-sectors/') && request.method === 'PATCH') {
-    const principal = rp(request, 'users.manage');
+    const principal = await rp(request, 'users.manage');
     const sectorId = requireNonEmptyString(pathname.split('/')[3], 'sectorId');
     assertSectorForCurrentAccount(accessControl, sectorId, principal);
     const payload = parseEntityPatchPayload(await readJsonBody(request));
-    const sector = await accessControl.updateSector(sectorId as never, payload);
-    appendAccessMutationAudit(
-      audit,
-      principal,
-      'sector_updated',
-      'access-sector',
-      sector.id,
-      `Access sector updated code=${sector.code} status=${sector.status}`,
-      correlationId
-    );
+    const sector = await runAccessMutation({
+      request,
+      accountId: principal.user.accountId,
+      actorUserId: principal.user.id,
+      correlationId,
+      operation: 'access-control.sector-update',
+      payload: {
+        sectorId,
+        ...(payload as unknown as Record<string, unknown>)
+      } as unknown as JsonValue,
+      command: async () => {
+        const updated = await accessControl.updateSector(sectorId as never, payload);
+        await appendAccessMutationAudit(
+          audit,
+          principal,
+          'sector_updated',
+          'access-sector',
+          updated.id,
+          `Access sector updated code=${updated.code} status=${updated.status}`,
+          correlationId
+        );
+        return updated;
+      }
+    });
     response.statusCode = 200;
     response.end(JSON.stringify(sector));
     return true;
@@ -400,24 +536,35 @@ export async function handleAccessControlRoutes(
     pathname.endsWith('/teams') &&
     request.method === 'POST'
   ) {
-    const principal = rp(request, 'users.manage');
+    const principal = await rp(request, 'users.manage');
     const userId = requireNonEmptyString(pathname.split('/')[3], 'userId');
     getUserForCurrentAccount(users, userId, principal);
     const body = requireObjectPayload(await readJsonBody(request));
-    const teamIds = body.teamIds === undefined ? [] : requireBoundedStringArray(body.teamIds, 'teamIds');
+    const teamIds =
+      body.teamIds === undefined ? [] : requireBoundedStringArray(body.teamIds, 'teamIds');
     for (const teamId of teamIds) {
       assertTeamForCurrentAccount(accessControl, teamId, principal);
     }
-    await accessControl.replaceUserTeams(userId as never, teamIds as never);
-    appendAccessMutationAudit(
-      audit,
-      principal,
-      'user_teams_replaced',
-      'user-access-membership',
-      userId,
-      `User teams replaced count=${teamIds.length}`,
-      correlationId
-    );
+    await runAccessMutation({
+      request,
+      accountId: principal.user.accountId,
+      actorUserId: principal.user.id,
+      correlationId,
+      operation: 'access-control.user-teams-replace',
+      payload: { userId, teamIds } as unknown as JsonValue,
+      command: async () => {
+        await accessControl.replaceUserTeams(userId as never, teamIds as never);
+        await appendAccessMutationAudit(
+          audit,
+          principal,
+          'user_teams_replaced',
+          'user-access-membership',
+          userId,
+          `User teams replaced count=${teamIds.length}`,
+          correlationId
+        );
+      }
+    });
     response.statusCode = 200;
     response.end(JSON.stringify({ ok: true }));
     return true;
@@ -429,24 +576,35 @@ export async function handleAccessControlRoutes(
     pathname.endsWith('/sectors') &&
     request.method === 'POST'
   ) {
-    const principal = rp(request, 'users.manage');
+    const principal = await rp(request, 'users.manage');
     const userId = requireNonEmptyString(pathname.split('/')[3], 'userId');
     getUserForCurrentAccount(users, userId, principal);
     const body = requireObjectPayload(await readJsonBody(request));
-    const sectorIds = body.sectorIds === undefined ? [] : requireBoundedStringArray(body.sectorIds, 'sectorIds');
+    const sectorIds =
+      body.sectorIds === undefined ? [] : requireBoundedStringArray(body.sectorIds, 'sectorIds');
     for (const sectorId of sectorIds) {
       assertSectorForCurrentAccount(accessControl, sectorId, principal);
     }
-    await accessControl.replaceUserSectors(userId as never, sectorIds as never);
-    appendAccessMutationAudit(
-      audit,
-      principal,
-      'user_sectors_replaced',
-      'user-access-membership',
-      userId,
-      `User sectors replaced count=${sectorIds.length}`,
-      correlationId
-    );
+    await runAccessMutation({
+      request,
+      accountId: principal.user.accountId,
+      actorUserId: principal.user.id,
+      correlationId,
+      operation: 'access-control.user-sectors-replace',
+      payload: { userId, sectorIds } as unknown as JsonValue,
+      command: async () => {
+        await accessControl.replaceUserSectors(userId as never, sectorIds as never);
+        await appendAccessMutationAudit(
+          audit,
+          principal,
+          'user_sectors_replaced',
+          'user-access-membership',
+          userId,
+          `User sectors replaced count=${sectorIds.length}`,
+          correlationId
+        );
+      }
+    });
     response.statusCode = 200;
     response.end(JSON.stringify({ ok: true }));
     return true;
@@ -458,27 +616,38 @@ export async function handleAccessControlRoutes(
     pathname.endsWith('/roles') &&
     request.method === 'POST'
   ) {
-    const principal = rp(request, 'users.manage');
+    const principal = await rp(request, 'users.manage');
     const userId = requireNonEmptyString(pathname.split('/')[3], 'userId');
     getUserForCurrentAccount(users, userId, principal);
     const body = requireObjectPayload(await readJsonBody(request));
-    const roleCodes = body.roleCodes === undefined ? [] : requireBoundedStringArray(body.roleCodes, 'roleCodes');
+    const roleCodes =
+      body.roleCodes === undefined ? [] : requireBoundedStringArray(body.roleCodes, 'roleCodes');
     const knownRoleCodes = new Set(accessControl.listRoles().map((role) => role.code));
     for (const roleCode of roleCodes) {
       if (!knownRoleCodes.has(roleCode)) {
         throw new ValidationError(`Unknown role code: ${roleCode}`);
       }
     }
-    await accessControl.replaceLegacyRoles(userId as never, roleCodes);
-    appendAccessMutationAudit(
-      audit,
-      principal,
-      'user_roles_replaced',
-      'user-access-role',
-      userId,
-      `User legacy roles replaced count=${roleCodes.length}`,
-      correlationId
-    );
+    await runAccessMutation({
+      request,
+      accountId: principal.user.accountId,
+      actorUserId: principal.user.id,
+      correlationId,
+      operation: 'access-control.user-roles-replace',
+      payload: { userId, roleCodes } as unknown as JsonValue,
+      command: async () => {
+        await accessControl.replaceLegacyRoles(userId as never, roleCodes);
+        await appendAccessMutationAudit(
+          audit,
+          principal,
+          'user_roles_replaced',
+          'user-access-role',
+          userId,
+          `User legacy roles replaced count=${roleCodes.length}`,
+          correlationId
+        );
+      }
+    });
     response.statusCode = 200;
     response.end(JSON.stringify({ ok: true }));
     return true;
@@ -490,10 +659,10 @@ export async function handleAccessControlRoutes(
     pathname.endsWith('/effective') &&
     request.method === 'GET'
   ) {
-    const principal = rp(request, 'access.read');
+    const principal = await rp(request, 'access.read');
     const userId = requireNonEmptyString(pathname.split('/')[3], 'userId');
     const targetUser = getUserForCurrentAccount(users, userId, principal);
-    appendAccessMutationAudit(
+    await appendAccessMutationAudit(
       audit,
       principal,
       'user_effective_permissions_read',
@@ -519,7 +688,7 @@ export async function handleAccessControlRoutes(
 
   // POST /access-control/grants
   if (pathname === '/access-control/grants' && request.method === 'POST') {
-    const principal = rp(request, 'users.manage');
+    const principal = await rp(request, 'users.manage');
     const body = requireObjectPayload(await readJsonBody(request));
     const subjectType = parseSubjectType(body.subjectType);
     const subjectId = requireBoundedString(body.subjectId, 'subjectId', 128);
@@ -529,23 +698,38 @@ export async function handleAccessControlRoutes(
         ? 'inherit'
         : requireEnum(body.effect, 'effect', ASSIGNMENT_EFFECTS);
     assertPermissionExists(accessControl, permissionCode);
-    assertGrantSubjectForCurrentAccount(accessControl, users, { subjectType, subjectId }, principal);
-    await accessControl.setPermissionAssignment({
-      accountId: principal.user.accountId,
-      subjectType,
-      subjectId,
-      permissionCode,
-      effect
-    });
-    appendAccessMutationAudit(
-      audit,
-      principal,
-      effect === 'inherit' ? 'permission_inherited' : 'permission_granted',
-      'access-permission-assignment',
-      subjectId,
-      `Permission assignment changed permission=${permissionCode} subjectType=${subjectType} effect=${effect}`,
-      correlationId
+    assertGrantSubjectForCurrentAccount(
+      accessControl,
+      users,
+      { subjectType, subjectId },
+      principal
     );
+    await runAccessMutation({
+      request,
+      accountId: principal.user.accountId,
+      actorUserId: principal.user.id,
+      correlationId,
+      operation: 'access-control.permission-assignment',
+      payload: { subjectType, subjectId, permissionCode, effect },
+      command: async () => {
+        await accessControl.setPermissionAssignment({
+          accountId: principal.user.accountId,
+          subjectType,
+          subjectId,
+          permissionCode,
+          effect
+        });
+        await appendAccessMutationAudit(
+          audit,
+          principal,
+          effect === 'inherit' ? 'permission_inherited' : 'permission_granted',
+          'access-permission-assignment',
+          subjectId,
+          `Permission assignment changed permission=${permissionCode} subjectType=${subjectType} effect=${effect}`,
+          correlationId
+        );
+      }
+    });
     response.statusCode = 200;
     response.end(JSON.stringify({ ok: true }));
     return true;
@@ -553,9 +737,19 @@ export async function handleAccessControlRoutes(
 
   // GET /audit/events
   if (pathname === '/audit/operational-coverage' && request.method === 'GET') {
-    const principal = rp(request, 'audit.read');
-    const report = audit.getOperationalCoverageReport(principal.user.accountId);
-    appendAudit(audit, {
+    const principal = await rp(request, 'audit.read');
+    enforceAuditEventsAbac(enforceAbac, principal, request);
+    let report: Awaited<ReturnType<AuditService['getOperationalCoverageReport']>>;
+    try {
+      report = await audit.getOperationalCoverageReport(principal.user.accountId);
+    } catch {
+      throw new AppError(
+        'AUDIT_COVERAGE_UNAVAILABLE',
+        'Operational audit coverage is temporarily unavailable',
+        503
+      );
+    }
+    await appendAuditAndWait(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
       module: 'audit',
@@ -573,36 +767,89 @@ export async function handleAccessControlRoutes(
 
   // GET /audit/events
   if (pathname === '/audit/events' && request.method === 'GET') {
-    const principal = rp(request, 'audit.read');
+    const principal = await rp(request, 'audit.read');
+    enforceAuditEventsAbac(enforceAbac, principal, request);
     const url = new URL(request.url ?? pathname, 'http://localhost');
-    const moduleFilter = (url.searchParams.get('module') ?? '').trim().toLowerCase();
-    const entityFilter = (url.searchParams.get('entity') ?? '').trim().toLowerCase();
-    const correlationFilter = (url.searchParams.get('correlationId') ?? '').trim().toLowerCase();
-    const queryFilter = (url.searchParams.get('q') ?? '').trim().toLowerCase();
-    const entityTypes = url.searchParams.getAll('entityType').map((value) => value.trim().toLowerCase()).filter(Boolean);
-    const limit = Math.max(1, Math.min(200, Number.parseInt(url.searchParams.get('limit') ?? '100', 10) || 100));
-    const items = audit
-      .list()
-      .filter((event) => event.accountId === principal.user.accountId)
-      .filter((event) => !moduleFilter || event.module.toLowerCase().includes(moduleFilter))
-      .filter((event) => !entityFilter || [event.entityType, event.entityId, event.payloadSummary].some((value) => String(value ?? '').toLowerCase().includes(entityFilter)))
-      .filter((event) => !correlationFilter || event.correlationId.toLowerCase().includes(correlationFilter))
-      .filter((event) => entityTypes.length === 0 || entityTypes.includes(event.entityType.toLowerCase()))
-      .filter((event) => !queryFilter || [event.module, event.action, event.actorId, event.entityType, event.entityId, event.correlationId, event.payloadSummary].some((value) => String(value ?? '').toLowerCase().includes(queryFilter)))
-      .slice(0, limit);
-    appendAudit(audit, {
+    const moduleFilter = normalizeAuditFilter(url.searchParams.get('module'), 'module');
+    const entityFilter = normalizeAuditFilter(url.searchParams.get('entity'), 'entity');
+    const correlationFilter = normalizeAuditFilter(
+      url.searchParams.get('correlationId'),
+      'correlationId'
+    );
+    const queryFilter = normalizeAuditFilter(url.searchParams.get('q'), 'q');
+    const rawEntityTypes = url.searchParams.getAll('entityType');
+    if (rawEntityTypes.length > MAX_AUDIT_FILTER_VALUES) {
+      throw new ValidationError(
+        `Field entityType cannot contain more than ${MAX_AUDIT_FILTER_VALUES} items`
+      );
+    }
+    const entityTypes = [
+      ...new Set(
+        rawEntityTypes
+          .map((value, index) => {
+            const normalized = value.trim();
+            return normalized
+              ? requireBoundedString(normalized, `entityType[${index}]`).toLowerCase()
+              : undefined;
+          })
+          .filter((value): value is string => Boolean(value))
+      )
+    ];
+    const limit = Math.max(
+      1,
+      Math.min(200, Number.parseInt(url.searchParams.get('limit') ?? '100', 10) || 100)
+    );
+    const cursorValue = url.searchParams.get('cursor');
+    let cursor;
+    if (cursorValue) {
+      try {
+        cursor = decodeAuditCursor(cursorValue);
+      } catch {
+        throw new ValidationError('Invalid audit cursor');
+      }
+    }
+    const query: AuditListPageQuery = {
+      accountId: principal.user.accountId,
+      ...(cursor ? { cursor } : {}),
+      filters: {
+        module: moduleFilter || undefined,
+        entity: entityFilter || undefined,
+        correlationId: correlationFilter || undefined,
+        query: queryFilter || undefined,
+        entityTypes
+      },
+      limit
+    };
+    let page: AuditListPage;
+    if (typeof audit.listPage === 'function') {
+      page = await audit.listPage(query);
+    } else {
+      const fallback = paginateAuditEvents(audit.list(), query);
+      const lastItem = fallback.items.at(-1);
+      page =
+        fallback.hasMore && lastItem
+          ? {
+              items: fallback.items,
+              nextCursor: encodeAuditCursor({
+                occurredAt: lastItem.occurredAt,
+                eventId: lastItem.eventId
+              })
+            }
+          : { items: fallback.items };
+    }
+    await appendAuditAndWait(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
       module: 'audit',
       action: 'read',
       entityType: 'audit-event',
       entityId: 'all',
-      payloadSummary: `Audit events inspected module=${moduleFilter || '-'} entity=${entityFilter || '-'} correlation=${correlationFilter || '-'} q=${queryFilter || '-'} limit=${limit}`,
+      payloadSummary: `Audit events inspected module=${moduleFilter || '-'} entity=${entityFilter || '-'} correlation=${correlationFilter || '-'} q=${queryFilter || '-'} limit=${limit} cursor=${cursor ? 'yes' : 'no'}`,
       riskLevel: 'high',
       correlationId
     });
     response.statusCode = 200;
-    response.end(JSON.stringify({ items }));
+    response.end(JSON.stringify(page));
     return true;
   }
 

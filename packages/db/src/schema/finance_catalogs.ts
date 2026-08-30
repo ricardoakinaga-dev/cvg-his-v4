@@ -1,4 +1,15 @@
-import { index, pgTable, primaryKey, text, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import {
+  check,
+  foreignKey,
+  index,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+  uuid,
+  varchar
+} from 'drizzle-orm/pg-core';
 
 import { accounts } from './accounts.js';
 
@@ -18,7 +29,11 @@ export const financeCostCenters = pgTable(
   },
   (table) => ({
     pk: primaryKey({ columns: [table.accountId, table.code], name: 'finance_cost_centers_pk' }),
-    accountNameIdx: index('idx_finance_cost_centers_account_name').on(table.accountId, table.name)
+    accountNameIdx: index('idx_finance_cost_centers_account_name').on(table.accountId, table.name),
+    kindCheck: check(
+      'finance_cost_centers_kind_chk',
+      sql`${table.kind} IN ('Operacional', 'Administrativo')`
+    )
   })
 );
 
@@ -40,8 +55,24 @@ export const financeExpenseCatalogItems = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
   },
   (table) => ({
-    accountNameIdx: index('idx_finance_expense_catalog_items_account_name').on(table.accountId, table.name),
-    accountCategoryIdx: index('idx_finance_expense_catalog_items_account_category').on(table.accountId, table.category),
-    accountCostCenterIdx: index('idx_finance_expense_catalog_items_account_cost_center').on(table.accountId, table.costCenterCode)
+    accountNameIdx: index('idx_finance_expense_catalog_items_account_name').on(
+      table.accountId,
+      table.name
+    ),
+    accountCategoryIdx: index('idx_finance_expense_catalog_items_account_category').on(
+      table.accountId,
+      table.category
+    ),
+    accountCostCenterIdx: index('idx_finance_expense_catalog_items_account_cost_center').on(
+      table.accountId,
+      table.costCenterCode
+    ),
+    costCenterFk: foreignKey({
+      name: 'finance_expense_catalog_items_cost_center_fk',
+      columns: [table.accountId, table.costCenterCode],
+      foreignColumns: [financeCostCenters.accountId, financeCostCenters.code]
+    })
+      .onUpdate('cascade')
+      .onDelete('restrict')
   })
 );

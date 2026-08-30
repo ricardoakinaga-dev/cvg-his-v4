@@ -1,0 +1,89 @@
+{
+  "record_id": "GATE-CVG-003-OUTBOX-ADMIN-PAYLOAD-REDACTION-IR-001",
+  "timestamp": "2026-08-29T12:06:13-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-003 bounded HTTP redaction of raw outbox payloads in administrative detail and correlation responses",
+  "scope_ref": "CVG-003-OUTBOX-ADMIN-PAYLOAD-REDACTION",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "Detail and correlation routes currently serialize the raw internal OutboxEvent payload, while list routes already use metadata-only summaries.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-003-OUTBOX-ADMIN-PAYLOAD-REDACTION.md",
+        ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-TENANT-ISOLATION-REVIEW-002",
+        "apps/api/src/routes/internal-events-routes.ts",
+        "packages/modules/event-bus/src/outbox.interface.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The finding is limited to the authenticated internal event HTTP responses; it does not claim that all logs, audits, callbacks or exports are redacted."
+    },
+    {
+      "id": "IR-002",
+      "description": "The authorized correction is limited to a metadata-only HTTP response view that omits payload, with unchanged internal OutboxEvent, workers, repositories, storage, permissions and response metadata.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/authority.jsonl#AUTH-CVG-003-OUTBOX-ADMIN-PAYLOAD-REDACTION-IR-001",
+        ".agent/tasks/CVG-003-OUTBOX-ADMIN-PAYLOAD-REDACTION.md",
+        "apps/api/src/routes/internal-events-routes.ts",
+        "apps/api/src/openapi.yaml"
+      ],
+      "confidence": "HIGH",
+      "limitations": "No domain-specific payload allowlist, storage/retention change, audit policy, replay authorization change, ABAC redesign or external operation is authorized."
+    },
+    {
+      "id": "IR-003",
+      "description": "Intentional RED route and OpenAPI assertions must be added and run before implementation; GREEN must prove secret omission while preserving metadata and internal event behavior.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-003-OUTBOX-ADMIN-PAYLOAD-REDACTION.md",
+        "apps/api/src/routes/internal-events-routes.test.ts",
+        "apps/api/src/openapi.yaml"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The implementation-ready gate does not claim RED, GREEN, coverage, independent review, target behavior or release readiness."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-003-OUTBOX-ADMIN-PAYLOAD-REDACTION.md",
+    ".agent/authority.jsonl#AUTH-CVG-003-OUTBOX-ADMIN-PAYLOAD-REDACTION-IR-001",
+    ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-TENANT-ISOLATION-REVIEW-002",
+    "apps/api/src/routes/internal-events-routes.ts",
+    "apps/api/src/routes/internal-events-routes.test.ts",
+    "apps/api/src/openapi.yaml"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "Intentional RED and implementation are pending.",
+    "Independent security/correctness review and full regressions are pending.",
+    "Global parity/readiness, target, provider, operations and release evidence remain open."
+  ],
+  "conditions": [
+    "Preserve the existing internal OutboxEvent shape for workers and service/repository callers.",
+    "Omit payload at the HTTP response boundary and keep metadata fields stable.",
+    "Do not change payload storage, audit retention, replay authorization, ABAC, worker claims, migrations, target, providers, credentials, production, deployment or release behavior."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via explicit continuation of the consolidation request",
+    "scope": "CVG-003 bounded HTTP redaction of raw outbox payloads in administrative detail and correlation responses",
+    "decision": "Authorize reversible route/test/OpenAPI response-contract correction only; exclude internal storage and processing changes, payload policy redesign, replay authorization, ABAC, target, providers, credentials, production, deployment and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-003-OUTBOX-ADMIN-PAYLOAD-REDACTION-IR-001",
+    "expires_or_revalidates": "Revalidate before adding payload allowlists, exports, storage changes, audit redaction, replay policy or any broader event response surface."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "implementation_status": "READY",
+  "next_action": "Write and execute intentional RED assertions for secret omission on detail and correlation responses, then implement the smallest HTTP-boundary redaction.",
+  "revalidation_triggers": [
+    "New event administration response or payload export",
+    "Changes to OutboxEvent serialization, worker processing, audit/logging, replay authorization or ABAC policy",
+    "Expansion to migrations, providers, credentials, target, production, deployment or release scope"
+  ],
+  "supersedes": null
+}

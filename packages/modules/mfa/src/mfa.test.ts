@@ -42,7 +42,8 @@ class InMemoryMfaRepository implements MfaRepository {
       existing.isActive ||
       !existing.setupExpiresAt ||
       new Date(existing.setupExpiresAt).getTime() <= new Date(activatedAt).getTime()
-    ) return undefined;
+    )
+      return undefined;
     const activated = {
       ...existing,
       isActive: true as const,
@@ -275,11 +276,7 @@ describe('MfaService', () => {
       nowMs += 10 * 60 * 1000 + 1;
 
       await expect(
-        service.confirmSetup(
-          ACCOUNT_ID,
-          'user_123',
-          generateCurrentTOTP(setup.secret, nowMs)
-        )
+        service.confirmSetup(ACCOUNT_ID, 'user_123', generateCurrentTOTP(setup.secret, nowMs))
       ).rejects.toThrow('No pending MFA setup found');
       await expect(service.isMfaActive(ACCOUNT_ID, 'user_123')).resolves.toBe(false);
     });
@@ -380,7 +377,7 @@ describe('MfaService', () => {
 
     it('does not reuse a login TOTP to disable the active factor', async () => {
       const setup = await service.initiateSetup(ACCOUNT_ID, 'user_123', 'user@example.com');
-      const token = generateCurrentTOTP(setup.secret);
+      const token = generateCurrentTOTP(setup.secret, nowMs);
       await service.confirmSetup(ACCOUNT_ID, 'user_123', token);
       nowMs += 30_000;
       const nextToken = generateCurrentTOTP(setup.secret, nowMs);
@@ -420,30 +417,19 @@ describe('MfaService', () => {
       const original = repo.records.get(key);
       expect(original).toBeDefined();
       repo.beforeConsume = () => {
-        repo.records.set(
-          key,
-          {
-            ...original!,
-            credentialId: '00000000-0000-4000-8000-000000000002',
-            lastTotpCounter: undefined
-          }
-        );
+        repo.records.set(key, {
+          ...original!,
+          credentialId: '00000000-0000-4000-8000-000000000002',
+          lastTotpCounter: undefined
+        });
       };
 
       await expect(service.verifyLogin(ACCOUNT_ID, 'user_123', token)).resolves.toBe(false);
     });
 
     it('does not let a pending replacement secret bypass an active factor', async () => {
-      const activeSetup = await service.initiateSetup(
-        ACCOUNT_ID,
-        'user_123',
-        'user@example.com'
-      );
-      await service.confirmSetup(
-        ACCOUNT_ID,
-        'user_123',
-        generateCurrentTOTP(activeSetup.secret)
-      );
+      const activeSetup = await service.initiateSetup(ACCOUNT_ID, 'user_123', 'user@example.com');
+      await service.confirmSetup(ACCOUNT_ID, 'user_123', generateCurrentTOTP(activeSetup.secret));
       await expect(
         service.initiateSetup(ACCOUNT_ID, 'user_123', 'user@example.com')
       ).rejects.toThrow('MFA is already active');
@@ -504,11 +490,7 @@ describe('MfaService', () => {
       await service.confirmSetup(ACCOUNT_ID, 'user_123', token);
       nowMs += 30_000;
 
-      await service.verifyLogin(
-        ACCOUNT_ID,
-        'user_123',
-        generateCurrentTOTP(setup.secret, nowMs)
-      );
+      await service.verifyLogin(ACCOUNT_ID, 'user_123', generateCurrentTOTP(setup.secret, nowMs));
 
       const record = await repo.findByUserId(ACCOUNT_ID, 'user_123');
       expect(record?.lastUsedAt).toBeDefined();
@@ -565,11 +547,7 @@ describe('MfaService', () => {
       await service.confirmSetup(ACCOUNT_ID, 'user_123', token);
       nowMs += 30_000;
 
-      await service.disableMfa(
-        ACCOUNT_ID,
-        'user_123',
-        generateCurrentTOTP(setup.secret, nowMs)
-      );
+      await service.disableMfa(ACCOUNT_ID, 'user_123', generateCurrentTOTP(setup.secret, nowMs));
 
       const record = await repo.findByUserId(ACCOUNT_ID, 'user_123');
       expect(record).toBeUndefined();

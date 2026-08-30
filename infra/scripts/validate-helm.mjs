@@ -8,6 +8,11 @@ import YAML from 'yaml';
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const chartDir = path.join(rootDir, 'infra', 'helm', 'cvg-his-v2');
 const baseValues = path.join(chartDir, 'values.yaml');
+export const REQUIRED_HELM_VERSION = 'v3.15.4';
+const REQUIRED_HELM_VERSION_PATTERN = /^v3\.15\.4(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/;
+
+export const isRequiredHelmVersion = (version) => REQUIRED_HELM_VERSION_PATTERN.test(version);
+const helmExecutable = process.env.HELM_BIN || 'helm';
 
 const environments = [
   {
@@ -37,21 +42,21 @@ const environments = [
 ];
 
 function runHelm(args) {
-  return execFileSync('helm', args, {
+  return execFileSync(helmExecutable, args, {
     cwd: rootDir,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe']
   });
 }
 
-function hasHelm() {
-  const result = spawnSync('helm', ['version', '--short'], {
+function getHelmVersion() {
+  const result = spawnSync(helmExecutable, ['version', '--short'], {
     cwd: rootDir,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe']
   });
 
-  return result.status === 0;
+  return result.status === 0 ? result.stdout.trim() : null;
 }
 
 function readYamlFile(filePath) {
@@ -150,6 +155,13 @@ function validateStaticChart() {
       workerDeploymentTemplate.includes('optional: false'),
     'Production-like worker must load WORKER_ACCOUNT_IDS from a required Secret key'
   );
+  assert(
+    workerDeploymentTemplate.includes('name: WORKER_REPORTS_USER_ID') &&
+      workerDeploymentTemplate.includes('worker.reportsUser.secretKey') &&
+      workerDeploymentTemplate.includes('worker.reportsUser.existingSecret') &&
+      workerDeploymentTemplate.includes('optional: false'),
+    'Production-like worker must load WORKER_REPORTS_USER_ID from a required Secret key'
+  );
 
   for (const environment of environments) {
     const values = readYamlFile(environment.values);
@@ -214,12 +226,28 @@ function assert(condition, message) {
   }
 }
 
-if (!hasHelm()) {
-  validateStaticChart();
+const helmVersion = getHelmVersion();
+const requireExecutableHelm = process.env.REQUIRE_HELM === '1';
+
+validateStaticChart();
+
+if (!helmVersion) {
+  if (requireExecutableHelm) {
+    throw new Error(
+      'Helm executable is required for this validation (expected ' + REQUIRED_HELM_VERSION + ')'
+    );
+  }
+
   console.log(
     'Helm binary not found; static Helm chart validation passed for dev, staging, and prod.'
   );
   process.exit(0);
+}
+
+if (requireExecutableHelm && !isRequiredHelmVersion(helmVersion)) {
+  throw new Error(
+    'Helm ' + REQUIRED_HELM_VERSION + ' is required for this validation; found ' + helmVersion
+  );
 }
 
 for (const environment of environments) {
@@ -311,6 +339,9 @@ for (const environment of environments) {
   const workerAccountIdsEnv = workerContainer.env?.find(
     (entry) => entry.name === 'WORKER_ACCOUNT_IDS'
   );
+  const workerReportsUserEnv = workerContainer.env?.find(
+    (entry) => entry.name === 'WORKER_REPORTS_USER_ID'
+  );
   if (environment.name === 'dev') {
     assert(
       !workerAccountIdsEnv,
@@ -332,6 +363,22 @@ for (const environment of environments) {
     assert(
       workerAccountIdsEnv.valueFrom.secretKeyRef.optional === false,
       `${environment.name}: worker account Secret reference must be required`
+    );
+    assert(
+      workerReportsUserEnv?.valueFrom?.secretKeyRef?.name,
+      `${environment.name}: worker must load WORKER_REPORTS_USER_ID from a Secret`
+    );
+    assert(
+      workerReportsUserEnv.valueFrom.secretKeyRef.name === values.worker.reportsUser.existingSecret,
+      `${environment.name}: worker report actor Secret must match values.worker.reportsUser.existingSecret`
+    );
+    assert(
+      workerReportsUserEnv.valueFrom.secretKeyRef.key === values.worker.reportsUser.secretKey,
+      `${environment.name}: worker report actor Secret key must match values.worker.reportsUser.secretKey`
+    );
+    assert(
+      workerReportsUserEnv.valueFrom.secretKeyRef.optional === false,
+      `${environment.name}: worker report actor Secret reference must be required`
     );
   }
 

@@ -1,0 +1,149 @@
+{
+  "record_id": "GATE-CVG-003-OUTBOX-ADMIN-ABAC-INSPECTION-VFY-001",
+  "timestamp": "2026-08-29T13:12:00-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-003 bounded ABAC enforcement on five read-only internal outbox inspection routes",
+  "scope_ref": "CVG-003-OUTBOX-ADMIN-ABAC-INSPECTION",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "VFY-001",
+      "description": "DLQ, stats, pending, detail and by-correlation reads invoke the existing audit.read ABAC callback with audit_entry/resource/account context before EventBus access, and denial fails closed.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/api/src/routes/internal-events-routes.ts",
+        "apps/api/src/routes/internal-events-routes.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-ABAC-INSPECTION-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-ABAC-INSPECTION-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-ABAC-INSPECTION-COVERAGE-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This certifies only the five mapped read-only route branches; it does not certify other audit or replay surfaces."
+    },
+    {
+      "id": "VFY-002",
+      "description": "The existing abac-006 policy is bounded to audit_entry/audit.read, denies non-auditor/admin roles and explicitly permits auditor/admin roles without broadening other policy families.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/access-control/src/abac.ts",
+        "packages/modules/access-control/src/access-control.test.ts",
+        ".agent/authority.jsonl#AUTH-CVG-003-OUTBOX-ADMIN-ABAC-INSPECTION-HARDENING-001",
+        ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-ABAC-INSPECTION-HARDENING-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-ABAC-INSPECTION-HARDENING-GREEN-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The permit correction is limited to abac-006; systemic policy completeness and post-revocation replay behavior remain open."
+    },
+    {
+      "id": "VFY-003",
+      "description": "Server wiring supplies the existing enforceAbac implementation, and an authenticated admin inspection remains allowed after the policy correction while tenant scope and metadata-only responses remain preserved.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/api/src/server.ts",
+        "apps/api/src/server.test.ts",
+        "apps/api/src/routes/internal-events-routes.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-ABAC-INSPECTION-INTEGRATION-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-ABAC-INSPECTION-INTEGRATION-GREEN-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The authenticated integration assertion covers the admin allow path; broader identity-provider, target and deployed-ingress behavior is not certified."
+    },
+    {
+      "id": "VFY-004",
+      "description": "Final local quality evidence passes on the current tree: API 485/485, access-control 38/38, formal typechecks, OpenAPI, RLS, secrets, formatting and diff hygiene.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-ABAC-INSPECTION-QUALITY-001",
+        ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-ABAC-INSPECTION-CONTROL-PLANE-001",
+        ".agent/artifacts/CVG-003-outbox-admin-abac-inspection-2026-08-29.md",
+        "coverage/coverage-final.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The official coverage percentages are the retained workspace baseline; local quality evidence does not replace remote CI or external homologation."
+    },
+    {
+      "id": "VFY-005",
+      "description": "Independent security and integration reviews approve the bounded slice with no P0, P1 or P2 findings; remaining P3 follow-ups are either closed by route coverage or kept outside the frozen scope.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-ABAC-INSPECTION-REVIEW-001",
+        ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-ABAC-INSPECTION-REVIEW-002"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Review approval is bounded to the selected route/policy contract; HTTP redrive authorization and systemic ABAC remain separate follow-ups."
+    },
+    {
+      "id": "VFY-006",
+      "description": "Fresh global audits confirm non-promotion after this slice: Vetus parity remains 4/11 verified, clinical parity 2/3 verified, readiness 95/100 with 42 PASS, 3 WARN and 1 FAIL, and promotion remains blocked.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-ABAC-INSPECTION-GLOBAL-RETEST-001",
+        ".agent/state.json",
+        ".agent/backlog.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This is a global status check, not evidence of complete ERP/Vetus parity, external-provider homologation, target readiness or release acceptance."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-003-OUTBOX-ADMIN-ABAC-INSPECTION.md",
+    ".agent/artifacts/CVG-003-outbox-admin-abac-inspection-2026-08-29.md",
+    ".agent/gates/implementation-ready-CVG-003-outbox-admin-abac-inspection.json",
+    ".agent/authority.jsonl#AUTH-CVG-003-OUTBOX-ADMIN-ABAC-INSPECTION-IR-001",
+    ".agent/authority.jsonl#AUTH-CVG-003-OUTBOX-ADMIN-ABAC-INSPECTION-HARDENING-001",
+    ".agent/verification.jsonl#VFY-SCOUT-CVG-003-OUTBOX-ADMIN-ABAC-INSPECTION-001",
+    ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-ABAC-INSPECTION-RED-001",
+    ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-ABAC-INSPECTION-GREEN-001",
+    ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-ABAC-INSPECTION-INTEGRATION-RED-001",
+    ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-ABAC-INSPECTION-HARDENING-RED-001",
+    ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-ABAC-INSPECTION-HARDENING-GREEN-001",
+    ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-ABAC-INSPECTION-INTEGRATION-GREEN-001",
+    ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-ABAC-INSPECTION-COVERAGE-001",
+    ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-ABAC-INSPECTION-QUALITY-001",
+    ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-ABAC-INSPECTION-REVIEW-001",
+    ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-ABAC-INSPECTION-REVIEW-002",
+    ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-ABAC-INSPECTION-GLOBAL-RETEST-001",
+    ".agent/verification.jsonl#VFY-CVG-003-OUTBOX-ADMIN-ABAC-INSPECTION-CONTROL-PLANE-001"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "ABAC is not yet proven on /audit/events, audit/log/trace/export surfaces or reprocess/replay after permission revocation.",
+    "The HTTP negative redrive authorization test remains a separate out-of-scope follow-up; audit.write and reprocess behavior were preserved.",
+    "Global Vetus functional parity remains not verified: 4/11 areas verified; clinical parity remains not verified: 2/3 areas verified.",
+    "Enterprise readiness remains 95/100 with remote CI, real backup/restore and real deploy/cutover warnings; external providers, target operations, accessibility, LGPD operations and release evidence remain open."
+  ],
+  "conditions": [
+    "Close only the five read-only internal outbox inspection routes and the additive abac-006 permit rule as PASS_BOUNDED.",
+    "Preserve account-derived tenant scope, limits, metadata-only payload responses and the existing EventBus/repository/worker contracts.",
+    "Keep reprocess/audit.write, /audit/events, systemic ABAC, audit/log/trace/export policy and all provider/target/production/deployment/release work outside this gate unless newly authorized.",
+    "Keep CVG-003/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+    "Do not infer target, production, provider, deployment or release acceptance from this gate."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via explicit continuation request and confirmed hardening addendum",
+    "scope": "CVG-003 bounded ABAC enforcement on five read-only internal outbox inspection routes",
+    "decision": "Authorize only the existing enforceAbac wiring and the missing explicit auditor/admin permit within abac-006. Exclude reprocess/audit.write, /audit/events, systemic ABAC, storage, workers, providers, credentials, target, production, deployment and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-003-OUTBOX-ADMIN-ABAC-INSPECTION-IR-001",
+    "hardening_evidence_ref": ".agent/authority.jsonl#AUTH-CVG-003-OUTBOX-ADMIN-ABAC-INSPECTION-HARDENING-001",
+    "expires_or_revalidates": "Revalidate before adding any other ABAC policy, audit/replay route, cross-surface enforcement or operational scope."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_WITH_CONDITIONS",
+  "implementation_status": "COMPLETE_BOUNDED",
+  "next_action": "Return to fresh bounded scouting for the next residual issue; do not promote CVG-003 or global ERP readiness.",
+  "revalidation_triggers": [
+    "New internal audit or event administration route",
+    "Changes to abac-006 or other policy semantics",
+    "Replay/reprocess authorization, permission revocation or audit payload exposure",
+    "Expansion to migrations, providers, credentials, target, production, deployment or release scope"
+  ],
+  "supersedes": null
+}

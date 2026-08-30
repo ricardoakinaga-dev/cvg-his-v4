@@ -1,0 +1,147 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-SCHEDULED-PAYABLES-VFY-001",
+  "timestamp": "2026-08-27T02:05:51-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-004 bounded tenant-scoped scheduled financial-payables report resolution through the real worker",
+  "scope_ref": "CVG-004-REPORT-SCHEDULED-PAYABLES",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-001-PERSISTED-SOURCE",
+      "description": "The worker composes DatabaseFinancialPayablesRepository through the financial module boundary and forwards the claimed account and optional status to the persisted source.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-PAYABLES-GREEN-001",
+        "apps/worker/src/bootstrap.ts",
+        "apps/worker/src/runner.ts",
+        "packages/modules/financial/src/repositories/database-financial.repository.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The source is verified against disposable local PostgreSQL; target runtime-role topology remains outside this gate."
+    },
+    {
+      "id": "V-002-FILTERS-CANONICAL-MAPPING",
+      "description": "Strict status/search/date filters are validated before querying, dueAt windows are inclusive, returned facts are checked for account and status, and output contains exactly the eleven financial-payables catalog columns.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-PAYABLES-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-PAYABLES-PROCESS-001",
+        "apps/worker/src/runner.ts",
+        "apps/worker/src/runner.test.ts",
+        "tests/integration/process/worker-run-once-reports.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The bounded contract filters by persisted due date; broader report pagination and other report families remain open."
+    },
+    {
+      "id": "V-003-FAIL-CLOSED-SCHEDULES",
+      "description": "Missing payables sources, known cataloged unsupported report ids and unknown report ids fail closed without an empty substitute execution, export or delivery.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-PAYABLES-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-PAYABLES-PROCESS-001",
+        "apps/worker/src/runner.ts",
+        "apps/worker/src/jobs/scheduled-report-job.ts",
+        "tests/integration/process/worker-run-once-reports.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The pre-existing administrative-executive branch has native schedule-control rows and is explicitly scoped outside this missing-source guarantee."
+    },
+    {
+      "id": "V-004-REAL-WORKER-TENANT-PROOF",
+      "description": "A due financial-payables schedule executes in a real one-shot worker against disposable PostgreSQL, persists the exact matching row, excludes same-account status/search/date negatives and the other account, and preserves the existing lease/delivery paths.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-PAYABLES-PROCESS-001",
+        "tests/integration/process/worker-run-once-reports.test.ts",
+        "apps/worker/src/run-once.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The process uses a disposable local database and mock email mode; no provider or target deployment is claimed."
+    },
+    {
+      "id": "V-005-QUALITY-REGRESSION",
+      "description": "TDD RED history is retained and corrected worker, reports-module, API, build, typecheck, security, integrity, formatting, diff-hygiene and coverage checks pass.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-PAYABLES-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-PAYABLES-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-PAYABLES-QUALITY-001",
+        ".agent/artifacts/CVG-004-report-scheduled-payables-2026-08-27.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Official coverage follows the repository's designated exclusions; remote CI, target operations and critical browser E2E are not part of this gate."
+    },
+    {
+      "id": "V-006-INDEPENDENT-CRITIQUE",
+      "description": "An independent read-only critique inspected the bounded implementation and found no Critical or High issue; its Medium/Low evidence findings were addressed or explicitly bounded before reconciliation.",
+      "required": true,
+      "status": "CONDITIONAL",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-PAYABLES-REVIEW-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-PAYABLES-REVIEW-UNAVAILABLE-001"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "No post-remediation independent rereview was available because the reviewer model was refused by account policy and the compatible explorer reached its usage limit. This gate therefore retains HIGH residual risk and does not represent independent post-fix approval."
+    },
+    {
+      "id": "V-007-GLOBAL-NON-PROMOTION",
+      "description": "The bounded result is reconciled without promoting CVG-004, strict Vetus parity, clinical parity, enterprise readiness or release acceptance.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-PAYABLES-GLOBAL-RETEST-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-PAYABLES-FINAL-001",
+        ".agent/state.json",
+        ".agent/backlog.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Global parity remains 98/100 with 4/11 verified, clinical parity 100/100 with 2/3 verified, and enterprise readiness 95/100 with 42 PASS / 3 WARN / 1 FAIL."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-report-scheduled-payables.md",
+    ".agent/artifacts/CVG-004-report-scheduled-payables-2026-08-27.md",
+    ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-PAYABLES-IR-001",
+    "apps/worker/src/runner.ts",
+    "apps/worker/src/bootstrap.ts",
+    "packages/modules/financial/src/repositories/database-financial.repository.ts",
+    "tests/integration/process/worker-run-once-reports.test.ts"
+  ],
+  "confidence": "MEDIUM",
+  "gaps": [
+    "No independent post-remediation rereview was available; the prior review is conditional criticism evidence only.",
+    "Disposable local PostgreSQL does not certify target TCP/RLS/FORCE-RLS or deployed production runtime roles.",
+    "Administrative operational-source availability and remaining scheduled report families remain separate gaps.",
+    "Provider delivery, remote CI, browser/accessibility, operations, backup/restore, RTO/RPO and release acceptance remain open.",
+    "Global Vetus and clinical parity remain partial/open and enterprise readiness retains one strict-parity FAIL plus three external-operation WARNs."
+  ],
+  "conditions": [
+    "Keep financial-payables read-only and sourced only from the tenant-scoped persisted subledger.",
+    "Obtain a fresh independent post-remediation review before treating this slice as a higher-confidence gate or expanding the worker report family.",
+    "Revalidate before adding another scheduled report source, provider/target operation, credential, production or release behavior."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via the current CVG-004 authority record",
+    "scope": "CVG-004 bounded tenant-scoped scheduled financial-payables report source",
+    "decision": "Authorize reversible worker/bootstrap/test implementation and disposable PostgreSQL verification of the existing read-only financial-payables schedule. Exclude other report families, payable writes, providers, credentials, target, production, deployment, external mutation and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-PAYABLES-IR-001",
+    "expires_or_revalidates": "Revalidate before supporting another scheduled report family, changing payable lifecycle semantics, adding provider delivery, target operation or release acceptance."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_BOUNDED",
+  "next_action": "Keep CVG-004 and the global program IN_PROGRESS/PARTIAL; obtain independent post-remediation review before broadening the scheduled worker scope, and do not promote this result to parity, readiness or release.",
+  "revalidation_triggers": [
+    "Changes to financial-payables schema, repository mapping, filter semantics or report catalog columns",
+    "Changes to schedule claiming, worker bootstrap, report execution/export/delivery or operational administrative fallback",
+    "Expansion to another report family, provider, target, credential, production, deployment or release action"
+  ],
+  "supersedes": ".agent/gates/implementation-ready-CVG-004-report-scheduled-payables.json"
+}

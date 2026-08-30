@@ -1,0 +1,85 @@
+{
+  "record_id": "GATE-CVG-003-PRESCRIPTION-TENANT-ISOLATION-IR-001",
+  "timestamp": "2026-08-26T20:15:59-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-003 bounded account-scoped prescription collection filtering by encounter and patient",
+  "scope_ref": "CVG-003-PRESCRIPTION-TENANT-ISOLATION",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The multi-account in-memory hydration path and unscoped encounter/patient collection filters are recorded as a clinical cross-tenant read risk.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-003-prescription-tenant-isolation.md",
+        "packages/modules/prescriptions/src/index.ts",
+        "apps/api/src/routes/prescription-routes.ts",
+        "apps/api/src/runtime.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The gate covers only the application collection boundary; direct SQL, privileged writers, target RLS and global readiness remain excluded."
+    },
+    {
+      "id": "IR-002",
+      "description": "The correction is limited to requiring AccountId at the service query boundary and forwarding the authenticated principal account from the existing route.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/prescriptions/src/index.ts",
+        "apps/api/src/routes/prescription-routes.ts",
+        "packages/modules/prescriptions/src/prescriptions.test.ts",
+        "tests/integration/prescriptions-api.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "No schema, migration, provider, credential, target, production, deployment or external state change is authorized by this gate."
+    },
+    {
+      "id": "IR-003",
+      "description": "An explicit RED HTTP test was captured before the implementation, and disposable/local focused verification is the acceptance mechanism.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-003-prescription-tenant-isolation.md",
+        "tests/integration/prescriptions-api.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Green tests, quality checks, independent review and control-plane reconciliation are required before a verified bounded gate."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-003-prescription-tenant-isolation.md",
+    "packages/modules/prescriptions/src/index.ts",
+    "apps/api/src/routes/prescription-routes.ts",
+    "tests/integration/prescriptions-api.test.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "The corrected code and focused regressions still require final lint/type/quality evidence.",
+    "Independent read-only security review is not complete.",
+    "Global parity/readiness, target, provider, operations and release evidence remain open."
+  ],
+  "conditions": [
+    "Preserve the existing PostgreSQL/Vue monolith and package boundaries.",
+    "Do not weaken the required AccountId service signature or reintroduce an unscoped route call.",
+    "Do not modify migrations, target infrastructure, providers, credentials or external systems."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via the original consolidation brief",
+    "scope": "CVG-003 bounded prescription collection tenant isolation",
+    "decision": "Authorize reversible repository-local service/route/test correction and local verification of the account-scoped prescription collection boundary; exclude direct SQL, target, providers, credentials, production, deployment, external mutation and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-003-PRESCRIPTION-TENANT-ISOLATION-IR-001",
+    "expires_or_revalidates": "Revalidate before expanding beyond the application collection boundary."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "next_action": "Complete focused quality checks, obtain independent review and record the verified bounded result without promoting CVG-003 or global readiness.",
+  "revalidation_triggers": [
+    "New prescription collection/query path",
+    "Changes to hydration, tenant context or authorization",
+    "Expansion to direct SQL, target, provider, credential, production, deployment or release"
+  ],
+  "supersedes": null
+}

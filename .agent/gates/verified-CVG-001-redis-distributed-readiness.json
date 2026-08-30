@@ -1,0 +1,129 @@
+{
+  "record_id": "GATE-CVG-001-REDIS-DISTRIBUTED-READINESS-VERIFIED-001",
+  "timestamp": "2026-08-27T11:41:30-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-001 Redis-backed distributed readiness, fail-closed authentication and two-API session continuity",
+  "scope_ref": "CVG-001-REDIS-DISTRIBUTED-READINESS",
+  "version": 1,
+  "decision": "PASS_BOUNDED",
+  "confidence": "HIGH",
+  "residual_risk": "HIGH",
+  "criteria": [
+    {
+      "id": "VB-001",
+      "description": "The rate limiter distinguishes Redis from in-memory, probes Redis with PING, bounds commands and closes shared connections idempotently.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/shared/rate-limiter/src/index.ts",
+        "packages/shared/rate-limiter/src/rate-limiter.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-001-REDIS-DISTRIBUTED-READINESS-GREEN-001"
+      ],
+      "limitations": "This proves the local Redis contract, not managed Redis HA, Sentinel/Cluster or target ACL/EVAL behavior."
+    },
+    {
+      "id": "VB-002",
+      "description": "Distributed readiness derives Redis health from actual configured limiter probes, fails with 503 when unavailable and keeps liveness independent.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/api/src/health.ts",
+        "apps/api/src/routes/health-routes.ts",
+        "apps/api/src/chaos-operational-state.ts",
+        "tests/unit/api/health-routes-contract.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-001-REDIS-DISTRIBUTED-READINESS-GREEN-001"
+      ],
+      "limitations": "The health response preserves the existing 200 top-level /health transport semantics with ok=false on degraded dependencies; /ready is the admission gate."
+    },
+    {
+      "id": "VB-003",
+      "description": "Authentication rate-limit outage returns a stable 503 without local fallback, session creation or cookie materialization; IP and identity budgets are independent.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/api/src/routes/auth-routes.ts",
+        "apps/api/src/server.test.ts",
+        "apps/api/src/routes/auth-routes.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-001-REDIS-DISTRIBUTED-READINESS-GREEN-001"
+      ],
+      "limitations": "OIDC callback token exposure and cookie-path concerns remain outside this slice."
+    },
+    {
+      "id": "VB-004",
+      "description": "A disposable PostgreSQL/Redis fixture and two API processes prove installation, cross-replica sessions, restart, shared rate limiting, Redis outage/recovery, metrics and revocation.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "tests/integration/process/setup-installation-to-session.test.ts",
+        "infra/scripts/run-critical-process-suite.mjs",
+        ".agent/verification.jsonl#VFY-CVG-001-REDIS-DISTRIBUTED-READINESS-PROCESS-001"
+      ],
+      "limitations": "Session list may still be an optimization cache; PostgreSQL remains the tested session authority. Process fixture port reservation and exceptional database cleanup retain small harness risks."
+    },
+    {
+      "id": "VB-005",
+      "description": "CI, Compose E2E and the canonical example environment require the readiness gate for distributed startup, fail when readiness cannot be reached and declare the required worker actor placeholder.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".github/workflows/ci.yml",
+        "docker-compose.e2e.yml",
+        ".env.v2.example",
+        ".agent/verification.jsonl#VFY-CVG-001-REDIS-DISTRIBUTED-READINESS-QUALITY-001"
+      ],
+      "limitations": "The example UUID is not a provisioned production principal; operators must replace it before a real environment."
+    },
+    {
+      "id": "VB-006",
+      "description": "Focused RED/GREEN, full workspace tests, coverage, typecheck, build, security, static validators, Compose validation and critical process runner verification passed locally.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/artifacts/CVG-001-redis-distributed-readiness-2026-08-27.md",
+        ".agent/verification.jsonl#VFY-CVG-001-REDIS-DISTRIBUTED-READINESS-QUALITY-001",
+        ".agent/verification.jsonl#VFY-CVG-001-REDIS-DISTRIBUTED-READINESS-HYGIENE-001"
+      ],
+      "limitations": "Remote CI, real target operations, Helm binary rendering and release acceptance remain unverified."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-001-REDIS-DISTRIBUTED-READINESS.md",
+    ".agent/artifacts/CVG-001-redis-distributed-readiness-2026-08-27.md",
+    ".agent/authority.jsonl#AUTH-CVG-001-REDIS-DISTRIBUTED-READINESS-IR-001",
+    ".agent/verification.jsonl#VFY-CVG-001-REDIS-DISTRIBUTED-READINESS-RED-001",
+    ".agent/verification.jsonl#VFY-CVG-001-REDIS-DISTRIBUTED-READINESS-GREEN-001",
+    ".agent/verification.jsonl#VFY-CVG-001-REDIS-DISTRIBUTED-READINESS-PROCESS-001",
+    ".agent/verification.jsonl#VFY-CVG-001-REDIS-DISTRIBUTED-READINESS-REVIEW-001",
+    ".agent/verification.jsonl#VFY-CVG-001-REDIS-DISTRIBUTED-READINESS-QUALITY-001",
+    ".agent/verification.jsonl#VFY-CVG-001-REDIS-DISTRIBUTED-READINESS-GLOBAL-001",
+    ".agent/verification.jsonl#VFY-CVG-001-REDIS-DISTRIBUTED-READINESS-HYGIENE-001",
+    ".agent/verification.jsonl#VFY-CVG-001-REDIS-DISTRIBUTED-READINESS-FINAL-001"
+  ],
+  "review": {
+    "status": "CONDITIONAL",
+    "evidence_refs": [
+      ".agent/verification.jsonl#VFY-CVG-001-REDIS-DISTRIBUTED-READINESS-REVIEW-001"
+    ],
+    "summary": "Independent review findings were addressed for bounded command deadlines, all configured limiter aggregation, dependency cleanup, generic health details, auth bucket separation, required process execution and runner report validation. Remaining harness and production-operation limitations are explicit and are not approvals.",
+    "approval": false
+  },
+  "global_status": {
+    "program": "IN_PROGRESS",
+    "verification": "PARTIAL",
+    "vetus_parity": "98/100; 4/11 verified",
+    "clinical_parity": "100/100; 2/3 verified",
+    "enterprise_readiness": "95/100; 42 PASS / 3 WARN / 1 FAIL",
+    "promotion": "BLOCKED"
+  },
+  "conditions": [
+    "Keep distributed state enabled only with an actual reachable Redis service; do not use the in-memory backend as a production fallback.",
+    "Replace the example WORKER_REPORTS_USER_ID with an operator-provisioned valid principal before a real environment.",
+    "Obtain separate authority before managed Redis/HA, session-cache redesign, target operations, credentials, providers, deployment or release acceptance.",
+    "Do not promote this bounded gate, CVG-001, global parity or enterprise readiness to production status."
+  ],
+  "non_claims": [
+    "No managed Redis, Sentinel/Cluster, target ACL/RLS, multi-region or production failover evidence",
+    "No remote CI, real provider, backup/restore, RTO/RPO, accessibility or release evidence",
+    "No OIDC token/cookie hardening, session-list cache redesign or process-fixture TOCTOU remediation claim"
+  ]
+}

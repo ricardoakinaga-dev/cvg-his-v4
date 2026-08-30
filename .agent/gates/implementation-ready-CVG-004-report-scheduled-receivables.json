@@ -1,0 +1,87 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-SCHEDULED-RECEIVABLES-IR-001",
+  "timestamp": "2026-08-28T04:02:30-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-004 bounded tenant-scoped scheduled financial-receivables report source through the real worker",
+  "scope_ref": "CVG-004-REPORT-SCHEDULED-RECEIVABLES",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The scheduled financial-receivables gap, bounded contract, owner, authority and exclusions are recorded without promoting CVG-004 or global readiness.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-scheduled-receivables.md",
+        ".agent/backlog.json",
+        ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-RECEIVABLES-IR-001",
+        ".agent/verification.jsonl#VFY-SCOUT-CVG-004-REPORT-SCHEDULED-RECEIVABLES-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Only the scheduled read-only worker resolution is authorized; settlement, providers, target operations, parity and release remain open."
+    },
+    {
+      "id": "IR-002",
+      "description": "The existing catalog and authenticated on-demand API expose the persisted sixteen-column receivables contract, and the worker already has the financial database dependency needed for a shared source without an API import.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/reports/src/index.ts",
+        "apps/api/src/routes/reports-routes.ts",
+        "packages/modules/financial/src/index.ts",
+        "packages/modules/financial/src/repositories/database-financial.repository.ts",
+        "apps/worker/src/bootstrap.ts",
+        "apps/worker/src/runner.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The worker-specific source, resolver branch and real process proof are not implemented at gate creation."
+    },
+    {
+      "id": "IR-003",
+      "description": "Focused RED tests can reject the absent worker source, permissive filters, foreign-account output, PII-unsafe rows, non-canonical mapping and empty-success fallback before implementation.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-scheduled-receivables.md",
+        "apps/worker/src/runner.test.ts",
+        "apps/worker/src/jobs/scheduled-report-job.test.ts",
+        "tests/integration/process/worker-run-once-reports.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Implementation, disposable PostgreSQL execution, security checks, independent critique and post-implementation regression are required before a bounded result."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-report-scheduled-receivables.md",
+    "packages/modules/reports/src/index.ts",
+    "apps/api/src/routes/reports-routes.ts",
+    "packages/modules/financial/src/index.ts",
+    "packages/modules/financial/src/repositories/database-financial.repository.ts",
+    "apps/worker/src/bootstrap.ts",
+    "apps/worker/src/runner.ts",
+    "apps/worker/src/jobs/scheduled-report-job.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "The shared source, worker composition, resolver branch, RED/GREEN tests, real process proof, independent review and post-implementation reconciliation are not complete at gate creation."
+  ],
+  "conditions": [],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via the original consolidation brief and explicit continuation request",
+    "scope": "CVG-004 bounded tenant-scoped scheduled financial-receivables report source through the real worker",
+    "decision": "Authorize reversible financial-module and worker implementation plus focused and disposable PostgreSQL/process verification of the existing read-only financial-receivables schedule. Exclude settlement, cash/journal/provider behavior, credentials, target, production, deployment, external mutation, backfill and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-RECEIVABLES-IR-001",
+    "expires_or_revalidates": "Revalidate before changing receivable lifecycle semantics, exposing additional PII, adding provider/delivery behavior, target operations or expanding to another report family."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "next_action": "Write and run the intentional worker/source RED tests, then implement the smallest bounded tenant-aware source and real run-once proof.",
+  "revalidation_triggers": [
+    "Changes to encounter receivable schema, entity joins, status or report columns",
+    "Changes to worker bootstrap, schedule claiming, report execution/export or delivery retry",
+    "Expansion beyond scheduled financial-receivables read resolution"
+  ],
+  "supersedes": null
+}

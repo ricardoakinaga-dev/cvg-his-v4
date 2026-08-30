@@ -24,7 +24,10 @@ export type { ExpenseCatalogItem, ExpenseCostCenterItem } from './expenses-catal
 
 export interface ExpensesCatalogHandlers {
   audit: AuditService;
-  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
+  requirePrincipal: (
+    request: IncomingMessage,
+    permissionCode: string
+  ) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
   storagePath?: string;
   store?: FinanceCatalogPersistence;
 }
@@ -57,11 +60,26 @@ interface CatalogPersistence {
   isValidCategory(category: string): boolean;
   list(accountId: string, filters?: Record<string, unknown>): Promise<any>;
   listCostCenters(accountId: string, filters?: Record<string, unknown>): Promise<any>;
-  create(accountId: string, actorId: string, payload: ExpenseCatalogPayload): Promise<ExpenseCatalogItem>;
-  update(accountId: string, expenseId: string, payload: ExpenseCatalogPayload): Promise<{ item: ExpenseCatalogItem; diffSummary: string }>;
+  create(
+    accountId: string,
+    actorId: string,
+    payload: ExpenseCatalogPayload
+  ): Promise<ExpenseCatalogItem>;
+  update(
+    accountId: string,
+    expenseId: string,
+    payload: ExpenseCatalogPayload
+  ): Promise<{ item: ExpenseCatalogItem; diffSummary: string }>;
   remove(accountId: string, expenseId: string): Promise<ExpenseCatalogItem>;
-  createCostCenter(accountId: string, payload: CostCenterCatalogPayload): Promise<ExpenseCostCenterItem>;
-  updateCostCenter(accountId: string, code: string, payload: CostCenterCatalogPayload): Promise<{ item: ExpenseCostCenterItem; diffSummary: string }>;
+  createCostCenter(
+    accountId: string,
+    payload: CostCenterCatalogPayload
+  ): Promise<ExpenseCostCenterItem>;
+  updateCostCenter(
+    accountId: string,
+    code: string,
+    payload: CostCenterCatalogPayload
+  ): Promise<{ item: ExpenseCostCenterItem; diffSummary: string }>;
   removeCostCenter(accountId: string, code: string): Promise<ExpenseCostCenterItem>;
 }
 
@@ -75,7 +93,9 @@ function json(response: ServerResponse, statusCode: number, payload: unknown): t
   return true;
 }
 
-function normalizePayload(payload: CreateExpensePayload | UpdateExpensePayload): ExpenseCatalogPayload {
+function normalizePayload(
+  payload: CreateExpensePayload | UpdateExpensePayload
+): ExpenseCatalogPayload {
   return {
     name: String(payload.name ?? '').trim(),
     kind: String(payload.kind ?? 'Variável').trim() || 'Variável',
@@ -87,7 +107,9 @@ function normalizePayload(payload: CreateExpensePayload | UpdateExpensePayload):
 
 function normalizeCostCenterPayload(payload: CreateCostCenterPayload): CostCenterCatalogPayload {
   return {
-    code: String(payload.code ?? '').trim().toUpperCase(),
+    code: String(payload.code ?? '')
+      .trim()
+      .toUpperCase(),
     name: String(payload.name ?? '').trim(),
     kind: String(payload.kind ?? '').trim(),
     owner: String(payload.owner ?? '').trim(),
@@ -95,7 +117,10 @@ function normalizeCostCenterPayload(payload: CreateCostCenterPayload): CostCente
   };
 }
 
-function validateExpensePayload(persistence: CatalogPersistence, payload: ExpenseCatalogPayload): string | null {
+function validateExpensePayload(
+  persistence: CatalogPersistence,
+  payload: ExpenseCatalogPayload
+): string | null {
   if (!payload.name || !payload.category || !payload.description || !payload.costCenterCode) {
     return 'name, category, costCenterCode and description are required';
   }
@@ -174,7 +199,10 @@ function buildCostCenterCreateAuditSummary(item: ExpenseCostCenterItem): string 
   return `Cost center catalog item created | ${summarizeCostCenterSnapshot(item)}`;
 }
 
-function buildCostCenterUpdateAuditSummary(item: ExpenseCostCenterItem, diffSummary: string): string {
+function buildCostCenterUpdateAuditSummary(
+  item: ExpenseCostCenterItem,
+  diffSummary: string
+): string {
   return `Cost center catalog item updated | ${summarizeCostCenterSnapshot(item)} | changes=${summarizeDiffLabel(diffSummary)}`;
 }
 
@@ -223,7 +251,10 @@ function resolvePersistence(handlers: ExpensesCatalogHandlers): CatalogPersisten
   }
 
   const appState = getAppState();
-  if (appState.databaseConfigured && appState.persistenceMode !== 'database') {
+  // A configured database runtime must use the repository composed by
+  // bootstrap. Falling back to a process/global store would make the catalog
+  // screen disagree with reports and could expose non-persisted state.
+  if (appState.databaseConfigured) {
     return null;
   }
 
@@ -238,6 +269,15 @@ function resolvePersistence(handlers: ExpensesCatalogHandlers): CatalogPersisten
   }
 }
 
+function isExpensesCatalogRoute(pathname: string): boolean {
+  return (
+    pathname === '/expenses-catalog' ||
+    pathname === '/cost-centers-catalog' ||
+    /^\/expenses-catalog\/[^/]+$/.test(pathname) ||
+    /^\/cost-centers-catalog\/[^/]+$/.test(pathname)
+  );
+}
+
 export async function handleExpensesCatalogRoutes(
   pathname: string,
   request: IncomingMessage,
@@ -245,19 +285,22 @@ export async function handleExpensesCatalogRoutes(
   correlationId: string,
   handlers: ExpensesCatalogHandlers
 ): Promise<boolean> {
+  if (!isExpensesCatalogRoute(pathname)) return false;
+
   const { audit, requirePrincipal } = handlers;
   const persistence = resolvePersistence(handlers);
 
   if (!persistence) {
     return json(response, 503, {
       code: 'FINANCE_CATALOG_DB_REQUIRED',
-      message: 'Finance catalog runtime requires database-backed persistence in the default API runtime',
+      message:
+        'Finance catalog runtime requires database-backed persistence in the default API runtime',
       correlationId
     });
   }
 
   if (pathname === '/expenses-catalog' && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'billing.read');
+    const principal = await requirePrincipal(request, 'billing.read');
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const search = url.searchParams.get('search') ?? undefined;
     const category = url.searchParams.get('category') ?? undefined;
@@ -290,7 +333,7 @@ export async function handleExpensesCatalogRoutes(
   }
 
   if (pathname === '/cost-centers-catalog' && request.method === 'GET') {
-    const principal = requirePrincipal(request, 'billing.read');
+    const principal = await requirePrincipal(request, 'billing.read');
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const search = url.searchParams.get('search') ?? undefined;
     const kind = url.searchParams.get('kind') ?? undefined;
@@ -321,11 +364,17 @@ export async function handleExpensesCatalogRoutes(
   }
 
   if (pathname === '/cost-centers-catalog' && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'billing.manage');
-    const payload = normalizeCostCenterPayload((await readJsonBody(request)) as CreateCostCenterPayload);
+    const principal = await requirePrincipal(request, 'billing.manage');
+    const payload = normalizeCostCenterPayload(
+      (await readJsonBody(request)) as CreateCostCenterPayload
+    );
     const validationError = validateCostCenterPayload(payload);
     if (validationError) {
-      return json(response, 400, { code: 'VALIDATION_ERROR', message: validationError, correlationId });
+      return json(response, 400, {
+        code: 'VALIDATION_ERROR',
+        message: validationError,
+        correlationId
+      });
     }
     try {
       const created = await persistence.createCostCenter(principal.user.accountId, payload);
@@ -343,22 +392,36 @@ export async function handleExpensesCatalogRoutes(
       return json(response, 201, created);
     } catch (error) {
       if (error instanceof Error && error.message === 'DUPLICATE_COST_CENTER_CODE') {
-        return json(response, 409, { code: 'DUPLICATE_COST_CENTER_CODE', message: 'Cost center code already exists', correlationId });
+        return json(response, 409, {
+          code: 'DUPLICATE_COST_CENTER_CODE',
+          message: 'Cost center code already exists',
+          correlationId
+        });
       }
       throw error;
     }
   }
 
   if (pathname.match(/^\/cost-centers-catalog\/[^/]+$/) && request.method === 'PATCH') {
-    const principal = requirePrincipal(request, 'billing.manage');
+    const principal = await requirePrincipal(request, 'billing.manage');
     const costCenterCode = pathname.split('/')[2] ?? '';
-    const payload = normalizeCostCenterPayload((await readJsonBody(request)) as CreateCostCenterPayload);
+    const payload = normalizeCostCenterPayload(
+      (await readJsonBody(request)) as CreateCostCenterPayload
+    );
     const validationError = validateCostCenterPayload(payload);
     if (validationError) {
-      return json(response, 400, { code: 'VALIDATION_ERROR', message: validationError, correlationId });
+      return json(response, 400, {
+        code: 'VALIDATION_ERROR',
+        message: validationError,
+        correlationId
+      });
     }
     try {
-      const { item, diffSummary } = await persistence.updateCostCenter(principal.user.accountId, costCenterCode, payload);
+      const { item, diffSummary } = await persistence.updateCostCenter(
+        principal.user.accountId,
+        costCenterCode,
+        payload
+      );
       appendAudit(audit, {
         actorId: principal.user.id,
         accountId: principal.user.accountId,
@@ -373,14 +436,22 @@ export async function handleExpensesCatalogRoutes(
       return json(response, 200, item);
     } catch (error) {
       if (error instanceof Error && error.message === 'DUPLICATE_COST_CENTER_CODE') {
-        return json(response, 409, { code: 'DUPLICATE_COST_CENTER_CODE', message: 'Cost center code already exists', correlationId });
+        return json(response, 409, {
+          code: 'DUPLICATE_COST_CENTER_CODE',
+          message: 'Cost center code already exists',
+          correlationId
+        });
       }
-      return json(response, 404, { code: 'NOT_FOUND', message: 'Cost center not found', correlationId });
+      return json(response, 404, {
+        code: 'NOT_FOUND',
+        message: 'Cost center not found',
+        correlationId
+      });
     }
   }
 
   if (pathname.match(/^\/cost-centers-catalog\/[^/]+$/) && request.method === 'DELETE') {
-    const principal = requirePrincipal(request, 'billing.manage');
+    const principal = await requirePrincipal(request, 'billing.manage');
     const costCenterCode = pathname.split('/')[2] ?? '';
     try {
       const removed = await persistence.removeCostCenter(principal.user.accountId, costCenterCode);
@@ -398,22 +469,45 @@ export async function handleExpensesCatalogRoutes(
       return json(response, 200, { ok: true });
     } catch (error) {
       if (error instanceof Error && error.message === 'COST_CENTER_IN_USE') {
-        return json(response, 409, { code: 'COST_CENTER_IN_USE', message: 'Cost center is in use by expense catalog items', correlationId });
+        return json(response, 409, {
+          code: 'COST_CENTER_IN_USE',
+          message: 'Cost center is in use by expense catalog items',
+          correlationId
+        });
       }
-      return json(response, 404, { code: 'NOT_FOUND', message: 'Cost center not found', correlationId });
+      return json(response, 404, {
+        code: 'NOT_FOUND',
+        message: 'Cost center not found',
+        correlationId
+      });
     }
   }
 
   if (pathname === '/expenses-catalog' && request.method === 'POST') {
-    const principal = requirePrincipal(request, 'billing.manage');
+    const principal = await requirePrincipal(request, 'billing.manage');
     const payload = normalizePayload((await readJsonBody(request)) as CreateExpensePayload);
     const validationError = validateExpensePayload(persistence, payload);
     if (validationError) {
-      return json(response, 400, { code: 'VALIDATION_ERROR', message: validationError, correlationId });
+      return json(response, 400, {
+        code: 'VALIDATION_ERROR',
+        message: validationError,
+        correlationId
+      });
     }
-    const catalogSnapshot = await persistence.list(principal.user.accountId, { page: 1, pageSize: 1000 });
-    if (!catalogSnapshot.costCenters.some((center: ExpenseCostCenterItem) => center.code === payload.costCenterCode)) {
-      return json(response, 400, { code: 'VALIDATION_ERROR', message: 'costCenterCode is invalid', correlationId });
+    const catalogSnapshot = await persistence.list(principal.user.accountId, {
+      page: 1,
+      pageSize: 1000
+    });
+    if (
+      !catalogSnapshot.costCenters.some(
+        (center: ExpenseCostCenterItem) => center.code === payload.costCenterCode
+      )
+    ) {
+      return json(response, 400, {
+        code: 'VALIDATION_ERROR',
+        message: 'costCenterCode is invalid',
+        correlationId
+      });
     }
     const created = await persistence.create(principal.user.accountId, principal.user.id, payload);
     appendAudit(audit, {
@@ -431,19 +525,38 @@ export async function handleExpensesCatalogRoutes(
   }
 
   if (pathname.match(/^\/expenses-catalog\/[^/]+$/) && request.method === 'PATCH') {
-    const principal = requirePrincipal(request, 'billing.manage');
+    const principal = await requirePrincipal(request, 'billing.manage');
     const expenseId = pathname.split('/')[2] ?? '';
     const payload = normalizePayload((await readJsonBody(request)) as UpdateExpensePayload);
     const validationError = validateExpensePayload(persistence, payload);
     if (validationError) {
-      return json(response, 400, { code: 'VALIDATION_ERROR', message: validationError, correlationId });
+      return json(response, 400, {
+        code: 'VALIDATION_ERROR',
+        message: validationError,
+        correlationId
+      });
     }
-    const catalogSnapshot = await persistence.list(principal.user.accountId, { page: 1, pageSize: 1000 });
-    if (!catalogSnapshot.costCenters.some((center: ExpenseCostCenterItem) => center.code === payload.costCenterCode)) {
-      return json(response, 400, { code: 'VALIDATION_ERROR', message: 'costCenterCode is invalid', correlationId });
+    const catalogSnapshot = await persistence.list(principal.user.accountId, {
+      page: 1,
+      pageSize: 1000
+    });
+    if (
+      !catalogSnapshot.costCenters.some(
+        (center: ExpenseCostCenterItem) => center.code === payload.costCenterCode
+      )
+    ) {
+      return json(response, 400, {
+        code: 'VALIDATION_ERROR',
+        message: 'costCenterCode is invalid',
+        correlationId
+      });
     }
     try {
-      const { item, diffSummary } = await persistence.update(principal.user.accountId, expenseId, payload);
+      const { item, diffSummary } = await persistence.update(
+        principal.user.accountId,
+        expenseId,
+        payload
+      );
       appendAudit(audit, {
         actorId: principal.user.id,
         accountId: principal.user.accountId,
@@ -457,12 +570,16 @@ export async function handleExpensesCatalogRoutes(
       });
       return json(response, 200, item);
     } catch {
-      return json(response, 404, { code: 'NOT_FOUND', message: 'Expense catalog item not found', correlationId });
+      return json(response, 404, {
+        code: 'NOT_FOUND',
+        message: 'Expense catalog item not found',
+        correlationId
+      });
     }
   }
 
   if (pathname.match(/^\/expenses-catalog\/[^/]+$/) && request.method === 'DELETE') {
-    const principal = requirePrincipal(request, 'billing.manage');
+    const principal = await requirePrincipal(request, 'billing.manage');
     const expenseId = pathname.split('/')[2] ?? '';
     try {
       const removed = await persistence.remove(principal.user.accountId, expenseId);
@@ -479,7 +596,11 @@ export async function handleExpensesCatalogRoutes(
       });
       return json(response, 200, { ok: true });
     } catch {
-      return json(response, 404, { code: 'NOT_FOUND', message: 'Expense catalog item not found', correlationId });
+      return json(response, 404, {
+        code: 'NOT_FOUND',
+        message: 'Expense catalog item not found',
+        correlationId
+      });
     }
   }
 

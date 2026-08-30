@@ -21,7 +21,13 @@ function placeholderRoute(
 }
 
 const placeholderRoutes: RouteRecordRaw[] = [
-  placeholderRoute('administration/settings', 'AdministrationSettings', 'Configurações', 'Administração', '⚙️')
+  placeholderRoute(
+    'administration/settings',
+    'AdministrationSettings',
+    'Configurações',
+    'Administração',
+    '⚙️'
+  )
 ];
 
 function reportWorkbenchRoute(
@@ -49,26 +55,186 @@ function reportWorkbenchRoute(
 }
 
 const reportWorkbenchRoutes: RouteRecordRaw[] = [
-  reportWorkbenchRoute('reports/audit/appointments', 'ReportsAuditAppointments', 'Auditoria de Agendamentos', 'Relatórios', 'audit-appointments', '🧾', ['/relatorios/auditoria/agendamentos']),
-  reportWorkbenchRoute('reports/cash-drawer', 'ReportsCashDrawer', 'Gaveta', 'Relatórios Financeiros', 'cash-drawer', '🧾', ['/relatorios/financeiros/gaveta']),
-  reportWorkbenchRoute('reports/packages', 'ReportsPackages', 'Pacotes', 'Relatórios Financeiros', 'packages', '📦', ['/relatorios/financeiros/pacotes']),
-  reportWorkbenchRoute('reports/accounts-receivable', 'ReportsAccountsReceivable', 'Contas a Receber', 'Relatórios Financeiros', 'accounts-receivable', '💵', ['/relatorios/financeiros/contas-a-receber']),
-  reportWorkbenchRoute('reports/received-accounts', 'ReportsReceivedAccounts', 'Contas Recebidas', 'Relatórios Financeiros', 'received-accounts', '✅', ['/relatorios/financeiros/contas-recebidas']),
-  reportWorkbenchRoute('reports/accounts-payable', 'ReportsAccountsPayable', 'Contas a Pagar', 'Relatórios Financeiros', 'accounts-payable', '💸', ['/relatorios/financeiros/contas-a-pagar']),
-  reportWorkbenchRoute('reports/paid-accounts', 'ReportsPaidAccounts', 'Contas Pagas', 'Relatórios Financeiros', 'paid-accounts', '✅', ['/relatorios/financeiros/contas-pagas']),
-  reportWorkbenchRoute('reports/cheques', 'ReportsCheques', 'Cheques', 'Relatórios Financeiros', 'cheques', '📄', ['/relatorios/financeiros/cheques']),
-  reportWorkbenchRoute('reports/advance-payments', 'ReportsAdvancePayments', 'Pagamento Antecipado', 'Relatórios Financeiros', 'advance-payments', '⏩', ['/relatorios/financeiros/pagamento-antecipado']),
-  reportWorkbenchRoute('reports/produced-items', 'ReportsProducedItems', 'Produtos/Serviços Produzidos', 'Relatórios de Atendimentos', 'produced-items', '🛠️', ['/relatorios/atendimentos/produtos-servicos-produzidos']),
-  reportWorkbenchRoute('reports/professional-care', 'ReportsProfessionalCare', 'Atendimento por Profissional', 'Relatórios de Atendimentos', 'professional-care', '🩺', ['/relatorios/atendimentos/atendimento-por-profissional']),
-  reportWorkbenchRoute('reports/nf', 'ReportsServiceInvoices', 'Relatório de NF de Serviços Prestados', 'Relatórios Personalizados', 'service-invoices', '🧾', ['/relatorios/personalizados/relatorio-de-nf-de-servicos-prestados']),
-  reportWorkbenchRoute('reports/registers/services', 'ReportsRegisterServices', 'Serviços', 'Relatórios de Cadastros', 'register-services', '🛠️', ['/relatorios/cadastros/servicos']),
-  reportWorkbenchRoute('reports/registers/owners', 'ReportsRegisterOwners', 'Clientes', 'Relatórios de Cadastros', 'register-owners', '👤', ['/relatorios/cadastros/clientes']),
-  reportWorkbenchRoute('reports/registers/patients', 'ReportsRegisterPatients', 'Animais', 'Relatórios de Cadastros', 'register-patients', '🐾', ['/relatorios/cadastros/animais']),
-  reportWorkbenchRoute('reports/registers/suppliers', 'ReportsRegisterSuppliers', 'Fornecedores', 'Relatórios de Cadastros', 'register-suppliers', '🚚', ['/relatorios/cadastros/fornecedores']),
-  reportWorkbenchRoute('reports/deleted-sales-counter-sales', 'ReportsDeletedSalesCounterSales', 'Exclusão de Vendas e Comandas', 'Relatórios de Cadastros', 'deleted-sales-counter-sales', '🧾', ['/relatorios/cadastros/exclusao-de-vendas-e-comandas']),
-  reportWorkbenchRoute('reports/inventory-movements', 'ReportsInventoryMovements', 'Movimentações no Estoque', 'Relatórios de Estoque', 'inventory-movements', '📥', ['/relatorios/estoque/movimentacoes-no-estoque']),
-  reportWorkbenchRoute('reports/inventory-invoices', 'ReportsInventoryInvoices', 'Entrada de NF', 'Relatórios de Estoque', 'inventory-invoices', '🧾', ['/relatorios/estoque/entrada-de-nf']),
-  reportWorkbenchRoute('reports/inventory-products', 'ReportsInventoryProducts', 'Relatório de Produtos', 'Relatórios de Estoque', 'inventory-products', '🏷️', ['/relatorios/estoque/relatorio-de-produtos'])
+  reportWorkbenchRoute(
+    'reports/audit/appointments',
+    'ReportsAuditAppointments',
+    'Auditoria de Agendamentos',
+    'Relatórios',
+    'audit-appointments',
+    '🧾',
+    ['/relatorios/auditoria/agendamentos']
+  ),
+  reportWorkbenchRoute(
+    'reports/cash-drawer',
+    'ReportsCashDrawer',
+    'Gaveta',
+    'Relatórios Financeiros',
+    'cash-drawer',
+    '🧾',
+    ['/relatorios/financeiros/gaveta']
+  ),
+  reportWorkbenchRoute(
+    'reports/packages',
+    'ReportsPackages',
+    'Pacotes',
+    'Relatórios Financeiros',
+    'packages',
+    '📦',
+    ['/relatorios/financeiros/pacotes']
+  ),
+  reportWorkbenchRoute(
+    'reports/accounts-receivable',
+    'ReportsAccountsReceivable',
+    'Contas a Receber',
+    'Relatórios Financeiros',
+    'accounts-receivable',
+    '💵',
+    ['/relatorios/financeiros/contas-a-receber']
+  ),
+  reportWorkbenchRoute(
+    'reports/received-accounts',
+    'ReportsReceivedAccounts',
+    'Contas Recebidas',
+    'Relatórios Financeiros',
+    'received-accounts',
+    '✅',
+    ['/relatorios/financeiros/contas-recebidas']
+  ),
+  reportWorkbenchRoute(
+    'reports/accounts-payable',
+    'ReportsAccountsPayable',
+    'Contas a Pagar',
+    'Relatórios Financeiros',
+    'accounts-payable',
+    '💸',
+    ['/relatorios/financeiros/contas-a-pagar']
+  ),
+  reportWorkbenchRoute(
+    'reports/paid-accounts',
+    'ReportsPaidAccounts',
+    'Contas Pagas',
+    'Relatórios Financeiros',
+    'paid-accounts',
+    '✅',
+    ['/relatorios/financeiros/contas-pagas']
+  ),
+  reportWorkbenchRoute(
+    'reports/cheques',
+    'ReportsCheques',
+    'Cheques',
+    'Relatórios Financeiros',
+    'cheques',
+    '📄',
+    ['/relatorios/financeiros/cheques']
+  ),
+  reportWorkbenchRoute(
+    'reports/advance-payments',
+    'ReportsAdvancePayments',
+    'Pagamento Antecipado',
+    'Relatórios Financeiros',
+    'advance-payments',
+    '⏩',
+    ['/relatorios/financeiros/pagamento-antecipado']
+  ),
+  reportWorkbenchRoute(
+    'reports/produced-items',
+    'ReportsProducedItems',
+    'Produtos/Serviços Produzidos',
+    'Relatórios de Atendimentos',
+    'produced-items',
+    '🛠️',
+    ['/relatorios/atendimentos/produtos-servicos-produzidos']
+  ),
+  reportWorkbenchRoute(
+    'reports/professional-care',
+    'ReportsProfessionalCare',
+    'Atendimento por Profissional',
+    'Relatórios de Atendimentos',
+    'professional-care',
+    '🩺',
+    ['/relatorios/atendimentos/atendimento-por-profissional']
+  ),
+  reportWorkbenchRoute(
+    'reports/nf',
+    'ReportsServiceInvoices',
+    'Relatório de NF de Serviços Prestados',
+    'Relatórios Personalizados',
+    'service-invoices',
+    '🧾',
+    ['/relatorios/personalizados/relatorio-de-nf-de-servicos-prestados']
+  ),
+  reportWorkbenchRoute(
+    'reports/registers/services',
+    'ReportsRegisterServices',
+    'Serviços',
+    'Relatórios de Cadastros',
+    'register-services',
+    '🛠️',
+    ['/relatorios/cadastros/servicos']
+  ),
+  reportWorkbenchRoute(
+    'reports/registers/owners',
+    'ReportsRegisterOwners',
+    'Clientes',
+    'Relatórios de Cadastros',
+    'register-owners',
+    '👤',
+    ['/relatorios/cadastros/clientes']
+  ),
+  reportWorkbenchRoute(
+    'reports/registers/patients',
+    'ReportsRegisterPatients',
+    'Animais',
+    'Relatórios de Cadastros',
+    'register-patients',
+    '🐾',
+    ['/relatorios/cadastros/animais']
+  ),
+  reportWorkbenchRoute(
+    'reports/registers/suppliers',
+    'ReportsRegisterSuppliers',
+    'Fornecedores',
+    'Relatórios de Cadastros',
+    'register-suppliers',
+    '🚚',
+    ['/relatorios/cadastros/fornecedores']
+  ),
+  reportWorkbenchRoute(
+    'reports/deleted-sales-counter-sales',
+    'ReportsDeletedSalesCounterSales',
+    'Exclusão de Vendas e Comandas',
+    'Relatórios de Cadastros',
+    'deleted-sales-counter-sales',
+    '🧾',
+    ['/relatorios/cadastros/exclusao-de-vendas-e-comandas']
+  ),
+  reportWorkbenchRoute(
+    'reports/inventory-movements',
+    'ReportsInventoryMovements',
+    'Movimentações no Estoque',
+    'Relatórios de Estoque',
+    'inventory-movements',
+    '📥',
+    ['/relatorios/estoque/movimentacoes-no-estoque']
+  ),
+  reportWorkbenchRoute(
+    'reports/inventory-invoices',
+    'ReportsInventoryInvoices',
+    'Entrada de NF',
+    'Relatórios de Estoque',
+    'inventory-invoices',
+    '🧾',
+    ['/relatorios/estoque/entrada-de-nf']
+  ),
+  reportWorkbenchRoute(
+    'reports/inventory-products',
+    'ReportsInventoryProducts',
+    'Relatório de Produtos',
+    'Relatórios de Estoque',
+    'inventory-products',
+    '🏷️',
+    ['/relatorios/estoque/relatorio-de-produtos']
+  )
 ];
 
 export const routes: RouteRecordRaw[] = [
@@ -105,10 +271,7 @@ export const routes: RouteRecordRaw[] = [
         path: 'dashboards/financial',
         name: 'DashboardFinancial',
         component: () => import('@/pages/finance/FinancialDashboardPage.vue'),
-        alias: [
-          '/financeiro/controles/dashboard-financeiro',
-          '/dashboard-financeiro'
-        ],
+        alias: ['/financeiro/controles/dashboard-financeiro', '/dashboard-financeiro'],
         meta: {
           title: 'Dashboard Financeiro',
           breadcrumb: 'Dashboard Financeiro',
@@ -120,10 +283,7 @@ export const routes: RouteRecordRaw[] = [
         path: 'dashboards/curve-abc',
         name: 'DashboardCurveAbc',
         component: () => import('@/pages/finance/CurveAbcProductsPage.vue'),
-        alias: [
-          '/financeiro/controles/curva-abc-produtos',
-          '/curva-abc-produtos'
-        ],
+        alias: ['/financeiro/controles/curva-abc-produtos', '/curva-abc-produtos'],
         meta: {
           title: 'Curva ABC Produtos',
           breadcrumb: 'Curva ABC Produtos',
@@ -135,10 +295,7 @@ export const routes: RouteRecordRaw[] = [
         path: 'dashboards/curve-abc-clients',
         name: 'DashboardCurveAbcClients',
         component: () => import('@/pages/finance/CurveAbcClientsPage.vue'),
-        alias: [
-          '/financeiro/controles/curva-abc-clientes',
-          '/curva-abc-clientes'
-        ],
+        alias: ['/financeiro/controles/curva-abc-clientes', '/curva-abc-clientes'],
         meta: {
           title: 'Curva ABC Clientes',
           breadcrumb: 'Curva ABC Clientes',
@@ -166,10 +323,7 @@ export const routes: RouteRecordRaw[] = [
         path: 'finance/timeline',
         name: 'FinanceTimeline',
         component: () => import('@/pages/finance/FinanceTimelinePage.vue'),
-        alias: [
-          '/financeiro/controles/linha-do-tempo',
-          '/linha-do-tempo'
-        ],
+        alias: ['/financeiro/controles/linha-do-tempo', '/linha-do-tempo'],
         meta: {
           title: 'Linha do Tempo',
           breadcrumb: 'Linha do Tempo',
@@ -293,7 +447,12 @@ export const routes: RouteRecordRaw[] = [
         path: 'owners',
         name: 'Owners',
         component: () => import('@/pages/owners/OwnersListPage.vue'),
-        meta: { title: 'Clientes', breadcrumb: 'Clientes', breadcrumbParent: 'Cadastros', icon: '👤' }
+        meta: {
+          title: 'Clientes',
+          breadcrumb: 'Clientes',
+          breadcrumbParent: 'Cadastros',
+          icon: '👤'
+        }
       },
       {
         path: 'owners/new',
@@ -375,7 +534,14 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'breeds',
         name: 'Breeds',
-        alias: ['/racas', '/raças', '/cadastros/racas', '/cadastros/raças', '/cadastro/racas', '/cadastro/raças'],
+        alias: [
+          '/racas',
+          '/raças',
+          '/cadastros/racas',
+          '/cadastros/raças',
+          '/cadastro/racas',
+          '/cadastro/raças'
+        ],
         component: () => import('@/pages/breeds/BreedsListPage.vue'),
         meta: { title: 'Raças', breadcrumb: 'Raças', breadcrumbParent: 'Cadastros', icon: '🧬' }
       },
@@ -415,9 +581,21 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'species',
         name: 'Species',
-        alias: ['/especies', '/espécies', '/cadastros/especies', '/cadastros/espécies', '/cadastro/especies', '/cadastro/espécies'],
+        alias: [
+          '/especies',
+          '/espécies',
+          '/cadastros/especies',
+          '/cadastros/espécies',
+          '/cadastro/especies',
+          '/cadastro/espécies'
+        ],
         component: () => import('@/pages/species/SpeciesListPage.vue'),
-        meta: { title: 'Espécies', breadcrumb: 'Espécies', breadcrumbParent: 'Cadastros', icon: '🦴' }
+        meta: {
+          title: 'Espécies',
+          breadcrumb: 'Espécies',
+          breadcrumbParent: 'Cadastros',
+          icon: '🦴'
+        }
       },
       {
         path: 'species/new',
@@ -457,7 +635,12 @@ export const routes: RouteRecordRaw[] = [
         name: 'CoatColors',
         alias: ['/cores', '/pelagens', '/cadastros/cores', '/cadastro/cores'],
         component: () => import('@/pages/coat-colors/CoatColorsListPage.vue'),
-        meta: { title: 'Cores/Pelagens', breadcrumb: 'Cores/Pelagens', breadcrumbParent: 'Cadastros', icon: '🎨' }
+        meta: {
+          title: 'Cores/Pelagens',
+          breadcrumb: 'Cores/Pelagens',
+          breadcrumbParent: 'Cadastros',
+          icon: '🎨'
+        }
       },
       {
         path: 'coat-colors/new',
@@ -495,9 +678,18 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'customer-groups',
         name: 'CustomerGroups',
-        alias: ['/grupos-de-clientes', '/cadastros/grupos-de-clientes', '/cadastro/grupos-de-clientes'],
+        alias: [
+          '/grupos-de-clientes',
+          '/cadastros/grupos-de-clientes',
+          '/cadastro/grupos-de-clientes'
+        ],
         component: () => import('@/pages/customer-groups/CustomerGroupsListPage.vue'),
-        meta: { title: 'Grupos de Clientes', breadcrumb: 'Grupos de Clientes', breadcrumbParent: 'Cadastros', icon: '👥' }
+        meta: {
+          title: 'Grupos de Clientes',
+          breadcrumb: 'Grupos de Clientes',
+          breadcrumbParent: 'Cadastros',
+          icon: '👥'
+        }
       },
       {
         path: 'customer-groups/new',
@@ -598,7 +790,12 @@ export const routes: RouteRecordRaw[] = [
         path: 'appointments',
         name: 'Appointments',
         component: () => import('@/pages/appointments/AppointmentsListPage.vue'),
-        alias: ['/agenda', '/agendamentos', '/atendimento/agenda', '/atendimento/atendimentos/agenda'],
+        alias: [
+          '/agenda',
+          '/agendamentos',
+          '/atendimento/agenda',
+          '/atendimento/atendimentos/agenda'
+        ],
         meta: { title: 'Agenda', breadcrumb: 'Agenda', breadcrumbParent: 'Atendimento', icon: '📅' }
       },
       {
@@ -682,7 +879,11 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'exam-orders',
         name: 'ExamOrdersApi',
-        alias: ['/esteira-de-exames', '/atendimento/esteira-de-exames', '/atendimento/atendimentos/esteira-de-exames'],
+        alias: [
+          '/esteira-de-exames',
+          '/atendimento/esteira-de-exames',
+          '/atendimento/atendimentos/esteira-de-exames'
+        ],
         component: () => import('@/pages/laboratory/ExamOrdersApiPage.vue'),
         meta: {
           title: 'Esteira de Exames',
@@ -745,7 +946,12 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'laboratory/hemograms',
         name: 'LaboratoryHemograms',
-        alias: ['/hemogramas', '/laboratorio/hemogramas', '/laboratorio/atendimentos/hemogramas', '/laboratorio/exames/hemogramas'],
+        alias: [
+          '/hemogramas',
+          '/laboratorio/hemogramas',
+          '/laboratorio/atendimentos/hemogramas',
+          '/laboratorio/exames/hemogramas'
+        ],
         component: () => import('@/pages/laboratory/LaboratoryHemogramsPage.vue'),
         meta: {
           title: 'Hemogramas',
@@ -757,7 +963,14 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'laboratory/urinalysis',
         name: 'LaboratoryUrinalysis',
-        alias: ['/urina', '/urinanalise', '/urinálise', '/laboratorio/urina', '/laboratorio/atendimentos/urina', '/laboratorio/exames/urina'],
+        alias: [
+          '/urina',
+          '/urinanalise',
+          '/urinálise',
+          '/laboratorio/urina',
+          '/laboratorio/atendimentos/urina',
+          '/laboratorio/exames/urina'
+        ],
         component: () => import('@/pages/laboratory/LaboratoryUrinalysisPage.vue'),
         meta: {
           title: 'Urina',
@@ -769,7 +982,14 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'laboratory/biochemistry',
         name: 'LaboratoryBiochemistry',
-        alias: ['/bioquimico', '/bioquímico', '/laboratorio/bioquimico', '/laboratorio/bioquímico', '/laboratorio/atendimentos/bioquimico', '/laboratorio/exames/bioquimico'],
+        alias: [
+          '/bioquimico',
+          '/bioquímico',
+          '/laboratorio/bioquimico',
+          '/laboratorio/bioquímico',
+          '/laboratorio/atendimentos/bioquimico',
+          '/laboratorio/exames/bioquimico'
+        ],
         component: () => import('@/pages/laboratory/LaboratoryBiochemistryPage.vue'),
         meta: {
           title: 'Bioquímico',
@@ -781,7 +1001,11 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'laboratory/equipment',
         name: 'LaboratoryEquipment',
-        alias: ['/equipamentos', '/laboratorio/equipamentos', '/laboratorio/cadastros/equipamentos'],
+        alias: [
+          '/equipamentos',
+          '/laboratorio/equipamentos',
+          '/laboratorio/cadastros/equipamentos'
+        ],
         component: () => import('@/pages/laboratory/LaboratoryEquipmentPage.vue'),
         meta: {
           title: 'Equipamentos',
@@ -826,7 +1050,11 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'laboratory/report-types',
         name: 'LaboratoryReportTypes',
-        alias: ['/tipos-de-laudo', '/laboratorio/tipos-de-laudo', '/laboratorio/cadastros/tipos-de-laudo'],
+        alias: [
+          '/tipos-de-laudo',
+          '/laboratorio/tipos-de-laudo',
+          '/laboratorio/cadastros/tipos-de-laudo'
+        ],
         component: () => import('@/pages/laboratory/LaboratoryReportTypesPage.vue'),
         meta: {
           title: 'Tipos de Laudo',
@@ -882,7 +1110,11 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'laboratory/hemogram-reference-values',
         name: 'LaboratoryHemogramReferenceValues',
-        alias: ['/vlr-ref-hemograma', '/laboratorio/vlr-ref-hemograma', '/laboratorio/cadastros/vlr-ref-hemograma'],
+        alias: [
+          '/vlr-ref-hemograma',
+          '/laboratorio/vlr-ref-hemograma',
+          '/laboratorio/cadastros/vlr-ref-hemograma'
+        ],
         component: () => import('@/pages/laboratory/LaboratoryHemogramReferenceValuesPage.vue'),
         meta: {
           title: 'Vlr. Ref. Hemograma',
@@ -905,7 +1137,8 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'laboratory/hemogram-reference-values/:id',
         name: 'LaboratoryHemogramReferenceValueDetail',
-        component: () => import('@/pages/laboratory/LaboratoryHemogramReferenceValueDetailPage.vue'),
+        component: () =>
+          import('@/pages/laboratory/LaboratoryHemogramReferenceValueDetailPage.vue'),
         meta: {
           title: 'Detalhes do Valor de Referência',
           breadcrumb: 'Detalhes',
@@ -927,7 +1160,11 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'laboratory/biochemistry-reference-values',
         name: 'LaboratoryBiochemistryReferenceValues',
-        alias: ['/vlr-ref-bioquimico', '/laboratorio/vlr-ref-bioquimico', '/laboratorio/cadastros/vlr-ref-bioquimico'],
+        alias: [
+          '/vlr-ref-bioquimico',
+          '/laboratorio/vlr-ref-bioquimico',
+          '/laboratorio/cadastros/vlr-ref-bioquimico'
+        ],
         component: () => import('@/pages/laboratory/LaboratoryBiochemistryReferenceValuesPage.vue'),
         meta: {
           title: 'Vlr. Ref. Bioquímico',
@@ -939,7 +1176,8 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'laboratory/biochemistry-reference-values/new',
         name: 'LaboratoryBiochemistryReferenceValueNew',
-        component: () => import('@/pages/laboratory/LaboratoryBiochemistryReferenceValueFormPage.vue'),
+        component: () =>
+          import('@/pages/laboratory/LaboratoryBiochemistryReferenceValueFormPage.vue'),
         meta: {
           title: 'Incluir Valor Bioquímico',
           breadcrumb: 'Incluir',
@@ -950,7 +1188,8 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'laboratory/biochemistry-reference-values/:id',
         name: 'LaboratoryBiochemistryReferenceValueDetail',
-        component: () => import('@/pages/laboratory/LaboratoryBiochemistryReferenceValueDetailPage.vue'),
+        component: () =>
+          import('@/pages/laboratory/LaboratoryBiochemistryReferenceValueDetailPage.vue'),
         meta: {
           title: 'Detalhes do Valor Bioquímico',
           breadcrumb: 'Detalhes',
@@ -961,7 +1200,8 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'laboratory/biochemistry-reference-values/:id/edit',
         name: 'LaboratoryBiochemistryReferenceValueEdit',
-        component: () => import('@/pages/laboratory/LaboratoryBiochemistryReferenceValueFormPage.vue'),
+        component: () =>
+          import('@/pages/laboratory/LaboratoryBiochemistryReferenceValueFormPage.vue'),
         meta: {
           title: 'Editar Valor Bioquímico',
           breadcrumb: 'Editar',
@@ -1085,7 +1325,11 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'beds',
         name: 'Beds',
-        alias: ['/boxes-de-internacao', '/cadastros/boxes-de-internacao', '/cadastro/boxes-de-internacao'],
+        alias: [
+          '/boxes-de-internacao',
+          '/cadastros/boxes-de-internacao',
+          '/cadastro/boxes-de-internacao'
+        ],
         component: () => import('@/pages/inpatient/BedsPage.vue'),
         meta: {
           title: 'Boxes de Internação',
@@ -1158,10 +1402,7 @@ export const routes: RouteRecordRaw[] = [
         path: 'finance/accounts-payable',
         name: 'AccountsPayable',
         component: () => import('@/pages/finance/AccountsPayablePage.vue'),
-        alias: [
-          '/financeiro/controles/contas-a-pagar',
-          '/contas-a-pagar'
-        ],
+        alias: ['/financeiro/controles/contas-a-pagar', '/contas-a-pagar'],
         meta: {
           title: 'Contas a Pagar',
           breadcrumb: 'Contas a Pagar',
@@ -1190,10 +1431,7 @@ export const routes: RouteRecordRaw[] = [
         path: 'finance/advance-payments',
         name: 'FinanceAdvancePayments',
         component: () => import('@/pages/finance/AdvancePaymentsPage.vue'),
-        alias: [
-          '/financeiro/controles/pagamento-antecipado',
-          '/pagamento-antecipado'
-        ],
+        alias: ['/financeiro/controles/pagamento-antecipado', '/pagamento-antecipado'],
         meta: {
           title: 'Pagamento Antecipado',
           breadcrumb: 'Pagamento Antecipado',
@@ -1222,10 +1460,7 @@ export const routes: RouteRecordRaw[] = [
         path: 'finance/cheques',
         name: 'FinanceCheques',
         component: () => import('@/pages/finance/ChequesPage.vue'),
-        alias: [
-          '/financeiro/controles/cheques',
-          '/cheques'
-        ],
+        alias: ['/financeiro/controles/cheques', '/cheques'],
         meta: {
           title: 'Cheques',
           breadcrumb: 'Cheques',
@@ -1237,10 +1472,7 @@ export const routes: RouteRecordRaw[] = [
         path: 'finance/cash-flow',
         name: 'FinanceCashFlow',
         component: () => import('@/pages/finance/CashFlowPage.vue'),
-        alias: [
-          '/financeiro/controles/fluxo-de-caixa',
-          '/fluxo-de-caixa'
-        ],
+        alias: ['/financeiro/controles/fluxo-de-caixa', '/fluxo-de-caixa'],
         meta: {
           title: 'Fluxo de Caixa',
           breadcrumb: 'Fluxo de Caixa',
@@ -1851,7 +2083,11 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'inventory/price-consultation',
         name: 'InventoryPriceConsultation',
-        alias: ['/consulta-de-precos', '/estoque/consulta-de-precos', '/estoque/controles/consulta-de-precos'],
+        alias: [
+          '/consulta-de-precos',
+          '/estoque/consulta-de-precos',
+          '/estoque/controles/consulta-de-precos'
+        ],
         component: () => import('@/pages/inventory/InventoryPriceConsultationPage.vue'),
         meta: {
           title: 'Consulta de Preços',
@@ -1945,6 +2181,17 @@ export const routes: RouteRecordRaw[] = [
           title: 'Compras',
           breadcrumb: 'Compras',
           breadcrumbParent: 'Estoque',
+          icon: '🛒'
+        }
+      },
+      {
+        path: 'inventory/purchases/:purchaseId',
+        name: 'InventoryPurchaseDetail',
+        component: () => import('@/pages/inventory/InventoryPurchaseDetailPage.vue'),
+        meta: {
+          title: 'Detalhe da compra',
+          breadcrumb: 'Detalhe da compra',
+          breadcrumbParent: 'Compras',
           icon: '🛒'
         }
       },
@@ -2289,7 +2536,12 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'products',
         name: 'Products',
-        alias: ['/produtos', '/estoque/produtos', '/estoque/cadastros/produtos', '/cadastros/produtos'],
+        alias: [
+          '/produtos',
+          '/estoque/produtos',
+          '/estoque/cadastros/produtos',
+          '/cadastros/produtos'
+        ],
         component: () => import('@/pages/products/ProductsListPage.vue'),
         meta: {
           title: 'Produtos',
@@ -2301,7 +2553,12 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'suppliers',
         name: 'Suppliers',
-        alias: ['/fornecedores-e-despesas', '/fornecedores', '/estoque/fornecedores-e-despesas', '/estoque/cadastros/fornecedores-e-despesas'],
+        alias: [
+          '/fornecedores-e-despesas',
+          '/fornecedores',
+          '/estoque/fornecedores-e-despesas',
+          '/estoque/cadastros/fornecedores-e-despesas'
+        ],
         component: () => import('@/pages/inventory/SuppliersPage.vue'),
         meta: {
           title: 'Fornecedores e Despesas',
@@ -2396,7 +2653,11 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'products/import',
         name: 'ProductsImport',
-        alias: ['/produtos/importar', '/estoque/produtos/importar', '/estoque/cadastros/importar-dados-produtos'],
+        alias: [
+          '/produtos/importar',
+          '/estoque/produtos/importar',
+          '/estoque/cadastros/importar-dados-produtos'
+        ],
         component: () => import('@/pages/products/ProductsImportPage.vue'),
         meta: {
           title: 'Importar Dados Produtos',
@@ -2477,7 +2738,11 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'vetus-imports',
         name: 'VetusAssistedImport',
-        alias: ['/vetus/importacao-assistida', '/importacao-vetus', '/atendimento/importacao-vetus'],
+        alias: [
+          '/vetus/importacao-assistida',
+          '/importacao-vetus',
+          '/atendimento/importacao-vetus'
+        ],
         component: () => import('@/pages/imports/VetusAssistedImportPage.vue'),
         meta: {
           title: 'Importação Assistida Vetus',

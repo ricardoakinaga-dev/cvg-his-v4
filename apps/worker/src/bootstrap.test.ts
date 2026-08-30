@@ -211,6 +211,7 @@ test('PIX provider settlement runtime is default-off and requires explicit capab
   const runtime = createPixProviderSettlementRuntime({
     enabled: true,
     allowSyntheticProviders: true,
+    environment: 'test',
     pool: {} as never,
     workerId: 'pix-settlement-test'
   });
@@ -218,6 +219,25 @@ test('PIX provider settlement runtime is default-off and requires explicit capab
   assert.equal(runtime.workerId, 'pix-settlement-test');
   assert.equal(runtime.leaseMs, 60_000);
   assert.deepEqual(PIX_PROVIDER_SETTLEMENT_DEFAULTS, { leaseMs: 60_000 });
+});
+
+test('PIX provider settlement rejects synthetic capability in every production-like alias', () => {
+  for (const environment of ['production', 'prod', 'staging', 'stage']) {
+    assert.throws(
+      () =>
+        createPixProviderSettlementRuntime({
+          enabled: true,
+          allowSyntheticProviders: true,
+          environment,
+          pool: {} as never,
+          workerId: 'pix-settlement-test'
+        }),
+      (error: unknown) => {
+        assert.equal((error as { readonly code?: string }).code, 'SYNTHETIC_PIX_PROVIDER_DISABLED');
+        return true;
+      }
+    );
+  }
 });
 
 test('local PIX provider keeps provider identity stable per attempt without secrets', async () => {

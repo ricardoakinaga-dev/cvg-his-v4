@@ -1,9 +1,16 @@
 import assert from 'node:assert/strict';
+import { createHmac } from 'node:crypto';
+import { request as httpRequest } from 'node:http';
 import { Readable, Writable } from 'node:stream';
 import test from 'node:test';
 
+import { ApiKeysService } from '@cvg-his-v2/module-api-keys';
 import { ChaosEngine } from '@cvg-his-v2/chaos';
 import type { PersistedSessionRecord, SessionRepository } from '@cvg-his-v2/module-auth';
+import {
+  DatabaseEncounterRepository,
+  type EncounterRepository
+} from '@cvg-his-v2/module-encounters';
 import { createRateLimiter } from '@cvg-his-v2/shared-rate-limiter';
 import {
   ClamAvAttachmentSecurityScanner,
@@ -21,6 +28,8 @@ import {
   buildAuthenticatedActorAttributes,
   createApiServer
 } from './server.js';
+import { createInMemoryRuntimeRepositories } from './runtime-repositories.js';
+import { InMemoryLaboratoryResultImportRepository } from './laboratory-result-import-repository.js';
 
 function createTestPrincipal() {
   return {
@@ -211,6 +220,250 @@ function createServerUnderTest(overrides: Partial<Parameters<typeof createApiSer
   });
 }
 
+function createNonAdminAuditWriteRepositories() {
+  const accountId = 'acc_reprocess_http';
+  const userId = 'user_reprocess_operator';
+  const createdAt = '2026-08-29T00:00:00.000Z';
+  const user = {
+    id: userId,
+    accountId,
+    username: 'audit-operator',
+    email: 'audit-operator@example.test',
+    passwordHash: 'cvg-his-v2-seed-salt-v1:seed_audit_operator',
+    fullName: 'Audit Operator',
+    isActive: true,
+    principalKind: 'human' as const,
+    interactiveLoginEnabled: true,
+    createdAt,
+    updatedAt: createdAt
+  };
+  const permission = {
+    id: 'perm_audit_write',
+    key: 'audit.write',
+    description: 'Write audit trail events.',
+    createdAt
+  };
+  const role = {
+    id: 'role_audit_operator',
+    code: 'audit_operator',
+    name: 'Audit Operator',
+    description: 'Non-administrative audit operator for HTTP authorization tests.',
+    createdAt,
+    permissionCodes: ['audit.write']
+  };
+
+  const users = {
+    create: async () => undefined,
+    update: async () => undefined,
+    upgradePasswordHash: async () => false,
+    findById: async (requestedUserId: string) => (requestedUserId === userId ? user : null),
+    findByUsername: async (requestedAccountId: string, username: string) =>
+      requestedAccountId === accountId && username === user.username ? user : null,
+    findByEmail: async (requestedAccountId: string, email: string) =>
+      requestedAccountId === accountId && email === user.email ? user : null,
+    findAll: async () => [user],
+    findRoleCodesByUserId: async (requestedUserId: string) =>
+      requestedUserId === userId ? ['audit_operator'] : [],
+    findByAccountId: async (requestedAccountId: string) =>
+      requestedAccountId === accountId ? [user] : []
+  };
+
+  const accessControl = {
+    findAllRoles: async () => [role],
+    findAllPermissions: async () => [permission],
+    findAllTeams: async () => [],
+    findAllSectors: async () => [],
+    findTeamMemberships: async () => [],
+    findSectorMemberships: async () => [],
+    findPermissionAssignments: async () => [],
+    findUserIdsByAccount: async (requestedAccountId: string) =>
+      requestedAccountId === accountId ? [userId] : [],
+    findRolesByUser: async (requestedUserId: string) => (requestedUserId === userId ? [role] : [])
+  };
+
+  return {
+    accountId,
+    repositories: {
+      users: users as never,
+      accessControl: accessControl as never
+    }
+  };
+}
+
+class DurableLaboratoryResultImportTestRepository extends InMemoryLaboratoryResultImportRepository {
+  override readonly storage = 'durable' as const;
+}
+
+async function performRawHttpRequest(
+  server: ReturnType<typeof createApiServer>,
+  input: {
+    readonly path: string;
+    readonly headers: Record<string, string>;
+    readonly body: Buffer;
+  }
+): Promise<{ readonly statusCode: number; readonly body: string }> {
+  await server.ready;
+  await new Promise<void>((resolve, reject) => {
+    server.listen(0, '127.0.0.1', () => resolve());
+    server.once('error', reject);
+  });
+
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address === 'object');
+    return await new Promise((resolve, reject) => {
+      const request = httpRequest(
+        {
+          hostname: '127.0.0.1',
+          port: address.port,
+          path: input.path,
+          method: 'POST',
+          headers: {
+            ...input.headers,
+            'content-length': String(input.body.length)
+          }
+        },
+        (response) => {
+          const chunks: Buffer[] = [];
+          response.on('data', (chunk: Buffer | string) => chunks.push(Buffer.from(chunk)));
+          response.once('end', () =>
+            resolve({
+              statusCode: response.statusCode ?? 0,
+              body: Buffer.concat(chunks).toString('utf8')
+            })
+          );
+          response.once('error', reject);
+        }
+      );
+      request.once('error', reject);
+      request.end(input.body);
+    });
+  } finally {
+    await new Promise<void>((resolve, reject) => {
+      server.close((error) => (error ? reject(error) : resolve()));
+    });
+    await server.closeDependencies();
+  }
+}
+
+test('server preserves the raw signed equipment-bridge body through HTTP dispatch', async () => {
+  const accountId = 'acc_lab_server_http';
+  const providerKeyId = 'lab-server-key';
+  const providerSecret = Buffer.alloc(32, 0x37);
+  const nowSeconds = 1_756_400_000;
+  const payload = {
+    schemaVersion: '1',
+    provider: 'equipment-bridge',
+    externalResultId: 'server-http-result',
+    orderId: 'server-http-order',
+    equipmentId: 'server-http-equipment',
+    resultSummary: 'Hemoglobina: 7.2',
+    observedAt: '2026-08-29T03:33:20.000Z'
+  };
+  const body = Buffer.from(JSON.stringify(payload), 'utf8');
+  const timestamp = String(nowSeconds);
+  const signature = `v1=${createHmac('sha256', providerSecret)
+    .update(Buffer.from(`v1.${timestamp}.`, 'ascii'))
+    .update(body)
+    .digest('hex')}`;
+  const runtimeRepositories = createInMemoryRuntimeRepositories();
+  const apiKeys = new ApiKeysService(runtimeRepositories.apiKey);
+  const created = await apiKeys.create({
+    accountId: accountId as never,
+    name: 'Server laboratory bridge',
+    permissions: ['laboratory.results.write'],
+    createdBy: 'test'
+  });
+  const laboratoryResultImports = new DurableLaboratoryResultImportTestRepository();
+  const server = createServerUnderTest({
+    repositories: {
+      apiKey: runtimeRepositories.apiKey,
+      laboratoryResultImport: laboratoryResultImports
+    } as never,
+    laboratoryProviderKeyring: new Map([[providerKeyId, { accountId, secret: providerSecret }]]),
+    laboratoryProviderNowSeconds: () => nowSeconds
+  });
+
+  const result = await performRawHttpRequest(server, {
+    path: '/integrations/laboratory/equipment-results/imports',
+    headers: {
+      'x-api-key': created.rawKey,
+      'content-type': 'application/json',
+      'x-lab-provider-key-id': providerKeyId,
+      'x-lab-timestamp': timestamp,
+      'x-lab-signature': signature
+    },
+    body
+  });
+
+  assert.equal(result.statusCode, 202);
+  assert.equal(JSON.parse(result.body).status, 'pending_human_review');
+  assert.equal((await laboratoryResultImports.list(accountId)).length, 1);
+});
+
+test('API server exposes idempotent cleanup for distributed limiter connections', async () => {
+  let closeCalls = 0;
+  const limiter = {
+    check: async () => ({
+      limit: 10,
+      remaining: 9,
+      reset: Date.now() + 60_000,
+      blocked: false,
+      retryAfterMs: 0
+    }),
+    healthCheck: async () => ({
+      healthy: true,
+      backend: 'redis' as const,
+      detail: 'test'
+    }),
+    close: async () => {
+      closeCalls += 1;
+    }
+  };
+  const server = createServerUnderTest({
+    runtimeDistributedStateEnabled: true,
+    redisUrl: 'redis://127.0.0.1:6379/0',
+    authRateLimiter: limiter,
+    pixPaymentAttemptRateLimiter: limiter,
+    pixProviderWebhookRateLimiter: limiter
+  });
+
+  await Promise.all([server.closeDependencies(), server.closeDependencies()]);
+  assert.equal(closeCalls, 3);
+});
+
+function createDatabaseConflictEncounterRepository(): EncounterRepository {
+  let createAttempts = 0;
+  const databaseClient = {
+    async execute() {
+      createAttempts += 1;
+      if (createAttempts > 1) {
+        const cause = Object.assign(new Error('duplicate active encounter'), {
+          code: '23505',
+          constraint: 'uidx_encounters_one_active_per_patient'
+        });
+        throw Object.assign(new Error('Failed query'), { cause });
+      }
+      return { rowCount: 1 };
+    },
+    select() {
+      return {
+        from() {
+          return {
+            async where() {
+              // Keep each runtime's hot cache empty so the second request
+              // reaches the simulated database unique violation.
+              return [];
+            }
+          };
+        }
+      };
+    }
+  };
+
+  return new DatabaseEncounterRepository(databaseClient as never);
+}
+
 async function performRequest(
   server: ReturnType<typeof createApiServer>,
   input: {
@@ -251,6 +504,160 @@ async function login(
 
   assert.equal(response.statusCode, 200);
   return response.bodyJson<{ accessToken: string }>().accessToken;
+}
+
+function createTwoAccountTriageServer() {
+  const accounts = ['acc_triage_http_a', 'acc_triage_http_b'];
+  const createdAt = '2026-04-01T10:00:00.000Z';
+  const users = accounts.map((accountId, index) => ({
+    id: `user_triage_http_${index}`,
+    accountId,
+    username: `triage_admin_${index}`,
+    email: `triage_admin_${index}@example.test`,
+    passwordHash: `cvg-his-v2-seed-salt-v1:seed_admin_${index}`,
+    fullName: `Triage Admin ${index}`,
+    isActive: true,
+    principalKind: 'human' as const,
+    interactiveLoginEnabled: true,
+    roleCode: 'admin',
+    createdAt,
+    updatedAt: createdAt
+  }));
+  const encounters = accounts.map((accountId, index) => ({
+    id: `enc_triage_http_${index}`,
+    accountId,
+    patientId: `patient_triage_http_${index}`,
+    ownerId: `owner_triage_http_${index}`,
+    visitType: 'walk_in' as const,
+    origin: 'reception' as const,
+    reason: 'HTTP tenant isolation',
+    status: 'observation' as 'observation' | 'closed',
+    openedAt: createdAt,
+    createdByUserId: users[index]!.id,
+    createdAt,
+    updatedAt: createdAt
+  }));
+  const triageRecords = accounts.map((accountId, index) => ({
+    id: `triage_http_${index}`,
+    accountId,
+    encounterId: encounters[index]!.id,
+    patientId: encounters[index]!.patientId,
+    priority: index === 0 ? ('high' as const) : ('critical' as const),
+    chiefComplaint: `Queixa da conta ${index}`,
+    initialNotes: undefined,
+    alerts: [`alerta-${index}`],
+    destination: 'observation' as const,
+    triagedByUserId: users[index]!.id,
+    createdAt,
+    updatedAt: createdAt
+  }));
+  const triageVersions = triageRecords.map((record, index) => ({
+    id: `triage_version_http_${index}`,
+    triageId: record.id,
+    accountId: record.accountId,
+    encounterId: record.encounterId,
+    changedFields: ['priority'],
+    previousSnapshot: {
+      priority: 'medium' as const,
+      chiefComplaint: record.chiefComplaint,
+      initialNotes: record.initialNotes,
+      alerts: record.alerts,
+      destination: record.destination,
+      updatedAt: record.updatedAt
+    },
+    nextSnapshot: {
+      priority: record.priority,
+      chiefComplaint: record.chiefComplaint,
+      initialNotes: record.initialNotes,
+      alerts: record.alerts,
+      destination: record.destination,
+      updatedAt: record.updatedAt
+    },
+    changedByUserId: record.triagedByUserId,
+    createdAt: record.updatedAt
+  }));
+
+  const usersRepository = {
+    async create() {},
+    async update() {},
+    async upgradePasswordHash() {
+      return false;
+    },
+    async findById(id: string) {
+      return users.find((user) => user.id === id) ?? null;
+    },
+    async findByUsername(accountId: string, username: string) {
+      return (
+        users.find((user) => user.accountId === accountId && user.username === username) ?? null
+      );
+    },
+    async findByEmail(accountId: string, email: string) {
+      return users.find((user) => user.accountId === accountId && user.email === email) ?? null;
+    },
+    async findAll() {
+      return users;
+    },
+    async findRoleCodesByUserId() {
+      return ['admin'];
+    },
+    async findByAccountId(accountId: string) {
+      return users.filter((user) => user.accountId === accountId);
+    }
+  };
+  const encounterRepository = {
+    async create() {},
+    async update() {},
+    async findById(id: string) {
+      return encounters.find((encounter) => encounter.id === id) ?? null;
+    },
+    async findActiveByPatientId() {
+      return null;
+    },
+    async findAll(accountId: string) {
+      return encounters.filter((encounter) => encounter.accountId === accountId);
+    },
+    async findActive(accountId: string) {
+      return encounters.filter(
+        (encounter) => encounter.accountId === accountId && encounter.status !== 'closed'
+      );
+    },
+    async delete() {}
+  };
+  const triageRepository = {
+    async create() {},
+    async update() {},
+    async createVersion() {},
+    async findById(id: string, accountId: string) {
+      return (
+        triageRecords.find((record) => record.id === id && record.accountId === accountId) ?? null
+      );
+    },
+    async findByEncounterId(encounterId: string, accountId: string) {
+      return triageRecords.filter(
+        (record) => record.encounterId === encounterId && record.accountId === accountId
+      );
+    },
+    async findByAccountId(accountId: string) {
+      return triageRecords.filter((record) => record.accountId === accountId);
+    },
+    async findVersionsByTriageId(triageId: string, accountId: string) {
+      return triageVersions.filter(
+        (version) => version.triageId === triageId && version.accountId === accountId
+      );
+    },
+    async findVersionsByAccountId(accountId: string) {
+      return triageVersions.filter((version) => version.accountId === accountId);
+    }
+  };
+
+  return createServerUnderTest({
+    repositories: {
+      users: usersRepository,
+      encounter: encounterRepository,
+      triage: triageRepository
+    } as never,
+    preserveSeedUsersWithRepository: true
+  });
 }
 
 test('CORS preflight reflects an allowed origin', async () => {
@@ -491,9 +898,16 @@ test('repository-backed authentication fails closed when session synchronization
     url: '/chaos/experiments',
     headers: { authorization: `Bearer ${accessToken}`, host: 'localhost' }
   });
+  const sessionListResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/auth/sessions',
+    headers: { authorization: `Bearer ${accessToken}`, host: 'localhost' }
+  });
 
-  assert.equal(response.statusCode, 401);
-  assert.equal(earlyPrivilegedResponse.statusCode, 401);
+  assert.equal(response.statusCode, 503);
+  assert.equal(earlyPrivilegedResponse.statusCode, 503);
+  assert.equal(sessionListResponse.statusCode, 503);
+  assert.equal(sessionListResponse.bodyJson<{ code: string }>().code, 'AUTHENTICATION_UNAVAILABLE');
 });
 
 test('catalog stores honor the in-memory persistence mode', async () => {
@@ -565,6 +979,171 @@ test('tenant command envelope replays the complete HTTP response without repeati
   assert.equal(commandCalls, 1);
 });
 
+test('prescription execution replay rechecks authorization before returning the cached response', async () => {
+  const accountId = '00000000-0000-0000-0000-000000000201';
+  const userId = '00000000-0000-0000-0000-000000000202';
+  const patientId = '00000000-0000-0000-0000-000000000203';
+  const encounterId = '00000000-0000-0000-0000-000000000204';
+  const clinicalEntryId = 'rx_replay-prescription-1';
+  const createdAt = '2026-08-27T10:00:00.000Z';
+  let permissionGranted = true;
+  let mutationCalls = 0;
+
+  const repositoryUser = {
+    id: userId,
+    accountId,
+    username: 'replay-admin',
+    email: 'replay-admin@example.test',
+    passwordHash: 'cvg-his-v2-seed-salt-v1:seed_admin',
+    fullName: 'Replay Admin',
+    isActive: true,
+    createdAt,
+    updatedAt: createdAt
+  };
+  const prescription = {
+    id: clinicalEntryId,
+    accountId,
+    medicalRecordId: 'mr_replay-1',
+    encounterId,
+    patientId,
+    entryType: 'prescription' as const,
+    title: 'Amoxicilina',
+    content: 'Posologia: 500mg\nVia: oral\nFrequência: 8/8h',
+    authoredByUserId: userId,
+    version: 1,
+    createdAt,
+    updatedAt: createdAt,
+    medicationName: 'Amoxicilina',
+    dosage: '500mg',
+    route: 'oral',
+    frequency: '8/8h',
+    signedAt: createdAt,
+    signedByUserId: userId,
+    signatureHash: 'replay-fixture-signature'
+  };
+  const usersRepository = {
+    async create() {},
+    async update() {},
+    async upgradePasswordHash() {
+      return false;
+    },
+    async findById(id: string) {
+      return id === userId ? repositoryUser : null;
+    },
+    async findByUsername(_accountId: string, username: string) {
+      return username === repositoryUser.username ? repositoryUser : null;
+    },
+    async findByEmail() {
+      return null;
+    },
+    async findAll() {
+      return [repositoryUser];
+    },
+    async findRoleCodesByUserId() {
+      return permissionGranted ? ['admin'] : [];
+    },
+    async findByAccountId() {
+      return [repositoryUser];
+    }
+  };
+  const prescriptionRepository = {
+    async create() {},
+    async update() {},
+    async findById(id: string) {
+      return id === clinicalEntryId ? prescription : null;
+    },
+    async findByEncounterId() {
+      return [prescription];
+    },
+    async findByPatientId() {
+      return [prescription];
+    },
+    async findByAccountId() {
+      return [prescription];
+    },
+    async findByAccountIdPaginated() {
+      return { items: [prescription], total: 1 };
+    },
+    async findSignature() {
+      return {
+        prescriptionId: clinicalEntryId,
+        version: 1,
+        signedByUserId: userId,
+        signedAt: createdAt,
+        signatureHash: 'replay-fixture-signature'
+      };
+    }
+  };
+  const cachedResponses = new Map<string, unknown>();
+  const server = createServerUnderTest({
+    preserveSeedUsersWithRepository: false,
+    repositories: {
+      users: usersRepository,
+      prescription: prescriptionRepository
+    } as never,
+    unitOfWork: {
+      async execute(
+        context: { readonly idempotencyKey: string },
+        _payload: unknown,
+        command: (transaction: unknown) => Promise<unknown>,
+        beforeIdempotency?: (transaction: unknown) => Promise<void>
+      ) {
+        await beforeIdempotency?.({} as never);
+        const key = context.idempotencyKey;
+        const cached = cachedResponses.get(key);
+        if (cached !== undefined) return { value: cached, replayed: true };
+        mutationCalls += 1;
+        const value = await command({} as never);
+        cachedResponses.set(key, value);
+        return { value, replayed: false };
+      }
+    } as never
+  });
+  await server.ready;
+  const accessToken = await login(server, repositoryUser.username, 'seed_admin');
+  const create = await performRequest(server, {
+    method: 'POST',
+    url: '/prescription-executions',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      'idempotency-key': 'prescription-create-replay-fixture',
+      host: 'localhost'
+    },
+    body: {
+      clinicalEntryId,
+      patientId,
+      encounterId,
+      medicationName: 'Amoxicilina',
+      dosage: '500mg',
+      route: 'oral',
+      frequency: '8/8h',
+      scheduledAt: createdAt
+    }
+  });
+  assert.equal(create.statusCode, 201);
+  const executionId = create.bodyJson<{ id: string }>().id;
+  const executeRequest = {
+    method: 'POST',
+    url: `/prescription-executions/${executionId}/execute`,
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      'idempotency-key': 'prescription-execute-replay-fixture',
+      host: 'localhost'
+    },
+    body: { status: 'administered' }
+  } as const;
+
+  const first = await performRequest(server, executeRequest);
+  permissionGranted = false;
+  const revokedReplay = await performRequest(server, executeRequest);
+
+  assert.equal(first.statusCode, 200);
+  assert.equal(revokedReplay.statusCode, 403);
+  assert.equal(mutationCalls, 2);
+});
+
 test('PIX attempt replay authenticates first and stores only a derived ledger key', async () => {
   const rawKey = 'customer-visible-pix-request-key';
   const ledgerKeys: string[] = [];
@@ -575,11 +1154,7 @@ test('PIX attempt replay authenticates first and stores only a derived ledger ke
   };
   const server = createServerUnderTest({
     unitOfWork: {
-      async execute(
-        context: { idempotencyKey?: string },
-        _payload: unknown,
-        _command: () => Promise<unknown>
-      ) {
+      async execute(context: { idempotencyKey?: string }) {
         ledgerKeys.push(context.idempotencyKey ?? 'missing');
         return { value: replaySnapshot, replayed: true };
       }
@@ -631,13 +1206,13 @@ test('auth login fails closed when the distributed rate-limit backend is unavail
     body: { username: 'admin', password: 'seed_admin' }
   });
 
-  assert.equal(response.statusCode, 500);
+  assert.equal(response.statusCode, 503);
   const body = response.bodyJson<{ code: string; message: string }>();
   assert.deepEqual(
     { code: body.code, message: body.message },
     {
-      code: 'INTERNAL_ERROR',
-      message: 'Unexpected error'
+      code: 'RATE_LIMIT_UNAVAILABLE',
+      message: 'Rate limit service unavailable'
     }
   );
   assert.equal(response.getHeader('set-cookie'), undefined);
@@ -933,6 +1508,17 @@ test('chaos operations expose effective runtime state, runbooks and metrics', as
   const server = createServerUnderTest({
     redisUrl: 'redis://127.0.0.1:6379/0',
     runtimeDistributedStateEnabled: true,
+    pixProviderWebhookSyntheticEnabled: true,
+    pixProviderWebhookKeyring: new Map([
+      ['test-key-id', { accountId: 'account-1', secret: Buffer.alloc(32, 7) }]
+    ]),
+    pixProviderEventIngressRepository: {
+      persist: async () => ({
+        status: 'created' as const,
+        eventId: 'pix-event-1',
+        deliveryId: 'pix-delivery-1'
+      })
+    },
     authRateLimiter: createRateLimiter({
       windowMs: 60_000,
       maxRequests: 100,
@@ -1014,7 +1600,7 @@ test('chaos operations expose effective runtime state, runbooks and metrics', as
     }>();
 
     assert.equal(experimentsPayload.runtimeState.databaseHealthy, false);
-    assert.equal(experimentsPayload.runtimeState.persistenceMode, 'in-memory');
+    assert.equal(experimentsPayload.runtimeState.persistenceMode, 'unavailable');
     assert.equal(experimentsPayload.runtimeState.workerReady, false);
     assert.equal(experimentsPayload.runtimeState.redisHealthy, false);
     assert.equal(experimentsPayload.runtimeState.rateLimiterMode, 'fail-closed');
@@ -1031,7 +1617,7 @@ test('chaos operations expose effective runtime state, runbooks and metrics', as
       databaseExperiment?.runbook?.path,
       'packages/chaos/src/runbooks/database-failure-runbook.md'
     );
-    assert.equal(databaseExperiment?.runtimeImpact?.persistenceMode, 'in-memory');
+    assert.equal(databaseExperiment?.runtimeImpact?.persistenceMode, 'unavailable');
 
     const readyResponse = await performRequest(server, {
       method: 'GET',
@@ -1049,7 +1635,7 @@ test('chaos operations expose effective runtime state, runbooks and metrics', as
       };
     }>();
     assert.equal(readyPayload.readiness.ready, false);
-    assert.equal(readyPayload.readiness.persistenceMode, 'in-memory');
+    assert.equal(readyPayload.readiness.persistenceMode, 'unavailable');
     assert.equal(readyPayload.dependencies.database.state, 'unhealthy');
     assert.equal(readyPayload.dependencies.worker.state, 'degraded');
 
@@ -1064,14 +1650,167 @@ test('chaos operations expose effective runtime state, runbooks and metrics', as
     const metricsText = metricsResponse.bodyText();
     assert.match(metricsText, /^app_database_healthy 0$/m);
     assert.match(metricsText, /^app_redis_healthy 0$/m);
-    assert.match(metricsText, /^app_persistence_mode\{mode="in-memory"\} 1$/m);
+    assert.match(metricsText, /^app_persistence_mode\{mode="unavailable"\} 1$/m);
     assert.match(metricsText, /^app_rate_limiter_mode\{mode="fail-closed"\} 1$/m);
+
+    const healthResponse = await performRequest(server, {
+      method: 'GET',
+      url: '/health',
+      headers: { host: 'localhost' }
+    });
+    assert.equal(healthResponse.statusCode, 200);
+    const healthPayload = healthResponse.bodyJson<{
+      ok: boolean;
+      persistenceMode: string;
+    }>();
+    assert.equal(healthPayload.ok, false);
+    assert.equal(healthPayload.persistenceMode, 'unavailable');
+
+    const blockedClinicalWrite = await performRequest(server, {
+      method: 'POST',
+      url: '/encounters',
+      headers: {
+        ...chaosHeaders,
+        'content-type': 'application/json'
+      },
+      // The guard must run before body validation or the route handler can
+      // acknowledge an in-memory mutation during simulated DB loss.
+      body: {}
+    });
+    assert.equal(blockedClinicalWrite.statusCode, 503);
+    assert.equal(
+      blockedClinicalWrite.bodyJson<{ code: string }>().code,
+      'DATABASE_PERSISTENCE_UNAVAILABLE'
+    );
+
+    const blockedPublicWebhook = await performRequest(server, {
+      method: 'POST',
+      url: '/webhooks/pix/synthetic/v1',
+      headers: {
+        'content-type': 'application/json',
+        host: 'localhost'
+      },
+      body: {}
+    });
+    assert.equal(blockedPublicWebhook.statusCode, 503);
+    assert.equal(
+      blockedPublicWebhook.bodyJson<{ code: string }>().code,
+      'DATABASE_PERSISTENCE_UNAVAILABLE'
+    );
+
+    const blockedWhatsAppWebhook = await performRequest(server, {
+      method: 'POST',
+      url: '/webhooks/whatsapp/inbound',
+      headers: {
+        'content-type': 'application/json',
+        host: 'localhost'
+      },
+      body: {}
+    });
+    assert.equal(blockedWhatsAppWebhook.statusCode, 503);
+    assert.equal(
+      blockedWhatsAppWebhook.bodyJson<{ code: string }>().code,
+      'DATABASE_PERSISTENCE_UNAVAILABLE'
+    );
+
+    const healthReadyAliasResponse = await performRequest(server, {
+      method: 'GET',
+      url: '/health/ready',
+      headers: { host: 'localhost' }
+    });
+    assert.equal(healthReadyAliasResponse.statusCode, 503);
+
+    const livenessResponse = await performRequest(server, {
+      method: 'GET',
+      url: '/live',
+      headers: { host: 'localhost' }
+    });
+    assert.equal(livenessResponse.statusCode, 200);
+    const livenessPayload = livenessResponse.bodyJson<{
+      ok: boolean;
+      readiness: { persistenceMode: string };
+    }>();
+    assert.equal(livenessPayload.ok, true);
+    assert.equal(livenessPayload.readiness.persistenceMode, 'unavailable');
   } finally {
     for (const experimentId of ['database-failure', 'redis-failure', 'worker-failure']) {
       if (chaos.isActive(experimentId)) {
         await chaos.stop(experimentId);
       }
     }
+  }
+});
+
+test('production-like API rejects chaos mutations before executing an experiment', async () => {
+  const chaos = ChaosEngine.getInstance();
+  if (chaos.isActive('database-failure')) {
+    await chaos.stop('database-failure');
+  }
+
+  const productionChaosLimiter = createRateLimiter({ windowMs: 60_000, maxRequests: 100 });
+  const server = createServerUnderTest({
+    environment: 'production',
+    pagarmeApiKey: 'pagarme-test-key',
+    pagarmePixKey: 'pagarme-test-pix-key',
+    nfseProvider: 'abrasf',
+    nfseApiUrl: 'https://nfse.test.example/api',
+    nfseApiKey: 'nfse-test-key',
+    nfseMunicipalityCode: '3550308',
+    nfseIssuer: {
+      cnpj: '12345678000190',
+      inscricaoMunicipal: '123456',
+      razaoSocial: 'CVG HIS Testes',
+      address: {
+        street: 'Rua de Testes',
+        number: '100',
+        district: 'Centro',
+        city: 'Sao Paulo',
+        state: 'SP',
+        zipCode: '01000000',
+        country: 'BR'
+      }
+    },
+    resendApiKey: 'resend-test-key',
+    smsApiKey: 'sms-test-key',
+    googleCalendarAccessToken: 'calendar-test-token',
+    googleCalendarCalendarId: 'calendar-test-id',
+    attachmentScanner: new ClamAvAttachmentSecurityScanner({ host: 'clamav.test' }),
+    fileStorage: new S3CompatibleFileStorage({
+      endpoint: 'https://s3.test.example',
+      bucket: 'cvg-test',
+      accessKeyId: 'test-access',
+      secretAccessKey: 'test-secret'
+    }),
+    authRateLimiter: productionChaosLimiter,
+    pixPaymentAttemptRateLimiter: productionChaosLimiter,
+    pixProviderWebhookRateLimiter: productionChaosLimiter
+  });
+
+  try {
+    await server.ready;
+    const accessToken = await login(server, 'admin', 'seed_admin');
+    const response = await performRequest(server, {
+      method: 'POST',
+      url: '/chaos/experiments/database-failure/start',
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+        'content-type': 'application/json',
+        host: 'localhost'
+      },
+      body: { durationMs: 60_000 }
+    });
+
+    assert.equal(response.statusCode, 503);
+    assert.deepEqual(response.bodyJson<{ ok: boolean; code: string }>(), {
+      ok: false,
+      code: 'CHAOS_MUTATIONS_DISABLED'
+    });
+    assert.equal(chaos.isActive('database-failure'), false);
+  } finally {
+    if (chaos.isActive('database-failure')) {
+      await chaos.stop('database-failure');
+    }
+    await server.closeDependencies();
   }
 });
 
@@ -1518,6 +2257,137 @@ test('appointments reject duplicate time slot for the same patient over HTTP sem
   assert.equal(duplicate.bodyJson<{ code: string }>().code, 'CONFLICT');
 });
 
+test('in-memory encounters expose active-patient conflicts through the stable HTTP envelope', async () => {
+  const server = createServerUnderTest();
+  const accessToken = await login(server, 'reception', 'seed_reception');
+  const payload = {
+    patientId: 'patient_luna',
+    ownerId: 'owner_maria_silva',
+    visitType: 'walk_in',
+    origin: 'reception',
+    reason: 'Duplicate active encounter over HTTP'
+  };
+  const headers = {
+    authorization: `Bearer ${accessToken}`,
+    'content-type': 'application/json',
+    host: 'localhost'
+  };
+
+  const first = await performRequest(server, {
+    method: 'POST',
+    url: '/encounters',
+    headers,
+    body: payload
+  });
+  assert.equal(first.statusCode, 201);
+
+  const duplicate = await performRequest(server, {
+    method: 'POST',
+    url: '/encounters',
+    headers,
+    body: payload
+  });
+  assert.equal(duplicate.statusCode, 409);
+  const errorBody = duplicate.bodyJson<{
+    code: string;
+    message: string;
+    details?: { encounterId?: string };
+    correlationId?: string;
+  }>();
+  assert.equal(errorBody.code, 'CONFLICT');
+  assert.equal(errorBody.message, 'Patient already has an active encounter');
+  assert.ok(errorBody.details?.encounterId);
+  assert.ok(errorBody.correlationId);
+});
+
+test('database-origin active-patient conflicts map to HTTP 409 with safe details', async () => {
+  const encounterRepository = createDatabaseConflictEncounterRepository();
+  const firstServer = createServerUnderTest({
+    repositories: { encounter: encounterRepository },
+    requireUuidEntityIdentifiers: false
+  });
+  const secondServer = createServerUnderTest({
+    repositories: { encounter: encounterRepository },
+    requireUuidEntityIdentifiers: false
+  });
+  await Promise.all([firstServer.ready, secondServer.ready]);
+
+  const firstToken = await login(firstServer, 'reception', 'seed_reception');
+  const secondToken = await login(secondServer, 'reception', 'seed_reception');
+  const payload = {
+    patientId: 'patient_luna',
+    ownerId: 'owner_maria_silva',
+    visitType: 'walk_in',
+    origin: 'reception',
+    reason: 'Database-origin duplicate active encounter'
+  };
+
+  const first = await performRequest(firstServer, {
+    method: 'POST',
+    url: '/encounters',
+    headers: {
+      authorization: `Bearer ${firstToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: payload
+  });
+  assert.equal(first.statusCode, 201);
+
+  const checkIn = await performRequest(secondServer, {
+    method: 'POST',
+    url: '/queue/check-in',
+    headers: {
+      authorization: `Bearer ${secondToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      patientId: payload.patientId,
+      ownerId: payload.ownerId,
+      reason: 'Database-origin conflict queue rollback',
+      priority: 'high'
+    }
+  });
+  assert.equal(checkIn.statusCode, 201);
+  const queueEntry = checkIn.bodyJson<{ id: string }>();
+
+  const duplicate = await performRequest(secondServer, {
+    method: 'POST',
+    url: '/encounters',
+    headers: {
+      authorization: `Bearer ${secondToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: { ...payload, queueEntryId: queueEntry.id }
+  });
+  assert.equal(duplicate.statusCode, 409);
+  const errorBody = duplicate.bodyJson<{
+    code: string;
+    message: string;
+    details?: { patientId?: string; encounterId?: string };
+    correlationId?: string;
+  }>();
+  assert.equal(errorBody.code, 'CONFLICT');
+  assert.equal(errorBody.message, 'Patient already has an active encounter');
+  assert.equal(errorBody.details?.patientId, payload.patientId);
+  assert.equal(errorBody.details?.encounterId, undefined);
+  assert.ok(errorBody.correlationId);
+
+  const queueAfterConflict = await performRequest(secondServer, {
+    method: 'GET',
+    url: '/queue',
+    headers: { authorization: `Bearer ${secondToken}`, host: 'localhost' }
+  });
+  assert.equal(queueAfterConflict.statusCode, 200);
+  const restoredQueueEntry = queueAfterConflict
+    .bodyJson<{ items: Array<{ id: string; status: string; encounterId?: string }> }>()
+    .items.find((entry) => entry.id === queueEntry.id);
+  assert.equal(restoredQueueEntry?.status, 'waiting');
+  assert.equal(restoredQueueEntry?.encounterId, undefined);
+});
+
 test('triage patch updates the record and transitions encounter status over HTTP semantics', async () => {
   const server = createServerUnderTest();
   const accessToken = await login(server, 'admin', 'seed_admin');
@@ -1621,6 +2491,148 @@ test('triage patch updates the record and transitions encounter status over HTTP
   assert.equal(history.items.length, 1);
   assert.equal(history.items[0]?.changedFields.includes('priority'), true);
   assert.equal(history.items[0]?.nextSnapshot.destination, 'in_care');
+});
+
+test('triage rejects an explicitly empty encounter filter instead of broadening the collection', async () => {
+  const server = createServerUnderTest();
+  const accessToken = await login(server, 'admin', 'seed_admin');
+
+  const response = await performRequest(server, {
+    method: 'GET',
+    url: '/triage?encounterId=',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+
+  assert.equal(response.statusCode, 400);
+});
+
+test('triage HTTP collections and history remain isolated across authenticated accounts', async () => {
+  const server = createTwoAccountTriageServer();
+  await server.ready;
+  const accessTokenA = await login(server, 'triage_admin_0', 'seed_admin_0');
+  const accessTokenB = await login(server, 'triage_admin_1', 'seed_admin_1');
+
+  const listA = await performRequest(server, {
+    method: 'GET',
+    url: '/triage',
+    headers: { authorization: `Bearer ${accessTokenA}`, host: 'localhost' }
+  });
+  assert.equal(listA.statusCode, 200);
+  assert.deepEqual(
+    listA.bodyJson<{ items: Array<{ id: string }> }>().items.map((item) => item.id),
+    ['triage_http_0']
+  );
+
+  const listB = await performRequest(server, {
+    method: 'GET',
+    url: '/triage',
+    headers: { authorization: `Bearer ${accessTokenB}`, host: 'localhost' }
+  });
+  assert.equal(listB.statusCode, 200);
+  assert.deepEqual(
+    listB.bodyJson<{ items: Array<{ id: string }> }>().items.map((item) => item.id),
+    ['triage_http_1']
+  );
+
+  const crossAccountHistory = await performRequest(server, {
+    method: 'GET',
+    url: '/triage/triage_http_1/history',
+    headers: { authorization: `Bearer ${accessTokenA}`, host: 'localhost' }
+  });
+  assert.equal(crossAccountHistory.statusCode, 404);
+
+  const crossAccountUpdate = await performRequest(server, {
+    method: 'PATCH',
+    url: '/triage/triage_http_1',
+    headers: {
+      authorization: `Bearer ${accessTokenA}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: { priority: 'low' }
+  });
+  assert.equal(crossAccountUpdate.statusCode, 404);
+
+  const crossAccountCreate = await performRequest(server, {
+    method: 'POST',
+    url: '/triage',
+    headers: {
+      authorization: `Bearer ${accessTokenA}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      encounterId: 'enc_triage_http_1',
+      patientId: 'patient_triage_http_1',
+      priority: 'low',
+      chiefComplaint: 'Tentativa cruzada',
+      alerts: [],
+      destination: 'observation'
+    }
+  });
+  assert.equal(crossAccountCreate.statusCode, 404);
+
+  const ownHistory = await performRequest(server, {
+    method: 'GET',
+    url: '/triage/triage_http_1/history',
+    headers: { authorization: `Bearer ${accessTokenB}`, host: 'localhost' }
+  });
+  assert.equal(ownHistory.statusCode, 200);
+  assert.equal(ownHistory.bodyJson<{ items: unknown[] }>().items.length, 1);
+});
+
+test('triage validation does not transition a reception encounter before persistence', async () => {
+  const server = createServerUnderTest();
+  const accessToken = await login(server, 'admin', 'seed_admin');
+
+  const encounterResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/encounters',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      visitType: 'walk_in',
+      origin: 'reception',
+      reason: 'Triage validation ordering'
+    }
+  });
+  assert.equal(encounterResponse.statusCode, 201);
+  const encounter = encounterResponse.bodyJson<{ id: string }>();
+
+  const invalidTriageResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/triage',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      encounterId: encounter.id,
+      patientId: 'patient_not_the_encounter_patient',
+      priority: 'high',
+      chiefComplaint: 'Payload invalido',
+      alerts: [],
+      destination: 'in_care'
+    }
+  });
+  assert.equal(invalidTriageResponse.statusCode, 400);
+
+  const unchangedEncounter = await performRequest(server, {
+    method: 'GET',
+    url: `/encounters/${encounter.id}`,
+    headers: { authorization: `Bearer ${accessToken}`, host: 'localhost' }
+  });
+  assert.equal(unchangedEncounter.statusCode, 200);
+  assert.equal(unchangedEncounter.bodyJson<{ status: string }>().status, 'reception');
 });
 
 test('quotes expose dedicated PDF generation over HTTP semantics', async () => {
@@ -2469,8 +3481,34 @@ test('API keys unlock integration catalog and PIX intent creation over HTTP sema
   });
   assert.equal(catalogResponse.statusCode, 200);
   const catalog = catalogResponse.bodyJson<{
+    eventBus: {
+      endpoints: string[];
+      operatorEndpoints: string[];
+      authentication: { type: string; readPermission: string; writePermission: string };
+    };
     payments: { provider: string; capabilities: string[]; endpoints: string[] };
   }>();
+  assert.deepEqual(catalog.eventBus.endpoints, []);
+  assert.equal(
+    catalog.eventBus.operatorEndpoints.includes('/internal/events/by-correlation/:correlationId'),
+    true
+  );
+  assert.deepEqual(catalog.eventBus.authentication, {
+    type: 'bearer',
+    readPermission: 'audit.read',
+    writePermission: 'audit.write'
+  });
+
+  const apiKeyOperatorResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/internal/events/by-correlation/catalog-contract-check',
+    headers: {
+      'x-api-key': createdKey.rawKey,
+      host: 'localhost'
+    }
+  });
+  assert.equal(apiKeyOperatorResponse.statusCode, 401);
+
   assert.equal(catalog.payments.provider, 'gateway-abstraction');
   assert.deepEqual(catalog.payments.capabilities, ['pix', 'cards']);
   assert.equal(catalog.payments.endpoints.includes('/payments/cards/intents'), true);
@@ -2598,6 +3636,77 @@ test('API keys unlock integration catalog and PIX intent creation over HTTP sema
   assert.equal(cardReport.provider, 'local-card');
   assert.ok(Array.isArray(cardReport.items));
   assert.equal(typeof cardReport.summary.total, 'number');
+});
+
+test('internal event inspection applies the configured audit ABAC policy to an admin principal', async () => {
+  const server = createServerUnderTest();
+  const accessToken = await login(server, 'admin', 'seed_admin');
+
+  const response = await performRequest(server, {
+    method: 'GET',
+    url: '/internal/events/stats',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.bodyJson<{ total: number }>().total >= 0, true);
+});
+
+test('audit event listing applies the configured audit ABAC policy to an admin principal', async () => {
+  const server = createServerUnderTest();
+  const accessToken = await login(server, 'admin', 'seed_admin');
+
+  const response = await performRequest(server, {
+    method: 'GET',
+    url: '/audit/events?limit=1',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(Array.isArray(response.bodyJson<{ items: unknown[] }>().items), true);
+});
+
+test('outbox reprocess applies the configured admin-only audit.write ABAC policy', async () => {
+  const server = createServerUnderTest();
+  const accessToken = await login(server, 'admin', 'seed_admin');
+
+  const response = await performRequest(server, {
+    method: 'POST',
+    url: '/internal/events/missing-reprocess-event/reprocess',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+
+  assert.equal(response.statusCode, 404);
+  assert.equal(response.bodyJson<{ code: string }>().code, 'NOT_FOUND');
+});
+
+test('outbox reprocess denies a non-admin audit.write principal at the HTTP ABAC boundary', async () => {
+  const testRuntime = createNonAdminAuditWriteRepositories();
+  const server = createServerUnderTest({ repositories: testRuntime.repositories });
+  await server.ready;
+  const accessToken = await login(server, 'audit-operator', 'seed_audit_operator');
+
+  const response = await performRequest(server, {
+    method: 'POST',
+    url: '/internal/events/missing-reprocess-event/reprocess',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+
+  assert.equal(response.statusCode, 403);
+  assert.equal(response.bodyJson<{ code: string }>().code, 'FORBIDDEN');
+  await server.closeDependencies();
 });
 
 // =============================================================================

@@ -1,0 +1,90 @@
+{
+  "record_id": "GATE-CVG-003-TRIAGE-TENANT-ISOLATION-IR-001",
+  "timestamp": "2026-08-26T21:06:14-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-003 bounded account-scoped triage collection, version history and update filtering",
+  "scope_ref": "CVG-003-TRIAGE-TENANT-ISOLATION",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "Process-wide hydrated triage maps, unscoped service methods and an empty encounter filter are recorded as a clinical cross-tenant read/update risk.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-003-triage-tenant-isolation.md",
+        "packages/modules/triage/src/index.ts",
+        "packages/modules/triage/src/repositories/database-triage.repository.ts",
+        "apps/api/src/server.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The gate covers only the local application boundary; target RLS, privileged writers and global readiness remain excluded."
+    },
+    {
+      "id": "IR-002",
+      "description": "The authorized correction is limited to required account context at repository/service methods, principal-derived route calls and explicit empty-filter validation.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/triage/src/index.ts",
+        "packages/modules/triage/src/repositories/database-triage.repository.ts",
+        "apps/api/src/server.ts",
+        "packages/modules/triage/src/triage.test.ts",
+        "tests/unit/modules/triage-service.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "No migration, provider, credential, target, production, deployment or external state change is authorized by this gate."
+    },
+    {
+      "id": "IR-003",
+      "description": "Explicit RED tests will fail before implementation for missing account context, cross-account hydrated reads and empty filtered query values.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-TRIAGE-TENANT-ISOLATION-RED-001",
+        "packages/modules/triage/src/triage.test.ts",
+        "tests/unit/modules/triage-service.test.ts",
+        "apps/api/src/server.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Green tests, quality checks, independent review and control-plane reconciliation are required before a verified bounded gate."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-003-triage-tenant-isolation.md",
+    "packages/modules/triage/src/index.ts",
+    "packages/modules/triage/src/repositories/database-triage.repository.ts",
+    "apps/api/src/server.ts",
+    "packages/modules/triage/src/triage.test.ts",
+    "tests/unit/modules/triage-service.test.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "The corrected code and focused regressions are not yet implemented.",
+    "Independent read-only security review is not complete.",
+    "Global parity/readiness, target, provider, operations and release evidence remain open."
+  ],
+  "conditions": [
+    "Preserve the existing PostgreSQL/Vue monolith and package boundaries.",
+    "Do not weaken required AccountId signatures or reintroduce unscoped route calls.",
+    "Do not modify target infrastructure, providers, credentials or external systems."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via the original consolidation brief",
+    "scope": "CVG-003 bounded triage collection, history and update tenant isolation",
+    "decision": "Authorize reversible repository-local triage service/repository/route/test correction and local verification of account-scoped triage collection, history and update boundaries; exclude migrations, direct SQL beyond the repository query correction, target, providers, credentials, production, deployment, external mutation and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-003-TRIAGE-TENANT-ISOLATION-IR-001",
+    "expires_or_revalidates": "Revalidate before expanding beyond triage collection, history and update application boundaries."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "next_action": "Add and execute the bounded RED regressions, then implement the smallest account-scoped triage service/repository/route correction and verify without promoting CVG-003 or global readiness.",
+  "revalidation_triggers": [
+    "New triage collection, detail, history or update path",
+    "Changes to hydration, tenant context, encounter authorization or triage persistence",
+    "Expansion to migrations, target, provider, credential, production, deployment or release"
+  ],
+  "supersedes": null
+}

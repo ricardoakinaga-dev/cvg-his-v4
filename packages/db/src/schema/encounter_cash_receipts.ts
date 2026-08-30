@@ -47,7 +47,11 @@ export const encounterCashReceipts = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
   },
   (table) => ({
-    accountEncounterUnique: uniqueIndex('encounter_cash_receipts_account_encounter_unique').on(
+    accountIdIdUnique: uniqueIndex('idx_encounter_cash_receipts_account_id_id_unique').on(
+      table.accountId,
+      table.id
+    ),
+    accountEncounterIdx: index('idx_encounter_cash_receipts_account_encounter').on(
       table.accountId,
       table.encounterId
     ),

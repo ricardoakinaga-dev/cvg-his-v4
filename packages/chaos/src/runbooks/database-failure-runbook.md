@@ -2,15 +2,19 @@
 
 ## Scenario
 
-PostgreSQL database becomes unavailable or experiences severe degradation, causing the API to switch to in-memory fallback mode.
+PostgreSQL database becomes unavailable or experiences severe degradation. The
+API must fail closed for durable clinical and financial writes until database
+health and readiness are freshly verified.
 
 **Related Experiments:**
+
 - `database-failure` — Chaos experiment that simulates this scenario
 
 **Metrics to Monitor:**
+
 - `chaos_experiment_active{experiment="database-failure"}` — Experiment running
 - `app_database_healthy` — Database health status (0 = unhealthy)
-- `app_persistence_mode{mode="in-memory"}` — 1 when in fallback mode
+- `app_persistence_mode{mode="unavailable"}` — 1 while database persistence is unavailable
 - `pg_stat_activity` — Connection pool status
 - `postgresql_errors_total` — Database error count
 
@@ -20,7 +24,7 @@ PostgreSQL database becomes unavailable or experiences severe degradation, causi
 
 - API requests returning 500 or timeout errors
 - `app_database_healthy` metric shows 0
-- `app_persistence_mode{mode="in-memory"}` switches to 1
+- `app_persistence_mode{mode="unavailable"}` switches to 1
 - EventBus DLQ (Dead Letter Queue) depth increasing
 - Webhook delivery failures
 
@@ -29,13 +33,15 @@ PostgreSQL database becomes unavailable or experiences severe degradation, causi
 ## Detection
 
 ### Automatic Alerts
+
 - PagerDuty alert: `DatabaseHealthy = false` for > 30 seconds
 - Grafana dashboard: `grafana.internal/d/database-overview` shows red
 
 ### Manual Verification
+
 ```bash
 # Check database health endpoint
-curl http://localhost:3001/ready | jq '.database'
+curl http://localhost:3001/ready | jq '.dependencies.database'
 
 # Check effective chaos/runtime state
 curl http://localhost:3001/chaos/experiments | jq '.runtimeState'
@@ -43,7 +49,7 @@ curl http://localhost:3001/chaos/experiments | jq '.runtimeState'
 # View database-related metrics
 curl http://localhost:3001/metrics | grep -E "database|persistence"
 
-# Check if in-memory mode is active
+# Check if persistence is unavailable
 curl http://localhost:3001/metrics | grep "app_persistence_mode"
 ```
 
@@ -62,6 +68,10 @@ curl http://localhost:3001/chaos/experiments | jq '.runtimeState, (.experiments[
 curl -X POST http://localhost:3001/chaos/experiments/database-failure/stop
 ```
 
+In `production`, `prod`, `staging` and `stage`, HTTP chaos mutations are
+disabled. This runbook may be exercised only in an explicitly authorized
+local/test game-day runtime.
+
 ### 2. Check database connectivity
 
 ```bash
@@ -77,28 +87,31 @@ kubectl logs -n production -l app=cvghis-api --tail=500 | grep -i "database\|pos
 
 ### 3. Identify the root cause
 
-| Symptom | Likely Cause | Next Step |
-|---------|--------------|-----------|
-| Connection timeout | Network partition / Firewall | Check network policies, verify DNS |
-| Authentication failure | Credential rotation / config mismatch | Check secret version, verify DATABASE_URL |
+| Symptom                   | Likely Cause                             | Next Step                                    |
+| ------------------------- | ---------------------------------------- | -------------------------------------------- |
+| Connection timeout        | Network partition / Firewall             | Check network policies, verify DNS           |
+| Authentication failure    | Credential rotation / config mismatch    | Check secret version, verify DATABASE_URL    |
 | Connection pool exhausted | Query performance / Too many connections | Kill idle connections, optimize long queries |
-| Disk full | Write-heavy operation / Bad query | Check disk space, identify large tables |
-| Replication lag | replica lag > 30s | Promote new primary if primary is read-only |
+| Disk full                 | Write-heavy operation / Bad query        | Check disk space, identify large tables      |
+| Replication lag           | replica lag > 30s                        | Promote new primary if primary is read-only  |
 
 ---
 
 ## Mitigation Strategies
 
-### Strategy A: Database Recovers Automatically
+### Strategy A: Database Recovers
+
 If the database issue is transient (e.g., brief network blip, OOM kill that restarted):
+
 1. Monitor `app_database_healthy` metric
 2. Wait for PostgreSQL to become healthy again
-3. System will automatically switch back from in-memory mode
-4. Verify `app_persistence_mode` returns to `database`
+3. Verify `/ready` returns `200` and the runtime reports `persistenceMode=database`
+4. Resume writes only after the fresh readiness check; do not infer recovery from process uptime
 
 ### Strategy B: Database Requires Intervention
 
 **Option 1: Restart Database Pod (if using Kubernetes)**
+
 ```bash
 # Find the database pod
 kubectl get pods -n database | grep postgresql
@@ -111,6 +124,7 @@ kubectl delete pod postgresql-0 -n database
 ```
 
 **Option 2: Reduce Load to Let Database Recover**
+
 ```bash
 # Enable maintenance mode to reduce write load
 # Contact platform team
@@ -120,6 +134,7 @@ kubectl scale deployment/cvghis-worker -n production --replicas=1
 ```
 
 **Option 3: Failover to Read Replica**
+
 ```bash
 # If primary is down but replica is healthy
 # Update DATABASE_URL to point to replica
@@ -135,63 +150,72 @@ kubectl scale deployment/cvghis-worker -n production --replicas=1
 
 ---
 
-## In-Memory Mode Behavior
+## Fail-Closed Behavior
 
-When `app_persistence_mode = in-memory`:
+While `app_persistence_mode{mode="unavailable"} = 1`:
 
-| Feature | Behavior |
-|---------|----------|
-| Patient records | Read from cache/memory (stale data possible) |
-| New encounters | Created in memory, will be lost on restart |
-| Prescriptions | Can be read, new ones created in memory |
-| Billing | Queued for later processing |
-| Webhooks | DLQ increased, will retry when DB recovers |
-| EventBus events | Buffered in memory, may be lost on restart |
+The runtime reports `persistenceMode=unavailable` and must not accept clinical
+or financial writes without the durable database boundary.
 
-**Data Loss Risk**: Any writes made during in-memory mode will be lost when the system recovers and restarts with database persistence.
+| Surface                       | Required behavior                                                                  |
+| ----------------------------- | ---------------------------------------------------------------------------------- |
+| `/health`                     | HTTP `200` transport with `ok=false`                                               |
+| `/ready` and `/health/ready`  | HTTP `503` until PostgreSQL, repositories and worker are ready                     |
+| `/live`                       | Remains a liveness-only probe so orchestration can restart the instance            |
+| Clinical and financial writes | Must not accept clinical or financial writes without the durable database boundary |
+| Worker processing             | Remains not ready; no in-memory substitute is advertised                           |
+
+The local bootstrap `in-memory` mode is a separate explicit development/test
+configuration. It is not a recovery path for an installed runtime that lost
+its PostgreSQL dependency.
 
 ---
 
 ## Recovery Verification
 
 1. **Database Health Restored**
+
    ```bash
-   curl http://localhost:3001/ready | jq '.database'
-   # Expected: {"status": "ok"}
+    curl http://localhost:3001/ready | jq '.dependencies.database'
+    # Expected: {"state": "healthy", ...}
    ```
 
-2. **System Switched Back to Database Mode**
+2. **System Confirmed in Database Mode**
+
    ```bash
    curl http://localhost:3001/metrics | grep "app_persistence_mode"
-   # Expected: app_persistence_mode{mode="database"} 1
+   # Expected only after a fresh readiness check: app_persistence_mode{mode="database"} 1
    ```
 
 3. **No Error Spike on Recovery**
+
    ```bash
    # Monitor for 5 minutes after recovery
    # Error rate should return to < 1%
    ```
 
-4. **Replay EventBus DLQ (if events were queued)**
+4. **Reconcile Durable Pending Work**
+
    ```bash
    # Check DLQ depth
-   # Events should auto-retry once database is healthy
+   # Resume durable retries only after database readiness is confirmed
 
-   # If manual replay needed (consult with team):
-   # Replay events from DLQ
+   # If manual replay is needed, follow the owning delivery runbook
    ```
 
 ---
 
 ## Post-Incident Actions
 
-1. **Data Audit**: Check if any data was lost during in-memory mode
+1. **Durable Operation Audit**: Verify rejected/pending operations were not acknowledged as committed
+
    ```bash
-   # Compare encounter counts before/after incident
-   # Identify any orphaned records that need cleanup
+   # Compare durable transaction/audit counts before and after the incident
+   # Reconcile only records present in the durable outbox or delivery ledger
    ```
 
 2. **Performance Review**: Analyze what caused the database issue
+
    ```bash
    # Check slow query log
    # Review connection pool usage patterns
@@ -199,8 +223,8 @@ When `app_persistence_mode = in-memory`:
    ```
 
 3. **Update Monitoring**: Add alerts if this incident revealed gaps
-   - Consider adding alert for `app_persistence_mode` transitions
-   - Consider alerting on EventBus DLQ depth > threshold
+   - Consider adding alerts for unavailable persistence transitions
+   - Consider alerting on durable delivery backlog depth > threshold
 
 4. **Runbook Update**: If gaps found in this runbook, update accordingly
 

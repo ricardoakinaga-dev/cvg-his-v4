@@ -213,7 +213,7 @@ const filteredReports = computed(() => {
     if (animal && !normalizeSearch(report.animalName).includes(animal) && !normalizeSearch(report.patientId).includes(animal)) {
       return false;
     }
-    if (body && !normalizeSearch(report.resultSummary).includes(body)) return false;
+    if (body && !laboratoryResultSearchText(report).includes(body)) return false;
     if (appliedFilters.finalizedAt && report.finalizedAt.slice(0, 10) !== appliedFilters.finalizedAt) return false;
     if (appliedFilters.enteredAt && report.enteredAt.slice(0, 10) !== appliedFilters.enteredAt) return false;
     if (!appliedFilters.closed && report.status === 'resulted') return false;
@@ -228,6 +228,18 @@ const anomalySummary = computed(() => ({
 
 function normalizeSearch(value: string | undefined): string {
   return (value ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
+}
+
+function laboratoryResultSearchText(report: LaboratoryReportRow): string {
+  return normalizeSearch([
+    report.resultSummary,
+    ...(report.resultValues ?? []).flatMap((value) => [
+      value.parameter,
+      value.value,
+      value.unit,
+      value.reference
+    ])
+  ].filter((part): part is string => Boolean(part)).join(' '));
 }
 
 function shortId(id: string): string {

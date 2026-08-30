@@ -148,6 +148,11 @@ worker:
   accountIds:
     existingSecret: ""
     secretKey: WORKER_ACCOUNT_IDS
+  # Scheduled reports require an explicit tenant-valid user/service actor. The
+  # Secret is operator-managed; UUIDs never belong in this repository.
+  reportsUser:
+    existingSecret: ""
+    secretKey: WORKER_REPORTS_USER_ID
 
   service:
     type: ClusterIP

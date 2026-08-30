@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { Pool } from 'pg';
 
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
@@ -14,6 +15,7 @@ import {
 import type { AccountId, UserId } from '../../../packages/shared/types/src/index.js';
 import { runWithTenantContext } from '../../../packages/tenant-context/src/index.js';
 import { getTestPool } from '../../db/db-admin.js';
+import { activateRlsRole, setAccountContext } from '../../helpers/rls-helpers.js';
 import { TEST_DB_URL } from '../../setup/env.js';
 
 const TENANT_ID = randomUUID();
@@ -32,9 +34,8 @@ describe('NFS-e provider boundary on PostgreSQL', () => {
     operation: () => Promise<T> | T
   ): Promise<T> {
     const correlationId = `fiscal-nfse-${randomUUID()}`;
-    return runWithTenantContext(
-      { tenantId: TENANT_ID, accountId, correlationId },
-      () => runInTenantTransactionContext(
+    return runWithTenantContext({ tenantId: TENANT_ID, accountId, correlationId }, () =>
+      runInTenantTransactionContext(
         getPool(),
         { accountId, actorUserId: userId, correlationId },
         operation
@@ -54,9 +55,10 @@ describe('NFS-e provider boundary on PostgreSQL', () => {
     });
   }
 
-  function documentPayload(numero: number, description = 'Consulta <especial>'): Parameters<
-    FiscalService['createNfseDocument']
-  >[0] {
+  function documentPayload(
+    numero: number,
+    description = 'Consulta <especial>'
+  ): Parameters<FiscalService['createNfseDocument']>[0] {
     return {
       numero,
       provider: 'abrasf',
@@ -65,19 +67,21 @@ describe('NFS-e provider boundary on PostgreSQL', () => {
         document: '12345678909',
         name: 'Cliente NFS-e'
       },
-      services: [{
-        description,
-        codigoServico: '0407',
-        cnae: '7500-1/00',
-        quantity: 1,
-        unitValue: 100,
-        totalValue: 100,
-        issRate: 0.05,
-        issValue: 5,
-        pisValue: 0,
-        cofinsValue: 0,
-        csllValue: 0
-      }]
+      services: [
+        {
+          description,
+          codigoServico: '0407',
+          cnae: '7500-1/00',
+          quantity: 1,
+          unitValue: 100,
+          totalValue: 100,
+          issRate: 0.05,
+          issValue: 5,
+          pisValue: 0,
+          cofinsValue: 0,
+          csllValue: 0
+        }
+      ]
     };
   }
 
@@ -124,7 +128,8 @@ describe('NFS-e provider boundary on PostgreSQL', () => {
   });
 
   it('persists authorized issue/cancel and provider rejection without leaking secrets', async () => {
-    const fetchMock = vi.fn()
+    const fetchMock = vi
+      .fn()
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
@@ -154,7 +159,9 @@ describe('NFS-e provider boundary on PostgreSQL', () => {
     const issued = await command(ACCOUNT_ID, USER_ID, () => service.issueNfseDocument(created.id));
     expect(issued?.status).toBe('issued');
     expect(issued?.authorizationCode).toBe('AUTH-ISSUE-POSTGRES');
-    const repeatedIssue = await command(ACCOUNT_ID, USER_ID, () => service.issueNfseDocument(created.id));
+    const repeatedIssue = await command(ACCOUNT_ID, USER_ID, () =>
+      service.issueNfseDocument(created.id)
+    );
     expect(repeatedIssue?.status).toBe('issued');
 
     const cancelled = await command(ACCOUNT_ID, USER_ID, () =>
@@ -177,11 +184,13 @@ describe('NFS-e provider boundary on PostgreSQL', () => {
         WHERE account_id = $1 AND numero = $2`,
       [ACCOUNT_ID, 7002]
     );
-    expect(persisted.rows).toEqual([{
-      status: 'error',
-      authorization_code: null,
-      observations: '[NFS-e provider error: NFS-e provider rejected document (HTTP 401)]'
-    }]);
+    expect(persisted.rows).toEqual([
+      {
+        status: 'error',
+        authorization_code: null,
+        observations: '[NFS-e provider error: NFS-e provider rejected document (HTTP 401)]'
+      }
+    ]);
 
     const foreignDocuments = await command(FOREIGN_ACCOUNT_ID, FOREIGN_USER_ID, () =>
       repository.listNfseDocuments({ accountId: FOREIGN_ACCOUNT_ID })
@@ -193,5 +202,73 @@ describe('NFS-e provider boundary on PostgreSQL', () => {
     expect(String(issueRequest.body)).toContain('Consulta &lt;especial&gt;');
     expect(issueRequest.headers).toMatchObject({ 'Idempotency-Key': `nfse:${created.id}:issue` });
     expect(JSON.stringify(fetchMock.mock.calls)).not.toContain('municipal-private-secret');
+  });
+
+  it('bounds and isolates persisted NFS-e report reads by competence and tenant', async () => {
+    const service = createService();
+    const first = await command(ACCOUNT_ID, USER_ID, () =>
+      service.createNfseDocument({
+        ...documentPayload(7010, 'Consulta mais recente'),
+        competencia: '2026-05-20'
+      })
+    );
+    await command(ACCOUNT_ID, USER_ID, () =>
+      service.createNfseDocument({
+        ...documentPayload(7011, 'Consulta mais antiga'),
+        competencia: '2026-05-10'
+      })
+    );
+    await command(FOREIGN_ACCOUNT_ID, FOREIGN_USER_ID, () =>
+      new FiscalService(repository, FOREIGN_ACCOUNT_ID).createNfseDocument({
+        ...documentPayload(8010, 'Consulta de outra conta'),
+        competencia: '2026-05-20'
+      })
+    );
+
+    const rows = await command(ACCOUNT_ID, USER_ID, () =>
+      repository.listNfseDocuments({
+        accountId: ACCOUNT_ID,
+        search: 'Consulta',
+        competenciaFrom: '2026-05-15',
+        competenciaTo: '2026-05-20',
+        limit: 1
+      })
+    );
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.id).toBe(first.id);
+    expect(rows[0]?.competencia).toBe('2026-05-20');
+    expect(rows[0]?.customer.name).toBe('Cliente NFS-e');
+
+    const wildcardRows = await command(ACCOUNT_ID, USER_ID, () =>
+      repository.listNfseDocuments({ accountId: ACCOUNT_ID, search: '%' })
+    );
+    expect(wildcardRows).toEqual([]);
+
+    const restrictedUrl = new URL(TEST_DB_URL);
+    restrictedUrl.searchParams.set('options', '-c role=cvg_test_rls');
+    const restrictedPool = new Pool({ connectionString: restrictedUrl.toString() });
+    const restrictedClient = await restrictedPool.connect();
+    try {
+      await restrictedClient.query('BEGIN');
+      await activateRlsRole(restrictedClient);
+      await setAccountContext(restrictedClient, ACCOUNT_ID);
+
+      const crossTenantRows = await restrictedClient.query(
+        'SELECT id FROM fiscal_nfse_documents WHERE account_id = $1',
+        [FOREIGN_ACCOUNT_ID]
+      );
+      const ownTenantRows = await restrictedClient.query(
+        'SELECT id FROM fiscal_nfse_documents WHERE account_id = $1',
+        [ACCOUNT_ID]
+      );
+
+      expect(crossTenantRows.rows).toEqual([]);
+      expect(ownTenantRows.rows.length).toBeGreaterThan(0);
+      await restrictedClient.query('ROLLBACK');
+    } finally {
+      restrictedClient.release();
+      await restrictedPool.end();
+    }
   });
 });

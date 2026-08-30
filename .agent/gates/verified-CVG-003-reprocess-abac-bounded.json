@@ -1,0 +1,156 @@
+{
+  "record_id": "GATE-CVG-003-REPROCESS-ABAC-BOUNDED-VFY-001",
+  "timestamp": "2026-08-29T14:37:35-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-003 bounded ABAC enforcement and metadata auditability on POST /internal/events/:eventId/reprocess",
+  "scope_ref": "CVG-003-REPROCESS-ABAC-BOUNDED",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "VFY-001",
+      "description": "The reprocess route retains RBAC audit.write, invokes principal-derived audit.write ABAC with audit_entry/event/account context before any EventBus lookup or requeue, and a denial prevents EventBus and audit access.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/api/src/routes/internal-events-routes.ts",
+        "apps/api/src/routes/internal-events-routes.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-003-REPROCESS-ABAC-BOUNDED-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-003-REPROCESS-ABAC-BOUNDED-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-003-REPROCESS-ABAC-HTTP-DENY-GREEN-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This certifies the selected HTTP route branch only; it does not certify worker authorization or distributed replay after revocation."
+    },
+    {
+      "id": "VFY-002",
+      "description": "The ABAC policy catalog explicitly permits admin and denies every non-admin role for audit.write on audit_entry, while the existing global unmatched-action behavior remains unchanged.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/access-control/src/abac.ts",
+        "packages/modules/access-control/src/access-control.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-003-REPROCESS-ABAC-POLICY-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-003-REPROCESS-ABAC-POLICY-GREEN-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This does not authorize a systemic ABAC default-deny redesign or policy expansion."
+    },
+    {
+      "id": "VFY-003",
+      "description": "A successful account-scoped reprocess preserves the existing 404/202 and failed/retrying EventBus contracts and appends only metadata-level actor/account/correlation/status/result audit information without raw payload.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/api/src/routes/internal-events-routes.ts",
+        "apps/api/src/routes/internal-events-routes.test.ts",
+        "packages/modules/event-bus/src/event-bus.service.ts",
+        ".agent/verification.jsonl#VFY-CVG-003-REPROCESS-ABAC-BOUNDED-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-003-REPROCESS-ABAC-REGRESSION-FINAL-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The existing appendAudit helper is intentionally fire-and-forget; durable audit atomicity with requeue remains a separate follow-up."
+    },
+    {
+      "id": "VFY-004",
+      "description": "The API server supplies the existing callback and both authenticated HTTP directions are evidenced: admin reaches the existing lookup contract and a non-admin with RBAC audit.write receives 403 before lookup; OpenAPI remains valid.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "apps/api/src/server.ts",
+        "apps/api/src/server.test.ts",
+        "apps/api/src/openapi.yaml",
+        ".agent/verification.jsonl#VFY-CVG-003-REPROCESS-ABAC-INTEGRATION-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-003-REPROCESS-ABAC-HTTP-DENY-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-003-REPROCESS-ABAC-QUALITY-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The server integration uses a missing event for the admin path and a repository fixture for the non-admin path; it does not claim durable target-environment reprocess execution."
+    },
+    {
+      "id": "VFY-005",
+      "description": "Final local regression and quality evidence pass: API 493/493, access-control 39/39, event-bus 25/25, official coverage above 80%, typechecks, OpenAPI, RLS, secret scan, formatting and diff hygiene.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-REPROCESS-ABAC-REGRESSION-FINAL-001",
+        ".agent/verification.jsonl#VFY-CVG-003-REPROCESS-ABAC-QUALITY-001",
+        ".agent/verification.jsonl#VFY-CVG-003-REPROCESS-ABAC-COVERAGE-001",
+        "coverage/coverage-final.json",
+        ".agent/artifacts/CVG-003-reprocess-abac-bounded-2026-08-29.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Local evidence does not replace remote CI, external homologation, target operations or release acceptance."
+    },
+    {
+      "id": "VFY-006",
+      "description": "Independent reviews are reconciled with no in-scope P0/P1 blocker, and fresh global audits confirm non-promotion: Vetus 4/11 verified, clinical 2/3 verified, readiness 95/100 with 42 PASS, 3 WARN and 1 FAIL.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-REPROCESS-ABAC-REVIEW-SECURITY-001",
+        ".agent/verification.jsonl#VFY-CVG-003-REPROCESS-ABAC-REVIEW-COMPAT-001",
+        ".agent/verification.jsonl#VFY-CVG-003-REPROCESS-ABAC-GLOBAL-RETEST-001",
+        ".agent/state.json",
+        ".agent/backlog.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Generic ABAC 403 detail redaction, replay-after-revocation/idempotency, durable audit atomicity and operational-coverage source-of-truth remain explicit residuals."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-003-REPROCESS-ABAC-BOUNDED.md",
+    ".agent/artifacts/CVG-003-reprocess-abac-bounded-2026-08-29.md",
+    ".agent/gates/implementation-ready-CVG-003-reprocess-abac-bounded.json",
+    ".agent/authority.jsonl#AUTH-CVG-003-REPROCESS-ABAC-BOUNDED-IR-001",
+    ".agent/verification.jsonl#VFY-SCOUT-CVG-003-REPROCESS-ABAC-BOUNDED-001",
+    ".agent/verification.jsonl#VFY-CVG-003-REPROCESS-ABAC-BOUNDED-RED-001",
+    ".agent/verification.jsonl#VFY-CVG-003-REPROCESS-ABAC-POLICY-RED-001",
+    ".agent/verification.jsonl#VFY-CVG-003-REPROCESS-ABAC-BOUNDED-GREEN-001",
+    ".agent/verification.jsonl#VFY-CVG-003-REPROCESS-ABAC-POLICY-GREEN-001",
+    ".agent/verification.jsonl#VFY-CVG-003-REPROCESS-ABAC-INTEGRATION-GREEN-001",
+    ".agent/verification.jsonl#VFY-CVG-003-REPROCESS-ABAC-HTTP-DENY-GREEN-001",
+    ".agent/verification.jsonl#VFY-CVG-003-REPROCESS-ABAC-REGRESSION-FINAL-001",
+    ".agent/verification.jsonl#VFY-CVG-003-REPROCESS-ABAC-QUALITY-001",
+    ".agent/verification.jsonl#VFY-CVG-003-REPROCESS-ABAC-REVIEW-SECURITY-001",
+    ".agent/verification.jsonl#VFY-CVG-003-REPROCESS-ABAC-REVIEW-COMPAT-001",
+    ".agent/verification.jsonl#VFY-CVG-003-REPROCESS-ABAC-COVERAGE-001",
+    ".agent/verification.jsonl#VFY-CVG-003-REPROCESS-ABAC-GLOBAL-RETEST-001"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "Generic ABAC denial responses can disclose matched policy metadata through generic ForbiddenError.details; hardening remains outside this route-only authority.",
+    "Replay-after-revocation and idempotency semantics are not re-evaluated by this bounded route slice and remain a separate P1 residual.",
+    "Audit persistence is not atomic with EventBus reprocessing because the existing helper is fire-and-forget; storage/UoW changes remain outside scope.",
+    "GET /audit/operational-coverage has a separate persisted source-of-truth/cache gap and remains the next P1 scouting candidate.",
+    "Global Vetus functional parity remains not verified at 4/11 areas; clinical parity remains not verified at 2/3 areas; enterprise readiness remains 95/100 with external warnings and one parity failure."
+  ],
+  "conditions": [
+    "Close only POST /internal/events/:eventId/reprocess, its existing server seam, explicit abac-009 policy, metadata-only success audit and matching OpenAPI contract as PASS_BOUNDED.",
+    "Preserve principal-derived account scope, RBAC audit.write, 404/202 behavior, failed/retrying eligibility and worker/repository contracts.",
+    "Keep generic ABAC error-detail redaction, replay-after-revocation/idempotency, durable audit atomicity, operational coverage, other routes, workers, providers, target, production, deployment and release work outside this gate unless newly authorized.",
+    "Keep CVG-003/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+    "Do not infer target, production, provider, deployment or release acceptance from this gate."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via explicit continuation request and fresh bounded scout selection",
+    "scope": "Bounded HTTP reprocess RBAC/ABAC/audit route and matching policy, tests and OpenAPI only",
+    "decision": "Authorize only the existing enforceAbac server callback, explicit admin-only audit.write policy, metadata-only successful audit and route/server/test/OpenAPI changes. Exclude operational coverage, distributed replay/revocation, idempotency, generic ABAC error redaction, storage/UoW, workers, migrations, providers, credentials, target, production, deployment and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-003-REPROCESS-ABAC-BOUNDED-IR-001",
+    "expires_or_revalidates": "Revalidate before changing generic ABAC errors, replay/idempotency semantics, durable audit atomicity, operational coverage, another event family or any excluded environment boundary."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_WITH_CONDITIONS",
+  "implementation_status": "COMPLETE_BOUNDED",
+  "next_action": "Return to fresh bounded scouting, prioritizing the operational-coverage source-of-truth candidate; do not promote CVG-003 or global ERP readiness.",
+  "revalidation_triggers": [
+    "GET /audit/operational-coverage or another audit route",
+    "Replay-after-revocation or idempotency changes",
+    "Generic ABAC error-detail redaction",
+    "Durable atomicity between reprocess mutation and audit persistence",
+    "Changes to abac-009 or policy semantics",
+    "Expansion to workers, migrations, providers, credentials, target, production, deployment or release scope"
+  ],
+  "supersedes": null
+}

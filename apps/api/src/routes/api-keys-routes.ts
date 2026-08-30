@@ -24,7 +24,10 @@ export interface ApiKeysHandlers {
     attrs: ResourceAttributes,
     request: IncomingMessage
   ) => void;
-  requirePrincipal: (request: IncomingMessage, permissionCode: string) => AuthenticatedPrincipal;
+  requirePrincipal: (
+    request: IncomingMessage,
+    permissionCode: string
+  ) => AuthenticatedPrincipal | PromiseLike<AuthenticatedPrincipal>;
 }
 
 /**
@@ -42,7 +45,7 @@ export async function handleApiKeysRoutes(
 
   // POST /api-keys — create a new API key
   if (pathname === '/api-keys' && request.method === 'POST') {
-    const principal = rp(request, 'api_keys.manage');
+    const principal = await rp(request, 'api_keys.manage');
     enforceAbac(
       'api_keys.manage',
       principal,
@@ -72,7 +75,9 @@ export async function handleApiKeysRoutes(
     }
 
     const knownPermissions = new Set(accessControl.listPermissions().map((item) => item.code));
-    const unknownPermissions = permissions.filter((permission) => !knownPermissions.has(permission));
+    const unknownPermissions = permissions.filter(
+      (permission) => !knownPermissions.has(permission)
+    );
     if (unknownPermissions.length > 0) {
       throw new ValidationError('permissions contains unknown permission codes', {
         unknownPermissions
@@ -117,7 +122,7 @@ export async function handleApiKeysRoutes(
 
   // GET /api-keys — list API keys for account
   if (pathname === '/api-keys' && request.method === 'GET') {
-    const principal = rp(request, 'api_keys.manage');
+    const principal = await rp(request, 'api_keys.manage');
     const items = await apiKeys.getByAccount(principal.user.accountId);
     response.statusCode = 200;
     response.end(JSON.stringify({ items: items.map(sanitizeApiKey) }));
@@ -134,7 +139,20 @@ export async function handleApiKeysRoutes(
       eventBus: {
         provider: 'database-outbox',
         state: 'operational',
-        endpoints: ['/internal/events/publish', '/internal/events/:correlationId']
+        endpoints: [],
+        operatorEndpoints: [
+          '/internal/events/dlq',
+          '/internal/events/stats',
+          '/internal/events/pending',
+          '/internal/events/:eventId',
+          '/internal/events/by-correlation/:correlationId',
+          '/internal/events/:eventId/reprocess'
+        ],
+        authentication: {
+          type: 'bearer',
+          readPermission: 'audit.read',
+          writePermission: 'audit.write'
+        }
       },
       webhooks: {
         endpoints: ['/webhooks', '/webhooks/{webhookId}', '/webhooks/{webhookId}/test'],
@@ -189,7 +207,14 @@ export async function handleApiKeysRoutes(
       },
       laboratoryEquipmentBridge: {
         provider: 'equipment-bridge',
-        capabilities: ['result-import', 'idempotency', 'operational-report'],
+        capabilities: [
+          'signed-hmac-ingress',
+          'versioned-payload',
+          'human-review-queue',
+          'idempotency',
+          'operational-report'
+        ],
+        config: ['LABORATORY_PROVIDER_KEYRING_JSON'],
         endpoints: [
           '/integrations/laboratory/equipment-results/imports',
           '/integrations/laboratory/equipment-results/report'

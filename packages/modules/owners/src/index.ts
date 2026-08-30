@@ -251,6 +251,28 @@ export class OwnersService {
     }
   }
 
+  /**
+   * Reconciles one account cache with durable state after a transaction
+   * boundary. Unlike bootstrap hydration, this removes entries that were
+   * created in a transaction which later rolled back.
+   */
+  public async refreshFromDatabase(accountId: AccountId): Promise<void> {
+    if (!this.#ownerRepository) {
+      return;
+    }
+
+    const owners = await this.#ownerRepository.findByAccountId(accountId);
+    const persistedIds = new Set(owners.map((owner) => owner.id));
+    for (const [ownerId, owner] of this.#owners) {
+      if (owner.accountId === accountId && !persistedIds.has(ownerId)) {
+        this.#owners.delete(ownerId);
+      }
+    }
+    for (const owner of owners) {
+      this.#owners.set(owner.id, owner);
+    }
+  }
+
   public async waitForPersistence(): Promise<void> {
     try {
       await this.#lastPersist;
@@ -439,3 +461,10 @@ export class OwnersService {
 
 export { createSeedOwners };
 export { DatabaseOwnerRepository } from './repositories/database-owner.repository.js';
+export {
+  DatabaseOwnersReportSource,
+  MAX_OWNERS_REPORT_ROWS,
+  type OwnersReportFilters,
+  type OwnersReportRow,
+  type OwnersReportSource
+} from './owners-report.js';

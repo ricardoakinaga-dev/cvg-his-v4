@@ -23,7 +23,9 @@ function mapFinancialAccount(row: Record<string, unknown>): EncounterFinancialAc
     totalSnapshot: Number(row.total_snapshot),
     paidAmount: Number(row.paid_amount),
     balanceDue: Number(row.balance_due),
-    closedByUserId: (row.closed_by_user_id as string | null) as EncounterFinancialAccountRecord['closedByUserId'],
+    closedByUserId: row.closed_by_user_id as
+      | string
+      | null as EncounterFinancialAccountRecord['closedByUserId'],
     closedAt: row.closed_at ? new Date(row.closed_at as string).toISOString() : null,
     notes: (row.notes as string | null) ?? null,
     snapshotJson: row.snapshot_json as string,
@@ -62,9 +64,12 @@ function mapPayment(row: Record<string, unknown>): EncounterReceivablePaymentRec
     receivableId: row.receivable_id as string,
     amountPaid: Number(row.amount_paid),
     paidAt: new Date(row.paid_at as string).toISOString(),
-    paidByUserId: (row.paid_by_user_id as string | null) as EncounterReceivablePaymentRecord['paidByUserId'],
-    externalReferenceType:
-      (row.external_reference_type as string | null) as EncounterReceivablePaymentRecord['externalReferenceType'],
+    paidByUserId: row.paid_by_user_id as
+      | string
+      | null as EncounterReceivablePaymentRecord['paidByUserId'],
+    externalReferenceType: row.external_reference_type as
+      | string
+      | null as EncounterReceivablePaymentRecord['externalReferenceType'],
     externalReferenceId: (row.external_reference_id as string | null) ?? null,
     notes: (row.notes as string | null) ?? null,
     createdAt: new Date(row.created_at as string).toISOString()
@@ -91,7 +96,8 @@ function mapPayable(row: Record<string, unknown>): FinancialPayableRecord {
     paymentMethod: (row.payment_method as FinancialPayableRecord['paymentMethod']) ?? null,
     paymentReference: (row.payment_reference as string | null) ?? null,
     reconciliationStatus:
-      (row.reconciliation_status as FinancialPayableRecord['reconciliationStatus'] | null) ?? 'not_required',
+      (row.reconciliation_status as FinancialPayableRecord['reconciliationStatus'] | null) ??
+      'not_required',
     reconciliationReference: (row.reconciliation_reference as string | null) ?? null,
     createdByUserId: row.created_by_user_id as UserId,
     paidByUserId: (row.paid_by_user_id as UserId | null) ?? null,
@@ -196,9 +202,10 @@ export class DatabaseEncounterFinancialRepository implements EncounterFinancialR
     receivables: readonly EncounterReceivableRecord[]
   ): Promise<void> {
     return withTenantQuery(getPool(), async (client) => {
-      await client.query('DELETE FROM encounter_receivable_payments WHERE financial_account_id = $1', [
-        financialAccountId
-      ]);
+      await client.query(
+        'DELETE FROM encounter_receivable_payments WHERE financial_account_id = $1',
+        [financialAccountId]
+      );
       await client.query('DELETE FROM encounter_receivables WHERE financial_account_id = $1', [
         financialAccountId
       ]);
@@ -272,7 +279,9 @@ export class DatabaseEncounterFinancialRepository implements EncounterFinancialR
     });
   }
 
-  async findReceivableByIdForUpdate(receivableId: string): Promise<EncounterReceivableRecord | null> {
+  async findReceivableByIdForUpdate(
+    receivableId: string
+  ): Promise<EncounterReceivableRecord | null> {
     return withTenantQuery(getPool(), async (client) => {
       const result = await client.query(
         'SELECT * FROM encounter_receivables WHERE id = $1 LIMIT 1 FOR UPDATE',
@@ -289,10 +298,30 @@ export class DatabaseEncounterFinancialRepository implements EncounterFinancialR
       const result = await client.query(
         `SELECT * FROM encounter_receivable_payments
          WHERE financial_account_id = $1
+           AND NOT EXISTS (
+             SELECT 1
+               FROM encounter_cash_receipt_reversals AS reversal
+              WHERE reversal.account_id = encounter_receivable_payments.account_id
+                AND reversal.receivable_payment_id = encounter_receivable_payments.id
+           )
          ORDER BY paid_at ASC`,
         [financialAccountId]
       );
       return result.rows.map((row: Record<string, unknown>) => mapPayment(row));
+    });
+  }
+
+  async hasReversedCashReceiptForFinancialAccount(financialAccountId: string): Promise<boolean> {
+    return withTenantQuery(getPool(), async (client) => {
+      const result = await client.query<{ readonly exists: boolean }>(
+        `SELECT EXISTS (
+           SELECT 1
+             FROM encounter_cash_receipt_reversals
+            WHERE financial_account_id = $1
+         ) AS exists`,
+        [financialAccountId]
+      );
+      return result.rows[0]?.exists === true;
     });
   }
 
@@ -417,10 +446,9 @@ export class DatabaseFinancialPayablesRepository implements FinancialPayablesRep
 
   async findPayableById(payableId: string): Promise<FinancialPayableRecord | null> {
     return withTenantQuery(getPool(), async (client) => {
-      const result = await client.query(
-        'SELECT * FROM financial_payables WHERE id = $1 LIMIT 1',
-        [payableId]
-      );
+      const result = await client.query('SELECT * FROM financial_payables WHERE id = $1 LIMIT 1', [
+        payableId
+      ]);
       return result.rows[0] ? mapPayable(result.rows[0] as Record<string, unknown>) : null;
     });
   }
@@ -435,7 +463,9 @@ export class DatabaseFinancialPayablesRepository implements FinancialPayablesRep
     });
   }
 
-  async listPayables(filters?: FinancialPayableListFilters): Promise<readonly FinancialPayableRecord[]> {
+  async listPayables(
+    filters?: FinancialPayableListFilters
+  ): Promise<readonly FinancialPayableRecord[]> {
     return withTenantQuery(getPool(), async (client) => {
       const clauses: string[] = [];
       const params: unknown[] = [];

@@ -1,0 +1,90 @@
+{
+  "record_id": "GATE-CVG-003-OUTBOX-ADMIN-ABAC-INSPECTION-IR-001",
+  "timestamp": "2026-08-29T12:41:00-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-003 bounded ABAC enforcement for read-only internal outbox inspection routes",
+  "scope_ref": "CVG-003-OUTBOX-ADMIN-ABAC-INSPECTION",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The access-control module has enabled abac-006 for audit_entry/audit.read, while internal outbox read routes currently perform only permission-based principal checks and have no enforceAbac callback.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/access-control/src/abac.ts",
+        "apps/api/src/routes/internal-events-routes.ts",
+        "apps/api/src/server.ts",
+        ".agent/verification.jsonl#VFY-SCOUT-CVG-003-OUTBOX-ADMIN-ABAC-INSPECTION-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The finding is limited to the five internal outbox read surfaces and does not claim that every audit or sensitive route lacks ABAC."
+    },
+    {
+      "id": "IR-002",
+      "description": "The authorized correction is limited to passing the existing server enforceAbac callback into InternalEventsHandlers and invoking audit.read with an audit_entry resource before read-only event-bus operations.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/authority.jsonl#AUTH-CVG-003-OUTBOX-ADMIN-ABAC-INSPECTION-IR-001",
+        ".agent/tasks/CVG-003-OUTBOX-ADMIN-ABAC-INSPECTION.md",
+        "apps/api/src/routes/internal-events-routes.ts",
+        "apps/api/src/server.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "No policy broadening, reprocess/audit.write change, /audit/events change, systemic ABAC redesign, storage, worker, provider, target or production change is authorized."
+    },
+    {
+      "id": "IR-003",
+      "description": "Focused RED tests must fail before implementation for missing ABAC invocation and fail-closed denial, while GREEN must prove all five read-only route surfaces call the existing callback before event-bus reads.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-003-OUTBOX-ADMIN-ABAC-INSPECTION.md",
+        "apps/api/src/routes/internal-events-routes.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The implementation-ready gate does not claim RED, GREEN, coverage, independent review, target behavior, parity or release readiness."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-003-OUTBOX-ADMIN-ABAC-INSPECTION.md",
+    ".agent/authority.jsonl#AUTH-CVG-003-OUTBOX-ADMIN-ABAC-INSPECTION-IR-001",
+    ".agent/verification.jsonl#VFY-SCOUT-CVG-003-OUTBOX-ADMIN-ABAC-INSPECTION-001",
+    "packages/modules/access-control/src/abac.ts",
+    "apps/api/src/routes/internal-events-routes.ts",
+    "apps/api/src/routes/internal-events-routes.test.ts",
+    "apps/api/src/server.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "Intentional RED and implementation are pending.",
+    "Independent security/correctness review and full regression are pending.",
+    "Global parity/readiness, replay authorization, systemic ABAC, target, provider, operations and release evidence remain open."
+  ],
+  "conditions": [
+    "Use the existing abac-006 policy without changing its roles, rules or enabled state.",
+    "Invoke audit.read ABAC only on the five read-only internal outbox surfaces before event-bus reads.",
+    "Do not change reprocess/audit.write, /audit/events, policy definitions, storage, worker claims, migrations, providers, credentials, target, production, deployment or release behavior.",
+    "Keep CVG-003/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via explicit continuation request",
+    "scope": "CVG-003 bounded ABAC enforcement for read-only internal outbox inspection routes",
+    "decision": "Authorize reversible route/test/server wiring only for the existing audit.read ABAC policy on DLQ, stats, pending, detail and correlation reads; exclude write/replay, systemic policy redesign and all external boundaries.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-003-OUTBOX-ADMIN-ABAC-INSPECTION-IR-001",
+    "expires_or_revalidates": "Revalidate before enforcing ABAC on another route family, changing policy definitions, adding audit.write/replay controls or expanding beyond the five internal read surfaces."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "implementation_status": "READY",
+  "next_action": "Write and execute intentional RED assertions for ABAC invocation and fail-closed denial on the five internal read surfaces, then implement the smallest callback wiring.",
+  "revalidation_triggers": [
+    "A new internal event route or write/replay authorization path",
+    "Changes to abac-006, audit permissions, principal attributes or server authorization wiring",
+    "Expansion to /audit/events, systemic ABAC, migrations, providers, credentials, target, production, deployment or release scope"
+  ],
+  "supersedes": null
+}

@@ -63,6 +63,7 @@ export interface AccessControlRepository {
   removeRoleFromUser(userId: string, roleId: RoleId): Promise<void>;
   findRolesByUser(userId: string): Promise<readonly RoleRecord[]>;
   findUserIdsByAccount?(accountId: AccountId): Promise<readonly UserId[]>;
+  getAccountChangeToken?(accountId: AccountId): Promise<string>;
 
   createTeam(input: {
     accountId: AccountId;
@@ -105,7 +106,9 @@ export interface AccessControlRepository {
     subjectId: string;
     permissionCode: string;
   }): Promise<void>;
-  findPermissionAssignments(accountId: AccountId): Promise<readonly AccessPermissionAssignmentRecord[]>;
+  findPermissionAssignments(
+    accountId: AccountId
+  ): Promise<readonly AccessPermissionAssignmentRecord[]>;
 }
 
 export class DatabaseAccessControlRepository implements AccessControlRepository {
@@ -152,7 +155,12 @@ export class DatabaseAccessControlRepository implements AccessControlRepository 
     await withTenantQuery(getPool(), async (client) => {
       return await client.query(
         'INSERT INTO permissions (id, key, description, created_at) VALUES ($1, $2, $3, $4)',
-        [permission.id, permission.key, permission.description ?? null, new Date(permission.createdAt)]
+        [
+          permission.id,
+          permission.key,
+          permission.description ?? null,
+          new Date(permission.createdAt)
+        ]
       );
     });
   }
@@ -183,10 +191,10 @@ export class DatabaseAccessControlRepository implements AccessControlRepository 
 
   async removePermissionFromRole(roleId: RoleId, permissionId: PermissionId): Promise<void> {
     await withTenantQuery(getPool(), async (client) => {
-      return await client.query('DELETE FROM role_permissions WHERE role_id = $1 AND permission_id = $2', [
-        roleId,
-        permissionId
-      ]);
+      return await client.query(
+        'DELETE FROM role_permissions WHERE role_id = $1 AND permission_id = $2',
+        [roleId, permissionId]
+      );
     });
   }
 
@@ -213,7 +221,10 @@ export class DatabaseAccessControlRepository implements AccessControlRepository 
 
   async removeRoleFromUser(userId: string, roleId: RoleId): Promise<void> {
     await withTenantQuery(getPool(), async (client) => {
-      return await client.query('DELETE FROM user_roles WHERE user_id = $1 AND role_id = $2', [userId, roleId]);
+      return await client.query('DELETE FROM user_roles WHERE user_id = $1 AND role_id = $2', [
+        userId,
+        roleId
+      ]);
     });
   }
 
@@ -244,6 +255,60 @@ export class DatabaseAccessControlRepository implements AccessControlRepository 
     });
   }
 
+  async getAccountChangeToken(accountId: AccountId): Promise<string> {
+    return withTenantQuery(getPool(), async (client) => {
+      const result = await client.query<{ readonly token: string }>(
+        `SELECT md5(concat_ws('|',
+           COALESCE((SELECT string_agg(
+             concat_ws(':', id, code, name, description, is_active::text, updated_at::text),
+             '|' ORDER BY id
+           ) FROM access_teams WHERE account_id = $1), ''),
+           COALESCE((SELECT string_agg(
+             concat_ws(':', id, code, name, description, is_active::text, updated_at::text),
+             '|' ORDER BY id
+           ) FROM access_sectors WHERE account_id = $1), ''),
+           COALESCE((SELECT string_agg(
+             concat_ws(':', user_id, team_id, created_at::text),
+             '|' ORDER BY user_id, team_id
+           ) FROM access_team_memberships WHERE account_id = $1), ''),
+           COALESCE((SELECT string_agg(
+             concat_ws(':', user_id, sector_id, created_at::text),
+             '|' ORDER BY user_id, sector_id
+           ) FROM access_sector_memberships WHERE account_id = $1), ''),
+           COALESCE((SELECT string_agg(
+             concat_ws(':', user_id, permission_id, effect, updated_at::text),
+             '|' ORDER BY user_id, permission_id
+           ) FROM access_user_permissions WHERE account_id = $1), ''),
+           COALESCE((SELECT string_agg(
+             concat_ws(':', team_id, permission_id, effect, updated_at::text),
+             '|' ORDER BY team_id, permission_id
+           ) FROM access_team_permissions WHERE account_id = $1), ''),
+           COALESCE((SELECT string_agg(
+             concat_ws(':', sector_id, permission_id, effect, updated_at::text),
+             '|' ORDER BY sector_id, permission_id
+           ) FROM access_sector_permissions WHERE account_id = $1), ''),
+           COALESCE((SELECT string_agg(
+             concat_ws(':', user_id, role_id, assigned_at::text),
+             '|' ORDER BY user_id, role_id
+           ) FROM user_roles
+           WHERE user_id IN (SELECT id FROM users WHERE account_id = $1)), ''),
+           COALESCE((SELECT string_agg(
+             concat_ws(':', id, name, description), '|' ORDER BY id
+           ) FROM roles), ''),
+           COALESCE((SELECT string_agg(
+             concat_ws(':', id, key, description), '|' ORDER BY id
+           ) FROM permissions), ''),
+           COALESCE((SELECT string_agg(
+             concat_ws(':', role_id, permission_id, granted_at::text),
+             '|' ORDER BY role_id, permission_id
+           ) FROM role_permissions), '')
+         )) AS token`,
+        [accountId]
+      );
+      return result.rows[0]?.token ?? '';
+    });
+  }
+
   async createTeam(input: {
     accountId: AccountId;
     code: string;
@@ -256,7 +321,16 @@ export class DatabaseAccessControlRepository implements AccessControlRepository 
       await client.query(
         `INSERT INTO access_teams (id, account_id, code, name, description, is_active, created_at, updated_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [id, input.accountId, input.code, input.name, input.description ?? null, true, new Date(now), new Date(now)]
+        [
+          id,
+          input.accountId,
+          input.code,
+          input.name,
+          input.description ?? null,
+          true,
+          new Date(now),
+          new Date(now)
+        ]
       );
       return {
         id: id as AccessTeamId,
@@ -292,8 +366,8 @@ export class DatabaseAccessControlRepository implements AccessControlRepository 
           id,
           input.code ?? existing.code,
           input.name ?? existing.name,
-          input.description !== undefined ? input.description : existing.description ?? null,
-          input.isActive ?? (existing.status === 'active'),
+          input.description !== undefined ? input.description : (existing.description ?? null),
+          input.isActive ?? existing.status === 'active',
           new Date(now)
         ]
       );
@@ -302,8 +376,9 @@ export class DatabaseAccessControlRepository implements AccessControlRepository 
         code: input.code ?? existing.code,
         name: input.name ?? existing.name,
         description:
-          input.description !== undefined ? input.description ?? undefined : existing.description,
-        status: input.isActive !== undefined ? (input.isActive ? 'active' : 'inactive') : existing.status,
+          input.description !== undefined ? (input.description ?? undefined) : existing.description,
+        status:
+          input.isActive !== undefined ? (input.isActive ? 'active' : 'inactive') : existing.status,
         updatedAt: now
       };
     });
@@ -331,7 +406,16 @@ export class DatabaseAccessControlRepository implements AccessControlRepository 
       await client.query(
         `INSERT INTO access_sectors (id, account_id, code, name, description, is_active, created_at, updated_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [id, input.accountId, input.code, input.name, input.description ?? null, true, new Date(now), new Date(now)]
+        [
+          id,
+          input.accountId,
+          input.code,
+          input.name,
+          input.description ?? null,
+          true,
+          new Date(now),
+          new Date(now)
+        ]
       );
       return {
         id: id as AccessSectorId,
@@ -367,8 +451,8 @@ export class DatabaseAccessControlRepository implements AccessControlRepository 
           id,
           input.code ?? existing.code,
           input.name ?? existing.name,
-          input.description !== undefined ? input.description : existing.description ?? null,
-          input.isActive ?? (existing.status === 'active'),
+          input.description !== undefined ? input.description : (existing.description ?? null),
+          input.isActive ?? existing.status === 'active',
           new Date(now)
         ]
       );
@@ -377,8 +461,9 @@ export class DatabaseAccessControlRepository implements AccessControlRepository 
         code: input.code ?? existing.code,
         name: input.name ?? existing.name,
         description:
-          input.description !== undefined ? input.description ?? undefined : existing.description,
-        status: input.isActive !== undefined ? (input.isActive ? 'active' : 'inactive') : existing.status,
+          input.description !== undefined ? (input.description ?? undefined) : existing.description,
+        status:
+          input.isActive !== undefined ? (input.isActive ? 'active' : 'inactive') : existing.status,
         updatedAt: now
       };
     });
@@ -486,8 +571,11 @@ export class DatabaseAccessControlRepository implements AccessControlRepository 
     effect: AccessAssignmentEffect;
   }): Promise<void> {
     return withTenantQuery(getPool(), async (client) => {
-      const permResult = await client.query('SELECT * FROM permissions WHERE key = $1', [input.permissionCode]);
-      if (permResult.rows.length === 0) throw new Error(`Permission not found: ${input.permissionCode}`);
+      const permResult = await client.query('SELECT * FROM permissions WHERE key = $1', [
+        input.permissionCode
+      ]);
+      if (permResult.rows.length === 0)
+        throw new Error(`Permission not found: ${input.permissionCode}`);
       const permission = this.mapPermission(permResult.rows[0]);
       const now = nowIso();
       if (input.subjectType === 'user') {
@@ -498,9 +586,17 @@ export class DatabaseAccessControlRepository implements AccessControlRepository 
            DO UPDATE SET effect = EXCLUDED.effect, updated_at = EXCLUDED.updated_at
            WHERE access_user_permissions.account_id = EXCLUDED.account_id
            RETURNING account_id`,
-          [input.accountId, input.subjectId, permission.id, input.effect, new Date(now), new Date(now)]
+          [
+            input.accountId,
+            input.subjectId,
+            permission.id,
+            input.effect,
+            new Date(now),
+            new Date(now)
+          ]
         );
-        if (result.rowCount !== 1) throw new Error('Access user permission belongs to another account');
+        if (result.rowCount !== 1)
+          throw new Error('Access user permission belongs to another account');
         return;
       }
       if (input.subjectType === 'team') {
@@ -511,9 +607,17 @@ export class DatabaseAccessControlRepository implements AccessControlRepository 
            DO UPDATE SET effect = EXCLUDED.effect, updated_at = EXCLUDED.updated_at
            WHERE access_team_permissions.account_id = EXCLUDED.account_id
            RETURNING account_id`,
-          [input.accountId, input.subjectId, permission.id, input.effect, new Date(now), new Date(now)]
+          [
+            input.accountId,
+            input.subjectId,
+            permission.id,
+            input.effect,
+            new Date(now),
+            new Date(now)
+          ]
         );
-        if (result.rowCount !== 1) throw new Error('Access team permission belongs to another account');
+        if (result.rowCount !== 1)
+          throw new Error('Access team permission belongs to another account');
         return;
       }
       const result = await client.query(
@@ -523,9 +627,17 @@ export class DatabaseAccessControlRepository implements AccessControlRepository 
          DO UPDATE SET effect = EXCLUDED.effect, updated_at = EXCLUDED.updated_at
          WHERE access_sector_permissions.account_id = EXCLUDED.account_id
          RETURNING account_id`,
-        [input.accountId, input.subjectId, permission.id, input.effect, new Date(now), new Date(now)]
+        [
+          input.accountId,
+          input.subjectId,
+          permission.id,
+          input.effect,
+          new Date(now),
+          new Date(now)
+        ]
       );
-      if (result.rowCount !== 1) throw new Error('Access sector permission belongs to another account');
+      if (result.rowCount !== 1)
+        throw new Error('Access sector permission belongs to another account');
     });
   }
 
@@ -535,7 +647,9 @@ export class DatabaseAccessControlRepository implements AccessControlRepository 
     permissionCode: string;
   }): Promise<void> {
     return withTenantQuery(getPool(), async (client) => {
-      const permResult = await client.query('SELECT * FROM permissions WHERE key = $1', [input.permissionCode]);
+      const permResult = await client.query('SELECT * FROM permissions WHERE key = $1', [
+        input.permissionCode
+      ]);
       if (permResult.rows.length === 0) return;
       const permission = this.mapPermission(permResult.rows[0]);
       if (input.subjectType === 'user') {
@@ -606,7 +720,9 @@ export class DatabaseAccessControlRepository implements AccessControlRepository 
       name: toTitle(code),
       description: (row.description as string) ?? undefined,
       createdAt: new Date(row.created_at as string).toISOString(),
-      permissionCodes: ((row.permission_codes as readonly string[] | undefined) ?? []).filter(Boolean)
+      permissionCodes: ((row.permission_codes as readonly string[] | undefined) ?? []).filter(
+        Boolean
+      )
     };
   }
 

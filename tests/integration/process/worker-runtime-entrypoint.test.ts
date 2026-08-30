@@ -17,6 +17,7 @@ const workerRole = `cvg_worker_entry_worker_${suffix}`;
 const runtimePassword = `worker_entry_${suffix}_password`;
 const tenantId = randomUUID();
 const accountId = randomUUID();
+const reportServiceUserId = randomUUID();
 const workerEntrypoint = resolve(ROOT, 'apps/worker/src/index.ts');
 
 function databaseUrl(databaseName: string, role?: string, password?: string): string {
@@ -71,6 +72,24 @@ async function seedWorkerAccount(pool: Pool): Promise<void> {
      VALUES ($1, $2, $3, 'Worker entrypoint account', true)`,
     [accountId, tenantId, `worker-entry-account-${suffix}`]
   );
+  await pool.query(
+    `INSERT INTO users (
+       id, account_id, username, email, password_hash, full_name,
+       principal_kind, interactive_login_enabled, is_active
+     ) VALUES ($1, $2, $3, $4, 'worker-entry-test-hash',
+       'Worker entrypoint report service', 'service', false, true)`,
+    [
+      reportServiceUserId,
+      accountId,
+      `worker-entry-report-service-${suffix}`,
+      `worker-entry-report-service-${suffix}@example.test`
+    ]
+  );
+  await pool.query(
+    `INSERT INTO account_service_principals (account_id, purpose, user_id)
+     VALUES ($1, 'report-execution', $2)`,
+    [accountId, reportServiceUserId]
+  );
 }
 
 interface WorkerHandle {
@@ -92,6 +111,7 @@ function startWorker(databaseUrlValue: string, port: number): WorkerHandle {
       NODE_ENV: 'staging',
       DATABASE_URL: databaseUrlValue,
       WORKER_ACCOUNT_ID: accountId,
+      WORKER_REPORTS_USER_ID: reportServiceUserId,
       WORKER_INSTANCE_ID: `worker-entry-${suffix}-${port}`,
       WORKER_HEALTH_PORT: String(port),
       WORKER_INTERVAL_MS: '100',

@@ -1,0 +1,86 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-SUPPLIER-EXPORT-IR-001",
+  "timestamp": "2026-08-26T08:32:51-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "CVG-004 bounded audited read-only supplier and expense registry report execution/export from the tenant-scoped finance expense catalog",
+  "scope_ref": "CVG-004-REPORT-SUPPLIER-EXPORT",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The supplier/expense report gap, bounded contract, authority and explicit exclusions are recorded without promoting CVG-004 or global readiness.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-supplier-export.md",
+        ".agent/backlog.json",
+        ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SUPPLIER-EXPORT-IR-001"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This gate authorizes only on-demand read-only persisted finance catalog facts; supplier master semantics, payment advance, personalized reports, workers, providers, target and release remain excluded."
+    },
+    {
+      "id": "IR-002",
+      "description": "The finance expense catalog table, tenant-aware repository, runtime composition and billing.read boundary provide a coherent local source for the report without inferred supplier facts.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/db/src/schema/finance_catalogs.ts",
+        "packages/modules/financial/src/index.ts",
+        "apps/api/src/repositories/database-finance-catalog.repository.ts",
+        "apps/api/src/routes/expenses-catalog-routes.ts",
+        "apps/api/src/runtime.ts",
+        "apps/api/src/bootstrap.ts",
+        "apps/api/src/routes/reports-routes.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The source is an expense catalog, not a dedicated supplier master; route, source and browser evidence remain local until implementation and verification are complete."
+    },
+    {
+      "id": "IR-003",
+      "description": "Focused RED tests can reject the absent catalog definition, database source composition, persisted-field mapping and enabled SPA export before implementation.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-report-supplier-export.md",
+        "packages/modules/reports/src/reports.test.ts",
+        "apps/api/src/routes/reports-routes.test.ts",
+        "apps/spa/src/pages/reports/__tests__/ReportWorkbenchPage.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Implementation, independent critique and post-implementation regression are required before any bounded checkpoint result."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-report-supplier-export.md",
+    "packages/db/src/schema/finance_catalogs.ts",
+    "apps/api/src/repositories/database-finance-catalog.repository.ts",
+    "apps/api/src/runtime.ts",
+    "apps/api/src/bootstrap.ts",
+    "apps/api/src/routes/reports-routes.ts",
+    "apps/spa/src/pages/reports/ReportWorkbenchPage.vue"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "The RED tests, implementation, independent critique and post-implementation regression are not complete at gate creation."
+  ],
+  "conditions": [],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner)",
+    "scope": "CVG-004 bounded on-demand read-only supplier and expense registry report execution/export",
+    "decision": "Authorize reversible repository implementation and local API/SPA/browser verification using only tenant-scoped persisted finance expense catalog facts and the existing audited ReportsService; no supplier CRUD, advance-payment ledger, inferred contact/tax/payment facts, worker scheduling, providers, credentials, target, production, deployment, external mutation or release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SUPPLIER-EXPORT-IR-001",
+    "expires_or_revalidates": "Revalidate before adding a dedicated supplier entity, scheduled delivery, payment-advance or personalized sources, unsupported fields, providers, target operations, production or release acceptance."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "next_action": "Write and run the focused module/API/SPA RED tests, then implement the smallest account-scoped persisted finance catalog report definition, source mapping and audited CSV action.",
+  "revalidation_triggers": [
+    "Changes to finance catalog persistence, tenant repository queries or billing.read authorization",
+    "Changes to ReportsService execution/export or report-workbench behavior",
+    "Expansion beyond persisted read-only finance catalog facts"
+  ],
+  "supersedes": null
+}

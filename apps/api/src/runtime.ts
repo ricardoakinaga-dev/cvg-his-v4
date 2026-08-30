@@ -8,10 +8,7 @@ import {
 import { AuditService } from '@cvg-his-v2/module-audit';
 import type { AuditRepository } from '@cvg-his-v2/module-audit';
 import { AuthService, BruteForceProtection } from '@cvg-his-v2/module-auth';
-import type {
-  MfaLoginChallengeRepository,
-  SessionRepository
-} from '@cvg-his-v2/module-auth';
+import type { MfaLoginChallengeRepository, SessionRepository } from '@cvg-his-v2/module-auth';
 import { ApiKeysService } from '@cvg-his-v2/module-api-keys';
 import { BillingService } from '@cvg-his-v2/module-billing';
 import { CommercialService } from '@cvg-his-v2/module-commercial';
@@ -94,7 +91,9 @@ import { DischargesService } from '@cvg-his-v2/module-discharges';
 import {
   CounterSalesService,
   type CounterSaleCloseResult,
-  type CounterSalePaymentSummary
+  type CounterSalePaymentSummary,
+  type CounterSaleCancellationExecution,
+  type CounterSaleCancellationTransactionInput
 } from '@cvg-his-v2/module-counter-sales';
 import { QuotesService } from '@cvg-his-v2/module-quotes';
 import { ReportsService, type ReportRepository } from '@cvg-his-v2/module-reports';
@@ -113,7 +112,13 @@ import type {
   PrescriptionExecutionRepository,
   AdministrationEventRepository
 } from '@cvg-his-v2/module-prescription-executions';
-import { MfaService, validateMasterKey, type MfaRepository } from '@cvg-his-v2/module-mfa';
+import {
+  MfaService,
+  validateMasterKey,
+  type MfaRepository,
+  type WebAuthnChallengeStore,
+  type WebAuthnRepository
+} from '@cvg-his-v2/module-mfa';
 import {
   LgpdService,
   type ConsentRepository,
@@ -148,7 +153,9 @@ import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
 import { getTenantContext, runWithTenantContext } from '@cvg-his-v2/tenant-context';
 import { trace as otelTrace } from '@opentelemetry/api';
 import {
+  getDatabaseTransactionScope,
   getTenantTransactionContext,
+  runInTenantTransactionContext,
   withTenantTransaction,
   type JsonValue,
   type TenantTransactionContext,
@@ -164,6 +171,8 @@ import type { UsersRepository } from '@cvg-his-v2/module-users';
 import type { AccessControlRepository } from '@cvg-his-v2/module-access-control';
 import type { ProductsRepository } from '@cvg-his-v2/module-products';
 import type { ServicesRepository } from '@cvg-his-v2/module-services';
+import type { FinanceCatalogPersistence } from './repositories/database-finance-catalog.repository.js';
+import type { AdvancePaymentsRepository } from './repositories/advance-payments-report-source.js';
 import type { CorrelationId, ModuleName } from '@cvg-his-v2/shared-types';
 import type { FeatureRepository } from '@cvg-his-v2/module-ml';
 import type { ModelRepository } from '@cvg-his-v2/module-ml';
@@ -184,6 +193,7 @@ import {
 } from './card-transaction-repository.js';
 import type { LaboratoryResultImportRepository } from './laboratory-result-import-repository.js';
 import type { EncounterCashReceiptRepository } from './encounter-cash-receipt-repository.js';
+import type { EncounterCashReceiptReversalRepository } from './encounter-cash-receipt-reversal-repository.js';
 import type { EncounterPixPaymentAttemptRepository } from './encounter-pix-payment-attempt-repository.js';
 
 function sanitizeAuditValue(value: string): string {
@@ -232,6 +242,8 @@ export interface RuntimeRepositories {
   readonly accessControl?: AccessControlRepository;
   readonly products?: ProductsRepository;
   readonly services?: ServicesRepository;
+  readonly financeCatalog?: FinanceCatalogPersistence;
+  readonly advancePayments?: AdvancePaymentsRepository;
   readonly counterSales?: CounterSalesRepository;
   readonly quotes?: QuotesRepository;
   readonly cash?: CashRepository;
@@ -239,6 +251,8 @@ export interface RuntimeRepositories {
   readonly staffTimeOff?: StaffTimeOffRepository;
   readonly mfa?: MfaRepository;
   readonly mfaLoginChallenge?: MfaLoginChallengeRepository;
+  readonly webauthn?: WebAuthnRepository;
+  readonly webauthnChallenge?: WebAuthnChallengeStore;
   readonly consent?: ConsentRepository;
   readonly dsr?: DsrRepository;
   readonly marketing?: MarketingRepository;
@@ -253,6 +267,7 @@ export interface RuntimeRepositories {
   readonly pixTransaction?: PixTransactionRepository;
   readonly cardTransaction?: CardTransactionRepository;
   readonly encounterCashReceipt?: EncounterCashReceiptRepository;
+  readonly encounterCashReceiptReversal?: EncounterCashReceiptReversalRepository;
   readonly encounterPixPaymentAttempt?: EncounterPixPaymentAttemptRepository;
 }
 
@@ -280,6 +295,12 @@ export interface ApiRuntimeOptions {
   /** Enforces UUID entity identifiers when runtime repositories target the canonical SQL schema. */
   readonly requireUuidEntityIdentifiers?: boolean;
   readonly unitOfWork?: TenantUnitOfWork;
+  /** Supplies a tenant transaction when idempotency storage is unavailable. */
+  readonly tenantTransaction?: <T>(
+    accountId: string,
+    command: () => Promise<T>,
+    metadata?: { readonly actorUserId: string; readonly correlationId: string }
+  ) => Promise<T>;
 }
 
 function createRuntimeSeeds<T>(
@@ -620,7 +641,8 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
   const pixTransactions = repos.pixTransaction ?? new InMemoryPixTransactionRepository();
   const cardTransactions = repos.cardTransaction ?? new InMemoryCardTransactionRepository();
   const cash = new CashService({ repository: repos.cash });
-  const encounterFinancialRepository = repos.encounterFinancial ?? new InMemoryEncounterFinancialRepository();
+  const encounterFinancialRepository =
+    repos.encounterFinancial ?? new InMemoryEncounterFinancialRepository();
   const ledgerRepository = repos.ledger ?? new InMemoryFinancialLedgerRepository();
   const ledger = new FinancialLedgerService(ledgerRepository);
   const encounterFinancial = new EncounterFinancialService(encounters, billing, patients, owners, {
@@ -681,7 +703,8 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
       });
     }
   });
-  const financialPayablesRepository = repos.financialPayables ?? new InMemoryFinancialPayablesRepository();
+  const financialPayablesRepository =
+    repos.financialPayables ?? new InMemoryFinancialPayablesRepository();
   const financialPayables = new FinancialPayablesService(financialPayablesRepository, {
     async onPayablePaid(event) {
       await ledger.postEntry({
@@ -792,11 +815,36 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
   });
   const prescriptionExecutions = new PrescriptionExecutionsService({
     executionRepository: repos.prescriptionExecution,
-    eventRepository: repos.administrationEvent
+    eventRepository: repos.administrationEvent,
+    prescriptionSource: {
+      getByIdForAccount: (accountId, prescriptionId) =>
+        prescriptions.getByIdForAccount(accountId, prescriptionId)
+    },
+    requirePrescriptionSource: true
   });
   const products = new ProductsService({ repository: repos.products });
   const reports = new ReportsService({ repository: repos.reports });
   const closeUnitOfWork = options.unitOfWork;
+  const inMemoryCounterSaleCancellation = async (
+    input: CounterSaleCancellationTransactionInput,
+    execute: () => Promise<CounterSaleCancellationExecution>
+  ): Promise<CounterSaleCancellationExecution> => {
+    const execution = await execute();
+    if (execution.transitioned) {
+      await audit.writeAndWait({
+        actorId: input.cancelledByUserId,
+        accountId: input.accountId,
+        module: 'counter-sales',
+        action: 'cancelled',
+        entityType: 'counter-sale',
+        entityId: execution.sale.id,
+        payloadSummary: `Counter sale ${execution.sale.number} cancelled`,
+        riskLevel: 'high',
+        correlationId: input.correlationId
+      });
+    }
+    return execution;
+  };
   const counterSales = new CounterSalesService({
     repository: repos.counterSales,
     onClose: async ({ sale, payments }, result) => {
@@ -834,7 +882,9 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
       });
 
       const costAmount = Number(
-        (result.inventoryConsumptions ?? []).reduce((sum, item) => sum + item.costAmount, 0).toFixed(2)
+        (result.inventoryConsumptions ?? [])
+          .reduce((sum, item) => sum + item.costAmount, 0)
+          .toFixed(2)
       );
       if (costAmount > 0) {
         await ledger.postEntry({
@@ -929,6 +979,109 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
           }
         }
       : undefined,
+    cancelTransaction: repos.counterSales
+      ? closeUnitOfWork || options.tenantTransaction
+        ? async (input, execute) => {
+            const appendCancellationAudit = async (
+              transaction: TenantTransactionContext
+            ): Promise<CounterSaleCancellationExecution> => {
+              if (
+                transaction.accountId !== input.accountId ||
+                input.sale.accountId !== input.accountId
+              ) {
+                throw new Error('Counter sale cancellation account does not match the sale');
+              }
+              if (transaction.actorUserId !== input.cancelledByUserId) {
+                throw new Error('Counter sale cancellation actor does not match the principal');
+              }
+              if (transaction.correlationId !== input.correlationId) {
+                throw new Error('Counter sale cancellation correlation does not match the request');
+              }
+
+              const execution = await execute();
+              if (execution.transitioned) {
+                await transaction.audit.append({
+                  entityType: 'counter-sale',
+                  entityId: execution.sale.id,
+                  action: 'cancelled',
+                  before: { ...execution.before } as Readonly<Record<string, unknown>>,
+                  after: { ...execution.sale } as Readonly<Record<string, unknown>>,
+                  metadata: {
+                    module: 'counter-sales',
+                    saleNumber: execution.sale.number,
+                    riskLevel: 'high'
+                  },
+                  reason: input.reason
+                });
+              }
+              return JSON.parse(JSON.stringify(execution)) as CounterSaleCancellationExecution;
+            };
+
+            const ambientTransaction = getTenantTransactionContext();
+            if (ambientTransaction) {
+              return appendCancellationAudit(ambientTransaction);
+            }
+
+            // Development/test commands may already own a non-idempotent tenant
+            // transaction through the route runner. Reuse that client while
+            // creating the actor/correlation transaction context instead of
+            // attempting a nested idempotent unit of work.
+            const ambientDatabaseScope = getDatabaseTransactionScope();
+            if (ambientDatabaseScope) {
+              return runInTenantTransactionContext(
+                ambientDatabaseScope.pool,
+                {
+                  accountId: input.accountId,
+                  actorUserId: input.cancelledByUserId,
+                  correlationId: input.correlationId
+                },
+                appendCancellationAudit
+              );
+            }
+
+            if (closeUnitOfWork) {
+              const transactionResult = await closeUnitOfWork.execute(
+                {
+                  accountId: input.accountId,
+                  actorUserId: input.cancelledByUserId,
+                  correlationId: input.correlationId,
+                  operation: 'counter_sale.cancel',
+                  idempotencyKey: `counter-sale-cancel:${input.sale.id}`
+                },
+                {
+                  accountId: input.accountId,
+                  saleId: input.sale.id,
+                  reason: input.reason
+                },
+                async (transaction) =>
+                  JSON.parse(
+                    JSON.stringify(await appendCancellationAudit(transaction))
+                  ) as JsonValue
+              );
+              return transactionResult.value as unknown as CounterSaleCancellationExecution;
+            }
+
+            if (!options.tenantTransaction) {
+              throw new Error('Counter sale cancellation transaction boundary is unavailable');
+            }
+
+            return options.tenantTransaction(
+              input.accountId,
+              async () => {
+                const transaction = getTenantTransactionContext();
+                if (!transaction) {
+                  throw new Error('Tenant transaction context was not established');
+                }
+                return appendCancellationAudit(transaction);
+              },
+              {
+                actorUserId: input.cancelledByUserId,
+                correlationId: input.correlationId
+              }
+            );
+          }
+        : undefined
+      : inMemoryCounterSaleCancellation,
     inventoryService: {
       async consumeForSale(accountId: AccountId, codeSnapshot: string, quantity: number) {
         const items = inventory.listItems(accountId).filter((i) => i.sku === codeSnapshot);
@@ -1103,9 +1256,10 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
     ? {
         async hasActiveConsent(accountId, ownerId, purpose) {
           const active = await repos.consent!.findActiveBySubject(accountId, ownerId, 'owner');
-          return active.some((record) =>
-            record.purpose === purpose ||
-            (purpose === 'marketing' && record.purpose === 'notifications')
+          return active.some(
+            (record) =>
+              record.purpose === purpose ||
+              (purpose === 'marketing' && record.purpose === 'notifications')
           );
         }
       }

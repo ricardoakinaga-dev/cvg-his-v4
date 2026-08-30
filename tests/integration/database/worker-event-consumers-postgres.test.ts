@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -565,7 +565,7 @@ describe('worker event consumers with PostgreSQL and RLS', () => {
     ).resolves.toBeNull();
     const foreignOutbox = await runWithTenantContext(
       { tenantId: accountB, accountId: accountB, correlationId: randomUUID() },
-      () => workerEventBus.getEvent(accountAFixture.patientEventId)
+      () => workerEventBus.getEvent(accountAFixture.accountId, accountAFixture.patientEventId)
     );
     expect(foreignOutbox).toBeNull();
   });
@@ -633,11 +633,13 @@ describe('worker event consumers with PostgreSQL and RLS', () => {
 
     const tenantAVisible = await runWithTenantContext(
       { tenantId: accountA, accountId: accountA, correlationId: randomUUID() },
-      () => repositoryA.findDeliveriesByWebhook(accountA as never, accountAFixture.webhookId as never)
+      () =>
+        repositoryA.findDeliveriesByWebhook(accountA as never, accountAFixture.webhookId as never)
     );
     const tenantBHidden = await runWithTenantContext(
       { tenantId: accountB, accountId: accountB, correlationId: randomUUID() },
-      () => repositoryA.findDeliveriesByWebhook(accountA as never, accountAFixture.webhookId as never)
+      () =>
+        repositoryA.findDeliveriesByWebhook(accountA as never, accountAFixture.webhookId as never)
     );
     expect(tenantAVisible.some((delivery) => delivery.id === deliveryId)).toBe(true);
     expect(tenantBHidden.some((delivery) => delivery.id === deliveryId)).toBe(false);
@@ -889,4 +891,123 @@ describe('worker event consumers with PostgreSQL and RLS', () => {
     expect(inbox.rows).toEqual([{ count: 0 }]);
     expect(card.rows).toEqual([{ count: 0 }]);
   });
+
+  it('rejects unknown and attempt-linked legacy PIX confirmations before financial mutation', async () => {
+    const unknownEventId = randomUUID();
+    const unknownIntentId = randomUUID();
+    await insertOutboxEvent(scratchAdmin, {
+      id: unknownEventId,
+      accountId: accountB,
+      correlationId: randomUUID(),
+      eventType: 'payment.pix.confirmed',
+      payload: {
+        accountId: accountB,
+        intentId: unknownIntentId,
+        billingRecordId: accountBFixture.billingRecordId,
+        providerTransactionId: `legacy-provider-${randomUUID()}`,
+        providerConfirmationId: `legacy-confirmation-${randomUUID()}`,
+        status: 'completed',
+        completedAt: new Date().toISOString()
+      }
+    });
+
+    await processForAccount(accountBFixture);
+
+    const unknownState = await scratchAdmin.query(
+      `SELECT status, attempts FROM outbox_events WHERE account_id = $1 AND id = $2`,
+      [accountB, unknownEventId]
+    );
+    const unknownInbox = await scratchAdmin.query(
+      `SELECT COUNT(*)::int AS count FROM inbox_events WHERE account_id = $1 AND event_id = $2`,
+      [accountB, unknownEventId]
+    );
+    const unknownPix = await scratchAdmin.query(
+      `SELECT COUNT(*)::int AS count FROM pix_transactions WHERE account_id = $1 AND transaction_id = $2`,
+      [accountB, unknownIntentId]
+    );
+    expect(unknownState.rows).toEqual([{ status: 'failed', attempts: 1 }]);
+    expect(unknownInbox.rows).toEqual([{ count: 0 }]);
+    expect(unknownPix.rows).toEqual([{ count: 0 }]);
+
+    const attemptId = randomUUID();
+    const attemptIntentId = `pix-attempt-${randomUUID()}`;
+    const requestKeyHash = createHash('sha256').update(randomUUID()).digest('hex');
+    await scratchAdmin.query(
+      `INSERT INTO encounter_payment_attempts (
+         id, account_id, encounter_id, billing_record_id, requested_by_user_id,
+         provider_key, state, amount_cents, request_key_hash, provider_idempotency_key,
+         next_attempt_at
+       ) VALUES ($1, $2, $3, $4, $5, 'local-pix', 'awaiting_confirmation', 12500, $6, $7, NULL)`,
+      [
+        attemptId,
+        accountB,
+        accountBFixture.encounterId,
+        accountBFixture.billingRecordId,
+        accountBFixture.actorUserId,
+        requestKeyHash,
+        `cvg:pix:create:v1:${attemptId}`
+      ]
+    );
+    await scratchAdmin.query(
+      `INSERT INTO pix_transactions (
+         transaction_id, provider, account_id, billing_record_id, payment_attempt_id,
+         amount, currency, description, qr_code_payload, qr_code_base64, expires_at,
+         status, billing_settlement_status, cash_reconciliation_status
+       ) VALUES ($1, 'local-pix', $2, $3, $4, 125.00, 'BRL',
+                 'Attempt-linked legacy barrier', 'payload', 'cGF5bG9hZA==', now() + interval '1 hour',
+                 'pending', 'awaiting_payment', 'pending')`,
+      [attemptIntentId, accountB, accountBFixture.billingRecordId, attemptId]
+    );
+
+    const attemptEventId = randomUUID();
+    await insertOutboxEvent(scratchAdmin, {
+      id: attemptEventId,
+      accountId: accountB,
+      correlationId: randomUUID(),
+      eventType: 'payment.pix.confirmed',
+      payload: {
+        accountId: accountB,
+        intentId: attemptIntentId,
+        billingRecordId: accountBFixture.billingRecordId,
+        providerTransactionId: `legacy-attempt-provider-${randomUUID()}`,
+        providerConfirmationId: `legacy-attempt-confirmation-${randomUUID()}`,
+        status: 'completed',
+        completedAt: new Date().toISOString()
+      }
+    });
+
+    await processForAccount(accountBFixture);
+
+    const attemptState = await scratchAdmin.query(
+      `SELECT status, attempts FROM outbox_events WHERE account_id = $1 AND id = $2`,
+      [accountB, attemptEventId]
+    );
+    const attemptInbox = await scratchAdmin.query(
+      `SELECT COUNT(*)::int AS count FROM inbox_events WHERE account_id = $1 AND event_id = $2`,
+      [accountB, attemptEventId]
+    );
+    const attemptPix = await scratchAdmin.query(
+      `SELECT status, billing_settlement_status
+         FROM pix_transactions
+        WHERE account_id = $1 AND transaction_id = $2`,
+      [accountB, attemptIntentId]
+    );
+    const attempt = await scratchAdmin.query(
+      `SELECT state FROM encounter_payment_attempts WHERE account_id = $1 AND id = $2`,
+      [accountB, attemptId]
+    );
+    const attemptPayments = await scratchAdmin.query(
+      `SELECT COUNT(*)::int AS count
+         FROM encounter_receivable_payments
+        WHERE account_id = $1 AND external_reference_id = $2`,
+      [accountB, attemptIntentId]
+    );
+    expect(attemptState.rows).toEqual([{ status: 'failed', attempts: 1 }]);
+    expect(attemptInbox.rows).toEqual([{ count: 0 }]);
+    expect(attemptPix.rows).toEqual([
+      { status: 'pending', billing_settlement_status: 'awaiting_payment' }
+    ]);
+    expect(attempt.rows).toEqual([{ state: 'awaiting_confirmation' }]);
+    expect(attemptPayments.rows).toEqual([{ count: 0 }]);
+  }, 60_000);
 });

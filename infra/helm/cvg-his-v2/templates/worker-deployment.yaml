@@ -82,6 +82,14 @@ spec:
             - name: WORKER_ACCOUNT_IDS
               value: {{ .Values.worker.env.WORKER_ACCOUNT_IDS | quote }}
             {{- end }}
+            {{- if .Values.worker.reportsUser.existingSecret }}
+            - name: WORKER_REPORTS_USER_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "cvg-his-v2.worker.reportsUserSecretName" . }}
+                  key: {{ .Values.worker.reportsUser.secretKey }}
+                  optional: false
+            {{- end }}
           {{- if .Values.worker.probes.enabled }}
           livenessProbe:
             httpGet:

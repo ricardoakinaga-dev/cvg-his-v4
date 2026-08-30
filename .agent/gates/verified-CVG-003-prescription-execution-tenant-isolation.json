@@ -1,0 +1,128 @@
+{
+  "record_id": "GATE-CVG-003-PRESCRIPTION-EXECUTION-TENANT-ISOLATION-VFY-001",
+  "timestamp": "2026-08-26T20:57:31-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-003 bounded account-scoped prescription-execution collection filtering by encounter and patient",
+  "scope_ref": "CVG-003-PRESCRIPTION-EXECUTION-TENANT-ISOLATION",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-001-SERVICE-SCOPE",
+      "description": "The prescription-execution service requires AccountId and filters both encounter and patient collection queries by that account before returning records; missing runtime context fails closed.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-EXECUTION-TENANT-ISOLATION-GREEN-001",
+        "packages/modules/prescription-executions/src/index.ts",
+        "packages/modules/prescription-executions/src/prescription-executions.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The service proof uses the repository-local implementation; direct SQL and target RLS remain outside this slice."
+    },
+    {
+      "id": "V-002-HTTP-SCOPE",
+      "description": "The authenticated GET /prescription-executions collection route derives tenant scope from the principal, forwards it to both filtered service methods and rejects empty filter values.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-EXECUTION-TENANT-ISOLATION-GREEN-001",
+        "apps/api/src/routes/prescription-executions-routes.ts",
+        "apps/api/src/routes/prescription-executions-routes.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The route proof is local HTTP-shaped evidence; deployed authentication, network policy and target RLS are not certified."
+    },
+    {
+      "id": "V-003-HYDRATION-REGRESSION",
+      "description": "Unit and HTTP-shaped fixtures cover two accounts with shared encounter and patient identifiers, including hydration into one service instance, while account A receives only its own execution on both filtered paths.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-EXECUTION-TENANT-ISOLATION-GREEN-001",
+        "tests/integration/prescription-executions-api.test.ts",
+        "packages/modules/prescription-executions/src/prescription-executions.test.ts",
+        "apps/api/src/runtime.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The fixture proves application hydration and filtering, not a live multi-tenant target deployment or every clinical collection consumer."
+    },
+    {
+      "id": "V-004-TDD-QUALITY",
+      "description": "The RED missing-context and empty-filter failures are recorded and the corrected bounded implementation passes focused tests, full API regression, typechecks, formatting/lint hygiene and official coverage above the repository threshold.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-EXECUTION-TENANT-ISOLATION-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-EXECUTION-TENANT-ISOLATION-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-EXECUTION-TENANT-ISOLATION-QUALITY-001",
+        ".agent/artifacts/CVG-003-prescription-execution-tenant-isolation-2026-08-26.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The repository-wide coverage result is not dedicated proof for every clinical route and does not replace browser, target or release verification."
+    },
+    {
+      "id": "V-005-INDEPENDENT-REVIEW",
+      "description": "An independent read-only reviewer inspected the final service, route, hydration fixture and tests and returned PASS_BOUNDED without current Critical, High, Medium or Low-blocker findings.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-EXECUTION-TENANT-ISOLATION-REVIEW-001",
+        ".agent/tasks/CVG-003-prescription-execution-tenant-isolation.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The review is independent static bounded review and does not replace runtime, target, provider or production evidence."
+    },
+    {
+      "id": "V-006-GLOBAL-BOUNDARY",
+      "description": "The bounded result is reconciled without promoting the parent or global program; parity, clinical parity and enterprise readiness remain at their previously observed partial/open states.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-EXECUTION-TENANT-ISOLATION-GLOBAL-RETEST-001",
+        ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-EXECUTION-TENANT-ISOLATION-FINAL-001",
+        ".agent/state.json",
+        ".agent/backlog.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Global gates are intentionally still open: general parity 98/100 with 4/11 verified, clinical parity 100/100 with 2/3 verified and enterprise readiness 95/100 with 42 PASS, 3 WARN and 1 FAIL."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-003-prescription-execution-tenant-isolation.md",
+    ".agent/artifacts/CVG-003-prescription-execution-tenant-isolation-2026-08-26.md",
+    ".agent/authority.jsonl#AUTH-CVG-003-PRESCRIPTION-EXECUTION-TENANT-ISOLATION-IR-001",
+    ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-EXECUTION-TENANT-ISOLATION-FINAL-001",
+    "packages/modules/prescription-executions/src/index.ts",
+    "apps/api/src/routes/prescription-executions-routes.ts",
+    "tests/integration/prescription-executions-api.test.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "This gate does not close administration-event ownership for every detail path or every clinical route.",
+    "PostgreSQL-backed HTTP proof for this specific filtered collection is not claimed; RLS, direct SQL and privileged-writer protocol remain separate.",
+    "Target behavior, providers, credentials, accessibility, operations, remote CI, backup/restore, remaining parity and release acceptance remain open."
+  ],
+  "conditions": [
+    "Keep the existing Vue/PostgreSQL monolith and package boundaries.",
+    "Do not reintroduce a collection call without authenticated AccountId or broaden empty filters to an account-wide query.",
+    "Revalidate before changing hydration, tenant context, authorization, clinical persistence, direct SQL, target, providers, production or release scope."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via the original consolidation brief",
+    "scope": "CVG-003 bounded prescription-execution collection tenant isolation",
+    "decision": "Authorize reversible repository-local service/route/test correction and local verification of account-scoped prescription-execution collection queries; exclude direct SQL, target, providers, credentials, production, deployment, external mutation and release acceptance.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-003-PRESCRIPTION-EXECUTION-TENANT-ISOLATION-IR-001",
+    "expires_or_revalidates": "Revalidate before expanding beyond the application collection boundary."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_BOUNDED",
+  "next_action": "Keep CVG-003 and the global program IN_PROGRESS/PARTIAL. Continue with the next separately authorized gap; do not promote this bounded result to clinical parity, enterprise readiness or release.",
+  "revalidation_triggers": [
+    "Any new prescription-execution collection/query or administration-event path",
+    "Changes to runtime hydration, tenant context, authorization or clinical-entry persistence",
+    "Any expansion to PostgreSQL target, direct SQL, provider, credential, production, deployment or release acceptance"
+  ],
+  "supersedes": ".agent/gates/implementation-ready-CVG-003-prescription-execution-tenant-isolation.json"
+}

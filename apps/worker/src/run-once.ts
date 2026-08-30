@@ -3,6 +3,10 @@ import { createLogger } from '@cvg-his-v2/shared-logging';
 import { createCorrelationId } from '@cvg-his-v2/shared-utils';
 import { missingProductionConsumers } from '@cvg-his-v2/module-event-bus';
 import { runWithTenantContext } from '@cvg-his-v2/tenant-context';
+import {
+  resolveWorkerReportServicePrincipal,
+  resolveWorkerReportsUserId
+} from './worker-report-identity.js';
 
 import { bootstrapWorkerServices, shutdownWorkerServices } from './bootstrap.js';
 import {
@@ -18,6 +22,7 @@ import {
 
 async function main() {
   const config = loadWorkerConfig(process.env);
+  const configuredWorkerReportsUserId = resolveWorkerReportsUserId(config.workerReportsUserId);
   const logger = createLogger(config.appName);
   const bootstrap = await bootstrapWorkerServices({
     databaseUrl: config.databaseUrl
@@ -51,6 +56,10 @@ async function main() {
   if (!accountId) {
     throw new Error('WORKER_ACCOUNT_ID is required for run-once event processing');
   }
+  const workerReportsUserId = await resolveWorkerReportServicePrincipal(
+    accountId,
+    configuredWorkerReportsUserId
+  );
   await runWithTenantContext(
     { tenantId: accountId, accountId, correlationId: createCorrelationId('worker-hydrate') },
     () => bootstrap.eventConsumers?.hydrateAccount(accountId as never)
@@ -119,7 +128,7 @@ async function main() {
   const reports = createWorkerReports({
     reportRepository: bootstrap.reportRepository
   });
-  await runWithTenantContext(
+  const scheduledReportResult = await runWithTenantContext(
     { tenantId: accountId, accountId, correlationId: createCorrelationId('worker') },
     () =>
       runScheduledReportsTick(
@@ -132,10 +141,11 @@ async function main() {
           databaseHealthy: bootstrap.databaseHealthy,
           databaseDetail: bootstrap.databaseDetail,
           accountId: accountId as never,
-          runAsUserId: (process.env.WORKER_REPORTS_USER_ID?.trim() || accountId) as never
+          runAsUserId: workerReportsUserId
         },
         reports,
-        bootstrap.reportSources
+        bootstrap.reportSources,
+        bootstrap.audit
       )
   );
 
@@ -154,7 +164,7 @@ async function main() {
             databaseHealthy: bootstrap.databaseHealthy,
             databaseDetail: bootstrap.databaseDetail,
             accountId: accountId as never,
-            runAsUserId: (process.env.WORKER_REPORTS_USER_ID?.trim() || accountId) as never
+            runAsUserId: workerReportsUserId
           },
           reports
         );
@@ -162,10 +172,18 @@ async function main() {
     );
   }
 
-  await shutdownWorkerServices();
+  if (scheduledReportResult.failures.length > 0) {
+    throw new Error(
+      `Scheduled report tick completed with ${scheduledReportResult.failures.length} failure(s)`
+    );
+  }
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : String(error));
-  process.exitCode = 1;
-});
+main()
+  .catch((error) => {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    await shutdownWorkerServices();
+  });

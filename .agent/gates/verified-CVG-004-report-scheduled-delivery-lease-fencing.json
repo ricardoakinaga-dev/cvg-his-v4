@@ -1,0 +1,124 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-SCHEDULED-DELIVERY-LEASE-FENCING-VFY-001",
+  "timestamp": "2026-08-30T01:20:43-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-004 scheduled-report durable delivery persistence and worker failure finalization fence",
+  "scope_ref": "CVG-004-REPORT-SCHEDULED-DELIVERY-LEASE-FENCING",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "VFY-001",
+      "description": "The scheduled worker uses a distinct scheduleClaimToken and preserves the existing failed-delivery retry claim contract.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-DELIVERY-LEASE-FENCING-GREEN-001",
+        "packages/modules/reports/src/index.ts",
+        "apps/worker/src/jobs/scheduled-report-job.ts",
+        "apps/worker/src/jobs/scheduled-report-job.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Only the scheduled-worker propagation path is covered; provider and retry lease semantics remain outside this gate."
+    },
+    {
+      "id": "VFY-002",
+      "description": "In-memory delivery persistence fails closed for stale, expired, foreign or blank schedule tokens and permits the active token.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-DELIVERY-LEASE-FENCING-GREEN-001",
+        "packages/modules/reports/src/reports.test.ts",
+        "packages/modules/reports/src/index.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The proof is repository-local and does not certify distributed clock behavior."
+    },
+    {
+      "id": "VFY-003",
+      "description": "PostgreSQL delivery writes require account, schedule, active claim token and unexpired lease, and serialize takeover against the delivery write.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-DELIVERY-LEASE-FENCING-CONCURRENT-GREEN-001",
+        "tests/integration/database/reports-schedule-lease-fencing-postgres.test.ts",
+        "packages/modules/reports/src/index.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The disposable PostgreSQL proof does not certify production topology, clock quality or target runtime roles."
+    },
+    {
+      "id": "VFY-004",
+      "description": "Worker success and failure delivery paths are fenced and ordered before schedule finalization; export-audit failures retain retryable history and lease loss avoids stale finalization.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-DELIVERY-LEASE-FENCING-AUDIT-GREEN-001",
+        "apps/worker/src/jobs/scheduled-report-job.ts",
+        "apps/worker/src/jobs/scheduled-report-job.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Execution/export persistence fencing after lease loss remains a separate residual."
+    },
+    {
+      "id": "VFY-005",
+      "description": "TDD and regression evidence passes for reports, worker, PostgreSQL, API, workspace typecheck/build and official coverage.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-DELIVERY-LEASE-FENCING-REGRESSION-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-DELIVERY-LEASE-FENCING-QUALITY-001",
+        ".agent/artifacts/CVG-004-report-scheduled-delivery-lease-fencing-2026-08-30.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The broad recursive pnpm test command was interrupted because of a pre-existing test-harness database lock; the bounded regression matrix and official coverage completed successfully."
+    },
+    {
+      "id": "VFY-006",
+      "description": "Security, contract, migration-source, RLS, formatting and diff validators pass, while the fresh parity audit prevents global promotion.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-DELIVERY-LEASE-FENCING-QUALITY-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-DELIVERY-LEASE-FENCING-GLOBAL-NON-PROMOTION-001",
+        ".agent/artifacts/CVG-004-report-scheduled-delivery-lease-fencing-2026-08-30.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Static local checks do not replace external homologation, target operations or release evidence."
+    },
+    {
+      "id": "VFY-007",
+      "description": "Review findings inside the bounded scope are remediated and adjacent residuals, unavailable re-review and global non-promotion are explicitly recorded.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-DELIVERY-LEASE-FENCING-REVIEW-001",
+        ".agent/tasks/CVG-004-report-scheduled-delivery-lease-fencing.md",
+        ".agent/artifacts/CVG-004-report-scheduled-delivery-lease-fencing-2026-08-30.md"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "A second independent re-review was requested but did not return within the bounded wait; no independent approval is inferred."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-report-scheduled-delivery-lease-fencing.md",
+    ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-DELIVERY-LEASE-FENCING-IR-001",
+    ".agent/artifacts/CVG-004-report-scheduled-delivery-lease-fencing-2026-08-30.md",
+    "packages/modules/reports/src/index.ts",
+    "packages/modules/reports/src/reports.test.ts",
+    "apps/worker/src/jobs/scheduled-report-job.ts",
+    "apps/worker/src/jobs/scheduled-report-job.test.ts",
+    "tests/integration/database/reports-schedule-lease-fencing-postgres.test.ts"
+  ],
+  "confidence": "MEDIUM",
+  "residual_risk": "HIGH",
+  "decision": "PASS_BOUNDED",
+  "implementation_status": "COMPLETE_BOUNDED",
+  "next_action": "Close this bounded delivery-row task, reconcile the control plane, then scout scheduled execution/export persistence fencing under a new authority. Keep parent CVG-004/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+  "conditions": [
+    "Do not extend this gate to scheduled execution/export persistence, retry-lease expiry, provider idempotency or provider cancellation without fresh authority.",
+    "Keep external provider, target, production, deployment, remote CI, homologation and release acceptance open.",
+    "Keep parent CVG-004/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
+  ],
+  "authority_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-DELIVERY-LEASE-FENCING-IR-001",
+  "supersedes": ".agent/gates/implementation-ready-CVG-004-report-scheduled-delivery-lease-fencing.json"
+}
