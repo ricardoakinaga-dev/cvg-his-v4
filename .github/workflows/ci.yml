@@ -259,6 +259,7 @@ jobs:
       - name: Validate repository, deployment and recovery contracts
         run: |
           pnpm validate:openapi
+          pnpm validate:namespaces
           pnpm validate:migration-source
           pnpm validate:rls
           pnpm validate:deploy-surface

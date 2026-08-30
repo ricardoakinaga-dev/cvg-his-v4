@@ -1,8 +1,8 @@
 # ExecPlan — Consolidação CVG-HIS V4
 
-**Estado:** IN_PROGRESS — primeiro slice bounded concluído  
+**Estado:** IN_PROGRESS — slices bounded CVG-003 e CVG-012 reconciliados
 **Tier:** T4_CRITICAL  
-**Última atualização:** 2026-08-25  
+**Última atualização:** 2026-08-30
 **Fonte:** missão de consolidação + `docs/engineering/*`
 
 ## Objetivo
@@ -12,7 +12,7 @@ Reduzir a ambiguidade arquitetural e elevar a confiabilidade operacional do CVG-
 ## Estado atual verificável
 
 - typecheck, lint e build completos passaram em 2026-08-25;
-- discovery encontrou 70 pacotes, 64 V2/6 legacy, duas casas de DB, dois tracks Helm e composição API centralizada;
+- discovery encontrou 70 pacotes, 65 V2/5 legacy, duas casas de DB, dois tracks Helm e composição API centralizada;
 - quality bar global continua PARTIAL; parity funcional é 4/11;
 - risks P0/P1 estão registrados em `docs/engineering/RISK_REGISTER.md`;
 - nenhum arquivo foi alterado antes dos artefatos de discovery/spec.
@@ -27,7 +27,8 @@ Reduzir a ambiguidade arquitetural e elevar a confiabilidade operacional do CVG-
 - [x] implementar S3 shutdown API/worker com drain;
 - [x] validar focused/process/full regressions;
 - [x] obter crítica independente;
-- [ ] planejar guardrails de identidade/namespace/Helm/CI;
+- [x] fechar o boundary de namespace canônico CVG-012 com guardrail no CI;
+- [ ] planejar guardrails residuais de identidade/Helm/CI;
 - [ ] fechar núcleo clínico e parity por evidência;
 - [ ] executar DR e validação de ambiente alvo;
 - [ ] publicar relatório final de consolidação.
@@ -55,10 +56,28 @@ Reduzir a ambiguidade arquitetural e elevar a confiabilidade operacional do CVG-
 | 2026-08-25 | prova viva local de RLS/roles promovida ao CI                               | isolation/access/runtime ACL 19/19; production-like bootstrap 6/6; `repository-guards` passa a executar os dois contratos                                                                                          |
 | 2026-08-25 | vertical clínico-financeiro promovido ao CI e núcleo Owner/Patient ampliado | vertical 11/11; cenário adicional cria Owner→Patient→Encounter via HTTP e leva os mesmos registros até inpatient/billing/stock/receipt com replay, audit e tenant boundary                                         |
 | 2026-08-25 | rollback cross-domain e revisão final reconciliados                         | route 24/24, medical-records 17/17, inpatient 17/17, API boundary 366/366, typecheck/build PASS, vertical 11/11; Noether CONDITIONAL_PASS sem blocker/high/medium; dívida separada na fixture API `db-persistence` |
+| 2026-08-30 | CVG-012 namespace canônico fechado bounded                               | AST guard `validate:namespaces`, RBAC `@cvg-his-v2/rbac`, fiscal stale dependency removida; 10/10 guard/CI, access-control 39/39, fiscal 18/18, API 519/519; crítica independente encontrou gaps, corrigidos e retestados; sem aprovação pós-correção |
 
 ## Próxima ação
 
-Observar o workflow remoto com o orçamento de shared memory e repetir a prova de RLS/roles no catálogo alvo; em seguida repetir a cadeia Owner/Patient/Encounter→receipt no ambiente autorizado e executar restore com bundle representativo, medindo RTO/RPO. O fixture restore drill local passou com checksums/TOC, globals, banco e storage. A fixture API `db-persistence` agora passou localmente 17/17 dentro de `test:all`, e o runner SPA DB-backed passou 60/60 em Docker, mas ambos continuam bounded até haver evidência de ambiente alvo; não há commit/push sem autorização explícita.
+Observar o workflow remoto com o orçamento de shared memory e repetir a prova de RLS/roles no catálogo alvo; em seguida repetir a cadeia Owner/Patient/Encounter→receipt no ambiente autorizado e executar restore com bundle representativo, medindo RTO/RPO. O fixture restore drill local passou com checksums/TOC, globals, banco e storage. A fixture API `db-persistence` agora passou localmente 17/17 dentro de `test:all`, e o runner SPA DB-backed passou 60/60 em Docker, mas ambos continuam bounded até haver evidência de ambiente alvo; commits locais desta continuação foram autorizados pelo usuário, sem push automático.
+
+## Checkpoint — CVG-012 namespace canônico — 2026-08-30
+
+O slice `CVG-012-NAMESPACE-CANONICAL-BOUNDARY` foi reconciliado como
+`COMPLETE_BOUNDED/PASS_BOUNDED`. O catálogo RBAC foi migrado para
+`@cvg-his-v2/rbac`, referências ativas e lockfile foram alinhados, a dependência
+legada não usada de `module-fiscal` foi removida e o guardrail AST
+`validate:namespaces` foi conectado ao `repository-guards` com regressão de
+manifest, import nomeado/side-effect, export, `import()`, `require`, template,
+`require.resolve` e falsos positivos de comentários/strings.
+
+A crítica independente inicial encontrou false negatives do guard e claims de
+estado órfãos. A análise foi substituída por AST TypeScript, o teste passou
+10/10 e task/gate/artifact/state foram reconciliados. A revisão independente
+pós-correção não retornou aprovação; isso permanece limitação explícita. O
+resultado não promove o ERP global, parity, target, providers, produção,
+deployment ou release.
 
 ## Checkpoint — SPA DB-backed Docker — 2026-08-25
 

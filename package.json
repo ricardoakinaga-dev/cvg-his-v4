@@ -103,6 +103,7 @@
     "deploy:rehearsal:local": "node infra/scripts/cutover-rehearsal-local.mjs",
     "deploy:cutover:v2": "bash infra/scripts/cutover-v2.sh",
     "validate:openapi": "node scripts/validate-openapi.js",
+    "validate:namespaces": "node scripts/check-package-namespace-boundaries.mjs",
     "validate:migration-source": "node scripts/check-migration-source-of-truth.mjs",
     "validate:rls": "tsx scripts/validate-rls-coverage.ts",
     "validate:helm": "node infra/scripts/validate-helm.mjs",

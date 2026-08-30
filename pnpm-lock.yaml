@@ -541,7 +541,7 @@ importers:
 
   packages/db:
     dependencies:
-      '@cvg-his/rbac':
+      '@cvg-his-v2/rbac':
         specifier: workspace:*
         version: link:../rbac
       drizzle-orm:
@@ -611,6 +611,9 @@ importers:
 
   packages/modules/access-control:
     dependencies:
+      '@cvg-his-v2/rbac':
+        specifier: workspace:*
+        version: link:../../rbac
       '@cvg-his-v2/shared-database':
         specifier: workspace:^
         version: link:../../shared/database
@@ -623,9 +626,6 @@ importers:
       '@cvg-his-v2/tenant-context':
         specifier: workspace:*
         version: link:../../tenant-context
-      '@cvg-his/rbac':
-        specifier: workspace:*
-        version: link:../../rbac
     devDependencies:
       vitest:
         specifier: ^3.2.7
@@ -1064,9 +1064,6 @@ importers:
       '@cvg-his-v2/tenant-context':
         specifier: workspace:*
         version: link:../../tenant-context
-      '@cvg-his/db':
-        specifier: workspace:*
-        version: link:../../db
 
   packages/modules/inpatient:
     dependencies:

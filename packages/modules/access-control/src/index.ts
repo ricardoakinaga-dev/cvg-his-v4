@@ -20,10 +20,7 @@ import type {
   UserId,
   UserSummary
 } from '@cvg-his-v2/shared-types';
-import {
-  V2_ACCESS_CONTROL_PERMISSION_SEEDS,
-  V2_ACCESS_CONTROL_ROLE_SEEDS
-} from '@cvg-his/rbac';
+import { V2_ACCESS_CONTROL_PERMISSION_SEEDS, V2_ACCESS_CONTROL_ROLE_SEEDS } from '@cvg-his-v2/rbac';
 import {
   DatabaseAccessControlRepository,
   type AccessControlRepository,
@@ -32,13 +29,14 @@ import {
   type RoleRecord
 } from './repositories/database-access-control.repository.js';
 
-const permissionCatalog: readonly PermissionDefinition[] =
-  V2_ACCESS_CONTROL_PERMISSION_SEEDS.map((permission) => ({
+const permissionCatalog: readonly PermissionDefinition[] = V2_ACCESS_CONTROL_PERMISSION_SEEDS.map(
+  (permission) => ({
     id: permission.id as PermissionId,
     code: permission.key,
     module: permission.module,
     description: permission.description
-  }));
+  })
+);
 
 const roleCatalog: readonly RoleDefinition[] = V2_ACCESS_CONTROL_ROLE_SEEDS.map((role) => ({
   id: role.id as RoleId,

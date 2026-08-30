@@ -103,7 +103,7 @@ Isso não certifica o produto inteiro. O score de readiness continua `95/100`, c
 | Health     | `service_healthy` dependia principalmente do Dockerfile                                  | `/ready` explícito em `docker-compose.v2.yml`                                                                                                 | alinhar o Helm canônico e retirar probe alternativo inválido |
 | Database   | runner conhecia nome, mas não validava hash aplicado; havia comandos e artefatos legados | runner compara nome+hash; lock de setup; DB-001/DB-002 deixam `packages/db` como única rail executável e removem a família source-level stale | provar migration positiva e catálogo alvo                    |
 | CI         | vários validators não bloqueavam o fluxo                                                 | `repository-guards` executa contratos, process/RLS/role/clinical tests e migration test                                                       | executar no GitHub e reter artefatos                         |
-| Módulos    | 64 namespaces V2 e 6 legacy, API concentrada                                             | mapa e owners registrados, sem migração global arriscada                                                                                      | guardrail contra novos crossings e extração incremental      |
+| Módulos    | 65 namespaces V2 e 5 legacy, API concentrada                                             | mapa e owners registrados; `validate:namespaces` bloqueia crossings no grafo canônico, sem migração global arriscada                         | manter o guardrail e executar extração incremental           |
 
 ## Problems Found/Fixed
 
@@ -1680,3 +1680,33 @@ mutation occurred.
 Evidence: `.agent/gates/verified-CVG-004-report-scheduled-inventory-movements.json`,
 `.agent/artifacts/CVG-004-report-scheduled-inventory-movements-2026-08-28.md`,
 `.agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-MOVEMENTS-FINAL-001`.
+
+## 2026-08-30 — CVG-012 bounded canonical namespace boundary
+
+O slice `CVG-012-NAMESPACE-CANONICAL-BOUNDARY` fechou o crossing ativo entre
+packages canônicos V2 e o namespace legado. `packages/rbac` agora publica
+`@cvg-his-v2/rbac`, callers/aliases/filtros/lockfile foram alinhados,
+`module-fiscal` deixou de declarar `@cvg-his/db` e
+`validate:namespaces` tornou-se um guardrail bloqueante no job
+`repository-guards`.
+
+Após crítica independente `FAIL_BOUNDED`, o scanner lexical foi substituído por
+AST TypeScript. A regressão permanente cobre imports/exports estáticos,
+`import()`, `require`, `require.resolve`, `import = require`, templates,
+comentários entre tokens e falsos positivos de comentários/strings. O guard/CI
+passou `10/10`; access-control `39/39`, fiscal `18/18`, API `519/519`,
+typecheck/build `70/70` projetos e coverage `80,17%` statements/lines,
+`80,73%` branches, `86,66%` functions. A crítica encontrou também claims de
+control-plane órfãos; task, state, gate e artefato foram reconciliados antes do
+commit.
+
+O resultado é `PASS_BOUNDED`/`COMPLETE_BOUNDED`, com confiança MEDIUM e risco
+residual HIGH. Não há aprovação independente pós-correção disponível, e isso
+não foi inferido. Os owners legados, target, providers, produção, deployment,
+release identity, CI remoto, parity e ERP global permanecem abertos; promoção
+continua `BLOCKED`.
+
+Evidence: `.agent/gates/verified-CVG-012-namespace-canonical-boundary.json`,
+`.agent/artifacts/CVG-012-NAMESPACE-CANONICAL-BOUNDARY-2026-08-30.md`,
+`.agent/verification.jsonl#VFY-CVG-012-NAMESPACE-CANONICAL-BOUNDARY-FINAL-001` e
+`.agent/verification.jsonl#VFY-CVG-012-NAMESPACE-CANONICAL-BOUNDARY-CONTROL-PLANE-001`.

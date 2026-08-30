@@ -201,7 +201,7 @@ fi
 # from emitted JS. The release gate may already have built them, but this script
 # is intentionally self-contained when invoked directly.
 echo "   🧱 Building access catalog, database and API scripts..."
-pnpm --filter @cvg-his/rbac build >/dev/null
+pnpm --filter @cvg-his-v2/rbac build >/dev/null
 pnpm --filter @cvg-his-v2/module-access-control build >/dev/null
 pnpm --filter @cvg-his/db build >/dev/null
 pnpm --filter @cvg-his-v2/api build >/dev/null

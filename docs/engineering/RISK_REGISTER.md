@@ -17,7 +17,7 @@
 | R-009 |   P3 | Dependentes Compose aguardam `service_healthy` sem contrato explícito da superfície                                           | Compose agora declara `/ready` em `127.0.0.1:3001`; teste estrutural/config passa                                                                                                                                                                                                          | validar imagem publicada e dependência em staging; Runtime                                                                              | BOUNDED     |
 | R-010 |   P3 | Probe Helm aponta rota inexistente                                                                                            | `charts/helm/api/templates/deployment.yaml` usa `/health/startup`; API expõe `/health`, `/ready`, `/live` e aliases `/health/ready`, `/health/live`                                                                                                                                        | declarar `infra/helm` canônico; alinhar/arquivar segundo track; Release                                                                 | OPEN        |
 | R-011 |   P2 | Fallback Vault→env pode degradar gestão de segredos em produção                                                               | `packages/secrets/src/index.ts` agora falha fechado em prod-like sem configuração Vault; dev/test registra warning e mantém fallback explícito; secrets 8/8 e startup 7/7                                                                                                                  | decidir provider/política obrigatória e repetir readiness no alvo; Security                                                             | BOUNDED     |
-| R-012 |   P2 | Namespace paralelo permite import fora do boundary e governança ambígua                                                       | 64 V2 vs 6 legacy; crossing `module-fiscal → @cvg-his/db`                                                                                                                                                                                                                                  | mapa de consumidores + lint/guardrail contra novos crossings; Arquitetura                                                               | IN_PROGRESS |
+| R-012 |   P2 | Namespace paralelo permite import fora do boundary e governança ambígua                                                       | 65 V2 vs 5 legacy; o crossing de `module-fiscal → @cvg-his/db` foi removido; RBAC ativo agora é `@cvg-his-v2/rbac`; `validate:namespaces` cobre manifests/imports canônicos e bloqueia o CI                                                                                                                                 | manter guardrail, mapear owners e tratar aposentadoria dos pacotes legados em task autorizada; Arquitetura                              | P2 — BOUNDED/OPEN |
 | R-013 |   P5 | API centralizada aumenta blast radius e drift de contrato                                                                     | `server.ts` 7.742 LOC e ~50 dispatches                                                                                                                                                                                                                                                     | extração incremental por domínio, sem rewrite; API                                                                                      | OPEN        |
 | R-014 |   P5 | SPA importa internals do design system e tem alias de `src`                                                                   | `apps/spa/main.ts`, `vite.config.ts`; 205 imports observados pelo scout                                                                                                                                                                                                                    | export público + migração incremental; Frontend                                                                                         | OPEN        |
 | R-015 |   P6 | Bundle SPA tem imports dinâmicos/estáticos duplicados e páginas grandes                                                       | warning do Vite; PatientDetail ~3.940 LOC                                                                                                                                                                                                                                                  | dividir serviços/chunks após estabilidade funcional; Frontend                                                                           | OPEN        |
@@ -172,3 +172,34 @@ Artefatos: `.agent/tasks/CVG-004-worker-report-tenant-aware-principal.md`,
 `.agent/gates/verified-CVG-004-worker-report-tenant-aware-principal.json`,
 `.agent/artifacts/CVG-004-worker-report-tenant-aware-principal-2026-08-27.md` e
 `.agent/verification.jsonl#VFY-CVG-004-WORKER-REPORT-TENANT-AWARE-PRINCIPAL-FINAL-001`.
+
+## R-012 — boundary de namespace canônico — 2026-08-30
+
+O slice `CVG-012-NAMESPACE-CANONICAL-BOUNDARY` removeu os crossings ativos do
+grafo V2: `packages/rbac` é resolvido como `@cvg-his-v2/rbac`,
+`module-fiscal` não declara mais o banco legado diretamente, e callers de
+produção/teste/build usam o nome canônico. O script
+`scripts/check-package-namespace-boundaries.mjs` acusa dependências de
+manifest e imports de fonte legados nos packages canônicos de `apps` e
+`packages`; `pnpm validate:namespaces` passa no workspace e o fixture
+negativo confirma saída não-zero para ambos os tipos de crossing. O workflow
+`.github/workflows/ci.yml` executa o guard como etapa bloqueante.
+
+Evidência local bounded: guard e contrato CI `10/10`, access-control `39/39`,
+fiscal `18/18`, API `519/519`, typecheck/build dos pacotes afetados,
+`validate:openapi` (`354` paths), `validate:migration-source`, `validate:rls`
+(`165/166`, uma exceção documentada), `security:secrets` e `pnpm install`
+com lockfile atualizado. O PostgreSQL descartável inicializou migrations e
+seed em todas as suítes DB-backed desta rodada.
+
+R-012 fica `P2 — BOUNDED/OPEN`, não `CLOSED`: os owners legados
+`packages/db`/`packages/audit` continuam por decisão explícita, não houve
+renomeação global, e não há aprovação independente pós-correção disponível
+nesta rodada nem prova no target/CI remoto. A primeira crítica encontrou
+false negatives e claims de estado órfãos; a análise AST e a reconciliação do
+control-plane corrigiram ambos. Aposentadoria física e release identity
+permanecem tasks separadas.
+
+Artefatos: `.agent/tasks/CVG-012-NAMESPACE-CANONICAL-BOUNDARY.md`,
+`.agent/gates/verified-CVG-012-namespace-canonical-boundary.json` e
+`.agent/artifacts/CVG-012-NAMESPACE-CANONICAL-BOUNDARY-2026-08-30.md`.

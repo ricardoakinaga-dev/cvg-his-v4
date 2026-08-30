@@ -3268,3 +3268,25 @@ Evidence: `.agent/gates/verified-CVG-003-inpatient-stay-service-tenant-boundary.
 `.agent/artifacts/CVG-003-INPATIENT-STAY-SERVICE-TENANT-BOUNDARY-2026-08-30.md`,
 `.agent/verification.jsonl#VFY-CVG-003-INPATIENT-STAY-SERVICE-TENANT-BOUNDARY-FINAL-001`,
 `.agent/execution-log.jsonl#EVT-1216`.
+## 2026-08-30 — CVG-012 bounded canonical namespace closure
+
+`CVG-012-NAMESPACE-CANONICAL-BOUNDARY` is reconciled locally as
+`PASS_BOUNDED` / `COMPLETE_BOUNDED`. The RBAC package is now
+`@cvg-his-v2/rbac`, active callers and lockfile are canonical, module-fiscal's
+unused legacy DB dependency is gone, and `validate:namespaces` is a blocking
+CI repository guard. The guard uses TypeScript AST analysis and fixtures cover
+static/dynamic/template imports, exports, require variants, comments and
+ordinary strings.
+
+The initial independent critic returned `FAIL_BOUNDED` for lexical false
+negatives and incomplete closure evidence. The guard was replaced with AST
+traversal, tests passed `10/10`, official coverage stayed above 80%, and the
+task/state/gate/artifact ledgers were reconciled. No post-fix compatible review
+approval is available, so no approval is inferred. Global ERP remains
+`IN_PROGRESS/PARTIAL`, parity/readiness and target/provider/release gates stay
+open, and promotion remains `BLOCKED`.
+
+Evidence: `.agent/gates/verified-CVG-012-namespace-canonical-boundary.json`,
+`.agent/artifacts/CVG-012-NAMESPACE-CANONICAL-BOUNDARY-2026-08-30.md`,
+`.agent/verification.jsonl#VFY-CVG-012-NAMESPACE-CANONICAL-BOUNDARY-FINAL-001`,
+`.agent/execution-log.jsonl#EVT-1227`.

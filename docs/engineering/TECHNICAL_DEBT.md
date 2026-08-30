@@ -37,6 +37,7 @@
 | TD-027 | Clinical/DB | O limite de um encontro ativo por paciente dependia de mapa process-local e podia divergir entre réplicas | migration `0151` com preflight histórico fail-closed e índice parcial único; repository 5/5, PostgreSQL 7/7, módulo 32/32 e API 410/410; remediação histórica e target continuam fora | executar task humana para duplicatas históricas e repetir roles/RLS/concurrency no target; Clinical/DB/Security | P0 — BOUNDED/OPEN |
 
 | TD-028 | Runtime/Identity | O worker agendado usava `accountId` como se fosse `UserId` quando `WORKER_REPORTS_USER_ID` não existia, e o mesmo actor explícito ainda não modela múltiplas contas | resolver compartilhado, config production-like, Secret requerido nos overlays, teste contínuo/run-once, actor persistido e processo desconhecido sem execução; worker 75/75, config 42/42, processo 12/12 e Helm 6/6 | criar mapeamento service-principal por conta e validação tenant-aware antes de ampliar relatório agendado; manter provisioning/auditoria separados e repetir target/RLS | P1 — BOUNDED/OPEN |
+| TD-029 | Architecture/CI | Packages V2 podiam importar a namespace legada e criar owners ambíguos por acidente | RBAC ativo migrado para `@cvg-his-v2/rbac`; dependência stale removida de `module-fiscal`; `validate:namespaces` verifica manifests/imports canônicos e bloqueia `repository-guards`; fixture negativa cobre os dois crossings | manter o guardrail, concluir mapa de owners e autorizar aposentadoria dos packages legados separadamente | P2 — BOUNDED/OPEN |
 
 ## Ordem de pagamento da dívida
 
@@ -151,3 +152,23 @@ distributed runtime, providers, CI remoto e release não foram certificados.
 Artefatos: `.agent/tasks/CVG-004-worker-report-tenant-aware-principal.md`,
 `.agent/gates/verified-CVG-004-worker-report-tenant-aware-principal.json` e
 `.agent/artifacts/CVG-004-worker-report-tenant-aware-principal-2026-08-27.md`.
+
+## TD-029 — boundary de namespace canônico — 2026-08-30
+
+O grafo canônico recebeu uma fronteira executável: manifests e imports dos
+packages canônicos em `apps` e `packages` não podem apontar para
+`@cvg-his/*`. A migração é deliberadamente pequena: renomeia apenas o pacote
+RBAC compartilhado, remove a dependência não utilizada de fiscal e atualiza
+callers, aliases, filtros e lockfile. O guard usa a AST TypeScript, cobre
+imports/exports estáticos, `import()`, `require`, `require.resolve`,
+`import = require` e templates, retorna detalhes por arquivo/package, ignora
+comentários/strings comuns e o CI o executa como gate bloqueante.
+
+`TD-029` permanece `P2 — BOUNDED/OPEN`: packages legados continuam presentes
+por ownership explícito, a revisão independente pós-correção não retornou
+aprovação e a prova local não cobre target, CI remoto, release identity ou uma
+aposentadoria global.
+
+Artefatos: `.agent/tasks/CVG-012-NAMESPACE-CANONICAL-BOUNDARY.md`,
+`.agent/gates/verified-CVG-012-namespace-canonical-boundary.json` e
+`.agent/artifacts/CVG-012-NAMESPACE-CANONICAL-BOUNDARY-2026-08-30.md`.

@@ -3,7 +3,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-import { V2_ACCESS_CONTROL_PERMISSION_SEEDS, V2_ACCESS_CONTROL_ROLE_SEEDS } from '@cvg-his/rbac';
+import { V2_ACCESS_CONTROL_PERMISSION_SEEDS, V2_ACCESS_CONTROL_ROLE_SEEDS } from '@cvg-his-v2/rbac';
 
 import {
   DB_ACCESS_CONTROL_PERMISSION_SEEDS,

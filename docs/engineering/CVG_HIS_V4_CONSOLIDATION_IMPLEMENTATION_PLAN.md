@@ -12,7 +12,7 @@
 | 1. Discovery | DONE | mapa de apps, packages, DB, RLS, runtime, CI, Helm, parity e docs | auditoria/riscos/dívida publicados |
 | 2. Especificação | DONE | PRD, SPEC, quality bar e decisão de primeiro slice | implementation-ready |
 | 3. Hardening operacional S1–S3 | DONE — bounded | checksum, healthcheck explícito, shutdown, process/PG evidence | focused/process/PG tests + critic |
-| 4. Guardrails de consolidação | IN_PROGRESS — bounded | CI gates, test setup lock e fonte única de migration; mapa de namespace/release/Helm ainda aberto | graph/config/CI/migration-source evidence |
+| 4. Guardrails de consolidação | IN_PROGRESS — bounded | CI gates, test setup lock, fonte única de migration e boundary de namespace canônico fechados bounded; release/Helm ainda abertos | graph/config/CI/migration-source evidence |
 | 5. Núcleo clínico | DONE — bounded | vertical HTTP 11/11 cobre admissão→care/internação→alta→close→receipt e inclui cenário com Owner/Patient/Encounter criados via HTTP levando os mesmos registros até billing/stock/receipt, com replay e tenant boundary | PostgreSQL/audit/idempotência |
 | 6. Parity e providers | TODO | laboratório, fiscal, financeiro, reports, marketing, integrations | cenários reais/homologação |
 | 7. DR/ops/cutover | IN_PROGRESS — bounded | fixture restore drill executado com evidência de checksums/TOC/globals/banco/storage; restore representativo, RTO/RPO e cutover ainda faltam | target environment approval |
@@ -36,6 +36,28 @@
 - CI: `repository-guards` agora executa validators, process test, migration integrity, RLS/roles, bootstrap production-like e clinical-financial vertical 11/11 com PostgreSQL isolado; o job `unit-tests` também sobe/desce PostgreSQL e exige `REQUIRE_TEST_DB=1`; execução remota ainda não ocorreu.
 - DB-001/DB-002: `packages/db/src/migrate.ts`/`seed.ts` são a única superfície executável de migration/seed; `packages/shared/database` preserva o cliente runtime e SQL histórica, mas seus comandos `db:*` falham fechado; lockfile removeu `drizzle-kit`, a família source-level stale (`migrate.js`, companions `.d.ts`/`.map` e `drizzle.config.ts`) foi removida e CI usa `pnpm exec tsx packages/db/src/migrate.ts`.
 - Testes: `pnpm test` completo passou nos 70 projetos selecionados após `docker-compose.test.yml` reservar `shm_size: '1gb'` para `postgres-test`; inspeção confirmou `OOM=false`, `exit=0`. Duas suites DB concorrentes com `REQUIRE_TEST_DB=1` também passaram após o lock administrativo; a execução remota ainda precisa ser observada.
+
+## Checkpoint — CVG-012 namespace canônico — 2026-08-30
+
+O crossing ativo entre pacotes canônicos V2 e o namespace legado foi fechado de
+forma bounded: `packages/rbac` passou a `@cvg-his-v2/rbac`, os callers ativos
+foram migrados, a dependência stale de `@cvg-his/db` saiu de `module-fiscal` e
+`validate:namespaces` foi ligado ao job `repository-guards`. O guard identifica
+manifests canônicos em `apps`/`packages` e usa a AST TypeScript para imports
+estáticos, exports, `import()`, `require`, `require.resolve` e templates, sem
+tratar comentários ou strings comuns como edges.
+
+O TDD inicial foi RED (3 falhas esperadas) e a regressão corrigida passou 10/10;
+access-control 39/39, fiscal 18/18, API 519/519, typecheck/build globais e
+coverage oficial permanecem verdes. A primeira crítica independente encontrou
+false negatives e inconsistência de estado; ambos foram corrigidos e
+retestados. Não há aprovação independente pós-correção disponível nesta
+rodada, então o resultado é `PASS_BOUNDED`, não promoção global. Os owners
+legados, target, providers, produção, deployment, release e parity continuam
+gates separados.
+
+Artefatos: `.agent/gates/verified-CVG-012-namespace-canonical-boundary.json` e
+`.agent/artifacts/CVG-012-NAMESPACE-CANONICAL-BOUNDARY-2026-08-30.md`.
 
 ## Decisões de escopo
 

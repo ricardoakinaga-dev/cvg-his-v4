@@ -58,6 +58,7 @@ describe('CI repository guardrails', () => {
     expect(job).toContain('needs: [typecheck]');
     expect(job).toContain('run: pnpm test:db:start');
     expect(job).toContain('pnpm validate:openapi');
+    expect(job).toContain('pnpm validate:namespaces');
     expect(job).toContain('pnpm validate:migration-source');
     expect(job).toContain('pnpm validate:rls');
     expect(job).toContain('pnpm validate:deploy-surface');

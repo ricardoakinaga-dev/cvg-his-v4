@@ -2779,3 +2779,18 @@ and promotion remains `BLOCKED`; fresh residual scouting is the next gate.
 
 Evidence: `.agent/gates/verified-CVG-003-inpatient-stay-service-tenant-boundary.json`,
 `.agent/verification.jsonl#VFY-CVG-003-INPATIENT-STAY-SERVICE-TENANT-BOUNDARY-FINAL-001`.
+## 2026-08-30 — CVG-012 canonical namespace guardrail
+
+The bounded namespace slice is complete locally. The first critic identified
+real false negatives in the lexical implementation and contradictory
+control-plane claims; the remediation replaced it with TypeScript AST
+traversal, expanded permanent fixtures and reconciled the closure records.
+Final focused guard/CI tests passed `10/10`, the graph is clean, and the
+workspace remains above the 80% coverage bar.
+
+This is not global ERP completion: legacy owners, remote CI, target/provider,
+production, deployment, release identity and Vetus/clinical parity remain
+open. The next gate is fresh residual scouting under a new authority.
+
+Evidence: `.agent/gates/verified-CVG-012-namespace-canonical-boundary.json`,
+`.agent/artifacts/CVG-012-NAMESPACE-CANONICAL-BOUNDARY-2026-08-30.md`.

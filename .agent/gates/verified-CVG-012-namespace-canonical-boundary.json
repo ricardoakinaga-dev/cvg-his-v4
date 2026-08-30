@@ -1,0 +1,175 @@
+{
+  "record_id": "GATE-CVG-012-NAMESPACE-CANONICAL-BOUNDARY-VFY-001",
+  "timestamp": "2026-08-30T12:12:00-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope_ref": "CVG-012-NAMESPACE-CANONICAL-BOUNDARY",
+  "scope": "Canonical V2 package namespace dependency/import guardrail and RBAC namespace migration",
+  "version": 2,
+  "active_plan": ".agent/plans/premium-enterprise-mvp.md",
+  "active_task": ".agent/tasks/CVG-012-NAMESPACE-CANONICAL-BOUNDARY.md",
+  "verification_state": "VERIFIED_BOUNDED",
+  "next_gate": "SCOUT",
+  "criteria": [
+    {
+      "id": "VFY-001-TDD-RED-GREEN",
+      "description": "Intentional RED precedes the graph correction and the corrected namespace/CI fixtures pass.",
+      "required": true,
+      "status": "CONDITIONAL",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-012-NAMESPACE-CANONICAL-BOUNDARY-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-012-NAMESPACE-CANONICAL-BOUNDARY-GREEN-001",
+        "tests/unit/infra/namespace-boundary.test.ts",
+        "tests/unit/infra/ci-contract.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The RED was captured before the initial implementation; the expanded syntax cases were added during critic-driven hardening and are covered by the final 10/10 regression."
+    },
+    {
+      "id": "VFY-002-CANONICAL-GRAPH",
+      "description": "All canonical package manifests and source imports remain within the canonical namespace, while explicit legacy owners remain unchanged.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-012-NAMESPACE-CANONICAL-BOUNDARY-REGRESSION-001",
+        "scripts/check-package-namespace-boundaries.mjs",
+        "packages/rbac/package.json",
+        "packages/modules/access-control/package.json",
+        "packages/modules/fiscal/package.json",
+        "pnpm-lock.yaml"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The guard enforces the repository graph under apps/packages; it does not retire packages/db, packages/audit or other legacy owners."
+    },
+    {
+      "id": "VFY-003-AST-GUARD",
+      "description": "The blocking guard detects manifest edges and AST module specifiers across static imports/exports, import(), require, require.resolve, import-equals and templates without flagging comments or ordinary strings.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-012-NAMESPACE-CANONICAL-BOUNDARY-FIX-001",
+        ".agent/verification.jsonl#VFY-CVG-012-NAMESPACE-CANONICAL-BOUNDARY-REGRESSION-001",
+        "scripts/check-package-namespace-boundaries.mjs",
+        "tests/unit/infra/namespace-boundary.test.ts",
+        ".github/workflows/ci.yml"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Fully computed runtime module names without a statically discoverable literal prefix remain outside this static guard."
+    },
+    {
+      "id": "VFY-004-REGRESSION",
+      "description": "Focused guard/CI, access-control, fiscal, API, PostgreSQL, typecheck and build regressions pass after the correction.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-012-NAMESPACE-CANONICAL-BOUNDARY-REGRESSION-001",
+        ".agent/artifacts/CVG-012-NAMESPACE-CANONICAL-BOUNDARY-2026-08-30.md",
+        "tests/unit/infra/namespace-boundary.test.ts",
+        "packages/modules/access-control/src/access-catalog.contract.test.ts",
+        "packages/modules/fiscal/src/fiscal.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Repository-local execution does not certify remote CI, target services, production deployment or release operations."
+    },
+    {
+      "id": "VFY-005-QUALITY-SECURITY",
+      "description": "Official coverage, OpenAPI, migration-source, RLS, secrets, formatting and diff hygiene remain green at the bounded repository bar.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-012-NAMESPACE-CANONICAL-BOUNDARY-QUALITY-001",
+        ".agent/artifacts/CVG-012-NAMESPACE-CANONICAL-BOUNDARY-2026-08-30.md",
+        "coverage/coverage-final.json",
+        "docs/engineering/ARCHITECTURE_AUDIT.md",
+        "docs/engineering/RISK_REGISTER.md"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "The broad workspace lint command retains the unrelated packages/contracts/src/counterSales.ts:38,77 no-control-regex baseline."
+    },
+    {
+      "id": "VFY-006-INDEPENDENT-REVIEW",
+      "description": "The independent critic's blocking findings are recorded and remediated; no unavailable post-fix review is represented as approval.",
+      "required": true,
+      "status": "CONDITIONAL",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-012-NAMESPACE-CANONICAL-BOUNDARY-REVIEW-FINDING-001",
+        ".agent/verification.jsonl#VFY-CVG-012-NAMESPACE-CANONICAL-BOUNDARY-REVIEW-UNAVAILABLE-001"
+      ],
+      "confidence": "LOW",
+      "limitations": "A fresh compatible independent approval after the AST/control-plane fixes is not available; higher-confidence use and scope expansion require it."
+    },
+    {
+      "id": "VFY-007-GLOBAL-NON-PROMOTION",
+      "description": "The bounded child result does not promote the parent consolidation, ERP readiness, Vetus parity, target, providers, production, deployment or release.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-012-NAMESPACE-CANONICAL-BOUNDARY-GLOBAL-NON-PROMOTION-001",
+        ".agent/state.json",
+        ".agent/backlog.json",
+        "docs/engineering/CVG_HIS_V4_CONSOLIDATION_IMPLEMENTATION_PLAN.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Global ERP remains IN_PROGRESS/PARTIAL and promotion remains BLOCKED."
+    },
+    {
+      "id": "VFY-008-CONTROL-PLANE",
+      "description": "Task, backlog, state, verification, gate, artifact, authority and execution history agree and resolve after closure.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-012-NAMESPACE-CANONICAL-BOUNDARY-CONTROL-PLANE-001",
+        ".agent/state.json",
+        ".agent/backlog.json",
+        ".agent/tasks/CVG-012-NAMESPACE-CANONICAL-BOUNDARY.md",
+        ".agent/artifacts/CVG-012-NAMESPACE-CANONICAL-BOUNDARY-2026-08-30.md",
+        ".agent/execution-log.jsonl"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Historical records outside this slice are preserved and may retain their original state or counts."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-012-NAMESPACE-CANONICAL-BOUNDARY.md",
+    ".agent/artifacts/CVG-012-NAMESPACE-CANONICAL-BOUNDARY-2026-08-30.md",
+    ".agent/authority.jsonl#AUTH-CVG-012-NAMESPACE-CANONICAL-BOUNDARY-IR-001",
+    "scripts/check-package-namespace-boundaries.mjs",
+    "tests/unit/infra/namespace-boundary.test.ts",
+    "tests/unit/infra/ci-contract.test.ts",
+    ".github/workflows/ci.yml",
+    "packages/rbac/package.json",
+    "packages/modules/access-control/package.json",
+    "packages/modules/fiscal/package.json",
+    "pnpm-lock.yaml",
+    ".agent/verification.jsonl#VFY-CVG-012-NAMESPACE-CANONICAL-BOUNDARY-FINAL-001",
+    ".agent/verification.jsonl#VFY-CVG-012-NAMESPACE-CANONICAL-BOUNDARY-CONTROL-PLANE-001"
+  ],
+  "confidence": "MEDIUM",
+  "gaps": [
+    "No fresh compatible independent approval was available after the AST and control-plane fixes; the initial critic's FAIL_BOUNDED finding is retained.",
+    "Fully computed runtime module specifiers are outside the static guard; the guard intentionally covers literal-prefix module specifiers.",
+    "The broad workspace lint baseline retains packages/contracts/src/counterSales.ts:38,77 no-control-regex findings.",
+    "Legacy owners, target/provider evidence, remote CI, production, deployment, release identity, parity and global ERP remain open."
+  ],
+  "conditions": [
+    "Keep the result limited to canonical namespace graph enforcement and the RBAC package-name migration.",
+    "Obtain a compatible fresh independent read-only review before higher-confidence use or scope expansion.",
+    "Revalidate authority before changing schema, runtime API, legacy package ownership, target, production, deployment, release or global ERP behavior."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-012-NAMESPACE-CANONICAL-BOUNDARY-IR-001",
+    "scope": "Repository-local canonical V2 namespace dependency/import boundary and RBAC package naming",
+    "decision": "Authorize only active RBAC reference migration, stale module-fiscal dependency removal, AST guardrail and CI/test wiring; preserve legacy owners and global non-promotion.",
+    "revalidation_trigger": "Any expansion to global namespace retirement, schema/RLS, runtime/API behavior, providers, target, production, deployment, release or global ERP promotion."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_BOUNDED",
+  "implementation_status": "COMPLETE_BOUNDED",
+  "next_action": "Return to fresh residual scouting under a new authority. Keep global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED; obtain independent review before higher-confidence use or scope expansion.",
+  "revalidation_triggers": [
+    "Changing legacy package ownership or performing a global namespace rewrite",
+    "Changing schema, migrations, runtime/API contracts, providers, target operations, production, deployment, release or global ERP behavior"
+  ],
+  "supersedes": ".agent/gates/implementation-ready-CVG-012-namespace-canonical-boundary.json"
+}

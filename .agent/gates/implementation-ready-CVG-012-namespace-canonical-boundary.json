@@ -1,0 +1,70 @@
+{
+  "record_id": "GATE-CVG-012-NAMESPACE-CANONICAL-BOUNDARY-IR-001",
+  "timestamp": "2026-08-30T11:42:00-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope_ref": "CVG-012-NAMESPACE-CANONICAL-BOUNDARY",
+  "scope": "Canonical V2 package namespace dependency/import guardrail and RBAC namespace migration",
+  "version": 1,
+  "active_plan": ".agent/plans/premium-enterprise-mvp.md",
+  "active_task": ".agent/tasks/CVG-012-NAMESPACE-CANONICAL-BOUNDARY.md",
+  "criteria": [
+    {
+      "id": "IR-001-DIRECT-GAP",
+      "description": "The active graph contains legacy namespace edges from canonical V2 packages: module-access-control consumes @cvg-his/rbac and module-fiscal declares @cvg-his/db without a source import.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-SCOUT-CVG-012-NAMESPACE-CANONICAL-BOUNDARY-001",
+        "packages/modules/access-control/package.json",
+        "packages/modules/access-control/src/index.ts",
+        "packages/modules/access-control/src/access-catalog.contract.test.ts",
+        "packages/modules/fiscal/package.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The graph finding is repository-local; it does not assert that all legacy packages can be retired."
+    },
+    {
+      "id": "IR-002-MINIMAL-FIX",
+      "description": "The authorized correction is limited to renaming the dependency-free RBAC catalog to @cvg-his-v2/rbac, migrating active references, removing module-fiscal's unused legacy dependency and adding a blocking graph guardrail.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-012-NAMESPACE-CANONICAL-BOUNDARY.md",
+        "packages/rbac/package.json",
+        "packages/db/src/access-control-seeds.ts",
+        "apps/api/package.json",
+        "infra/scripts/run-e2e-spa.sh"
+      ],
+      "confidence": "HIGH",
+      "limitations": "No schema, migration, public payload, provider, target, production or release change is authorized."
+    },
+    {
+      "id": "IR-003-TEST-FIRST",
+      "description": "Fixture-based namespace guard tests and the CI contract assertion must be red before implementation and green after the graph correction.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-012-NAMESPACE-CANONICAL-BOUNDARY.md",
+        "tests/unit/infra/ci-contract.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This implementation-ready gate does not claim the guardrail or namespace migration has passed."
+    },
+    {
+      "id": "IR-004-NON_RUNTIME",
+      "description": "The change is a package graph/CI guardrail correction and must preserve active runtime package contracts and legacy control-plane ownership.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "docs/engineering/ARCHITECTURE_AUDIT.md",
+        "docs/engineering/CVG_HIS_V4_CONSOLIDATION_PRD.md",
+        "docs/engineering/CVG_HIS_V4_CONSOLIDATION_IMPLEMENTATION_PLAN.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Target deployment and runtime package resolution remain separate gates."
+    }
+  ],
+  "next_gate": "TDD_RED",
+  "implementation_status": "AUTHORIZED",
+  "global_boundary": "Global ERP and consolidation remain IN_PROGRESS/PARTIAL; promotion BLOCKED."
+}

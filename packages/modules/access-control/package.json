@@ -12,7 +12,7 @@
     }
   },
   "dependencies": {
-    "@cvg-his/rbac": "workspace:*",
+    "@cvg-his-v2/rbac": "workspace:*",
     "@cvg-his-v2/shared-database": "workspace:^",
     "@cvg-his-v2/shared-errors": "workspace:*",
     "@cvg-his-v2/shared-types": "workspace:*",

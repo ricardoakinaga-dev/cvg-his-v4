@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  V2_ACCESS_CONTROL_PERMISSION_SEEDS,
-  V2_ACCESS_CONTROL_ROLE_SEEDS
-} from '@cvg-his/rbac';
+import { V2_ACCESS_CONTROL_PERMISSION_SEEDS, V2_ACCESS_CONTROL_ROLE_SEEDS } from '@cvg-his-v2/rbac';
 
 import { AccessControlService } from './index.js';
 

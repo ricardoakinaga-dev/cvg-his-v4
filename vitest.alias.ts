@@ -60,10 +60,8 @@ export function createWorkspaceAliases(root: string): Record<string, string> {
     '@cvg-his-v2/shared-utils': from('packages/shared/utils/src/index.ts'),
     '@cvg-his-v2/shared-validation': from('packages/shared/validation/src/index.ts'),
     '@cvg-his/db': from('packages/db/src/index.ts'),
-    '@cvg-his/rbac': from('packages/rbac/src/index.ts'),
-    '@cvg-his/rbac/access-control-catalog': from(
-      'packages/rbac/src/access-control-catalog.ts'
-    ),
+    '@cvg-his-v2/rbac': from('packages/rbac/src/index.ts'),
+    '@cvg-his-v2/rbac/access-control-catalog': from('packages/rbac/src/access-control-catalog.ts'),
     '@cvg-his-v2/tenant-context': from('packages/tenant-context/src/index.ts'),
     '@cvg-his-v2/chaos': from('packages/chaos/src/index.ts'),
     '@cvg-his-v2/secrets': from('packages/secrets/src/index.ts')

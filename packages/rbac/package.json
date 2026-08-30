@@ -1,5 +1,5 @@
 {
-  "name": "@cvg-his/rbac",
+  "name": "@cvg-his-v2/rbac",
   "version": "0.1.0",
   "private": true,
   "type": "module",

@@ -78,7 +78,7 @@ apps/spa/src/main.ts
 
 Dimensões observadas:
 
-- 70 pacotes internos: 64 `@cvg-his-v2/*` e 6 `@cvg-his/*`; nenhum ciclo no grafo de manifests;
+- 70 pacotes internos: 65 `@cvg-his-v2/*` e 5 `@cvg-his/*`; nenhum ciclo no grafo de manifests;
 - API: 175 arquivos e aproximadamente 69.597 linhas; `server.ts` tem 7.742 linhas, `bootstrap.ts` 1.327 e `runtime.ts` 1.249;
 - worker: 29 arquivos e aproximadamente 7.190 linhas;
 - SPA: 483 arquivos e aproximadamente 144.410 linhas; `routes.ts` tem 2.666 linhas;
@@ -91,7 +91,7 @@ Dimensões observadas:
 | Deploy Compose    | `docker-compose.v2.yml`, imagens construídas pelos Dockerfiles                             | identidade V2 em programa V4; tags fixas no YAML                                                                                          | declarar a release como V4 em um cutover controlado, preservando aliases durante migração                         |
 | API/worker/SPA    | `apps/api`, `apps/worker`, `apps/spa`                                                      | `apps/web` e docs históricas ainda aparecem                                                                                               | manter somente três apps na publicação; legado não entra no build/cutover                                         |
 | SQL aplicado      | `packages/db/migrations` + `packages/db/src/migrate.ts`                                    | 142 SQL aplicáveis (147 arquivos incluindo revert) vs trilhas históricas em `shared/database`; comandos alternativos agora falham fechado | um único comando de aplicação; manter SQL histórico separado e reconciliar artefatos source-level em task própria |
-| Schema/runtime DB | runtime importa `@cvg-his-v2/shared-database`; `packages/db` contém migration/schema/roles | duas casas de banco e um edge `module-fiscal → @cvg-his/db`                                                                               | separar claramente schema de consumo e runner de deploy; remover edge em task própria                             |
+| Schema/runtime DB | runtime importa `@cvg-his-v2/shared-database`; `packages/db` contém migration/schema/roles | duas casas de banco; o crossing direto de `module-fiscal` foi removido e o guardrail de namespace o impede de voltar | separar claramente schema de consumo e runner de deploy; manter owners legados explícitos                         |
 | RLS/roles         | `scripts/validate-rls-coverage.ts`, migrations, `reconcile-runtime-roles.ts`               | prova descartável cobre isolation/access/runtime ACL 19/19 e bootstrap production-like 6/6; catálogo alvo continua sem verificação        | manter gate CI + executar a mesma prova no PostgreSQL alvo com `NOBYPASSRLS`                                      |
 | Helm              | `infra/helm/cvg-his-v2` é o caminho validado por `validate:helm`                           | `charts/helm` é segundo track e contém probe inexistente                                                                                  | declarar `infra/helm` canônico; arquivar/desabilitar segundo track após decisão autorizada                        |
 | CI                | `.github/workflows/ci.yml`                                                                 | gates RLS/Helm/deploy/backup não são todos executados                                                                                     | CI deve exigir os gates baratos; ambiente-alvo deve fornecer restore/provider/cutover                             |
@@ -116,11 +116,15 @@ O critério clínico não será “tela existe”. O cenário mínimo de release
 
 **Direção:** extrair por fronteiras de domínio usando registries/ports, mantendo `createApiServer` como composition root. Não reescrever a API nem mover todos os módulos em uma única alteração.
 
-### A-02 — namespaces e casas canônicas duplicadas (P0/P5)
+### A-02 — namespaces e casas canônicas duplicadas (P0/P5) — BOUNDED
 
-Os 6 pacotes `@cvg-his/*` coexistem com 64 `@cvg-his-v2/*`. Há pares como `packages/db`/`packages/shared/database`, `config`, `contracts`, `audit` e `events`. O crossing declarado é `module-fiscal → @cvg-his/db`.
+Os 5 pacotes `@cvg-his/*` coexistem com 65 `@cvg-his-v2/*`. Há pares como `packages/db`/`packages/shared/database`, `config`, `contracts`, `audit` e `events`. O crossing histórico que motivou o slice foi `module-fiscal → @cvg-his/db`, junto do catálogo RBAC consumido por `module-access-control` através do namespace legado.
 
-**Direção:** inventariar consumidores, escolher um owner por capacidade, adicionar guardrail contra novos crossings e só depois migrar imports em lotes pequenos.
+Em 2026-08-30, o catálogo passou a ser publicado como `@cvg-his-v2/rbac`; os callers de access-control, database, aliases Vitest, filtros de build da API e harness E2E foram migrados. A dependência direta stale de `@cvg-his/db` saiu de `module-fiscal`. O guardrail `validate:namespaces` agora identifica manifests canônicos em `apps` e `packages`, usa a AST TypeScript para imports/exports estáticos, `import()`, `require`, `require.resolve`, `import = require` e templates, bloqueia crossings novos no job `repository-guards` e possui fixtures para crossings e para ignorar comentários/strings comuns, além da asserção de grafo limpo.
+
+**Limite:** `packages/db` e `packages/audit` continuam owners legados explícitos; isso não é uma renomeação global nem certifica a retirada dos 5 pacotes históricos, o catálogo do target ou a decisão de release identity.
+
+**Direção remanescente:** consolidar owners por capacidade em lotes autorizados, manter o guardrail e separar a aposentadoria física dos pacotes legados em task própria.
 
 ### A-03 — contrato de saúde implícito (P1/P3) — BOUNDED
 
