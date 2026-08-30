@@ -2539,3 +2539,41 @@ Evidence: `.agent/gates/verified-CVG-002B2B-semantic-pix-replay.json`,
 `.agent/artifacts/CVG-002B2B-semantic-pix-replay-2026-08-30.md`,
 `.agent/tasks/CVG-002B2B-SEMANTIC-PIX-REPLAY.md`,
 `.agent/verification.jsonl#VFY-CVG-002B2B-SEMANTIC-PIX-REPLAY-FINAL-001`.
+
+## 2026-08-30 — bounded auth login input boundary
+
+`CVG-002B2B-AUTH-LOGIN-INPUT-BOUNDARY` is locally reconciled as
+`PASS_BOUNDED` / `COMPLETE_BOUNDED`. The `POST /auth/login` route now guards
+the top-level JSON shape, extracts only safe fields for the existing IP and
+identity rate-limit buckets, and validates non-empty username/password values
+at most 128 characters plus optional accountId at most 255 characters before
+calling `AuthService.login`. Invalid input returns the existing sanitized 400
+envelope without creating a session or echoing raw credential markers.
+
+TDD RED reproduced the null dereference (`25/26` before implementation).
+The expanded route suite passed `27/27`, including missing/blank/null/wrong
+types, oversized values, inclusive maximums, explicit rate-limit ordering and
+log/response marker assertions. The dedicated command
+`pnpm --filter @cvg-his-v2/api test:auth-route` passed `27/27`; complete API
+passed `522/522`, module-auth `46/46`, API build and workspace typecheck
+passed. Security enterprise audit, OpenAPI, RLS, namespace, targeted lint,
+Prettier and diff checks passed. Full lint retains only the unrelated
+`packages/contracts/src/counterSales.ts:38,77` no-control-regex baseline.
+
+An initial independent review found no Critical/High code defect and asked for
+broader contract coverage and an explicit route command. Those findings were
+remediated; the fresh independent review returned `APPROVE_BOUNDED`.
+
+The child gate does not promote global ERP readiness, principal/MFA/session
+policy, providers, target, production, deployment, remote CI, parity,
+accessibility, backup/restore or release acceptance. Global ERP remains
+`IN_PROGRESS/PARTIAL`, Vetus evidence remains `100/100` with `4/11`
+functionally verified, clinical parity remains `2/3`, readiness remains
+`95/100` (`42 PASS`, `3 WARN`, `1 FAIL`) and promotion remains `BLOCKED`.
+The implementation was committed as `01a7d677`; the next action is fresh
+residual scouting under a new authority.
+
+Evidence: `.agent/gates/verified-CVG-002B2B-auth-login-input-boundary.json`,
+`.agent/artifacts/CVG-002B2B-auth-login-input-boundary-2026-08-30.md`,
+`.agent/tasks/CVG-002B2B-AUTH-LOGIN-INPUT-BOUNDARY.md`,
+`.agent/verification.jsonl#VFY-CVG-002B2B-AUTH-LOGIN-INPUT-BOUNDARY-FINAL-001`.
