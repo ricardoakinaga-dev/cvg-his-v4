@@ -3023,10 +3023,10 @@
     {
       "id": "CVG-003-INPATIENT-STAY-SERVICE-TENANT-BOUNDARY",
       "title": "Enforce tenant scope across InpatientService stay operations",
-      "stage": "SCOUT",
+      "stage": "VERIFY",
       "priority": "P0",
-      "status": "IMPLEMENTATION_READY",
-      "selection_status": "AUTHORIZED",
+      "status": "COMPLETE_BOUNDED",
+      "selection_status": "CLOSED_BOUNDED",
       "origin": "Fresh residual scouting after the bounded inpatient sector/bed closure found InpatientService identifier-based operations that rely on route-level account checks while resolving a multi-tenant in-memory stay cache without AccountId.",
       "dependencies": ["CVG-003"],
       "owner": "root integrator",
@@ -3042,14 +3042,24 @@
         "apps/api/src/routes/discharges-routes.ts",
         "apps/api/src/routes/inventory-routes.ts",
         "packages/modules/inpatient/src/inpatient.test.ts",
-        "apps/api/src/routes/inpatient-routes.test.ts"
+        "apps/api/src/routes/inpatient-routes.test.ts",
+        "tests/integration/database/inpatient-stay-service-tenant-boundary.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-003-INPATIENT-STAY-SERVICE-TENANT-BOUNDARY-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-003-INPATIENT-STAY-SERVICE-TENANT-BOUNDARY-REGRESSION-001",
+        ".agent/verification.jsonl#VFY-CVG-003-INPATIENT-STAY-SERVICE-TENANT-BOUNDARY-QUALITY-001",
+        ".agent/verification.jsonl#VFY-CVG-003-INPATIENT-STAY-SERVICE-TENANT-BOUNDARY-REVIEW-UNAVAILABLE-001",
+        ".agent/verification.jsonl#VFY-CVG-003-INPATIENT-STAY-SERVICE-TENANT-BOUNDARY-GLOBAL-NON-PROMOTION-001",
+        ".agent/verification.jsonl#VFY-CVG-003-INPATIENT-STAY-SERVICE-TENANT-BOUNDARY-FINAL-001",
+        ".agent/verification.jsonl#VFY-CVG-003-INPATIENT-STAY-SERVICE-TENANT-BOUNDARY-CONTROL-PLANE-001",
+        ".agent/gates/verified-CVG-003-inpatient-stay-service-tenant-boundary.json",
+        ".agent/artifacts/CVG-003-INPATIENT-STAY-SERVICE-TENANT-BOUNDARY-2026-08-30.md"
       ],
       "limitations": [
         "Repository-local application boundary only; route-level checks already reduce public HTTP exposure, and target RLS/roles, providers, production, deployment, release and global ERP remain outside scope.",
         "Independent scout outcomes were requested but had not returned at selection time; no independent approval is inferred.",
-        "No schema change is authorized unless a failing invariant proves it necessary."
+        "No schema change was made; the bounded implementation relies on existing account_id, tenant context, integrity constraints and RLS."
       ],
-      "next_action": "Proceed to intentional TDD RED for cross-account InpatientService stay resolution, then implement only explicit AccountId propagation and bounded caller updates. Keep parent CVG-003/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
+      "next_action": "Closed as PASS_BOUNDED with MEDIUM confidence and HIGH residual risk after TDD RED/GREEN, PostgreSQL/API regression, current coverage and static/security gates. Independent review was unavailable and is not inferred. Return to fresh residual scouting under a new authority; keep parent CVG-003/global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
     }
   ]
 }

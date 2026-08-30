@@ -3241,3 +3241,30 @@ Evidence: `.agent/state.json`, `.agent/backlog.json`,
 `.agent/gates/verified-CVG-003-audit-operational-coverage-source-of-truth.json`,
 `.agent/gates/verified-CVG-003-audit-operational-coverage-legacy-rls.json`,
 `.agent/execution-log.jsonl#EVT-1024`.
+
+## 2026-08-30 — bounded InpatientService stay tenant closure
+
+The residual `CVG-003-INPATIENT-STAY-SERVICE-TENANT-BOUNDARY` is reconciled
+locally as `PASS_BOUNDED` / `COMPLETE_BOUNDED`. The service now requires the
+principal-derived `AccountId` for stay identifier operations, and inpatient,
+discharge and inventory callers forward that scope. Existing database stay,
+progress, occurrence and daily-charge repositories retain account predicates;
+no migration was added.
+
+Current evidence is module `19/19`, PostgreSQL `2/2`, compiled inpatient routes
+`26/26`, complete API `519/519`, module/API typecheck and build, and official
+coverage `2,174` passed / `1` skipped at `80.17%` statements/lines, `80.74%`
+branches and `86.66%` functions. Migration-source, RLS `165/166`, OpenAPI
+`354/40/413`, secrets, targeted ESLint/Prettier and diff checks passed.
+
+The PostgreSQL pre-fix RED was not claimed after the initial fixture UUID
+mismatch. Independent review was attempted but unavailable, so no approval is
+inferred; confidence is medium and residual risk high. Global ERP remains
+`IN_PROGRESS/PARTIAL`, Vetus evidence is `100/100` with `4/11` areas verified,
+clinical parity is `2/3`, readiness is `95/100` (`42 PASS`, `3 WARN`, `1 FAIL`)
+and promotion remains `BLOCKED`. Fresh scouting under a new authority is next.
+
+Evidence: `.agent/gates/verified-CVG-003-inpatient-stay-service-tenant-boundary.json`,
+`.agent/artifacts/CVG-003-INPATIENT-STAY-SERVICE-TENANT-BOUNDARY-2026-08-30.md`,
+`.agent/verification.jsonl#VFY-CVG-003-INPATIENT-STAY-SERVICE-TENANT-BOUNDARY-FINAL-001`,
+`.agent/execution-log.jsonl#EVT-1216`.

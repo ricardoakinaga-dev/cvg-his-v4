@@ -1,7 +1,7 @@
 # CVG-003 — InpatientService stay tenant authorization boundary
 
-**Status:** `IMPLEMENTATION_READY`; parent CVG-003/global ERP remains `IN_PROGRESS/PARTIAL`.
-**Stage/activity:** `SCOUT` / `IMPLEMENTATION_READY`
+**Status:** `COMPLETE_BOUNDED`; parent CVG-003/global ERP remains `IN_PROGRESS/PARTIAL`.
+**Stage/activity:** `VERIFY` / `RECONCILED`
 **Owner:** root integrator with TDD and security review
 **Parent:** CVG-003 behavioral verification spine
 **Tier/risk/blast radius:** `T4_CRITICAL` / `HIGH` / clinical tenant boundary
@@ -80,5 +80,38 @@ never as approval.
 - `.agent/verification.jsonl#VFY-CVG-003-INPATIENT-STAY-SERVICE-TENANT-BOUNDARY-GREEN-001`
 - `.agent/verification.jsonl#VFY-CVG-003-INPATIENT-STAY-SERVICE-TENANT-BOUNDARY-REGRESSION-001`
 - `.agent/verification.jsonl#VFY-CVG-003-INPATIENT-STAY-SERVICE-TENANT-BOUNDARY-QUALITY-001`
-- `.agent/verification.jsonl#VFY-CVG-003-INPATIENT-STAY-SERVICE-TENANT-BOUNDARY-REVIEW-001`
+- `.agent/verification.jsonl#VFY-CVG-003-INPATIENT-STAY-SERVICE-TENANT-BOUNDARY-REVIEW-UNAVAILABLE-001`
+- `.agent/verification.jsonl#VFY-CVG-003-INPATIENT-STAY-SERVICE-TENANT-BOUNDARY-GLOBAL-NON-PROMOTION-001`
+- `.agent/verification.jsonl#VFY-CVG-003-INPATIENT-STAY-SERVICE-TENANT-BOUNDARY-FINAL-001`
+- `.agent/verification.jsonl#VFY-CVG-003-INPATIENT-STAY-SERVICE-TENANT-BOUNDARY-CONTROL-PLANE-001`
 - `.agent/gates/verified-CVG-003-inpatient-stay-service-tenant-boundary.json`
+
+## Final bounded verification — 2026-08-30
+
+- TDD RED was captured before implementation in the inpatient module and
+  compiled authenticated-route tests. The PostgreSQL proof was added before
+  the correction; its first execution exposed a fixture mistake, so no
+  PostgreSQL pre-fix RED is claimed retrospectively.
+- TDD GREEN passed the inpatient module (`19/19`), disposable PostgreSQL
+  tenant-boundary proof (`2/2`) and compiled inpatient route suite (`26/26`).
+  The complete API suite passed (`519/519`), the module and API builds passed,
+  and the API typecheck passed.
+- The persisted proof covers two accounts: foreign stay, progress, occurrence
+  and daily-charge identifier reads are hidden; foreign child writes reject;
+  a cross-account stay update is a no-op; and the owning account's admitted
+  stay and pending charge remain unchanged. No migration was added.
+- Official coverage passed `2,174` tests with one explicit skip at `80.17%`
+  statements/lines, `80.74%` branches and `86.66%` functions. Migration-source,
+  RLS (`165/166` protected tenant tables with one documented exception),
+  OpenAPI (`354` paths, `40` tags, `413` schemas), secrets and targeted
+  Prettier/diff checks passed.
+- Independent review was attempted but unavailable: the configured reviewer
+  role is unsupported for the active account and the compatible general
+  reviewer timed out. No approval is inferred; the local audit remains
+  conditional evidence only.
+
+The child is closed as `PASS_BOUNDED` / `COMPLETE_BOUNDED` with medium
+confidence and high residual risk. Parent CVG-003, global ERP/Vetus parity,
+target authorization, providers, production, deployment and release remain
+open; promotion remains blocked. Fresh residual scouting under a new authority
+is the next action.

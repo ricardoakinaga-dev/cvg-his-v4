@@ -2764,3 +2764,18 @@ Evidence: `.agent/gates/verified-CVG-003-audit-operational-coverage-source-of-tr
 `.agent/artifacts/CVG-003-audit-operational-coverage-source-of-truth-2026-08-29.md`,
 `.agent/artifacts/CVG-003-audit-operational-coverage-legacy-rls-2026-08-29.md`,
 `.agent/execution-log.jsonl#EVT-1024`.
+
+## 2026-08-30 — InpatientService stay boundary
+
+Closed the account-scope gap at the `InpatientService` boundary. The module,
+compiled route and PostgreSQL proofs passed `19/19`, `26/26` and `2/2`; the
+complete API passed `519/519`; current coverage passed `2,174` tests with one
+skip at `80.17%` statements/lines, `80.74%` branches and `86.66%` functions.
+The child is `PASS_BOUNDED` with medium confidence and high residual risk.
+
+Review unavailability and the missing PostgreSQL pre-fix RED are retained as
+explicit limitations. Parent CVG-003/global ERP remains `IN_PROGRESS/PARTIAL`
+and promotion remains `BLOCKED`; fresh residual scouting is the next gate.
+
+Evidence: `.agent/gates/verified-CVG-003-inpatient-stay-service-tenant-boundary.json`,
+`.agent/verification.jsonl#VFY-CVG-003-INPATIENT-STAY-SERVICE-TENANT-BOUNDARY-FINAL-001`.

@@ -2456,3 +2456,24 @@ remain open.
 Evidence: `.agent/gates/verified-CVG-004-report-appointments-persisted.json`,
 `.agent/artifacts/CVG-004-report-appointments-persisted-2026-08-29.md`,
 `.agent/verification.jsonl#VFY-CVG-004-REPORT-APPOINTMENTS-PERSISTED-QUALITY-001`.
+
+## 2026-08-30 — InpatientService stay tenant boundary
+
+The fresh residual CVG-003 stay-service boundary is now locally reconciled as
+`PASS_BOUNDED` / `COMPLETE_BOUNDED`. AccountId is explicit at
+`InpatientService` stay identifier operations and is forwarded by authenticated
+inpatient, discharge and inventory callers. The disposable PostgreSQL proof
+passed `2/2` across two accounts without a schema change; module `19/19`,
+compiled routes `26/26` and full API `519/519` also passed.
+
+Official coverage passed `2,174` tests with one skip at `80.17%`
+statements/lines, `80.74%` branches and `86.66%` functions. Migration-source,
+RLS, OpenAPI, secrets, targeted ESLint/Prettier and diff checks passed. No
+independent review verdict was available, and the PostgreSQL pre-fix RED is not
+claimed after the initial fixture UUID mismatch. Keep parent CVG-003/global ERP
+`IN_PROGRESS/PARTIAL` and promotion `BLOCKED`; return to fresh scouting under a
+new authority.
+
+Evidence: `.agent/gates/verified-CVG-003-inpatient-stay-service-tenant-boundary.json`,
+`.agent/artifacts/CVG-003-INPATIENT-STAY-SERVICE-TENANT-BOUNDARY-2026-08-30.md`,
+`.agent/verification.jsonl#VFY-CVG-003-INPATIENT-STAY-SERVICE-TENANT-BOUNDARY-FINAL-001`.
