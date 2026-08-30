@@ -723,6 +723,225 @@ test('MFA rate limiting uses the verified body identity instead of a caller-cont
   }
 });
 
+test('MFA login rejects malformed and oversized payloads before the auth service', async () => {
+  const invalidPayloads: readonly unknown[] = [
+    null,
+    [],
+    'not-an-object',
+    42,
+    {},
+    { userId: undefined, token: '123456', challengeId: 'challenge-1' },
+    { userId: 'user-1', token: undefined, challengeId: 'challenge-1' },
+    { userId: 'user-1', token: '123456', challengeId: undefined },
+    { userId: null, token: '123456', challengeId: 'challenge-1' },
+    { userId: 'user-1', token: null, challengeId: 'challenge-1' },
+    { userId: 'user-1', token: '123456', challengeId: null },
+    { userId: 123, token: '123456', challengeId: 'challenge-1' },
+    { userId: 'user-1', token: 123456, challengeId: 'challenge-1' },
+    { userId: 'user-1', token: '123456', challengeId: 123 },
+    { userId: [], token: '123456', challengeId: 'challenge-1' },
+    { userId: 'user-1', token: [], challengeId: 'challenge-1' },
+    { userId: 'user-1', token: '123456', challengeId: [] },
+    { userId: ' ', token: '123456', challengeId: 'challenge-1' },
+    { userId: 'user-1', token: ' ', challengeId: 'challenge-1' },
+    { userId: 'user-1', token: '123456', challengeId: ' ' },
+    {
+      userId: 'u'.repeat(129),
+      token: '123456',
+      challengeId: 'challenge-1'
+    },
+    {
+      userId: 'user-1',
+      token: 't'.repeat(129),
+      challengeId: 'challenge-1'
+    },
+    {
+      userId: 'user-1',
+      token: '123456',
+      challengeId: 'c'.repeat(513)
+    },
+    {
+      userId: 'user-1',
+      token: `mfa-token-not-for-output${'t'.repeat(129)}`,
+      challengeId: 'challenge-1'
+    }
+  ];
+  let completeCalls = 0;
+  const loggerContexts: unknown[] = [];
+  const handlers = {
+    auth: {
+      completeMfaLogin: async () => {
+        completeCalls += 1;
+        return { accessToken: 'token-1', refreshToken: 'refresh-1' };
+      }
+    } as never,
+    authRateLimiter: {
+      check: async () => ({
+        limit: 100,
+        remaining: 99,
+        reset: Date.now() + 60_000,
+        blocked: false,
+        retryAfterMs: 0
+      })
+    },
+    logger: { error: (_message: string, context?: unknown) => loggerContexts.push(context) },
+    appName: 'test-app',
+    featureFlags: { authOidcEnabled: false, authWebauthnEnabled: false },
+    webauthnChallenges: new Map(),
+    webauthnChallengeTtlMs: DEFAULT_WEBAUTHN_CHALLENGE_TTL_MS,
+    oidcConfig: null,
+    oidcStateStore: createInMemoryOidcStateStore(),
+    oidcStateTtlMs: 60_000,
+    requirePrincipal: () => createPrincipal(),
+    appendAudit: () => {}
+  };
+
+  for (const [index, payload] of invalidPayloads.entries()) {
+    const response = new MockResponse();
+    await handleAuthRoutes(
+      '/auth/login/mfa',
+      {
+        method: 'POST',
+        url: '/auth/login/mfa',
+        headers: {},
+        socket: { remoteAddress: `198.51.100.${index + 10}` },
+        [Symbol.asyncIterator]: async function* () {
+          yield Buffer.from(JSON.stringify(payload));
+        }
+      } as never,
+      response as never,
+      `corr-auth-mfa-invalid-${index}`,
+      handlers
+    );
+
+    assert.equal(response.statusCode, 400, `payload ${index} should be rejected`);
+    assert.doesNotMatch(response.bodyText(), /mfa-token-not-for-output/);
+  }
+
+  assert.equal(completeCalls, 0);
+  assert.doesNotMatch(JSON.stringify(loggerContexts), /mfa-token-not-for-output/);
+});
+
+test('MFA login accepts the inclusive field limits after rate limiting', async () => {
+  let received:
+    | { readonly userId: string; readonly token: string; readonly challengeId: string }
+    | undefined;
+  const handlers = {
+    auth: {
+      completeMfaLogin: async (payload: typeof received) => {
+        received = payload;
+        return { accessToken: 'token-1', refreshToken: 'refresh-1' };
+      }
+    } as never,
+    authRateLimiter: createSingleAttemptRateLimiter(),
+    logger: { error: () => {} },
+    appName: 'test-app',
+    featureFlags: { authOidcEnabled: false, authWebauthnEnabled: false },
+    webauthnChallenges: new Map(),
+    webauthnChallengeTtlMs: DEFAULT_WEBAUTHN_CHALLENGE_TTL_MS,
+    oidcConfig: null,
+    oidcStateStore: createInMemoryOidcStateStore(),
+    oidcStateTtlMs: 60_000,
+    requirePrincipal: () => createPrincipal(),
+    appendAudit: () => {}
+  };
+  const payload = {
+    userId: 'u'.repeat(128),
+    token: 't'.repeat(128),
+    challengeId: 'c'.repeat(512)
+  };
+  const response = new MockResponse();
+
+  await handleAuthRoutes(
+    '/auth/login/mfa',
+    {
+      method: 'POST',
+      url: '/auth/login/mfa',
+      headers: {},
+      socket: { remoteAddress: '198.51.100.240' },
+      [Symbol.asyncIterator]: async function* () {
+        yield Buffer.from(JSON.stringify(payload));
+      }
+    } as never,
+    response as never,
+    'corr-auth-mfa-limits-inclusive',
+    handlers
+  );
+
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(received, payload);
+});
+
+test('MFA login rate limits before validation without exposing token or challenge fields', async () => {
+  const rateLimitInputs: Array<Record<string, unknown>> = [];
+  const events: string[] = [];
+  let completeCalls = 0;
+  const handlers = {
+    auth: {
+      completeMfaLogin: async () => {
+        completeCalls += 1;
+        events.push('auth');
+        return { accessToken: 'token-1', refreshToken: 'refresh-1' };
+      }
+    } as never,
+    authRateLimiter: {
+      check: async (input: Record<string, unknown>) => {
+        rateLimitInputs.push(input);
+        events.push(`rate-limit:${String(input.route)}`);
+        return {
+          limit: 100,
+          remaining: 99,
+          reset: Date.now() + 60_000,
+          blocked: false,
+          retryAfterMs: 0
+        };
+      }
+    },
+    logger: { error: () => {} },
+    appName: 'test-app',
+    featureFlags: { authOidcEnabled: false, authWebauthnEnabled: false },
+    webauthnChallenges: new Map(),
+    webauthnChallengeTtlMs: DEFAULT_WEBAUTHN_CHALLENGE_TTL_MS,
+    oidcConfig: null,
+    oidcStateStore: createInMemoryOidcStateStore(),
+    oidcStateTtlMs: 60_000,
+    requirePrincipal: () => createPrincipal(),
+    appendAudit: () => {}
+  };
+  const payload = {
+    userId: ' user-1 ',
+    token: `credential-marker-${'x'.repeat(129)}`,
+    challengeId: 'challenge-marker'
+  };
+  const response = new MockResponse();
+
+  await handleAuthRoutes(
+    '/auth/login/mfa',
+    {
+      method: 'POST',
+      url: '/auth/login/mfa',
+      headers: {},
+      socket: { remoteAddress: '198.51.100.241' },
+      [Symbol.asyncIterator]: async function* () {
+        yield Buffer.from(JSON.stringify(payload));
+      }
+    } as never,
+    response as never,
+    'corr-auth-mfa-ordering',
+    handlers
+  );
+
+  assert.equal(response.statusCode, 400);
+  assert.equal(completeCalls, 0);
+  assert.deepEqual(events, [
+    'rate-limit:/auth/login/mfa:ip',
+    'rate-limit:/auth/login/mfa:identity'
+  ]);
+  assert.equal(rateLimitInputs[0]?.userId, undefined);
+  assert.equal(rateLimitInputs[1]?.userId, 'user-1');
+  assert.doesNotMatch(JSON.stringify(rateLimitInputs), /credential-marker|challenge-marker/);
+});
+
 test('public MFA enrollment delegates tenant-scoped start and confirm operations to AuthService', async () => {
   const calls: Array<{ operation: string; challengeId: string; value: string }> = [];
   const principal = createPrincipal();

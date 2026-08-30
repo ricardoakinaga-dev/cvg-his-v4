@@ -1,0 +1,142 @@
+{
+  "record_id": "GATE-CVG-002B2B-AUTH-MFA-LOGIN-INPUT-BOUNDARY-VFY-001",
+  "timestamp": "2026-08-30T15:44:11-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-002B2B bounded POST /auth/login/mfa JSON shape and input-size boundary",
+  "scope_ref": "CVG-002B2B-AUTH-MFA-LOGIN-INPUT-BOUNDARY",
+  "version": 1,
+  "active_plan": ".agent/plans/premium-enterprise-mvp.md",
+  "active_task": ".agent/tasks/CVG-002B2B-AUTH-MFA-LOGIN-INPUT-BOUNDARY.md",
+  "verification_state": "VERIFIED_BOUNDED",
+  "next_gate": "SCOUT",
+  "criteria": [
+    {
+      "id": "V-001-CONTRACT",
+      "description": "The route accepts only a JSON object with non-empty string userId, token and challengeId values, bounded at 128, 128 and 512 characters, and ignores extra fields.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002B2B-AUTH-MFA-LOGIN-INPUT-BOUNDARY-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-002B2B-AUTH-MFA-LOGIN-INPUT-BOUNDARY-GREEN-001",
+        "apps/api/src/routes/auth-routes.ts",
+        "apps/api/src/routes/auth-routes.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This proves the route-local input contract only; it does not certify all MFA protocol or session policy behavior."
+    },
+    {
+      "id": "V-002-RATE-LIMIT-AND-SECRECY",
+      "description": "The existing IP and identity rate-limit checks remain before validation, receive only the normalized user identity, and do not receive or log token, challenge or the full body.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002B2B-AUTH-MFA-LOGIN-INPUT-BOUNDARY-GREEN-001",
+        "apps/api/src/routes/auth-routes.ts:834-856",
+        "apps/api/src/routes/auth-routes.test.ts:875-952"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The rate-limit backend remains outside scope; this is a local route seam proof."
+    },
+    {
+      "id": "V-003-INVALID-PATH",
+      "description": "Malformed, missing, wrong-type, blank and oversized payloads return sanitized 400 responses without invoking AuthService.completeMfaLogin or MFA challenge/TOTP/session behavior.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002B2B-AUTH-MFA-LOGIN-INPUT-BOUNDARY-GREEN-001",
+        "apps/api/src/routes/auth-routes.test.ts:726-823"
+      ],
+      "confidence": "HIGH",
+      "limitations": "No claim is made about invalid-input behavior at other MFA enrollment or WebAuthn routes."
+    },
+    {
+      "id": "V-004-REGRESSION",
+      "description": "Compiled auth-route, complete API and module-auth regressions remain green after the boundary change.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002B2B-AUTH-MFA-LOGIN-INPUT-BOUNDARY-REGRESSION-001",
+        "apps/api/package.json",
+        ".agent/artifacts/CVG-002B2B-auth-mfa-login-input-boundary-2026-08-30.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The proof is repository-local and does not certify target or production behavior."
+    },
+    {
+      "id": "V-005-QUALITY-SECURITY",
+      "description": "Focused lint/format/diff checks, workspace typecheck, enterprise security, secret scan, OpenAPI, RLS and namespace validators pass; the unrelated global lint baseline is isolated.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002B2B-AUTH-MFA-LOGIN-INPUT-BOUNDARY-QUALITY-001",
+        ".agent/artifacts/CVG-002B2B-auth-mfa-login-input-boundary-2026-08-30.md"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "Global lint still reports only packages/contracts/src/counterSales.ts:38,77 no-control-regex; remote CI, full E2E, target operations and release checks remain open."
+    },
+    {
+      "id": "V-006-INDEPENDENT-REVIEW",
+      "description": "A fresh independent reviewer was attempted but no compatible verdict was available; the limitation is retained rather than represented as approval. A local adversarial self-audit found no additional bounded defect.",
+      "required": true,
+      "status": "CONDITIONAL",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002B2B-AUTH-MFA-LOGIN-INPUT-BOUNDARY-REVIEW-UNAVAILABLE-001",
+        ".agent/artifacts/CVG-002B2B-auth-mfa-login-input-boundary-2026-08-30.md"
+      ],
+      "confidence": "LOW",
+      "limitations": "The reviewer role was rejected by account/model compatibility, the default attempt timed out and the explorer attempt hit the model usage limit. Obtain a fresh compatible independent review before higher-confidence use or scope expansion."
+    },
+    {
+      "id": "V-007-GLOBAL-NON-PROMOTION",
+      "description": "The bounded result is reconciled without promoting CVG-002B2B, MFA completeness, Vetus parity, clinical parity, enterprise readiness, providers, target operations, production or release acceptance.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-002B2B-AUTH-MFA-LOGIN-INPUT-BOUNDARY-GLOBAL-NON-PROMOTION-001",
+        ".agent/state.json",
+        ".agent/backlog.json",
+        ".agent/instruction-scope.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Global ERP remains IN_PROGRESS/PARTIAL and promotion remains BLOCKED; general Vetus parity is 4/11 verified, clinical parity 2/3 verified and enterprise readiness is 95/100 with 42 PASS, 3 WARN and 1 FAIL."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-002B2B-AUTH-MFA-LOGIN-INPUT-BOUNDARY.md",
+    ".agent/artifacts/CVG-002B2B-auth-mfa-login-input-boundary-2026-08-30.md",
+    ".agent/gates/implementation-ready-CVG-002B2B-auth-mfa-login-input-boundary.json",
+    ".agent/authority.jsonl#AUTH-CVG-002B2B-AUTH-MFA-LOGIN-INPUT-BOUNDARY-IR-001",
+    "apps/api/src/routes/auth-routes.ts",
+    "apps/api/src/routes/auth-routes.test.ts",
+    "apps/api/package.json"
+  ],
+  "confidence": "MEDIUM",
+  "gaps": [
+    "No independent post-implementation reviewer verdict was available; the limitation is explicit and is not treated as approval.",
+    "The global lint command retains the unrelated counterSales no-control-regex baseline.",
+    "This slice does not certify full MFA challenge/TOTP/lockout/enrollment/WebAuthn/session behavior, distributed rate limiting, providers, target RLS/roles, production, deployment, release or global ERP readiness."
+  ],
+  "conditions": [
+    "Keep the result limited to the POST /auth/login/mfa input boundary and its route tests.",
+    "Obtain a compatible fresh independent read-only review before higher-confidence use or scope expansion.",
+    "Revalidate authority before changing challenge protocol, lockout/TOTP policy, enrollment, WebAuthn, refresh/session behavior, rate-limit backend, providers, target, production, deployment, release or global ERP behavior."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-002B2B-AUTH-MFA-LOGIN-INPUT-BOUNDARY-IR-001",
+    "scope": "Repository-local JSON shape and input-size validation for POST /auth/login/mfa",
+    "decision": "Authorize only route-local object/type/length validation and tests while preserving existing rate-limit ordering and MFA/session semantics; exclude all protocol, provider, target, production, deployment, release and global ERP changes.",
+    "revalidation_trigger": "Any change to MFA challenge semantics, lockout/TOTP policy, enrollment, WebAuthn, refresh/session behavior, distributed rate limiting, providers, target, production, deployment, release or global ERP promotion."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_BOUNDED",
+  "implementation_status": "COMPLETE_BOUNDED",
+  "next_action": "Commit this bounded slice, then return to fresh residual scouting under a new authority. Keep global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED; obtain independent review before higher-confidence use or scope expansion.",
+  "revalidation_triggers": [
+    "Changing the POST /auth/login/mfa field contract or maximum lengths",
+    "Changing rate-limit ordering/backend or MFA challenge, lockout, TOTP, enrollment, WebAuthn or session semantics",
+    "Expanding beyond repository-local route tests into providers, target, production, deployment, release or global ERP promotion"
+  ],
+  "supersedes": ".agent/gates/implementation-ready-CVG-002B2B-auth-mfa-login-input-boundary.json"
+}

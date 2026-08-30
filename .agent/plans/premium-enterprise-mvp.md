@@ -2577,3 +2577,45 @@ Evidence: `.agent/gates/verified-CVG-002B2B-auth-login-input-boundary.json`,
 `.agent/artifacts/CVG-002B2B-auth-login-input-boundary-2026-08-30.md`,
 `.agent/tasks/CVG-002B2B-AUTH-LOGIN-INPUT-BOUNDARY.md`,
 `.agent/verification.jsonl#VFY-CVG-002B2B-AUTH-LOGIN-INPUT-BOUNDARY-FINAL-001`.
+
+## 2026-08-30 — bounded MFA login input boundary
+
+`CVG-002B2B-AUTH-MFA-LOGIN-INPUT-BOUNDARY` is locally reconciled as
+`PASS_BOUNDED` / `COMPLETE_BOUNDED`. The `POST /auth/login/mfa` route now
+guards arbitrary JSON, validates non-empty bounded `userId`, `token` and
+`challengeId` values at 128, 128 and 512 characters, projects a new immutable
+payload and returns a sanitized 400 before `AuthService.completeMfaLogin` for
+invalid input. Existing IP/identity rate-limit ordering, challenge, lockout,
+TOTP, session and cookie semantics remain unchanged; token, challenge and full
+body values do not enter rate-limit inputs or logs.
+
+The intentional RED reproduced the null dereference (`28/29` before
+implementation). The source and official compiled auth-route suites passed
+`30/30`, the complete API passed `525/525`, module-auth passed `46/46` with
+ephemeral database cleanup, workspace typecheck passed across `70/71` projects,
+and V8 route coverage was `83.91%` lines, `70.76%` branches and `88.24%`
+functions. Enterprise security/secretlint, OpenAPI (`354` paths), RLS
+(`165/166` with documented exception), namespaces, targeted lint, Prettier and
+diff checks passed. Full lint retains only the unrelated
+`packages/contracts/src/counterSales.ts:38,77` no-control-regex baseline.
+
+The local adversarial audit found no additional bounded defect. A compatible
+independent agent verdict was unavailable because the reviewer model was
+rejected, the default attempt timed out and the explorer reached the account
+usage limit; no `APPROVE_BOUNDED` is inferred. This limitation is recorded as
+conditional/low confidence in the verified gate. The separate inventory-
+invoices sidecar review found a future persisted-status remediation candidate
+and does not alter this MFA scope.
+
+The child gate does not promote full MFA policy, global ERP, providers, target,
+production, deployment, remote CI, parity, accessibility, LGPD, backup/restore
+or release acceptance. Global ERP remains `IN_PROGRESS/PARTIAL`, Vetus remains
+`4/11` functionally verified, clinical parity remains `2/3`, readiness remains
+`95/100` (`42 PASS`, `3 WARN`, `1 FAIL`) and promotion remains `BLOCKED`.
+Commit the explicit bounded slice, then resume fresh residual scouting under a
+new authority.
+
+Evidence: `.agent/gates/verified-CVG-002B2B-auth-mfa-login-input-boundary.json`,
+`.agent/artifacts/CVG-002B2B-auth-mfa-login-input-boundary-2026-08-30.md`,
+`.agent/tasks/CVG-002B2B-AUTH-MFA-LOGIN-INPUT-BOUNDARY.md`,
+`.agent/verification.jsonl#VFY-CVG-002B2B-AUTH-MFA-LOGIN-INPUT-BOUNDARY-FINAL-001`.

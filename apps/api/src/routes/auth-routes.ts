@@ -68,6 +68,9 @@ const MAX_RATE_LIMIT_DIMENSION_LENGTH = 256;
 const MAX_LOGIN_USERNAME_LENGTH = 128;
 const MAX_LOGIN_PASSWORD_LENGTH = 128;
 const MAX_LOGIN_ACCOUNT_ID_LENGTH = 255;
+const MAX_MFA_USER_ID_LENGTH = 128;
+const MAX_MFA_TOKEN_LENGTH = 128;
+const MAX_MFA_CHALLENGE_ID_LENGTH = 512;
 
 function isJsonObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -113,6 +116,49 @@ function parseLoginRequest(payload: unknown, correlationId: string): LoginReques
     username,
     password,
     ...(accountId === undefined ? {} : { accountId })
+  };
+}
+
+interface MfaLoginRouteRequest {
+  readonly userId: string;
+  readonly token: string;
+  readonly challengeId: string;
+}
+
+function parseMfaLoginRequest(payload: unknown, correlationId: string): MfaLoginRouteRequest {
+  if (!isJsonObject(payload)) {
+    throw new ValidationError('Request body must be a JSON object', { correlationId });
+  }
+
+  validateRequestBody(
+    payload,
+    {
+      userId: {
+        type: 'string',
+        required: true,
+        minLength: 1,
+        maxLength: MAX_MFA_USER_ID_LENGTH
+      },
+      token: {
+        type: 'string',
+        required: true,
+        minLength: 1,
+        maxLength: MAX_MFA_TOKEN_LENGTH
+      },
+      challengeId: {
+        type: 'string',
+        required: true,
+        minLength: 1,
+        maxLength: MAX_MFA_CHALLENGE_ID_LENGTH
+      }
+    },
+    correlationId
+  );
+
+  return {
+    userId: requireNonEmptyString(payload.userId, 'userId'),
+    token: requireNonEmptyString(payload.token, 'token'),
+    challengeId: requireNonEmptyString(payload.challengeId, 'challengeId')
   };
 }
 
@@ -786,25 +832,28 @@ export async function handleAuthRoutes(
   }
 
   if (pathname === '/auth/login/mfa' && request.method === 'POST') {
-    const payload = (await readJsonBody(request)) as {
-      userId: string;
-      token: string;
-      challengeId: string;
-    };
+    const rawPayload = await readJsonBody(request).catch(() => ({}));
+    const rateLimitPayload = isJsonObject(rawPayload) ? rawPayload : {};
     const rateLimitInfo = await checkAuthAttemptRateLimit(authRateLimiter, {
       ip: getClientIp(request, trustedProxyCidrs),
       route: '/auth/login/mfa',
-      userId: payload.userId
+      userId: rateLimitPayload.userId
     });
     if (sendRateLimited(response, rateLimitInfo)) {
       return true;
     }
 
-    const result = await auth.completeMfaLogin(
-      { userId: payload.userId, token: payload.token, challengeId: payload.challengeId },
-      correlationId
-    );
-    return sendAuthSession(response, result, handlers);
+    try {
+      const payload = parseMfaLoginRequest(rawPayload, correlationId);
+      const result = await auth.completeMfaLogin(payload, correlationId);
+      return sendAuthSession(response, result, handlers);
+    } catch (error) {
+      logger.error('auth MFA login failed', { correlationId, error });
+      const errorResponse = toErrorResponse(error, correlationId);
+      response.statusCode = errorResponse.statusCode;
+      response.end(JSON.stringify(errorResponse.body));
+      return true;
+    }
   }
 
   if (pathname === '/auth/mfa/enroll' && request.method === 'POST') {

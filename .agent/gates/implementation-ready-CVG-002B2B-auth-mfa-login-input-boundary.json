@@ -1,0 +1,82 @@
+{
+  "record_id": "GATE-CVG-002B2B-AUTH-MFA-LOGIN-INPUT-BOUNDARY-IR-001",
+  "timestamp": "2026-08-30T15:16:00-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "Bounded JSON shape and input-size validation for POST /auth/login/mfa",
+  "scope_ref": "CVG-002B2B-AUTH-MFA-LOGIN-INPUT-BOUNDARY",
+  "version": 1,
+  "confidence": "HIGH",
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The MFA login route casts arbitrary parsed JSON and accesses payload.userId before establishing an object boundary; userId, token and challengeId have no route-level maximum length contract.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-002B2B-AUTH-MFA-LOGIN-INPUT-BOUNDARY.md",
+        "apps/api/src/routes/auth-routes.ts",
+        "apps/api/src/helpers/request-body.ts",
+        "packages/modules/auth/src/index.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Source-level selection evidence; dedicated RED remains required."
+    },
+    {
+      "id": "IR-002",
+      "description": "The smallest safe correction is a route-local MFA payload validator after the existing IP/identity rate-limit check and before AuthService.completeMfaLogin, with no MFA protocol or session redesign.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-002B2B-AUTH-MFA-LOGIN-INPUT-BOUNDARY.md",
+        "apps/api/src/routes/auth-routes.ts",
+        "apps/api/src/helpers/common.ts",
+        "packages/shared/validation/src/index.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "No change to challenge signing, lockout, TOTP, enrollment, refresh or session policy is authorized."
+    },
+    {
+      "id": "IR-003",
+      "description": "The existing route test seam can prove malformed and oversized payloads return sanitized 400 responses without invoking AuthService while retaining a successful MFA response and identity rate-limit behavior.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-002B2B-AUTH-MFA-LOGIN-INPUT-BOUNDARY.md",
+        "apps/api/src/routes/auth-routes.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Fresh RED/GREEN and affected regression are pending."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-002B2B-AUTH-MFA-LOGIN-INPUT-BOUNDARY.md",
+    "apps/api/src/routes/auth-routes.ts",
+    "apps/api/src/helpers/request-body.ts",
+    "packages/modules/auth/src/index.ts"
+  ],
+  "gaps": [
+    "The intentional route RED, implementation, regression, quality and review are not complete at gate creation."
+  ],
+  "conditions": [
+    "Keep rate limiting before payload validation and never include token/challenge/body in rate-limit identity or logs.",
+    "Preserve the global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED state."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via fresh local residual scouting after the bounded auth login input closure",
+    "scope": "CVG-002B2B bounded POST /auth/login/mfa input boundary",
+    "decision": "Authorize reversible route/helper/test changes for JSON object validation and maximum lengths only. Exclude challenge protocol, lockout/TOTP policy, enrollment, WebAuthn, refresh/session redesign, providers, credentials, target, production, deployment, release and global ERP promotion.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-002B2B-AUTH-MFA-LOGIN-INPUT-BOUNDARY-IR-001",
+    "expires_or_revalidates": "Revalidate before changing MFA challenge semantics, lockout/TOTP policy, session behavior, rate-limit backend or any target/production surface."
+  },
+  "revalidation_triggers": [
+    "Changing the MFA challenge token or repository protocol",
+    "Changing lockout, TOTP, enrollment, WebAuthn or session semantics",
+    "Changing auth rate-limit ordering or distributed backend",
+    "Any provider, target, production, deployment or release operation"
+  ],
+  "next_action": "Write and run the intentional RED before changing auth-routes implementation."
+}
