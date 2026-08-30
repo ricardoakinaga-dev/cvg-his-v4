@@ -1,0 +1,66 @@
+{
+  "record_id": "GATE-CVG-003-TRIAGE-CLOSED-ENCOUNTER-ATOMICITY-IR-001",
+  "task": "CVG-003-TRIAGE-CLOSED-ENCOUNTER-ATOMICITY",
+  "gate_id": "IMPLEMENTATION_READY",
+  "decision": "PASS",
+  "timestamp": "2026-08-30T12:38:00-03:00",
+  "scope": "Repository-local rejection of triage creation for authorized closed encounters before persistence, cache or timeline mutation",
+  "criteria": [
+    {
+      "id": "IR-001-DIRECT-GAP",
+      "description": "TriageService.createTriage accepts a closed encounter, persists/caches the record, and the HTTP route only discovers the illegal lifecycle transition afterward.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-SCOUT-CVG-003-TRIAGE-CLOSED-ENCOUNTER-ATOMICITY-001",
+        "packages/modules/triage/src/index.ts",
+        "apps/api/src/server.ts",
+        "packages/modules/encounters/src/index.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The finding is repository-local; it does not assert target or production behavior."
+    },
+    {
+      "id": "IR-002-MINIMAL-FIX",
+      "description": "The authorized correction is a closed-status precondition in createTriage plus service/HTTP no-residue regressions; valid open encounter behavior and public contracts remain unchanged.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-003-TRIAGE-CLOSED-ENCOUNTER-ATOMICITY.md",
+        "packages/modules/triage/src/index.ts",
+        "apps/api/src/server.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "No schema, provider, target, production, deployment, release or global parity action is authorized."
+    },
+    {
+      "id": "IR-003-TEST-FIRST",
+      "description": "Intentional module and HTTP RED evidence must precede the production correction, followed by GREEN and no-residue regression.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-003-TRIAGE-CLOSED-ENCOUNTER-ATOMICITY.md",
+        "packages/modules/triage/src/triage.test.ts",
+        "apps/api/src/server.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This gate authorizes TDD only; it does not claim the tests or correction have passed."
+    },
+    {
+      "id": "IR-004-NO-SCHEMA",
+      "description": "Encounter status and transition rules already exist in the canonical module; the bounded invariant is an application-service precondition and requires no migration.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "packages/modules/encounters/src/index.ts",
+        "packages/modules/triage/src/index.ts",
+        "packages/db/src/schema/encounters.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Target catalog, grants, RLS and distributed transaction behavior remain separate evidence."
+    }
+  ],
+  "next_gate": "TDD_RED",
+  "implementation_status": "AUTHORIZED",
+  "global_boundary": "CVG-003 and global ERP remain IN_PROGRESS/PARTIAL; promotion BLOCKED."
+}

@@ -139,6 +139,11 @@ export class TriageService {
     if (encounter.accountId !== scopedAccountId) {
       throw new NotFoundError('Encounter not found', { encounterId });
     }
+    if (encounter.status === 'closed') {
+      throw new ConflictError('Closed encounters do not allow triage creation', {
+        encounterId
+      });
+    }
     const patientId = requireNonEmptyString(payload.patientId, 'patientId') as PatientId;
     if (patientId !== encounter.patientId) {
       throw new ValidationError('Triage patientId must match encounter patientId', {

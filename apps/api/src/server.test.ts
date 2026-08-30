@@ -2635,6 +2635,80 @@ test('triage validation does not transition a reception encounter before persist
   assert.equal(unchangedEncounter.bodyJson<{ status: string }>().status, 'reception');
 });
 
+test('triage creation rejects a closed encounter without speculative list or timeline state', async () => {
+  const server = createServerUnderTest();
+  const accessToken = await login(server, 'admin', 'seed_admin');
+
+  const encounterResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/encounters',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      visitType: 'walk_in',
+      origin: 'reception',
+      reason: 'Closed triage precondition'
+    }
+  });
+  assert.equal(encounterResponse.statusCode, 201);
+  const encounter = encounterResponse.bodyJson<{ id: string; patientId: string }>();
+
+  const closeResponse = await performRequest(server, {
+    method: 'POST',
+    url: `/encounters/${encounter.id}/close`,
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: { closeReason: 'Atendimento encerrado antes da triagem' }
+  });
+  assert.equal(closeResponse.statusCode, 200);
+
+  const triageResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/triage',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      encounterId: encounter.id,
+      patientId: encounter.patientId,
+      priority: 'high',
+      chiefComplaint: 'Tentativa após encerramento',
+      alerts: [],
+      destination: 'in_care'
+    }
+  });
+  assert.equal(triageResponse.statusCode, 409);
+
+  const triageListResponse = await performRequest(server, {
+    method: 'GET',
+    url: `/triage?encounterId=${encounter.id}`,
+    headers: { authorization: `Bearer ${accessToken}`, host: 'localhost' }
+  });
+  assert.equal(triageListResponse.statusCode, 200);
+  assert.deepEqual(triageListResponse.bodyJson<{ items: unknown[] }>().items, []);
+
+  const timelineResponse = await performRequest(server, {
+    method: 'GET',
+    url: `/encounters/${encounter.id}/timeline`,
+    headers: { authorization: `Bearer ${accessToken}`, host: 'localhost' }
+  });
+  assert.equal(timelineResponse.statusCode, 200);
+  const timeline = timelineResponse.bodyJson<{
+    items: Array<{ eventType?: string }>;
+  }>().items;
+  assert.equal(timeline.some((event) => event.eventType === 'triage_recorded'), false);
+});
+
 test('quotes expose dedicated PDF generation over HTTP semantics', async () => {
   const server = createServerUnderTest();
   const accessToken = await login(server, 'admin', 'seed_admin');

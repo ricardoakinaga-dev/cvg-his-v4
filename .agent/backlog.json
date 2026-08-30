@@ -3096,6 +3096,39 @@
         "The first independent review returned FAIL_BOUNDED and its findings were fixed; no post-fix approval is inferred because a compatible fresh review is unavailable."
       ],
       "next_action": "Return to fresh residual scouting under a new authority. Keep global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED; obtain compatible independent review before higher-confidence use or scope expansion."
+    },
+    {
+      "id": "CVG-003-TRIAGE-CLOSED-ENCOUNTER-ATOMICITY",
+      "title": "Reject triage creation for closed encounters before mutation",
+      "stage": "CLOSE",
+      "priority": "P0",
+      "status": "COMPLETE_BOUNDED",
+      "selection_status": "CLOSED_BOUNDED",
+      "origin": "Fresh independent residual scouting after the bounded triage tenant-isolation closure found createTriage accepts closed encounters and the HTTP lifecycle transition fails only after speculative triage state is created.",
+      "dependencies": ["CVG-003", "CVG-003-TRIAGE-TENANT-ISOLATION"],
+      "owner": "root integrator",
+      "acceptance_summary": "TriageService rejects authorized closed encounters before repository/cache mutation, and the HTTP path returns the existing conflict without a triage list entry or triage timeline residue; open-encounter behavior and public contracts remain unchanged.",
+      "evidence_refs": [
+        ".agent/tasks/CVG-003-TRIAGE-CLOSED-ENCOUNTER-ATOMICITY.md",
+        ".agent/gates/implementation-ready-CVG-003-triage-closed-encounter-atomicity.json",
+        ".agent/authority.jsonl#AUTH-CVG-003-TRIAGE-CLOSED-ENCOUNTER-ATOMICITY-IR-001",
+        ".agent/verification.jsonl#VFY-SCOUT-CVG-003-TRIAGE-CLOSED-ENCOUNTER-ATOMICITY-001",
+        "packages/modules/triage/src/index.ts",
+        "apps/api/src/server.ts",
+        "packages/modules/triage/src/triage.test.ts",
+        "apps/api/src/server.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-003-TRIAGE-CLOSED-ENCOUNTER-ATOMICITY-REGRESSION-001",
+        ".agent/verification.jsonl#VFY-CVG-003-TRIAGE-CLOSED-ENCOUNTER-ATOMICITY-QUALITY-001",
+        ".agent/verification.jsonl#VFY-CVG-003-TRIAGE-CLOSED-ENCOUNTER-ATOMICITY-FINAL-001",
+        ".agent/gates/verified-CVG-003-triage-closed-encounter-atomicity.json",
+        ".agent/artifacts/CVG-003-TRIAGE-CLOSED-ENCOUNTER-ATOMICITY-2026-08-30.md"
+      ],
+      "limitations": [
+        "Repository-local application and HTTP boundary only; target RLS/roles, providers, production, deployment, release and global ERP remain outside scope.",
+        "The selected correction is intentionally narrow and does not add a general rollback refresher for unrelated route failures.",
+        "Independent post-implementation review is required for higher-confidence use and must not be inferred from scouting."
+      ],
+      "next_action": "Return to fresh residual scouting under a new authority. Keep this child closure bounded; global ERP remains IN_PROGRESS/PARTIAL and promotion BLOCKED."
     }
   ]
 }

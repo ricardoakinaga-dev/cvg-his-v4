@@ -52,6 +52,56 @@ test('createTriage stores a first record for an encounter', async () => {
   assert.equal(service.list('acc_test' as never, 'enc_test' as never).length, 1);
 });
 
+test('createTriage rejects a closed encounter before persistence or cache mutation', async () => {
+  let createCalls = 0;
+  const repository = {
+    async create() {
+      createCalls += 1;
+    },
+    async update() {},
+    async createVersion() {},
+    async findById() {
+      return null;
+    },
+    async findByEncounterId() {
+      return [];
+    },
+    async findByAccountId() {
+      return [];
+    },
+    async findVersionsByTriageId() {
+      return [];
+    },
+    async findVersionsByAccountId() {
+      return [];
+    }
+  };
+  const service = new TriageService(createEncountersStub('closed'), { repository });
+
+  await assert.rejects(
+    () =>
+      service.createTriage(
+        'user_triage' as never,
+        {
+          encounterId: 'enc_test',
+          patientId: 'patient_test',
+          priority: 'high',
+          chiefComplaint: 'Dor aguda',
+          alerts: [],
+          destination: 'in_care'
+        },
+        'acc_test' as never
+      ),
+    (error: unknown) => {
+      assert.equal(error instanceof ConflictError, true);
+      return true;
+    }
+  );
+
+  assert.equal(createCalls, 0);
+  assert.deepEqual(service.list('acc_test' as never), []);
+});
+
 test('triage list rejects empty encounter filters and protects cached read models', async () => {
   const service = new TriageService(createEncountersStub('observation'));
   const created = await service.createTriage(
@@ -353,7 +403,13 @@ test('updateTriage updates only allowed clinical fields', async () => {
 });
 
 test('updateTriage rejects changes when encounter is closed', async () => {
-  const service = new TriageService(createEncountersStub('closed'));
+  let encounterStatus: 'reception' | 'in_triage' | 'in_care' | 'observation' | 'closed' =
+    'observation';
+  const service = new TriageService(
+    {
+      getOrThrow: () => createEncounter(encounterStatus)
+    } as never
+  );
 
   const created = await service.createTriage(
     'user_triage' as never,
@@ -367,6 +423,8 @@ test('updateTriage rejects changes when encounter is closed', async () => {
     },
     'acc_test' as never
   );
+
+  encounterStatus = 'closed';
 
   await assert.rejects(
     () =>

@@ -3290,3 +3290,29 @@ Evidence: `.agent/gates/verified-CVG-012-namespace-canonical-boundary.json`,
 `.agent/artifacts/CVG-012-NAMESPACE-CANONICAL-BOUNDARY-2026-08-30.md`,
 `.agent/verification.jsonl#VFY-CVG-012-NAMESPACE-CANONICAL-BOUNDARY-FINAL-001`,
 `.agent/execution-log.jsonl#EVT-1227`.
+
+## 2026-08-30 — new bounded clinical-integrity authority
+
+Fresh residual scouting selected `CVG-003-TRIAGE-CLOSED-ENCOUNTER-ATOMICITY`:
+`TriageService.createTriage` currently accepts a closed encounter and mutates
+repository/cache before the HTTP route reaches an illegal transition. The
+implementation-ready gate authorizes only a closed-status precondition before
+mutation plus module/HTTP no-residue regressions. The next gate is intentional
+TDD RED; global ERP remains `IN_PROGRESS/PARTIAL` and promotion remains
+`BLOCKED`.
+
+Evidence: `.agent/gates/implementation-ready-CVG-003-triage-closed-encounter-atomicity.json`,
+`.agent/verification.jsonl#VFY-SCOUT-CVG-003-TRIAGE-CLOSED-ENCOUNTER-ATOMICITY-001`.
+
+## 2026-08-30 — CVG-003 bounded closed-encounter triage closure
+
+The service precondition and direct regressions are reconciled locally as
+`PASS_BOUNDED` / `COMPLETE_BOUNDED`. The service rejects closed encounters
+before repository/cache mutation; API, typecheck, build, coverage and
+in-scope security/contract checks passed. Review availability is conditional:
+the compatible independent reviewer did not return, so no approval is
+inferred. Global ERP remains `IN_PROGRESS/PARTIAL` and promotion remains
+`BLOCKED`; next gate is fresh residual scouting.
+
+Evidence: `.agent/gates/verified-CVG-003-triage-closed-encounter-atomicity.json`,
+`.agent/artifacts/CVG-003-TRIAGE-CLOSED-ENCOUNTER-ATOMICITY-2026-08-30.md`.

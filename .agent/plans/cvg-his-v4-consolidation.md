@@ -429,3 +429,31 @@ revisão independente inicial encontrou gaps, que foram corrigidos e cobertos;
 o follow-up de Averroes retornou `CONDITIONAL PASS` sem achados HIGH/MEDIUM
 restantes. O checkpoint permanece bounded e os gates de
 GitHub/target/rollout/release continuam pendentes.
+
+## 2026-08-30 — fresh authority for closed-encounter triage creation
+
+Fresh separated scouts identified a P0 clinical-integrity residual: the
+triage service creates and caches a record for a closed encounter before the
+HTTP route attempts an illegal lifecycle transition. The new bounded authority
+`CVG-003-TRIAGE-CLOSED-ENCOUNTER-ATOMICITY` authorizes only a closed-status
+precondition before persistence/cache mutation and service/HTTP no-residue
+regressions. TDD RED is the next gate; no implementation or promotion claim
+has been made yet.
+
+Evidence: `.agent/gates/implementation-ready-CVG-003-triage-closed-encounter-atomicity.json`,
+`.agent/authority.jsonl#AUTH-CVG-003-TRIAGE-CLOSED-ENCOUNTER-ATOMICITY-IR-001`,
+`.agent/verification.jsonl#VFY-SCOUT-CVG-003-TRIAGE-CLOSED-ENCOUNTER-ATOMICITY-001`.
+
+## 2026-08-30 — bounded closure for closed-encounter triage creation
+
+The authorized TDD slice is complete locally: the service now rejects closed
+encounters before persistence/cache mutation, and the HTTP regression proves
+`409` with no triage or timeline residue. API `520/520`, workspace
+typecheck/build `70/70`, official coverage above 80% and in-scope security /
+contract checks passed. The compatible independent review was unavailable, so
+the bounded gate remains conditional for higher-confidence use. Global ERP
+remains `IN_PROGRESS/PARTIAL`, promotion remains `BLOCKED`, and the next step
+is fresh residual scouting under a new authority.
+
+Evidence: `.agent/gates/verified-CVG-003-triage-closed-encounter-atomicity.json`,
+`.agent/artifacts/CVG-003-TRIAGE-CLOSED-ENCOUNTER-ATOMICITY-2026-08-30.md`.

@@ -2794,3 +2794,51 @@ open. The next gate is fresh residual scouting under a new authority.
 
 Evidence: `.agent/gates/verified-CVG-012-namespace-canonical-boundary.json`,
 `.agent/artifacts/CVG-012-NAMESPACE-CANONICAL-BOUNDARY-2026-08-30.md`.
+
+## 2026-08-30 — triage closed-encounter RED is next
+
+Three separated read-only scouts compared clinical triage lifecycle integrity,
+distinct-event PIX semantics and backup/restore release provenance. The
+selected candidate is the smallest P0 clinical-integrity correction: reject
+closed encounters inside `createTriage` before repository/cache mutation and
+prove that the HTTP path leaves no triage list or timeline residue. Authority
+is confirmed and the implementation-ready gate passed; no code change or
+GREEN result is claimed yet.
+
+Evidence: `.agent/authority.jsonl#AUTH-CVG-003-TRIAGE-CLOSED-ENCOUNTER-ATOMICITY-IR-001`,
+`.agent/gates/implementation-ready-CVG-003-triage-closed-encounter-atomicity.json`.
+
+The intentional RED is now captured: the triage module failed `10/11`, and
+the targeted compiled server regression failed `0/1` because the closed
+encounter reached an invalid transition only after a speculative triage was
+visible in the collection. GREEN is limited to adding the service precondition
+before persistence/cache mutation.
+
+Evidence: `.agent/verification.jsonl#VFY-CVG-003-TRIAGE-CLOSED-ENCOUNTER-ATOMICITY-RED-001`,
+`.agent/execution-log.jsonl#EVT-1230`.
+
+The bounded GREEN correction is now complete. `TriageService.createTriage`
+rejects authorized closed encounters after account ownership resolution and
+before persistence/cache mutation. The module suite passed `11/11`; the
+rebuilt targeted HTTP regression passed `1/1`, returning `409 CONFLICT` with
+an empty triage list and no `triage_recorded` timeline residue. The next gate
+is complete regression, quality and independent review; no global promotion is
+implied.
+
+Evidence: `.agent/verification.jsonl#VFY-CVG-003-TRIAGE-CLOSED-ENCOUNTER-ATOMICITY-GREEN-001`,
+`.agent/execution-log.jsonl#EVT-1231`.
+
+The bounded verification cycle is reconciled. API regression passed `520/520`,
+workspace typecheck/build passed `70/70`, and official coverage passed
+`2,178/1 skipped` at `80.18%` statements/lines, `80.73%` branches and
+`86.66%` functions. Secret, OpenAPI, migration-source, RLS, namespace and
+targeted lint checks passed. Full lint retains only the unrelated historical
+`packages/contracts/src/counterSales.ts:38,77` findings. The specialized and
+fallback independent reviewers were unavailable; no approval is inferred.
+The child gate is `PASS_BOUNDED` / `COMPLETE_BOUNDED`, while global ERP stays
+`IN_PROGRESS/PARTIAL` and promotion stays `BLOCKED`.
+
+Evidence: `.agent/gates/verified-CVG-003-triage-closed-encounter-atomicity.json`,
+`.agent/artifacts/CVG-003-TRIAGE-CLOSED-ENCOUNTER-ATOMICITY-2026-08-30.md`,
+`.agent/verification.jsonl#VFY-CVG-003-TRIAGE-CLOSED-ENCOUNTER-ATOMICITY-FINAL-001`,
+`.agent/execution-log.jsonl#EVT-1237`.
