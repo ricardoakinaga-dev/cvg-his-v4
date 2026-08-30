@@ -3232,5 +3232,40 @@
       ],
       "next_action": "Closed as PASS_BOUNDED with an explicit independent-review limitation. Commit this bounded slice, then return to fresh residual scouting under a new authority; keep global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
     }
+  ,{
+      "id": "CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-PERSISTED-STATUS-BOUNDARY",
+      "title": "Reject malformed persisted status filters for scheduled inventory-invoices reports",
+      "stage": "CLOSE",
+      "priority": "P1",
+      "status": "COMPLETE_BOUNDED",
+      "selection_status": "CLOSED_BOUNDED",
+      "origin": "Fresh post-commit scouting confirmed the inventory-invoices worker maps persisted null/empty/whitespace status values to no filter, bypassing the stricter source validator; the sidecar review recorded this as a Medium finding.",
+      "dependencies": [
+        "CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES"
+      ],
+      "owner": "root integrator",
+      "acceptance_summary": "The scheduled inventory-invoices worker rejects null, empty, whitespace, wrong-type and non-allowlisted persisted status filters before source.list, preserves valid normalized statuses and all other report behavior, and does not require migration or backfill.",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-PERSISTED-STATUS-BOUNDARY.md",
+        ".agent/gates/implementation-ready-CVG-004-report-scheduled-inventory-invoices-persisted-status-boundary.json",
+        ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-PERSISTED-STATUS-BOUNDARY-IR-001",
+        ".agent/verification.jsonl#VFY-SCOUT-CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-PERSISTED-STATUS-BOUNDARY-001",
+        "apps/worker/src/runner.ts",
+        "apps/worker/src/runner.test.ts",
+        "packages/modules/inventory/src/inventory-invoices-report.ts",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-PERSISTED-STATUS-BOUNDARY-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-PERSISTED-STATUS-BOUNDARY-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-PERSISTED-STATUS-BOUNDARY-REGRESSION-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-PERSISTED-STATUS-BOUNDARY-QUALITY-001",
+        ".agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-PERSISTED-STATUS-BOUNDARY-REVIEW-UNAVAILABLE-001",
+        ".agent/gates/verified-CVG-004-report-scheduled-inventory-invoices-persisted-status-boundary.json",
+        ".agent/artifacts/CVG-004-report-scheduled-inventory-invoices-persisted-status-boundary-2026-08-30.md"
+      ],
+      "limitations": [
+        "Worker-local persisted filter boundary only; no schema, backfill, fiscal, provider, target, production, deployment, release or global ERP scope.",
+        "The parent inventory-invoices gate remains subject to the separately recorded Medium sidecar finding until this task is closed."
+      ],
+      "next_action": "Closed as PASS_BOUNDED with explicit independent-review limitation. Commit the bounded worker correction, then return to fresh residual scouting under a new authority; keep global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
+    }
   ]
 }

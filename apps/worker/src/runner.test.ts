@@ -3168,6 +3168,9 @@ test('resolveScheduledReportRows fails closed for invalid inventory-invoices fil
   for (const filters of [
     { search: 42 },
     { status: 'unknown' },
+    { status: null },
+    { status: '' },
+    { status: '   ' },
     { dateFrom: '2026-02-30' },
     { dateFrom: '2026-06-01', dateTo: '2026-05-31' }
   ]) {

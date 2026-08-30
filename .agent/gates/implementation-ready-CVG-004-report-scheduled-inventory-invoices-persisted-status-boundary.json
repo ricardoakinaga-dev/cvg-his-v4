@@ -1,0 +1,86 @@
+{
+  "record_id": "GATE-CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-PERSISTED-STATUS-BOUNDARY-IR-001",
+  "timestamp": "2026-08-30T15:49:54-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "Bounded strict parsing of persisted inventory-invoices schedule status filters in the worker",
+  "scope_ref": "CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-PERSISTED-STATUS-BOUNDARY",
+  "version": 1,
+  "confidence": "HIGH",
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The worker currently converts null, empty and whitespace-only inventory-invoices status filters to undefined and omits the status predicate before querying the source.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-SCOUT-CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-PERSISTED-STATUS-BOUNDARY-001",
+        "apps/worker/src/runner.ts:1023-1032",
+        "apps/worker/src/runner.ts:1657-1671",
+        "apps/worker/src/runner.ts:1702-1714",
+        "packages/modules/inventory/src/inventory-invoices-report.ts:86-101",
+        "packages/db/migrations/0048_report_engine.sql:65-68"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This is repository-local source evidence; it does not assert target database contents or production schedule prevalence."
+    },
+    {
+      "id": "IR-002",
+      "description": "The smallest safe correction is an inventory-invoices-specific status parser that rejects null/empty/whitespace and non-allowlisted values before source.list, without changing shared parsers, migrations or report semantics.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-PERSISTED-STATUS-BOUNDARY.md",
+        "apps/worker/src/runner.ts",
+        "packages/modules/inventory/src/inventory-invoices-report.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Implementation is not authorized beyond this worker resolver/source-test boundary; no schema or backfill work is included."
+    },
+    {
+      "id": "IR-003",
+      "description": "Existing worker and inventory source test seams can prove fail-closed malformed persisted statuses, no source query for invalid filters and preserved normalized valid statuses.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/tasks/CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-PERSISTED-STATUS-BOUNDARY.md",
+        "apps/worker/src/runner.test.ts:3137-3212",
+        "packages/modules/inventory/src/inventory-invoices-report.test.ts:113-134"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Fresh RED/GREEN and regressions remain required before bounded closure."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-PERSISTED-STATUS-BOUNDARY.md",
+    "apps/worker/src/runner.ts",
+    "apps/worker/src/runner.test.ts",
+    "packages/modules/inventory/src/inventory-invoices-report.ts",
+    "packages/modules/inventory/src/inventory-invoices-report.test.ts",
+    "packages/db/migrations/0048_report_engine.sql"
+  ],
+  "gaps": [
+    "The intentional RED, implementation, regression, quality checks and independent review remain pending."
+  ],
+  "conditions": [
+    "Reject malformed persisted status before calling the inventory-invoices source.",
+    "Preserve valid status normalization and all other scheduled-report behavior.",
+    "Keep the global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via fresh local scouting after the inventory-invoices sidecar review",
+    "scope": "CVG-004 strict persisted inventory-invoices status filter boundary",
+    "decision": "Authorize only worker parser/test changes for fail-closed status handling. Exclude migrations, backfills, other reports, fiscal semantics, providers, target, production, deployment, release and global ERP promotion.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-PERSISTED-STATUS-BOUNDARY-IR-001",
+    "expires_or_revalidates": "Revalidate before changing report schema, persisted data, other report families, delivery/provider behavior, worker distribution or any target/production surface."
+  },
+  "revalidation_triggers": [
+    "Changing report_schedules schema or performing data backfill",
+    "Changing shared report filter parsing or another report family",
+    "Changing fiscal semantics, delivery/provider behavior, worker distribution, target, production, deployment, release or global ERP promotion"
+  ],
+  "next_action": "Record and run the intentional RED for persisted inventory-invoices status null/empty/whitespace before changing runner.ts."
+}

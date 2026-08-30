@@ -1700,6 +1700,9 @@ async function resolveInventoryInvoicesRows(
 }
 
 function parseScheduledInventoryInvoiceStatus(value: unknown): InventoryPurchaseStatus | undefined {
+  if (value !== undefined && (typeof value !== 'string' || value.trim().length === 0)) {
+    throw new Error('status must be draft, approved, partially_received, received or cancelled');
+  }
   const normalized = parseScheduledReportText(value, 'status');
   if (normalized === undefined) return undefined;
   if (

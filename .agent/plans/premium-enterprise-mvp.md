@@ -2619,3 +2619,35 @@ Evidence: `.agent/gates/verified-CVG-002B2B-auth-mfa-login-input-boundary.json`,
 `.agent/artifacts/CVG-002B2B-auth-mfa-login-input-boundary-2026-08-30.md`,
 `.agent/tasks/CVG-002B2B-AUTH-MFA-LOGIN-INPUT-BOUNDARY.md`,
 `.agent/verification.jsonl#VFY-CVG-002B2B-AUTH-MFA-LOGIN-INPUT-BOUNDARY-FINAL-001`.
+
+## 2026-08-30 — persisted inventory-invoices status boundary
+
+The fresh post-commit scout selected
+`CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-PERSISTED-STATUS-BOUNDARY` after
+the sidecar review found that persisted `null`, empty and whitespace status
+filters were converted to no filter by the worker. The worker-local parser now
+rejects those defined malformed values before `source.list`, while preserving
+`undefined`, valid normalized statuses and all other report behavior. No
+migration, backfill, fiscal semantics or other report family was changed.
+
+TDD RED reproduced `58/59` with `Missing expected rejection`. GREEN and
+regression passed worker suites `59/59`, `20/20`, `7/7`, `2/2`, `8/8`, `11/11`
+and `17/17`, inventory module `51/51`, worker/inventory typecheck/build and
+V8 runner coverage `89.59%` lines, `79.33%` branches and `98.62%` functions.
+Security/secretlint, OpenAPI (`354` paths), RLS (`165/166` with documented
+exception), namespaces, Prettier and diff checks passed. Full lint retains
+only the unrelated `packages/contracts/src/counterSales.ts:38,77`
+no-control-regex baseline.
+
+The local adversarial audit found no additional bounded defect. Independent
+review was unavailable because the account/model limits persisted; no
+`APPROVE_BOUNDED` is inferred. The former Medium behavior finding is remediated;
+the stale historical line citation remains a separate Low documentation debt.
+Global ERP remains `IN_PROGRESS/PARTIAL`, Vetus remains `4/11` functionally
+verified, clinical parity remains `2/3`, readiness remains `95/100` (`42 PASS`,
+`3 WARN`, `1 FAIL`) and promotion remains `BLOCKED`.
+
+Evidence: `.agent/gates/verified-CVG-004-report-scheduled-inventory-invoices-persisted-status-boundary.json`,
+`.agent/artifacts/CVG-004-report-scheduled-inventory-invoices-persisted-status-boundary-2026-08-30.md`,
+`.agent/tasks/CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-PERSISTED-STATUS-BOUNDARY.md`,
+`.agent/verification.jsonl#VFY-CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-PERSISTED-STATUS-BOUNDARY-FINAL-001`.
