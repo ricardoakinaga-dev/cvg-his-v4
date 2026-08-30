@@ -2684,3 +2684,12 @@ explicit `CONDITIONAL`/`LOW` independent-review limitation; the next action is
 an explicit commit followed by post-commit reconciliation and fresh residual
 scouting. Global ERP remains `IN_PROGRESS/PARTIAL` and promotion remains
 `BLOCKED`.
+
+## 2026-08-30 — Surgery tenant-boundary checkpoint
+
+`CVG-003-SURGERY-TENANT-BOUNDARY` was committed locally as `19de7ff0`
+(`fix: enforce surgery service tenant boundary`) after the exact commit file
+list and worktree were reconciled. The pre-existing design-system
+`tsbuildinfo` cache remains outside the commit. The next action is fresh
+residual scouting under a new authority; global ERP remains
+`IN_PROGRESS/PARTIAL` and promotion remains `BLOCKED`.

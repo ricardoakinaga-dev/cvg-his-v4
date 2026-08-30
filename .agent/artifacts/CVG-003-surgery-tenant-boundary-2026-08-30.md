@@ -73,3 +73,14 @@ explicit local commit. The pre-existing
 and must not be staged. After commit, verify the exact commit file list and
 preserve the global non-promotion condition before starting a new residual
 scout.
+
+## Reconciliação pós-commit
+
+The correction was committed locally as `19de7ff0` (`fix: enforce surgery
+service tenant boundary`). The commit contains the 18 expected Surgery
+source/test and control-plane paths. The pre-existing
+`packages/design-system/tsconfig.vue.tsbuildinfo` cache remains the only
+unstaged worktree change and was intentionally excluded.
+
+Evidence: `.agent/verification.jsonl#VFY-CVG-003-SURGERY-TENANT-BOUNDARY-COMMIT-001`
+and `.agent/execution-log.jsonl#EVT-1288`.

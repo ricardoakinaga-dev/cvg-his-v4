@@ -154,3 +154,20 @@ Evidence:
 - `.agent/verification.jsonl#VFY-CVG-003-SURGERY-TENANT-BOUNDARY-REVIEW-UNAVAILABLE-001`
 - `.agent/verification.jsonl#VFY-CVG-003-SURGERY-TENANT-BOUNDARY-GLOBAL-NON-PROMOTION-001`
 - `.agent/verification.jsonl#VFY-CVG-003-SURGERY-TENANT-BOUNDARY-FINAL-001`
+
+## Reconciliação pós-commit — 2026-08-30
+
+The bounded correction was committed locally as `19de7ff0` (`fix: enforce
+surgery service tenant boundary`). The commit contains the 18 expected source,
+test, task, gate, artifact, plan and control-plane paths. The only remaining
+worktree change is the pre-existing
+`packages/design-system/tsconfig.vue.tsbuildinfo` cache, which was not staged.
+
+Evidence:
+
+- `.agent/verification.jsonl#VFY-CVG-003-SURGERY-TENANT-BOUNDARY-COMMIT-001`
+- `.agent/execution-log.jsonl#EVT-1288`
+
+This task is complete as `COMPLETE_BOUNDED` / `PASS_BOUNDED`. The next action
+is fresh residual scouting under a new authority; global ERP remains
+`IN_PROGRESS/PARTIAL` and promotion remains `BLOCKED`.
