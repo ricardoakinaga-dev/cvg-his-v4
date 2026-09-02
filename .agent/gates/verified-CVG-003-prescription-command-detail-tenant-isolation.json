@@ -1,0 +1,152 @@
+{
+  "record_id": "GATE-CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION-VFY-001",
+  "timestamp": "2026-08-31T06:20:36-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "CVG-003 account-aware prescription detail, document, revision and command boundary with authenticated route propagation",
+  "scope_ref": "CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION",
+  "version": 1,
+  "active_plan": ".agent/plans/premium-enterprise-mvp.md",
+  "active_task": ".agent/tasks/CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION.md",
+  "verification_state": "VERIFIED_BOUNDED",
+  "next_gate": "SCOUT",
+  "criteria": [
+    {
+      "id": "V-001-ACCOUNT-AWARE-SERVICE",
+      "description": "Prescription detail, document, revision, update, archive and sign operations require explicit account scope and fail closed before disclosure or mutation.",
+      "required": true,
+      "status": "PASS",
+      "confidence": "HIGH",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION-GREEN-001",
+        "packages/modules/prescriptions/src/index.ts",
+        "packages/modules/prescriptions/src/prescriptions.boundary-coverage.test.ts"
+      ],
+      "limitations": "The proof covers the reviewed reusable service surface; future direct callers must use the explicit account-aware contract."
+    },
+    {
+      "id": "V-002-HYDRATION-CACHE-INTEGRITY",
+      "description": "Repository hydration filters rows by requested account before cache, revision or signature publication, including contaminated repository results.",
+      "required": true,
+      "status": "PASS",
+      "confidence": "HIGH",
+      "evidence_refs": [
+        "packages/modules/prescriptions/src/index.ts",
+        "packages/modules/prescriptions/src/prescriptions.boundary-coverage.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION-REVIEW-001"
+      ],
+      "limitations": "Repository SQL and target RLS were intentionally excluded; this gate accepts the application-level filtering correction only."
+    },
+    {
+      "id": "V-003-HTTP-FIRST-PARTY-PROPAGATION",
+      "description": "Authenticated prescription routes and reviewed first-party callers forward the authoritative principal account directly into the scoped service boundary.",
+      "required": true,
+      "status": "PASS",
+      "confidence": "HIGH",
+      "evidence_refs": [
+        "apps/api/src/routes/prescription-routes.ts",
+        "apps/api/src/runtime.ts",
+        "apps/api/src/canonical-db-runtime.test.ts",
+        "tests/integration/prescriptions-api.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION-ROUTE-001"
+      ],
+      "limitations": "Only reviewed repository-local first-party callers are covered; no claim is made for future consumers."
+    },
+    {
+      "id": "V-004-REGRESSION-COVERAGE",
+      "description": "Focused, route, authenticated PostgreSQL HTTP and canonical runtime regressions pass with changed-service coverage above the 80% bar.",
+      "required": true,
+      "status": "PASS",
+      "confidence": "HIGH",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION-COVERAGE-001",
+        ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION-REGRESSION-001",
+        ".agent/artifacts/CVG-003-prescription-command-detail-tenant-isolation-2026-08-31.md"
+      ],
+      "limitations": "Local verification does not certify remote CI, target, production, disaster recovery, distributed operation or release readiness."
+    },
+    {
+      "id": "V-005-QUALITY-SECURITY-CRITICAL",
+      "description": "Workspace quality/security/static controls and the official critical base/process gates pass after the bounded correction.",
+      "required": true,
+      "status": "PASS",
+      "confidence": "HIGH",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION-QUALITY-001",
+        ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION-CRITICAL-BASE-001",
+        ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION-CRITICAL-PROCESS-001",
+        ".agent/artifacts/CVG-003-prescription-command-detail-tenant-isolation-2026-08-31.md"
+      ],
+      "limitations": "The critical suite and static controls remain repository-local; target, production, remote CI and release controls remain outside this child."
+    },
+    {
+      "id": "V-006-INDEPENDENT-REVIEW",
+      "description": "A fresh independent read-only review returned APPROVE_BOUNDED with no actionable in-scope correctness or security finding.",
+      "required": true,
+      "status": "PASS",
+      "confidence": "HIGH",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION-REVIEW-001",
+        ".agent/artifacts/CVG-003-prescription-command-detail-tenant-isolation-2026-08-31.md"
+      ],
+      "limitations": "The review is bounded to the changed service, route, hydration and regression evidence and does not replace target or production assurance."
+    },
+    {
+      "id": "V-007-GLOBAL-NON-PROMOTION",
+      "description": "The child is closed without promoting CVG-003, global ERP readiness, Vetus parity, providers, target operations, production, deployment, release or unrelated modules.",
+      "required": true,
+      "status": "PASS",
+      "confidence": "HIGH",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION-GLOBAL-NON-PROMOTION-001",
+        ".agent/state.json",
+        ".agent/backlog.json"
+      ],
+      "limitations": "Global ERP remains IN_PROGRESS/PARTIAL and promotion remains BLOCKED."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION.md",
+    ".agent/artifacts/CVG-003-prescription-command-detail-tenant-isolation-2026-08-31.md",
+    ".agent/gates/implementation-ready-CVG-003-prescription-command-detail-tenant-isolation.json",
+    ".agent/authority.jsonl#AUTH-CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION-IR-001",
+    "packages/modules/prescriptions/src/index.ts",
+    "apps/api/src/routes/prescription-routes.ts",
+    "packages/modules/prescriptions/src/prescriptions.boundary-coverage.test.ts",
+    "tests/integration/prescriptions-api.test.ts",
+    ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION-FINAL-001",
+    ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION-CONTROL-PLANE-001"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "Repository SQL/RLS, target PostgreSQL/Redis, providers, production, remote CI, backup/restore, cutover, Vetus parity and release evidence remain open.",
+    "The test-only incompatible-index fixture correction is bounded to the critical integration baseline and is not a production invariant change.",
+    "The global ERP remains IN_PROGRESS/PARTIAL and is not promoted by this child gate."
+  ],
+  "conditions": [
+    "Keep all reviewed prescription callers on the explicit account-aware contract.",
+    "Do not expand this gate into schema, migration, RLS, repository SQL, provider, target, production, deployment, release or global promotion work without fresh authority.",
+    "Keep global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via fresh residual scouting after the critical baseline closure",
+    "scope": "Repository-local account-aware prescription detail and command boundary",
+    "decision": "Authorize only account-first service methods, cache hydration filtering, authenticated route/first-party propagation and focused regressions; preserve existing business semantics and exclude schema, SQL, target, production and global promotion.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION-IR-001",
+    "expires_or_revalidates": "Revalidate before changing any production contract, schema, migration, repository SQL, target, deployment or release behavior."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_BOUNDED",
+  "implementation_status": "COMPLETE_BOUNDED",
+  "next_action": "Keep the bounded source, test and control-plane changes uncommitted unless the repository owner explicitly requests a commit; resume fresh residual scouting under a new authority, preserving global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+  "revalidation_triggers": [
+    "Changing prescription schema, migrations, RLS or repository SQL",
+    "Expanding account-aware enforcement to prescription execution or another clinical aggregate",
+    "Adding arbitrary external or in-process prescription service consumers",
+    "Changing providers, credentials, target, production, deployment, release or global ERP promotion"
+  ],
+  "supersedes": ".agent/gates/implementation-ready-CVG-003-prescription-command-detail-tenant-isolation.json"
+}

@@ -17,6 +17,9 @@ const ACCOUNT_A = randomUUID();
 const USER_A = randomUUID();
 const OWNER_A = randomUUID();
 const PATIENT_A = randomUUID();
+const CLOSE_PATIENT_A = randomUUID();
+const RACE_PATIENT_A = randomUUID();
+const ROLLBACK_PATIENT_A = randomUUID();
 const CLOSE_ENCOUNTER_ID = randomUUID();
 const RECEIPT_ENCOUNTER_ID = randomUUID();
 const RACE_ENCOUNTER_ID = randomUUID();
@@ -38,6 +41,7 @@ const USERNAME_B = `close-receipt-foreign-${USER_B.slice(0, 8)}`;
 const AMOUNT = 125.5;
 const CLOSE_OPERATION = `POST /encounters/${CLOSE_ENCOUNTER_ID}/close`;
 const RECEIPT_CLOSE_OPERATION = `POST /encounters/${RECEIPT_ENCOUNTER_ID}/close`;
+const RECEIPT_OPERATION = 'encounter.cash-receipt.create';
 const RACE_CLOSE_OPERATION = `POST /encounters/${RACE_ENCOUNTER_ID}/close`;
 const ROLLBACK_CONSTRAINT = 'close_receipt_rollback_guard';
 
@@ -108,6 +112,7 @@ async function seedTenant(input: {
   readonly username: string;
   readonly label: string;
   readonly encounterIds: readonly string[];
+  readonly encounterPatientIds: readonly string[];
 }): Promise<void> {
   const pool = getTestPool();
   await pool.query(
@@ -145,21 +150,27 @@ async function seedTenant(input: {
     input.userId,
     role.rows[0].id
   ]);
-  await pool.query(
-    `INSERT INTO owners (id, account_id, full_name) VALUES ($1, $2, $3)`,
-    [input.ownerId, input.accountId, `${input.label} owner`]
-  );
-  await pool.query(
-    `INSERT INTO patients (id, account_id, owner_id, name, species)
-     VALUES ($1, $2, $3, $4, 'canine')`,
-    [input.patientId, input.accountId, input.ownerId, `${input.label} patient`]
-  );
-  for (const encounterId of input.encounterIds) {
+  await pool.query(`INSERT INTO owners (id, account_id, full_name) VALUES ($1, $2, $3)`, [
+    input.ownerId,
+    input.accountId,
+    `${input.label} owner`
+  ]);
+  if (input.encounterIds.length !== input.encounterPatientIds.length) {
+    throw new Error('Close-receipt fixture encounter and patient counts must match');
+  }
+  for (const patientId of new Set([input.patientId, ...input.encounterPatientIds])) {
+    await pool.query(
+      `INSERT INTO patients (id, account_id, owner_id, name, species)
+       VALUES ($1, $2, $3, $4, 'canine')`,
+      [patientId, input.accountId, input.ownerId, `${input.label} patient ${patientId.slice(0, 8)}`]
+    );
+  }
+  for (const [index, encounterId] of input.encounterIds.entries()) {
     await pool.query(
       `INSERT INTO encounters (
          id, account_id, patient_id, owner_id, status, opened_by_user_id, reason
        ) VALUES ($1, $2, $3, $4, 'open', $5, 'Consulta hospitalar')`,
-      [encounterId, input.accountId, input.patientId, input.ownerId, input.userId]
+      [encounterId, input.accountId, input.encounterPatientIds[index], input.ownerId, input.userId]
     );
   }
 }
@@ -171,28 +182,14 @@ async function seedFinancialGraph(): Promise<void> {
        id, account_id, encounter_id, patient_id, owner_id, status,
        subtotal_amount, currency
      ) VALUES ($1, $2, $3, $4, $5, 'open', $6, 'BRL')`,
-    [
-      BILLING_RECORD_ID,
-      ACCOUNT_A,
-      RECEIPT_ENCOUNTER_ID,
-      PATIENT_A,
-      OWNER_A,
-      AMOUNT
-    ]
+    [BILLING_RECORD_ID, ACCOUNT_A, RECEIPT_ENCOUNTER_ID, PATIENT_A, OWNER_A, AMOUNT]
   );
   await pool.query(
     `INSERT INTO billing_items (
        id, account_id, billing_record_id, encounter_id, item_type,
        description, quantity, unit_price_amount, total_amount, created_by_user_id
      ) VALUES ($1, $2, $3, $4, 'service', 'Consulta hospitalar', 1, $5, $5, $6)`,
-    [
-      BILLING_ITEM_ID,
-      ACCOUNT_A,
-      BILLING_RECORD_ID,
-      RECEIPT_ENCOUNTER_ID,
-      AMOUNT,
-      USER_A
-    ]
+    [BILLING_ITEM_ID, ACCOUNT_A, BILLING_RECORD_ID, RECEIPT_ENCOUNTER_ID, AMOUNT, USER_A]
   );
   await pool.query(
     `INSERT INTO cash_registers (
@@ -271,7 +268,8 @@ beforeAll(async () => {
       RECEIPT_ENCOUNTER_ID,
       RACE_ENCOUNTER_ID,
       ROLLBACK_ENCOUNTER_ID
-    ]
+    ],
+    encounterPatientIds: [CLOSE_PATIENT_A, PATIENT_A, RACE_PATIENT_A, ROLLBACK_PATIENT_A]
   });
   await seedTenant({
     tenantId: TENANT_B,
@@ -281,7 +279,8 @@ beforeAll(async () => {
     patientId: PATIENT_B,
     username: USERNAME_B,
     label: 'Close receipt B',
-    encounterIds: [FOREIGN_ENCOUNTER_ID]
+    encounterIds: [FOREIGN_ENCOUNTER_ID],
+    encounterPatientIds: [PATIENT_B]
   });
   await seedFinancialGraph();
   await getTestPool().query(
@@ -334,9 +333,7 @@ beforeAll(async () => {
     ...serverOptions
   });
   await secondaryServer.ready;
-  await new Promise<void>((resolve) =>
-    secondaryServer?.listen(0, '127.0.0.1', () => resolve())
-  );
+  await new Promise<void>((resolve) => secondaryServer?.listen(0, '127.0.0.1', () => resolve()));
   secondaryBaseUrl = `http://127.0.0.1:${(secondaryServer.address() as AddressInfo).port}`;
 
   accessTokenA = await login(USERNAME_A);
@@ -354,7 +351,9 @@ afterAll(async () => {
       secondaryServer?.close((error) => (error ? reject(error) : resolve()))
     );
   }
-  await getTestPool().query(`ALTER TABLE encounters DROP CONSTRAINT IF EXISTS ${ROLLBACK_CONSTRAINT}`);
+  await getTestPool().query(
+    `ALTER TABLE encounters DROP CONSTRAINT IF EXISTS ${ROLLBACK_CONSTRAINT}`
+  );
   await shutdownServices();
 });
 
@@ -453,7 +452,11 @@ describe('inpatient clinical-financial close → receipt HTTP PostgreSQL boundar
     };
     const closed = await requestJson<{
       readonly status: string;
-      readonly receipt: { readonly counterSaleId: string; readonly amount: number; readonly journalEntryId: string | null };
+      readonly receipt: {
+        readonly counterSaleId: string;
+        readonly amount: number;
+        readonly journalEntryId: string | null;
+      };
     }>(`/counter-sales/${saleId}/settle`, {
       method: 'POST',
       headers: settlementHeaders,
@@ -583,11 +586,7 @@ describe('inpatient clinical-financial close → receipt HTTP PostgreSQL boundar
     const idempotencyKey = randomUUID();
     const first = await postClose(CLOSE_ENCOUNTER_ID, idempotencyKey);
     const replay = await postClose(CLOSE_ENCOUNTER_ID, idempotencyKey);
-    const conflict = await postClose(
-      CLOSE_ENCOUNTER_ID,
-      idempotencyKey,
-      'Motivo divergente'
-    );
+    const conflict = await postClose(CLOSE_ENCOUNTER_ID, idempotencyKey, 'Motivo divergente');
 
     expect(first.status).toBe(200);
     expect(first.body).toMatchObject({
@@ -688,7 +687,7 @@ describe('inpatient clinical-financial close → receipt HTTP PostgreSQL boundar
         CASH_REGISTER_ID,
         RECEIPT_CLOSE_OPERATION,
         closeKey,
-        `POST /encounters/${RECEIPT_ENCOUNTER_ID}/cash-receipts`,
+        RECEIPT_OPERATION,
         receiptKey
       ]
     );
@@ -716,12 +715,7 @@ describe('inpatient clinical-financial close → receipt HTTP PostgreSQL boundar
   it('maps a distinct-key close race to one commit and one conflict', async () => {
     const [first, second] = await Promise.all([
       postClose(RACE_ENCOUNTER_ID, randomUUID(), 'Alta concorrente A', baseUrl),
-      postClose(
-        RACE_ENCOUNTER_ID,
-        randomUUID(),
-        'Alta concorrente B',
-        secondaryBaseUrl
-      )
+      postClose(RACE_ENCOUNTER_ID, randomUUID(), 'Alta concorrente B', secondaryBaseUrl)
     ]);
     expect([first.status, second.status].sort()).toEqual([200, 409]);
 

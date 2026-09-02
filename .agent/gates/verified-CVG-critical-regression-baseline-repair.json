@@ -1,0 +1,116 @@
+{
+  "record_id": "GATE-CVG-CRITICAL-REGRESSION-BASELINE-REPAIR-VFY-001",
+  "timestamp": "2026-08-31T04:42:49-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "Repository-local critical integration fixture and assertion compatibility repair",
+  "scope_ref": "CVG-CRITICAL-REGRESSION-BASELINE-REPAIR",
+  "version": 1,
+  "active_plan": ".agent/plans/premium-enterprise-mvp.md",
+  "active_task": ".agent/tasks/CVG-CRITICAL-REGRESSION-BASELINE-REPAIR.md",
+  "verification_state": "VERIFIED_BOUNDED",
+  "next_gate": "SCOUT",
+  "criteria": [
+    {
+      "id": "V-001-SCOPE",
+      "description": "The repair is limited to stale integration fixtures and assertions; authoritative production, database and tenant contracts remain unchanged.",
+      "required": true,
+      "status": "PASS",
+      "confidence": "HIGH",
+      "evidence_refs": [
+        ".agent/tasks/CVG-CRITICAL-REGRESSION-BASELINE-REPAIR.md",
+        ".agent/artifacts/CVG-CRITICAL-regression-baseline-repair-2026-08-31.md"
+      ]
+    },
+    {
+      "id": "V-002-FOCUSED",
+      "description": "The four affected integration suites pass with the contract-aligned fixture and assertion changes.",
+      "required": true,
+      "status": "PASS",
+      "confidence": "HIGH",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-CRITICAL-REGRESSION-BASELINE-REPAIR-GREEN-001"
+      ]
+    },
+    {
+      "id": "V-003-BASE",
+      "description": "The official critical database/setup/foundational base phase passes without failures.",
+      "required": true,
+      "status": "PASS",
+      "confidence": "HIGH",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-CRITICAL-REGRESSION-BASELINE-REPAIR-BASE-001"
+      ]
+    },
+    {
+      "id": "V-004-PROCESS",
+      "description": "The official serial critical process phase observes all ten entries and cleans its ephemeral resources.",
+      "required": true,
+      "status": "PASS",
+      "confidence": "HIGH",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-CRITICAL-REGRESSION-BASELINE-REPAIR-PROCESS-001"
+      ]
+    },
+    {
+      "id": "V-005-REVIEW",
+      "description": "An independent read-only review finds no in-scope Critical, High or Medium issue.",
+      "required": true,
+      "status": "PASS",
+      "confidence": "MEDIUM",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-CRITICAL-REGRESSION-BASELINE-REPAIR-REVIEW-001"
+      ],
+      "limitations": "The review is repository-local and does not certify target, production, remote CI or release behavior."
+    },
+    {
+      "id": "V-006-HYGIENE",
+      "description": "Affected files are formatted and diff hygiene passes.",
+      "required": true,
+      "status": "PASS",
+      "confidence": "HIGH",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-CRITICAL-REGRESSION-BASELINE-REPAIR-QUALITY-001"
+      ]
+    },
+    {
+      "id": "V-007-NON-PROMOTION",
+      "description": "Global ERP remains IN_PROGRESS/PARTIAL and promotion remains BLOCKED after this bounded local closure.",
+      "required": true,
+      "status": "PASS",
+      "confidence": "HIGH",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-CRITICAL-REGRESSION-BASELINE-REPAIR-FINAL-001"
+      ]
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-CRITICAL-REGRESSION-BASELINE-REPAIR.md",
+    ".agent/artifacts/CVG-CRITICAL-regression-baseline-repair-2026-08-31.md",
+    ".agent/verification.jsonl#VFY-CVG-CRITICAL-REGRESSION-BASELINE-REPAIR-BASE-001",
+    ".agent/verification.jsonl#VFY-CVG-CRITICAL-REGRESSION-BASELINE-REPAIR-PROCESS-001"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "Target, production, remote CI, provider, backup/restore, cutover and release evidence remain open global blockers.",
+    "This gate covers only test compatibility and does not certify global ERP readiness."
+  ],
+  "conditions": [
+    "Keep production, schema, migration, target, provider, credential, deployment and release scope excluded.",
+    "Keep global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+    "Preserve the mixed dirty worktree and do not commit or push without explicit owner authorization."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via explicit continuation and fresh critical-suite evidence",
+    "scope": "Repository-local critical integration fixture and assertion compatibility repair",
+    "decision": "Authorize only stale test fixture/assertion corrections required by already-authoritative contracts; no production, schema, migration, deployment, release or global promotion claim.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-CRITICAL-REGRESSION-BASELINE-REPAIR-IR-001",
+    "expires_or_revalidates": "Revalidate before changing any production contract, schema, migration, runtime, deployment or release behavior."
+  },
+  "residual_risk": "MEDIUM",
+  "decision": "PASS_BOUNDED",
+  "implementation_status": "COMPLETE_BOUNDED",
+  "next_action": "Return to fresh authority-driven residual scouting; keep global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED.",
+  "supersedes": ".agent/gates/implementation-ready-CVG-critical-regression-baseline-repair.json"
+}

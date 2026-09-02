@@ -109,8 +109,13 @@ Ref: `apps/api/src/slos.ts`
 
 ### 4.3 Subir stack de observabilidade local
 
+Copie o exemplo de ambiente, defina `GRAFANA_ADMIN_PASSWORD` com valor não
+vazio em `.env.v2` e só então suba o perfil:
+
 ```bash
-docker compose --profile observability up -d otel-collector prometheus grafana
+cp .env.v2.example .env.v2
+# Edite .env.v2 e preencha GRAFANA_ADMIN_PASSWORD com um segredo local único.
+ docker compose --env-file .env.v2 -f docker-compose.v2.yml --profile observability up -d otel-collector prometheus grafana
 ```
 
 Portas:
@@ -140,7 +145,7 @@ scrape_configs:
   - job_name: 'cvg-api'
     metrics_path: '/metrics'
     static_configs:
-      - targets: ['host.docker.internal:3003']
+      - targets: ['cvg-his-v2-api:3001']
         labels:
           service: 'api'
           environment: 'development'
@@ -148,13 +153,15 @@ scrape_configs:
   - job_name: 'cvg-worker'
     metrics_path: '/metrics'
     static_configs:
-      - targets: ['host.docker.internal:3003']
+      - targets: ['cvg-his-v2-worker:3002']
         labels:
           service: 'worker'
           environment: 'development'
 ```
 
-Para localhost em desenvolvimento, adicione `host.docker.internal` ao `/etc/hosts`.
+Os targets usam o DNS interno da rede Compose; a API atende em `3001` e o
+worker em `3002` dentro da rede. As portas publicadas para acesso humano ficam
+limitadas ao loopback do host.
 
 ---
 

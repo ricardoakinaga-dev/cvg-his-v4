@@ -606,7 +606,10 @@ export class PaymentsEventHandlers {
     externalReferenceType: 'pix_transaction' | 'other' = 'pix_transaction'
   ): Promise<boolean> {
     const billingRecord = this.#billing.getOrThrow(accountId, billingRecordId as BillingRecordId);
-    const summary = await this.#encounterFinancial.getSummary(billingRecord.encounterId);
+    const summary = await this.#encounterFinancial.getSummary(
+      accountId,
+      billingRecord.encounterId
+    );
     return summary.payments.some(
       (payment) =>
         payment.externalReferenceType === externalReferenceType &&

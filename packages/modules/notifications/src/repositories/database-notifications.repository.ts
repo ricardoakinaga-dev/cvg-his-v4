@@ -68,7 +68,7 @@ export class DatabaseNotificationRepository implements NotificationRepository {
   }
 
   public async findNotifications(
-    accountId?: AccountId,
+    accountId: AccountId,
     status?: NotificationSummary['status']
   ): Promise<readonly NotificationSummary[]> {
     const result = await withTenantDrizzle(async (db) => {
@@ -77,9 +77,10 @@ export class DatabaseNotificationRepository implements NotificationRepository {
         query = query.where(
           and(eq(notifications.accountId, accountId), eq(notifications.status, status))
         ) as typeof query;
-      } else if (accountId) {
+      } else {
         query = query.where(eq(notifications.accountId, accountId)) as typeof query;
-      } else if (status) {
+      }
+      if (status && !accountId) {
         query = query.where(eq(notifications.status, status)) as typeof query;
       }
       return query.orderBy(desc(notifications.createdAt));
@@ -127,7 +128,7 @@ export class DatabaseNotificationRepository implements NotificationRepository {
   }
 
   public async findJobs(
-    accountId?: AccountId,
+    accountId: AccountId,
     status?: NotificationJobSummary['status']
   ): Promise<readonly NotificationJobSummary[]> {
     const result = await withTenantDrizzle(async (db) => {
@@ -136,9 +137,10 @@ export class DatabaseNotificationRepository implements NotificationRepository {
         query = query.where(
           and(eq(notificationJobs.accountId, accountId), eq(notificationJobs.status, status))
         ) as typeof query;
-      } else if (accountId) {
+      } else {
         query = query.where(eq(notificationJobs.accountId, accountId)) as typeof query;
-      } else if (status) {
+      }
+      if (status && !accountId) {
         query = query.where(eq(notificationJobs.status, status)) as typeof query;
       }
       return query.orderBy(desc(notificationJobs.scheduledAt));
@@ -147,18 +149,14 @@ export class DatabaseNotificationRepository implements NotificationRepository {
   }
 
   public async findQueuedJobs(
-    limit: number,
-    accountId?: AccountId
+    accountId: AccountId,
+    limit: number
   ): Promise<readonly NotificationJobSummary[]> {
     const result = await withTenantDrizzle(async (db) => {
       let query = db.select().from(notificationJobs);
-      if (accountId) {
-        query = query.where(
-          and(eq(notificationJobs.status, 'queued'), eq(notificationJobs.accountId, accountId))
-        ) as typeof query;
-      } else {
-        query = query.where(eq(notificationJobs.status, 'queued')) as typeof query;
-      }
+      query = query.where(
+        and(eq(notificationJobs.status, 'queued'), eq(notificationJobs.accountId, accountId))
+      ) as typeof query;
       return query.orderBy(asc(notificationJobs.scheduledAt)).limit(limit);
     });
 

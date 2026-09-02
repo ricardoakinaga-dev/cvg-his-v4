@@ -68,7 +68,7 @@ function createFinancialService(repository = new InMemoryEncounterFinancialRepos
 
   const service = new EncounterFinancialService(
     {
-      getOrThrow(encounterId: string) {
+      getOrThrow(_accountId: string, encounterId: string) {
         expect(encounterId).toBe(encounter.id);
         return encounter;
       }
@@ -90,13 +90,23 @@ function createFinancialService(repository = new InMemoryEncounterFinancialRepos
     {
       getOrThrow(patientId: string) {
         expect(patientId).toBe(encounter.patientId);
-        return { id: patientId, name: 'Luna', species: 'canine' };
+        return {
+          id: patientId,
+          accountId: encounter.accountId,
+          name: 'Luna',
+          species: 'canine'
+        };
       }
     } as never,
     {
       getOrThrow(ownerId: string) {
         expect(ownerId).toBe(encounter.ownerId);
-        return { id: ownerId, fullName: 'Maria Silva', contacts: [] };
+        return {
+          id: ownerId,
+          accountId: encounter.accountId,
+          fullName: 'Maria Silva',
+          contacts: []
+        };
       }
     } as never,
     { repository }
@@ -202,6 +212,7 @@ describe('financial and fiscal premium evidence', () => {
     const { service, encounter, billingRecord } = createFinancialService();
 
     const partiallyPaid = await service.closeEncounterFinancial(
+      encounter.accountId,
       encounter.id,
       'user_finance' as never,
       {

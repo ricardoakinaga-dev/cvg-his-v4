@@ -242,5 +242,5 @@ describe('scheduling appointments report source on PostgreSQL', () => {
         `${overflowPrefix}%`
       ]);
     }
-  });
+  }, 120_000);
 });

@@ -9,7 +9,7 @@ import type { AccountId, AttachmentId, AttachmentSummary, UserId } from '@cvg-hi
 import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 import type { AttachmentRepository } from './attachment-repository.js';
-import type { FileStorage } from './file-storage.js';
+import { isTenantScopedStorageKey, type FileStorage } from './file-storage.js';
 
 export {
   DatabaseAttachmentRepository,
@@ -177,6 +177,16 @@ const BLOCKED_MIME_TYPES = new Set([
   'application/x-shockwave-flash'
 ]);
 
+const SAFE_STORAGE_SEGMENT = /^[A-Za-z0-9_-]+$/;
+
+function requireSafeStorageSegment(value: string, fieldName: string): string {
+  const normalized = value.trim();
+  if (!SAFE_STORAGE_SEGMENT.test(normalized)) {
+    throw new ValidationError(`Attachment ${fieldName} is invalid`, { field: fieldName });
+  }
+  return normalized;
+}
+
 function assertSafeFileMetadata(fileName: string, mimeType: string): void {
   if (
     !fileName ||
@@ -286,10 +296,12 @@ export class AttachmentsService {
 
     let targetAccountId: AccountId;
     if (payload.linkedEntityType === 'encounter') {
-      targetAccountId = this.#encounters.getOrThrow(linkedEntityId as never).accountId as AccountId;
-    } else if (payload.linkedEntityType === 'medical_record') {
-      targetAccountId = (await this.#medicalRecords.getRecordOrThrowAsync(linkedEntityId as never))
+      targetAccountId = this.#encounters.getOrThrow(accountId, linkedEntityId as never)
         .accountId as AccountId;
+    } else if (payload.linkedEntityType === 'medical_record') {
+      targetAccountId = (
+        await this.#medicalRecords.getRecordOrThrowAsync(accountId, linkedEntityId as never)
+      ).accountId as AccountId;
     } else if (payload.linkedEntityType === 'diagnostic_order') {
       targetAccountId = this.#diagnostics.getOrThrow(accountId, linkedEntityId as never).accountId;
     } else {
@@ -316,13 +328,16 @@ export class AttachmentsService {
         payload.fileName,
         fileContent
       );
+      if (!isTenantScopedStorageKey(accountId, result.storageKey)) {
+        throw new ValidationError('File storage returned an invalid tenant-scoped key');
+      }
       storageKey = result.storageKey;
       checksum = result.checksum;
       sizeBytes = result.sizeBytes;
 
       const declaredChecksum = requireNonEmptyString(payload.checksum, 'checksum');
       if (declaredChecksum !== checksum) {
-        await this.#fileStorage.delete(storageKey);
+        await this.#fileStorage.delete(accountId, storageKey);
         throw new ValidationError('Checksum mismatch: file integrity verification failed', {
           expected: declaredChecksum,
           actual: checksum
@@ -330,7 +345,12 @@ export class AttachmentsService {
       }
     } else if (fileContent) {
       const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 180) || 'unnamed';
-      storageKey = `local/${accountId}/${linkedEntityId}/${safeName}`;
+      const safeAccountId = requireSafeStorageSegment(accountId, 'accountId');
+      const safeLinkedEntityId = requireSafeStorageSegment(linkedEntityId, 'linkedEntityId');
+      storageKey = `local/${safeAccountId}/${safeLinkedEntityId}/${safeName}`;
+      if (!isTenantScopedStorageKey(accountId, storageKey)) {
+        throw new ValidationError('Attachment storage key is not tenant-scoped');
+      }
       checksum = createHash('sha256').update(fileContent).digest('hex');
       sizeBytes = fileContent.length;
 
@@ -343,7 +363,12 @@ export class AttachmentsService {
       }
     } else {
       const safeName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 180) || 'unnamed';
-      storageKey = `pending/${linkedEntityId}/${safeName}`;
+      const safeAccountId = requireSafeStorageSegment(accountId, 'accountId');
+      const safeLinkedEntityId = requireSafeStorageSegment(linkedEntityId, 'linkedEntityId');
+      storageKey = `pending/${safeAccountId}/${safeLinkedEntityId}/${safeName}`;
+      if (!isTenantScopedStorageKey(accountId, storageKey)) {
+        throw new ValidationError('Attachment storage key is not tenant-scoped');
+      }
       checksum = requireNonEmptyString(payload.checksum, 'checksum');
     }
 
@@ -372,7 +397,7 @@ export class AttachmentsService {
         await this.#repository.create(attachment);
       } catch (error) {
         if (fileContent && this.#fileStorage) {
-          await this.#fileStorage.delete(storageKey).catch(() => undefined);
+          await this.#fileStorage.delete(accountId, storageKey).catch(() => undefined);
         }
         throw error;
       }
@@ -383,31 +408,40 @@ export class AttachmentsService {
     return attachment;
   }
 
-  public async getById(id: string): Promise<AttachmentSummary | null> {
-    if (this.#repository) {
-      return this.#repository.findById(id as AttachmentId);
-    }
-    return this.#attachments.find((a) => a.id === id) ?? null;
+  public async getById(accountId: AccountId, id: string): Promise<AttachmentSummary | null> {
+    const attachment = this.#repository
+      ? await this.#repository.findById(accountId, id as AttachmentId)
+      : (this.#attachments.find((item) => item.id === id) ?? null);
+    if (!attachment || attachment.accountId !== accountId) return null;
+    return attachment;
   }
 
-  public async getFileContent(storageKey: string): Promise<Buffer | null> {
+  public async getFileContent(accountId: AccountId, storageKey: string): Promise<Buffer | null> {
+    if (!isTenantScopedStorageKey(accountId, storageKey)) return null;
     if (this.#fileStorage) {
-      return this.#fileStorage.retrieve(storageKey);
+      return this.#fileStorage.retrieve(accountId, storageKey);
     }
     return null;
   }
 
   public async listByLinkedEntity(
     linkedEntityType: 'encounter' | 'medical_record' | 'diagnostic_order',
-    linkedEntityId: string
+    linkedEntityId: string,
+    accountId: AccountId
   ): Promise<readonly AttachmentSummary[]> {
     if (this.#repository) {
-      return this.#repository.findByLinkedEntity(linkedEntityType, linkedEntityId);
+      const attachments = await this.#repository.findByLinkedEntity(
+        accountId,
+        linkedEntityType,
+        linkedEntityId
+      );
+      return attachments.filter((attachment) => attachment.accountId === accountId);
     }
     return this.#attachments.filter(
       (attachment) =>
         attachment.linkedEntityType === linkedEntityType &&
-        attachment.linkedEntityId === linkedEntityId
+        attachment.linkedEntityId === linkedEntityId &&
+        attachment.accountId === accountId
     );
   }
 }

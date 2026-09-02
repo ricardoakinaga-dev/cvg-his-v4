@@ -3,7 +3,6 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { AuditService } from '@cvg-his-v2/module-audit';
 import type { SurgeryService } from '@cvg-his-v2/module-surgery';
 import type { EncountersService } from '@cvg-his-v2/module-encounters';
-import { NotFoundError } from '@cvg-his-v2/shared-errors';
 import type {
   CreateSurgeryCaseRequest,
   UpdateSurgeryStatusRequest
@@ -38,10 +37,7 @@ export async function handleSurgeryRoutes(
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const encounterId = url.searchParams.get('encounterId') ?? undefined;
     if (encounterId) {
-      const encounter = encounters.getOrThrow(encounterId as never);
-      if (encounter.accountId !== principal.user.accountId) {
-        throw new NotFoundError('Encounter not found', { encounterId });
-      }
+      encounters.getOrThrow(principal.user.accountId, encounterId as never);
     }
     const items = surgery.list(principal.user.accountId, encounterId ?? undefined);
 
@@ -65,10 +61,7 @@ export async function handleSurgeryRoutes(
   if (pathname === '/surgeries' && request.method === 'POST') {
     const principal = await requirePrincipal(request, 'surgery.manage');
     const payload = (await readJsonBody(request)) as CreateSurgeryCaseRequest;
-    const encounter = encounters.getOrThrow(payload.encounterId as never);
-    if (encounter.accountId !== principal.user.accountId) {
-      throw new NotFoundError('Encounter not found', { encounterId: payload.encounterId });
-    }
+    encounters.getOrThrow(principal.user.accountId, payload.encounterId as never);
     const surgeryCase = surgery.requestCase(principal.user.accountId, payload);
     await surgery.waitForPersistence();
 

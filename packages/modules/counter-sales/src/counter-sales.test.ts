@@ -34,6 +34,81 @@ test('CounterSalesService open creates a sale with correct fields', async () => 
   assert.ok(sale.number.startsWith('CS-'));
 });
 
+test('CounterSalesService allocates unique numbers when replicas race in one account', async () => {
+  const persisted: CounterSaleRecord[] = [];
+  let nextNumber = 0;
+  let allocationTail = Promise.resolve();
+  const repository = {
+    async create() {
+      throw new Error('legacy explicit-number create path must not be used for opening sales');
+    },
+    async createWithNextNumber(draft: Omit<CounterSaleRecord, 'number'>) {
+      const allocation = allocationTail.then(() => {
+        const number = `CS-${String(++nextNumber).padStart(6, '0')}`;
+        const sale = { ...draft, number } as CounterSaleRecord;
+        persisted.push(sale);
+        return sale;
+      });
+      allocationTail = allocation.then(
+        () => undefined,
+        () => undefined
+      );
+      return allocation;
+    },
+    async findByAccountId(accountId: AccountId) {
+      return persisted.filter((sale) => sale.accountId === accountId);
+    }
+  } as unknown as CounterSalesRepository;
+
+  const replicaA = new CounterSalesService({ repository });
+  const replicaB = new CounterSalesService({ repository });
+  const [saleA, saleB] = await Promise.all([
+    replicaA.open(ACCOUNT_ID, USER_ID),
+    replicaB.open(ACCOUNT_ID, USER_ID)
+  ]);
+
+  assert.deepEqual(new Set([saleA.number, saleB.number]).size, 2);
+  assert.deepEqual([saleA.number, saleB.number].sort(), ['CS-000001', 'CS-000002']);
+  assert.equal(persisted.length, 2);
+});
+
+test('CounterSalesService keeps generated number sequences scoped to each account', async () => {
+  const accountB = 'acc_test_002' as AccountId;
+  const service = createService();
+
+  const [saleA, saleB] = await Promise.all([
+    service.open(ACCOUNT_ID, USER_ID),
+    service.open(accountB, USER_ID)
+  ]);
+
+  assert.equal(saleA.number, 'CS-000001');
+  assert.equal(saleB.number, 'CS-000001');
+});
+
+test('CounterSalesService bounds sustained number-allocation contention', async () => {
+  let allocationAttempts = 0;
+  const repository = {
+    async createWithNextNumber() {
+      allocationAttempts += 1;
+      throw new ConflictError('Counter sale number allocation is currently contended');
+    },
+    async create() {
+      throw new Error('legacy explicit-number create path must not be used for opening sales');
+    },
+    async findByAccountId() {
+      return [];
+    }
+  } as unknown as CounterSalesRepository;
+  const service = new CounterSalesService({ repository });
+
+  await assert.rejects(
+    () => service.open(ACCOUNT_ID, USER_ID),
+    (error: unknown) => error instanceof ConflictError && /allocation/i.test(error.message)
+  );
+  assert.equal(allocationAttempts, 1);
+  assert.deepEqual(service.list(ACCOUNT_ID), []);
+});
+
 test('CounterSalesService open preserves the clinical context of the episode', async () => {
   const service = createService();
   const sale = await service.open(ACCOUNT_ID, USER_ID, {
@@ -184,6 +259,9 @@ test('CounterSalesService forwards the payment idempotency key to the atomic rep
   let openedSale: CounterSaleRecord | null = null;
   const repository: CounterSalesRepository = {
     async create() {},
+    async createWithNextNumber(sale) {
+      return { ...sale, number: 'CS-000001' };
+    },
     async update() {},
     async findById() {
       return null;
@@ -264,6 +342,9 @@ test('CounterSalesService persists recalculated totals after items and payments 
   const updatedSales: CounterSaleRecord[] = [];
   const repository: CounterSalesRepository = {
     async create() {},
+    async createWithNextNumber(sale) {
+      return { ...sale, number: 'CS-000001' };
+    },
     async update(sale) {
       updatedSales.push(sale);
     },
@@ -393,12 +474,20 @@ test('CounterSalesService reloads the close snapshot inside the transaction boun
     async create(sale: CounterSaleRecord) {
       sales.set(sale.id, sale);
     },
+    async createWithNextNumber(sale: Omit<CounterSaleRecord, 'number'>) {
+      const record = { ...sale, number: 'CS-000001' } as CounterSaleRecord;
+      sales.set(record.id, record);
+      return record;
+    },
     async update(sale: CounterSaleRecord) {
       sales.set(sale.id, sale);
     },
     async lockSaleForUpdate(saleId: string) {
       if (inTransactionBoundary) refreshedInsideTransaction = true;
       return sales.get(saleId) ?? null;
+    },
+    async findByAccountId(accountId: AccountId) {
+      return Array.from(sales.values()).filter((sale) => sale.accountId === accountId);
     },
     async createItem(item: CounterSaleItemRecord) {
       items.set(item.id, item);
@@ -487,6 +576,9 @@ test('CounterSalesService close creates one immutable receipt in the same bounda
   const receipts: unknown[] = [];
   const repository = {
     async create() {},
+    async createWithNextNumber(sale: Omit<CounterSaleRecord, 'number'>) {
+      return { ...sale, number: 'CS-000001' } as CounterSaleRecord;
+    },
     async update() {},
     async findById() {
       return null;

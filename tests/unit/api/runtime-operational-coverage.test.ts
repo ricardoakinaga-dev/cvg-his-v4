@@ -303,7 +303,7 @@ describe('runtime operational coverage', () => {
       message: 'Notification should publish an outbox event'
     });
 
-    const processed = await runtime.notifications.processPending({ limit: 10 }, ACCOUNT_ID);
+    const processed = await runtime.notifications.processPending(ACCOUNT_ID, { limit: 10 });
     const pendingEvents = await inMemoryRepos.outbox.findPending(ACCOUNT_ID, 10);
     const sentEvent = pendingEvents.find((event) => event.eventType === 'notification.sent');
 
@@ -443,10 +443,10 @@ describe('runtime operational coverage', () => {
       reason: 'Cobertura de status de encounter'
     });
 
-    runtime.encounters.transitionEncounter(encounter.id, USER_ID, {
+    runtime.encounters.transitionEncounter(ACCOUNT_ID, encounter.id, USER_ID, {
       nextStatus: 'in_triage'
     });
-    const observed = runtime.encounters.transitionEncounter(encounter.id, USER_ID, {
+    const observed = runtime.encounters.transitionEncounter(ACCOUNT_ID, encounter.id, USER_ID, {
       nextStatus: 'observation'
     });
     await runtime.encounters.waitForPersistence();

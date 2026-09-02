@@ -108,7 +108,7 @@ describe('atomic inpatient daily-charge billing', () => {
     const pool = getTestPool();
     const billing = new BillingService(
       {
-        getOrThrow(id: string) {
+        getOrThrow(_accountId: string, id: string) {
           if (id !== encounterId) throw new Error('Encounter not found');
           return encounter;
         }

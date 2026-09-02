@@ -13,16 +13,16 @@ const E2E_API_URL =
   (E2E_DATABASE_MODE ? 'http://127.0.0.1:3113' : 'http://localhost:3001');
 const E2E_API_PORT = new URL(E2E_API_URL).port || (E2E_DATABASE_MODE ? '3113' : '3001');
 
+process.env.API_URL = process.env.API_URL || E2E_API_URL;
+process.env.BASE_URL = process.env.BASE_URL || E2E_API_URL;
+
 export default defineConfig({
   testDir: './e2e/tests',
   fullyParallel: false, // Run tests sequentially for E2E flows
   forbidOnly: true,
   retries: 0,
   workers: 1, // Single worker for sequential execution
-  reporter: [
-    ['html', { outputFolder: 'e2e/report' }],
-    ['list']
-  ],
+  reporter: [['html', { outputFolder: 'e2e/report' }], ['list']],
   timeout: 60_000, // 60s per test
   expect: {
     timeout: 10_000 // 10s for assertions

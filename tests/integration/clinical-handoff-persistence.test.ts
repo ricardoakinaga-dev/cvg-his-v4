@@ -318,7 +318,7 @@ describe('HOFF-MIN-1 clinical handoff repository hydration', () => {
         const restartedRuntime = createRuntime();
         await hydrateRuntime(restartedRuntime);
 
-        const hydrated = restartedRuntime.clinicalHandoffs.getOrThrow(handoffId);
+        const hydrated = restartedRuntime.clinicalHandoffs.getOrThrow(ACCOUNT_A, handoffId);
         expect(hydrated.handoffStatus).toBe('acknowledged_by_reception');
         expect(hydrated.clinicalSummary).toBe('Persisted HOFF-MIN-1 summary');
         expect(hydrated.receptionInstructions).toBe('Persisted HOFF-MIN-1 instructions');

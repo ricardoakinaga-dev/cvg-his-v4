@@ -133,7 +133,7 @@ describe('inpatient daily charge -> billing idempotency', () => {
     await pool.query('DELETE FROM billing_records WHERE account_id = $1', [accountId]);
     const repository = new DatabaseBillingRepository();
     const encounters = {
-      getOrThrow(id: string) {
+      getOrThrow(_accountId: string, id: string) {
         return {
           id,
           accountId,
@@ -209,7 +209,7 @@ describe('inpatient daily charge -> billing idempotency', () => {
 
     const repository = new DatabaseBillingRepository();
     const encounters = {
-      getOrThrow(id: string) {
+      getOrThrow(_accountId: string, id: string) {
         return {
           id,
           accountId,
@@ -337,7 +337,7 @@ describe('inpatient daily charge -> billing idempotency', () => {
 
     const repository = new DatabaseBillingRepository();
     const encounters = {
-      getOrThrow(id: string) {
+      getOrThrow(_accountId: string, id: string) {
         return {
           id,
           accountId,

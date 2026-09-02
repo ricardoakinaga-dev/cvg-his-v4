@@ -15,7 +15,9 @@ test.describe('Relatório de vendas e comandas canceladas', () => {
     expect(opened.id).toEqual(expect.any(String));
     expect(opened.number).toEqual(expect.any(String));
 
-    const cancelled = await apiCall.post(`/counter-sales/${opened.id}/cancel`, {});
+    const cancelled = await apiCall.post(`/counter-sales/${opened.id}/cancel`, {
+      reason: 'Fluxo E2E de cancelamento'
+    });
     expect(cancelled.status).toBe('cancelled');
 
     await spaPage.goto('/reports/deleted-sales-counter-sales');

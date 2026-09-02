@@ -1,0 +1,82 @@
+{
+  "record_id": "GATE-OPS-SEC-COMPOSE-LOCAL-EXPOSURE-IR-001",
+  "timestamp": "2026-08-31T06:34:17-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "Repository-local canonical Compose exposure, Grafana secret fallback, worker readiness and Prometheus service-DNS contracts",
+  "scope_ref": "OPS-SEC-COMPOSE-LOCAL-EXPOSURE-001",
+  "version": 1,
+  "active_plan": ".agent/plans/premium-enterprise-mvp.md",
+  "active_task": ".agent/tasks/OPS-SEC-COMPOSE-LOCAL-EXPOSURE-001.md",
+  "verification_state": "AUTHORIZED",
+  "next_gate": "GREEN",
+  "criteria": [
+    {
+      "id": "IR-001-SCOPE",
+      "description": "Only canonical local Compose, active observability documentation, cutover health waiting and focused config tests are authorized; target/production/Helm/real credentials remain excluded.",
+      "required": true,
+      "status": "PASS",
+      "confidence": "HIGH",
+      "evidence_refs": [
+        ".agent/tasks/OPS-SEC-COMPOSE-LOCAL-EXPOSURE-001.md",
+        ".agent/authority.jsonl#AUTH-OPS-SEC-COMPOSE-LOCAL-EXPOSURE-IR-001"
+      ]
+    },
+    {
+      "id": "IR-002-FINDING",
+      "description": "Canonical local Compose publishes ports without explicit loopback binding, retains a Grafana admin/admin fallback, lacks a worker Compose healthcheck, accepts running in cutover and uses stale Prometheus host targets.",
+      "required": true,
+      "status": "PASS",
+      "confidence": "HIGH",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-SCOUT-OPS-SEC-COMPOSE-LOCAL-EXPOSURE-001",
+        "docker-compose.v2.yml",
+        ".env.v2.example",
+        "infra/observability/prometheus.yml",
+        "infra/observability/README.md",
+        "infra/scripts/cutover-v2.sh",
+        "apps/worker/src/index.ts"
+      ]
+    },
+    {
+      "id": "IR-003-RED",
+      "description": "Focused declarative/config contract tests must fail against the current Compose, cutover and Prometheus configuration before implementation.",
+      "required": true,
+      "status": "PASS",
+      "confidence": "HIGH",
+      "evidence_refs": [
+        ".agent/tasks/OPS-SEC-COMPOSE-LOCAL-EXPOSURE-001.md",
+        ".agent/verification.jsonl#VFY-OPS-SEC-COMPOSE-LOCAL-EXPOSURE-RED-001"
+      ],
+      "next_action": "Implement only the authorized local Compose exposure, health and Prometheus corrections, then run focused GREEN and infra regressions."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/OPS-SEC-COMPOSE-LOCAL-EXPOSURE-001.md",
+    ".agent/authority.jsonl#AUTH-OPS-SEC-COMPOSE-LOCAL-EXPOSURE-IR-001",
+    ".agent/verification.jsonl#VFY-SCOUT-OPS-SEC-COMPOSE-LOCAL-EXPOSURE-001"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "TDD GREEN, implementation, infra regressions, config rendering, review and final reconciliation are outstanding.",
+    "The delegated independent scout timed out and was shut down; no independent approval is inferred."
+  ],
+  "conditions": [
+    "Bind only canonical local published ports to loopback without changing host port numbers or Caddy's localhost contract.",
+    "Do not modify target/production/Helm, real credentials, providers, schema, migrations, RLS or application business logic.",
+    "Keep global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via fresh local residual inspection after the prescription bounded closure",
+    "scope": "Repository-local canonical Compose exposure, Grafana secret fallback, worker readiness and Prometheus service-DNS contracts",
+    "decision": "Authorize only loopback binding, fail-closed Grafana password configuration, worker readiness/cutover health contracts, Prometheus service-DNS correction, active README synchronization and focused tests; exclude target, production, Helm and external infrastructure.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-OPS-SEC-COMPOSE-LOCAL-EXPOSURE-IR-001",
+    "expires_or_revalidates": "Revalidate before changing Helm, target/production infrastructure, real credentials, Caddy deployment, providers or release behavior."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "implementation_status": "AUTHORIZED",
+  "next_action": "Add and run intentional RED tests for loopback port binding, Grafana password fallback, worker health/cutover strictness and Prometheus service-DNS targets; then implement only the authorized local correction.",
+  "supersedes": null
+}

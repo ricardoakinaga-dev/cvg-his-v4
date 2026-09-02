@@ -532,6 +532,36 @@ test('handleLaboratoryRoutes releases result with authenticated user and technic
   assert.match(printResponse.bodyJson<{ html: string }>().html, /10-125 U\/L/);
 });
 
+test('handleLaboratoryRoutes awaits clinical projection callbacks before responding', async () => {
+  const response = new MockResponse();
+  let callbackFinished = false;
+
+  const handled = await handleLaboratoryRoutes(
+    '/diagnostics/orders',
+    createMockRequest('POST', '/diagnostics/orders', {
+      encounterId: 'enc-1',
+      patientId: 'pat-1',
+      examType: 'Callback control',
+      reason: 'Ensure projection completion is observable'
+    }) as never,
+    response as never,
+    'corr-lab-callback-await',
+    {
+      laboratory: createLaboratoryService(),
+      audit: { write: () => ({}) } as never,
+      requirePrincipal: () => createPrincipal(),
+      onOrderCreated: async () => {
+        await new Promise<void>((resolve) => setTimeout(resolve, 10));
+        callbackFinished = true;
+      }
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 201);
+  assert.equal(callbackFinished, true);
+});
+
 test('handleLaboratoryRoutes exposes the canonical analysis, report, recollection and delivery workflow', async () => {
   const laboratory = createLaboratoryService();
   const openOrder = (await laboratory.listOrders('acc-1' as never, 'enc-1')).find(

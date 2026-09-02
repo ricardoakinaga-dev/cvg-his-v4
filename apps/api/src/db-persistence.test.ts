@@ -13,6 +13,7 @@ import {
   type DatabaseClient
 } from '@cvg-his-v2/shared-database';
 import { runWithTenantContext } from '@cvg-his-v2/tenant-context';
+import { ValidationError } from '@cvg-his-v2/shared-errors';
 import { DatabaseStaffRepository } from '@cvg-his-v2/module-staff';
 import { DatabaseMedicalRecordRepository } from '@cvg-his-v2/module-medical-records';
 import { DatabaseClinicalEntryRepository } from '@cvg-his-v2/module-medical-records';
@@ -67,6 +68,7 @@ interface DatabasePersistenceFixture {
   readonly labUserId: string;
   readonly surgeonUserId: string;
   readonly anesthetistUserId: string;
+  readonly reportServiceUserId: string;
   readonly billingRecordId: string;
 }
 
@@ -81,6 +83,7 @@ async function provisionDatabasePersistenceFixture(): Promise<DatabasePersistenc
   const patientId = randomUUID();
   const encounterId = randomUUID();
   const labProfessionId = randomUUID();
+  const reportServiceUserId = randomUUID();
   const billingRecordId = `bill_inpatient_${tenantId.slice(0, 8)}`;
   const roleNames = ['admin', 'reception', 'nurse', 'veterinarian', 'finance'] as const;
   const principalSpecs = [
@@ -196,11 +199,30 @@ async function provisionDatabasePersistenceFixture(): Promise<DatabasePersistenc
           principal.name
         ]
       );
-      await client.query(`INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)`, [
-        principalIds[principal.key],
-        roleIds.get(principal.role)!
-      ]);
+    await client.query(`INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)`, [
+      principalIds[principal.key],
+      roleIds.get(principal.role)!
+    ]);
     }
+
+    await client.query(
+      `INSERT INTO users (
+         id, account_id, unit_id, username, email, password_hash, full_name,
+         is_active, principal_kind, interactive_login_enabled
+       ) VALUES ($1, $2, $3, 'report-worker', $4, $5, 'DB Report Service', true, 'service', false)`,
+      [
+        reportServiceUserId,
+        accountId,
+        unitId,
+        `report-worker.${tenantId.slice(0, 8)}@example.test`,
+        `cvg-his-v2-seed-salt-v1:report-worker-${tenantId}`
+      ]
+    );
+    await client.query(
+      `INSERT INTO account_service_principals (account_id, purpose, user_id)
+       VALUES ($1, 'report-execution', $2)`,
+      [accountId, reportServiceUserId]
+    );
 
     await client.query(
       `INSERT INTO professions (id, account_id, code, name, is_active)
@@ -265,11 +287,17 @@ async function provisionDatabasePersistenceFixture(): Promise<DatabasePersistenc
     labUserId: principalIds.labUserId,
     surgeonUserId: principalIds.surgeonUserId,
     anesthetistUserId: principalIds.anesthetistUserId,
+    reportServiceUserId,
     billingRecordId
   };
 }
 
-async function createPersistenceEncounter(): Promise<string> {
+async function createPersistenceEncounter(
+  patient: { readonly ownerId: string; readonly patientId: string } = {
+    ownerId: persistenceFixture.ownerId,
+    patientId: persistenceFixture.patientId
+  }
+): Promise<string> {
   const encounterId = randomUUID();
   await getPool().query(
     `INSERT INTO encounters (id, account_id, patient_id, owner_id, opened_by_user_id, reason)
@@ -277,8 +305,8 @@ async function createPersistenceEncounter(): Promise<string> {
     [
       encounterId,
       persistenceFixture.accountId,
-      persistenceFixture.patientId,
-      persistenceFixture.ownerId,
+      patient.patientId,
+      patient.ownerId,
       persistenceFixture.receptionUserId,
       'Database persistence isolated record fixture'
     ]
@@ -326,7 +354,8 @@ async function runWorkerProcessOnce(): Promise<void> {
         DATABASE_URL: TEST_DATABASE_URL,
         APP_NAME: 'cvg-his-v2-worker-test',
         WORKER_INTERVAL_MS: '1',
-        WORKER_ACCOUNT_ID: persistenceFixture.accountId
+        WORKER_ACCOUNT_ID: persistenceFixture.accountId,
+        WORKER_REPORTS_USER_ID: persistenceFixture.reportServiceUserId
       },
       stdio: 'pipe'
     });
@@ -461,13 +490,14 @@ describe('Database Persistence Integration Tests', () => {
   tenantIt('should persist and retrieve clinical entries', async () => {
     const now = new Date().toISOString();
     const recordId = `mr_test_ce_${Date.now()}` as MedicalRecordId;
-    const encounterId = await createPersistenceEncounter();
+    const patientFixture = await createPersistencePatient();
+    const encounterId = await createPersistenceEncounter(patientFixture);
 
     const record: MedicalRecordSummary = {
       id: recordId,
       accountId: persistenceFixture.accountId as never,
       encounterId: encounterId as never,
-      patientId: persistenceFixture.patientId as never,
+      patientId: patientFixture.patientId as never,
       status: 'open',
       createdAt: now,
       updatedAt: now
@@ -480,7 +510,7 @@ describe('Database Persistence Integration Tests', () => {
       accountId: persistenceFixture.accountId as never,
       medicalRecordId: recordId,
       encounterId: encounterId as never,
-      patientId: persistenceFixture.patientId as never,
+      patientId: patientFixture.patientId as never,
       entryType: 'anamnesis',
       title: 'Test Entry',
       content: 'Test content for persistence',
@@ -496,18 +526,34 @@ describe('Database Persistence Integration Tests', () => {
     assert.ok(found.length > 0, 'Clinical entries should be found');
     assert.equal(found[0].id, entryId);
     assert.equal(found[0].title, 'Test Entry');
+
+    const updatedEntry = {
+      ...entry,
+      title: 'Updated Test Entry',
+      content: 'Updated content for persistence',
+      version: 2,
+      updatedAt: new Date(Date.now() + 1_000).toISOString()
+    };
+    await ceRepo.update(updatedEntry, entry.version);
+    const foundUpdated = await ceRepo.findById(entryId);
+    assert.equal(foundUpdated?.version, 2);
+    await assert.rejects(
+      () => ceRepo.update({ ...updatedEntry, version: 3 }, entry.version),
+      ValidationError
+    );
   });
 
   tenantIt('should persist and retrieve clinical timeline events', async () => {
     const now = new Date().toISOString();
     const recordId = `mr_test_ct_${Date.now()}` as MedicalRecordId;
-    const encounterId = await createPersistenceEncounter();
+    const patientFixture = await createPersistencePatient();
+    const encounterId = await createPersistenceEncounter(patientFixture);
 
     const record: MedicalRecordSummary = {
       id: recordId,
       accountId: persistenceFixture.accountId as never,
       encounterId: encounterId as never,
-      patientId: persistenceFixture.patientId as never,
+      patientId: patientFixture.patientId as never,
       status: 'open',
       createdAt: now,
       updatedAt: now
@@ -645,7 +691,7 @@ describe('Database Persistence Integration Tests', () => {
 
       const queuedJob = await waitFor(
         async () => {
-          const queuedJobs = await notifRepo.findQueuedJobs(10);
+          const queuedJobs = await notifRepo.findQueuedJobs(finance.user.accountId, 10);
           return queuedJobs.find((job) => job.notificationId === notification.id);
         },
         (job) => Boolean(job)
@@ -839,13 +885,16 @@ describe('Database Persistence Integration Tests', () => {
       );
       await runtime.encounters.waitForPersistence();
 
-      const stay = runtime.inpatient.admit({
-        encounterId: encounter.id,
-        patientId: encounter.patientId,
-        unit: 'Internacao Clinica',
-        ward: 'Ala Teste',
-        bed: 'IT-01'
-      });
+      const stay = runtime.inpatient.admit(
+        {
+          encounterId: encounter.id,
+          patientId: encounter.patientId,
+          unit: 'Internacao Clinica',
+          ward: 'Ala Teste',
+          bed: 'IT-01'
+        },
+        persistenceFixture.accountId as never
+      );
 
       const progress = runtime.inpatient.addProgress(
         persistenceFixture.vetUserId as never,
@@ -1171,7 +1220,10 @@ describe('Database Persistence Integration Tests', () => {
         'corr_db_attachment_vet'
       )) as AuthSessionResponse;
       const veterinarian = runtime.auth.authenticateAccessToken(vetLogin.accessToken);
-      const record = await runtime.medicalRecords.getRecordByEncounterOrThrowAsync(encounter.id);
+      const record = await runtime.medicalRecords.getRecordByEncounterOrThrowAsync(
+        persistenceFixture.accountId as never,
+        encounter.id
+      );
       const fileContent = Buffer.from('attachment persistence content', 'utf8');
       const checksum = createHash('sha256').update(fileContent).digest('hex');
 
@@ -1189,6 +1241,7 @@ describe('Database Persistence Integration Tests', () => {
         fileContent
       );
       runtime.medicalRecords.appendAttachmentEvent(
+        persistenceFixture.accountId as never,
         encounter.id,
         veterinarian.user.id,
         attachment.id,
@@ -1196,7 +1249,11 @@ describe('Database Persistence Integration Tests', () => {
       );
 
       const persistedAttachment = await waitFor(
-        async () => bootstrap.repositories.attachment?.findById(attachment.id),
+        async () =>
+          bootstrap.repositories.attachment?.findById(
+            persistenceFixture.accountId as never,
+            attachment.id
+          ),
         (current) =>
           Boolean(
             current?.storageKey &&
@@ -1209,7 +1266,10 @@ describe('Database Persistence Integration Tests', () => {
       assert.equal(persistedAttachment?.checksum, checksum);
       assert.equal(persistedAttachment?.sizeBytes, fileContent.length);
 
-      const storedContent = await bootstrap.fileStorage.retrieve(persistedAttachment!.storageKey);
+      const storedContent = await bootstrap.fileStorage.retrieve(
+        persistenceFixture.accountId,
+        persistedAttachment!.storageKey
+      );
       assert.deepEqual(storedContent, fileContent);
 
       const bootstrapAfterRestart = await bootstrapServices({ databaseUrl: TEST_DATABASE_URL });
@@ -1222,11 +1282,13 @@ describe('Database Persistence Integration Tests', () => {
       });
       const attachmentsAfterRestart = await runtimeAfterRestart.attachments.listByLinkedEntity(
         'medical_record',
-        record.id
+        record.id,
+        persistenceFixture.accountId as never
       );
       const restored = attachmentsAfterRestart.find((item) => item.id === attachment.id);
       assert.ok(restored, 'Restarted runtime should list persisted attachment');
       const restoredContent = await runtimeAfterRestart.attachments.getFileContent(
+        persistenceFixture.accountId as never,
         restored!.storageKey
       );
       assert.deepEqual(restoredContent, fileContent);
@@ -1273,18 +1335,27 @@ describe('Database Persistence Integration Tests', () => {
     )) as AuthSessionResponse;
     const veterinarian = runtime.auth.authenticateAccessToken(vetLogin.accessToken);
 
-    const entry = runtime.medicalRecords.addEntry(veterinarian.user.id, {
-      encounterId: encounter.id,
-      patientId: encounter.patientId,
-      entryType: 'progress_note',
-      title: 'Evolucao inicial',
-      content: 'Paciente estavel na admissao.'
-    });
-    const updated = runtime.medicalRecords.updateEntry(veterinarian.user.id, entry.id, {
-      title: 'Evolucao revisada',
-      content: 'Paciente estavel, hidratacao mantida.',
-      reason: 'Complemento de evolucao'
-    });
+    const entry = await runtime.medicalRecords.createEntryAtomically(
+      veterinarian.user.accountId,
+      veterinarian.user.id,
+      {
+        encounterId: encounter.id,
+        patientId: encounter.patientId,
+        entryType: 'progress_note',
+        title: 'Evolucao inicial',
+        content: 'Paciente estavel na admissao.'
+      }
+    );
+    const updated = await runtime.medicalRecords.updateEntryAtomically(
+      veterinarian.user.accountId,
+      veterinarian.user.id,
+      entry.id,
+      {
+        title: 'Evolucao revisada',
+        content: 'Paciente estavel, hidratacao mantida.',
+        reason: 'Complemento de evolucao'
+      }
+    );
 
     const persistedEntry = await waitFor(
       async () => bootstrap.repositories.clinicalEntry?.findById(entry.id),
@@ -1313,13 +1384,21 @@ describe('Database Persistence Integration Tests', () => {
       repositories: bootstrapAfterRestart.repositories,
       fileStorage: bootstrapAfterRestart.fileStorage
     });
+    await runtimeAfterRestart.initialize();
     const entriesAfterRestart =
-      await runtimeAfterRestart.medicalRecords.listEntriesByEncounterAsync(encounter.id);
+      await runtimeAfterRestart.medicalRecords.listEntriesByEncounterAsync(
+        persistenceFixture.accountId as never,
+        encounter.id
+      );
     const revisionsAfterRestart = await runtimeAfterRestart.medicalRecords.getEntryRevisionsAsync(
+      persistenceFixture.accountId as never,
       entry.id
     );
     const timelineAfterRestart =
-      await runtimeAfterRestart.medicalRecords.listTimelineByEncounterAsync(encounter.id);
+      await runtimeAfterRestart.medicalRecords.listTimelineByEncounterAsync(
+        persistenceFixture.accountId as never,
+        encounter.id
+      );
 
     const restoredEntry = entriesAfterRestart.find(
       (item: ClinicalEntrySummary) => item.id === entry.id
@@ -1380,32 +1459,51 @@ describe('Database Persistence Integration Tests', () => {
       )) as AuthSessionResponse;
       const veterinarian = runtime.auth.authenticateAccessToken(vetLogin.accessToken);
 
-      const entry = runtime.medicalRecords.addEntry(veterinarian.user.id, {
-        encounterId: encounter.id,
-        patientId: encounter.patientId,
-        entryType: 'assessment',
-        title: 'Duplicidade clinica',
-        content: 'Conteudo a ser arquivado'
-      });
-
-      const updated = runtime.medicalRecords.updateEntry(veterinarian.user.id, entry.id, {
-        content: 'Conteudo revisado antes do arquivamento',
-        expectedVersion: 1,
-        reason: 'Revisao clinica'
-      });
-
-      assert.throws(() =>
-        runtime.medicalRecords.updateEntry(veterinarian.user.id, entry.id, {
-          content: 'Tentativa stale',
-          expectedVersion: 1,
-          reason: 'Atualizacao stale'
-        })
+      const entry = await runtime.medicalRecords.createEntryAtomically(
+        veterinarian.user.accountId,
+        veterinarian.user.id,
+        {
+          encounterId: encounter.id,
+          patientId: encounter.patientId,
+          entryType: 'assessment',
+          title: 'Duplicidade clinica',
+          content: 'Conteudo a ser arquivado'
+        }
       );
 
-      const archived = runtime.medicalRecords.archiveEntry(veterinarian.user.id, entry.id, {
-        reason: 'Lancamento duplicado',
-        expectedVersion: 2
-      });
+      const updated = await runtime.medicalRecords.updateEntryAtomically(
+        veterinarian.user.accountId,
+        veterinarian.user.id,
+        entry.id,
+        {
+          content: 'Conteudo revisado antes do arquivamento',
+          expectedVersion: 1,
+          reason: 'Revisao clinica'
+        }
+      );
+
+      await assert.rejects(() =>
+        runtime.medicalRecords.updateEntryAtomically(
+          veterinarian.user.accountId,
+          veterinarian.user.id,
+          entry.id,
+          {
+            content: 'Tentativa stale',
+            expectedVersion: 1,
+            reason: 'Atualizacao stale'
+          }
+        )
+      );
+
+      const archived = await runtime.medicalRecords.archiveEntryAtomically(
+        veterinarian.user.accountId,
+        veterinarian.user.id,
+        entry.id,
+        {
+          reason: 'Lancamento duplicado',
+          expectedVersion: 2
+        }
+      );
 
       const persistedEntry = await waitFor(
         async () => bootstrap.repositories.clinicalEntry?.findById(entry.id),
@@ -1442,17 +1540,27 @@ describe('Database Persistence Integration Tests', () => {
         repositories: bootstrapAfterRestart.repositories,
         fileStorage: bootstrapAfterRestart.fileStorage
       });
+      await runtimeAfterRestart.initialize();
       const activeEntriesAfterRestart =
-        await runtimeAfterRestart.medicalRecords.listEntriesByEncounterAsync(encounter.id);
+        await runtimeAfterRestart.medicalRecords.listEntriesByEncounterAsync(
+          persistenceFixture.accountId as never,
+          encounter.id
+        );
       const allEntriesAfterRestart =
-        await runtimeAfterRestart.medicalRecords.listEntriesByEncounterAsync(encounter.id, {
-          includeArchived: true
-        });
+        await runtimeAfterRestart.medicalRecords.listEntriesByEncounterAsync(
+          persistenceFixture.accountId as never,
+          encounter.id,
+          { includeArchived: true }
+        );
       const revisionsAfterRestart = await runtimeAfterRestart.medicalRecords.getEntryRevisionsAsync(
+        persistenceFixture.accountId as never,
         entry.id
       );
       const timelineAfterRestart =
-        await runtimeAfterRestart.medicalRecords.listTimelineByEncounterAsync(encounter.id);
+        await runtimeAfterRestart.medicalRecords.listTimelineByEncounterAsync(
+          persistenceFixture.accountId as never,
+          encounter.id
+        );
 
       assert.equal(activeEntriesAfterRestart.length, 0);
       assert.equal(allEntriesAfterRestart.length, 1);
@@ -1529,15 +1637,18 @@ describe('Database Persistence Integration Tests', () => {
     );
     await runtime.encounters.waitForPersistence();
 
-    const stay = runtime.inpatient.admit({
-      encounterId: encounter.id,
-      patientId: encounter.patientId,
-      unit: 'UTI',
-      ward: 'Ala Central',
-      bed: 'UTI-01',
-      sectorId: sector.id,
-      bedId: bed.id
-    });
+    const stay = runtime.inpatient.admit(
+      {
+        encounterId: encounter.id,
+        patientId: encounter.patientId,
+        unit: 'UTI',
+        ward: 'Ala Central',
+        bed: 'UTI-01',
+        sectorId: sector.id,
+        bedId: bed.id
+      },
+      reception.user.accountId
+    );
     assert.ok(stay.id, 'Stay should have an ID');
     assert.equal(stay.sectorId, sector.id);
     assert.equal(stay.bedId, bed.id);

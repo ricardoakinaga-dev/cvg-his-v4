@@ -22,17 +22,19 @@ function createService() {
   };
 
   const encounters = {
-    getOrThrow(encounterId: string) {
+    getOrThrow(_accountId: string, encounterId: string) {
       assert.equal(encounterId, encounter.id);
       return encounter;
     }
   };
   const medicalRecords = {
-    getRecordOrThrow(recordId: string) {
+    getRecordOrThrow(accountId: string, recordId: string) {
+      assert.equal(accountId, 'acc_test');
       assert.equal(recordId, record.id);
       return record;
     },
-    async getRecordOrThrowAsync(recordId: string) {
+    async getRecordOrThrowAsync(accountId: string, recordId: string) {
+      assert.equal(accountId, 'acc_test');
       assert.equal(recordId, record.id);
       return record;
     }
@@ -67,9 +69,9 @@ test('AttachmentsService uploads attachment linked to medical record', async () 
 
   assert.equal(attachment.linkedEntityType, 'medical_record');
   assert.equal(attachment.linkedEntityId, record.id);
-  assert.equal((await service.getById(attachment.id))?.id, attachment.id);
-  assert.equal(await service.getFileContent(attachment.storageKey), null);
-  const list = await service.listByLinkedEntity('medical_record', record.id);
+  assert.equal((await service.getById('acc_test' as never, attachment.id))?.id, attachment.id);
+  assert.equal(await service.getFileContent('acc_test' as never, attachment.storageKey), null);
+  const list = await service.listByLinkedEntity('medical_record', record.id, 'acc_test' as never);
   assert.equal(list.length, 1);
 });
 
@@ -86,7 +88,7 @@ test('AttachmentsService uploads attachment linked to diagnostic order', async (
   });
 
   assert.equal(attachment.accountId, order.accountId);
-  const list = await service.listByLinkedEntity('diagnostic_order', order.id);
+  const list = await service.listByLinkedEntity('diagnostic_order', order.id, 'acc_test' as never);
   assert.equal(list.length, 1);
 });
 
@@ -169,10 +171,246 @@ test('AttachmentsService listByLinkedEntity filters attachments', async () => {
     checksum: 'sha256-005'
   });
 
-  const encounters = await service.listByLinkedEntity('encounter', encounter.id);
-  const records = await service.listByLinkedEntity('medical_record', record.id);
+  const encounters = await service.listByLinkedEntity(
+    'encounter',
+    encounter.id,
+    'acc_test' as never
+  );
+  const records = await service.listByLinkedEntity(
+    'medical_record',
+    record.id,
+    'acc_test' as never
+  );
   assert.equal(encounters.length, 1);
   assert.equal(records.length, 1);
+});
+
+test('AttachmentsService filters repository results by account when listing a linked entity', async () => {
+  const { encounter, encounters, medicalRecords, diagnostics } = createService();
+  const ownAttachment = {
+    id: 'attachment_account_a',
+    accountId: 'acc_test',
+    linkedEntityType: 'encounter' as const,
+    linkedEntityId: encounter.id,
+    category: 'document' as const,
+    fileName: 'own.pdf',
+    storageKey: 'local/own.pdf',
+    mimeType: 'application/pdf',
+    checksum: 'own-checksum',
+    source: 'upload' as const,
+    scanStatus: 'available' as const,
+    uploadedByUserId: 'user_admin' as never,
+    createdAt: '2026-07-12T00:00:00.000Z'
+  };
+  const foreignAttachment = {
+    ...ownAttachment,
+    id: 'attachment_account_b',
+    accountId: 'acc_other',
+    fileName: 'foreign.pdf',
+    storageKey: 'local/foreign.pdf'
+  };
+  const service = new AttachmentsService({
+    encounters: encounters as never,
+    medicalRecords: medicalRecords as never,
+    diagnostics: diagnostics as never,
+    repository: {
+      async create() {},
+      async findById() {
+        return null;
+      },
+      async findByLinkedEntity() {
+        return [ownAttachment, foreignAttachment] as never;
+      },
+      async deleteById() {
+        return false;
+      }
+    }
+  });
+
+  const listed = await service.listByLinkedEntity('encounter', encounter.id, 'acc_test' as never);
+  assert.deepEqual(
+    listed.map((attachment) => attachment.id),
+    ['attachment_account_a']
+  );
+});
+
+test('AttachmentsService does not return foreign metadata from a contaminated repository', async () => {
+  const { encounter, encounters, medicalRecords, diagnostics } = createService();
+  const foreignAttachment = {
+    id: 'attachment_foreign_metadata',
+    accountId: 'acc_other',
+    linkedEntityType: 'encounter' as const,
+    linkedEntityId: encounter.id,
+    category: 'document' as const,
+    fileName: 'foreign.pdf',
+    storageKey: 'acc_other/encounter_1/foreign.pdf',
+    mimeType: 'application/pdf',
+    checksum: 'foreign-checksum',
+    source: 'upload' as const,
+    scanStatus: 'available' as const,
+    uploadedByUserId: 'foreign-user' as never,
+    createdAt: '2026-07-12T00:00:00.000Z'
+  };
+  const calls: Array<[string, string]> = [];
+  const service = new AttachmentsService({
+    encounters: encounters as never,
+    medicalRecords: medicalRecords as never,
+    diagnostics: diagnostics as never,
+    repository: {
+      async create() {},
+      async findById(accountId: string, attachmentId: string) {
+        calls.push([accountId, attachmentId]);
+        return foreignAttachment as never;
+      },
+      async findByLinkedEntity() {
+        return [];
+      },
+      async deleteById() {
+        return false;
+      }
+    }
+  });
+
+  assert.equal(await service.getById('acc_test' as never, foreignAttachment.id), null);
+  assert.deepEqual(calls, [['acc_test', foreignAttachment.id]]);
+});
+
+test('AttachmentsService rejects foreign storage keys before reading content', async () => {
+  const { encounters, medicalRecords, diagnostics } = createService();
+  const content = Buffer.from('tenant-a-content');
+  const calls: Array<[string, string]> = [];
+  const service = new AttachmentsService({
+    encounters: encounters as never,
+    medicalRecords: medicalRecords as never,
+    diagnostics: diagnostics as never,
+    fileStorage: {
+      async store() {
+        return {
+          storageKey: 'acc_test/encounter_1/file.txt',
+          checksum: 'checksum',
+          sizeBytes: content.length
+        };
+      },
+      async retrieve(accountId: string, storageKey: string) {
+        calls.push([accountId, storageKey]);
+        return content;
+      },
+      async delete() {
+        return true;
+      },
+      async exists() {
+        return true;
+      }
+    } as never
+  });
+
+  assert.equal(
+    await service.getFileContent('acc_test' as never, 'acc_other/encounter_1/file.txt'),
+    null
+  );
+  assert.equal(
+    await service.getFileContent('acc_test' as never, 'pending/acc_other/encounter_1/file.txt'),
+    null
+  );
+  assert.deepEqual(
+    await service.getFileContent('acc_test' as never, 'acc_test/encounter_1/file.txt'),
+    content
+  );
+  assert.deepEqual(calls, [['acc_test', 'acc_test/encounter_1/file.txt']]);
+});
+
+test('AttachmentsService refuses a provider key outside the requested tenant namespace', async () => {
+  const { encounters, medicalRecords, diagnostics, record } = createService();
+  const content = Buffer.from('%PDF-1.7\nforeign provider key');
+  const checksum = createHash('sha256').update(content).digest('hex');
+  let repositoryCreates = 0;
+  let deleteCalls = 0;
+  const service = new AttachmentsService({
+    encounters: encounters as never,
+    medicalRecords: medicalRecords as never,
+    diagnostics: diagnostics as never,
+    fileStorage: {
+      async store() {
+        return {
+          storageKey: 'acc_other/record_1/file.pdf',
+          checksum,
+          sizeBytes: content.length
+        };
+      },
+      async retrieve() {
+        return content;
+      },
+      async delete() {
+        deleteCalls += 1;
+        return true;
+      },
+      async exists() {
+        return true;
+      }
+    } as never,
+    repository: {
+      async create() {
+        repositoryCreates += 1;
+      },
+      async findById() {
+        return null;
+      },
+      async findByLinkedEntity() {
+        return [];
+      },
+      async deleteById() {
+        return false;
+      }
+    }
+  });
+
+  await assert.rejects(
+    () =>
+      service.upload(
+        'user_admin' as never,
+        'acc_test' as never,
+        {
+          linkedEntityType: 'medical_record',
+          linkedEntityId: record.id,
+          category: 'document',
+          fileName: 'file.pdf',
+          mimeType: 'application/pdf',
+          checksum
+        },
+        content
+      ),
+    { name: 'ValidationError' }
+  );
+  assert.equal(repositoryCreates, 0);
+  assert.equal(deleteCalls, 0);
+});
+
+test('AttachmentsService namespaces pending uploads by account', async () => {
+  const service = new AttachmentsService({
+    encounters: {
+      getOrThrow(_accountId: string, encounterId: string) {
+        return { id: encounterId, accountId: _accountId };
+      }
+    } as never,
+    medicalRecords: { getRecordOrThrowAsync: async () => ({ accountId: 'unused' }) } as never,
+    diagnostics: { getOrThrow: () => ({ accountId: 'unused' }) } as never
+  });
+  const payload = {
+    linkedEntityType: 'encounter' as const,
+    linkedEntityId: 'shared-encounter',
+    category: 'document' as const,
+    fileName: 'pending.pdf',
+    mimeType: 'application/pdf',
+    checksum: 'metadata-checksum'
+  };
+
+  const accountA = await service.upload('user-a' as never, 'acc_a' as never, payload);
+  const accountB = await service.upload('user-b' as never, 'acc_b' as never, payload);
+
+  assert.equal(accountA.storageKey, 'pending/acc_a/shared-encounter/pending.pdf');
+  assert.equal(accountB.storageKey, 'pending/acc_b/shared-encounter/pending.pdf');
+  assert.notEqual(accountA.storageKey, accountB.storageKey);
+  assert.equal(await service.getById('acc_b' as never, accountA.id), null);
 });
 
 test('AttachmentsService upload with file content computes real checksum', async () => {
@@ -322,7 +560,10 @@ test('AttachmentsService does not expose an attachment when persistence fails', 
       }),
     /database unavailable/
   );
-  assert.deepEqual(await service.listByLinkedEntity('encounter', encounter.id), []);
+  assert.deepEqual(
+    await service.listByLinkedEntity('encounter', encounter.id, 'acc_test' as never),
+    []
+  );
 });
 
 test('LocalAttachmentSecurityScanner rejects malware and active content', async () => {
@@ -480,18 +721,22 @@ test('AttachmentsService supports durable storage, reads and cleanup on persiste
   let deleteCalls = 0;
   const fileStorage = {
     async store() {
-      stored.set('tenant/attachment.pdf', content);
-      return { storageKey: 'tenant/attachment.pdf', checksum, sizeBytes: content.length };
+      stored.set('acc_test/record_1/attachment.pdf', content);
+      return {
+        storageKey: 'acc_test/record_1/attachment.pdf',
+        checksum,
+        sizeBytes: content.length
+      };
     },
-    async retrieve(storageKey: string) {
+    async retrieve(_accountId: string, storageKey: string) {
       return stored.get(storageKey) ?? null;
     },
-    async delete(storageKey: string) {
+    async delete(_accountId: string, storageKey: string) {
       deleteCalls += 1;
       stored.delete(storageKey);
       return true;
     },
-    async exists(storageKey: string) {
+    async exists(_accountId: string, storageKey: string) {
       return stored.has(storageKey);
     }
   };
@@ -527,8 +772,11 @@ test('AttachmentsService supports durable storage, reads and cleanup on persiste
     },
     content
   );
-  assert.deepEqual(await service.getFileContent(attachment.storageKey), content);
-  assert.equal(await service.getById(attachment.id), null);
+  assert.deepEqual(
+    await service.getFileContent('acc_test' as never, attachment.storageKey),
+    content
+  );
+  assert.equal(await service.getById('acc_test' as never, attachment.id), null);
 
   const failingService = new AttachmentsService({
     encounters: encounters as never,

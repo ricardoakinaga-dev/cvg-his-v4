@@ -23,7 +23,7 @@ function createEncounter(
 
 function createEncountersStub(encounter = createEncounter()) {
   return {
-    getOrThrow(encounterId: string) {
+    getOrThrow(_accountId: string, encounterId: string) {
       if (encounterId !== encounter.id) {
         throw new NotFoundError('Encounter not found', { encounterId });
       }

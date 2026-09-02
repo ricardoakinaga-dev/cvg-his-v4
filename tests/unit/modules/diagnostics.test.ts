@@ -26,7 +26,7 @@ function createServices() {
     ]
   ]);
   const diagnostics = new DiagnosticsService({
-    getOrThrow(encounterId: string) {
+    getOrThrow(_accountId: string, encounterId: string) {
       const encounter = encounters.get(encounterId);
       expect(encounter).toBeDefined();
       return encounter;

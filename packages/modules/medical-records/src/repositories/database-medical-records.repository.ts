@@ -1,4 +1,4 @@
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import {
   medicalRecords,
   clinicalEntries,
@@ -9,6 +9,7 @@ import {
   type DatabaseClient
 } from '@cvg-his-v2/shared-database';
 import { getTenantContext, requireAccountId } from '@cvg-his-v2/tenant-context';
+import { ValidationError } from '@cvg-his-v2/shared-errors';
 import type {
   AccountId,
   ClinicalEntryId,
@@ -232,9 +233,9 @@ export class DatabaseClinicalEntryRepository implements ClinicalEntryRepository 
     );
   }
 
-  public async update(entry: ClinicalEntrySummary): Promise<void> {
+  public async update(entry: ClinicalEntrySummary, expectedVersion?: number): Promise<void> {
     const accountId = resolveAccountId(entry.accountId);
-    await withTenantDatabase(this.#db, accountId, (database) =>
+    const rows = await withTenantDatabase(this.#db, accountId, (database) =>
       database
         .update(clinicalEntries)
         .set({
@@ -246,8 +247,21 @@ export class DatabaseClinicalEntryRepository implements ClinicalEntryRepository 
           deleteReason: entry.deleteReason ?? null,
           updatedAt: new Date(entry.updatedAt)
         })
-        .where(eq(clinicalEntries.id, entry.id))
+        .where(
+          and(
+            eq(clinicalEntries.id, entry.id),
+            eq(clinicalEntries.accountId, entry.accountId),
+            ...(expectedVersion === undefined ? [] : [eq(clinicalEntries.version, expectedVersion)])
+          )
+        )
+        .returning({ id: clinicalEntries.id })
     );
+    if (expectedVersion !== undefined && rows.length !== 1) {
+      throw new ValidationError('Clinical entry version mismatch', {
+        entryId: entry.id,
+        expectedVersion
+      });
+    }
   }
 
   public async findById(entryId: ClinicalEntryId): Promise<ClinicalEntrySummary | null> {

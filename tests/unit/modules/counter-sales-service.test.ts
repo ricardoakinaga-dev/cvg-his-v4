@@ -129,6 +129,9 @@ describe('CounterSalesService coverage guard', () => {
     const service = new CounterSalesService({
       repository: {
         async create() {},
+        async createWithNextNumber(sale: { number?: never; [key: string]: unknown }) {
+          return { ...sale, number: 'CS-900002' } as never;
+        },
         async update() {},
         async findByAccountId() {
           return [
@@ -225,6 +228,9 @@ describe('CounterSalesService coverage guard', () => {
     expect(service.getItems('sale_repo_1')).toHaveLength(1);
     expect(service.getPayments('sale_repo_1')).toHaveLength(1);
     expect(service.findById('sale_repo_1')?.number).toBe('CS-900001');
+
+    const nextSale = await service.open(ACCOUNT_ID, USER_ID);
+    expect(nextSale.number).toBe('CS-900002');
 
     const dashboard = await service.getCommercialDashboard(ACCOUNT_ID);
     expect(dashboard.openSales).toBe(2);

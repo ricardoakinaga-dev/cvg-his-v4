@@ -7,7 +7,7 @@ import { InventoryService } from '../../../packages/modules/inventory/src/index.
 function createService() {
   return new InventoryService(
     {
-      getOrThrow(encounterId: string) {
+      getOrThrow(_accountId: string, encounterId: string) {
         return {
           id: encounterId,
           accountId: 'acc_test',
@@ -160,7 +160,7 @@ describe('InventoryService coverage guard', () => {
   it('hydrates persisted inventory and consumptions from repository mode', async () => {
     const service = new InventoryService(
       {
-        getOrThrow(encounterId: string) {
+        getOrThrow(_accountId: string, encounterId: string) {
           return {
             id: encounterId,
             accountId: 'acc_repo',

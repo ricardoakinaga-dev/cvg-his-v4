@@ -16,7 +16,7 @@ function createService() {
     patientId: 'patient_1'
   };
   const encounters = {
-    getOrThrow(encounterId: string) {
+    getOrThrow(_accountId: string, encounterId: string) {
       assert.equal(encounterId, encounter.id);
       return encounter;
     }
@@ -158,7 +158,7 @@ test('DiagnosticsService durable create waits for persistence and does not publi
   const { encounter } = createService();
   const service = new DiagnosticsService(
     {
-      getOrThrow(encounterId: string) {
+      getOrThrow(_accountId: string, encounterId: string) {
         assert.equal(encounterId, encounter.id);
         return encounter;
       }
@@ -702,7 +702,7 @@ test('DiagnosticsService hydrateFromDatabase loads persisted orders by account',
   const { encounter } = createService();
   const service = new DiagnosticsService(
     {
-      getOrThrow(encounterId: string) {
+      getOrThrow(_accountId: string, encounterId: string) {
         assert.equal(encounterId, encounter.id);
         return encounter;
       }

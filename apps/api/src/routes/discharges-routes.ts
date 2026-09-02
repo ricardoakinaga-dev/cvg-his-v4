@@ -122,18 +122,15 @@ export async function handleDischargesRoutes(
         operation: 'discharges.create',
         payload: payload as unknown as JsonValue,
         command: async () => {
-          const encounter = encounters.getOrThrow(payload.encounterId as never);
-          if (encounter.accountId !== principal.user.accountId) {
-            throw new NotFoundError('Encounter not found', {
-              encounterId: payload.encounterId
-            });
-          }
+          const encounter = encounters.getOrThrow(
+            principal.user.accountId,
+            payload.encounterId as never
+          );
 
           const activeStay =
             payload.dischargeType === 'inpatient'
               ? inpatient
-                  .list({
-                    accountId: principal.user.accountId,
+                  .list(principal.user.accountId as never, {
                     encounterId: payload.encounterId,
                     includeDischarged: true
                   })
@@ -190,7 +187,7 @@ export async function handleDischargesRoutes(
           discharges.removeFromCache(principal.user.accountId as never, createdDischarge.id);
         }
         if (previousStay) {
-          inpatient.restoreStayCache(previousStay);
+          inpatient.restoreStayCache(principal.user.accountId as never, previousStay);
         }
         if (auditEventId) {
           audit.removeFromCache(auditEventId as never);

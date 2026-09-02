@@ -135,7 +135,7 @@ export class TriageService {
   ): Promise<TriageSummary> {
     const scopedAccountId = requireAccountId(accountId);
     const encounterId = requireNonEmptyString(payload.encounterId, 'encounterId') as EncounterId;
-    const encounter = this.#encounters.getOrThrow(encounterId);
+    const encounter = this.#encounters.getOrThrow(scopedAccountId, encounterId);
     if (encounter.accountId !== scopedAccountId) {
       throw new NotFoundError('Encounter not found', { encounterId });
     }
@@ -189,7 +189,7 @@ export class TriageService {
     actorUserId?: UserId
   ): Promise<TriageSummary> {
     const current = this.getOrThrow(triageId, accountId);
-    const encounter = this.#encounters.getOrThrow(current.encounterId);
+    const encounter = this.#encounters.getOrThrow(accountId, current.encounterId);
     if (encounter.status === 'closed') {
       throw new ConflictError('Closed encounters do not allow triage updates', {
         encounterId: encounter.id,

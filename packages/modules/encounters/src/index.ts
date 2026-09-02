@@ -124,6 +124,7 @@ export class EncountersService {
   #pendingPersist: Promise<void> = Promise.resolve();
   #lastPersist: Promise<void> = Promise.resolve();
   #pendingCallbacks: Promise<void> = Promise.resolve();
+  #lastCallback: Promise<void> = Promise.resolve();
 
   public constructor(options: EncountersServiceOptions) {
     this.#owners = options.owners;
@@ -136,14 +137,16 @@ export class EncountersService {
     this.#onEncounterStatusChanged = options.onEncounterStatusChanged;
   }
 
-  public listActive(): readonly EncounterSummary[] {
+  public listActive(accountId: AccountId): readonly EncounterSummary[] {
     return Array.from(this.#encounters.values()).filter(
-      (encounter) => encounter.status !== 'closed'
+      (encounter) => encounter.accountId === accountId && encounter.status !== 'closed'
     );
   }
 
-  public listAll(): readonly EncounterSummary[] {
-    return Array.from(this.#encounters.values());
+  public listAll(accountId: AccountId): readonly EncounterSummary[] {
+    return Array.from(this.#encounters.values()).filter(
+      (encounter) => encounter.accountId === accountId
+    );
   }
 
   public async hydrateFromDatabase(accountId: AccountId): Promise<void> {
@@ -151,21 +154,25 @@ export class EncountersService {
       return;
     }
 
-    const persistedEncounters = await this.#encounterRepository.findAll(accountId);
+    const persistedEncounters = (await this.#encounterRepository.findAll(accountId)).filter(
+      (encounter) => encounter.accountId === accountId
+    );
 
     for (const encounter of persistedEncounters) {
       this.#encounters.set(encounter.id, encounter);
 
       if (this.#encounterTimelineRepository) {
-        const timeline = await this.#encounterTimelineRepository.findByEncounterId(encounter.id);
+        const timeline = (
+          await this.#encounterTimelineRepository.findByEncounterId(encounter.id)
+        ).filter((event) => event.accountId === accountId && event.encounterId === encounter.id);
         this.#timeline.set(encounter.id, [...timeline]);
       }
     }
   }
 
-  public getOrThrow(encounterId: EncounterId): EncounterSummary {
+  public getOrThrow(accountId: AccountId, encounterId: EncounterId): EncounterSummary {
     const encounter = this.#encounters.get(encounterId);
-    if (!encounter) {
+    if (!encounter || encounter.accountId !== accountId) {
       throw new NotFoundError('Encounter not found', { encounterId });
     }
 
@@ -178,45 +185,70 @@ export class EncountersService {
    * cache state immediately, before the database transaction releases its
    * client and a best-effort hydration runs.
    */
-  public snapshotState(encounterId: EncounterId): EncounterStateSnapshot {
+  public snapshotState(accountId: AccountId, encounterId: EncounterId): EncounterStateSnapshot {
     return {
-      encounter: this.getOrThrow(encounterId),
-      timeline: [...(this.#timeline.get(encounterId) ?? [])]
+      encounter: this.getOrThrow(accountId, encounterId),
+      timeline: [...(this.#timeline.get(encounterId) ?? [])].filter(
+        (event) => event.accountId === accountId && event.encounterId === encounterId
+      )
     };
   }
 
-  public restoreState(snapshot: EncounterStateSnapshot): void {
+  public restoreState(accountId: AccountId, snapshot: EncounterStateSnapshot): void {
+    if (snapshot.encounter.accountId !== accountId) {
+      throw new NotFoundError('Encounter not found', { encounterId: snapshot.encounter.id });
+    }
     this.#encounters.set(snapshot.encounter.id, snapshot.encounter);
-    this.#timeline.set(snapshot.encounter.id, [...snapshot.timeline]);
+    this.#timeline.set(
+      snapshot.encounter.id,
+      [...snapshot.timeline].filter(
+        (event) => event.accountId === accountId && event.encounterId === snapshot.encounter.id
+      )
+    );
   }
 
   public async waitForPersistence(): Promise<void> {
+    const lastPersist = this.#lastPersist;
+    const lastCallback = this.#lastCallback;
     try {
-      await Promise.all([this.#lastPersist, this.#pendingCallbacks]);
+      await Promise.all([lastPersist, lastCallback]);
     } finally {
-      this.#pendingPersist = this.#pendingPersist.catch(() => {});
-      this.#lastPersist = this.#pendingPersist;
-      this.#pendingCallbacks = this.#pendingCallbacks.catch(() => {});
+      if (this.#lastPersist === lastPersist) {
+        this.#lastPersist = Promise.resolve();
+      }
+      if (this.#lastCallback === lastCallback) {
+        this.#lastCallback = Promise.resolve();
+      }
     }
   }
 
-  #enqueueCallback(callback: () => Promise<void>): void {
-    const pending = this.#pendingCallbacks.then(callback);
-    this.#pendingCallbacks = pending;
+  #enqueueCallback(callback: () => Promise<void>, after: Promise<void> = Promise.resolve()): void {
+    const pending = this.#pendingCallbacks
+      .catch(() => undefined)
+      .then(async () => {
+        await after;
+        await callback();
+      });
+    this.#lastCallback = pending;
+    this.#pendingCallbacks = pending.catch(() => undefined);
     void pending.catch(() => undefined);
   }
 
-  #enqueuePersist(operation: () => Promise<void>, rollback?: () => void): void {
-    const pending = this.#pendingPersist.then(async () => {
-      try {
-        await operation();
-      } catch (error) {
-        rollback?.();
-        throw error;
-      }
-    });
+  #enqueuePersist(operation: () => Promise<void>, rollback?: () => void): Promise<void> {
+    const pending = this.#pendingPersist
+      .catch(() => undefined)
+      .then(async () => {
+        try {
+          await operation();
+        } catch (error) {
+          rollback?.();
+          throw error;
+        }
+      });
     this.#lastPersist = pending;
-    this.#pendingPersist = pending;
+    this.#pendingPersist = pending.catch(() => undefined);
+    void pending.catch(() => undefined);
+    return pending;
   }
 
   #assertActiveParticipants(
@@ -268,8 +300,8 @@ export class EncountersService {
       );
     }
 
-    const existingActive = this.listActive().find(
-      (encounter) => encounter.accountId === accountId && encounter.patientId === patientId
+    const existingActive = this.listActive(accountId).find(
+      (encounter) => encounter.patientId === patientId
     );
     if (existingActive) {
       throw new ConflictError('Patient already has an active encounter', {
@@ -296,28 +328,16 @@ export class EncountersService {
 
     this.#encounters.set(encounter.id, encounter);
 
-    // Persist to database if repository is available
-    if (this.#encounterRepository) {
-      this.#enqueuePersist(
-        () => this.#encounterRepository!.create(encounter),
-        () => {
-          if (this.#encounters.get(encounter.id) === encounter) {
-            this.#encounters.delete(encounter.id);
-          }
-          this.#timeline.delete(encounter.id);
-        }
-      );
-    }
-
-    this.appendTimeline(encounter.id, {
+    const { event: timelineEvent } = this.#appendTimelineToCache(accountId, encounter.id, {
       accountId,
       eventType: 'encounter_opened',
       summary: `Encounter opened from ${encounter.origin}`,
       actorUserId
     });
+    const persistence = this.#enqueuePersistEncounterCreation(encounter, timelineEvent);
 
     if (this.#onEncounterCreated) {
-      this.#enqueueCallback(() => this.#onEncounterCreated!(encounter));
+      this.#enqueueCallback(() => this.#onEncounterCreated!(encounter), persistence);
     }
 
     return encounter;
@@ -344,11 +364,12 @@ export class EncountersService {
   }
 
   public transitionEncounter(
+    accountId: AccountId,
     encounterId: EncounterId,
     actorUserId: UserId,
     payload: TransitionEncounterRequest
   ): EncounterSummary {
-    const current = this.getOrThrow(encounterId);
+    const current = this.getOrThrow(accountId, encounterId);
     const nextStatus = payload.nextStatus;
 
     if (!allowedTransitions[current.status].includes(nextStatus)) {
@@ -365,36 +386,32 @@ export class EncountersService {
     };
 
     this.#encounters.set(encounterId, updated);
-    this.appendTimeline(encounterId, {
+    const { event: timelineEvent } = this.#appendTimelineToCache(accountId, encounterId, {
       accountId: updated.accountId,
       eventType: 'status_changed',
       summary: `Encounter status changed from ${current.status} to ${nextStatus}`,
       actorUserId
     });
 
-    // Persist to database if repository is available
-    if (this.#encounterRepository) {
-      this.#enqueuePersist(
-        () => this.#encounterRepository!.update(updated),
-        () => {
-          this.#encounters.set(encounterId, current);
-        }
-      );
-    }
+    const persistence = this.#enqueueEncounterMutation(updated, current, timelineEvent);
 
     if (this.#onEncounterStatusChanged) {
-      this.#enqueueCallback(() => this.#onEncounterStatusChanged!(updated, current.status));
+      this.#enqueueCallback(
+        () => this.#onEncounterStatusChanged!(updated, current.status),
+        persistence
+      );
     }
 
     return updated;
   }
 
   public closeEncounter(
+    accountId: AccountId,
     encounterId: EncounterId,
     actorUserId: UserId,
     payload: CloseEncounterRequest
   ): EncounterSummary {
-    const current = this.getOrThrow(encounterId);
+    const current = this.getOrThrow(accountId, encounterId);
     if (current.status === 'closed') {
       throw new ConflictError('Encounter is already closed', { encounterId });
     }
@@ -408,45 +425,38 @@ export class EncountersService {
       updatedAt: nowIso()
     };
 
-    const previousTimeline = [...(this.#timeline.get(encounterId) ?? [])];
     this.#encounters.set(encounterId, updated);
-    this.appendTimeline(encounterId, {
+    const { event: timelineEvent } = this.#appendTimelineToCache(accountId, encounterId, {
       accountId: updated.accountId,
       eventType: 'encounter_closed',
       summary: `Encounter closed: ${closeReason}`,
       actorUserId
     });
 
-    // Persist to database if repository is available
-    if (this.#encounterRepository) {
-      this.#enqueuePersist(
-        () => this.#encounterRepository!.update(updated),
-        () => {
-          this.#encounters.set(encounterId, current);
-          this.#timeline.set(encounterId, previousTimeline);
-        }
-      );
-    }
+    const persistence = this.#enqueueEncounterMutation(updated, current, timelineEvent);
 
     if (this.#onEncounterStatusChanged) {
-      this.#enqueueCallback(() => this.#onEncounterStatusChanged!(updated, current.status));
+      this.#enqueueCallback(
+        () => this.#onEncounterStatusChanged!(updated, current.status),
+        persistence
+      );
     }
 
     return updated;
   }
 
   public reopenEncounter(
+    accountId: AccountId,
     encounterId: EncounterId,
     actorUserId: UserId,
     reason: string
   ): EncounterSummary {
-    const current = this.getOrThrow(encounterId);
+    const current = this.getOrThrow(accountId, encounterId);
     if (current.status !== 'closed') {
       throw new ConflictError('Only a closed encounter can be reopened', { encounterId });
     }
     this.#assertActiveParticipants(current.accountId, current.patientId, current.ownerId);
     const reopenReason = requireNonEmptyString(reason, 'reason');
-    const previousTimeline = [...(this.#timeline.get(encounterId) ?? [])];
     const updated: EncounterSummary = {
       ...current,
       status: 'reception',
@@ -455,44 +465,43 @@ export class EncountersService {
       updatedAt: nowIso()
     };
     this.#encounters.set(encounterId, updated);
-    this.appendTimeline(encounterId, {
+    const { event: timelineEvent } = this.#appendTimelineToCache(accountId, encounterId, {
       accountId: updated.accountId,
       eventType: 'encounter_reopened',
       summary: `Encounter reopened: ${reopenReason}`,
       actorUserId
     });
-    if (this.#encounterRepository) {
-      this.#enqueuePersist(
-        () =>
-          this.#encounterRepository!.updateForReopen?.(updated) ??
-          this.#encounterRepository!.update(updated),
-        () => {
-          this.#encounters.set(encounterId, current);
-          this.#timeline.set(encounterId, previousTimeline);
-        }
-      );
-    }
+    const persistence = this.#enqueueEncounterMutation(
+      updated,
+      current,
+      timelineEvent,
+      (repository) => repository.updateForReopen?.(updated) ?? repository.update(updated)
+    );
     if (this.#onEncounterStatusChanged) {
-      this.#enqueueCallback(() => this.#onEncounterStatusChanged!(updated, current.status));
+      this.#enqueueCallback(
+        () => this.#onEncounterStatusChanged!(updated, current.status),
+        persistence
+      );
     }
     return updated;
   }
 
   public async reopenEncounterAuthoritatively(
+    accountId: AccountId,
     encounterId: EncounterId,
     actorUserId: UserId,
     reason: string
   ): Promise<EncounterSummary> {
-    const current = this.getOrThrow(encounterId);
+    const current = this.getOrThrow(accountId, encounterId);
     await Promise.all([
-      this.#patients.getAuthoritativeOrThrow(current.accountId, current.patientId),
-      this.#owners.getAuthoritativeOrThrow(current.accountId, current.ownerId)
+      this.#patients.getAuthoritativeOrThrow(accountId, current.patientId),
+      this.#owners.getAuthoritativeOrThrow(accountId, current.ownerId)
     ]);
-    return this.reopenEncounter(encounterId, actorUserId, reason);
+    return this.reopenEncounter(accountId, encounterId, actorUserId, reason);
   }
 
-  public deleteEncounter(encounterId: EncounterId): void {
-    const current = this.getOrThrow(encounterId);
+  public deleteEncounter(accountId: AccountId, encounterId: EncounterId): void {
+    const current = this.getOrThrow(accountId, encounterId);
     const currentTimeline = this.#timeline.get(encounterId) ?? [];
     this.#encounters.delete(encounterId);
     this.#timeline.delete(encounterId);
@@ -508,19 +517,28 @@ export class EncountersService {
     }
   }
 
-  public listTimeline(encounterId: EncounterId): readonly EncounterTimelineEventSummary[] {
-    this.getOrThrow(encounterId);
-    return [...(this.#timeline.get(encounterId) ?? [])];
+  public listTimeline(
+    accountId: AccountId,
+    encounterId: EncounterId
+  ): readonly EncounterTimelineEventSummary[] {
+    this.getOrThrow(accountId, encounterId);
+    return [...(this.#timeline.get(encounterId) ?? [])].filter(
+      (event) => event.accountId === accountId && event.encounterId === encounterId
+    );
   }
 
   public async listTimelineAsync(
+    accountId: AccountId,
     encounterId: EncounterId
   ): Promise<readonly EncounterTimelineEventSummary[]> {
     const cachedEncounter = this.#encounters.get(encounterId);
+    if (cachedEncounter && cachedEncounter.accountId !== accountId) {
+      throw new NotFoundError('Encounter not found', { encounterId });
+    }
 
     if (!cachedEncounter && this.#encounterRepository) {
       const persistedEncounter = await this.#encounterRepository.findById(encounterId);
-      if (!persistedEncounter) {
+      if (!persistedEncounter || persistedEncounter.accountId !== accountId) {
         throw new NotFoundError('Encounter not found', { encounterId });
       }
       this.#encounters.set(encounterId, persistedEncounter);
@@ -530,48 +548,152 @@ export class EncountersService {
 
     const cachedTimeline = this.#timeline.get(encounterId);
     if (cachedTimeline) {
-      return [...cachedTimeline];
+      return [...cachedTimeline].filter(
+        (event) => event.accountId === accountId && event.encounterId === encounterId
+      );
     }
 
     if (!this.#encounterTimelineRepository) {
       return [];
     }
 
-    const persistedTimeline =
-      await this.#encounterTimelineRepository.findByEncounterId(encounterId);
+    const persistedTimeline = (
+      await this.#encounterTimelineRepository.findByEncounterId(encounterId)
+    ).filter((event) => event.accountId === accountId && event.encounterId === encounterId);
     this.#timeline.set(encounterId, [...persistedTimeline]);
     return [...persistedTimeline];
   }
 
-  public appendTimeline(
+  #appendTimelineToCache(
+    accountId: AccountId,
     encounterId: EncounterId,
     input: Omit<EncounterTimelineEventSummary, 'id' | 'encounterId' | 'occurredAt'>
-  ): EncounterTimelineEventSummary {
-    const current = this.#timeline.get(encounterId) ?? [];
-    const event: EncounterTimelineEventSummary = {
+  ): {
+    readonly event: EncounterTimelineEventSummary;
+    readonly previousTimeline: readonly EncounterTimelineEventSummary[];
+  } {
+    this.getOrThrow(accountId, encounterId);
+    if (input.accountId !== accountId) {
+      throw new NotFoundError('Encounter not found', { encounterId });
+    }
+    const previousTimeline = [...(this.#timeline.get(encounterId) ?? [])].filter(
+      (event) => event.accountId === accountId && event.encounterId === encounterId
+    );
+    const event = {
       id: createCorrelationId('evt') as EncounterTimelineEventId,
       encounterId,
       occurredAt: nowIso(),
       ...input
     };
-    current.unshift(event);
-    this.#timeline.set(encounterId, current);
+    this.#timeline.set(encounterId, [event, ...previousTimeline]);
+    return { event, previousTimeline };
+  }
 
-    // Persist to database if repository is available
-    if (this.#encounterTimelineRepository) {
-      this.#enqueuePersist(
-        () => this.#encounterTimelineRepository!.create(event),
-        () => {
-          const events = this.#timeline.get(encounterId) ?? [];
-          this.#timeline.set(
-            encounterId,
-            events.filter((item) => item.id !== event.id)
-          );
-        }
-      );
+  #enqueuePersistEncounterCreation(
+    encounter: EncounterSummary,
+    timelineEvent: EncounterTimelineEventSummary
+  ): Promise<void> {
+    if (!this.#encounterRepository && !this.#encounterTimelineRepository) {
+      return Promise.resolve();
     }
 
-    return event;
+    return this.#enqueuePersist(
+      async () => {
+        let encounterCreated = false;
+        try {
+          if (this.#encounterRepository) {
+            await this.#encounterRepository.create(encounter);
+            encounterCreated = true;
+          }
+          await this.#encounterTimelineRepository?.create(timelineEvent);
+        } catch (error) {
+          if (encounterCreated) {
+            await this.#encounterRepository?.delete(encounter.id).catch(() => undefined);
+          }
+          throw error;
+        }
+      },
+      () => {
+        if (this.#encounters.get(encounter.id) === encounter) {
+          this.#encounters.delete(encounter.id);
+        }
+        this.#timeline.delete(encounter.id);
+      }
+    );
+  }
+
+  #enqueueEncounterMutation(
+    updated: EncounterSummary,
+    current: EncounterSummary,
+    timelineEvent: EncounterTimelineEventSummary,
+    persistEncounter: (repository: EncounterRepository) => Promise<void> = (repository) =>
+      repository.update(updated)
+  ): Promise<void> {
+    if (!this.#encounterRepository && !this.#encounterTimelineRepository) {
+      return Promise.resolve();
+    }
+
+    return this.#enqueuePersist(
+      async () => {
+        let encounterPersisted = false;
+        try {
+          if (this.#encounterRepository) {
+            await persistEncounter(this.#encounterRepository);
+            encounterPersisted = true;
+          }
+          await this.#encounterTimelineRepository?.create(timelineEvent);
+        } catch (error) {
+          if (encounterPersisted) {
+            await this.#encounterRepository?.update(current).catch(() => undefined);
+          }
+          throw error;
+        }
+      },
+      () => {
+        if (this.#encounters.get(updated.id) === updated) {
+          this.#encounters.set(updated.id, current);
+        }
+        const events = this.#timeline.get(updated.id) ?? [];
+        this.#timeline.set(
+          updated.id,
+          events.filter((event) => event.id !== timelineEvent.id)
+        );
+      }
+    );
+  }
+
+  public appendTimelineWithPersistence(
+    accountId: AccountId,
+    encounterId: EncounterId,
+    input: Omit<EncounterTimelineEventSummary, 'id' | 'encounterId' | 'occurredAt'>
+  ): {
+    readonly event: EncounterTimelineEventSummary;
+    readonly persistence: Promise<void>;
+  } {
+    const { event } = this.#appendTimelineToCache(accountId, encounterId, input);
+
+    const persistence = this.#encounterTimelineRepository
+      ? this.#enqueuePersist(
+          () => this.#encounterTimelineRepository!.create(event),
+          () => {
+            const events = this.#timeline.get(encounterId) ?? [];
+            this.#timeline.set(
+              encounterId,
+              events.filter((item) => item.id !== event.id)
+            );
+          }
+        )
+      : Promise.resolve();
+
+    return { event, persistence };
+  }
+
+  public appendTimeline(
+    accountId: AccountId,
+    encounterId: EncounterId,
+    input: Omit<EncounterTimelineEventSummary, 'id' | 'encounterId' | 'occurredAt'>
+  ): EncounterTimelineEventSummary {
+    return this.appendTimelineWithPersistence(accountId, encounterId, input).event;
   }
 }
 
@@ -587,6 +709,7 @@ export class ClinicalHandoffsService {
   #pendingPersist: Promise<void> = Promise.resolve();
   #lastPersist: Promise<void> = Promise.resolve();
   #pendingCallbacks: Promise<void> = Promise.resolve();
+  #lastCallback: Promise<void> = Promise.resolve();
 
   public constructor(encounters: EncountersService, options: ClinicalHandoffsServiceOptions = {}) {
     this.#encounters = encounters;
@@ -600,7 +723,9 @@ export class ClinicalHandoffsService {
       return;
     }
 
-    const persisted = await this.#repository.findAll(accountId);
+    const persisted = (await this.#repository.findAll(accountId)).filter(
+      (handoff) => handoff.accountId === accountId
+    );
     for (const handoff of persisted) {
       this.#handoffs.set(handoff.id, handoff);
     }
@@ -619,9 +744,9 @@ export class ClinicalHandoffsService {
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   }
 
-  public getOrThrow(handoffId: ClinicalHandoffId): ClinicalHandoffSummary {
+  public getOrThrow(accountId: AccountId, handoffId: ClinicalHandoffId): ClinicalHandoffSummary {
     const handoff = this.#handoffs.get(handoffId);
-    if (!handoff) {
+    if (!handoff || handoff.accountId !== accountId) {
       throw new NotFoundError('Clinical handoff not found', { handoffId });
     }
 
@@ -629,32 +754,47 @@ export class ClinicalHandoffsService {
   }
 
   public async waitForPersistence(): Promise<void> {
+    const lastPersist = this.#lastPersist;
+    const lastCallback = this.#lastCallback;
     try {
-      await Promise.all([this.#lastPersist, this.#pendingCallbacks]);
+      await Promise.all([lastPersist, lastCallback]);
     } finally {
-      this.#pendingPersist = this.#pendingPersist.catch(() => {});
-      this.#lastPersist = this.#pendingPersist;
-      this.#pendingCallbacks = this.#pendingCallbacks.catch(() => {});
+      if (this.#lastPersist === lastPersist) {
+        this.#lastPersist = Promise.resolve();
+      }
+      if (this.#lastCallback === lastCallback) {
+        this.#lastCallback = Promise.resolve();
+      }
     }
   }
 
-  #enqueueCallback(callback: () => Promise<void>): void {
-    const pending = this.#pendingCallbacks.then(callback);
-    this.#pendingCallbacks = pending;
+  #enqueueCallback(callback: () => Promise<void>, after: Promise<void> = Promise.resolve()): void {
+    const pending = this.#pendingCallbacks
+      .catch(() => undefined)
+      .then(async () => {
+        await after;
+        await callback();
+      });
+    this.#lastCallback = pending;
+    this.#pendingCallbacks = pending.catch(() => undefined);
     void pending.catch(() => undefined);
   }
 
-  #enqueuePersist(operation: () => Promise<void>, rollback?: () => void): void {
-    const pending = this.#pendingPersist.then(async () => {
-      try {
-        await operation();
-      } catch (error) {
-        rollback?.();
-        throw error;
-      }
-    });
+  #enqueuePersist(operation: () => Promise<void>, rollback?: () => void): Promise<void> {
+    const pending = this.#pendingPersist
+      .catch(() => undefined)
+      .then(async () => {
+        try {
+          await operation();
+        } catch (error) {
+          rollback?.();
+          throw error;
+        }
+      });
     this.#lastPersist = pending;
-    this.#pendingPersist = pending;
+    this.#pendingPersist = pending.catch(() => undefined);
+    void pending.catch(() => undefined);
+    return pending;
   }
 
   public sendToReception(
@@ -663,11 +803,7 @@ export class ClinicalHandoffsService {
     payload: SendClinicalHandoffRequest
   ): ClinicalHandoffSummary {
     const encounterId = requireNonEmptyString(payload.encounterId, 'encounterId') as EncounterId;
-    const encounter = this.#encounters.getOrThrow(encounterId);
-
-    if (encounter.accountId !== accountId) {
-      throw new NotFoundError('Encounter not found', { encounterId });
-    }
+    const encounter = this.#encounters.getOrThrow(accountId, encounterId);
 
     if (encounter.status === 'closed') {
       throw new ConflictError('Cannot send handoff for a closed encounter', { encounterId });
@@ -714,15 +850,20 @@ export class ClinicalHandoffsService {
     };
 
     this.#handoffs.set(handoff.id, handoff);
-    this.#encounters.appendTimeline(encounter.id, {
+    const { persistence: timelinePersistence } = this.#encounters.appendTimelineWithPersistence(
       accountId,
-      eventType: 'handoff_sent_to_reception',
-      summary: 'Clinical handoff sent to reception',
-      actorUserId
-    });
+      encounter.id,
+      {
+        accountId,
+        eventType: 'handoff_sent_to_reception',
+        summary: 'Clinical handoff sent to reception',
+        actorUserId
+      }
+    );
 
+    let handoffPersistence = Promise.resolve();
     if (this.#repository) {
-      this.#enqueuePersist(
+      handoffPersistence = this.#enqueuePersist(
         () => this.#repository!.create(handoff),
         () => {
           if (this.#handoffs.get(handoff.id) === handoff) {
@@ -733,7 +874,10 @@ export class ClinicalHandoffsService {
     }
 
     if (this.#onHandoffSent) {
-      this.#enqueueCallback(() => this.#onHandoffSent!(handoff));
+      this.#enqueueCallback(
+        () => this.#onHandoffSent!(handoff),
+        Promise.all([handoffPersistence, timelinePersistence]).then(() => undefined)
+      );
     }
     return handoff;
   }
@@ -744,11 +888,7 @@ export class ClinicalHandoffsService {
     handoffId: ClinicalHandoffId,
     payload: AcknowledgeClinicalHandoffRequest = {}
   ): ClinicalHandoffSummary {
-    const current = this.getOrThrow(handoffId);
-
-    if (current.accountId !== accountId) {
-      throw new NotFoundError('Clinical handoff not found', { handoffId });
-    }
+    const current = this.getOrThrow(accountId, handoffId);
 
     if (current.handoffStatus !== 'sent_to_reception') {
       throw new ConflictError('Clinical handoff is not waiting for reception acknowledgement', {
@@ -768,15 +908,20 @@ export class ClinicalHandoffsService {
     };
 
     this.#handoffs.set(handoffId, updated);
-    this.#encounters.appendTimeline(updated.encounterId, {
+    const { persistence: timelinePersistence } = this.#encounters.appendTimelineWithPersistence(
       accountId,
-      eventType: 'handoff_acknowledged',
-      summary: 'Reception acknowledged clinical handoff',
-      actorUserId
-    });
+      updated.encounterId,
+      {
+        accountId,
+        eventType: 'handoff_acknowledged',
+        summary: 'Reception acknowledged clinical handoff',
+        actorUserId
+      }
+    );
 
+    let handoffPersistence = Promise.resolve();
     if (this.#repository) {
-      this.#enqueuePersist(
+      handoffPersistence = this.#enqueuePersist(
         () => this.#repository!.update(updated),
         () => {
           this.#handoffs.set(handoffId, current);
@@ -785,7 +930,10 @@ export class ClinicalHandoffsService {
     }
 
     if (this.#onHandoffAcknowledged) {
-      this.#enqueueCallback(() => this.#onHandoffAcknowledged!(updated, current.handoffStatus));
+      this.#enqueueCallback(
+        () => this.#onHandoffAcknowledged!(updated, current.handoffStatus),
+        Promise.all([handoffPersistence, timelinePersistence]).then(() => undefined)
+      );
     }
     return updated;
   }
@@ -796,7 +944,7 @@ export class ClinicalHandoffsService {
     handoffId: ClinicalHandoffId,
     payload: MarkClinicalHandoffPendingRequest
   ): ClinicalHandoffSummary {
-    const current = this.getOrThrow(handoffId);
+    const current = this.getOrThrow(accountId, handoffId);
     this.#assertMutableForReceptionAction(accountId, current);
     const now = nowIso();
     const issue = {
@@ -827,10 +975,7 @@ export class ClinicalHandoffsService {
     issueId: ClinicalHandoffPendingIssueId,
     payload: ResolveClinicalHandoffPendingRequest
   ): ClinicalHandoffSummary {
-    const current = this.getOrThrow(handoffId);
-    if (current.accountId !== accountId) {
-      throw new NotFoundError('Clinical handoff not found', { handoffId });
-    }
+    const current = this.getOrThrow(accountId, handoffId);
     const now = nowIso();
     let found = false;
     const pendingIssues = current.pendingIssues.map((issue) => {
@@ -869,7 +1014,7 @@ export class ClinicalHandoffsService {
     handoffId: ClinicalHandoffId,
     payload: ReturnClinicalHandoffToClinicRequest
   ): ClinicalHandoffSummary {
-    const current = this.getOrThrow(handoffId);
+    const current = this.getOrThrow(accountId, handoffId);
     this.#assertMutableForReceptionAction(accountId, current);
     const now = nowIso();
     const updated: ClinicalHandoffSummary = {
@@ -895,7 +1040,7 @@ export class ClinicalHandoffsService {
     handoffId: ClinicalHandoffId,
     payload: SendClinicalHandoffToFinanceRequest = {}
   ): ClinicalHandoffSummary {
-    const current = this.getOrThrow(handoffId);
+    const current = this.getOrThrow(accountId, handoffId);
     this.#assertMutableForReceptionAction(accountId, current);
     const blockingIssues = current.pendingIssues.filter(
       (issue) => issue.status === 'open' && issue.blocksFinance
@@ -936,15 +1081,20 @@ export class ClinicalHandoffsService {
     eventType: EncounterTimelineEventSummary['eventType']
   ): ClinicalHandoffSummary {
     this.#handoffs.set(updated.id, updated);
-    this.#encounters.appendTimeline(updated.encounterId, {
-      accountId: updated.accountId,
-      eventType,
-      summary: eventType.replaceAll('_', ' '),
-      actorUserId
-    });
+    const { persistence: timelinePersistence } = this.#encounters.appendTimelineWithPersistence(
+      updated.accountId,
+      updated.encounterId,
+      {
+        accountId: updated.accountId,
+        eventType,
+        summary: eventType.replaceAll('_', ' '),
+        actorUserId
+      }
+    );
 
+    let handoffPersistence = Promise.resolve();
     if (this.#repository) {
-      this.#enqueuePersist(
+      handoffPersistence = this.#enqueuePersist(
         () => this.#repository!.update(updated),
         () => {
           this.#handoffs.set(current.id, current);
@@ -953,7 +1103,10 @@ export class ClinicalHandoffsService {
     }
 
     if (this.#onHandoffAcknowledged) {
-      this.#enqueueCallback(() => this.#onHandoffAcknowledged!(updated, current.handoffStatus));
+      this.#enqueueCallback(
+        () => this.#onHandoffAcknowledged!(updated, current.handoffStatus),
+        Promise.all([handoffPersistence, timelinePersistence]).then(() => undefined)
+      );
     }
     return updated;
   }

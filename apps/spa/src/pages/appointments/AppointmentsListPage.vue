@@ -1659,16 +1659,22 @@ onMounted(async () => {
 
 .sidebar-card :deep(.ds-card__body) {
   background: transparent;
+  padding: 16px;
 }
 
 .sidebar-stack {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
+  min-width: 0;
 }
 
 .mini-calendar {
   display: grid;
   gap: 12px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   padding: 12px;
   border-radius: 8px;
   border: 1px solid rgba(226, 232, 240, 0.92);

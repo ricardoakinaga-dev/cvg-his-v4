@@ -5,12 +5,13 @@ import type { AccountId, AttachmentId, AttachmentSummary, UserId } from '@cvg-hi
 
 export interface AttachmentRepository {
   create(attachment: AttachmentSummary): Promise<void>;
-  findById(id: AttachmentId): Promise<AttachmentSummary | null>;
+  findById(accountId: AccountId, id: AttachmentId): Promise<AttachmentSummary | null>;
   findByLinkedEntity(
+    accountId: AccountId,
     linkedEntityType: 'encounter' | 'medical_record' | 'diagnostic_order',
     linkedEntityId: string
   ): Promise<readonly AttachmentSummary[]>;
-  deleteById(id: AttachmentId): Promise<boolean>;
+  deleteById(accountId: AccountId, id: AttachmentId): Promise<boolean>;
 }
 
 export class DatabaseAttachmentRepository implements AttachmentRepository {
@@ -42,14 +43,19 @@ export class DatabaseAttachmentRepository implements AttachmentRepository {
     });
   }
 
-  public async findById(id: AttachmentId): Promise<AttachmentSummary | null> {
-    const result = await this.#db.select().from(attachments).where(eq(attachments.id, id)).limit(1);
+  public async findById(accountId: AccountId, id: AttachmentId): Promise<AttachmentSummary | null> {
+    const result = await this.#db
+      .select()
+      .from(attachments)
+      .where(and(eq(attachments.accountId, accountId), eq(attachments.id, id)))
+      .limit(1);
 
     if (result.length === 0) return null;
     return this.mapRow(result[0]);
   }
 
   public async findByLinkedEntity(
+    accountId: AccountId,
     linkedEntityType: 'encounter' | 'medical_record' | 'diagnostic_order',
     linkedEntityId: string
   ): Promise<readonly AttachmentSummary[]> {
@@ -58,6 +64,7 @@ export class DatabaseAttachmentRepository implements AttachmentRepository {
       .from(attachments)
       .where(
         and(
+          eq(attachments.accountId, accountId),
           eq(attachments.linkedEntityType, linkedEntityType),
           eq(attachments.linkedEntityId, linkedEntityId)
         )
@@ -66,9 +73,11 @@ export class DatabaseAttachmentRepository implements AttachmentRepository {
     return result.map((row) => this.mapRow(row));
   }
 
-  public async deleteById(id: AttachmentId): Promise<boolean> {
-    const result = await this.#db.delete(attachments).where(eq(attachments.id, id));
-    return true;
+  public async deleteById(accountId: AccountId, id: AttachmentId): Promise<boolean> {
+    const result = await this.#db
+      .delete(attachments)
+      .where(and(eq(attachments.accountId, accountId), eq(attachments.id, id)));
+    return result.rowCount === 1;
   }
 
   private mapRow(row: typeof attachments.$inferSelect): AttachmentSummary {

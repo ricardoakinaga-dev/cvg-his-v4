@@ -1,6 +1,10 @@
 import { createHash } from 'node:crypto';
 
-import { getPool } from '@cvg-his-v2/shared-database';
+import {
+  acquireTenantAuthorizationLock,
+  getPool,
+  runInTenantTransaction
+} from '@cvg-his-v2/shared-database';
 import { ConflictError, NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
 import { withTenantQuery } from '@cvg-his-v2/tenant-context';
 import type { AccountId, UserId } from '@cvg-his-v2/shared-types';
@@ -27,6 +31,8 @@ export interface CounterSaleRecord {
   readonly createdAt: string;
   readonly updatedAt: string;
 }
+
+export type CounterSaleDraft = Omit<CounterSaleRecord, 'number'>;
 
 export interface CounterSaleReceiptRecord {
   readonly id: string;
@@ -113,6 +119,8 @@ export interface CounterSaleCancellationHistoryRecord {
 
 export interface CounterSalesRepository {
   create(sale: CounterSaleRecord): Promise<void>;
+  /** Allocates the next account-local number and persists the sale atomically. */
+  createWithNextNumber(sale: CounterSaleDraft): Promise<CounterSaleRecord>;
   update(sale: CounterSaleRecord): Promise<void>;
   findById(id: string): Promise<CounterSaleRecord | null>;
   /** Locks and returns the authoritative sale row for a close command. */
@@ -324,35 +332,90 @@ function assertIdempotentPayload(
   }
 }
 
+const COUNTER_SALE_INSERT_SQL = `INSERT INTO counter_sales (id, account_id, number, owner_id, patient_id, encounter_id, queue_entry_id, billing_record_id, status, subtotal, discount_amount, total, paid_amount, balance_due, notes, opened_by_user_id, closed_by_user_id, closed_at, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)`;
+
+const MAX_COUNTER_SALE_NUMBER = 9_007_199_254_740_991n;
+
+function counterSaleInsertValues(sale: CounterSaleRecord): unknown[] {
+  return [
+    sale.id,
+    sale.accountId,
+    sale.number,
+    sale.ownerId,
+    sale.patientId,
+    sale.encounterId,
+    sale.queueEntryId,
+    sale.billingRecordId,
+    sale.status,
+    sale.subtotal.toString(),
+    sale.discountAmount.toString(),
+    sale.total.toString(),
+    sale.paidAmount.toString(),
+    sale.balanceDue.toString(),
+    sale.notes,
+    sale.openedByUserId,
+    sale.closedByUserId,
+    sale.closedAt ? new Date(sale.closedAt) : null,
+    new Date(sale.createdAt),
+    new Date(sale.updatedAt)
+  ];
+}
+
 export class DatabaseCounterSalesRepository implements CounterSalesRepository {
   async create(sale: CounterSaleRecord): Promise<void> {
     return withTenantQuery(getPool(), async (client) => {
-      await client.query(
-        `INSERT INTO counter_sales (id, account_id, number, owner_id, patient_id, encounter_id, queue_entry_id, billing_record_id, status, subtotal, discount_amount, total, paid_amount, balance_due, notes, opened_by_user_id, closed_by_user_id, closed_at, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)`,
-        [
-          sale.id,
-          sale.accountId,
-          sale.number,
-          sale.ownerId,
-          sale.patientId,
-          sale.encounterId,
-          sale.queueEntryId,
-          sale.billingRecordId,
-          sale.status,
-          sale.subtotal.toString(),
-          sale.discountAmount.toString(),
-          sale.total.toString(),
-          sale.paidAmount.toString(),
-          sale.balanceDue.toString(),
-          sale.notes,
-          sale.openedByUserId,
-          sale.closedByUserId,
-          sale.closedAt ? new Date(sale.closedAt) : null,
-          new Date(sale.createdAt),
-          new Date(sale.updatedAt)
-        ]
+      await client.query(COUNTER_SALE_INSERT_SQL, counterSaleInsertValues(sale));
+    });
+  }
+
+  async createWithNextNumber(sale: CounterSaleDraft): Promise<CounterSaleRecord> {
+    return runInTenantTransaction(getPool(), sale.accountId, async (client) => {
+      await acquireTenantAuthorizationLock(sale.accountId);
+      const latest = await client.query<{ readonly max_number: string | null }>(
+        `SELECT MAX(
+                  CASE
+                    WHEN number ~ '^CS-[0-9]+$' THEN SUBSTRING(number FROM 4)::numeric
+                    ELSE NULL
+                  END
+                ) AS max_number
+           FROM counter_sales
+          WHERE account_id = $1`,
+        [sale.accountId]
       );
+
+      const maxNumberText = latest.rows[0]?.max_number;
+      let currentNumber = 0n;
+      if (maxNumberText !== null && maxNumberText !== undefined) {
+        try {
+          currentNumber = BigInt(String(maxNumberText));
+        } catch {
+          throw new ConflictError('Counter sale number sequence is invalid', {
+            accountId: sale.accountId
+          });
+        }
+      }
+      if (currentNumber < 0n || currentNumber >= MAX_COUNTER_SALE_NUMBER) {
+        throw new ConflictError('Counter sale number sequence is exhausted', {
+          accountId: sale.accountId
+        });
+      }
+
+      const record: CounterSaleRecord = {
+        ...sale,
+        number: `CS-${String(currentNumber + 1n).padStart(6, '0')}`
+      };
+      const inserted = await client.query<Record<string, unknown>>(
+        `${COUNTER_SALE_INSERT_SQL} RETURNING *`,
+        counterSaleInsertValues(record)
+      );
+      const row = inserted.rows[0];
+      if (!row) {
+        throw new ConflictError('Counter sale allocation did not return a persisted sale', {
+          accountId: sale.accountId
+        });
+      }
+      return this.mapSale(row);
     });
   }
 

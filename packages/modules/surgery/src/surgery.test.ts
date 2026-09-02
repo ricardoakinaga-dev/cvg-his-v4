@@ -13,7 +13,7 @@ function createService() {
     patientId: 'patient_1'
   };
   const encounters = {
-    getOrThrow(encounterId: string) {
+    getOrThrow(_accountId: string, encounterId: string) {
       assert.equal(encounterId, encounter.id);
       return encounter;
     }

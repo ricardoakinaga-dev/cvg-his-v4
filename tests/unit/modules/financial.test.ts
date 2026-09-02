@@ -81,6 +81,7 @@ function createFinancialService(
       getOrThrow() {
         return {
           id: encounter.patientId,
+          accountId: encounter.accountId,
           name: 'Luna',
           species: 'canine'
         };
@@ -90,6 +91,7 @@ function createFinancialService(
       getOrThrow() {
         return {
           id: encounter.ownerId,
+          accountId: encounter.accountId,
           fullName: 'Maria Silva',
           contacts: [
             {
@@ -281,18 +283,23 @@ describe('module-financial / repository', () => {
       }
     );
 
-    const initial = await service.getSummary(encounter.id);
+    const initial = await service.getSummary(encounter.accountId, encounter.id);
     expect(initial.total).toBe(190);
     expect(initial.receivables).toHaveLength(1);
 
-    const closed = await service.closeEncounterFinancial(encounter.id, 'user_finance' as never, {
+    const closed = await service.closeEncounterFinancial(
+      encounter.accountId,
+      encounter.id,
+      'user_finance' as never,
+      {
       paidAmount: 120,
       notes: 'Fechamento administrativo',
       installments: [
         { label: 'Entrada', amount: 100 },
         { label: 'Saldo', amount: 90 }
       ]
-    });
+      }
+    );
 
     expect(closed.financialClosed).toBe(true);
     expect(closed.balanceDue).toBe(70);
@@ -317,7 +324,7 @@ describe('module-financial / repository', () => {
   it('does not replace a receipt-linked receivable after a cash reversal', async () => {
     const repository = new ReversedReceiptHistoryRepository();
     const { service, encounter } = createFinancialService(repository);
-    await service.getSummary(encounter.id);
+    await service.getSummary(encounter.accountId, encounter.id);
     repository.replaceCalls = 0;
     const account = await repository.findFinancialAccountByEncounter(encounter.id);
     const receivable = (await repository.listReceivablesByFinancialAccount(account!.id))[0]!;
@@ -336,9 +343,14 @@ describe('module-financial / repository', () => {
       createdAt: '2026-04-13T00:01:00.000Z'
     });
 
-    const closed = await service.closeEncounterFinancial(encounter.id, 'user_finance' as never, {
+    const closed = await service.closeEncounterFinancial(
+      encounter.accountId,
+      encounter.id,
+      'user_finance' as never,
+      {
       installments: [{ amount: 190, label: 'Parcela reaberta' }]
-    });
+      }
+    );
 
     expect(closed.financialClosed).toBe(true);
     expect(repository.replaceCalls).toBe(0);
@@ -352,12 +364,12 @@ describe('module-financial / repository', () => {
     const { service, encounter, repository } = createFinancialService();
 
     await expect(
-      service.closeEncounterFinancial(encounter.id, 'user_finance' as never, {
+      service.closeEncounterFinancial(encounter.accountId, encounter.id, 'user_finance' as never, {
         installments: [{ amount: 100 }, { amount: 50 }]
       })
     ).rejects.toThrow('Installment total must match encounter financial total');
 
-    await service.closeEncounterFinancial(encounter.id, 'user_finance' as never, {
+    await service.closeEncounterFinancial(encounter.accountId, encounter.id, 'user_finance' as never, {
       installments: [
         { label: 'Entrada Luna', amount: 100 },
         { label: 'Saldo Maria', amount: 90 }
@@ -368,7 +380,7 @@ describe('module-financial / repository', () => {
     const receivables = await repository.listReceivablesByFinancialAccount(account!.id);
 
     await expect(
-      service.settleReceivable(receivables[0]!.id, {
+      service.settleReceivable(encounter.accountId, receivables[0]!.id, {
         amountPaid: 101
       })
     ).rejects.toThrow('Payment exceeds outstanding receivable balance');

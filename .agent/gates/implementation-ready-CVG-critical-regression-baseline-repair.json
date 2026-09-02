@@ -1,0 +1,79 @@
+{
+  "record_id": "GATE-CVG-CRITICAL-REGRESSION-BASELINE-REPAIR-IR-001",
+  "timestamp": "2026-08-31T03:55:00-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "Repository-local critical integration fixture and assertion compatibility repair",
+  "scope_ref": "CVG-CRITICAL-REGRESSION-BASELINE-REPAIR",
+  "version": 1,
+  "active_plan": ".agent/plans/premium-enterprise-mvp.md",
+  "active_task": ".agent/tasks/CVG-CRITICAL-REGRESSION-BASELINE-REPAIR.md",
+  "verification_state": "AUTHORIZED",
+  "next_gate": "GREEN",
+  "criteria": [
+    {
+      "id": "IR-001-SCOPE",
+      "description": "The repair is limited to stale integration fixtures/assertions and cannot weaken production, database or tenant contracts.",
+      "required": true,
+      "status": "PASS",
+      "confidence": "HIGH",
+      "evidence_refs": [
+        ".agent/tasks/CVG-CRITICAL-REGRESSION-BASELINE-REPAIR.md",
+        ".agent/authority.jsonl#AUTH-CVG-CRITICAL-REGRESSION-BASELINE-REPAIR-IR-001"
+      ]
+    },
+    {
+      "id": "IR-002-RED",
+      "description": "The stale worker assertion and migration-compatible fixture failures are captured as intentional RED evidence before their bounded corrections.",
+      "required": true,
+      "status": "PASS",
+      "confidence": "HIGH",
+      "evidence_refs": [
+        ".agent/tasks/CVG-CRITICAL-REGRESSION-BASELINE-REPAIR.md",
+        ".agent/verification.jsonl#VFY-CVG-CRITICAL-REGRESSION-BASELINE-REPAIR-RED-001"
+      ]
+    },
+    {
+      "id": "IR-003-VERIFICATION",
+      "description": "Focused and official critical base/process runs are required before bounded closure; no global readiness promotion is allowed.",
+      "required": true,
+      "status": "PASS",
+      "confidence": "HIGH",
+      "evidence_refs": [
+        "package.json",
+        "tests/integration/database/worker-event-consumers-postgres.test.ts",
+        "tests/integration/database/inpatient-clinical-financial-close-receipt-http-postgres.test.ts",
+        "tests/integration/database/inpatient-discharge-http-postgres.test.ts",
+        "tests/integration/database/pix-service-principals.test.ts"
+      ],
+      "limitations": "The official run is still in progress at gate creation time; this gate authorizes verification and does not certify it.",
+      "next_action": "Record final base/process output, run independent review, then close or document the blocker."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-CRITICAL-REGRESSION-BASELINE-REPAIR.md",
+    ".agent/authority.jsonl#AUTH-CVG-CRITICAL-REGRESSION-BASELINE-REPAIR-IR-001"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "Official critical base and process completion output is not yet recorded.",
+    "Independent review and final control-plane reconciliation remain outstanding."
+  ],
+  "conditions": [
+    "Keep production, schema, migration, target, provider, credential, deployment and release scope excluded.",
+    "Treat test success as local evidence only; keep global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via explicit continuation and fresh critical-suite evidence",
+    "scope": "Repository-local critical integration fixture and assertion compatibility repair",
+    "decision": "Authorize only stale test fixture/assertion corrections required by already-authoritative tenant, idempotency, active-encounter and authorization contracts. Exclude production code, schema, migrations, RLS, target, providers, credentials, deployment, release and global ERP promotion.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-CRITICAL-REGRESSION-BASELINE-REPAIR-IR-001",
+    "expires_or_revalidates": "Revalidate before changing any production contract, schema, migration, runtime, deployment or release behavior."
+  },
+  "residual_risk": "MEDIUM",
+  "decision": "PASS",
+  "implementation_status": "AUTHORIZED",
+  "next_action": "Finish the official critical base/process run, review the four test diffs independently and reconcile the bounded result.",
+  "supersedes": null
+}

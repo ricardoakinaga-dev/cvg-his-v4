@@ -8,7 +8,7 @@ import { InMemoryProcurementRepository, InventoryService, ProcurementService } f
 
 function createService() {
   return new InventoryService({
-    getOrThrow(encounterId: string) {
+    getOrThrow(_accountId: string, encounterId: string) {
       return {
         id: encounterId,
         accountId: 'acc_cvg_demo',
@@ -576,7 +576,7 @@ test('InventoryService creates audited stock adjustments and rejects negative ba
 test('InventoryService hydrateFromDatabase loads persisted consumptions', async () => {
   const service = new InventoryService(
     {
-      getOrThrow(encounterId: string) {
+      getOrThrow(_accountId: string, encounterId: string) {
         return {
           id: encounterId,
           accountId: 'acc_repo',

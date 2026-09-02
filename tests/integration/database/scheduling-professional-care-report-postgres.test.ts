@@ -257,5 +257,5 @@ describe('scheduling professional care report source on PostgreSQL', () => {
         `${overflowPrefix}%`
       ]);
     }
-  });
+  }, 120_000);
 });

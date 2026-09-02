@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
+import { ConflictError, NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
 import type {
   AccountId,
   ClinicalEntryId,
@@ -203,19 +203,42 @@ function formatPrescriptionContent(payload: CreatePrescriptionRequest): string {
   return lines.join('\n');
 }
 
+function requireAccountId(accountId: AccountId): AccountId {
+  return requireNonEmptyString(accountId, 'accountId') as AccountId;
+}
+
 export interface PrescriptionRepository {
-  create(prescription: PrescriptionSummary): Promise<void>;
-  update(prescription: PrescriptionSummary): Promise<void>;
-  findById(id: PrescriptionId): Promise<PrescriptionSummary | null>;
-  findByEncounterId(encounterId: EncounterId): Promise<readonly PrescriptionSummary[]>;
-  findByPatientId(patientId: PatientId): Promise<readonly PrescriptionSummary[]>;
+  create(prescription: PrescriptionSummary, accountId: AccountId): Promise<void>;
+  createWithRevision(
+    prescription: PrescriptionSummary,
+    revision: PrescriptionRevisionSummary,
+    accountId: AccountId
+  ): Promise<void>;
+  update(prescription: PrescriptionSummary, accountId: AccountId): Promise<void>;
+  updateWithRevision(
+    prescription: PrescriptionSummary,
+    revision: PrescriptionRevisionSummary,
+    accountId: AccountId
+  ): Promise<void>;
+  findById(id: PrescriptionId, accountId: AccountId): Promise<PrescriptionSummary | null>;
+  findByEncounterId(
+    encounterId: EncounterId,
+    accountId: AccountId
+  ): Promise<readonly PrescriptionSummary[]>;
+  findByPatientId(
+    patientId: PatientId,
+    accountId: AccountId
+  ): Promise<readonly PrescriptionSummary[]>;
   findByAccountId(accountId: AccountId): Promise<readonly PrescriptionSummary[]>;
   findByAccountIdPaginated(
     accountId: AccountId,
     options: { offset: number; limit: number }
   ): Promise<{ items: readonly PrescriptionSummary[]; total: number }>;
-  createRevision?(revision: PrescriptionRevisionSummary): Promise<void>;
-  findRevisions?(prescriptionId: PrescriptionId): Promise<readonly PrescriptionRevisionSummary[]>;
+  createRevision?(revision: PrescriptionRevisionSummary, accountId: AccountId): Promise<void>;
+  findRevisions?(
+    prescriptionId: PrescriptionId,
+    accountId: AccountId
+  ): Promise<readonly PrescriptionRevisionSummary[]>;
   sign?(signature: PrescriptionSignatureSummary & { readonly accountId: AccountId }): Promise<void>;
   findSignature?(
     accountId: AccountId,
@@ -233,37 +256,91 @@ export class InMemoryPrescriptionRepository implements PrescriptionRepository {
   readonly #revisions = new Map<string, PrescriptionRevisionSummary[]>();
   readonly #signatures = new Map<string, PrescriptionSignatureSummary>();
 
-  async create(prescription: PrescriptionSummary): Promise<void> {
+  async create(prescription: PrescriptionSummary, accountId: AccountId): Promise<void> {
+    this.#assertAccount(prescription.accountId, accountId, prescription.id);
     this.#store.set(prescription.id, prescription as unknown as ClinicalEntrySummary);
   }
 
-  async update(prescription: PrescriptionSummary): Promise<void> {
+  async createWithRevision(
+    prescription: PrescriptionSummary,
+    revision: PrescriptionRevisionSummary,
+    accountId: AccountId
+  ): Promise<void> {
+    this.#assertAccount(prescription.accountId, accountId, prescription.id);
+    this.#store.set(prescription.id, prescription as unknown as ClinicalEntrySummary);
+    this.#appendRevision(revision);
+  }
+
+  async update(prescription: PrescriptionSummary, accountId: AccountId): Promise<void> {
+    this.#assertAccount(prescription.accountId, accountId, prescription.id);
+    this.#requireOwnedEntry(prescription.id, accountId);
     this.#store.set(prescription.id, prescription as unknown as ClinicalEntrySummary);
   }
 
-  async findById(id: PrescriptionId): Promise<PrescriptionSummary | null> {
+  async updateWithRevision(
+    prescription: PrescriptionSummary,
+    revision: PrescriptionRevisionSummary,
+    accountId: AccountId
+  ): Promise<void> {
+    this.#assertAccount(prescription.accountId, accountId, prescription.id);
+    const current = this.#store.get(prescription.id);
+    if (!current || current.accountId !== accountId) {
+      throw new NotFoundError('Prescription not found', { prescriptionId: prescription.id });
+    }
+    if (current.version !== prescription.version - 1) {
+      throw new ConflictError('Prescription was updated by another replica', {
+        prescriptionId: prescription.id,
+        currentVersion: current.version,
+        requestedVersion: prescription.version
+      });
+    }
+    this.#store.set(prescription.id, prescription as unknown as ClinicalEntrySummary);
+    this.#appendRevision(revision);
+  }
+
+  async findById(id: PrescriptionId, accountId: AccountId): Promise<PrescriptionSummary | null> {
+    const scopedAccountId = requireAccountId(accountId);
     const entry = this.#store.get(id);
-    if (!entry) return null;
+    if (!entry || entry.accountId !== scopedAccountId) return null;
     return toPrescriptionSummary(entry);
   }
 
-  async findByEncounterId(encounterId: EncounterId): Promise<readonly PrescriptionSummary[]> {
+  async findByEncounterId(
+    encounterId: EncounterId,
+    accountId: AccountId
+  ): Promise<readonly PrescriptionSummary[]> {
+    const scopedAccountId = requireAccountId(accountId);
     return Array.from(this.#store.values())
-      .filter((e) => e.encounterId === encounterId && e.entryType === 'prescription')
+      .filter(
+        (e) =>
+          e.accountId === scopedAccountId &&
+          e.encounterId === encounterId &&
+          e.entryType === 'prescription'
+      )
       .map(toPrescriptionSummary)
       .filter((p): p is PrescriptionSummary => p !== null);
   }
 
-  async findByPatientId(patientId: PatientId): Promise<readonly PrescriptionSummary[]> {
+  async findByPatientId(
+    patientId: PatientId,
+    accountId: AccountId
+  ): Promise<readonly PrescriptionSummary[]> {
+    const scopedAccountId = requireAccountId(accountId);
     return Array.from(this.#store.values())
-      .filter((e) => e.patientId === patientId && e.entryType === 'prescription')
+      .filter(
+        (e) =>
+          e.accountId === scopedAccountId &&
+          e.patientId === patientId &&
+          e.entryType === 'prescription'
+      )
       .map(toPrescriptionSummary)
       .filter((p): p is PrescriptionSummary => p !== null);
   }
 
   async findByAccountId(accountId: AccountId): Promise<readonly PrescriptionSummary[]> {
+    const scopedAccountId = requireAccountId(accountId);
     return Array.from(this.#store.values())
-      .filter((e) => e.accountId === accountId && e.entryType === 'prescription')
+      .filter((e) => e.accountId === scopedAccountId && e.entryType === 'prescription')
       .map(toPrescriptionSummary)
       .filter((p): p is PrescriptionSummary => p !== null);
   }
@@ -279,29 +356,61 @@ export class InMemoryPrescriptionRepository implements PrescriptionRepository {
     };
   }
 
-  async createRevision(revision: PrescriptionRevisionSummary): Promise<void> {
+  async createRevision(revision: PrescriptionRevisionSummary, accountId: AccountId): Promise<void> {
+    this.#requireOwnedEntry(revision.prescriptionId, accountId);
     const current = this.#revisions.get(revision.prescriptionId) ?? [];
     this.#revisions.set(revision.prescriptionId, [...current, revision]);
   }
 
   async findRevisions(
-    prescriptionId: PrescriptionId
+    prescriptionId: PrescriptionId,
+    accountId: AccountId
   ): Promise<readonly PrescriptionRevisionSummary[]> {
+    if (!this.#isOwnedBy(prescriptionId, accountId)) return [];
     return [...(this.#revisions.get(prescriptionId) ?? [])];
   }
 
   async sign(
     signature: PrescriptionSignatureSummary & { readonly accountId: AccountId }
   ): Promise<void> {
+    this.#requireOwnedEntry(signature.prescriptionId, signature.accountId);
     this.#signatures.set(`${signature.prescriptionId}:${signature.version}`, signature);
   }
 
   async findSignature(
-    _accountId: AccountId,
+    accountId: AccountId,
     prescriptionId: PrescriptionId,
     version: number
   ): Promise<PrescriptionSignatureSummary | null> {
+    if (!this.#isOwnedBy(prescriptionId, accountId)) return null;
     return this.#signatures.get(`${prescriptionId}:${version}`) ?? null;
+  }
+
+  #appendRevision(revision: PrescriptionRevisionSummary): void {
+    const current = this.#revisions.get(revision.prescriptionId) ?? [];
+    this.#revisions.set(revision.prescriptionId, [...current, revision]);
+  }
+
+  #isOwnedBy(prescriptionId: PrescriptionId, accountId: AccountId): boolean {
+    const scopedAccountId = requireAccountId(accountId);
+    return this.#store.get(prescriptionId)?.accountId === scopedAccountId;
+  }
+
+  #requireOwnedEntry(prescriptionId: PrescriptionId, accountId: AccountId): void {
+    if (!this.#isOwnedBy(prescriptionId, accountId)) {
+      throw new NotFoundError('Prescription not found', { prescriptionId });
+    }
+  }
+
+  #assertAccount(
+    entityAccountId: AccountId,
+    accountId: AccountId,
+    prescriptionId: PrescriptionId
+  ): void {
+    const scopedAccountId = requireAccountId(accountId);
+    if (entityAccountId !== scopedAccountId) {
+      throw new NotFoundError('Prescription not found', { prescriptionId });
+    }
   }
 }
 
@@ -333,16 +442,21 @@ export class PrescriptionsService {
       return;
     }
 
-    const prescriptions = await this.#prescriptionRepository.findByAccountId(accountId);
+    const scopedAccountId = requireAccountId(accountId);
+    const prescriptions = await this.#prescriptionRepository.findByAccountId(scopedAccountId);
     for (const prescription of prescriptions) {
+      if (prescription.accountId !== scopedAccountId) continue;
       this.#prescriptions.set(prescription.id, prescription as unknown as ClinicalEntrySummary);
       if (this.#prescriptionRepository.findRevisions) {
-        const revisions = await this.#prescriptionRepository.findRevisions(prescription.id);
+        const revisions = await this.#prescriptionRepository.findRevisions(
+          prescription.id,
+          scopedAccountId
+        );
         this.#revisions.set(prescription.id, [...revisions]);
       }
       if (this.#prescriptionRepository.findSignature) {
         const signature = await this.#prescriptionRepository.findSignature(
-          accountId,
+          scopedAccountId,
           prescription.id,
           prescription.version
         );
@@ -390,12 +504,13 @@ export class PrescriptionsService {
     actorUserId: UserId,
     payload: CreatePrescriptionRequest
   ): PrescriptionSummary {
+    const scopedAccountId = requireAccountId(accountId);
     this.#validateCreate(payload);
 
     const now = nowIso();
     const entry: ClinicalEntrySummary = {
       id: createCorrelationId('rx') as ClinicalEntryId,
-      accountId,
+      accountId: scopedAccountId,
       medicalRecordId: payload.medicalRecordId as never,
       encounterId: payload.encounterId as EncounterId,
       patientId: payload.patientId as PatientId,
@@ -427,8 +542,11 @@ export class PrescriptionsService {
       if (prescription) {
         this.#enqueuePersist(
           async () => {
-            await this.#prescriptionRepository!.create(prescription);
-            await this.#prescriptionRepository!.createRevision?.(initialRevision);
+            await this.#prescriptionRepository!.createWithRevision(
+              prescription,
+              initialRevision,
+              scopedAccountId
+            );
           },
           () => {
             if (this.#prescriptions.get(entry.id as PrescriptionId) === entry) {
@@ -445,9 +563,12 @@ export class PrescriptionsService {
     return prescription;
   }
 
-  public getById(prescriptionId: PrescriptionId): PrescriptionSummary {
+  public getById(accountId: AccountId, prescriptionId: PrescriptionId): PrescriptionSummary {
+    const scopedAccountId = requireAccountId(accountId);
     const entry = this.#prescriptions.get(prescriptionId);
-    if (!entry) throw new NotFoundError('Prescription not found', { prescriptionId });
+    if (!entry || entry.accountId !== scopedAccountId) {
+      throw new NotFoundError('Prescription not found', { prescriptionId });
+    }
     const prescription = toPrescriptionSummary(entry);
     if (!prescription) throw new NotFoundError('Prescription not found', { prescriptionId });
     const signature = this.#signatures.get(prescriptionId);
@@ -470,18 +591,15 @@ export class PrescriptionsService {
     accountId: AccountId,
     prescriptionId: ClinicalEntryId
   ): PrescriptionSummary {
-    const prescription = this.getById(prescriptionId as PrescriptionId);
-    if (prescription.accountId !== accountId) {
-      throw new NotFoundError('Prescription not found', { prescriptionId });
-    }
-    return prescription;
+    return this.getById(requireAccountId(accountId), prescriptionId as PrescriptionId);
   }
 
   public renderDocument(
+    accountId: AccountId,
     prescriptionId: PrescriptionId,
     context: PrescriptionDocumentContext
   ): PrescriptionDocument {
-    const prescription = this.getById(prescriptionId);
+    const prescription = this.getById(accountId, prescriptionId);
     const header = [
       context.clinic.name,
       context.clinic.document ? `CNPJ/CPF: ${context.clinic.document}` : '',
@@ -583,18 +701,21 @@ export class PrescriptionsService {
   }
 
   public listByAccount(accountId: AccountId): readonly PrescriptionSummary[] {
+    const scopedAccountId = requireAccountId(accountId);
     return Array.from(this.#prescriptions.values())
-      .filter((e) => e.accountId === accountId && e.entryType === 'prescription')
+      .filter((e) => e.accountId === scopedAccountId && e.entryType === 'prescription')
       .map(toPrescriptionSummary)
       .filter((p): p is PrescriptionSummary => p !== null);
   }
 
   public update(
+    accountId: AccountId,
     prescriptionId: PrescriptionId,
     actorUserId: UserId,
     payload: UpdatePrescriptionRequest
   ): PrescriptionSummary {
-    const current = this.getById(prescriptionId);
+    const scopedAccountId = requireAccountId(accountId);
+    const current = this.getById(scopedAccountId, prescriptionId);
     if (current.deletedAt)
       throw new ValidationError('Cannot update an archived prescription', { prescriptionId });
     const reason = requireNonEmptyString(payload.reason, 'reason');
@@ -634,8 +755,11 @@ export class PrescriptionsService {
       if (prescription) {
         this.#enqueuePersist(
           async () => {
-            await this.#prescriptionRepository!.createRevision?.(revision);
-            await this.#prescriptionRepository!.update(prescription);
+            await this.#prescriptionRepository!.updateWithRevision(
+              prescription,
+              revision,
+              scopedAccountId
+            );
           },
           () => {
             this.#prescriptions.set(prescriptionId, current as unknown as ClinicalEntrySummary);
@@ -651,11 +775,13 @@ export class PrescriptionsService {
   }
 
   public archive(
+    accountId: AccountId,
     prescriptionId: PrescriptionId,
     actorUserId: UserId,
     payload: ArchivePrescriptionRequest
   ): PrescriptionSummary {
-    const current = this.getById(prescriptionId);
+    const scopedAccountId = requireAccountId(accountId);
+    const current = this.getById(scopedAccountId, prescriptionId);
     if (current.deletedAt)
       throw new ValidationError('Prescription is already archived', { prescriptionId });
     if (payload.expectedVersion !== undefined && payload.expectedVersion !== current.version) {
@@ -694,8 +820,11 @@ export class PrescriptionsService {
       if (prescription) {
         this.#enqueuePersist(
           async () => {
-            await this.#prescriptionRepository!.createRevision?.(revision);
-            await this.#prescriptionRepository!.update(prescription);
+            await this.#prescriptionRepository!.updateWithRevision(
+              prescription,
+              revision,
+              scopedAccountId
+            );
           },
           () => {
             this.#prescriptions.set(prescriptionId, current as unknown as ClinicalEntrySummary);
@@ -710,17 +839,21 @@ export class PrescriptionsService {
     return prescription;
   }
 
-  public getRevisions(prescriptionId: PrescriptionId): readonly PrescriptionRevisionSummary[] {
-    this.getById(prescriptionId);
+  public getRevisions(
+    accountId: AccountId,
+    prescriptionId: PrescriptionId
+  ): readonly PrescriptionRevisionSummary[] {
+    this.getById(accountId, prescriptionId);
     return [...(this.#revisions.get(prescriptionId) ?? [])];
   }
 
   public sign(
+    accountId: AccountId,
     prescriptionId: PrescriptionId,
     actorUserId: UserId,
     expectedVersion?: number
   ): PrescriptionSummary {
-    const current = this.getById(prescriptionId);
+    const current = this.getById(accountId, prescriptionId);
     if (current.deletedAt) throw new ValidationError('Cannot sign an archived prescription');
     if (expectedVersion !== undefined && expectedVersion !== current.version) {
       throw new ValidationError('Prescription version mismatch', {

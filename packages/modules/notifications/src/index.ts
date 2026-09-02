@@ -7,12 +7,14 @@ import type {
   ProcessNotificationsRequest
 } from '@cvg-his-v2/shared-contracts';
 import type {
+  AccountId,
   NotificationId,
   NotificationJobId,
   NotificationJobSummary,
   NotificationSummary,
   UserId
 } from '@cvg-his-v2/shared-types';
+import { NotFoundError } from '@cvg-his-v2/shared-errors';
 import { nowIso } from '@cvg-his-v2/shared-utils';
 import { requireEnum, requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 
@@ -23,20 +25,17 @@ export interface NotificationRepository {
   updateNotification(notification: NotificationSummary): Promise<void>;
   findNotificationById(id: NotificationId): Promise<NotificationSummary | null>;
   findNotifications(
-    accountId?: NotificationSummary['accountId'],
+    accountId: AccountId,
     status?: NotificationSummary['status']
   ): Promise<readonly NotificationSummary[]>;
   createJob(job: NotificationJobSummary): Promise<void>;
   updateJob(job: NotificationJobSummary): Promise<void>;
   findJobById(id: NotificationJobId): Promise<NotificationJobSummary | null>;
   findJobs(
-    accountId?: NotificationJobSummary['accountId'],
+    accountId: AccountId,
     status?: NotificationJobSummary['status']
   ): Promise<readonly NotificationJobSummary[]>;
-  findQueuedJobs(
-    limit: number,
-    accountId?: NotificationJobSummary['accountId']
-  ): Promise<readonly NotificationJobSummary[]>;
+  findQueuedJobs(accountId: AccountId, limit: number): Promise<readonly NotificationJobSummary[]>;
 }
 
 export interface NotificationsServiceOptions {
@@ -63,21 +62,40 @@ export class NotificationsService {
 
   public async create(
     actorUserId: UserId,
-    accountId: NotificationSummary['accountId'],
+    accountId: AccountId,
     payload: CreateNotificationRequest
   ): Promise<NotificationSummary> {
+    const scopedAccountId = this.#requireAccountId(accountId);
     const encounterId = payload.encounterId?.trim() || undefined;
     const patientId = payload.patientId?.trim() || undefined;
-    if (encounterId && this.#encounters) {
-      this.#encounters.getOrThrow(encounterId as never);
+    let encounter:
+      | ReturnType<NonNullable<NotificationsServiceOptions['encounters']>['getOrThrow']>
+      | undefined;
+    if (encounterId) {
+      if (!this.#encounters) {
+        throw new NotFoundError('Encounter not found', { encounterId });
+      }
+      encounter = this.#encounters.getOrThrow(scopedAccountId, encounterId as never);
+      if (encounter.accountId !== scopedAccountId) {
+        throw new NotFoundError('Encounter not found', { encounterId });
+      }
     }
-    if (patientId && this.#patients) {
-      this.#patients.getOrThrow(patientId as never);
+    if (patientId) {
+      if (!this.#patients) {
+        throw new NotFoundError('Patient not found', { patientId });
+      }
+      const patient = this.#patients.getOrThrow(patientId as never);
+      if (patient.accountId !== scopedAccountId) {
+        throw new NotFoundError('Patient not found', { patientId });
+      }
+      if (encounter && encounter.patientId !== patient.id) {
+        throw new NotFoundError('Patient not found', { patientId });
+      }
     }
 
     const notification: NotificationSummary = {
       id: randomUUID() as NotificationId,
-      accountId,
+      accountId: scopedAccountId,
       channel: 'internal',
       category: requireEnum(payload.category, 'category', [
         'billing',
@@ -98,7 +116,7 @@ export class NotificationsService {
 
     const job: NotificationJobSummary = {
       id: randomUUID() as NotificationJobId,
-      accountId,
+      accountId: scopedAccountId,
       notificationId: notification.id,
       status: 'queued',
       attempts: 0,
@@ -118,60 +136,80 @@ export class NotificationsService {
   }
 
   public list(
-    status?: NotificationSummary['status'],
-    accountId?: NotificationSummary['accountId']
+    accountId: AccountId,
+    status?: NotificationSummary['status']
   ): readonly NotificationSummary[] {
+    const scopedAccountId = this.#requireAccountId(accountId);
     return this.#notifications.filter(
       (notification) =>
-        (!status || notification.status === status) &&
-        (!accountId || notification.accountId === accountId)
+        (!status || notification.status === status) && notification.accountId === scopedAccountId
     );
   }
 
   public listJobs(
-    status?: NotificationJobSummary['status'],
-    accountId?: NotificationJobSummary['accountId']
+    accountId: AccountId,
+    status?: NotificationJobSummary['status']
   ): readonly NotificationJobSummary[] {
+    const scopedAccountId = this.#requireAccountId(accountId);
     return this.#jobs.filter(
-      (job) => (!status || job.status === status) && (!accountId || job.accountId === accountId)
+      (job) => (!status || job.status === status) && job.accountId === scopedAccountId
     );
   }
 
   public async listFromRepository(
-    status?: NotificationSummary['status'],
-    accountId?: NotificationSummary['accountId']
+    accountId: AccountId,
+    status?: NotificationSummary['status']
   ): Promise<readonly NotificationSummary[]> {
+    const scopedAccountId = this.#requireAccountId(accountId);
     if (!this.#repository) {
-      return this.list(status, accountId);
+      return this.list(scopedAccountId, status);
     }
-    return this.#repository.findNotifications(accountId, status);
+    return (await this.#repository.findNotifications(scopedAccountId, status)).filter(
+      (notification) =>
+        notification.accountId === scopedAccountId && (!status || notification.status === status)
+    );
   }
 
   public async listJobsFromRepository(
-    status?: NotificationJobSummary['status'],
-    accountId?: NotificationJobSummary['accountId']
+    accountId: AccountId,
+    status?: NotificationJobSummary['status']
   ): Promise<readonly NotificationJobSummary[]> {
+    const scopedAccountId = this.#requireAccountId(accountId);
     if (!this.#repository) {
-      return this.listJobs(status, accountId);
+      return this.listJobs(scopedAccountId, status);
     }
-    return this.#repository.findJobs(accountId, status);
+    return (await this.#repository.findJobs(scopedAccountId, status)).filter(
+      (job) => job.accountId === scopedAccountId && (!status || job.status === status)
+    );
   }
 
   public async processPendingFromRepository(
-    payload: ProcessNotificationsRequest = {},
-    accountId?: NotificationSummary['accountId']
+    accountId: AccountId,
+    payload: ProcessNotificationsRequest = {}
   ): Promise<readonly NotificationSummary[]> {
+    const scopedAccountId = this.#requireAccountId(accountId);
     if (!this.#repository) {
-      return this.processPending(payload, accountId);
+      return this.processPending(scopedAccountId, payload);
     }
 
     const limit =
       typeof payload.limit === 'number' && payload.limit > 0 ? Math.floor(payload.limit) : 10;
-    const pendingJobs = await this.#repository.findQueuedJobs(limit, accountId);
+    const pendingJobs = (await this.#repository.findQueuedJobs(scopedAccountId, limit))
+      .filter((job) => job.accountId === scopedAccountId && job.status === 'queued')
+      .slice(0, limit);
     const sentAt = nowIso();
     const processed: NotificationSummary[] = [];
 
     for (const job of pendingJobs) {
+      const notification = await this.#repository.findNotificationById(job.notificationId);
+      if (
+        !notification ||
+        notification.accountId !== scopedAccountId ||
+        notification.accountId !== job.accountId
+      ) {
+        continue;
+      }
+
       await this.#repository.updateJob({
         ...job,
         status: 'processed',
@@ -179,35 +217,43 @@ export class NotificationsService {
         processedAt: sentAt
       });
 
-      const notification = await this.#repository.findNotificationById(job.notificationId);
-      if (notification) {
-        const updated: NotificationSummary = {
-          ...notification,
-          status: 'sent',
-          sentAt
-        };
-        await this.#repository.updateNotification(updated);
-        processed.push(updated);
-        await this.#onNotificationSent?.(updated);
-      }
+      const updated: NotificationSummary = {
+        ...notification,
+        status: 'sent',
+        sentAt
+      };
+      await this.#repository.updateNotification(updated);
+      processed.push(updated);
+      await this.#onNotificationSent?.(updated);
     }
 
     return processed;
   }
 
   public async processPending(
-    payload: ProcessNotificationsRequest = {},
-    accountId?: NotificationSummary['accountId']
+    accountId: AccountId,
+    payload: ProcessNotificationsRequest = {}
   ): Promise<readonly NotificationSummary[]> {
+    const scopedAccountId = this.#requireAccountId(accountId);
     const limit =
       typeof payload.limit === 'number' && payload.limit > 0 ? Math.floor(payload.limit) : 10;
     const pendingJobs = this.#jobs
-      .filter((job) => job.status === 'queued' && (!accountId || job.accountId === accountId))
+      .filter((job) => job.status === 'queued' && job.accountId === scopedAccountId)
       .slice(0, limit);
     const sentAt = nowIso();
     const processed: NotificationSummary[] = [];
 
     for (const job of pendingJobs) {
+      const notificationIndex = this.#notifications.findIndex(
+        (current) =>
+          current.id === job.notificationId &&
+          current.accountId === scopedAccountId &&
+          current.accountId === job.accountId
+      );
+      if (notificationIndex < 0) {
+        continue;
+      }
+
       const jobIndex = this.#jobs.findIndex((current) => current.id === job.id);
       if (jobIndex >= 0) {
         this.#jobs[jobIndex] = {
@@ -218,21 +264,20 @@ export class NotificationsService {
         };
       }
 
-      const notificationIndex = this.#notifications.findIndex(
-        (current) => current.id === job.notificationId
-      );
-      if (notificationIndex >= 0) {
-        const updated: NotificationSummary = {
-          ...this.#notifications[notificationIndex],
-          status: 'sent',
-          sentAt
-        };
-        this.#notifications[notificationIndex] = updated;
-        processed.push(updated);
-        await this.#onNotificationSent?.(updated);
-      }
+      const updated: NotificationSummary = {
+        ...this.#notifications[notificationIndex],
+        status: 'sent',
+        sentAt
+      };
+      this.#notifications[notificationIndex] = updated;
+      processed.push(updated);
+      await this.#onNotificationSent?.(updated);
     }
 
     return processed;
+  }
+
+  #requireAccountId(accountId: AccountId): AccountId {
+    return requireNonEmptyString(accountId, 'accountId') as AccountId;
   }
 }

@@ -289,7 +289,10 @@ async function listReconciliationRows(
       try {
         summaryCache.set(
           encounterId,
-          await handlers.encounterFinancial.getSummary(encounterId as never)
+          await handlers.encounterFinancial.getSummary(
+            params.accountId as never,
+            encounterId as never
+          )
         );
       } catch {
         summaryCache.set(encounterId, null);
@@ -459,7 +462,10 @@ async function listCardReconciliationRows(
       try {
         summaryCache.set(
           encounterId,
-          await handlers.encounterFinancial.getSummary(encounterId as never)
+          await handlers.encounterFinancial.getSummary(
+            params.accountId as never,
+            encounterId as never
+          )
         );
       } catch {
         summaryCache.set(encounterId, null);
@@ -903,7 +909,10 @@ export async function handleFinancialRoutes(
   ) {
     const principal = await requirePrincipal(request, 'billing.read');
     const encounterId = requireNonEmptyString(pathname.split('/')[2], 'encounterId');
-    const summary = await encounterFinancial.getSummary(encounterId as never);
+    const summary = await encounterFinancial.getSummary(
+      principal.user.accountId,
+      encounterId as never
+    );
 
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -936,6 +945,7 @@ export async function handleFinancialRoutes(
       return json(response, 409, manualSettlementDisabledResponse(correlationId));
     }
     const summary = await encounterFinancial.closeEncounterFinancial(
+      principal.user.accountId,
       encounterId as never,
       principal.user.id as never,
       {

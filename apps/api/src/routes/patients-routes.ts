@@ -97,11 +97,8 @@ export async function handlePatientsRoutes(
       throw new NotFoundError('Owner not found', { ownerId: owner.id });
     }
     const relatedEncounters = encounters
-      .listAll()
-      .filter(
-        (encounter) =>
-          encounter.accountId === principal.user.accountId && encounter.patientId === patient.id
-      )
+      .listAll(principal.user.accountId)
+      .filter((encounter) => encounter.patientId === patient.id)
       .sort((left, right) => right.openedAt.localeCompare(left.openedAt));
 
     appendAudit(audit, {

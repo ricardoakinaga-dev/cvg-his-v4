@@ -150,7 +150,7 @@ describe('financial-routes', () => {
 
     expect(handled).toBe(true);
     expect(requirePrincipal).toHaveBeenCalledWith(expect.anything(), 'billing.read');
-    expect(getSummary).toHaveBeenCalledWith('enc-1');
+    expect(getSummary).toHaveBeenCalledWith('acc-1', 'enc-1');
     expect(response.statusCode).toBe(200);
     expect(response.bodyJson<{ encounterId: string }>().encounterId).toBe('enc-1');
   });
@@ -190,7 +190,7 @@ describe('financial-routes', () => {
 
     expect(handled).toBe(true);
     expect(requirePrincipal).toHaveBeenCalledWith(expect.anything(), 'billing.manage');
-    expect(closeEncounterFinancial).toHaveBeenCalledWith('enc-1', 'user-1', {
+    expect(closeEncounterFinancial).toHaveBeenCalledWith('acc-1', 'enc-1', 'user-1', {
       notes: 'Fechamento administrativo',
       installments: [
         {
@@ -418,7 +418,7 @@ describe('financial-routes', () => {
       provider: 'pagarme'
     });
     expect(getOrThrow).toHaveBeenCalledWith('acc-1', 'bill-1');
-    expect(getSummary).toHaveBeenCalledWith('enc-1');
+    expect(getSummary).toHaveBeenCalledWith('acc-1', 'enc-1');
     expect(response.statusCode).toBe(200);
     expect(
       response.bodyJson<{

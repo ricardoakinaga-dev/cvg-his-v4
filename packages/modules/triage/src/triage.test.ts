@@ -23,7 +23,7 @@ function createEncountersStub(
 ) {
   const encounter = createEncounter(status);
   return {
-    getOrThrow(encounterId: string) {
+    getOrThrow(_accountId: string, encounterId: string) {
       assert.equal(encounterId, encounter.id);
       return encounter;
     }

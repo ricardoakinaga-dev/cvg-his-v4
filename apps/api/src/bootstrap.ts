@@ -926,22 +926,27 @@ class InMemoryAttachmentRepository {
     this.#attachments.set(attachment.id, attachment);
   }
 
-  async findById(id: string): Promise<AttachmentSummary | null> {
-    return this.#attachments.get(id) ?? null;
+  async findById(accountId: AccountId, id: string): Promise<AttachmentSummary | null> {
+    const attachment = this.#attachments.get(id);
+    return attachment?.accountId === accountId ? attachment : null;
   }
 
   async findByLinkedEntity(
+    accountId: AccountId,
     linkedEntityType: 'encounter' | 'medical_record' | 'diagnostic_order',
     linkedEntityId: string
   ): Promise<readonly AttachmentSummary[]> {
     return Array.from(this.#attachments.values()).filter(
       (attachment) =>
+        attachment.accountId === accountId &&
         attachment.linkedEntityType === linkedEntityType &&
         attachment.linkedEntityId === linkedEntityId
     );
   }
 
-  async deleteById(id: string): Promise<boolean> {
+  async deleteById(accountId: AccountId, id: string): Promise<boolean> {
+    const attachment = this.#attachments.get(id);
+    if (!attachment || attachment.accountId !== accountId) return false;
     return this.#attachments.delete(id);
   }
 }
@@ -963,11 +968,11 @@ class InMemoryNotificationRepository {
   }
 
   async findNotifications(
-    accountId?: NotificationSummary['accountId'],
+    accountId: NotificationSummary['accountId'],
     status?: NotificationSummary['status']
   ): Promise<readonly NotificationSummary[]> {
     return Array.from(this.#notifications.values()).filter(
-      (n) => (!accountId || n.accountId === accountId) && (!status || n.status === status)
+      (n) => n.accountId === accountId && (!status || n.status === status)
     );
   }
 
@@ -984,20 +989,20 @@ class InMemoryNotificationRepository {
   }
 
   async findJobs(
-    accountId?: NotificationJobSummary['accountId'],
+    accountId: NotificationJobSummary['accountId'],
     status?: NotificationJobSummary['status']
   ): Promise<readonly NotificationJobSummary[]> {
     return Array.from(this.#jobs.values()).filter(
-      (job) => (!accountId || job.accountId === accountId) && (!status || job.status === status)
+      (job) => job.accountId === accountId && (!status || job.status === status)
     );
   }
 
   async findQueuedJobs(
-    limit: number,
-    accountId?: NotificationJobSummary['accountId']
+    accountId: NotificationJobSummary['accountId'],
+    limit: number
   ): Promise<readonly NotificationJobSummary[]> {
     return Array.from(this.#jobs.values())
-      .filter((j) => j.status === 'queued' && (!accountId || j.accountId === accountId))
+      .filter((j) => j.status === 'queued' && j.accountId === accountId)
       .slice(0, limit);
   }
 

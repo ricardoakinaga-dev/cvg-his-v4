@@ -6,30 +6,66 @@
   "work_mode": "FEATURE",
   "work_mode_overlays": ["MIGRATION"],
   "lifecycle_stage": "IN_PROGRESS",
-  "active_activity": "SCOUT",
+  "active_activity": "CHECKPOINT",
   "final_checkpoint_evidence": "The host-restart checkpoint and prior bounded slices remain reconciled. EVT-1209 through EVT-1216 close CVG-003-INPATIENT-STAY-SERVICE-TENANT-BOUNDARY as COMPLETE_BOUNDED/PASS_BOUNDED. EVT-1217 through EVT-1227 record CVG-012 namespace implementation, critic-driven AST hardening, regression, bounded gate and control-plane reconciliation. EVT-1239 through EVT-1247 record CVG-002B2B semantic PIX replay selection through control-plane closure. EVT-1248 through EVT-1257 record CVG-002B2B auth login input-boundary selection, TDD, review remediation, final regressions, security/quality, independent approval, bounded closure and reconciliation. EVT-1258 through EVT-1261 record the fresh bounded POST /auth/login/mfa input-boundary authority, TDD and compiled regression. EVT-1262 records a separate inventory-invoices sidecar finding requiring future scoped remediation and does not alter MFA scope. EVT-1263 through EVT-1267 record MFA quality, explicit review unavailability, non-promotion, bounded closure and control-plane reconciliation. EVT-1268 records local commit 233d3ed9; EVT-1269 authorizes a fresh persisted inventory-invoices status boundary scout and advances to RED. EVT-1270 through EVT-1277 record its RED, strict parser, regressions, quality, review limitation, non-promotion, bounded closure and control-plane reconciliation. EVT-1278 records local commit f14bf7a4 and post-commit reconciliation. EVT-1279 through EVT-1280 record fresh Surgery authority/scouting and intentional RED. EVT-1281 through EVT-1287 record Surgery GREEN, regression, quality, review limitation, non-promotion, bounded closure and control-plane reconciliation. EVT-1288 records local commit 19de7ff0 and post-commit reconciliation. EVT-1289 through EVT-1298 record fresh Diagnostics authority/scouting, intentional RED, implementation, review remediation, regressions, quality, independent approval, non-promotion and bounded closure. EVT-1299 records local commit 8ffafa9b and post-commit reconciliation. EVT-1300 through EVT-1307 record Billing authority/scouting, intentional RED, account-bound implementation, independent approval, regression, quality, non-promotion, bounded closure and control-plane reconciliation. Parent/global ERP remain IN_PROGRESS/PARTIAL and promotion remains BLOCKED.",
   "engineering_tier": "T4_CRITICAL",
   "risk_level": "CRITICAL",
   "blast_radius": "CROSS_SYSTEM",
   "status": "IN_PROGRESS",
   "active_execplan": ".agent/plans/premium-enterprise-mvp.md",
-  "active_task": "CVG-003-BILLING-TENANT-BOUNDARY",
-  "verification_state": "COMMITTED_BOUNDED",
-  "current_slice_evidence": "CVG-003-BILLING-TENANT-BOUNDARY is committed locally as c7eb4a00 after VERIFIED_BOUNDED/PASS_BOUNDED closure. BillingService, authenticated billing routes and first-party callers require explicit account scope; foreign access fails closed before disclosure or mutation; authoritative item reads clear stale cache state. BillingService tests passed 20/20, compiled billing routes 15/15, the bounded integration rail 21/21, complete API 530/530, focused BillingService coverage 83.68% statements/81.48% branches/87.50% functions, workspace coverage 80.63% statements/81.14% branches/87.18% functions, typecheck/build and quality/security controls passed, and a fresh independent review returned APPROVE. The polymorphic sourceEntityType/sourceEntityId resolver gap remains an explicit bounded residual; only the pre-existing design-system tsbuildinfo cache is dirty and remains unstaged; parent/global ERP remain IN_PROGRESS/PARTIAL with promotion BLOCKED.",
-  "repository_state": "The worktree is intentionally mixed and dirty with user/prior bounded changes preserved. The prior CVG-002B2B writer-linearization, semantic PIX replay, CVG-003 prescription-execution/outbox-administration, namespace, triage, auth-login, MFA-login and persisted inventory-invoices status slices are closed locally as PASS_BOUNDED under verified bounded gates, without migration/provider/credential/target/production expansion. CVG-003-SURGERY-TENANT-BOUNDARY, CVG-003-DIAGNOSTICS-TENANT-BOUNDARY and CVG-003-BILLING-TENANT-BOUNDARY are closed locally as PASS_BOUNDED under verified bounded gates and Billing is committed as c7eb4a00; Diagnostics retains its Low direct attachment read-surface residual and Billing retains its explicit polymorphic source-entity residual. Global Vetus parity remains 100/100 evidence with 4/11 verified, clinical parity 100/100 with 2/3 verified, and enterprise readiness 95/100 with 42 PASS, 3 WARN and 1 FAIL. External provider/homologation, target operations, remote CI, accessibility, LGPD, backup/restore, distributed operations and release evidence remain open. The user-owned packages/design-system/tsconfig.vue.tsbuildinfo cache is the only remaining worktree change and remains outside scope and unstaged.",
-  "latest_retest_evidence": "2026-08-30: CVG-003-BILLING-TENANT-BOUNDARY passed BillingService 20/20, compiled billing routes 15/15, bounded integration 21/21, complete API 530/530, focused BillingService V8 coverage 83.68% statements/81.48% branches/87.50% functions, official workspace V8 coverage 80.63% statements/81.14% branches/87.18% functions, workspace typecheck/build, worker rail, security/static controls and fresh independent APPROVE review; the bounded correction is committed as c7eb4a00. Full lint retains only packages/contracts/src/counterSales.ts:38,77 no-control-regex baseline; the polymorphic source-entity residual remains explicit; global ERP remains IN_PROGRESS/PARTIAL and promotion remains BLOCKED.",
-  "finalization_note": "CVG-003 inpatient stay, CVG-012 namespace boundary, CVG-003 closed-encounter triage atomicity, CVG-002B2B semantic PIX replay, auth login input boundary, MFA login input boundary, persisted inventory-invoices status boundary, SurgeryService tenant boundary, DiagnosticsService/LaboratoryService/AttachmentsService tenant boundary and BillingService tenant boundary are closed locally as PASS_BOUNDED/COMPLETE_BOUNDED. Diagnostics retains its Low direct attachment read-surface residual and Billing retains its explicit polymorphic source-entity residual; the unrelated full-lint baseline remains explicit. All target/provider/production/deployment/release/global gates remain open.",
+  "active_task": "CVG-003-ENCOUNTER-TENANT-BOUNDARY",
+  "verification_state": "REVIEW_FINDINGS",
+  "current_slice_evidence": "CVG-003-ENCOUNTER-TENANT-BOUNDARY implementation and local regressions passed. The fresh compatible independent review returned REQUEST_CHANGES with five adjacent findings; attachment deletion, report E2E contract fidelity and visual state coverage were corrected and revalidated. Two findings remain open: cross-replica PostgreSQL counter-sale allocation and mandatory explicit accountId in critical prescription repository methods. The child is paused at a resumable shutdown checkpoint. Global ERP remains IN_PROGRESS/PARTIAL and promotion remains BLOCKED.",
+  "repository_state": "The worktree is intentionally mixed and dirty with user/prior bounded changes plus the closed CVG-003-MEDICAL-RECORDS-TENANT-BOUNDARY and CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION source, tests and control-plane evidence preserved. No files are staged and no commit or push was performed. The prescription task and the test-only encounter-active-uniqueness fixture correction respected their exclusions of schema, migrations, RLS policy and repository SQL redesign; the pre-existing packages/design-system/tsconfig.vue.tsbuildinfo cache and unrelated user/prior changes remain outside the slices. Global Vetus parity, provider/homologation, target operations, remote CI, accessibility, LGPD, backup/restore, distributed operations and release evidence remain open; global ERP is IN_PROGRESS/PARTIAL and promotion is BLOCKED.",
+  "latest_retest_evidence": "2026-08-31: OPS-SEC-COMPOSE-LOCAL-EXPOSURE-001 passed focused contracts 6/6 and final infrastructure regression 31/31; Compose synthetic-password render passed and blank-password render failed closed; worker HTTP 200/503 probe produced exit 0/1; workspace typecheck/lint/build passed 70/71 selected projects; deploy, OpenAPI, namespaces, migration-source, RLS, secret scan, backup/restore, formatting, Bash and diff checks passed; final independent review returned APPROVE_BOUNDED with no findings. Global ERP remains IN_PROGRESS/PARTIAL and promotion remains BLOCKED.",
+  "finalization_note": "CVG-003 inpatient stay, CVG-012 namespace boundary, CVG-003 closed-encounter triage atomicity, CVG-002B2B semantic PIX replay, auth login input boundary, MFA login input boundary, persisted inventory-invoices status boundary, SurgeryService tenant boundary, DiagnosticsService/LaboratoryService/AttachmentsService tenant boundary, BillingService tenant boundary and MedicalRecordsService tenant boundary are closed locally as PASS_BOUNDED/COMPLETE_BOUNDED. Diagnostics retains its Low direct attachment read-surface residual; Billing retains its explicit polymorphic source-entity residual; MedicalRecords retains its ensureRecord lifecycle and optional compatibility-surface residuals. All target/provider/production/deployment/release/global gates remain open.",
   "instruction_scope_refs": [".agent/instruction-scope.md"],
-  "last_gate_record": ".agent/gates/verified-CVG-003-billing-tenant-boundary.json",
+  "last_gate_record": ".agent/gates/verified-CVG-003-encounter-tenant-boundary.json",
   "latest_checkpoint_evidence": "2026-08-30: EVT-1217 through EVT-1227 reconcile CVG-012 implementation, AST guard hardening after independent FAIL_BOUNDED findings, focused/regression/quality evidence, verified bounded gate and control-plane closure. EVT-1228/EVT-1229 record fresh independent residual scouting and authority for CVG-003-TRIAGE-CLOSED-ENCOUNTER-ATOMICITY; EVT-1230 through EVT-1237 record its bounded TDD, quality, review limitation, gate and control-plane closure; EVT-1238 records continuation recovery and active-plan repair; EVT-1239 through EVT-1247 record CVG-002B2B semantic PIX replay selection through closure; EVT-1248 through EVT-1257 record auth login input-boundary selection, RED, GREEN, review remediation, final regression, security/quality, independent approval, bounded gate and control-plane reconciliation. EVT-1258 through EVT-1261 record fresh MFA authority, TDD and compiled regression. EVT-1262 records a separate inventory-invoices review finding requiring future fresh authority. EVT-1263 through EVT-1268 record MFA quality, explicit review limitation, non-promotion, bounded closure, control-plane reconciliation and commit 233d3ed9. EVT-1269 through EVT-1277 record fresh persisted inventory-invoices status authority, RED, strict parser, regressions, quality, review limitation, non-promotion, bounded closure and control-plane reconciliation. EVT-1278 records commit f14bf7a4 and post-commit reconciliation. EVT-1279 through EVT-1287 record Surgery authority/scouting, RED, GREEN, regression, quality, review limitation, non-promotion, bounded closure and control-plane reconciliation. EVT-1288 records commit 19de7ff0 and post-commit reconciliation. EVT-1289 through EVT-1298 record fresh Diagnostics authority/scouting, RED, implementation, review remediation, regressions, quality, independent approval, non-promotion and bounded closure. EVT-1300 through EVT-1307 record Billing authority/scouting, RED, account-bound implementation, independent approval, regression, quality, non-promotion, bounded closure and control-plane reconciliation. EVT-1308 records Billing commit c7eb4a00 and post-commit reconciliation. Parent/global ERP remain IN_PROGRESS/PARTIAL and promotion remains BLOCKED.",
-  "last_event_id": "EVT-1308",
-  "state_revision": 977,
-  "next_gate": "SCOUT",
-  "next_action": "Begin fresh residual scouting and create a new authority before touching another slice. Preserve the committed Billing boundary, the explicit polymorphic source-entity residual and the global ERP promotion block.",
+  "last_event_id": "EVT-1370",
+  "state_revision": 1038,
+  "next_gate": "REMEDIATE_REVIEW_FINDINGS",
+  "next_action": "On resume, add RED tests and remediate the two remaining bounded findings: transactionally persisted per-account counter-sale allocation across replicas and mandatory explicit accountId in critical prescription repository methods. Then rerun focused, critical, E2E, quality and independent review evidence. Preserve target/production/Helm/real credentials/providers/schema/migrations/RLS/release exclusions and keep global ERP IN_PROGRESS/PARTIAL with promotion BLOCKED.",
   "blocked_by": [],
   "human_approval_required": [
     "Production go-live, credential rotation, provider selection, fiscal homologation, and residual HIGH/CRITICAL risk acceptance remain outside repository implementation authority"
   ],
+  "current_work_checkpoint": {
+    "created_at": "2026-08-31T17:11:30-03:00",
+    "status": "PAUSED_FOR_USER_SHUTDOWN",
+    "task": "CVG-003-ENCOUNTER-TENANT-BOUNDARY",
+    "artifact": ".agent/artifacts/CVG-003-ENCOUNTER-TENANT-BOUNDARY-CHECKPOINT-2026-08-31.md",
+    "implementation_saved": "Encounter boundary implementation and the five review-remediation fronts are saved in the mixed dirty working tree. No new source implementation was started after the checkpoint request.",
+    "open_findings": [
+      "P1: cross-replica same-account counter-sale number allocation must be persisted and transactionally serialized",
+      "P2: critical database prescription repository commands/readers must require explicit accountId"
+    ],
+    "already_revalidated": [
+      "attachment deletion account scope",
+      "real report E2E execution/export contract",
+      "counter-sales visual desktop/mobile light/dark states"
+    ],
+    "latest_evidence": [
+      "critical baseline 57/57 files and 556/556 tests",
+      "critical process matrix 10/10",
+      "API E2E 11/11",
+      "SPA E2E 75/75",
+      "coverage 196 files, 2252 passed, 1 intentional skip, 80.67% statements/lines, 81.33% branches, 87.21% functions",
+      "typecheck/lint/build 70/71 selected projects"
+    ],
+    "environment": "No test runner active. Existing local SPA/API listeners remain on 127.0.0.1:3302/3303; PostgreSQL remains on 5433.",
+    "cleanup_pending": [
+      "Check and drop only named temporary databases cvg_his_e2e_api_20260831 and cvg_his_e2e_spa_20260831",
+      "Remove generated coverage-boundary/ at final cleanup"
+    ],
+    "resume_order": [
+      "Read the checkpoint artifact and current task/gate",
+      "Write intentional RED tests for both open findings",
+      "Implement the smallest repository-local fixes",
+      "Run affected/full quality and independent review",
+      "Reconcile only if the new review approves; otherwise preserve REQUEST_CHANGES"
+    ]
+  },
   "resume_checkpoint": {
     "created_at": "2026-08-28T15:39:43-03:00",
     "status": "RECONCILED_AFTER_HOST_RESTART",
@@ -58,6 +94,7 @@
     ]
   },
   "current_runner_reconciliation": "PASS_BOUNDED final4: combined focused contracts 31/31, Windows 5 skipped on Linux, final disposable matrix 10/10 with PIX 25/25, post-run database/process/artifact checks clean, final independent review APPROVE_BOUNDED, global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED.",
-  "current_retest_evidence": "2026-08-30: CVG-003-BILLING-TENANT-BOUNDARY bounded closure is PASS_BOUNDED/COMPLETE_BOUNDED and committed as c7eb4a00, with BillingService 20/20, compiled billing routes 15/15, bounded integration 21/21, API 530/530, focused BillingService V8 83.68% statements/81.48% branches/87.50% functions, official workspace V8 80.63% statements/81.14% branches/87.18% functions, typecheck/build/security/static controls, worker rail and fresh independent APPROVE review. The polymorphic source-entity residual and unrelated full-lint baseline remain explicit; only the pre-existing tsbuildinfo cache is dirty; global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED remain unchanged.",
-  "updated_at": "2026-08-30T19:24:00-03:00"
+  "current_retest_evidence": "2026-08-31: Encounter focused/affected/critical/API/SPA and workspace quality evidence passed boundedly; the compatible review's attachment, report E2E and visual findings were revalidated, while counter-sale cross-replica allocation and explicit prescription repository account scope remain open. This state is paused at a shutdown checkpoint; no target, production, provider or global promotion claim is made.",
+  "updated_at": "2026-08-31T17:11:30-03:00",
+  "current_task_checkpoint": "EVT-1366 through EVT-1369 record encounter selection, RED, implementation start and review remediation. The three adjacent findings for attachment deletion, report E2E fidelity and visual state coverage were corrected and revalidated; P1 counter-sale cross-replica allocation and P2 explicit prescription repository account scope remain open. EVT-1370 records the shutdown checkpoint; resume from .agent/artifacts/CVG-003-ENCOUNTER-TENANT-BOUNDARY-CHECKPOINT-2026-08-31.md without resetting the mixed dirty worktree."
 }

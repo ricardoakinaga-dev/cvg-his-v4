@@ -67,30 +67,42 @@ test('InpatientService hydrates durable stay aggregate after an API restart', as
   let writes = 0;
   const service = new InpatientService({ getOrThrow: () => undefined } as never, {
     stayRepository: {
-      create: async () => { writes += 1; },
-      update: async () => { writes += 1; },
+      create: async () => {
+        writes += 1;
+      },
+      update: async () => {
+        writes += 1;
+      },
       findById: async () => stay,
       findByEncounterId: async () => [stay],
-      findByAccountId: async (accountId: string) => accountId === stay.accountId ? [stay] : []
+      findByAccountId: async (accountId: string) => (accountId === stay.accountId ? [stay] : [])
     } as never,
     progressRepository: {
-      create: async () => { writes += 1; },
+      create: async () => {
+        writes += 1;
+      },
       findByStayId: async () => [progress]
     },
     occurrenceRepository: {
-      create: async () => { writes += 1; },
+      create: async () => {
+        writes += 1;
+      },
       findByStayId: async () => [occurrence]
     },
     dailyChargeRepository: {
-      create: async () => { writes += 1; },
-      update: async () => { writes += 1; },
+      create: async () => {
+        writes += 1;
+      },
+      update: async () => {
+        writes += 1;
+      },
       findByStayId: async () => [charge]
     }
   });
 
   await service.hydrateAccount(stay.accountId);
 
-  assert.deepEqual(service.list({ accountId: stay.accountId }), [stay]);
+  assert.deepEqual(service.list(stay.accountId), [stay]);
   assert.deepEqual(service.listProgress(stay.id, stay.accountId), [progress]);
   assert.deepEqual(service.listOccurrences(stay.id, stay.accountId), [occurrence]);
   assert.deepEqual(service.listDailyCharges(stay.id, stay.accountId), [charge]);

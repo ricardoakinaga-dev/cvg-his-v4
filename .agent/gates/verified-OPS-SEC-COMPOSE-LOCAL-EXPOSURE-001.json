@@ -1,0 +1,157 @@
+{
+  "record_id": "GATE-OPS-SEC-COMPOSE-LOCAL-EXPOSURE-VFY-001",
+  "timestamp": "2026-08-31T07:26:58-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "Canonical local Compose loopback exposure, Grafana fail-closed configuration, worker readiness/cutover health, Prometheus service DNS, active observability documentation and CI config validation",
+  "scope_ref": "OPS-SEC-COMPOSE-LOCAL-EXPOSURE-001",
+  "version": 1,
+  "active_plan": ".agent/plans/premium-enterprise-mvp.md",
+  "active_task": ".agent/tasks/OPS-SEC-COMPOSE-LOCAL-EXPOSURE-001.md",
+  "verification_state": "VERIFIED_BOUNDED",
+  "next_gate": "SCOUT",
+  "criteria": [
+    {
+      "id": "V-001-LOOPBACK-PORTS",
+      "description": "Every published canonical local Compose port binds to 127.0.0.1 while preserving the established host ports and Caddy contract.",
+      "required": true,
+      "status": "PASS",
+      "confidence": "HIGH",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-OPS-SEC-COMPOSE-LOCAL-EXPOSURE-GREEN-001",
+        "docker-compose.v2.yml",
+        "tests/unit/infra/compose-local-security.test.ts"
+      ],
+      "limitations": "This proves the repository-local Compose declaration only; host firewall and target/production exposure remain outside scope."
+    },
+    {
+      "id": "V-002-GRAFANA-FAIL-CLOSED",
+      "description": "Grafana has no admin/admin fallback, the example password is blank, missing/empty interpolation fails, and CI uses only a synthetic run-scoped value for config validation.",
+      "required": true,
+      "status": "PASS",
+      "confidence": "HIGH",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-OPS-SEC-COMPOSE-LOCAL-EXPOSURE-RENDER-001",
+        ".agent/verification.jsonl#VFY-OPS-SEC-COMPOSE-LOCAL-EXPOSURE-GREEN-001",
+        "docker-compose.v2.yml",
+        ".env.v2.example",
+        ".github/workflows/ci.yml"
+      ],
+      "limitations": "Real credential provisioning and rotation are intentionally excluded."
+    },
+    {
+      "id": "V-003-WORKER-HEALTH-CUTOVER",
+      "description": "The worker healthcheck executes the internal /ready endpoint and distinguishes HTTP 200 from HTTP 503; cutover requires healthy rather than merely running.",
+      "required": true,
+      "status": "PASS",
+      "confidence": "HIGH",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-OPS-SEC-COMPOSE-LOCAL-EXPOSURE-GREEN-001",
+        "docker-compose.v2.yml",
+        "infra/scripts/cutover-v2.sh",
+        "tests/unit/infra/compose-local-security.test.ts"
+      ],
+      "limitations": "This is a repository-local health/cutover contract and does not certify a live target rollout."
+    },
+    {
+      "id": "V-004-PROMETHEUS-DNS-DOCS",
+      "description": "Prometheus uses canonical internal Compose service DNS and ports, has no unnecessary host gateway mapping, and the active README/example document an executable command with explicit env and Compose file selectors.",
+      "required": true,
+      "status": "PASS",
+      "confidence": "HIGH",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-OPS-SEC-COMPOSE-LOCAL-EXPOSURE-GREEN-001",
+        ".agent/verification.jsonl#VFY-OPS-SEC-COMPOSE-LOCAL-EXPOSURE-RENDER-001",
+        "infra/observability/prometheus.yml",
+        "infra/observability/README.md",
+        ".env.v2.example"
+      ],
+      "limitations": "The documented command was validated with a synthetic password override because a real .env.v2 is intentionally absent from the worktree."
+    },
+    {
+      "id": "V-005-REGRESSION-QUALITY",
+      "description": "Focused contracts, infrastructure regressions, Compose rendering and repository quality/security/deploy controls pass.",
+      "required": true,
+      "status": "PASS",
+      "confidence": "HIGH",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-OPS-SEC-COMPOSE-LOCAL-EXPOSURE-GREEN-001",
+        ".agent/verification.jsonl#VFY-OPS-SEC-COMPOSE-LOCAL-EXPOSURE-REGRESSION-001",
+        ".agent/verification.jsonl#VFY-OPS-SEC-COMPOSE-LOCAL-EXPOSURE-QUALITY-001",
+        ".agent/artifacts/OPS-SEC-COMPOSE-LOCAL-EXPOSURE-2026-08-31.md"
+      ],
+      "limitations": "Workspace checks are local; remote CI execution, target operation, disaster recovery and release evidence remain open."
+    },
+    {
+      "id": "V-006-INDEPENDENT-REVIEW",
+      "description": "A fresh independent read-only review returned APPROVE_BOUNDED with no actionable finding after remediation.",
+      "required": true,
+      "status": "PASS",
+      "confidence": "HIGH",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-OPS-SEC-COMPOSE-LOCAL-EXPOSURE-REVIEW-005",
+        ".agent/artifacts/OPS-SEC-COMPOSE-LOCAL-EXPOSURE-2026-08-31.md"
+      ],
+      "limitations": "The review is bounded to the listed repository-local files and does not replace production assurance."
+    },
+    {
+      "id": "V-007-GLOBAL-NON-PROMOTION",
+      "description": "Only the local Compose child is closed; the global ERP remains IN_PROGRESS/PARTIAL and promotion remains BLOCKED.",
+      "required": true,
+      "status": "PASS",
+      "confidence": "HIGH",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-OPS-SEC-COMPOSE-LOCAL-EXPOSURE-GLOBAL-NON-PROMOTION-001",
+        ".agent/state.json",
+        ".agent/backlog.json"
+      ],
+      "limitations": "Global parity, providers, target/production operations, release and resilience gates remain unresolved."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/OPS-SEC-COMPOSE-LOCAL-EXPOSURE-001.md",
+    ".agent/artifacts/OPS-SEC-COMPOSE-LOCAL-EXPOSURE-2026-08-31.md",
+    ".agent/gates/implementation-ready-OPS-SEC-COMPOSE-LOCAL-EXPOSURE-001.json",
+    ".agent/authority.jsonl#AUTH-OPS-SEC-COMPOSE-LOCAL-EXPOSURE-IR-001",
+    "docker-compose.v2.yml",
+    ".env.v2.example",
+    ".github/workflows/ci.yml",
+    "infra/observability/prometheus.yml",
+    "infra/observability/README.md",
+    "infra/scripts/cutover-v2.sh",
+    "tests/unit/infra/compose-local-security.test.ts",
+    "tests/unit/infra/ci-contract.test.ts",
+    ".agent/verification.jsonl#VFY-OPS-SEC-COMPOSE-LOCAL-EXPOSURE-FINAL-001",
+    ".agent/verification.jsonl#VFY-OPS-SEC-COMPOSE-LOCAL-EXPOSURE-CONTROL-PLANE-001"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "Target and production host exposure, firewall, credentials, Helm parity and remote CI remain open.",
+    "Provider homologation, live observability, backup/restore drills, cutover acceptance, Vetus parity, accessibility, operations and release evidence remain open.",
+    "The global ERP remains IN_PROGRESS/PARTIAL and is not promoted by this child gate."
+  ],
+  "conditions": [
+    "Keep the local Compose port numbers and Caddy localhost contract unchanged.",
+    "Do not expand this child into target/production/Helm, real credentials, providers, schema, migrations, RLS, API business logic or release promotion without fresh authority.",
+    "Keep global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via fresh local residual inspection after the prescription bounded closure",
+    "scope": "Repository-local canonical Compose exposure, Grafana secret fallback, worker readiness/cutover health, Prometheus service DNS, active observability documentation and CI config validation",
+    "decision": "Authorize only the bounded local Compose/configuration/docs/test correction and its CI config-validation fixture; exclude target, production, Helm, real credentials and global promotion.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-OPS-SEC-COMPOSE-LOCAL-EXPOSURE-IR-001",
+    "expires_or_revalidates": "Revalidate before changing target/production infrastructure, Helm, real credentials, providers, release behavior or global ERP state."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_BOUNDED",
+  "implementation_status": "COMPLETE_BOUNDED",
+  "next_action": "Preserve the bounded local Compose changes and resume with a fresh residual scout under new authority; do not promote global ERP.",
+  "revalidation_triggers": [
+    "Changing Helm, target, production, firewall, DNS, Caddy deployment or real credentials",
+    "Changing schema, migrations, RLS or application business behavior",
+    "Adding provider or external observability integration",
+    "Attempting global ERP, release or production promotion"
+  ],
+  "supersedes": ".agent/gates/implementation-ready-OPS-SEC-COMPOSE-LOCAL-EXPOSURE-001.json"
+}

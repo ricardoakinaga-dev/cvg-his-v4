@@ -103,7 +103,7 @@ test.skipIf(!runPostgresTest)('persists the canonical laboratory lifecycle and c
   }, async () => {
   const service = new DiagnosticsService(
     {
-      getOrThrow(encounterId: string) {
+      getOrThrow(_accountId: string, encounterId: string) {
         if (encounterId !== encounter.id) throw new Error('Encounter not found');
         return encounter;
       }
@@ -193,7 +193,7 @@ test.skipIf(!runPostgresTest)('persists the canonical laboratory lifecycle and c
 
   const reportedRehydrated = new DiagnosticsService(
     {
-      getOrThrow(encounterId: string) {
+      getOrThrow(_accountId: string, encounterId: string) {
         if (encounterId !== encounter.id) throw new Error('Encounter not found');
         return encounter;
       }
@@ -222,7 +222,7 @@ test.skipIf(!runPostgresTest)('persists the canonical laboratory lifecycle and c
 
   const rehydrated = new DiagnosticsService(
     {
-      getOrThrow(encounterId: string) {
+      getOrThrow(_accountId: string, encounterId: string) {
         if (encounterId !== encounter.id) throw new Error('Encounter not found');
         return encounter;
       }

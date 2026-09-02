@@ -147,7 +147,7 @@ test('EncountersService rolls back speculative cache state after an active-encou
   });
 
   await assert.rejects(() => encounters.waitForPersistence(), ConflictError);
-  assert.deepEqual(encounters.listActive(), []);
+  assert.deepEqual(encounters.listActive('acc_cvg_demo' as never), []);
 });
 test('EncountersService restores the closed timeline after a reopen conflict', async () => {
   const repository = {
@@ -174,15 +174,20 @@ test('EncountersService restores the closed timeline after a reopen conflict', a
     reason: 'Reopen conflict rollback'
   });
   await encounters.waitForPersistence();
-  const closed = encounters.closeEncounter(opened.id, 'user_admin' as never, {
+  const closed = encounters.closeEncounter('acc_cvg_demo' as never, opened.id, 'user_admin' as never, {
     closeReason: 'Close before conflict'
   });
   await encounters.waitForPersistence();
-  const closedTimeline = encounters.listTimeline(closed.id);
+  const closedTimeline = encounters.listTimeline('acc_cvg_demo' as never, closed.id);
 
-  encounters.reopenEncounter(closed.id, 'user_admin' as never, 'Competing active encounter');
+  encounters.reopenEncounter(
+    'acc_cvg_demo' as never,
+    closed.id,
+    'user_admin' as never,
+    'Competing active encounter'
+  );
   await assert.rejects(() => encounters.waitForPersistence(), ConflictError);
 
-  assert.equal(encounters.getOrThrow(closed.id).status, 'closed');
-  assert.deepEqual(encounters.listTimeline(closed.id), closedTimeline);
+  assert.equal(encounters.getOrThrow('acc_cvg_demo' as never, closed.id).status, 'closed');
+  assert.deepEqual(encounters.listTimeline('acc_cvg_demo' as never, closed.id), closedTimeline);
 });

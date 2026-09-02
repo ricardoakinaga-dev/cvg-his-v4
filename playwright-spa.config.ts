@@ -8,11 +8,14 @@ const E2E_DATABASE_URL =
   'postgres://postgres:postgres@127.0.0.1:5433/cvg_his_v2_test';
 const E2E_REDIS_URL =
   process.env.E2E_REDIS_URL || process.env.REDIS_URL || 'redis://127.0.0.1:6381';
-const E2E_DISABLE_INCOMPATIBLE_DB_REPOS = process.env.API_DISABLE_INCOMPATIBLE_DB_REPOS ?? '1';
 const E2E_DATABASE_MODE = process.env.E2E_DATABASE_MODE === '1';
+const E2E_DISABLE_INCOMPATIBLE_DB_REPOS =
+  process.env.API_DISABLE_INCOMPATIBLE_DB_REPOS ?? (E2E_DATABASE_MODE ? '0' : '1');
 
 process.env.API_URL = process.env.API_URL || E2E_API_URL;
 process.env.SPA_URL = process.env.SPA_URL || E2E_SPA_URL;
+process.env.E2E_DATABASE_URL = process.env.E2E_DATABASE_URL || E2E_DATABASE_URL;
+process.env.E2E_REDIS_URL = process.env.E2E_REDIS_URL || E2E_REDIS_URL;
 
 /**
  * Playwright config for SPA E2E tests.

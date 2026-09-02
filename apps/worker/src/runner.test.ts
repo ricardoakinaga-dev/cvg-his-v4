@@ -117,7 +117,11 @@ test('runWorkerTick handles empty notification queue', async () => {
 
   const notifications = createWorkerNotifications({ notificationRepository: mockRepo });
 
-  await runWorkerTick(logger, mockContext, notifications);
+  await runWorkerTick(
+    logger,
+    { ...mockContext, accountId: 'account-worker-default' as never },
+    notifications
+  );
 
   assert.equal(infoCalled, true, 'Logger info should be called');
   assert.equal(infoData.service, 'test-worker');
@@ -129,7 +133,7 @@ test('runWorkerTick scopes queued notifications to the current account', async (
   let queriedAccountId: string | undefined;
   const notifications = createWorkerNotifications({
     notificationRepository: createMockNotificationRepository({
-      findQueuedJobs: async (_limit, accountId) => {
+      findQueuedJobs: async (accountId, _limit) => {
         queriedAccountId = accountId;
         return [];
       }
@@ -1307,7 +1311,10 @@ test('runWorkerTick uses default notifications when none provided', async () => 
     }
   };
 
-  await runWorkerTick(logger, mockContext);
+  await runWorkerTick(logger, {
+    ...mockContext,
+    accountId: 'account-worker-default' as never
+  });
 
   assert.equal(infoCalled, true, 'Should use default notifications');
 });

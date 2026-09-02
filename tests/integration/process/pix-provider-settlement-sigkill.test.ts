@@ -556,8 +556,7 @@ describe.skipIf(!TEST_DB_IS_EPHEMERAL)(
         const workerB = startWorkerProcess({
           accountId: fixture.accountId,
           workerId: `sigkill-b-${checkpoint}`,
-          leaseMs,
-          exitAfterResult: true
+          leaseMs
         });
         const readyB = await workerB.waitFor('PIX_READY');
         expect(Number(readyB.payload.pid)).toBe(workerB.pid);
@@ -574,20 +573,19 @@ describe.skipIf(!TEST_DB_IS_EPHEMERAL)(
         } else {
           expect(result).toMatchObject({ status: 'applied', deliveryId: fixture.deliveryId });
         }
-        const closedB = await workerB.waitForClose();
+        const closedB = await workerB.kill('SIGTERM');
         expect(closedB).toEqual({ code: 0, signal: null });
         expect(workerB.stderr()).toBe('');
 
         const workerC = startWorkerProcess({
           accountId: fixture.accountId,
           workerId: `sigkill-c-${checkpoint}`,
-          leaseMs,
-          exitAfterResult: true
+          leaseMs
         });
         await workerC.waitFor('PIX_READY');
         const idleAfterRestart = await workerC.waitFor('PIX_RESULT');
         expect(idleAfterRestart.payload.result).toMatchObject({ status: 'idle' });
-        expect(await workerC.waitForClose()).toEqual({ code: 0, signal: null });
+        expect(await workerC.kill('SIGTERM')).toEqual({ code: 0, signal: null });
         expect(workerC.stderr()).toBe('');
 
         const finalState = await readSettlementState(fixture);

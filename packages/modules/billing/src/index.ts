@@ -136,7 +136,7 @@ export class BillingService {
   }
 
   private getEncounterForAccount(accountId: AccountId, encounterId: EncounterId) {
-    const encounter = this.#encounters.getOrThrow(encounterId);
+    const encounter = this.#encounters.getOrThrow(accountId, encounterId);
     if (encounter.accountId !== accountId) {
       throw new NotFoundError('Encounter not found', { encounterId });
     }

@@ -12,7 +12,7 @@ function createService() {
     patientId: 'patient_1'
   };
   const encounters = {
-    getOrThrow(encounterId: string) {
+    getOrThrow(_accountId: string, encounterId: string) {
       assert.equal(encounterId, encounter.id);
       return encounter;
     }
@@ -25,17 +25,20 @@ function createService() {
 test('InpatientService admit creates stay linked to encounter', () => {
   const { service, encounter } = createService();
 
-  const stay = service.admit({
-    encounterId: encounter.id,
-    patientId: encounter.patientId,
-    unit: 'UTI',
-    ward: 'Ala A',
-    bed: 'B12'
-  });
+  const stay = service.admit(
+    {
+      encounterId: encounter.id,
+      patientId: encounter.patientId,
+      unit: 'UTI',
+      ward: 'Ala A',
+      bed: 'B12'
+    },
+    encounter.accountId as never
+  );
 
   assert.equal(stay.encounterId, encounter.id);
   assert.equal(stay.status, 'admitted');
-  assert.equal(service.list(encounter.id).length, 1);
+  assert.equal(service.list(encounter.accountId as never, encounter.id).length, 1);
 });
 
 test('InpatientService waits for atomic admission rollback before rejecting persistence', async () => {
@@ -68,18 +71,24 @@ test('InpatientService waits for atomic admission rollback before rejecting pers
       bed: '01',
       bedId: 'bed_atomic'
     },
-    encounter.accountId,
+    encounter.accountId as never,
     encounter.createdByUserId as never
   );
 
   await assert.rejects(() => service.waitForPersistence(), /bed occupation failed/);
   assert.throws(() => service.getOrThrow(stay.id, encounter.accountId as never), NotFoundError);
-  assert.equal(service.list({ encounterId: encounter.id, includeDischarged: true }).length, 0);
+  assert.equal(
+    service.list(encounter.accountId as never, {
+      encounterId: encounter.id,
+      includeDischarged: true
+    }).length,
+    0
+  );
 });
 
 test('InpatientService list filters stays by patient across encounters', () => {
   const encounters = {
-    getOrThrow(encounterId: string) {
+    getOrThrow(_accountId: string, encounterId: string) {
       return {
         id: encounterId,
         accountId: 'acc_test',
@@ -89,27 +98,36 @@ test('InpatientService list filters stays by patient across encounters', () => {
   };
   const service = new InpatientService(encounters as never);
 
-  service.admit({
-    encounterId: 'encounter_1',
-    patientId: 'patient_1',
-    unit: 'UTI',
-    ward: 'Ala A',
-    bed: 'B12'
-  });
-  service.admit({
-    encounterId: 'encounter_2',
-    patientId: 'patient_2',
-    unit: 'Internacao',
-    ward: 'Ala B',
-    bed: 'B03'
-  });
-  const historicalStay = service.admit({
-    encounterId: 'encounter_3',
-    patientId: 'patient_1',
-    unit: 'Internacao',
-    ward: 'Ala C',
-    bed: 'C01'
-  });
+  service.admit(
+    {
+      encounterId: 'encounter_1',
+      patientId: 'patient_1',
+      unit: 'UTI',
+      ward: 'Ala A',
+      bed: 'B12'
+    },
+    'acc_test' as never
+  );
+  service.admit(
+    {
+      encounterId: 'encounter_2',
+      patientId: 'patient_2',
+      unit: 'Internacao',
+      ward: 'Ala B',
+      bed: 'B03'
+    },
+    'acc_test' as never
+  );
+  const historicalStay = service.admit(
+    {
+      encounterId: 'encounter_3',
+      patientId: 'patient_1',
+      unit: 'Internacao',
+      ward: 'Ala C',
+      bed: 'C01'
+    },
+    'acc_test' as never
+  );
   service.updateStatus(
     historicalStay.id,
     {
@@ -120,22 +138,28 @@ test('InpatientService list filters stays by patient across encounters', () => {
   );
 
   assert.deepEqual(
-    service.list({ patientId: 'patient_1' }).map((stay) => stay.patientId),
+    service.list('acc_test' as never, { patientId: 'patient_1' }).map((stay) => stay.patientId),
     ['patient_1']
   );
-  assert.equal(service.list({ patientId: 'patient_1' }).length, 1);
-  assert.equal(service.list({ patientId: 'patient_1', includeDischarged: true }).length, 2);
+  assert.equal(service.list('acc_test' as never, { patientId: 'patient_1' }).length, 1);
+  assert.equal(
+    service.list('acc_test' as never, { patientId: 'patient_1', includeDischarged: true }).length,
+    2
+  );
 });
 
 test('InpatientService addProgress records authored progress note', () => {
   const { service, encounter } = createService();
-  const stay = service.admit({
-    encounterId: encounter.id,
-    patientId: encounter.patientId,
-    unit: 'Internacao',
-    ward: 'Ala B',
-    bed: 'B03'
-  });
+  const stay = service.admit(
+    {
+      encounterId: encounter.id,
+      patientId: encounter.patientId,
+      unit: 'Internacao',
+      ward: 'Ala B',
+      bed: 'B03'
+    },
+    encounter.accountId as never
+  );
 
   const progress = service.addProgress(
     'doctor_1' as never,
@@ -153,13 +177,16 @@ test('InpatientService addProgress records authored progress note', () => {
 
 test('InpatientService records structured inpatient occurrence for operational handover', () => {
   const { service, encounter } = createService();
-  const stay = service.admit({
-    encounterId: encounter.id,
-    patientId: encounter.patientId,
-    unit: 'Internacao',
-    ward: 'Ala B',
-    bed: 'B03'
-  });
+  const stay = service.admit(
+    {
+      encounterId: encounter.id,
+      patientId: encounter.patientId,
+      unit: 'Internacao',
+      ward: 'Ala B',
+      bed: 'B03'
+    },
+    encounter.accountId as never
+  );
 
   const occurrence = service.addOccurrence(
     'nurse_1' as never,
@@ -177,21 +204,21 @@ test('InpatientService records structured inpatient occurrence for operational h
   assert.equal(occurrence.type, 'clinical');
   assert.equal(occurrence.severity, 'attention');
   assert.equal(occurrence.authoredByUserId, 'nurse_1');
-  assert.equal(
-    service.listOccurrences(stay.id, stay.accountId)[0]?.title,
-    'Hiporexia no plantao'
-  );
+  assert.equal(service.listOccurrences(stay.id, stay.accountId)[0]?.title, 'Hiporexia no plantao');
 });
 
 test('InpatientService manages daily charge lifecycle for inpatient billing', () => {
   const { service, encounter } = createService();
-  const stay = service.admit({
-    encounterId: encounter.id,
-    patientId: encounter.patientId,
-    unit: 'UTI',
-    ward: 'Ala A',
-    bed: 'B12'
-  });
+  const stay = service.admit(
+    {
+      encounterId: encounter.id,
+      patientId: encounter.patientId,
+      unit: 'UTI',
+      ward: 'Ala A',
+      bed: 'B12'
+    },
+    encounter.accountId as never
+  );
 
   const charge = service.createDailyCharge(
     'admin_1' as never,
@@ -227,7 +254,7 @@ test('InpatientService manages daily charge lifecycle for inpatient billing', ()
 
 test('InpatientService lists daily charge worklist filtered by status and ward', () => {
   const encounters = {
-    getOrThrow(encounterId: string) {
+    getOrThrow(_accountId: string, encounterId: string) {
       return {
         id: encounterId,
         accountId: 'acc_test',
@@ -236,20 +263,26 @@ test('InpatientService lists daily charge worklist filtered by status and ward',
     }
   };
   const service = new InpatientService(encounters as never);
-  const firstStay = service.admit({
-    encounterId: 'encounter_1',
-    patientId: 'patient_1',
-    unit: 'UTI',
-    ward: 'Ala A',
-    bed: 'B12'
-  });
-  const secondStay = service.admit({
-    encounterId: 'encounter_2',
-    patientId: 'patient_2',
-    unit: 'Internacao',
-    ward: 'Ala B',
-    bed: 'B03'
-  });
+  const firstStay = service.admit(
+    {
+      encounterId: 'encounter_1',
+      patientId: 'patient_1',
+      unit: 'UTI',
+      ward: 'Ala A',
+      bed: 'B12'
+    },
+    'acc_test' as never
+  );
+  const secondStay = service.admit(
+    {
+      encounterId: 'encounter_2',
+      patientId: 'patient_2',
+      unit: 'Internacao',
+      ward: 'Ala B',
+      bed: 'B03'
+    },
+    'acc_test' as never
+  );
   const billed = service.createDailyCharge(
     'admin_1' as never,
     {
@@ -261,7 +294,12 @@ test('InpatientService lists daily charge worklist filtered by status and ward',
     },
     firstStay.accountId
   );
-  service.markDailyChargeBilled(firstStay.id, billed.id, { billingRecordId: 'bill_1' }, firstStay.accountId);
+  service.markDailyChargeBilled(
+    firstStay.id,
+    billed.id,
+    { billingRecordId: 'bill_1' },
+    firstStay.accountId
+  );
   service.createDailyCharge(
     'admin_1' as never,
     {
@@ -274,25 +312,28 @@ test('InpatientService lists daily charge worklist filtered by status and ward',
     secondStay.accountId
   );
 
-  const pending = service.listDailyChargeWorklist({ status: 'pending' });
+  const pending = service.listDailyChargeWorklist('acc_test' as never, { status: 'pending' });
   assert.equal(pending.length, 1);
   assert.equal(pending[0]?.ward, 'Ala B');
   assert.equal(pending[0]?.totalAmount, 240);
 
-  const alaA = service.listDailyChargeWorklist({ ward: 'Ala A' });
+  const alaA = service.listDailyChargeWorklist('acc_test' as never, { ward: 'Ala A' });
   assert.equal(alaA.length, 1);
   assert.equal(alaA[0]?.status, 'billed');
 });
 
 test('InpatientService updateStatus persists latest status', () => {
   const { service, encounter } = createService();
-  const stay = service.admit({
-    encounterId: encounter.id,
-    patientId: encounter.patientId,
-    unit: 'Internacao',
-    ward: 'Ala C',
-    bed: 'C08'
-  });
+  const stay = service.admit(
+    {
+      encounterId: encounter.id,
+      patientId: encounter.patientId,
+      unit: 'Internacao',
+      ward: 'Ala C',
+      bed: 'C08'
+    },
+    encounter.accountId as never
+  );
 
   const updated = service.updateStatus(
     stay.id,
@@ -320,7 +361,7 @@ test('InpatientService rejects foreign-account stay operations at the domain bou
   const accountA = 'acc_inpatient_a';
   const accountB = 'acc_inpatient_b';
   const encounters = {
-    getOrThrow(encounterId: string) {
+    getOrThrow(_accountId: string, encounterId: string) {
       return {
         id: encounterId,
         accountId: encounterId === 'encounter_b' ? accountB : accountA,
@@ -329,29 +370,21 @@ test('InpatientService rejects foreign-account stay operations at the domain bou
     }
   };
   const service = new InpatientService(encounters as never);
-  const foreignStay = service.admit({
-    encounterId: 'encounter_b',
-    patientId: 'encounter_b_patient',
-    unit: 'Internacao',
-    ward: 'Ala B',
-    bed: 'B-01'
-  });
+  const foreignStay = service.admit(
+    {
+      encounterId: 'encounter_b',
+      patientId: 'encounter_b_patient',
+      unit: 'Internacao',
+      ward: 'Ala B',
+      bed: 'B-01'
+    },
+    accountB as never
+  );
 
+  assert.throws(() => service.getOrThrow(foreignStay.id, accountA as never), NotFoundError);
+  assert.throws(() => service.listProgress(foreignStay.id, accountA as never), NotFoundError);
   assert.throws(
-    () => service.getOrThrow(foreignStay.id, accountA as never),
-    NotFoundError
-  );
-  assert.throws(
-    () => service.listProgress(foreignStay.id, accountA as never),
-    NotFoundError
-  );
-  assert.throws(
-    () =>
-      service.updateStatus(
-        foreignStay.id,
-        { status: 'stable' },
-        accountA as never
-      ),
+    () => service.updateStatus(foreignStay.id, { status: 'stable' }, accountA as never),
     NotFoundError
   );
 });
@@ -359,13 +392,16 @@ test('InpatientService rejects foreign-account stay operations at the domain bou
 test('InpatientService updateStatus allows valid transitions', () => {
   const { service, encounter } = createService();
 
-  const stay = service.admit({
-    encounterId: encounter.id,
-    patientId: encounter.patientId,
-    unit: 'UTI',
-    ward: 'Ala A',
-    bed: 'B12'
-  });
+  const stay = service.admit(
+    {
+      encounterId: encounter.id,
+      patientId: encounter.patientId,
+      unit: 'UTI',
+      ward: 'Ala A',
+      bed: 'B12'
+    },
+    encounter.accountId as never
+  );
 
   const toStable = service.updateStatus(stay.id, { status: 'stable' }, stay.accountId);
   assert.equal(toStable.status, 'stable');
@@ -386,13 +422,16 @@ test('InpatientService updateStatus allows valid transitions', () => {
 test('InpatientService updateStatus blocks invalid transitions', () => {
   const { service, encounter } = createService();
 
-  const stay = service.admit({
-    encounterId: encounter.id,
-    patientId: encounter.patientId,
-    unit: 'UTI',
-    ward: 'Ala A',
-    bed: 'B12'
-  });
+  const stay = service.admit(
+    {
+      encounterId: encounter.id,
+      patientId: encounter.patientId,
+      unit: 'UTI',
+      ward: 'Ala A',
+      bed: 'B12'
+    },
+    encounter.accountId as never
+  );
 
   service.updateStatus(
     stay.id,
@@ -412,13 +451,16 @@ test('InpatientService updateStatus blocks invalid transitions', () => {
 test('InpatientService updateStatus records transfer metadata', () => {
   const { service, encounter } = createService();
 
-  const stay = service.admit({
-    encounterId: encounter.id,
-    patientId: encounter.patientId,
-    unit: 'UTI',
-    ward: 'Ala A',
-    bed: 'B12'
-  });
+  const stay = service.admit(
+    {
+      encounterId: encounter.id,
+      patientId: encounter.patientId,
+      unit: 'UTI',
+      ward: 'Ala A',
+      bed: 'B12'
+    },
+    encounter.accountId as never
+  );
 
   const transferred = service.updateStatus(
     stay.id,
@@ -438,13 +480,16 @@ test('InpatientService updateStatus records transfer metadata', () => {
 test('InpatientService updateStatus requires discharge reason and transfer target', () => {
   const { service, encounter } = createService();
 
-  const stay = service.admit({
-    encounterId: encounter.id,
-    patientId: encounter.patientId,
-    unit: 'UTI',
-    ward: 'Ala A',
-    bed: 'B12'
-  });
+  const stay = service.admit(
+    {
+      encounterId: encounter.id,
+      patientId: encounter.patientId,
+      unit: 'UTI',
+      ward: 'Ala A',
+      bed: 'B12'
+    },
+    encounter.accountId as never
+  );
 
   assert.throws(
     () => service.updateStatus(stay.id, { status: 'discharged' }, stay.accountId),
@@ -459,13 +504,16 @@ test('InpatientService updateStatus requires discharge reason and transfer targe
 
 test('InpatientService buildHandoverPreview summarizes latest progress and transfer attention', () => {
   const { service, encounter } = createService();
-  const stay = service.admit({
-    encounterId: encounter.id,
-    patientId: encounter.patientId,
-    unit: 'UTI',
-    ward: 'Ala A',
-    bed: 'B12'
-  });
+  const stay = service.admit(
+    {
+      encounterId: encounter.id,
+      patientId: encounter.patientId,
+      unit: 'UTI',
+      ward: 'Ala A',
+      bed: 'B12'
+    },
+    encounter.accountId as never
+  );
 
   service.addProgress(
     'doctor_1' as never,
@@ -476,7 +524,7 @@ test('InpatientService buildHandoverPreview summarizes latest progress and trans
     stay.accountId
   );
 
-  const preview = service.buildHandoverPreview({ ward: 'Ala A' });
+  const preview = service.buildHandoverPreview('acc_test' as never, { ward: 'Ala A' });
   assert.equal(preview.totalActiveStays, 1);
   assert.equal(preview.items[0]?.stayId, stay.id);
   assert.equal(preview.items[0]?.latestProgressNote, 'Pendente reavaliacao hemodinamica');

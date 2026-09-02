@@ -1,16 +1,36 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { queryMock, withTenantQueryMock } = vi.hoisted(() => {
+const {
+  queryMock,
+  withTenantQueryMock,
+  runInTenantTransactionMock,
+  acquireTenantAuthorizationLockMock
+} = vi.hoisted(() => {
   const queryMock = vi.fn();
   const withTenantQueryMock = vi.fn(
     async (_pool: unknown, fn: (client: { query: typeof queryMock }) => Promise<unknown>) =>
       fn({ query: queryMock })
   );
-  return { queryMock, withTenantQueryMock };
+  const runInTenantTransactionMock = vi.fn(
+    async (
+      _pool: unknown,
+      _accountId: string,
+      fn: (client: { query: typeof queryMock }) => Promise<unknown>
+    ) => fn({ query: queryMock })
+  );
+  const acquireTenantAuthorizationLockMock = vi.fn(async (_accountId: string) => undefined);
+  return {
+    queryMock,
+    withTenantQueryMock,
+    runInTenantTransactionMock,
+    acquireTenantAuthorizationLockMock
+  };
 });
 
 vi.mock('@cvg-his-v2/shared-database', () => ({
-  getPool: vi.fn(() => ({ mocked: true }))
+  getPool: vi.fn(() => ({ mocked: true })),
+  runInTenantTransaction: runInTenantTransactionMock,
+  acquireTenantAuthorizationLock: acquireTenantAuthorizationLockMock
 }));
 
 vi.mock('@cvg-his-v2/tenant-context', () => ({
@@ -21,6 +41,7 @@ import { NotFoundError } from '@cvg-his-v2/shared-errors';
 import {
   DatabaseCounterSalesRepository,
   type CounterSaleItemRecord,
+  type CounterSaleDraft,
   type CounterSaleRecord
 } from '../../../packages/modules/counter-sales/src/repositories/database-counter-sales.repository.js';
 
@@ -81,6 +102,73 @@ describe('DatabaseCounterSalesRepository item tenant boundaries', () => {
       expect.stringMatching(/WHERE id = \$1\s+AND account_id = \$2/),
       expect.arrayContaining(['sale-1', 'account-1'])
     );
+  });
+
+  it('allocates the next number under an account transaction lock and returns the persisted sale', async () => {
+    queryMock
+      .mockResolvedValueOnce({ rows: [{ max_number: '900001' }] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: sale.id,
+            account_id: sale.accountId,
+            number: 'CS-900002',
+            owner_id: null,
+            patient_id: null,
+            encounter_id: null,
+            queue_entry_id: null,
+            billing_record_id: null,
+            status: 'cancelled',
+            subtotal: '100.00',
+            discount_amount: '0.00',
+            total: '100.00',
+            paid_amount: '0.00',
+            balance_due: '100.00',
+            notes: null,
+            opened_by_user_id: 'user-1',
+            closed_by_user_id: null,
+            closed_at: null,
+            created_at: sale.createdAt,
+            updated_at: sale.updatedAt
+          }
+        ],
+        rowCount: 1
+      });
+    const draft: CounterSaleDraft = {
+      id: sale.id,
+      accountId: sale.accountId,
+      ownerId: sale.ownerId,
+      patientId: sale.patientId,
+      encounterId: sale.encounterId,
+      queueEntryId: sale.queueEntryId,
+      billingRecordId: sale.billingRecordId,
+      status: sale.status,
+      subtotal: sale.subtotal,
+      discountAmount: sale.discountAmount,
+      total: sale.total,
+      paidAmount: sale.paidAmount,
+      balanceDue: sale.balanceDue,
+      notes: sale.notes,
+      openedByUserId: sale.openedByUserId,
+      closedByUserId: sale.closedByUserId,
+      closedAt: sale.closedAt,
+      createdAt: sale.createdAt,
+      updatedAt: sale.updatedAt
+    };
+
+    const allocated = await new DatabaseCounterSalesRepository().createWithNextNumber(draft);
+
+    expect(allocated.number).toBe('CS-900002');
+    expect(runInTenantTransactionMock).toHaveBeenCalledWith(
+      expect.anything(),
+      sale.accountId,
+      expect.any(Function)
+    );
+    expect(acquireTenantAuthorizationLockMock).toHaveBeenCalledWith(sale.accountId);
+    expect(queryMock.mock.calls[0]?.[0]).toMatch(/MAX\([\s\S]*account_id = \$1/);
+    expect(queryMock.mock.calls[0]?.[1]).toEqual([sale.accountId]);
+    expect(queryMock.mock.calls[1]?.[0]).toMatch(/RETURNING \*/);
+    expect(queryMock.mock.calls[1]?.[1]).toContain('CS-900002');
   });
 
   it('locks a sale with the explicit account predicate', async () => {

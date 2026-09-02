@@ -563,11 +563,12 @@ describe('worker event consumers with PostgreSQL and RLS', () => {
         () => pixRepository.findByTransactionId(accountAFixture.cardIntentId)
       )
     ).resolves.toBeNull();
-    const foreignOutbox = await runWithTenantContext(
-      { tenantId: accountB, accountId: accountB, correlationId: randomUUID() },
-      () => workerEventBus.getEvent(accountAFixture.accountId, accountAFixture.patientEventId)
-    );
-    expect(foreignOutbox).toBeNull();
+    await expect(
+      runWithTenantContext(
+        { tenantId: accountB, accountId: accountB, correlationId: randomUUID() },
+        () => workerEventBus.getEvent(accountAFixture.accountId, accountAFixture.patientEventId)
+      )
+    ).rejects.toThrow('Outbox administration account does not match tenant context');
   });
 
   it('claims webhook deliveries once across workers and keeps retry state durable', async () => {

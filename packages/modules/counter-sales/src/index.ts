@@ -10,6 +10,7 @@ import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
 import type {
   CounterSalesRepository,
   CounterSaleRecord,
+  CounterSaleDraft,
   CounterSaleItemRecord,
   CounterSalePaymentRecord,
   CounterSaleReceiptRecord,
@@ -301,7 +302,7 @@ export class CounterSalesService {
   readonly #closeLocks = new Map<string, Promise<CounterSaleCloseResult>>();
   readonly #cancelLocks = new Map<string, Promise<CounterSaleSummary>>();
   readonly #cancellationHistory = new Map<string, readonly CounterSaleCancellationHistory[]>();
-  #numberCounter = 0;
+  readonly #numberCounters = new Map<AccountId, number>();
 
   public constructor(options?: CounterSalesServiceOptions) {
     this.#repository = options?.repository;
@@ -324,6 +325,7 @@ export class CounterSalesService {
   public async hydrateFromDatabase(accountId: AccountId): Promise<void> {
     if (!this.#repository) return;
     const sales = await this.#repository.findByAccountId(accountId);
+
     for (const sale of sales) {
       this.#sales.set(sale.id, sale);
       const items = await this.#repository.findItemsBySaleId(accountId, sale.id);
@@ -341,9 +343,14 @@ export class CounterSalesService {
     }
   }
 
-  #nextNumber(): string {
-    this.#numberCounter++;
-    return `CS-${String(this.#numberCounter).padStart(6, '0')}`;
+  #nextNumber(accountId: AccountId): string {
+    const current = this.#numberCounters.get(accountId) ?? 0;
+    const next = current + 1;
+    if (!Number.isSafeInteger(next)) {
+      throw new ConflictError('Counter sale number sequence is exhausted', { accountId });
+    }
+    this.#numberCounters.set(accountId, next);
+    return `CS-${String(next).padStart(6, '0')}`;
   }
 
   #recalculate(saleId: string): CounterSaleSummary {
@@ -473,16 +480,21 @@ export class CounterSalesService {
       }
       return value.trim();
     };
+    const ownerId = input?.ownerId ?? null;
+    const patientId = normalizeContextId(input?.patientId, 'patientId');
+    const encounterId = normalizeContextId(input?.encounterId, 'encounterId');
+    const queueEntryId = normalizeContextId(input?.queueEntryId, 'queueEntryId');
+    const billingRecordId = normalizeContextId(input?.billingRecordId, 'billingRecordId');
+
     const now = nowIso();
-    const sale: CounterSaleSummary = {
+    const saleDraft: CounterSaleDraft = {
       id: this.#nextId('cs'),
       accountId,
-      number: this.#nextNumber(),
-      ownerId: input?.ownerId ?? null,
-      patientId: normalizeContextId(input?.patientId, 'patientId'),
-      encounterId: normalizeContextId(input?.encounterId, 'encounterId'),
-      queueEntryId: normalizeContextId(input?.queueEntryId, 'queueEntryId'),
-      billingRecordId: normalizeContextId(input?.billingRecordId, 'billingRecordId'),
+      ownerId,
+      patientId,
+      encounterId,
+      queueEntryId,
+      billingRecordId,
       status: 'open',
       subtotal: 0,
       discountAmount: 0,
@@ -497,13 +509,22 @@ export class CounterSalesService {
       updatedAt: now
     };
 
-    this.#sales.set(sale.id, sale);
-
     if (this.#repository) {
-      const record: CounterSaleRecord = sale;
-      await this.#repository.create(record);
+      const persisted = await this.#repository.createWithNextNumber(saleDraft);
+      if (persisted.accountId !== accountId) {
+        throw new AuthenticationError('Counter sale repository returned a foreign account row', {
+          saleId: persisted.id
+        });
+      }
+      this.#sales.set(persisted.id, persisted);
+      return persisted;
     }
 
+    const sale: CounterSaleSummary = {
+      ...saleDraft,
+      number: this.#nextNumber(accountId)
+    };
+    this.#sales.set(sale.id, sale);
     return sale;
   }
 
@@ -1608,6 +1629,7 @@ export class CounterSalesService {
 export {
   DatabaseCounterSalesRepository,
   type CounterSalesRepository,
+  type CounterSaleDraft,
   type CounterSaleRecord,
   type CounterSaleItemRecord,
   type CounterSalePaymentRecord,

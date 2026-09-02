@@ -5,7 +5,7 @@ import {
   InMemoryPrescriptionRepository,
   PrescriptionsService
 } from '@cvg-his-v2/module-prescriptions';
-import { ValidationError } from '@cvg-his-v2/shared-errors';
+import { NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 
 import { handlePrescriptionRoutes } from '../../apps/api/src/routes/prescription-routes.js';
@@ -135,7 +135,7 @@ describe('Prescriptions API integration', () => {
       medicalRecordId: string;
       medicationName: string;
     }>();
-    const persisted = await repository.findById(created.id as never);
+    const persisted = await repository.findById(created.id as never, 'acc-1' as never);
 
     expect(handled).toBe(true);
     expect(response.statusCode).toBe(201);
@@ -291,5 +291,75 @@ describe('Prescriptions API integration', () => {
         createHandlers(service)
       )
     ).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  it('rejects foreign detail, document, revision and command routes without mutation', async () => {
+    const repository = new InMemoryPrescriptionRepository();
+    const service = new PrescriptionsService({ prescriptionRepository: repository });
+    const foreign = service.create('acc-2' as never, 'user-2' as never, {
+      medicalRecordId: 'mr-2',
+      encounterId: 'enc-2',
+      patientId: 'pat-2',
+      medicationName: 'Prednisona'
+    });
+    await service.waitForPersistence();
+    const before = service.getById('acc-2' as never, foreign.id);
+    const beforeRevisions = service.getRevisions('acc-2' as never, foreign.id);
+
+    const requests: Array<{ pathname: string; request: object }> = [
+      {
+        pathname: `/prescriptions/${foreign.id}`,
+        request: { method: 'GET', url: `/prescriptions/${foreign.id}` }
+      },
+      {
+        pathname: `/prescriptions/${foreign.id}/document`,
+        request: createMockRequest('POST', `/prescriptions/${foreign.id}/document`, {
+          clinic: { name: 'CVG' },
+          owner: { name: 'Maria' },
+          patient: { name: 'Luna' },
+          professional: { name: 'Dra. Ana' }
+        })
+      },
+      {
+        pathname: `/prescriptions/${foreign.id}/revisions`,
+        request: { method: 'GET', url: `/prescriptions/${foreign.id}/revisions` }
+      },
+      {
+        pathname: `/prescriptions/${foreign.id}/sign`,
+        request: createMockRequest('POST', `/prescriptions/${foreign.id}/sign`, {
+          expectedVersion: 1
+        })
+      },
+      {
+        pathname: `/prescriptions/${foreign.id}`,
+        request: createMockRequest('PATCH', `/prescriptions/${foreign.id}`, {
+          title: 'Alteracao cruzada',
+          reason: 'nao autorizado'
+        })
+      },
+      {
+        pathname: `/prescriptions/${foreign.id}`,
+        request: createMockRequest('DELETE', `/prescriptions/${foreign.id}`, {
+          reason: 'nao autorizado'
+        })
+      }
+    ];
+
+    for (const { pathname, request } of requests) {
+      await expect(
+        handlePrescriptionRoutes(
+          pathname,
+          request as never,
+          new MockResponse() as never,
+          `corr-rx-foreign-${pathname}`,
+          createHandlers(service, 'acc-1')
+        )
+      ).rejects.toBeInstanceOf(NotFoundError);
+    }
+
+    expect(service.getById('acc-2' as never, foreign.id)).toEqual(before);
+    expect(service.getRevisions('acc-2' as never, foreign.id)).toEqual(beforeRevisions);
+    await service.waitForPersistence();
+    expect(await repository.findById(foreign.id, 'acc-2' as never)).toEqual(before);
   });
 });

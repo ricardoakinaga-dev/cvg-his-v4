@@ -7,7 +7,7 @@ import { BillingService, type BillingRepository } from './index.js';
 
 function createService() {
   return new BillingService({
-    getOrThrow(encounterId: string) {
+    getOrThrow(_accountId: string, encounterId: string) {
       return {
         id: encounterId,
         accountId: 'acc_test',
@@ -115,7 +115,7 @@ test('BillingService replays a source-linked item without creating a duplicate',
   const repository = createRepository();
   const service = new BillingService(
     {
-      getOrThrow(encounterId: string) {
+      getOrThrow(_accountId: string, encounterId: string) {
         return {
           id: encounterId,
           accountId: 'acc_test',
@@ -160,7 +160,7 @@ test('BillingService does not trust an uncommitted source item in the hot cache'
   });
   const service = new BillingService(
     {
-      getOrThrow(encounterId: string) {
+      getOrThrow(_accountId: string, encounterId: string) {
         return {
           id: encounterId,
           accountId: 'acc_test',
@@ -192,7 +192,7 @@ test('BillingService read methods do not create billing records', async () => {
   let created = 0;
   const service = new BillingService(
     {
-      getOrThrow(encounterId: string) {
+      getOrThrow(_accountId: string, encounterId: string) {
         return {
           id: encounterId,
           accountId: 'acc_test',
@@ -219,7 +219,7 @@ test('BillingService createEstimate explicitly creates repository record', async
   let created = 0;
   const service = new BillingService(
     {
-      getOrThrow(encounterId: string) {
+      getOrThrow(_accountId: string, encounterId: string) {
         return {
           id: encounterId,
           accountId: 'acc_test',
@@ -283,7 +283,7 @@ test('BillingService addItem explicitly creates record when missing and persists
   const createdItems: string[] = [];
   const service = new BillingService(
     {
-      getOrThrow(encounterId: string) {
+      getOrThrow(_accountId: string, encounterId: string) {
         return {
           id: encounterId,
           accountId: 'acc_test',
@@ -324,7 +324,7 @@ test('BillingService updateStatus does not create a missing persistent record', 
   let created = 0;
   const service = new BillingService(
     {
-      getOrThrow(encounterId: string) {
+      getOrThrow(_accountId: string, encounterId: string) {
         return {
           id: encounterId,
           accountId: 'acc_test',
@@ -431,7 +431,7 @@ test('BillingService list filters by encounter', async () => {
 
 test('BillingService list filters by patient and owner without losing encounter filter compatibility', async () => {
   const service = new BillingService({
-    getOrThrow(encounterId: string) {
+    getOrThrow(_accountId: string, encounterId: string) {
       const isSecondEncounter = encounterId === 'encounter_2';
       return {
         id: encounterId,
@@ -507,7 +507,7 @@ test('BillingService hydrates records and items from repository', async () => {
 
   const service = new BillingService(
     {
-      getOrThrow(encounterId: string) {
+      getOrThrow(_accountId: string, encounterId: string) {
         return {
           id: encounterId,
           accountId: 'acc_test',
@@ -574,7 +574,7 @@ test('BillingService filters foreign and malformed repository data during hydrat
   });
   const service = new BillingService(
     {
-      getOrThrow(encounterId: string) {
+      getOrThrow(_accountId: string, encounterId: string) {
         return {
           id: encounterId,
           accountId: 'acc_test',
@@ -636,7 +636,7 @@ test('BillingService never resurrects cached items after the repository becomes 
   });
   const service = new BillingService(
     {
-      getOrThrow(encounterId: string) {
+      getOrThrow(_accountId: string, encounterId: string) {
         return {
           id: encounterId,
           accountId: 'acc_test',
@@ -675,7 +675,7 @@ test('BillingService refreshes cached records from the authoritative repository'
   });
   const service = new BillingService(
     {
-      getOrThrow(encounterId: string) {
+      getOrThrow(_accountId: string, encounterId: string) {
         return {
           id: encounterId,
           accountId: 'acc_test',
@@ -767,7 +767,7 @@ test('BillingService reuses repository record and triggers callbacks only on rea
 
   const service = new BillingService(
     {
-      getOrThrow(encounterId: string) {
+      getOrThrow(_accountId: string, encounterId: string) {
         return {
           id: encounterId,
           accountId: 'acc_test',
@@ -824,7 +824,7 @@ test('BillingService requires account scope for every record and command boundar
     ]
   ]);
   const service = new BillingService({
-    getOrThrow(encounterId: string) {
+    getOrThrow(_accountId: string, encounterId: string) {
       const encounter = encounters.get(encounterId);
       if (!encounter) throw new NotFoundError('Encounter not found', { encounterId });
       return encounter;

@@ -367,7 +367,7 @@ export class DiagnosticsService {
   }
 
   private getEncounterForAccount(accountId: AccountId, encounterId: string) {
-    const encounter = this.#encounters.getOrThrow(encounterId as never);
+    const encounter = this.#encounters.getOrThrow(accountId, encounterId as never);
     if (encounter.accountId !== accountId) {
       throw new NotFoundError('Encounter not found', { encounterId });
     }

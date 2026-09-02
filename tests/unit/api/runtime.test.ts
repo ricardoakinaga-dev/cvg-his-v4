@@ -171,7 +171,9 @@ describe('runtime', () => {
     });
     await runtime.eventBus.processPending(10);
 
-    await expect(runtime.encounterFinancial.getSummary(encounter.id)).resolves.toEqual(
+    await expect(
+      runtime.encounterFinancial.getSummary(principal.user.accountId, encounter.id)
+    ).resolves.toEqual(
       expect.objectContaining({
         balanceDue: 0,
         financialStatus: 'paid',

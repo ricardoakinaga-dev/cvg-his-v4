@@ -30,6 +30,7 @@ const HEADING_SELECTOR = 'h1, h2, h3, [role="heading"]';
 const VISUAL_OWNER_NAME = 'Maria Visual Snapshot';
 const VISUAL_OWNER_DOCUMENT = 'VISUAL-OWNER-001';
 const VISUAL_PATIENT_NAME = 'Luna Visual Snapshot';
+const VISUAL_COUNTER_SALE_ITEM_NAME = 'Consulta Visual';
 
 test.describe('Visual Regression — List Pages', () => {
   test.use({ viewport: { width: 1280, height: 720 } });
@@ -111,6 +112,7 @@ test.describe('Visual Regression — List Pages', () => {
     const owner = await createVisualOwner(token);
     const patient = await createVisualPatient(token, owner.id);
     const appointment = await createVisualAppointment(token, patient.id, owner.id);
+    await installVisualAppointmentClock(page);
 
     try {
       await stubVisualSchedulingOverview(page, appointment.id);
@@ -405,12 +407,9 @@ test.describe('Visual Regression — Theme and Responsive Shell', () => {
     });
 
     test('counter sales page', async ({ page }) => {
-      await capturePageVisual(
-        page,
-        '/counter-sales',
-        '.counter-sales-page',
-        'counter-sales-page-dark.png'
-      );
+      await captureCounterSalesVisual(page, 'counter-sales-page-dark.png', {
+        forceLightTheme: false
+      });
     });
 
     test('reception gateway page', async ({ page }) => {
@@ -441,6 +440,12 @@ test.describe('Visual Regression — Theme and Responsive Shell', () => {
         expandSidebar: false
       });
     });
+
+    test('counter sales data state', async ({ page }) => {
+      await captureCounterSalesVisual(page, 'counter-sales-page-mobile.png', {
+        expandSidebar: false
+      });
+    });
   });
 
   test.describe('mobile dark', () => {
@@ -458,6 +463,23 @@ test.describe('Visual Regression — Theme and Responsive Shell', () => {
         forceLightTheme: false,
         expandSidebar: false
       });
+    });
+
+    test('counter sales data state', async ({ page }) => {
+      await captureCounterSalesVisual(page, 'counter-sales-page-mobile-dark.png', {
+        forceLightTheme: false,
+        expandSidebar: false
+      });
+    });
+  });
+});
+
+test.describe('Visual Regression — Counter sales data state', () => {
+  test.describe('light desktop', () => {
+    test.use({ viewport: { width: 1280, height: 720 }, colorScheme: 'light' });
+
+    test('counter sales page', async ({ page }) => {
+      await captureCounterSalesVisual(page, 'counter-sales-page-light.png');
     });
   });
 });
@@ -645,7 +667,7 @@ async function capturePageVisual(
 ): Promise<void> {
   await ensureAuthToken(page);
   if (route === '/queue') {
-    await stubEmptyCollection(page, '/queue');
+    await stubEmptyCollection(page, route);
   }
   await navigateTo(page, route);
   await waitForPageSettled(page, {
@@ -672,6 +694,153 @@ async function capturePageVisual(
   });
 }
 
+type VisualCounterSale = {
+  readonly id: string;
+  readonly accountId: string;
+  readonly number: string;
+};
+
+type VisualCounterSaleFixture = {
+  readonly sale: VisualCounterSale;
+  readonly itemName: string;
+};
+
+async function postVisualApi<T>(
+  token: string,
+  path: string,
+  body: unknown,
+  additionalHeaders: Record<string, string> = {}
+): Promise<T> {
+  const response = await fetch(`${API_URL}${path}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+      ...additionalHeaders
+    },
+    body: JSON.stringify(body)
+  });
+  if (!response.ok) {
+    throw new Error(`Visual API ${path} failed: ${response.status} ${await response.text()}`);
+  }
+  return (await response.json()) as T;
+}
+
+async function createVisualCounterSale(token: string): Promise<VisualCounterSaleFixture> {
+  let sale: VisualCounterSale | undefined;
+  try {
+    sale = await postVisualApi<VisualCounterSale>(token, '/counter-sales', {
+      notes: 'Comanda visual com dados reais'
+    });
+    await postVisualApi(token, `/counter-sales/${sale.id}/items`, {
+      itemType: 'service',
+      catalogItemId: null,
+      nameSnapshot: VISUAL_COUNTER_SALE_ITEM_NAME,
+      codeSnapshot: 'VISUAL-SRV',
+      unitPrice: 125.5,
+      quantity: 1,
+      discountAmount: 0,
+      notes: 'Item criado pelo contrato de balcão'
+    });
+    await postVisualApi(
+      token,
+      `/counter-sales/${sale.id}/payments`,
+      {
+        method: 'pix',
+        amount: 50,
+        installments: 1,
+        reference: 'VISUAL-E2E',
+        notes: 'Pagamento parcial de visualização'
+      },
+      { 'Idempotency-Key': `visual-counter-sale-${sale.id}` }
+    );
+    return { sale, itemName: VISUAL_COUNTER_SALE_ITEM_NAME };
+  } catch (error) {
+    if (sale) await cancelVisualCounterSale(token, sale);
+    throw error;
+  }
+}
+
+async function cancelVisualCounterSale(token: string, sale: VisualCounterSale): Promise<void> {
+  const response = await fetch(`${API_URL}/counter-sales/${sale.id}/cancel`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({ reason: 'Visual E2E cleanup' })
+  });
+  if (!response.ok && response.status !== 404) {
+    throw new Error(`Failed to cancel visual counter sale ${sale.id}: ${response.status}`);
+  }
+}
+
+async function keepCanonicalCounterSaleCard(page: Page, number: string): Promise<void> {
+  await page.locator('.counter-sale-card').evaluateAll((cards, canonicalNumber) => {
+    for (const card of cards) {
+      if (!(card.textContent ?? '').includes(canonicalNumber)) card.remove();
+    }
+  }, number);
+}
+
+async function captureCounterSalesVisual(
+  page: Page,
+  screenshotName: string,
+  stabilization: Parameters<typeof stabilizeVisual>[1] = {}
+): Promise<void> {
+  const token = await ensureAuthToken(page);
+  const fixture = await createVisualCounterSale(token);
+
+  try {
+    await navigateTo(page, '/counter-sales');
+    await waitForPageSettled(page, {
+      contentSelector: '.counter-sales-page',
+      timeout: 15000
+    });
+
+    const card = page.locator('.counter-sale-card').filter({ hasText: fixture.sale.number });
+    await expect(card, 'counter sales visual must render a real API-created sale').toBeVisible({
+      timeout: 15000
+    });
+    await keepCanonicalCounterSaleCard(page, fixture.sale.number);
+    await card.getByRole('button', { name: 'Ver comanda', exact: true }).click();
+
+    await expect(
+      page.locator('.line-item-card').filter({ hasText: fixture.itemName }),
+      'counter sales visual must render the API-created item'
+    ).toBeVisible({ timeout: 15000 });
+    await expect(
+      page.locator('.payment-card').filter({ hasText: 'PIX' }),
+      'counter sales visual must render the API-created payment'
+    ).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('.sidebar-owner__meta')).toContainText('Aberta por:', {
+      timeout: 15000
+    });
+    await expect(page.locator('.sidebar-owner__meta span')).toHaveCount(5, {
+      timeout: 15000
+    });
+
+    await normalizeVisualText(page, { [fixture.sale.number]: 'CS-VISUAL' });
+    await normalizeCounterSaleVolatileText(page);
+    await page.evaluate((forceDark) => {
+      document.documentElement.setAttribute('data-theme', forceDark ? 'dark' : 'light');
+      document.documentElement.style.colorScheme = forceDark ? 'dark' : 'light';
+    }, stabilization.forceLightTheme === false);
+
+    await stabilizeVisual(page, {
+      ...pageProfiles.detailPage,
+      ...stabilization
+    });
+
+    await expect(page).toHaveScreenshot(screenshotName, {
+      maxDiffPixels: 500,
+      fullPage: false
+    });
+  } finally {
+    await cancelVisualCounterSale(token, fixture.sale);
+  }
+}
+
 async function captureAppointmentsVisual(
   page: Page,
   screenshotName: string,
@@ -681,6 +850,7 @@ async function captureAppointmentsVisual(
   const owner = await createVisualOwner(token);
   const patient = await createVisualPatient(token, owner.id);
   const appointment = await createVisualAppointment(token, patient.id, owner.id);
+  await installVisualAppointmentClock(page);
 
   try {
     await stubVisualSchedulingOverview(page, appointment.id);
@@ -864,6 +1034,30 @@ async function createVisualAppointment(
   return { ...appointment, referenceDate: scheduledAt.toISOString().slice(0, 10) };
 }
 
+async function installVisualAppointmentClock(page: Page): Promise<void> {
+  await page.addInitScript(
+    ({ fixedDate }) => {
+      const NativeDate = Date;
+      const fixedTime = NativeDate.parse(fixedDate);
+
+      class VisualDate extends NativeDate {
+        constructor(value?: string | number | Date) {
+          super(
+            value === undefined ? fixedTime : value instanceof NativeDate ? value.getTime() : value
+          );
+        }
+      }
+
+      Object.defineProperty(VisualDate, 'now', { configurable: false, value: () => fixedTime });
+      Object.defineProperty(window, 'Date', {
+        configurable: true,
+        value: VisualDate
+      });
+    },
+    { fixedDate: '2026-08-08T11:00:00.000Z' }
+  );
+}
+
 async function stubVisualSchedulingOverview(page: Page, appointmentId: string): Promise<void> {
   await page.route('**/scheduling/overview*', async (route) => {
     if (route.request().method() !== 'GET') {
@@ -1006,6 +1200,33 @@ async function normalizeDateTimes(page: Page): Promise<void> {
         );
       }
       node = walker.nextNode();
+    }
+  });
+}
+
+async function normalizeCounterSaleVolatileText(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    let node = walker.nextNode();
+
+    while (node) {
+      if (node.textContent) {
+        node.textContent = node.textContent
+          .replace(/\b\d{2}\/\d{2}\/\d{4},\s+\d{2}:\d{2}(?::\d{2})?\b/g, '01/01/2026, 10:00')
+          .replace(/Operador\s+\S+\s+Empresa\s+\S+/g, 'Operador user_admin  Empresa acc_cvg_demo');
+      }
+      node = walker.nextNode();
+    }
+
+    for (const element of document.querySelectorAll(
+      '.sidebar-owner__meta span, .counter-sale-card__meta span, .counter-sale-card__mobile-context span'
+    )) {
+      const text = element.textContent?.trim() ?? '';
+      if (text.startsWith('Aberta por:') || text.startsWith('Operador ')) {
+        element.textContent = 'Operador user_admin';
+      } else if (text.startsWith('Empresa ')) {
+        element.textContent = 'Empresa acc_cvg_demo';
+      }
     }
   });
 }

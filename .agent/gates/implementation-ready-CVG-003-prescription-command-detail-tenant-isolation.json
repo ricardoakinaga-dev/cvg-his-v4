@@ -1,0 +1,76 @@
+{
+  "record_id": "GATE-CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION-IR-001",
+  "timestamp": "2026-08-31T04:48:40-03:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "Repository-local account-aware prescription detail and command boundary",
+  "scope_ref": "CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION",
+  "version": 1,
+  "active_plan": ".agent/plans/premium-enterprise-mvp.md",
+  "active_task": ".agent/tasks/CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION.md",
+  "verification_state": "AUTHORIZED",
+  "next_gate": "RED",
+  "criteria": [
+    {
+      "id": "IR-001-SCOPE",
+      "description": "Only prescription service/cache/HTTP/first-party account propagation and focused tests are authorized; schema, SQL and global promotion remain excluded.",
+      "required": true,
+      "status": "PASS",
+      "confidence": "HIGH",
+      "evidence_refs": [
+        ".agent/tasks/CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION.md",
+        ".agent/authority.jsonl#AUTH-CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION-IR-001"
+      ]
+    },
+    {
+      "id": "IR-002-FINDING",
+      "description": "The reusable detail/document/revision/command methods currently trust a process-wide prescription ID lookup without caller account scope.",
+      "required": true,
+      "status": "PASS",
+      "confidence": "HIGH",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-SCOUT-CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION-001",
+        "packages/modules/prescriptions/src/index.ts",
+        "apps/api/src/routes/prescription-routes.ts"
+      ]
+    },
+    {
+      "id": "IR-003-RED",
+      "description": "Intentional two-account service and route regressions must fail against the current implementation before any source correction.",
+      "required": true,
+      "status": "PASS",
+      "confidence": "HIGH",
+      "evidence_refs": [
+        ".agent/tasks/CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION.md",
+        ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION-RED-001"
+      ],
+      "next_action": "Implement the smallest account-aware service/cache/route correction and migrate first-party callers."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION.md",
+    ".agent/authority.jsonl#AUTH-CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION-IR-001"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "TDD RED/GREEN, coverage, route/runtime regressions, independent review and final reconciliation are outstanding."
+  ],
+  "conditions": [
+    "Preserve same-account prescription semantics and explicit foreign-account fail-closed behavior.",
+    "Do not modify database schema, migrations, RLS, repository SQL, provider, target, production, deployment or release behavior.",
+    "Keep global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via fresh read-only residual scouting after the critical baseline closure",
+    "scope": "Repository-local account-aware prescription detail and command boundary",
+    "decision": "Authorize only account-first service methods, cache hydration filtering, authenticated route/first-party caller propagation and focused regressions; preserve existing business semantics and exclude schema, SQL, target, production and global promotion.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION-IR-001",
+    "expires_or_revalidates": "Revalidate before changing any production contract, schema, migration, repository SQL, runtime, deployment or release behavior."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "implementation_status": "AUTHORIZED",
+  "next_action": "Implement the smallest account-aware service/route correction and regressions, then obtain independent review.",
+  "supersedes": null
+}

@@ -180,7 +180,7 @@ export async function runCommissionJob(
   try {
     // Get all encounters in the period
     const encounters = encountersService
-      .listAll()
+      .listAll(context.accountId as never)
       .filter((enc: { openedAt?: string; status: string }) => {
         const encDate = enc.openedAt ?? '';
         return encDate >= periodStart && encDate <= periodEnd && enc.status !== 'reception';

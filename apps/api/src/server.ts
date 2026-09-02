@@ -3640,6 +3640,34 @@ function isDischargeMutationPath(pathname: string, method: string | undefined): 
   );
 }
 
+function isMedicalRecordsMutationPath(pathname: string, method: string | undefined): boolean {
+  return (
+    (method === 'POST' && pathname === '/medical-records/entries') ||
+    (method === 'PATCH' && pathname.startsWith('/medical-records/entries/')) ||
+    (method === 'DELETE' && pathname.startsWith('/medical-records/entries/')) ||
+    (method === 'POST' && pathname === '/attachments') ||
+    (method === 'POST' &&
+      (pathname === '/laboratory/orders' ||
+        pathname === '/laboratory/exams' ||
+        pathname === '/laboratorio/exames' ||
+        pathname === '/laboratorio/atendimentos/exames' ||
+        pathname === '/diagnostics/orders' ||
+        pathname === '/exam-orders' ||
+        /^\/encounters\/[^/]+\/exam-orders$/.test(pathname) ||
+        /^\/(?:laboratory|diagnostics)\/orders\/[^/]+\/result$/.test(pathname) ||
+        /^\/laboratory\/orders\/[^/]+\/(?:recollect|deliver)$/.test(pathname))) ||
+    (method === 'PATCH' && pathname.startsWith('/exam-results/'))
+  );
+}
+
+function isInpatientMutationPath(pathname: string, method: string | undefined): boolean {
+  return Boolean(
+    method &&
+    !['GET', 'HEAD', 'OPTIONS'].includes(method) &&
+    (pathname === '/inpatient' || pathname.startsWith('/inpatient/'))
+  );
+}
+
 function isPrescriptionExecutionMutationPath(
   pathname: string,
   method: string | undefined
@@ -3820,6 +3848,14 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
     await Promise.all([
       discharges.refreshAccount(accountId),
       inpatient.refreshAccount(accountId),
+      audit.refreshFromDatabase(accountId)
+    ]);
+  };
+  const refreshInpatientCaches = async (accountId: AccountId): Promise<void> => {
+    await Promise.all([
+      inpatient.refreshAccount(accountId),
+      medicalRecords.refreshAccount(accountId),
+      billing.refreshFromDatabase(accountId),
       audit.refreshFromDatabase(accountId)
     ]);
   };
@@ -4122,13 +4158,13 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
 
   const notificationPersistence = notifications as unknown as {
     listFromRepository(
-      status?: 'queued' | 'sent' | 'read',
-      accountId?: string
+      accountId: string,
+      status?: 'queued' | 'sent' | 'read'
     ): Promise<readonly unknown[]>;
-    listJobsFromRepository(status?: string, accountId?: string): Promise<readonly unknown[]>;
+    listJobsFromRepository(accountId: string, status?: string): Promise<readonly unknown[]>;
     processPendingFromRepository(
-      payload?: ProcessNotificationsRequest,
-      accountId?: string
+      accountId: string,
+      payload?: ProcessNotificationsRequest
     ): Promise<readonly unknown[]>;
   };
   const scopedScheduling = scheduling as unknown as {
@@ -4651,17 +4687,25 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                 laboratory,
                 audit,
                 requirePrincipal,
-                onOrderCreated: (order, principalUserId) => {
+                onOrderCreated: async (order, principalUserId, principalAccountId) => {
                   medicalRecords.appendAdvancedCareEvent(
+                    principalAccountId as never,
                     order.encounterId as never,
                     principalUserId as never,
                     'diagnostic_requested',
                     `Diagnostic order requested: ${order.examType}`
                   );
+                  await medicalRecords.waitForPersistence();
                 },
-                onOrderStatusChanged: (order, payload, principalUserId) => {
+                onOrderStatusChanged: async (
+                  order,
+                  payload,
+                  principalUserId,
+                  principalAccountId
+                ) => {
                   if (payload.status === 'collected') {
                     medicalRecords.appendAdvancedCareEvent(
+                      principalAccountId as never,
                       order.encounterId as never,
                       principalUserId as never,
                       'diagnostic_collected',
@@ -4669,12 +4713,14 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                     );
                   } else if (payload.status === 'resulted') {
                     medicalRecords.appendAdvancedCareEvent(
+                      principalAccountId as never,
                       order.encounterId as never,
                       principalUserId as never,
                       'diagnostic_resulted',
                       `Diagnostic result registered: ${payload.resultSummary ?? order.examType}`
                     );
                   }
+                  await medicalRecords.waitForPersistence();
                 }
               })
             ) {
@@ -4723,6 +4769,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               if (encounterId) {
                 requireEncounterForAccount(encounterId, principal.user.accountId);
                 const record = await medicalRecords.getRecordByEncounterOrThrowAsync(
+                  principal.user.accountId as never,
                   encounterId as never
                 );
                 appendAudit(
@@ -4740,7 +4787,10 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                 response.end(
                   JSON.stringify({
                     record,
-                    entries: await medicalRecords.listEntriesByEncounterAsync(encounterId as never)
+                    entries: await medicalRecords.listEntriesByEncounterAsync(
+                      principal.user.accountId as never,
+                      encounterId as never
+                    )
                   })
                 );
                 return;
@@ -4773,7 +4823,10 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               response.statusCode = 200;
               response.end(
                 JSON.stringify({
-                  items: await medicalRecords.listEntriesByEncounterAsync(encounterId as never)
+                  items: await medicalRecords.listEntriesByEncounterAsync(
+                    principal.user.accountId as never,
+                    encounterId as never
+                  )
                 })
               );
               return;
@@ -4834,6 +4887,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                   payload as unknown as JsonValue,
                   async () => {
                     const created = await medicalRecords.createEntryAtomically(
+                      principal.user.accountId as never,
                       principal.user.id,
                       payload
                     );
@@ -4843,7 +4897,11 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                 );
                 entry = execution.value as unknown as typeof entry;
               } else {
-                entry = await medicalRecords.createEntryAtomically(principal.user.id, payload);
+                entry = await medicalRecords.createEntryAtomically(
+                  principal.user.accountId as never,
+                  principal.user.id,
+                  payload
+                );
                 await writeAudit(entry);
               }
               response.statusCode = 201;
@@ -4861,11 +4919,17 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                 medicalRecordEntryParts[4] === 'revisions'
               ) {
                 const principal = await requirePrincipal(request, 'medical-records.read');
-                const entry = await medicalRecords.getEntryOrThrowAsync(entryId as never);
+                const entry = await medicalRecords.getEntryOrThrowAsync(
+                  principal.user.accountId as never,
+                  entryId as never
+                );
                 if (entry.accountId !== principal.user.accountId) {
                   throw new NotFoundError('Clinical entry not found', { entryId });
                 }
-                const revisions = await medicalRecords.getEntryRevisionsAsync(entryId as never);
+                const revisions = await medicalRecords.getEntryRevisionsAsync(
+                  principal.user.accountId as never,
+                  entryId as never
+                );
                 appendAudit(
                   principal.user.id,
                   principal.user.accountId,
@@ -4883,19 +4947,22 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               }
 
               const principal = await requirePrincipal(request, 'medical-records.manage');
-              const existingEntry = await medicalRecords.getEntryOrThrowAsync(entryId as never);
+              const existingEntry = await medicalRecords.getEntryOrThrowAsync(
+                principal.user.accountId as never,
+                entryId as never
+              );
               if (existingEntry.accountId !== principal.user.accountId) {
                 throw new NotFoundError('Clinical entry not found', { entryId });
               }
 
               if (request.method === 'PATCH' && medicalRecordEntryParts.length === 4) {
                 const payload = (await readJsonBody(request)) as UpdateClinicalEntryRequest;
-                const entry = medicalRecords.updateEntry(
+                const entry = await medicalRecords.updateEntryAtomically(
+                  principal.user.accountId as never,
                   principal.user.id,
                   entryId as never,
                   payload
                 );
-                await medicalRecords.waitForPersistence();
                 appendAudit(
                   principal.user.id,
                   principal.user.accountId,
@@ -4916,12 +4983,12 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                 const payload = (await readJsonBody(request).catch(
                   () => ({}) as ArchiveClinicalEntryRequest
                 )) as ArchiveClinicalEntryRequest;
-                const entry = medicalRecords.archiveEntry(
+                const entry = await medicalRecords.archiveEntryAtomically(
+                  principal.user.accountId as never,
                   principal.user.id,
                   entryId as never,
                   payload
                 );
-                await medicalRecords.waitForPersistence();
                 appendAudit(
                   principal.user.id,
                   principal.user.accountId,
@@ -4960,7 +5027,10 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               response.statusCode = 200;
               response.end(
                 JSON.stringify({
-                  items: await medicalRecords.listTimelineByEncounterAsync(encounterId as never)
+                  items: await medicalRecords.listTimelineByEncounterAsync(
+                    principal.user.accountId as never,
+                    encounterId as never
+                  )
                 })
               );
               return;
@@ -4995,7 +5065,11 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               response.statusCode = 200;
               response.end(
                 JSON.stringify({
-                  items: await attachments.listByLinkedEntity(linkedEntityType, linkedEntityId)
+                  items: await attachments.listByLinkedEntity(
+                    linkedEntityType,
+                    linkedEntityId,
+                    principal.user.accountId
+                  )
                 })
               );
               return;
@@ -5010,7 +5084,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                 attachmentDownloadUrlMatch[1],
                 'attachmentId'
               );
-              const attachment = await attachments.getById(attachmentId);
+              const attachment = await attachments.getById(principal.user.accountId, attachmentId);
               if (!attachment || attachment.accountId !== principal.user.accountId) {
                 throw new NotFoundError('Attachment not found', { attachmentId });
               }
@@ -5056,8 +5130,10 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               const principal = signedClaims
                 ? undefined
                 : await requirePrincipal(request, 'attachments.read');
-              const attachment = await attachments.getById(attachmentId);
               const requestedAccountId = signedClaims?.accountId ?? principal?.user.accountId;
+              const attachment = requestedAccountId
+                ? await attachments.getById(requestedAccountId as never, attachmentId)
+                : null;
               if (
                 !attachment ||
                 !requestedAccountId ||
@@ -5074,7 +5150,10 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                   { scanStatus: attachment.scanStatus }
                 );
               }
-              const content = await attachments.getFileContent(attachment.storageKey);
+              const content = await attachments.getFileContent(
+                requestedAccountId as never,
+                attachment.storageKey
+              );
               if (!content)
                 throw new NotFoundError('Attachment content not found', { attachmentId });
               const safeFileName = attachment.fileName.replace(/[\r\n"\\]/g, '_');
@@ -5119,8 +5198,12 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               );
 
               if (payload.linkedEntityType === 'encounter') {
-                medicalRecords.ensureRecord(payload.linkedEntityId as never);
+                medicalRecords.ensureRecord(
+                  principal.user.accountId as never,
+                  payload.linkedEntityId as never
+                );
                 medicalRecords.appendAttachmentEvent(
+                  principal.user.accountId as never,
                   payload.linkedEntityId as never,
                   principal.user.id,
                   attachment.id,
@@ -5128,9 +5211,11 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                 );
               } else if (payload.linkedEntityType === 'medical_record') {
                 const record = await medicalRecords.getRecordOrThrowAsync(
+                  principal.user.accountId as never,
                   payload.linkedEntityId as never
                 );
                 medicalRecords.appendAttachmentEvent(
+                  principal.user.accountId as never,
                   record.encounterId,
                   principal.user.id,
                   attachment.id,
@@ -5142,6 +5227,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                   payload.linkedEntityId as never
                 );
                 medicalRecords.appendAttachmentEvent(
+                  principal.user.accountId as never,
                   order.encounterId,
                   principal.user.id,
                   attachment.id,
@@ -5191,8 +5277,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               response.statusCode = 200;
               response.end(
                 JSON.stringify({
-                  items: inpatient.list({
-                    accountId: principal.user.accountId,
+                  items: inpatient.list(principal.user.accountId, {
                     encounterId,
                     patientId,
                     includeDischarged
@@ -5220,8 +5305,8 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               response.end(
                 JSON.stringify({
                   items: await notificationPersistence.listFromRepository(
-                    status ?? undefined,
-                    principal.user.accountId
+                    principal.user.accountId,
+                    status ?? undefined
                   )
                 })
               );
@@ -5245,7 +5330,6 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               response.end(
                 JSON.stringify({
                   items: await notificationPersistence.listJobsFromRepository(
-                    undefined,
                     principal.user.accountId
                   )
                 })
@@ -5283,8 +5367,8 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                 () => ({})
               )) as ProcessNotificationsRequest;
               const processed = await notificationPersistence.processPendingFromRepository(
-                payload,
-                principal.user.accountId
+                principal.user.accountId,
+                payload
               );
               appendAudit(
                 principal.user.id,
@@ -5563,11 +5647,10 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
             if (pathname.startsWith('/clinical-handoffs/') && request.method === 'GET') {
               const principal = await requirePrincipal(request, 'encounters.read');
               const handoffId = requireNonEmptyString(pathname.split('/')[2], 'handoffId');
-              const handoff = clinicalHandoffs.getOrThrow(handoffId as never);
-
-              if (handoff.accountId !== principal.user.accountId) {
-                throw new NotFoundError('Clinical handoff not found', { handoffId });
-              }
+              const handoff = clinicalHandoffs.getOrThrow(
+                principal.user.accountId,
+                handoffId as never
+              );
 
               appendAudit(
                 principal.user.id,
@@ -5601,9 +5684,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               response.statusCode = 200;
               response.end(
                 JSON.stringify({
-                  items: encounters
-                    .listAll()
-                    .filter((encounter) => encounter.accountId === principal.user.accountId)
+                  items: encounters.listAll(principal.user.accountId)
                 })
               );
               return;
@@ -5630,14 +5711,14 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                     encounter.queueEntryId,
                     encounter.id
                   );
-                  encounters.appendTimeline(encounter.id, {
+                  encounters.appendTimeline(principal.user.accountId, encounter.id, {
                     accountId: encounter.accountId,
                     eventType: 'queue_checked_in',
                     summary: `Patient checked in with priority ${queueEntry.priority}`,
                     actorUserId: principal.user.id
                   });
                   if (queueEntry.calledAt) {
-                    encounters.appendTimeline(encounter.id, {
+                    encounters.appendTimeline(principal.user.accountId, encounter.id, {
                       accountId: encounter.accountId,
                       eventType: 'queue_called',
                       summary: 'Queue entry had already been called',
@@ -5691,7 +5772,12 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               );
               response.statusCode = 200;
               response.end(
-                JSON.stringify({ items: await encounters.listTimelineAsync(encounterId as never) })
+                JSON.stringify({
+                  items: await encounters.listTimelineAsync(
+                    principal.user.accountId,
+                    encounterId as never
+                  )
+                })
               );
               return;
             }
@@ -5706,11 +5792,16 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               requireEncounterForAccount(encounterId, principal.user.accountId);
               const payload = (await readJsonBody(request)) as TransitionEncounterRequest;
               const encounter = encounters.transitionEncounter(
+                principal.user.accountId,
                 encounterId as never,
                 principal.user.id,
                 payload
               );
-              await syncQueueWithEncounter(encounter.id, encounter.status);
+              await syncQueueWithEncounter(
+                principal.user.accountId,
+                encounter.id,
+                encounter.status
+              );
               await encounters.waitForPersistence();
               appendAudit(
                 principal.user.id,
@@ -5743,7 +5834,10 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                 correlationId
               );
               const transaction = getTenantTransactionContext();
-              const previousEncounterState = encounters.snapshotState(encounterId as never);
+              const previousEncounterState = encounters.snapshotState(
+                principal.user.accountId,
+                encounterId as never
+              );
               const previousSchedulingState = previousEncounterState.encounter.queueEntryId
                 ? scheduling.snapshotQueueState(previousEncounterState.encounter.queueEntryId)
                 : undefined;
@@ -5766,11 +5860,16 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                 }
 
                 const encounter = encounters.closeEncounter(
+                  principal.user.accountId,
                   encounterId as never,
                   principal.user.id,
                   payload
                 );
-                await syncQueueWithEncounter(encounter.id, encounter.status);
+                await syncQueueWithEncounter(
+                  principal.user.accountId,
+                  encounter.id,
+                  encounter.status
+                );
                 await encounters.waitForPersistence();
 
                 if (transaction) {
@@ -5815,7 +5914,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                 response.statusCode = 200;
                 response.end(JSON.stringify(encounter));
               } catch (error) {
-                encounters.restoreState(previousEncounterState);
+                encounters.restoreState(principal.user.accountId, previousEncounterState);
                 if (previousSchedulingState) {
                   scheduling.restoreQueueState(previousSchedulingState);
                 }
@@ -5879,11 +5978,16 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                 );
               }
               const encounter = await encounters.reopenEncounterAuthoritatively(
+                principal.user.accountId,
                 encounterId as never,
                 principal.user.id,
                 payload.reason
               );
-              await syncQueueWithEncounter(encounter.id, encounter.status);
+              await syncQueueWithEncounter(
+                principal.user.accountId,
+                encounter.id,
+                encounter.status
+              );
               await encounters.waitForPersistence();
               appendAudit(
                 principal.user.id,
@@ -6031,7 +6135,10 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               const encounter = requireEncounterForAccount(encounterId, principal.user.accountId);
 
               if (pathname.endsWith('/summary')) {
-                const timeline = await encounters.listTimelineAsync(encounterId as never);
+                const timeline = await encounters.listTimelineAsync(
+                  principal.user.accountId,
+                  encounterId as never
+                );
                 const orders = diagnostics.list(
                   principal.user.accountId as AccountId,
                   encounterId as never
@@ -6039,7 +6146,10 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                 let financial = null;
 
                 try {
-                  financial = await encounterFinancial.getSummary(encounterId as never);
+                  financial = await encounterFinancial.getSummary(
+                    principal.user.accountId,
+                    encounterId as never
+                  );
                 } catch {
                   financial = null;
                 }
@@ -6099,7 +6209,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                   encounterId
                 );
               }
-              encounters.deleteEncounter(encounterId as never);
+              encounters.deleteEncounter(principal.user.accountId, encounterId as never);
               await encounters.waitForPersistence();
               appendAudit(
                 principal.user.id,
@@ -6161,25 +6271,39 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                 principal.user.accountId as never
               );
               if (currentEncounter.status === 'reception') {
-                encounters.transitionEncounter(currentEncounter.id, principal.user.id, {
-                  nextStatus: 'in_triage'
-                });
-                await syncQueueWithEncounter(currentEncounter.id, 'in_triage');
+                encounters.transitionEncounter(
+                  principal.user.accountId,
+                  currentEncounter.id,
+                  principal.user.id,
+                  {
+                    nextStatus: 'in_triage'
+                  }
+                );
+                await syncQueueWithEncounter(
+                  principal.user.accountId,
+                  currentEncounter.id,
+                  'in_triage'
+                );
               }
-              encounters.appendTimeline(record.encounterId, {
+              encounters.appendTimeline(principal.user.accountId, record.encounterId, {
                 accountId: record.accountId,
                 eventType: 'triage_recorded',
                 summary: `Initial triage recorded with priority ${record.priority}`,
                 actorUserId: principal.user.id
               });
               const encounter = encounters.transitionEncounter(
+                principal.user.accountId,
                 record.encounterId,
                 principal.user.id,
                 {
                   nextStatus: record.destination
                 }
               );
-              await syncQueueWithEncounter(encounter.id, encounter.status);
+              await syncQueueWithEncounter(
+                principal.user.accountId,
+                encounter.id,
+                encounter.status
+              );
               appendAudit(
                 principal.user.id,
                 principal.user.accountId,
@@ -6241,22 +6365,27 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                 principal.user.accountId as never,
                 principal.user.id
               );
-              encounters.appendTimeline(record.encounterId, {
+              encounters.appendTimeline(principal.user.accountId, record.encounterId, {
                 accountId: record.accountId,
                 eventType: 'triage_recorded',
                 summary: `Triage updated from ${before.priority}/${before.destination} to ${record.priority}/${record.destination}`,
                 actorUserId: principal.user.id
               });
-              const encounter = encounters.getOrThrow(record.encounterId);
+              const encounter = encounters.getOrThrow(principal.user.accountId, record.encounterId);
               if (encounter.status !== 'closed' && encounter.status !== record.destination) {
                 const transitioned = encounters.transitionEncounter(
+                  principal.user.accountId,
                   record.encounterId,
                   principal.user.id,
                   {
                     nextStatus: record.destination
                   }
                 );
-                await syncQueueWithEncounter(transitioned.id, transitioned.status);
+                await syncQueueWithEncounter(
+                  principal.user.accountId,
+                  transitioned.id,
+                  transitioned.status
+                );
               }
               appendAudit(
                 principal.user.id,
@@ -7456,6 +7585,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                 runCommand: runTenantCommand,
                 onProgressAdded: async ({ stay, progress, principal }) => {
                   medicalRecords.appendAdvancedCareEvent(
+                    principal.user.accountId as never,
                     stay.encounterId as never,
                     principal.user.id,
                     'inpatient_progressed',
@@ -7480,6 +7610,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                         ? `Transferencia de internacao registrada para ${stay.transferToUnit ?? stay.unit}/${stay.transferToWard ?? stay.ward}`
                         : `Status da internacao atualizado para ${stay.status}`;
                   medicalRecords.appendAdvancedCareEvent(
+                    principal.user.accountId as never,
                     stay.encounterId as never,
                     principal.user.id,
                     eventType,
@@ -7615,7 +7746,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                   await Promise.all([
                     encounters.hydrateFromDatabase(accountId as never),
                     inventory.hydrateFromDatabase(accountId as never),
-                    inpatient.refreshAccount(accountId)
+                    inpatient.refreshAccount(accountId as never)
                   ]);
                 },
                 procurement,
@@ -7905,13 +8036,17 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                   ? () => refreshPrescriptionExecutionCaches(tenantCtx.accountId as AccountId)
                   : isDischargeMutationPath(pathname, request.method)
                     ? () => refreshDischargeCaches(tenantCtx.accountId as AccountId)
-                    : pathname.startsWith('/access-control/')
-                      ? () => refreshAccessControlCaches(tenantCtx.accountId as AccountId)
-                      : pathname === '/vetus-imports' ||
-                          pathname === '/vetus-import-batches' ||
-                          pathname.startsWith('/vetus-import-batches/')
-                        ? () => refreshVetusCaches(tenantCtx.accountId as AccountId)
-                        : undefined,
+                    : isInpatientMutationPath(pathname, request.method)
+                      ? () => refreshInpatientCaches(tenantCtx.accountId as AccountId)
+                      : isMedicalRecordsMutationPath(pathname, request.method)
+                        ? () => medicalRecords.refreshAccount(tenantCtx.accountId as AccountId)
+                        : pathname.startsWith('/access-control/')
+                          ? () => refreshAccessControlCaches(tenantCtx.accountId as AccountId)
+                          : pathname === '/vetus-imports' ||
+                              pathname === '/vetus-import-batches' ||
+                              pathname.startsWith('/vetus-import-batches/')
+                            ? () => refreshVetusCaches(tenantCtx.accountId as AccountId)
+                            : undefined,
                 onCommit: isPrescriptionExecutionMutationPath(pathname, request.method)
                   ? () => refreshPrescriptionExecutionCaches(tenantCtx.accountId as AccountId)
                   : pathname.startsWith('/access-control/')
@@ -8021,11 +8156,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
   }
 
   function requireEncounterForAccount(encounterId: string, accountId: string) {
-    const encounter = encounters.getOrThrow(encounterId as never);
-    if (encounter.accountId !== accountId) {
-      throw new NotFoundError('Encounter not found', { encounterId });
-    }
-    return encounter;
+    return encounters.getOrThrow(accountId as never, encounterId as never);
   }
 
   async function requireAttachmentTargetForAccount(
@@ -8037,7 +8168,12 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
       linkedEntityType === 'encounter'
         ? requireEncounterForAccount(linkedEntityId, accountId).accountId
         : linkedEntityType === 'medical_record'
-          ? (await medicalRecords.getRecordOrThrowAsync(linkedEntityId as never)).accountId
+          ? (
+              await medicalRecords.getRecordOrThrowAsync(
+                accountId as never,
+                linkedEntityId as never
+              )
+            ).accountId
           : diagnostics.getOrThrow(accountId as AccountId, linkedEntityId as never).accountId;
     if (targetAccountId !== accountId) {
       throw new NotFoundError('Attachment target not found', {
@@ -8048,10 +8184,11 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
   }
 
   async function syncQueueWithEncounter(
+    accountId: string,
     encounterId: string,
     status: 'reception' | 'in_triage' | 'in_care' | 'observation' | 'closed'
   ) {
-    const encounter = encounters.getOrThrow(encounterId as never);
+    const encounter = encounters.getOrThrow(accountId as never, encounterId as never);
     if (!encounter.queueEntryId) {
       return;
     }

@@ -652,7 +652,7 @@ export class InventoryService {
     accountId: AccountId,
     retryCount = 0
   ): Promise<InventoryConsumptionSummary> {
-    const encounter = this.#encounters.getOrThrow(payload.encounterId as never);
+    const encounter = this.#encounters.getOrThrow(accountId, payload.encounterId as never);
     if (encounter.accountId !== accountId) {
       throw new NotFoundError('Encounter not found', { encounterId: payload.encounterId });
     }

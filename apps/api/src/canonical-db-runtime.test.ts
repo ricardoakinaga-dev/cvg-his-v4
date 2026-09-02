@@ -98,14 +98,14 @@ test('canonical PostgreSQL runtime survives connection close and rehydrates crit
         });
         await runtimeA.encounters.waitForPersistence();
 
-        const entry = await runtimeA.medicalRecords.createEntryAtomically(actorUserId, {
+        const entry = await runtimeA.medicalRecords.createEntryAtomically(accountId, actorUserId, {
           encounterId: encounter.id,
           patientId: patient.id,
           entryType: 'anamnesis',
           title: 'Registro apos reinicio',
           content: 'Dados persistidos no PostgreSQL antes do fechamento da conexao.'
         });
-        const record = runtimeA.medicalRecords.getRecordByEncounterOrThrow(encounter.id);
+        const record = runtimeA.medicalRecords.getRecordByEncounterOrThrow(accountId, encounter.id);
 
         const fileContent = Buffer.from('canonical restart attachment', 'utf8');
         const attachment = await runtimeA.attachments.upload(
@@ -122,6 +122,7 @@ test('canonical PostgreSQL runtime survives connection close and rehydrates crit
           fileContent
         );
         runtimeA.medicalRecords.appendAttachmentEvent(
+          accountId,
           encounter.id,
           actorUserId,
           attachment.id,
@@ -169,7 +170,7 @@ test('canonical PostgreSQL runtime survives connection close and rehydrates crit
           notes: 'Apos alimentacao'
         });
         await runtimeA.prescriptions.waitForPersistence();
-        runtimeA.prescriptions.sign(prescription.id, actorUserId, prescription.version);
+        runtimeA.prescriptions.sign(accountId, prescription.id, actorUserId, prescription.version);
         await runtimeA.prescriptions.waitForPersistence();
         const execution = runtimeA.prescriptionExecutions.create(accountId, {
           clinicalEntryId: prescription.id,
@@ -403,28 +404,32 @@ test('canonical PostgreSQL runtime survives connection close and rehydrates crit
         assert.equal(runtimeB!.owners.getOrThrow(identifiers.ownerId).accountId, accountId);
         assert.equal(runtimeB!.patients.getOrThrow(identifiers.patientId).accountId, accountId);
         assert.equal(
-          runtimeB!.encounters.getOrThrow(identifiers.encounterId).patientId,
+          runtimeB!.encounters.getOrThrow(accountId, identifiers.encounterId).patientId,
           identifiers.patientId
         );
 
         const record = await runtimeB!.medicalRecords.getRecordByEncounterOrThrowAsync(
+          accountId,
           identifiers.encounterId as never
         );
         assert.equal(record.id, identifiers.recordId);
 
         const entries = await runtimeB!.medicalRecords.listEntriesByEncounterAsync(
+          accountId,
           identifiers.encounterId as never
         );
         assert.ok(entries.some((entry) => entry.id === identifiers.entryId));
 
         const timeline = await runtimeB!.medicalRecords.listTimelineByEncounterAsync(
+          accountId,
           identifiers.encounterId as never
         );
         assert.ok(timeline.some((event) => event.attachmentId === identifiers.attachmentId));
 
         const attachments = await runtimeB!.attachments.listByLinkedEntity(
           'encounter',
-          identifiers.encounterId
+          identifiers.encounterId,
+          accountId
         );
         assert.ok(attachments.some((attachment) => attachment.id === identifiers.attachmentId));
 
@@ -440,7 +445,10 @@ test('canonical PostgreSQL runtime survives connection close and rehydrates crit
             .status,
           'resulted'
         );
-        const prescription = runtimeB!.prescriptions.getById(identifiers.prescriptionId as never);
+        const prescription = runtimeB!.prescriptions.getById(
+          accountId,
+          identifiers.prescriptionId as never
+        );
         assert.equal(prescription.entryType, 'prescription');
         const execution = runtimeB!.prescriptionExecutions.getById(
           identifiers.executionId as never

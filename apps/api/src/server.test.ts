@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHmac } from 'node:crypto';
 import { request as httpRequest } from 'node:http';
 import { Readable, Writable } from 'node:stream';
@@ -28,6 +29,7 @@ import {
   buildAuthenticatedActorAttributes,
   createApiServer
 } from './server.js';
+import { bootstrapServices } from './bootstrap.js';
 import { createInMemoryRuntimeRepositories } from './runtime-repositories.js';
 import { InMemoryLaboratoryResultImportRepository } from './laboratory-result-import-repository.js';
 
@@ -682,6 +684,261 @@ function createTwoAccountTriageServer() {
       diagnosticOrder: diagnosticOrderRepository
     } as never,
     preserveSeedUsersWithRepository: true
+  });
+}
+
+function createTwoAccountMedicalRecordsServer(
+  options: {
+    readonly failNextTransaction?: boolean;
+    readonly attachmentRepository?: unknown;
+  } = {}
+) {
+  const accounts = ['acc_medical_http_a', 'acc_medical_http_b'];
+  const createdAt = '2026-04-01T10:00:00.000Z';
+  const users = accounts.map((accountId, index) => ({
+    id: `user_medical_http_${index}`,
+    accountId,
+    username: `medical_admin_${index}`,
+    email: `medical_admin_${index}@example.test`,
+    passwordHash: `cvg-his-v2-seed-salt-v1:seed_medical_${index}`,
+    fullName: `Medical Admin ${index}`,
+    isActive: true,
+    principalKind: 'human' as const,
+    interactiveLoginEnabled: true,
+    roleCode: 'admin',
+    createdAt,
+    updatedAt: createdAt
+  }));
+  const encounters = accounts.map((accountId, index) => ({
+    id: `enc_medical_http_${index}`,
+    accountId,
+    patientId: `patient_medical_http_${index}`,
+    ownerId: `owner_medical_http_${index}`,
+    visitType: 'walk_in' as const,
+    origin: 'reception' as const,
+    reason: 'HTTP medical-record tenant isolation',
+    status: 'in_care' as 'in_care' | 'closed',
+    openedAt: createdAt,
+    createdByUserId: users[index]!.id,
+    createdAt,
+    updatedAt: createdAt
+  }));
+  let records = accounts.map((accountId, index) => ({
+    id: `medical_record_http_${index}`,
+    accountId,
+    encounterId: encounters[index]!.id,
+    patientId: encounters[index]!.patientId,
+    status: 'open' as const,
+    createdAt,
+    updatedAt: createdAt
+  }));
+  let entries = accounts.map((accountId, index) => ({
+    id: `clinical_entry_http_${index}`,
+    accountId,
+    medicalRecordId: records[index]!.id,
+    encounterId: encounters[index]!.id,
+    patientId: encounters[index]!.patientId,
+    entryType: 'progress_note' as const,
+    title: `Private title ${index}`,
+    content: `Private content ${index}`,
+    authoredByUserId: users[index]!.id,
+    version: 1,
+    createdAt,
+    updatedAt: createdAt
+  }));
+  let revisions = entries.map((entry) => ({
+    id: `entry_revision_http_${entry.id}`,
+    entryId: entry.id,
+    version: 1,
+    title: entry.title,
+    content: entry.content,
+    authorUserId: entry.authoredByUserId,
+    reason: 'Initial clinical entry',
+    createdAt
+  }));
+  let timeline = records.map((record, index) => ({
+    id: `timeline_http_${index}`,
+    accountId: record.accountId,
+    medicalRecordId: record.id,
+    encounterId: record.encounterId,
+    eventType: 'record_created' as const,
+    summary: `Private timeline ${index}`,
+    actorUserId: users[index]!.id,
+    occurredAt: createdAt
+  }));
+  const patients = accounts.map((accountId, index) => ({
+    id: encounters[index]!.patientId,
+    accountId,
+    name: `HTTP Patient ${index}`,
+    species: 'canine',
+    sex: 'unknown' as const,
+    primaryOwnerId: `owner_medical_http_${index}`,
+    status: 'active' as const,
+    createdAt,
+    updatedAt: createdAt
+  }));
+
+  const usersRepository = {
+    async create() {},
+    async update() {},
+    async upgradePasswordHash() {
+      return false;
+    },
+    async findById(id: string) {
+      return users.find((user) => user.id === id) ?? null;
+    },
+    async findByUsername(accountId: string, username: string) {
+      return (
+        users.find((user) => user.accountId === accountId && user.username === username) ?? null
+      );
+    },
+    async findByEmail(accountId: string, email: string) {
+      return users.find((user) => user.accountId === accountId && user.email === email) ?? null;
+    },
+    async findAll() {
+      return users;
+    },
+    async findRoleCodesByUserId() {
+      return ['admin'];
+    },
+    async findByAccountId(accountId: string) {
+      return users.filter((user) => user.accountId === accountId);
+    }
+  };
+  const encounterRepository = {
+    async create() {},
+    async update() {},
+    async findById(id: string) {
+      return encounters.find((encounter) => encounter.id === id) ?? null;
+    },
+    async findActiveByPatientId() {
+      return null;
+    },
+    async findAll(accountId: string) {
+      return encounters.filter((encounter) => encounter.accountId === accountId);
+    },
+    async findActive(accountId: string) {
+      return encounters.filter(
+        (encounter) => encounter.accountId === accountId && encounter.status !== 'closed'
+      );
+    },
+    async delete() {}
+  };
+  const patientRepository = {
+    async create() {},
+    async update() {},
+    async findById(id: string) {
+      return patients.find((patient) => patient.id === id) ?? null;
+    },
+    async findByAccountId(accountId: string) {
+      return patients.filter((patient) => patient.accountId === accountId);
+    },
+    async delete() {}
+  };
+  const medicalRecordRepository = {
+    async create(record: (typeof records)[number]) {
+      records = [...records, { ...record }];
+    },
+    async update(record: (typeof records)[number]) {
+      records = records.map((candidate) =>
+        candidate.id === record.id ? { ...candidate, ...record } : candidate
+      );
+    },
+    async findById(id: string) {
+      return records.find((record) => record.id === id) ?? null;
+    },
+    async findByEncounterId(encounterId: string) {
+      return records.find((record) => record.encounterId === encounterId) ?? null;
+    },
+    async findAll(accountId: string) {
+      medicalRecordFindAllCalls += 1;
+      return records.filter((record) => record.accountId === accountId);
+    }
+  };
+  const clinicalEntryRepository = {
+    async create(entry: (typeof entries)[number]) {
+      entries = [...entries, { ...entry }];
+    },
+    async update(entry: (typeof entries)[number]) {
+      entries = entries.map((candidate) => (candidate.id === entry.id ? entry : candidate));
+    },
+    async findById(id: string) {
+      return entries.find((entry) => entry.id === id) ?? null;
+    },
+    async findByMedicalRecordId(medicalRecordId: string) {
+      return entries.filter((entry) => entry.medicalRecordId === medicalRecordId);
+    }
+  };
+  const clinicalTimelineRepository = {
+    async create(event: unknown) {
+      timeline = [...timeline, event as (typeof timeline)[number]];
+    },
+    async findByMedicalRecordId(medicalRecordId: string) {
+      return timeline.filter((event) => event.medicalRecordId === medicalRecordId);
+    }
+  };
+  const entryRevisionRepository = {
+    async create(revision: unknown) {
+      revisions = [...revisions, revision as (typeof revisions)[number]];
+    },
+    async findByEntryId(entryId: string) {
+      return revisions.filter((revision) => revision.entryId === entryId);
+    }
+  };
+
+  const transactionContext = new AsyncLocalStorage<boolean>();
+  let failNextTransaction = options.failNextTransaction === true;
+  let medicalRecordFindAllCalls = 0;
+  const tenantTransaction = async <T>(
+    _accountId: string,
+    operation: () => Promise<T>
+  ): Promise<T> => {
+    if (transactionContext.getStore()) return operation();
+
+    const previousRecords = records.map((record) => ({ ...record }));
+    const previousEntries = entries.map((entry) => ({ ...entry }));
+    const previousRevisions = revisions.map((revision) => ({ ...revision }));
+    const previousTimeline = timeline.map((event) => ({ ...event }));
+    return transactionContext.run(true, async () => {
+      try {
+        const result = await operation();
+        if (failNextTransaction) {
+          failNextTransaction = false;
+          throw new Error('simulated tenant transaction rollback');
+        }
+        return result;
+      } catch (error) {
+        records = previousRecords;
+        entries = previousEntries;
+        revisions = previousRevisions;
+        timeline = previousTimeline;
+        throw error;
+      }
+    });
+  };
+
+  const server = createServerUnderTest({
+    repositories: {
+      users: usersRepository,
+      patient: patientRepository,
+      encounter: encounterRepository,
+      medicalRecord: medicalRecordRepository,
+      clinicalEntry: clinicalEntryRepository,
+      clinicalTimeline: clinicalTimelineRepository,
+      entryRevision: entryRevisionRepository,
+      attachment: options.attachmentRepository
+    } as never,
+    preserveSeedUsersWithRepository: true,
+    tenantTransaction
+  });
+  return Object.assign(server, {
+    armNextTransactionFailure: () => {
+      failNextTransaction = true;
+    },
+    getMedicalRecordFindAllCalls: () => medicalRecordFindAllCalls,
+    resetMedicalRecordFindAllCalls: () => {
+      medicalRecordFindAllCalls = 0;
+    }
   });
 }
 
@@ -3067,6 +3324,458 @@ test('medical records expose revision history and archive semantics over HTTP', 
   assert.equal(listEntriesResponse.statusCode, 200);
   const entries = listEntriesResponse.bodyJson<{ items: Array<{ id: string }> }>();
   assert.equal(entries.items.length, 0);
+});
+
+test('medical-record HTTP collections, timeline and mutations fail closed across accounts', async () => {
+  const server = createTwoAccountMedicalRecordsServer();
+  await server.ready;
+  const accessTokenA = await login(server, 'medical_admin_0', 'seed_medical_0');
+  const accessTokenB = await login(server, 'medical_admin_1', 'seed_medical_1');
+
+  const ownListA = await performRequest(server, {
+    method: 'GET',
+    url: '/medical-records',
+    headers: { authorization: `Bearer ${accessTokenA}`, host: 'localhost' }
+  });
+  assert.equal(ownListA.statusCode, 200);
+  const ownListAItems = ownListA.bodyJson<{
+    items: Array<{ record: { id: string }; entryCount: number }>;
+  }>().items;
+  assert.equal(ownListAItems.length, 1);
+  assert.equal(ownListAItems[0]?.record.id, 'medical_record_http_0');
+  assert.equal(ownListAItems[0]?.entryCount, 1);
+
+  const ownListB = await performRequest(server, {
+    method: 'GET',
+    url: '/medical-records',
+    headers: { authorization: `Bearer ${accessTokenB}`, host: 'localhost' }
+  });
+  assert.equal(ownListB.statusCode, 200);
+  const ownListBItems = ownListB.bodyJson<{
+    items: Array<{ record: { id: string }; entryCount: number }>;
+  }>().items;
+  assert.equal(ownListBItems.length, 1);
+  assert.equal(ownListBItems[0]?.record.id, 'medical_record_http_1');
+  assert.equal(ownListBItems[0]?.entryCount, 1);
+
+  const foreignRequests = await Promise.all([
+    performRequest(server, {
+      method: 'GET',
+      url: '/medical-records?encounterId=enc_medical_http_1',
+      headers: { authorization: `Bearer ${accessTokenA}`, host: 'localhost' }
+    }),
+    performRequest(server, {
+      method: 'GET',
+      url: '/medical-records/entries?encounterId=enc_medical_http_1',
+      headers: { authorization: `Bearer ${accessTokenA}`, host: 'localhost' }
+    }),
+    performRequest(server, {
+      method: 'GET',
+      url: '/medical-records/timeline?encounterId=enc_medical_http_1',
+      headers: { authorization: `Bearer ${accessTokenA}`, host: 'localhost' }
+    }),
+    performRequest(server, {
+      method: 'GET',
+      url: '/medical-records/entries/clinical_entry_http_1/revisions',
+      headers: { authorization: `Bearer ${accessTokenA}`, host: 'localhost' }
+    }),
+    performRequest(server, {
+      method: 'PATCH',
+      url: '/medical-records/entries/clinical_entry_http_1',
+      headers: {
+        authorization: `Bearer ${accessTokenA}`,
+        'content-type': 'application/json',
+        host: 'localhost'
+      },
+      body: { title: 'Cross-account mutation', content: 'Should never persist' }
+    }),
+    performRequest(server, {
+      method: 'DELETE',
+      url: '/medical-records/entries/clinical_entry_http_1',
+      headers: {
+        authorization: `Bearer ${accessTokenA}`,
+        'content-type': 'application/json',
+        host: 'localhost'
+      },
+      body: { reason: 'Cross-account archive' }
+    })
+  ]);
+
+  for (const response of foreignRequests) {
+    assert.equal(response.statusCode, 404);
+    assert.doesNotMatch(response.bodyText(), /Private (title|content|timeline) 1/);
+  }
+
+  const ownRecord = await performRequest(server, {
+    method: 'GET',
+    url: '/medical-records?encounterId=enc_medical_http_1',
+    headers: { authorization: `Bearer ${accessTokenB}`, host: 'localhost' }
+  });
+  assert.equal(ownRecord.statusCode, 200);
+  const ownRecordBody = ownRecord.bodyJson<{
+    record: { id: string };
+    entries: Array<{ content: string }>;
+  }>();
+  assert.equal(ownRecordBody.record.id, 'medical_record_http_1');
+  assert.equal(ownRecordBody.entries[0]?.content, 'Private content 1');
+
+  const ownEntries = await performRequest(server, {
+    method: 'GET',
+    url: '/medical-records/entries?encounterId=enc_medical_http_1',
+    headers: { authorization: `Bearer ${accessTokenB}`, host: 'localhost' }
+  });
+  assert.equal(ownEntries.statusCode, 200);
+  assert.equal(
+    ownEntries.bodyJson<{ items: Array<{ id: string }> }>().items[0]?.id,
+    'clinical_entry_http_1'
+  );
+
+  const ownTimeline = await performRequest(server, {
+    method: 'GET',
+    url: '/medical-records/timeline?encounterId=enc_medical_http_1',
+    headers: { authorization: `Bearer ${accessTokenB}`, host: 'localhost' }
+  });
+  assert.equal(ownTimeline.statusCode, 200);
+  assert.equal(
+    ownTimeline.bodyJson<{ items: Array<{ summary: string }> }>().items[0]?.summary,
+    'Private timeline 1'
+  );
+
+  const ownUpdate = await performRequest(server, {
+    method: 'PATCH',
+    url: '/medical-records/entries/clinical_entry_http_1',
+    headers: {
+      authorization: `Bearer ${accessTokenB}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: { title: 'Updated own title', content: 'Updated own content' }
+  });
+  assert.equal(ownUpdate.statusCode, 200);
+  assert.equal(ownUpdate.bodyJson<{ title: string; content: string }>().title, 'Updated own title');
+});
+
+test('medical-record attachment collections filter contaminated repository rows by account', async () => {
+  const createdAt = '2026-04-01T10:00:00.000Z';
+  const attachments = [
+    {
+      id: 'attachment_medical_http_foreign',
+      accountId: 'acc_medical_http_a',
+      linkedEntityType: 'encounter',
+      linkedEntityId: 'enc_medical_http_1',
+      category: 'document',
+      fileName: 'foreign.txt',
+      storageKey: 'pending/acc_medical_http_a/enc_medical_http_1/foreign.txt',
+      mimeType: 'text/plain',
+      checksum: 'foreign-checksum',
+      source: 'upload',
+      scanStatus: 'available',
+      uploadedByUserId: 'user_medical_http_0',
+      createdAt
+    },
+    {
+      id: 'attachment_medical_http_own',
+      accountId: 'acc_medical_http_b',
+      linkedEntityType: 'encounter',
+      linkedEntityId: 'enc_medical_http_1',
+      category: 'document',
+      fileName: 'own.txt',
+      storageKey: 'pending/acc_medical_http_b/enc_medical_http_1/own.txt',
+      mimeType: 'text/plain',
+      checksum: 'own-checksum',
+      source: 'upload',
+      scanStatus: 'available',
+      uploadedByUserId: 'user_medical_http_1',
+      createdAt
+    }
+  ];
+  const server = createTwoAccountMedicalRecordsServer({
+    attachmentRepository: {
+      async create() {},
+      async findById(_accountId: string, id: string) {
+        return attachments.find((attachment) => attachment.id === id) ?? null;
+      },
+      async findByLinkedEntity(_accountId: string) {
+        return attachments;
+      },
+      async deleteById() {
+        return true;
+      }
+    }
+  });
+  await server.ready;
+  const accessTokenB = await login(server, 'medical_admin_1', 'seed_medical_1');
+
+  const response = await performRequest(server, {
+    method: 'GET',
+    url: '/attachments?linkedEntityType=encounter&linkedEntityId=enc_medical_http_1',
+    headers: { authorization: `Bearer ${accessTokenB}`, host: 'localhost' }
+  });
+
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(
+    response.bodyJson<{ items: Array<{ id: string }> }>().items.map((item) => item.id),
+    ['attachment_medical_http_own']
+  );
+});
+
+test('bootstrap in-memory attachment deletes preserve the principal account scope', async () => {
+  const bootstrap = await bootstrapServices({ skipDatabase: true });
+  const repository = bootstrap.repositories.attachment;
+  assert.ok(repository);
+
+  const attachment = {
+    id: 'attachment_delete_scope',
+    accountId: 'acc_attachment_owner',
+    linkedEntityType: 'encounter' as const,
+    linkedEntityId: 'encounter_delete_scope',
+    category: 'document' as const,
+    fileName: 'delete-scope.txt',
+    storageKey: 'pending/acc_attachment_owner/encounter_delete_scope/delete-scope.txt',
+    mimeType: 'text/plain',
+    checksum: 'delete-scope-checksum',
+    source: 'upload' as const,
+    scanStatus: 'available' as const,
+    uploadedByUserId: 'user_attachment_owner',
+    createdAt: '2026-08-31T00:00:00.000Z'
+  };
+
+  await repository.create(attachment as never);
+
+  assert.equal(
+    await repository.deleteById('acc_attachment_foreign' as never, attachment.id as never),
+    false
+  );
+  assert.ok(
+    await repository.findById('acc_attachment_owner' as never, attachment.id as never),
+    'foreign-account delete must leave the owner attachment available'
+  );
+  assert.equal(
+    await repository.deleteById('acc_attachment_owner' as never, attachment.id as never),
+    true
+  );
+  assert.equal(
+    await repository.findById('acc_attachment_owner' as never, attachment.id as never),
+    null
+  );
+});
+
+test('attachment clinical projection refreshes its cache after ambient transaction rollback', async () => {
+  const server = createTwoAccountMedicalRecordsServer({ failNextTransaction: true });
+  await server.ready;
+  const accessToken = await login(server, 'medical_admin_1', 'seed_medical_1');
+
+  const failedUpload = await performRequest(server, {
+    method: 'POST',
+    url: '/attachments',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      linkedEntityType: 'encounter',
+      linkedEntityId: 'enc_medical_http_1',
+      category: 'document',
+      fileName: 'rollback-projection.txt',
+      mimeType: 'text/plain',
+      checksum: 'rollback-projection-checksum'
+    }
+  });
+  assert.equal(failedUpload.statusCode, 500);
+
+  const afterRollback = await performRequest(server, {
+    method: 'GET',
+    url: '/medical-records/timeline?encounterId=enc_medical_http_1',
+    headers: { authorization: `Bearer ${accessToken}`, host: 'localhost' }
+  });
+  assert.equal(afterRollback.statusCode, 200);
+  assert.equal(
+    afterRollback
+      .bodyJson<{ items: Array<{ summary: string }> }>()
+      .items.some((item) => item.summary.includes('Attachment added to encounter')),
+    false
+  );
+});
+
+test('laboratory clinical projection refreshes its cache after ambient transaction rollback', async () => {
+  const server = createTwoAccountMedicalRecordsServer({ failNextTransaction: true });
+  await server.ready;
+  const accessToken = await login(server, 'medical_admin_1', 'seed_medical_1');
+
+  const failedOrder = await performRequest(server, {
+    method: 'POST',
+    url: '/diagnostics/orders',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      encounterId: 'enc_medical_http_1',
+      patientId: 'patient_medical_http_1',
+      examType: 'Hemograma rollback',
+      reason: 'Rollback da projeção clínica'
+    }
+  });
+  assert.equal(failedOrder.statusCode, 500);
+
+  const afterRollback = await performRequest(server, {
+    method: 'GET',
+    url: '/medical-records/timeline?encounterId=enc_medical_http_1',
+    headers: { authorization: `Bearer ${accessToken}`, host: 'localhost' }
+  });
+  assert.equal(afterRollback.statusCode, 200);
+  assert.equal(
+    afterRollback
+      .bodyJson<{ items: Array<{ eventType: string }> }>()
+      .items.some((item) => item.eventType === 'diagnostic_requested'),
+    false
+  );
+});
+
+test('laboratory aliases refresh their clinical projection after ambient transaction rollback', async () => {
+  const server = createTwoAccountMedicalRecordsServer({ failNextTransaction: true });
+  await server.ready;
+  const accessToken = await login(server, 'medical_admin_1', 'seed_medical_1');
+
+  const failedOrder = await performRequest(server, {
+    method: 'POST',
+    url: '/laboratory/exams',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      encounterId: 'enc_medical_http_1',
+      patientId: 'patient_medical_http_1',
+      examType: 'Bioquímica alias rollback',
+      reason: 'Rollback do alias laboratorial'
+    }
+  });
+  assert.equal(failedOrder.statusCode, 500);
+
+  const afterRollback = await performRequest(server, {
+    method: 'GET',
+    url: '/medical-records/timeline?encounterId=enc_medical_http_1',
+    headers: { authorization: `Bearer ${accessToken}`, host: 'localhost' }
+  });
+  assert.equal(afterRollback.statusCode, 200);
+  assert.equal(
+    afterRollback
+      .bodyJson<{ items: Array<{ eventType: string }> }>()
+      .items.some((item) => item.eventType === 'diagnostic_requested'),
+    false
+  );
+});
+
+test('inpatient clinical projection refreshes its cache after ambient transaction rollback', async () => {
+  const server = createTwoAccountMedicalRecordsServer();
+  await server.ready;
+  const accessToken = await login(server, 'medical_admin_1', 'seed_medical_1');
+
+  const admission = await performRequest(server, {
+    method: 'POST',
+    url: '/inpatient',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      encounterId: 'enc_medical_http_1',
+      patientId: 'patient_medical_http_1',
+      unit: 'UTI',
+      ward: 'A',
+      bed: '1'
+    }
+  });
+  assert.equal(admission.statusCode, 201);
+  const stayId = admission.bodyJson<{ id: string }>().id;
+
+  server.resetMedicalRecordFindAllCalls();
+  server.armNextTransactionFailure();
+  const failedProgress = await performRequest(server, {
+    method: 'POST',
+    url: `/inpatient/${stayId}/progress`,
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: { note: 'Projeção que deve desaparecer no rollback externo' }
+  });
+  assert.equal(failedProgress.statusCode, 500);
+
+  const afterRollback = await performRequest(server, {
+    method: 'GET',
+    url: '/medical-records/timeline?encounterId=enc_medical_http_1',
+    headers: { authorization: `Bearer ${accessToken}`, host: 'localhost' }
+  });
+  assert.equal(afterRollback.statusCode, 200);
+  assert.equal(
+    afterRollback
+      .bodyJson<{ items: Array<{ summary: string }> }>()
+      .items.some((item) => item.summary.includes('Evolucao de internacao registrada')),
+    false
+  );
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.ok(
+    server.getMedicalRecordFindAllCalls() >= 1,
+    'tenant rollback recovery must observe committed medical-record rows'
+  );
+});
+
+test('medical-record HTTP mutation refreshes its cache after ambient transaction rollback', async () => {
+  const server = createTwoAccountMedicalRecordsServer({ failNextTransaction: true });
+  await server.ready;
+  const accessToken = await login(server, 'medical_admin_1', 'seed_medical_1');
+
+  const failedUpdate = await performRequest(server, {
+    method: 'PATCH',
+    url: '/medical-records/entries/clinical_entry_http_1',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: { title: 'Fantasma', content: 'Não deve sobreviver ao rollback' }
+  });
+  assert.equal(failedUpdate.statusCode, 500);
+
+  const afterRollback = await performRequest(server, {
+    method: 'GET',
+    url: '/medical-records/entries?encounterId=enc_medical_http_1',
+    headers: { authorization: `Bearer ${accessToken}`, host: 'localhost' }
+  });
+  assert.equal(afterRollback.statusCode, 200);
+  const restoredEntry = afterRollback.bodyJson<{
+    items: Array<{ title: string; content: string }>;
+  }>().items[0];
+  assert.equal(restoredEntry?.title, 'Private title 1');
+  assert.equal(restoredEntry?.content, 'Private content 1');
+
+  const restoredRevisions = await performRequest(server, {
+    method: 'GET',
+    url: '/medical-records/entries/clinical_entry_http_1/revisions',
+    headers: { authorization: `Bearer ${accessToken}`, host: 'localhost' }
+  });
+  assert.equal(restoredRevisions.statusCode, 200);
+  assert.equal(restoredRevisions.bodyJson<{ items: Array<{ version: number }> }>().items.length, 1);
+
+  const restoredTimeline = await performRequest(server, {
+    method: 'GET',
+    url: '/medical-records/timeline?encounterId=enc_medical_http_1',
+    headers: { authorization: `Bearer ${accessToken}`, host: 'localhost' }
+  });
+  assert.equal(restoredTimeline.statusCode, 200);
+  const restoredTimelineItems = restoredTimeline.bodyJson<{
+    items: Array<{ summary: string }>;
+  }>().items;
+  assert.equal(restoredTimelineItems.length, 1);
+  assert.equal(restoredTimelineItems[0]?.summary, 'Private timeline 1');
+  assert.doesNotMatch(JSON.stringify(restoredTimelineItems), /Fantasma/);
 });
 
 test('catalog endpoints respect frontend search filters over HTTP semantics', async () => {

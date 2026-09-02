@@ -2863,9 +2863,7 @@
       "status": "COMPLETE_BOUNDED",
       "selection_status": "VERIFIED_BOUNDED",
       "origin": "Fresh residual scouting after CVG-001 setup-token closure found GET /master-search authorizes patients.read while returning full same-account owner records, despite owners.read being a separate permission.",
-      "dependencies": [
-        "CVG-003"
-      ],
+      "dependencies": ["CVG-003"],
       "owner": "root integrator",
       "acceptance_summary": "GET /master-search requires both patients.read and owners.read before returning the existing same-account owner, patient and relationship results; patient-only callers fail closed without a success audit event; payload, search, filtering and all other registry routes remain unchanged. No schema or global promotion is included.",
       "evidence_refs": [
@@ -2904,9 +2902,7 @@
       "status": "COMPLETE_BOUNDED",
       "selection_status": "VERIFIED_BOUNDED",
       "origin": "Fresh residual scouting after the bounded master-search owner-read closure found the route still forwards full OwnerSummary records with account, contact, document, address, financial, notes, legacy and lifecycle fields that are not needed for search navigation.",
-      "dependencies": [
-        "CVG-003"
-      ],
+      "dependencies": ["CVG-003"],
       "owner": "root integrator",
       "acceptance_summary": "GET /master-search returns owner items with exactly id, fullName and status after the existing patients.read plus owners.read checks; owner search, same-account filtering, patient/link results, response envelope and audit semantics remain unchanged; shared API types name the reduced projection. No other route or global promotion is included.",
       "evidence_refs": [
@@ -2946,19 +2942,17 @@
       "status": "COMPLETE_BOUNDED",
       "selection_status": "VERIFIED_BOUNDED",
       "origin": "Fresh residual scouting after the bounded master-search closure found DatabaseProcurementRepository saving full purchase snapshots without a purchase-row lock while InventoryService only CAS-protects individual stock items.",
-      "dependencies": [
-        "CVG-004"
-      ],
+      "dependencies": ["CVG-004"],
       "owner": "root integrator",
       "acceptance_summary": "Database-backed receivePurchase reloads and locks the authoritative purchase row inside the same tenant transaction before validating or applying inventory writes; concurrent receives of different lines cannot lose line quantities, receivedAmount or status, while existing public validation, item CAS, lots, audit/idempotency and in-memory behavior remain compatible.",
       "evidence_refs": [
         ".agent/tasks/CVG-004-INVENTORY-PROCUREMENT-RECEIPT-LINEARIZATION.md",
         ".agent/gates/implementation-ready-CVG-004-INVENTORY-PROCUREMENT-RECEIPT-LINEARIZATION.json",
-    ".agent/authority.jsonl#AUTH-CVG-004-INVENTORY-PROCUREMENT-RECEIPT-LINEARIZATION-IR-001",
-    ".agent/verification.jsonl#VFY-SCOUT-CVG-004-INVENTORY-PROCUREMENT-RECEIPT-LINEARIZATION-001",
-    ".agent/verification.jsonl#VFY-SCOUT-CVG-004-INVENTORY-PROCUREMENT-RECEIPT-LINEARIZATION-INDEPENDENT-001",
-    ".agent/verification.jsonl#VFY-CVG-004-INVENTORY-PROCUREMENT-RECEIPT-LINEARIZATION-RED-001",
-    ".agent/verification.jsonl#VFY-CVG-004-INVENTORY-PROCUREMENT-RECEIPT-LINEARIZATION-GREEN-001",
+        ".agent/authority.jsonl#AUTH-CVG-004-INVENTORY-PROCUREMENT-RECEIPT-LINEARIZATION-IR-001",
+        ".agent/verification.jsonl#VFY-SCOUT-CVG-004-INVENTORY-PROCUREMENT-RECEIPT-LINEARIZATION-001",
+        ".agent/verification.jsonl#VFY-SCOUT-CVG-004-INVENTORY-PROCUREMENT-RECEIPT-LINEARIZATION-INDEPENDENT-001",
+        ".agent/verification.jsonl#VFY-CVG-004-INVENTORY-PROCUREMENT-RECEIPT-LINEARIZATION-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-004-INVENTORY-PROCUREMENT-RECEIPT-LINEARIZATION-GREEN-001",
         ".agent/verification.jsonl#VFY-CVG-004-INVENTORY-PROCUREMENT-RECEIPT-LINEARIZATION-REGRESSION-001",
         ".agent/verification.jsonl#VFY-CVG-004-INVENTORY-PROCUREMENT-RECEIPT-LINEARIZATION-REGRESSION-002",
         ".agent/verification.jsonl#VFY-CVG-004-INVENTORY-PROCUREMENT-RECEIPT-LINEARIZATION-QUALITY-001",
@@ -3206,10 +3200,7 @@
       "status": "COMPLETE_BOUNDED",
       "selection_status": "CLOSED_BOUNDED",
       "origin": "Fresh local residual scouting after CVG-002B2B auth login input closure found POST /auth/login/mfa casts arbitrary JSON and reads payload.userId before validation.",
-      "dependencies": [
-        "CVG-002B2B",
-        "CVG-002B2B-AUTH-LOGIN-INPUT-BOUNDARY"
-      ],
+      "dependencies": ["CVG-002B2B", "CVG-002B2B-AUTH-LOGIN-INPUT-BOUNDARY"],
       "owner": "root integrator",
       "acceptance_summary": "POST /auth/login/mfa accepts only an object with bounded non-empty userId, token and challengeId, returns sanitized 400 without invoking AuthService for invalid input, and preserves rate-limit ordering, MFA challenge semantics, lockout and session cookies.",
       "evidence_refs": [
@@ -3231,8 +3222,8 @@
         "No provider, target, production, deployment, release or external mutation is authorized."
       ],
       "next_action": "Closed as PASS_BOUNDED with an explicit independent-review limitation. Commit this bounded slice, then return to fresh residual scouting under a new authority; keep global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
-    }
-  ,{
+    },
+    {
       "id": "CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES-PERSISTED-STATUS-BOUNDARY",
       "title": "Reject malformed persisted status filters for scheduled inventory-invoices reports",
       "stage": "CLOSE",
@@ -3240,9 +3231,7 @@
       "status": "COMPLETE_BOUNDED",
       "selection_status": "CLOSED_BOUNDED",
       "origin": "Fresh post-commit scouting confirmed the inventory-invoices worker maps persisted null/empty/whitespace status values to no filter, bypassing the stricter source validator; the sidecar review recorded this as a Medium finding.",
-      "dependencies": [
-        "CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES"
-      ],
+      "dependencies": ["CVG-004-REPORT-SCHEDULED-INVENTORY-INVOICES"],
       "owner": "root integrator",
       "acceptance_summary": "The scheduled inventory-invoices worker rejects null, empty, whitespace, wrong-type and non-allowlisted persisted status filters before source.list, preserves valid normalized statuses and all other report behavior, and does not require migration or backfill.",
       "evidence_refs": [
@@ -3263,9 +3252,9 @@
       ],
       "limitations": [
         "Worker-local persisted filter boundary only; no schema, backfill, fiscal, provider, target, production, deployment, release or global ERP scope.",
-      "The parent inventory-invoices gate retains broader separate claims and a historical Low citation debt; this bounded slice does not promote it."
+        "The parent inventory-invoices gate retains broader separate claims and a historical Low citation debt; this bounded slice does not promote it."
       ],
-    "next_action": "Closed as PASS_BOUNDED with explicit independent-review limitation and committed as f14bf7a4. Return to fresh residual scouting under a new authority; keep global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
+      "next_action": "Closed as PASS_BOUNDED with explicit independent-review limitation and committed as f14bf7a4. Return to fresh residual scouting under a new authority; keep global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
     },
     {
       "id": "CVG-003-SURGERY-TENANT-BOUNDARY",
@@ -3275,9 +3264,7 @@
       "status": "COMPLETE_BOUNDED",
       "selection_status": "CLOSED_BOUNDED",
       "origin": "Fresh local post-commit scouting found SurgeryService reads, creates and updates by encounter/case ID without an explicit caller account, while the HTTP adapter is the only account guard.",
-      "dependencies": [
-        "CVG-003"
-      ],
+      "dependencies": ["CVG-003"],
       "owner": "root integrator",
       "acceptance_summary": "SurgeryService requires account scope for requestCase, list, getOrThrow and updateStatus; cross-account access fails before cache/persistence mutation, the authenticated route forwards the principal account and same-account lifecycle remains compatible.",
       "evidence_refs": [
@@ -3357,10 +3344,10 @@
     {
       "id": "CVG-003-BILLING-TENANT-BOUNDARY",
       "title": "Require account scope at the billing service and HTTP boundary",
-  "stage": "CLOSE",
+      "stage": "CLOSE",
       "priority": "P0",
-  "status": "COMPLETE_BOUNDED",
-  "selection_status": "CLOSED_BOUNDED",
+      "status": "COMPLETE_BOUNDED",
+      "selection_status": "CLOSED_BOUNDED",
       "origin": "Fresh residual scouting after the committed Diagnostics tenant-boundary checkpoint found encounter/record billing methods without explicit AccountId; a delegated read-only scout independently ranked this as the next P0.",
       "dependencies": ["CVG-003"],
       "owner": "root integrator",
@@ -3374,19 +3361,195 @@
         "packages/modules/billing/src/repositories/database-billing.repository.ts",
         "apps/api/src/routes/billing-routes.ts",
         "packages/modules/financial/src/index.ts",
-    "packages/modules/event-consumers/src/payments.consumer.ts",
-    "packages/modules/event-consumers/src/billing.consumer.ts",
-    ".agent/gates/verified-CVG-003-billing-tenant-boundary.json",
-    ".agent/artifacts/CVG-003-billing-tenant-boundary-2026-08-30.md",
-    ".agent/verification.jsonl#VFY-CVG-003-BILLING-TENANT-BOUNDARY-FINAL-001"
+        "packages/modules/event-consumers/src/payments.consumer.ts",
+        "packages/modules/event-consumers/src/billing.consumer.ts",
+        ".agent/gates/verified-CVG-003-billing-tenant-boundary.json",
+        ".agent/artifacts/CVG-003-billing-tenant-boundary-2026-08-30.md",
+        ".agent/verification.jsonl#VFY-CVG-003-BILLING-TENANT-BOUNDARY-FINAL-001"
       ],
       "limitations": [
         "Service/HTTP/first-party caller boundary only; no schema, migration, repository SQL redesign, settlement/cash redesign, provider, credential, target, production, deployment, release or global ERP scope.",
         "A completed delegated scout ranked BillingService P0; a second parallel scout could not start because the environment thread limit was occupied. This is candidate evidence, not independent implementation approval.",
-    "The pre-existing packages/design-system/tsconfig.vue.tsbuildinfo cache remains outside scope.",
-    "BillingItem sourceEntityType/sourceEntityId is polymorphic and is not independently resolved by BillingService; first-party callers are scoped and resolver/schema redesign is outside this gate."
-  ],
-  "next_action": "Reconcile the bounded evidence, commit explicit Billing paths, verify the post-commit worktree and resume fresh residual scouting under a new authority."
-}
-  ]
+        "The pre-existing packages/design-system/tsconfig.vue.tsbuildinfo cache remains outside scope.",
+        "BillingItem sourceEntityType/sourceEntityId is polymorphic and is not independently resolved by BillingService; first-party callers are scoped and resolver/schema redesign is outside this gate."
+      ],
+      "next_action": "Committed locally as c7eb4a00 and reconciled with only the pre-existing tsbuildinfo outside scope; resume fresh residual scouting under a new authority while global ERP remains IN_PROGRESS/PARTIAL and promotion remains BLOCKED."
+    },
+  {
+    "id": "CVG-003-MEDICAL-RECORDS-TENANT-BOUNDARY",
+    "title": "Require account scope at the medical-record service and HTTP boundary",
+    "stage": "REMEDIATE",
+    "priority": "P1",
+    "status": "COMPLETE_BOUNDED",
+    "selection_status": "CLOSED_BOUNDED",
+      "origin": "Fresh residual scouting after the committed Billing tenant-boundary checkpoint found MedicalRecordsService cache-backed reads and entry mutations without explicit AccountId; delegated scout Bacon independently ranked this as the next high-value clinical confidentiality slice.",
+      "dependencies": ["CVG-003"],
+      "owner": "root integrator",
+      "acceptance_summary": "MedicalRecordsService requires explicit AccountId for record, entry, revision and timeline reads/mutations, cache snapshots and first-party event callbacks; repository-hydrated children are filtered by account and parent linkage; authenticated routes and first-party callers forward account scope; foreign access fails closed without mutation or disclosure.",
+    "evidence_refs": [
+        ".agent/tasks/CVG-003-MEDICAL-RECORDS-TENANT-BOUNDARY.md",
+        ".agent/gates/implementation-ready-CVG-003-medical-records-tenant-boundary.json",
+        ".agent/authority.jsonl#AUTH-CVG-003-MEDICAL-RECORDS-TENANT-BOUNDARY-IR-001",
+        ".agent/verification.jsonl#VFY-SCOUT-CVG-003-MEDICAL-RECORDS-TENANT-BOUNDARY-001",
+        "packages/modules/medical-records/src/index.ts",
+        "packages/modules/medical-records/src/repositories/database-medical-records.repository.ts",
+        "packages/modules/attachments/src/index.ts",
+        "apps/api/src/server.ts",
+        "apps/api/src/routes/inpatient-routes.ts",
+        "packages/modules/medical-records/src/medical-records.test.ts",
+      "apps/api/src/server.test.ts",
+      "packages/modules/medical-records/src/medical-records.boundary-coverage.test.ts",
+      ".agent/verification.jsonl#VFY-CVG-003-MEDICAL-RECORDS-TENANT-BOUNDARY-RED-001",
+      ".agent/verification.jsonl#VFY-CVG-003-MEDICAL-RECORDS-TENANT-BOUNDARY-GREEN-001",
+      ".agent/verification.jsonl#VFY-CVG-003-MEDICAL-RECORDS-TENANT-BOUNDARY-REVIEW-001",
+      ".agent/verification.jsonl#VFY-CVG-003-MEDICAL-RECORDS-TENANT-BOUNDARY-REVIEW-REVALIDATION-UNAVAILABLE-001",
+      ".agent/verification.jsonl#VFY-CVG-003-MEDICAL-RECORDS-TENANT-BOUNDARY-REVIEW-REVALIDATION-002",
+      ".agent/verification.jsonl#VFY-CVG-003-MEDICAL-RECORDS-TENANT-BOUNDARY-REGRESSION-001",
+      ".agent/verification.jsonl#VFY-CVG-003-MEDICAL-RECORDS-TENANT-BOUNDARY-QUALITY-001",
+      ".agent/verification.jsonl#VFY-CVG-003-MEDICAL-RECORDS-TENANT-BOUNDARY-GLOBAL-NON-PROMOTION-001",
+      ".agent/gates/verified-CVG-003-medical-records-tenant-boundary.json",
+      ".agent/artifacts/CVG-003-medical-records-tenant-boundary-2026-08-31.md",
+      ".agent/verification.jsonl#VFY-CVG-003-MEDICAL-RECORDS-TENANT-BOUNDARY-FINAL-001",
+      ".agent/verification.jsonl#VFY-CVG-003-MEDICAL-RECORDS-TENANT-BOUNDARY-FINAL-RETEST-002",
+      ".agent/verification.jsonl#VFY-CVG-003-MEDICAL-RECORDS-TENANT-BOUNDARY-FINAL-RECONCILIATION-003",
+      ".agent/verification.jsonl#VFY-CVG-003-MEDICAL-RECORDS-TENANT-BOUNDARY-FINAL-RECONCILIATION-004",
+      ".agent/verification.jsonl#VFY-CVG-003-MEDICAL-RECORDS-TENANT-BOUNDARY-CONTROL-PLANE-001"
+      ],
+    "limitations": [
+      "Service/cache/HTTP/first-party caller boundary only; no schema, migration, RLS policy, repository SQL redesign, unrelated clinical aggregate, provider, target, production, deployment, release or global ERP scope.",
+      "Current authenticated routes have compensating ownership checks; this slice adds defense in depth at the reusable service boundary.",
+      "The compatibility ensureRecord path can publish a cache entry before asynchronous persistence completes; canonical authenticated flows use transaction/persistence wait paths, and lifecycle redesign is outside this slice.",
+      "The complete critical suite retains unrelated baseline failures (539 passed, 4 failed, 13 skipped) in encounter-index isolation, PIX service-principal DDL cleanup, scheduled-report load and worker outbox tenant context.",
+      "The pre-existing packages/design-system/tsconfig.vue.tsbuildinfo cache remains outside scope."
+    ],
+    "next_action": "Closed as PASS_BOUNDED. Preserve the service/cache/HTTP/first-party residuals and return to fresh residual scouting under a new authority; keep global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
+  },
+    {
+      "id": "CVG-CRITICAL-REGRESSION-BASELINE-REPAIR",
+      "title": "Restore the official critical integration baseline after contract-aligned migrations",
+      "stage": "VERIFY",
+      "priority": "P1",
+      "status": "COMPLETE_BOUNDED",
+      "selection_status": "CLOSED_BOUNDED",
+      "origin": "Fresh official critical-suite RED plus isolated worker RED after the medical-records bounded closure.",
+      "dependencies": ["CVG-003-MEDICAL-RECORDS-TENANT-BOUNDARY"],
+      "owner": "root integrator",
+      "acceptance_summary": "Only stale integration fixtures and assertions are aligned with authoritative tenant, active-encounter, idempotency and authorization contracts; focused and official critical base/process evidence is fresh, with no production or schema weakening.",
+      "evidence_refs": [
+        ".agent/tasks/CVG-CRITICAL-REGRESSION-BASELINE-REPAIR.md",
+        ".agent/gates/implementation-ready-CVG-critical-regression-baseline-repair.json",
+        ".agent/authority.jsonl#AUTH-CVG-CRITICAL-REGRESSION-BASELINE-REPAIR-IR-001",
+        ".agent/verification.jsonl#VFY-CVG-CRITICAL-REGRESSION-BASELINE-REPAIR-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-CRITICAL-REGRESSION-BASELINE-REPAIR-GREEN-001",
+        ".agent/verification.jsonl#VFY-CVG-CRITICAL-REGRESSION-BASELINE-REPAIR-BASE-001",
+        ".agent/verification.jsonl#VFY-CVG-CRITICAL-REGRESSION-BASELINE-REPAIR-PROCESS-001",
+        ".agent/verification.jsonl#VFY-CVG-CRITICAL-REGRESSION-BASELINE-REPAIR-REVIEW-001",
+        ".agent/gates/verified-CVG-critical-regression-baseline-repair.json",
+        ".agent/artifacts/CVG-CRITICAL-regression-baseline-repair-2026-08-31.md",
+        ".agent/verification.jsonl#VFY-CVG-CRITICAL-REGRESSION-BASELINE-REPAIR-FINAL-001",
+        ".agent/verification.jsonl#VFY-CVG-CRITICAL-REGRESSION-BASELINE-REPAIR-CONTROL-PLANE-001"
+      ],
+      "next_action": "Closed as PASS_BOUNDED. Preserve the test-only scope and return to fresh residual scouting under a new authority; keep global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
+    },
+  {
+    "id": "CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION",
+      "title": "Require account scope for prescription detail and commands",
+    "stage": "VERIFY",
+      "priority": "P0",
+    "status": "COMPLETE_BOUNDED",
+    "selection_status": "CLOSED_BOUNDED",
+      "origin": "Fresh independent residual scouting after the critical integration baseline closure.",
+      "dependencies": [
+        "CVG-003",
+        "CVG-CRITICAL-REGRESSION-BASELINE-REPAIR"
+      ],
+      "owner": "root integrator",
+      "acceptance_summary": "Prescription detail, document, revision, update, archive and sign operations require explicit AccountId, fail closed for foreign records without mutation or persistence residue, filter contaminated hydration and receive account scope from authenticated routes and first-party callers.",
+    "evidence_refs": [
+      ".agent/tasks/CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION.md",
+      ".agent/gates/implementation-ready-CVG-003-prescription-command-detail-tenant-isolation.json",
+      ".agent/authority.jsonl#AUTH-CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION-IR-001",
+      ".agent/verification.jsonl#VFY-SCOUT-CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION-001",
+      ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION-RED-001",
+      ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION-GREEN-001",
+      ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION-COVERAGE-001",
+      ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION-REGRESSION-001",
+      ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION-CRITICAL-BASE-001",
+      ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION-CRITICAL-PROCESS-001",
+      ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION-REVIEW-001",
+      ".agent/gates/verified-CVG-003-prescription-command-detail-tenant-isolation.json",
+      ".agent/artifacts/CVG-003-prescription-command-detail-tenant-isolation-2026-08-31.md",
+      ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION-FINAL-001",
+      ".agent/verification.jsonl#VFY-CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION-CONTROL-PLANE-001"
+    ],
+    "next_action": "Closed as PASS_BOUNDED. Preserve the account-aware service/cache/route correction and return to fresh residual scouting under a new authority; keep global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
+  },
+  {
+    "id": "OPS-SEC-COMPOSE-LOCAL-EXPOSURE-001",
+    "title": "Harden canonical Compose local exposure and health contracts",
+    "stage": "VERIFY",
+    "priority": "P1",
+    "status": "COMPLETE_BOUNDED",
+    "selection_status": "CLOSED_BOUNDED",
+    "origin": "Fresh local residual inspection after the bounded prescription command/detail closure; delegated scout was unavailable and is not treated as evidence.",
+    "dependencies": [
+      "CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION",
+      "CVG-OPS-CRITICAL-PROCESS-RUNNER-001"
+    ],
+    "owner": "root integrator",
+    "acceptance_summary": "Canonical local Compose published ports bind to loopback, Grafana requires an explicit password, worker readiness is healthchecked and required by cutover, Prometheus scrapes canonical service DNS/internal ports and active docs match.",
+    "evidence_refs": [
+      ".agent/tasks/OPS-SEC-COMPOSE-LOCAL-EXPOSURE-001.md",
+      ".agent/gates/implementation-ready-OPS-SEC-COMPOSE-LOCAL-EXPOSURE-001.json",
+      ".agent/authority.jsonl#AUTH-OPS-SEC-COMPOSE-LOCAL-EXPOSURE-IR-001",
+      ".agent/verification.jsonl#VFY-SCOUT-OPS-SEC-COMPOSE-LOCAL-EXPOSURE-001",
+      ".agent/verification.jsonl#VFY-OPS-SEC-COMPOSE-LOCAL-EXPOSURE-RED-001",
+      ".agent/verification.jsonl#VFY-OPS-SEC-COMPOSE-LOCAL-EXPOSURE-GREEN-001",
+      ".agent/verification.jsonl#VFY-OPS-SEC-COMPOSE-LOCAL-EXPOSURE-REGRESSION-001",
+      ".agent/verification.jsonl#VFY-OPS-SEC-COMPOSE-LOCAL-EXPOSURE-QUALITY-001",
+      ".agent/verification.jsonl#VFY-OPS-SEC-COMPOSE-LOCAL-EXPOSURE-REVIEW-001",
+      ".agent/verification.jsonl#VFY-OPS-SEC-COMPOSE-LOCAL-EXPOSURE-REVIEW-002",
+      ".agent/verification.jsonl#VFY-OPS-SEC-COMPOSE-LOCAL-EXPOSURE-REVIEW-003",
+      ".agent/verification.jsonl#VFY-OPS-SEC-COMPOSE-LOCAL-EXPOSURE-REVIEW-004",
+      ".agent/verification.jsonl#VFY-OPS-SEC-COMPOSE-LOCAL-EXPOSURE-REVIEW-005",
+      ".agent/gates/verified-OPS-SEC-COMPOSE-LOCAL-EXPOSURE-001.json",
+      ".agent/artifacts/OPS-SEC-COMPOSE-LOCAL-EXPOSURE-2026-08-31.md",
+      ".agent/verification.jsonl#VFY-OPS-SEC-COMPOSE-LOCAL-EXPOSURE-FINAL-001",
+      ".agent/verification.jsonl#VFY-OPS-SEC-COMPOSE-LOCAL-EXPOSURE-CONTROL-PLANE-001"
+    ],
+    "next_action": "Closed as PASS_BOUNDED. Preserve the local Compose-only scope and return to fresh residual scouting under a new authority; keep global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
+  },
+  {
+    "id": "CVG-003-ENCOUNTER-TENANT-BOUNDARY",
+    "title": "Require account scope for encounter reads, timelines and lifecycle commands",
+    "stage": "VERIFY",
+    "priority": "P0",
+    "status": "IN_PROGRESS",
+    "selection_status": "REVIEW_FINDINGS",
+    "origin": "Fresh local residual inspection plus delegated read-only scout James after the bounded local Compose closure.",
+    "dependencies": [
+      "CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION",
+      "OPS-SEC-COMPOSE-LOCAL-EXPOSURE-001"
+    ],
+    "owner": "root integrator",
+    "acceptance_summary": "Reusable encounter detail, collection, timeline, snapshot and lifecycle operations require explicit AccountId, filter contaminated cache/hydration results and propagate the authenticated principal through first-party callers without foreign disclosure or mutation.",
+    "evidence_refs": [
+      ".agent/tasks/CVG-003-ENCOUNTER-TENANT-BOUNDARY.md",
+      ".agent/gates/implementation-ready-CVG-003-encounter-tenant-boundary.json",
+      ".agent/authority.jsonl#AUTH-CVG-003-ENCOUNTER-TENANT-BOUNDARY-IR-001",
+      ".agent/verification.jsonl#VFY-SCOUT-CVG-003-ENCOUNTER-TENANT-BOUNDARY-001",
+      ".agent/verification.jsonl#VFY-CVG-003-ENCOUNTER-TENANT-BOUNDARY-RED-001",
+      ".agent/verification.jsonl#VFY-CVG-003-ENCOUNTER-TENANT-BOUNDARY-GREEN-001",
+      ".agent/verification.jsonl#VFY-CVG-003-ENCOUNTER-TENANT-BOUNDARY-REGRESSION-001",
+      ".agent/verification.jsonl#VFY-CVG-003-ENCOUNTER-TENANT-BOUNDARY-QUALITY-001",
+      ".agent/verification.jsonl#VFY-CVG-003-ENCOUNTER-TENANT-BOUNDARY-REVIEW-001",
+      ".agent/verification.jsonl#VFY-CVG-003-ENCOUNTER-TENANT-BOUNDARY-E2E-001",
+      ".agent/gates/verified-CVG-003-encounter-tenant-boundary.json",
+      ".agent/artifacts/CVG-003-encounter-tenant-boundary-2026-08-31.md",
+      ".agent/verification.jsonl#VFY-CVG-003-ENCOUNTER-TENANT-BOUNDARY-FINAL-001",
+      ".agent/verification.jsonl#VFY-CVG-003-ENCOUNTER-TENANT-BOUNDARY-CONTROL-PLANE-001"
+    ],
+    "next_action": "Independent review returned REQUEST_CHANGES. Remediate the five repository-local findings in disjoint bounded scopes, rerun all evidence and re-review before closing; preserve global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
+  }
+]
 }

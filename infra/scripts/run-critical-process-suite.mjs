@@ -75,6 +75,13 @@ const APPROVED_TEST_DATABASE_HOSTS = new Set(['localhost', '127.0.0.1', '::1', '
 const APPROVED_TEST_DATABASE_PORTS = new Set([5432, 5433]);
 const TEST_DATABASE_NAME_PATTERN = /^cvg_his_v2_test(?:_[a-z0-9_]+)*$/;
 
+function resolveDefaultTestDatabaseUrl() {
+  const url = new URL('postgres://localhost:5433/cvg_his_v2_test');
+  url.username = 'postgres';
+  url.password = 'postgres';
+  return url.toString();
+}
+
 const CHILD_ENVIRONMENT_KEYS = new Set([
   'CI',
   'ComSpec',
@@ -167,11 +174,13 @@ export function resolvePackageManagerInvocation(args) {
 }
 
 export function resolveCriticalTestDatabaseUrl(rawValue = undefined) {
-  const candidate = rawValue ?? process.env.DATABASE_URL_TEST ?? process.env.DATABASE_URL;
+  const candidate =
+    rawValue ??
+    process.env.DATABASE_URL_TEST ??
+    process.env.DATABASE_URL ??
+    resolveDefaultTestDatabaseUrl();
   if (typeof candidate !== 'string' || candidate.trim() === '') {
-    throw new Error(
-      'critical process runner requires DATABASE_URL_TEST or DATABASE_URL with a dedicated local PostgreSQL test URL'
-    );
+    throw new Error('critical process runner requires a dedicated local PostgreSQL test URL');
   }
 
   let url;

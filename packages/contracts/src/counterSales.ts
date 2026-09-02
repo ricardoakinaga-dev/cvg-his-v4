@@ -26,6 +26,20 @@ export const counterSalePaymentMethodSchema = z.enum([
   'other'
 ]);
 
+function containsControlCharacters(value: string): boolean {
+  for (const character of value) {
+    const codePoint = character.codePointAt(0);
+    if (
+      codePoint !== undefined &&
+      (codePoint <= 0x1f || codePoint === 0x7f || (codePoint >= 0x80 && codePoint <= 0x9f))
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 export const createCounterSaleBodySchema = z.object({
   ownerId: uuidSchema.optional().nullable(),
   notes: z.string().max(2000).transform(trim).optional().nullable()
@@ -35,7 +49,7 @@ export const cancelCounterSaleBodySchema = z
   .object({
     reason: z
       .string()
-      .refine((value) => !/[\u0000-\u001f\u007f-\u009f]/u.test(value), {
+      .refine((value) => !containsControlCharacters(value), {
         message: 'reason cannot contain control characters'
       })
       .transform(trim)
@@ -74,7 +88,7 @@ export const counterSaleCancellationHistoryResponseSchema = z.object({
   cancelledAt: z.coerce.date(),
   reason: z
     .string()
-    .refine((value) => !/[\u0000-\u001f\u007f-\u009f]/u.test(value), {
+    .refine((value) => !containsControlCharacters(value), {
       message: 'reason cannot contain control characters'
     })
     .pipe(z.string().min(1).max(500)),

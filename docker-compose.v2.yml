@@ -4,12 +4,12 @@
 #   his.centroveterinarioguarapiranga.com -> cvg-his-v2-spa:3002
 #
 # Portas:
-#   SPA:     3002:3002  — frontend canonico (apps/spa)
-#   API:     3003:3001  — API do sistema
+#   SPA:     127.0.0.1:3002:3002  — frontend canonico (apps/spa)
+#   API:     127.0.0.1:3003:3001  — API do sistema
 #   Worker:  sem porta publicada
-#   OTEL:    4318:4318  — collector OTLP HTTP (profile observability)
-#   Prom:    9090:9090  — Prometheus (profile observability)
-#   Grafana: 3005:3000  — Grafana (profile observability)
+#   OTEL:    127.0.0.1:4318:4318  — collector OTLP HTTP (profile observability)
+#   Prom:    127.0.0.1:9090:9090  — Prometheus (profile observability)
+#   Grafana: 127.0.0.1:3005:3000  — Grafana (profile observability)
 #
 services:
   postgres:
@@ -26,7 +26,7 @@ services:
       POSTGRES_WORKER_USER: ${POSTGRES_WORKER_USER:-cvg_worker}
       POSTGRES_WORKER_PASSWORD: ${POSTGRES_WORKER_PASSWORD:-${POSTGRES_RUNTIME_PASSWORD:?POSTGRES_RUNTIME_PASSWORD is required}}
     ports:
-      - '5432:5432'
+      - '127.0.0.1:5432:5432'
     volumes:
       - cvg_his_v2_postgres_data:/var/lib/postgresql/data
       - ./infra/postgres/init-runtime-role.sh:/docker-entrypoint-initdb.d/20-runtime-role.sh:ro
@@ -41,7 +41,7 @@ services:
     restart: unless-stopped
     command: ['redis-server', '--appendonly', 'yes']
     ports:
-      - '6380:6379'
+      - '127.0.0.1:6380:6379'
     volumes:
       - cvg_his_v2_redis_data:/data
     healthcheck:
@@ -52,7 +52,7 @@ services:
 
   runtime-role-init:
     image: postgres:16-alpine
-    restart: "no"
+    restart: 'no'
     environment:
       PGHOST: postgres
       POSTGRES_DB: ${POSTGRES_DB:-cvg_his_v2}
@@ -76,7 +76,7 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile
     image: cvg-his-v2-cvg-his-v2-api:035e555
-    restart: "no"
+    restart: 'no'
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-cvg_his_v2}
       POSTGRES_API_USER: ${POSTGRES_API_USER:-cvg_api}
@@ -97,7 +97,7 @@ services:
     volumes:
       - ./infra/observability/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml:ro
     ports:
-      - '4318:4318'
+      - '127.0.0.1:4318:4318'
 
   prometheus:
     image: prom/prometheus:v2.54.1
@@ -109,9 +109,7 @@ services:
       - ./infra/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./infra/observability/prometheus-alerts.yml:/etc/prometheus/prometheus-alerts.yml:ro
     ports:
-      - '9090:9090'
-    extra_hosts:
-      - 'host.docker.internal:host-gateway'
+      - '127.0.0.1:9090:9090'
 
   grafana:
     image: grafana/grafana:11.1.4
@@ -119,9 +117,9 @@ services:
     restart: unless-stopped
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD is required}
     ports:
-      - '3005:3000'
+      - '127.0.0.1:3005:3000'
 
   cvg-his-v2-api:
     build:
@@ -171,7 +169,7 @@ services:
     volumes:
       - cvg_his_v2_storage:/srv/cvg-his-v2/storage
     ports:
-      - '3003:3001'
+      - '127.0.0.1:3003:3001'
     healthcheck:
       test: ['CMD-SHELL', 'curl -fsS http://127.0.0.1:3001/ready >/dev/null || exit 1']
       interval: 10s
@@ -208,6 +206,16 @@ services:
         required: false
     volumes:
       - cvg_his_v2_storage:/srv/cvg-his-v2/storage
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'node -e "fetch(''http://127.0.0.1:3002/ready'').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"'
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 20
+      start_period: 15s
 
   cvg-his-v2-spa:
     build:
@@ -225,7 +233,7 @@ services:
       cvg-his-v2-api:
         condition: service_healthy
     ports:
-      - '3002:3002'
+      - '127.0.0.1:3002:3002'
     healthcheck:
       test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:3002/ || exit 1']
       interval: 10s

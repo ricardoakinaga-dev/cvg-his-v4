@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 const root = resolve(import.meta.dirname, '../../..');
 const workflow = readFileSync(resolve(root, '.github/workflows/ci.yml'), 'utf8');
+const playwrightApiConfig = readFileSync(resolve(root, 'playwright.config.ts'), 'utf8');
 const playwrightConfig = readFileSync(resolve(root, 'playwright-spa.config.ts'), 'utf8');
 
 describe('CI repository guardrails', () => {
@@ -43,6 +44,24 @@ describe('CI repository guardrails', () => {
       nextJobOffset === -1 ? undefined : visualJobStart + 3 + nextJobOffset
     );
     expect(visualJob).toContain('path: test-results/');
+  });
+
+  it('propagates the API-mode Playwright URL to global setup', () => {
+    expect(playwrightApiConfig).toContain(
+      'process.env.API_URL = process.env.API_URL || E2E_API_URL;'
+    );
+    expect(playwrightApiConfig).toContain(
+      'process.env.BASE_URL = process.env.BASE_URL || E2E_API_URL;'
+    );
+  });
+
+  it('propagates SPA E2E infrastructure URLs to database-backed fixtures', () => {
+    expect(playwrightConfig).toContain(
+      'process.env.E2E_DATABASE_URL = process.env.E2E_DATABASE_URL || E2E_DATABASE_URL;'
+    );
+    expect(playwrightConfig).toContain(
+      'process.env.E2E_REDIS_URL = process.env.E2E_REDIS_URL || E2E_REDIS_URL;'
+    );
   });
 
   it('runs the canonical operational validators as a blocking job', () => {
@@ -89,7 +108,7 @@ describe('CI repository guardrails', () => {
       'REQUIRE_TEST_DB=1 pnpm vitest run tests/integration/database/inpatient-clinical-financial-vertical-http-postgres.test.ts --config vitest.integration.config.ts'
     );
     expect(job).toContain(
-      'docker compose --env-file .env.v2.example -f docker-compose.v2.yml config --quiet'
+      'GRAFANA_ADMIN_PASSWORD="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-compose-validation" docker compose --env-file .env.v2.example -f docker-compose.v2.yml config --quiet'
     );
     expect(job).toContain('run: pnpm test:db:stop');
   });

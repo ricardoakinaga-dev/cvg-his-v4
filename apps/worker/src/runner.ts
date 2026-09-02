@@ -1986,13 +1986,12 @@ const defaultReports = createWorkerReports();
 
 export async function runWorkerTick(
   logger: Logger,
-  context: WorkerTickContext,
+  context: WorkerTickContext & { readonly accountId: AccountId },
   notifications: NotificationsService = defaultNotifications
 ) {
-  const processed = await notifications.processPendingFromRepository(
-    { limit: 25 },
-    context.accountId
-  );
+  const processed = await notifications.processPendingFromRepository(context.accountId, {
+    limit: 25
+  });
 
   logger.info('worker notification tick complete', {
     service: context.service,

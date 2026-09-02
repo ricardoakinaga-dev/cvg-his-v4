@@ -85,16 +85,15 @@ async function findAvailableAppointmentSlot(
   });
   expect(availabilityResponse.ok()).toBeTruthy();
   const availabilityPayload = await availabilityResponse.json();
-  let availability = Array.isArray(availabilityPayload.items)
-    ? availabilityPayload.items
-    : [];
+  let availability = Array.isArray(availabilityPayload.items) ? availabilityPayload.items : [];
 
   if (availability.length === 0) {
     const staffResponse = await apiContext.get('/staff');
     expect(staffResponse.ok()).toBeTruthy();
     const staffPayload = await staffResponse.json();
-    const staff = staffPayload.items?.find((item: { status?: string }) => item.status !== 'inactive')
-      ?? staffPayload.items?.[0];
+    const staff =
+      staffPayload.items?.find((item: { status?: string }) => item.status !== 'inactive') ??
+      staffPayload.items?.[0];
     expect(staff?.id).toBeTruthy();
     expect(staff?.userId ?? staff?.id).toBeTruthy();
 
@@ -114,10 +113,11 @@ async function findAvailableAppointmentSlot(
     availability = [await createAvailabilityResponse.json()];
   }
 
-  const selectedAvailability = availability.find(
-    (item: { professionalUserId: string }) =>
-      !preferredProfessionalUserId || item.professionalUserId === preferredProfessionalUserId
-  ) ?? availability[0];
+  const selectedAvailability =
+    availability.find(
+      (item: { professionalUserId: string }) =>
+        !preferredProfessionalUserId || item.professionalUserId === preferredProfessionalUserId
+    ) ?? availability[0];
   expect(selectedAvailability?.professionalUserId).toBeTruthy();
   const staffListResponse = await apiContext.get('/staff');
   expect(staffListResponse.ok()).toBeTruthy();
@@ -160,7 +160,11 @@ async function findAvailableAppointmentSlot(
   throw new Error('No available appointment slot was found for the E2E fixture');
 }
 
-async function loginAs(apiContext: import('@playwright/test').APIRequestContext, username: string, password: string) {
+async function loginAs(
+  apiContext: import('@playwright/test').APIRequestContext,
+  username: string,
+  password: string
+) {
   let response = await apiContext.post('/auth/login', {
     data: { username, password }
   });
@@ -755,7 +759,9 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
       console.log(`   ✅ Consumo registrado: 2 unidades do item ${inventoryItemId}`);
 
       // 2. Verify stock was reduced (list all items and find ours)
-      const updatedItemsRes = await apiContext.get('/inventory', { headers: inventoryHeaders.headers });
+      const updatedItemsRes = await apiContext.get('/inventory', {
+        headers: inventoryHeaders.headers
+      });
       expect(updatedItemsRes.ok()).toBeTruthy();
       const updatedItems = await updatedItemsRes.json();
       const updatedItem = updatedItems.items.find((i: any) => i.id === inventoryItemId);
@@ -1005,18 +1011,25 @@ test.describe('Critical Flows — Phase 4 E2E', () => {
       });
       expect(recordRes.ok()).toBeTruthy();
       const recordPayload = await recordRes.json();
-      const prescEntryRes = await apiContext.post('/medical-records/entries', {
+      const prescEntryRes = await apiContext.post('/prescriptions', {
         data: {
+          medicalRecordId: recordPayload.record.id,
           encounterId: flow10EncounterId,
           patientId: flow10PatientId,
-          entryType: 'prescription',
-          title: 'Dipirona 500mg',
-          content:
-            'Posologia: 1 comprimido\nVia: oral\nFrequência: 8/8h\nObservações: Prescricao Flow 10 E2E'
+          medicationName: 'Dipirona 500mg',
+          dosage: '1 comprimido',
+          route: 'oral',
+          frequency: '8/8h',
+          notes: 'Prescricao Flow 10 E2E'
         }
       });
       expect(prescEntryRes.ok()).toBeTruthy();
       const prescriptionEntry = await prescEntryRes.json();
+
+      const signRes = await apiContext.post(`/prescriptions/${prescriptionEntry.id}/sign`, {
+        data: {}
+      });
+      expect(signRes.ok()).toBeTruthy();
 
       const executionScheduledAt = new Date(Date.now() + 2 * 3600000).toISOString();
       const prescRes = await apiContext.post('/prescription-executions', {

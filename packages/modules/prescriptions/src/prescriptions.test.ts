@@ -42,9 +42,106 @@ describe('PrescriptionsService', () => {
   });
 
   describe('create', () => {
+    it('persists creation and its initial revision through one atomic repository operation', async () => {
+      let legacyCreateCalls = 0;
+      let legacyRevisionCalls = 0;
+      let atomicCreateCalls = 0;
+      const repository = {
+        async create() {
+          legacyCreateCalls += 1;
+        },
+        async update() {},
+        async findById() {
+          return null;
+        },
+        async findByEncounterId() {
+          return [];
+        },
+        async findByPatientId() {
+          return [];
+        },
+        async findByAccountId() {
+          return [];
+        },
+        async findByAccountIdPaginated() {
+          return { items: [], total: 0 };
+        },
+        async createRevision() {
+          legacyRevisionCalls += 1;
+        },
+        async createWithRevision() {
+          atomicCreateCalls += 1;
+        }
+      } as unknown as PrescriptionRepository & {
+        createWithRevision: (...args: readonly unknown[]) => Promise<void>;
+      };
+      const atomicService = new PrescriptionsService({
+        prescriptionRepository: repository
+      });
+
+      atomicService.create(ACCOUNT_ID, ACTOR_ID, createPayload());
+      await atomicService.waitForPersistence();
+
+      expect(atomicCreateCalls).toBe(1);
+      expect(legacyCreateCalls).toBe(0);
+      expect(legacyRevisionCalls).toBe(0);
+    });
+
+    it('persists updates and revisions through one atomic repository operation', async () => {
+      let legacyUpdateCalls = 0;
+      let legacyRevisionCalls = 0;
+      let atomicUpdateCalls = 0;
+      const repository = {
+        async create() {},
+        async update() {
+          legacyUpdateCalls += 1;
+        },
+        async findById() {
+          return null;
+        },
+        async findByEncounterId() {
+          return [];
+        },
+        async findByPatientId() {
+          return [];
+        },
+        async findByAccountId() {
+          return [];
+        },
+        async findByAccountIdPaginated() {
+          return { items: [], total: 0 };
+        },
+        async createRevision() {
+          legacyRevisionCalls += 1;
+        },
+        async createWithRevision() {},
+        async updateWithRevision() {
+          atomicUpdateCalls += 1;
+        }
+      } as unknown as PrescriptionRepository & {
+        updateWithRevision: (...args: readonly unknown[]) => Promise<void>;
+      };
+      const atomicService = new PrescriptionsService({
+        prescriptionRepository: repository
+      });
+      const created = atomicService.create(ACCOUNT_ID, ACTOR_ID, createPayload());
+      await atomicService.waitForPersistence();
+
+      atomicService.update(ACCOUNT_ID, created.id, ACTOR_ID, {
+        content: 'Posologia: 10mg',
+        reason: 'Ajuste concorrente',
+        expectedVersion: 1
+      });
+      await atomicService.waitForPersistence();
+
+      expect(atomicUpdateCalls).toBe(1);
+      expect(legacyUpdateCalls).toBe(0);
+      expect(legacyRevisionCalls).toBe(0);
+    });
+
     it('should create a prescription with all fields', () => {
       const rx = service.create(ACCOUNT_ID, ACTOR_ID, createPayload({ duration: '7 dias' }));
-      service.sign(rx.id, ACTOR_ID, 1);
+      service.sign(ACCOUNT_ID, rx.id, ACTOR_ID, 1);
 
       expect(rx.id).toBeDefined();
       expect(rx.entryType).toBe('prescription');
@@ -105,7 +202,7 @@ describe('PrescriptionsService', () => {
       const rx = service.create(ACCOUNT_ID, ACTOR_ID, createPayload());
       await service.waitForPersistence();
 
-      const found = await repo.findById(rx.id);
+      const found = await repo.findById(rx.id, ACCOUNT_ID);
       expect(found).not.toBeNull();
       expect(found!.medicationName).toBe('Amoxicilina');
     });
@@ -113,22 +210,22 @@ describe('PrescriptionsService', () => {
     it('should keep an immutable version snapshot and verify the signed version', async () => {
       const rx = service.create(ACCOUNT_ID, ACTOR_ID, createPayload({ duration: '7 dias' }));
       await service.waitForPersistence();
-      const signed = service.sign(rx.id, ACTOR_ID, 1);
+      const signed = service.sign(ACCOUNT_ID, rx.id, ACTOR_ID, 1);
       await service.waitForPersistence();
 
       expect(signed.signedByUserId).toBe(ACTOR_ID);
       expect(signed.signatureHash).toMatch(/^[a-f0-9]{64}$/);
-      expect(service.getRevisions(rx.id)).toHaveLength(1);
-      expect(service.getRevisions(rx.id)[0].content).toContain('Duração: 7 dias');
+      expect(service.getRevisions(ACCOUNT_ID, rx.id)).toHaveLength(1);
+      expect(service.getRevisions(ACCOUNT_ID, rx.id)[0].content).toContain('Duração: 7 dias');
 
-      const updated = service.update(rx.id, ACTOR_ID, {
+      const updated = service.update(ACCOUNT_ID, rx.id, ACTOR_ID, {
         content: 'Posologia: 10mg',
         reason: 'Ajuste clinico',
         expectedVersion: 1
       });
       expect(updated.signedAt).toBeUndefined();
-      expect(service.getRevisions(rx.id)).toHaveLength(2);
-      expect(service.getRevisions(rx.id)[0].content).toContain('Duração: 7 dias');
+      expect(service.getRevisions(ACCOUNT_ID, rx.id)).toHaveLength(2);
+      expect(service.getRevisions(ACCOUNT_ID, rx.id)[0].content).toContain('Duração: 7 dias');
     });
 
     it('should hydrate prescriptions from repository by account', async () => {
@@ -138,7 +235,7 @@ describe('PrescriptionsService', () => {
       const rehydrated = new PrescriptionsService({ prescriptionRepository: repo });
       await rehydrated.hydrateFromDatabase(ACCOUNT_ID);
 
-      expect(rehydrated.getById(rx.id).medicationName).toBe('Amoxicilina');
+      expect(rehydrated.getById(ACCOUNT_ID, rx.id).medicationName).toBe('Amoxicilina');
       expect(rehydrated.listByPatient(PATIENT_1, ACCOUNT_ID)).toHaveLength(1);
     });
 
@@ -147,7 +244,11 @@ describe('PrescriptionsService', () => {
         async create() {
           throw new Error('database unavailable');
         },
+        async createWithRevision() {
+          throw new Error('database unavailable');
+        },
         async update() {},
+        async updateWithRevision() {},
         async findById() {
           return null;
         },
@@ -171,15 +272,15 @@ describe('PrescriptionsService', () => {
       const rx = failingService.create(ACCOUNT_ID, ACTOR_ID, createPayload());
 
       await expect(failingService.waitForPersistence()).rejects.toThrow('database unavailable');
-      expect(() => failingService.getById(rx.id)).toThrow(NotFoundError);
+      expect(() => failingService.getById(ACCOUNT_ID, rx.id)).toThrow(NotFoundError);
       expect(failingService.listByEncounter(ENCOUNTER_1, ACCOUNT_ID)).toHaveLength(0);
     });
 
     it('should render a complete printable prescription document', () => {
       const rx = service.create(ACCOUNT_ID, ACTOR_ID, createPayload({ duration: '7 dias' }));
-      service.sign(rx.id, ACTOR_ID, 1);
+      service.sign(ACCOUNT_ID, rx.id, ACTOR_ID, 1);
 
-      const document = service.renderDocument(rx.id, {
+      const document = service.renderDocument(ACCOUNT_ID, rx.id, {
         clinic: {
           name: 'CVG Hospital Veterinario',
           document: '12.345.678/0001-90',
@@ -226,14 +327,16 @@ describe('PrescriptionsService', () => {
   describe('getById', () => {
     it('should return prescription by id', () => {
       const created = service.create(ACCOUNT_ID, ACTOR_ID, createPayload());
-      const found = service.getById(created.id);
+      const found = service.getById(ACCOUNT_ID, created.id);
 
       expect(found.id).toBe(created.id);
       expect(found.medicationName).toBe('Amoxicilina');
     });
 
     it('should throw NotFoundError for non-existent id', () => {
-      expect(() => service.getById('rx_nonexistent' as PrescriptionId)).toThrow(NotFoundError);
+      expect(() => service.getById(ACCOUNT_ID, 'rx_nonexistent' as PrescriptionId)).toThrow(
+        NotFoundError
+      );
     });
 
     it('should resolve a prescription only inside its account scope', () => {
@@ -331,7 +434,7 @@ describe('PrescriptionsService', () => {
     it('should update prescription title', () => {
       const created = service.create(ACCOUNT_ID, ACTOR_ID, createPayload());
 
-      const updated = service.update(created.id, ACTOR_ID, {
+      const updated = service.update(ACCOUNT_ID, created.id, ACTOR_ID, {
         title: 'Amoxicilina 875mg',
         reason: 'Ajuste de dose'
       });
@@ -343,7 +446,7 @@ describe('PrescriptionsService', () => {
     it('should update prescription content', () => {
       const created = service.create(ACCOUNT_ID, ACTOR_ID, createPayload());
 
-      const updated = service.update(created.id, ACTOR_ID, {
+      const updated = service.update(ACCOUNT_ID, created.id, ACTOR_ID, {
         content: 'Posologia: 875mg\nVia: Oral\nFrequência: 12/12h',
         reason: 'Ajuste de posologia'
       });
@@ -354,10 +457,10 @@ describe('PrescriptionsService', () => {
 
     it('should throw ValidationError when updating archived prescription', () => {
       const created = service.create(ACCOUNT_ID, ACTOR_ID, createPayload());
-      service.archive(created.id, ACTOR_ID, { reason: 'Duplicated' });
+      service.archive(ACCOUNT_ID, created.id, ACTOR_ID, { reason: 'Duplicated' });
 
       expect(() =>
-        service.update(created.id, ACTOR_ID, {
+        service.update(ACCOUNT_ID, created.id, ACTOR_ID, {
           title: 'New name',
           reason: 'Tentativa invalida'
         })
@@ -368,7 +471,7 @@ describe('PrescriptionsService', () => {
       const created = service.create(ACCOUNT_ID, ACTOR_ID, createPayload());
 
       expect(() =>
-        service.update(created.id, ACTOR_ID, {
+        service.update(ACCOUNT_ID, created.id, ACTOR_ID, {
           title: 'New name',
           reason: 'Tentativa com versao antiga',
           expectedVersion: 99
@@ -379,11 +482,11 @@ describe('PrescriptionsService', () => {
     it('should require a reason for versioned document updates', () => {
       const created = service.create(ACCOUNT_ID, ACTOR_ID, createPayload());
 
-      expect(() => service.update(created.id, ACTOR_ID, { title: 'Sem motivo' })).toThrow(
-        ValidationError
-      );
+      expect(() =>
+        service.update(ACCOUNT_ID, created.id, ACTOR_ID, { title: 'Sem motivo' })
+      ).toThrow(ValidationError);
 
-      const updated = service.update(created.id, ACTOR_ID, {
+      const updated = service.update(ACCOUNT_ID, created.id, ACTOR_ID, {
         title: 'Amoxicilina 875mg',
         reason: 'Ajuste de dose apos reavaliacao.'
       });
@@ -398,7 +501,9 @@ describe('PrescriptionsService', () => {
     it('should archive a prescription', () => {
       const created = service.create(ACCOUNT_ID, ACTOR_ID, createPayload());
 
-      const archived = service.archive(created.id, ACTOR_ID, { reason: 'Duplicated prescription' });
+      const archived = service.archive(ACCOUNT_ID, created.id, ACTOR_ID, {
+        reason: 'Duplicated prescription'
+      });
 
       expect(archived.deletedAt).toBeDefined();
       expect(archived.deletedByUserId).toBe(ACTOR_ID);
@@ -407,18 +512,18 @@ describe('PrescriptionsService', () => {
 
     it('should throw ValidationError when archiving already archived prescription', () => {
       const created = service.create(ACCOUNT_ID, ACTOR_ID, createPayload());
-      service.archive(created.id, ACTOR_ID, { reason: 'First archive' });
+      service.archive(ACCOUNT_ID, created.id, ACTOR_ID, { reason: 'First archive' });
 
-      expect(() => service.archive(created.id, ACTOR_ID, { reason: 'Second archive' })).toThrow(
-        ValidationError
-      );
+      expect(() =>
+        service.archive(ACCOUNT_ID, created.id, ACTOR_ID, { reason: 'Second archive' })
+      ).toThrow(ValidationError);
     });
 
     it('should throw ValidationError on version mismatch when archiving', () => {
       const created = service.create(ACCOUNT_ID, ACTOR_ID, createPayload());
 
       expect(() =>
-        service.archive(created.id, ACTOR_ID, {
+        service.archive(ACCOUNT_ID, created.id, ACTOR_ID, {
           reason: 'Archive',
           expectedVersion: 99
         })
@@ -434,7 +539,7 @@ describe('PrescriptionsService', () => {
       const rx = service.create(ACCOUNT_ID, ACTOR_ID, createPayload());
       await service.waitForPersistence();
 
-      const found = await repo.findById(rx.id);
+      const found = await repo.findById(rx.id, ACCOUNT_ID);
       expect(found).not.toBeNull();
       expect(found!.medicationName).toBe('Amoxicilina');
     });
@@ -446,13 +551,13 @@ describe('PrescriptionsService', () => {
       const rx = service.create(ACCOUNT_ID, ACTOR_ID, createPayload());
       await service.waitForPersistence();
 
-      const updated = service.update(rx.id, ACTOR_ID, {
+      const updated = service.update(ACCOUNT_ID, rx.id, ACTOR_ID, {
         title: 'Updated name',
         reason: 'Repository update'
       });
       await service.waitForPersistence();
 
-      const found = await repo.findById(updated.id);
+      const found = await repo.findById(updated.id, ACCOUNT_ID);
       expect(found!.title).toBe('Updated name');
     });
 
@@ -464,7 +569,7 @@ describe('PrescriptionsService', () => {
       service.create(ACCOUNT_ID, ACTOR_ID, createPayload({ medicationName: 'Second' }));
       await service.waitForPersistence();
 
-      const list = await repo.findByEncounterId(ENCOUNTER_1);
+      const list = await repo.findByEncounterId(ENCOUNTER_1, ACCOUNT_ID);
       expect(list.length).toBe(2);
     });
 
@@ -475,13 +580,13 @@ describe('PrescriptionsService', () => {
       service.create(ACCOUNT_ID, ACTOR_ID, createPayload());
       await service.waitForPersistence();
 
-      const list = await repo.findByPatientId(PATIENT_1);
+      const list = await repo.findByPatientId(PATIENT_1, ACCOUNT_ID);
       expect(list.length).toBe(1);
     });
 
     it('should return null when finding non-existent prescription', async () => {
       const repo = new InMemoryPrescriptionRepository();
-      const found = await repo.findById('rx_nonexistent' as PrescriptionId);
+      const found = await repo.findById('rx_nonexistent' as PrescriptionId, ACCOUNT_ID);
       expect(found).toBeNull();
     });
   });

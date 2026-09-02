@@ -143,7 +143,7 @@ wait_for_service_health() {
     if [[ -n "$container_id" ]]; then
       local status
       status="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$container_id" 2>/dev/null || true)"
-      if [[ "$status" == "healthy" || "$status" == "running" ]]; then
+      if [[ "$status" == "healthy" ]]; then
         return 0
       fi
     fi
@@ -206,7 +206,7 @@ start_v2_applications() {
   wait_for_service_health cvg-his-v2-spa 60 2 || die "spa service did not become healthy"
 
   log "waiting for Worker service"
-  wait_for_service_health cvg-his-v2-worker 60 2 || die "worker service did not reach running state"
+  wait_for_service_health cvg-his-v2-worker 60 2 || die "worker service did not become healthy"
 }
 
 wait_for_http() {
@@ -246,7 +246,7 @@ validate_v2_stack() {
     log "validating Worker health at custom URL"
     wait_for_http "$WORKER_HEALTH_URL" 200 30 2 || die "worker health check failed at custom URL"
   else
-    log "skipping worker HTTP health validation because the compose does not publish a worker port by default"
+    log "worker HTTP readiness is enforced by the Compose healthcheck on the internal port"
   fi
 
   docker_compose ps > "$BACKUP_DIR/v2-compose-ps.txt"

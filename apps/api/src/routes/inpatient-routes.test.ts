@@ -132,13 +132,16 @@ function createInpatientService(): InpatientService {
     reason: 'Internacao'
   });
   const service = new InpatientService(encounters as never);
-  const stay = service.admit({
-    encounterId: encounter.id,
-    patientId: encounter.patientId,
-    unit: 'UTI',
-    ward: 'Ala A',
-    bed: 'B12'
-  });
+  const stay = service.admit(
+    {
+      encounterId: encounter.id,
+      patientId: encounter.patientId,
+      unit: 'UTI',
+      ward: 'Ala A',
+      bed: 'B12'
+    },
+    encounter.accountId as never
+  );
   service.addProgress(
     'user-1' as never,
     {
@@ -224,7 +227,7 @@ test('handleInpatientRoutes propagates the principal account into stay reads', a
 
 test('handleInpatientRoutes hides inpatient resources from another account', async () => {
   const inpatient = createInpatientService();
-  const stay = inpatient.list()[0];
+  const stay = inpatient.list('acc_cvg_demo' as never)[0];
   assert.ok(stay);
 
   await assert.rejects(
@@ -246,7 +249,7 @@ test('handleInpatientRoutes hides inpatient resources from another account', asy
 
 test('handleInpatientRoutes admits the patient from an existing encounter', async () => {
   const inpatient = createInpatientService();
-  const existingStay = inpatient.list()[0];
+  const existingStay = inpatient.list('acc_cvg_demo' as never)[0];
   assert.ok(existingStay);
   inpatient.updateStatus(
     existingStay.id,
@@ -292,7 +295,7 @@ test('handleInpatientRoutes admits the patient from an existing encounter', asyn
 
 test('handleInpatientRoutes executes admission through the tenant command seam', async () => {
   const inpatient = createInpatientService();
-  const existingStay = inpatient.list()[0];
+  const existingStay = inpatient.list('acc_cvg_demo' as never)[0];
   assert.ok(existingStay);
   inpatient.updateStatus(
     existingStay.id,
@@ -347,7 +350,7 @@ test('handleInpatientRoutes executes admission through the tenant command seam',
 
 test('handleInpatientRoutes removes an admission cache entry after command rollback', async () => {
   const inpatient = createInpatientService();
-  const existingStay = inpatient.list()[0];
+  const existingStay = inpatient.list('acc_cvg_demo' as never)[0];
   assert.ok(existingStay);
   inpatient.updateStatus(
     existingStay.id,
@@ -358,7 +361,7 @@ test('handleInpatientRoutes removes an admission cache entry after command rollb
     existingStay.accountId
   );
   const before = inpatient
-    .list({ includeDischarged: true })
+    .list('acc_cvg_demo' as never, { includeDischarged: true })
     .map((stay) => `${stay.id}:${stay.status}`)
     .sort();
   const runCommand = async <T>(input: { readonly command: () => Promise<T> }): Promise<T> => {
@@ -395,7 +398,7 @@ test('handleInpatientRoutes removes an admission cache entry after command rollb
 
   assert.deepEqual(
     inpatient
-      .list({ includeDischarged: true })
+      .list('acc_cvg_demo' as never, { includeDischarged: true })
       .map((stay) => `${stay.id}:${stay.status}`)
       .sort(),
     before
@@ -405,7 +408,7 @@ test('handleInpatientRoutes removes an admission cache entry after command rollb
 test('handleInpatientRoutes appends inpatient progress to clinical record timeline', async () => {
   const response = new MockResponse();
   const inpatient = createInpatientService();
-  const stay = inpatient.list()[0];
+  const stay = inpatient.list('acc_cvg_demo' as never)[0];
   let callbackCompleted = false;
   const onProgressAdded = test.mock.fn(
     async (_event: {
@@ -452,7 +455,7 @@ test('handleInpatientRoutes appends inpatient progress to clinical record timeli
 test('handleInpatientRoutes executes inpatient progress through the tenant command seam', async () => {
   const response = new MockResponse();
   const inpatient = createInpatientService();
-  const stay = inpatient.list()[0];
+  const stay = inpatient.list('acc_cvg_demo' as never)[0];
   assert.ok(stay);
   let commandCalls = 0;
   let operation = '';
@@ -492,7 +495,7 @@ test('handleInpatientRoutes executes inpatient progress through the tenant comma
 test('handleInpatientRoutes executes inpatient bed assignment through the tenant command seam', async () => {
   const response = new MockResponse();
   const inpatient = createInpatientService();
-  const stay = inpatient.list()[0];
+  const stay = inpatient.list('acc_cvg_demo' as never)[0];
   assert.ok(stay);
   let commandCalls = 0;
   let operation = '';
@@ -545,7 +548,7 @@ test('handleInpatientRoutes executes inpatient bed assignment through the tenant
 test('handleInpatientRoutes executes inpatient bed transfer through the tenant command seam', async () => {
   const response = new MockResponse();
   const inpatient = createInpatientService();
-  const stay = inpatient.list()[0];
+  const stay = inpatient.list('acc_cvg_demo' as never)[0];
   assert.ok(stay);
   let callbackCompleted = false;
   let commandCalls = 0;
@@ -611,7 +614,7 @@ test('handleInpatientRoutes executes inpatient bed transfer through the tenant c
 
 test('handleInpatientRoutes creates and lists inpatient occurrences', async () => {
   const inpatient = createInpatientService();
-  const stay = inpatient.list()[0];
+  const stay = inpatient.list('acc_cvg_demo' as never)[0];
   const createResponse = new MockResponse();
 
   const created = await handleInpatientRoutes(
@@ -667,7 +670,7 @@ test('handleInpatientRoutes creates and lists inpatient occurrences', async () =
 
 test('handleInpatientRoutes executes inpatient occurrence through the tenant command seam', async () => {
   const inpatient = createInpatientService();
-  const stay = inpatient.list()[0];
+  const stay = inpatient.list('acc_cvg_demo' as never)[0];
   assert.ok(stay);
   let commandCalls = 0;
   let operation = '';
@@ -712,7 +715,7 @@ test('handleInpatientRoutes executes inpatient occurrence through the tenant com
 
 test('handleInpatientRoutes refreshes inpatient caches after progress and occurrence rollback', async () => {
   const inpatient = createInpatientService();
-  const stay = inpatient.list()[0];
+  const stay = inpatient.list('acc_cvg_demo' as never)[0];
   assert.ok(stay);
   const beforeProgress = inpatient.listProgress(stay.id, stay.accountId);
   const beforeOccurrences = inpatient.listOccurrences(stay.id, stay.accountId);
@@ -777,7 +780,7 @@ test('handleInpatientRoutes refreshes inpatient caches after progress and occurr
 
 test('handleInpatientRoutes refreshes inpatient caches after bed and status rollback', async () => {
   const inpatient = createInpatientService();
-  const stay = inpatient.list()[0];
+  const stay = inpatient.list('acc_cvg_demo' as never)[0];
   assert.ok(stay);
   const refreshInpatient = test.mock.fn(async () => {});
   inpatient.refreshAccount = refreshInpatient as never;
@@ -867,7 +870,7 @@ test('handleInpatientRoutes refreshes inpatient caches after bed and status roll
 
 test('handleInpatientRoutes creates and bills daily inpatient charges', async () => {
   const inpatient = createInpatientService();
-  const stay = inpatient.list()[0];
+  const stay = inpatient.list('acc_cvg_demo' as never)[0];
   const addBillingItem = test.mock.fn(async () => ({
     id: 'billitem_1',
     billingRecordId: 'bill_inpatient_1',
@@ -960,7 +963,7 @@ test('handleInpatientRoutes creates and bills daily inpatient charges', async ()
 
 test('handleInpatientRoutes restores daily-charge cache after command rollback', async () => {
   const inpatient = createInpatientService();
-  const stay = inpatient.list()[0];
+  const stay = inpatient.list('acc_cvg_demo' as never)[0];
   assert.ok(stay);
   const runCommand = async <T>(input: { readonly command: () => Promise<T> }): Promise<T> => {
     await input.command();
@@ -997,7 +1000,7 @@ test('handleInpatientRoutes restores daily-charge cache after command rollback',
 
 test('handleInpatientRoutes executes daily-charge creation through the tenant command seam', async () => {
   const inpatient = createInpatientService();
-  const stay = inpatient.list()[0];
+  const stay = inpatient.list('acc_cvg_demo' as never)[0];
   assert.ok(stay);
   let commandCalls = 0;
   let operation = '';
@@ -1042,7 +1045,7 @@ test('handleInpatientRoutes executes daily-charge creation through the tenant co
 
 test('handleInpatientRoutes executes daily-charge billing through the tenant command seam', async () => {
   const inpatient = createInpatientService();
-  const stay = inpatient.list()[0];
+  const stay = inpatient.list('acc_cvg_demo' as never)[0];
   const addBillingItem = test.mock.fn(async () => ({
     id: 'billitem_transaction_1',
     billingRecordId: 'bill_inpatient_transaction_1',
@@ -1122,7 +1125,7 @@ test('handleInpatientRoutes executes daily-charge billing through the tenant com
 
 test('handleInpatientRoutes keeps billed daily-charge replays inside the tenant command seam', async () => {
   const inpatient = createInpatientService();
-  const stay = inpatient.list()[0];
+  const stay = inpatient.list('acc_cvg_demo' as never)[0];
   const addBillingItem = test.mock.fn(async () => ({
     id: 'billitem_replay_transaction_1',
     billingRecordId: 'bill_inpatient_replay_transaction_1',
@@ -1211,7 +1214,7 @@ test('handleInpatientRoutes keeps billed daily-charge replays inside the tenant 
 
 test('handleInpatientRoutes refreshes hot caches after a rolled-back daily-charge command', async () => {
   const inpatient = createInpatientService();
-  const stay = inpatient.list()[0];
+  const stay = inpatient.list('acc_cvg_demo' as never)[0];
   const addBillingItem = test.mock.fn(async () => ({
     id: 'billitem_rollback_1',
     billingRecordId: 'bill_inpatient_rollback_1',
@@ -1293,7 +1296,7 @@ test('handleInpatientRoutes refreshes hot caches after a rolled-back daily-charg
 
 test('handleInpatientRoutes removes a rolled-back audit event from the real cache', async () => {
   const inpatient = createInpatientService();
-  const stay = inpatient.list()[0];
+  const stay = inpatient.list('acc_cvg_demo' as never)[0];
   const audit = new AuditService({
     auditRepository: {
       async create(): Promise<void> {},
@@ -1375,7 +1378,7 @@ test('handleInpatientRoutes removes a rolled-back audit event from the real cach
 
 test('handleInpatientRoutes treats a repeated daily-charge billing request as idempotent', async () => {
   const inpatient = createInpatientService();
-  const stay = inpatient.list()[0];
+  const stay = inpatient.list('acc_cvg_demo' as never)[0];
   const addBillingItem = test.mock.fn(async () => ({
     id: 'billitem_idempotent_1',
     billingRecordId: 'bill_inpatient_idempotent',
@@ -1462,7 +1465,7 @@ test('handleInpatientRoutes treats a repeated daily-charge billing request as id
 
 test('handleInpatientRoutes lists inpatient daily charge worklist with totals', async () => {
   const inpatient = createInpatientService();
-  const stay = inpatient.list()[0];
+  const stay = inpatient.list('acc_cvg_demo' as never)[0];
   inpatient.createDailyCharge(
     'user-1' as never,
     {
@@ -1507,7 +1510,7 @@ test('handleInpatientRoutes lists inpatient daily charge worklist with totals', 
 test('handleInpatientRoutes appends inpatient discharge to clinical record timeline', async () => {
   const response = new MockResponse();
   const inpatient = createInpatientService();
-  const stay = inpatient.list()[0];
+  const stay = inpatient.list('acc_cvg_demo' as never)[0];
   let callbackCompleted = false;
   const onStatusUpdated = test.mock.fn(
     async (_event: {

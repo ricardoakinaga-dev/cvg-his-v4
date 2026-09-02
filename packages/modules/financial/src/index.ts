@@ -377,7 +377,13 @@ function attachPayments(
     settledAt: receivable.settledAt,
     notes: receivable.notes,
     payments: payments
-      .filter((payment) => payment.receivableId === receivable.id)
+      .filter(
+        (payment) =>
+          payment.receivableId === receivable.id &&
+          payment.accountId === receivable.accountId &&
+          payment.encounterId === receivable.encounterId &&
+          payment.financialAccountId === receivable.financialAccountId
+      )
       .map((payment) => ({
         id: payment.id,
         receivableId: payment.receivableId,
@@ -943,8 +949,27 @@ export class EncounterFinancialService {
     this.#onReceivablePaid = options.onReceivablePaid;
   }
 
-  public async syncEncounter(encounterId: EncounterId): Promise<void> {
-    const encounter = this.#encounters.getOrThrow(encounterId);
+  #getScopedEncounterParticipants(accountId: AccountId, encounterId: EncounterId) {
+    const encounter = this.#encounters.getOrThrow(accountId, encounterId);
+    let patient: ReturnType<PatientsService['getOrThrow']>;
+    let owner: ReturnType<OwnersService['getOrThrow']>;
+    try {
+      patient = this.#patients.getOrThrow(encounter.patientId);
+      owner = this.#owners.getOrThrow(encounter.ownerId);
+    } catch (error) {
+      if (error instanceof NotFoundError) {
+        throw new NotFoundError('Encounter not found', { encounterId });
+      }
+      throw error;
+    }
+    if (patient.accountId !== accountId || owner.accountId !== accountId) {
+      throw new NotFoundError('Encounter not found', { encounterId });
+    }
+    return { encounter, patient, owner };
+  }
+
+  public async syncEncounter(accountId: AccountId, encounterId: EncounterId): Promise<void> {
+    const { encounter } = this.#getScopedEncounterParticipants(accountId, encounterId);
     const billingRecord = await this.#billing.getByEncounterOrThrow(
       encounter.accountId,
       encounterId
@@ -952,11 +977,27 @@ export class EncounterFinancialService {
     const items = await this.#billing.listItems(encounter.accountId, encounterId);
     const total = roundCurrency(items.reduce((sum, item) => sum + item.totalAmount, 0));
     const existingAccount = await this.#repository.findFinancialAccountByEncounter(encounterId);
+    if (
+      existingAccount &&
+      (existingAccount.accountId !== accountId || existingAccount.encounterId !== encounterId)
+    ) {
+      throw new NotFoundError('Encounter financial account not found', { encounterId });
+    }
     const existingReceivables = existingAccount
-      ? await this.#repository.listReceivablesByFinancialAccount(existingAccount.id)
+      ? (await this.#repository.listReceivablesByFinancialAccount(existingAccount.id)).filter(
+          (receivable) =>
+            receivable.accountId === accountId &&
+            receivable.encounterId === encounterId &&
+            receivable.financialAccountId === existingAccount.id
+        )
       : [];
     const existingPayments = existingAccount
-      ? await this.#repository.listPaymentsByFinancialAccount(existingAccount.id)
+      ? (await this.#repository.listPaymentsByFinancialAccount(existingAccount.id)).filter(
+          (payment) =>
+            payment.accountId === accountId &&
+            payment.encounterId === encounterId &&
+            payment.financialAccountId === existingAccount.id
+        )
       : [];
     const paidAmount = roundCurrency(
       existingPayments.reduce((sum, payment) => sum + payment.amountPaid, 0)
@@ -1020,17 +1061,30 @@ export class EncounterFinancialService {
     }
   }
 
-  public async getSummary(encounterId: EncounterId) {
-    await this.syncEncounter(encounterId);
-    const encounter = this.#encounters.getOrThrow(encounterId);
-    const patient = this.#patients.getOrThrow(encounter.patientId);
-    const owner = this.#owners.getOrThrow(encounter.ownerId);
+  public async getSummary(accountId: AccountId, encounterId: EncounterId) {
+    const { encounter, patient, owner } = this.#getScopedEncounterParticipants(
+      accountId,
+      encounterId
+    );
+    await this.syncEncounter(accountId, encounterId);
     const account = await this.#repository.findFinancialAccountByEncounter(encounterId);
-    if (!account) {
+    if (!account || account.accountId !== accountId || account.encounterId !== encounterId) {
       throw new NotFoundError('Encounter financial account not found', { encounterId });
     }
-    const receivables = await this.#repository.listReceivablesByFinancialAccount(account.id);
-    const payments = await this.#repository.listPaymentsByFinancialAccount(account.id);
+    const receivables = (
+      await this.#repository.listReceivablesByFinancialAccount(account.id)
+    ).filter(
+      (receivable) =>
+        receivable.accountId === accountId &&
+        receivable.encounterId === encounterId &&
+        receivable.financialAccountId === account.id
+    );
+    const payments = (await this.#repository.listPaymentsByFinancialAccount(account.id)).filter(
+      (payment) =>
+        payment.accountId === accountId &&
+        payment.encounterId === encounterId &&
+        payment.financialAccountId === account.id
+    );
 
     return {
       encounterId,
@@ -1073,16 +1127,24 @@ export class EncounterFinancialService {
   }
 
   public async closeEncounterFinancial(
+    accountId: AccountId,
     encounterId: EncounterId,
     actorUserId: UserId,
     input: CloseEncounterFinancialInput
   ) {
-    await this.syncEncounter(encounterId);
+    await this.syncEncounter(accountId, encounterId);
     const account = await this.#repository.findFinancialAccountByEncounter(encounterId);
-    if (!account) {
+    if (!account || account.accountId !== accountId || account.encounterId !== encounterId) {
       throw new NotFoundError('Encounter financial account not found', { encounterId });
     }
-    const existingPayments = await this.#repository.listPaymentsByFinancialAccount(account.id);
+    const existingPayments = (
+      await this.#repository.listPaymentsByFinancialAccount(account.id)
+    ).filter(
+      (payment) =>
+        payment.accountId === accountId &&
+        payment.encounterId === encounterId &&
+        payment.financialAccountId === account.id
+    );
     if (existingPayments.length > 0 && input.installments && input.installments.length > 0) {
       throw new ConflictError(
         'Cannot redefine receivable installments after payments have already been recorded'
@@ -1090,8 +1152,13 @@ export class EncounterFinancialService {
     }
 
     const total = account.totalSnapshot;
-    const existingReceivables = await this.#repository.listReceivablesByFinancialAccount(
-      account.id
+    const existingReceivables = (
+      await this.#repository.listReceivablesByFinancialAccount(account.id)
+    ).filter(
+      (receivable) =>
+        receivable.accountId === accountId &&
+        receivable.encounterId === encounterId &&
+        receivable.financialAccountId === account.id
     );
     const hasReversedCashReceipt = this.#repository.hasReversedCashReceiptForFinancialAccount
       ? await this.#repository.hasReversedCashReceiptForFinancialAccount(account.id)
@@ -1165,21 +1232,26 @@ export class EncounterFinancialService {
     });
 
     if (input.paidAmount && input.paidAmount > 0) {
-      await this.recordPaymentForEncounter(encounterId, {
+      await this.recordPaymentForEncounter(accountId, encounterId, {
         amountPaid: input.paidAmount,
         notes: input.notes ?? 'Settlement captured during financial close',
         paidByUserId: actorUserId
       });
     }
 
-    return this.getSummary(encounterId);
+    return this.getSummary(accountId, encounterId);
   }
 
-  public async settleReceivable(receivableId: string, input: SettleEncounterReceivableInput) {
+  public async settleReceivable(
+    accountId: AccountId,
+    receivableId: string,
+    input: SettleEncounterReceivableInput
+  ) {
     const receivable = await this.#repository.findReceivableById(receivableId);
-    if (!receivable) {
+    if (!receivable || receivable.accountId !== accountId) {
       throw new NotFoundError('Encounter receivable not found', { receivableId });
     }
+    this.#getScopedEncounterParticipants(accountId, receivable.encounterId);
     const amountPaid = roundCurrency(input.amountPaid);
     if (amountPaid <= 0) {
       throw new ConflictError('amountPaid must be greater than zero');
@@ -1191,7 +1263,7 @@ export class EncounterFinancialService {
         outstandingAmount: receivable.amountOutstanding
       });
     }
-    await this.#applyPayment(receivable.encounterId, receivable.financialAccountId, [
+    await this.#applyPayment(accountId, receivable.encounterId, receivable.financialAccountId, [
       {
         receivableId,
         amountPaid,
@@ -1202,11 +1274,21 @@ export class EncounterFinancialService {
       }
     ]);
     const updated = await this.#repository.findReceivableById(receivableId);
-    if (!updated) {
+    if (
+      !updated ||
+      updated.accountId !== accountId ||
+      updated.encounterId !== receivable.encounterId ||
+      updated.financialAccountId !== receivable.financialAccountId
+    ) {
       throw new NotFoundError('Encounter receivable not found after settlement', { receivableId });
     }
-    const payments = await this.#repository.listPaymentsByFinancialAccount(
-      updated.financialAccountId
+    const payments = (
+      await this.#repository.listPaymentsByFinancialAccount(updated.financialAccountId)
+    ).filter(
+      (payment) =>
+        payment.accountId === accountId &&
+        payment.encounterId === updated.encounterId &&
+        payment.financialAccountId === updated.financialAccountId
     );
     return attachPayments(updated, payments);
   }
@@ -1217,19 +1299,27 @@ export class EncounterFinancialService {
     input: SettleEncounterReceivableInput
   ) {
     const billingRecord = this.#billing.getOrThrow(accountId, billingRecordId);
-    return this.recordPaymentForEncounter(billingRecord.encounterId, input);
+    return this.recordPaymentForEncounter(accountId, billingRecord.encounterId, input);
   }
 
   public async recordPaymentForEncounter(
+    accountId: AccountId,
     encounterId: EncounterId,
     input: SettleEncounterReceivableInput
   ) {
-    await this.syncEncounter(encounterId);
+    await this.syncEncounter(accountId, encounterId);
     const account = await this.#repository.findFinancialAccountByEncounter(encounterId);
-    if (!account) {
+    if (!account || account.accountId !== accountId || account.encounterId !== encounterId) {
       throw new NotFoundError('Encounter financial account not found', { encounterId });
     }
-    const receivables = await this.#repository.listReceivablesByFinancialAccount(account.id);
+    const receivables = (
+      await this.#repository.listReceivablesByFinancialAccount(account.id)
+    ).filter(
+      (receivable) =>
+        receivable.accountId === accountId &&
+        receivable.encounterId === encounterId &&
+        receivable.financialAccountId === account.id
+    );
     const openReceivables = receivables
       .filter((receivable) => receivable.amountOutstanding > 0)
       .sort((left, right) => left.installmentNumber - right.installmentNumber);
@@ -1273,8 +1363,8 @@ export class EncounterFinancialService {
       }
     }
 
-    await this.#applyPayment(encounterId, account.id, allocations);
-    return this.getSummary(encounterId);
+    await this.#applyPayment(accountId, encounterId, account.id, allocations);
+    return this.getSummary(accountId, encounterId);
   }
 
   public async listReceivables(params: {
@@ -1308,21 +1398,38 @@ export class EncounterFinancialService {
 
     for (const receivable of receivables) {
       const encounter = resolveOrSkipMissing(() =>
-        this.#encounters.getOrThrow(receivable.encounterId)
+        this.#encounters.getOrThrow(params.accountId, receivable.encounterId)
       );
       if (!encounter) continue;
       const patient = resolveOrSkipMissing(() => this.#patients.getOrThrow(encounter.patientId));
       if (!patient) continue;
       const owner = resolveOrSkipMissing(() => this.#owners.getOrThrow(encounter.ownerId));
       if (!owner) continue;
+      if (patient.accountId !== params.accountId || owner.accountId !== params.accountId) {
+        continue;
+      }
+      if (receivable.accountId !== params.accountId) continue;
       const account = await this.#repository.findFinancialAccountByEncounter(
         receivable.encounterId
       );
-      if (!account) continue;
+      if (
+        !account ||
+        account.accountId !== params.accountId ||
+        account.id !== receivable.financialAccountId
+      ) {
+        continue;
+      }
       const row = {
         ...attachPayments(
           receivable,
-          await this.#repository.listPaymentsByFinancialAccount(receivable.financialAccountId)
+          (
+            await this.#repository.listPaymentsByFinancialAccount(receivable.financialAccountId)
+          ).filter(
+            (payment) =>
+              payment.accountId === params.accountId &&
+              payment.encounterId === receivable.encounterId &&
+              payment.financialAccountId === receivable.financialAccountId
+          )
         ),
         encounterStatus: encounter.status === 'closed' ? 'closed' : 'open',
         patientId: patient.id,
@@ -1371,6 +1478,7 @@ export class EncounterFinancialService {
   }
 
   async #applyPayment(
+    accountId: AccountId,
     encounterId: EncounterId,
     financialAccountId: string,
     allocations: Array<{
@@ -1383,14 +1491,24 @@ export class EncounterFinancialService {
     }>
   ): Promise<void> {
     const initialAccount = await this.#repository.findFinancialAccountByEncounter(encounterId);
-    if (!initialAccount) {
+    if (
+      !initialAccount ||
+      initialAccount.accountId !== accountId ||
+      initialAccount.encounterId !== encounterId ||
+      initialAccount.id !== financialAccountId
+    ) {
       throw new NotFoundError('Encounter financial account not found', { encounterId });
     }
     const execute = async (): Promise<void> => {
       const account = this.#repository.findFinancialAccountByEncounterForUpdate
         ? await this.#repository.findFinancialAccountByEncounterForUpdate(encounterId)
         : initialAccount;
-      if (!account) {
+      if (
+        !account ||
+        account.accountId !== accountId ||
+        account.encounterId !== encounterId ||
+        account.id !== financialAccountId
+      ) {
         throw new NotFoundError('Encounter financial account not found', { encounterId });
       }
       const now = nowIso();
@@ -1398,7 +1516,12 @@ export class EncounterFinancialService {
         const receivable = this.#repository.findReceivableByIdForUpdate
           ? await this.#repository.findReceivableByIdForUpdate(allocation.receivableId)
           : await this.#repository.findReceivableById(allocation.receivableId);
-        if (!receivable || receivable.accountId !== account.accountId) {
+        if (
+          !receivable ||
+          receivable.accountId !== accountId ||
+          receivable.encounterId !== encounterId ||
+          receivable.financialAccountId !== financialAccountId
+        ) {
           throw new NotFoundError('Encounter receivable not found', {
             receivableId: allocation.receivableId
           });
@@ -1440,8 +1563,14 @@ export class EncounterFinancialService {
         await this.#onReceivablePaid?.(payment);
       }
 
-      const receivables =
-        await this.#repository.listReceivablesByFinancialAccount(financialAccountId);
+      const receivables = (
+        await this.#repository.listReceivablesByFinancialAccount(financialAccountId)
+      ).filter(
+        (receivable) =>
+          receivable.accountId === accountId &&
+          receivable.encounterId === encounterId &&
+          receivable.financialAccountId === financialAccountId
+      );
       const totalAmount = roundCurrency(
         receivables.reduce((sum, receivable) => sum + receivable.amountOriginal, 0)
       );
@@ -1463,7 +1592,7 @@ export class EncounterFinancialService {
       });
     };
     if (this.#repository.withTransaction) {
-      await this.#repository.withTransaction(initialAccount.accountId, execute);
+      await this.#repository.withTransaction(accountId, execute);
     } else {
       await execute();
     }

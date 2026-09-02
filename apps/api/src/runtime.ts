@@ -59,6 +59,7 @@ import {
 } from '@cvg-his-v2/module-inventory';
 import {
   MedicalRecordsService,
+  type MedicalRecordsAtomicPersistence,
   type MedicalRecordRepository,
   type ClinicalEntryRepository,
   type ClinicalTimelineRepository,
@@ -585,13 +586,71 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
       });
     }
   });
+  const medicalRecordsAtomicPersistence: MedicalRecordsAtomicPersistence | undefined =
+    options.tenantTransaction &&
+    repos.medicalRecord &&
+    repos.clinicalEntry &&
+    repos.clinicalTimeline &&
+    repos.entryRevision
+      ? {
+          async persistRecordCreation(input) {
+            await options.tenantTransaction!(input.record.accountId, async () => {
+              await repos.medicalRecord!.create(input.record);
+              await repos.clinicalTimeline!.create(input.recordCreatedEvent);
+            });
+            return {
+              operation: 'record_creation' as const,
+              recordId: input.record.id,
+              timelineEventIds: [input.recordCreatedEvent.id]
+            };
+          },
+          async persistEntryCreation(input) {
+            await options.tenantTransaction!(input.record.accountId, async () => {
+              if (input.recordCreatedEvent) {
+                await repos.medicalRecord!.create(input.record);
+                await repos.clinicalTimeline!.create(input.recordCreatedEvent);
+              } else {
+                await repos.medicalRecord!.update(input.updatedRecord);
+              }
+              await repos.clinicalEntry!.create(input.entry);
+              await repos.clinicalTimeline!.create(input.entryEvent);
+            });
+            return {
+              operation: 'entry_creation' as const,
+              recordId: input.record.id,
+              entryId: input.entry.id,
+              timelineEventIds: [
+                ...(input.recordCreatedEvent ? [input.recordCreatedEvent.id] : []),
+                input.entryEvent.id
+              ]
+            };
+          },
+          async persistEntryMutation(input) {
+            await options.tenantTransaction!(input.record.accountId, async () => {
+              await repos.clinicalEntry!.update(input.updatedEntry, input.previousEntry.version);
+              await repos.entryRevision!.create(input.revision);
+              await repos.clinicalTimeline!.create(input.timelineEvent);
+              await repos.medicalRecord!.update(input.updatedRecord);
+            });
+            return {
+              operation: 'entry_mutation' as const,
+              recordId: input.record.id,
+              entryId: input.updatedEntry.id,
+              revisionId: input.revision.id,
+              timelineEventIds: [input.timelineEvent.id],
+              persistedVersion: input.updatedEntry.version
+            };
+          }
+        }
+      : undefined;
   const medicalRecords = new MedicalRecordsService({
     encounters,
     patients,
     medicalRecordRepository: repos.medicalRecord,
     clinicalEntryRepository: repos.clinicalEntry,
     clinicalTimelineRepository: repos.clinicalTimeline,
-    entryRevisionRepository: repos.entryRevision
+    entryRevisionRepository: repos.entryRevision,
+    atomicPersistence: medicalRecordsAtomicPersistence
   });
   const sectorBedService = new SectorBedService(options.sectorBedOptions ?? {});
   const inpatient = new InpatientService(encounters, {
@@ -1183,8 +1242,7 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
         };
       }) satisfies LgpdDataProvider,
       encounters: (async (_subjectId, context) => {
-        const encounterRows = encounters.listAll().filter((encounter) => {
-          if (encounter.accountId !== context.accountId) return false;
+        const encounterRows = encounters.listAll(context.accountId as AccountId).filter((encounter) => {
           if (context.subjectType === 'patient') return encounter.patientId === context.subjectId;
           if (context.subjectType === 'owner') return encounter.ownerId === context.subjectId;
           return false;
@@ -1192,7 +1250,7 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
         const timelines = await Promise.all(
           encounterRows.map(async (encounter) => ({
             encounterId: encounter.id,
-            events: await encounters.listTimelineAsync(encounter.id)
+            events: await encounters.listTimelineAsync(context.accountId as AccountId, encounter.id)
           }))
         );
 
@@ -1208,9 +1266,8 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
       })) satisfies LgpdDataProvider,
       laboratory: (async (_subjectId, context) => {
         const encounterIds = encounters
-          .listAll()
+          .listAll(context.accountId as AccountId)
           .filter((encounter) => {
-            if (encounter.accountId !== context.accountId) return false;
             if (context.subjectType === 'patient') return encounter.patientId === context.subjectId;
             if (context.subjectType === 'owner') return encounter.ownerId === context.subjectId;
             return false;
@@ -1224,8 +1281,7 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
         };
       }) satisfies LgpdDataProvider,
       attachments: (async (_subjectId, context) => {
-        const subjectEncounters = encounters.listAll().filter((encounter) => {
-          if (encounter.accountId !== context.accountId) return false;
+        const subjectEncounters = encounters.listAll(context.accountId as AccountId).filter((encounter) => {
           if (context.subjectType === 'patient') return encounter.patientId === context.subjectId;
           if (context.subjectType === 'owner') return encounter.ownerId === context.subjectId;
           return false;
@@ -1234,18 +1290,30 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
         const diagnosticOrders = diagnostics.listByAccount(context.accountId as AccountId);
         const attachmentGroups = await Promise.all([
           ...subjectEncounters.map((encounter) =>
-            attachments.listByLinkedEntity('encounter', encounter.id)
+            attachments.listByLinkedEntity('encounter', encounter.id, context.accountId as AccountId)
           ),
           ...clinicalRecords
             .filter(({ record }) =>
               subjectEncounters.some((encounter) => encounter.id === record.encounterId)
             )
-            .map(({ record }) => attachments.listByLinkedEntity('medical_record', record.id)),
+            .map(({ record }) =>
+              attachments.listByLinkedEntity(
+                'medical_record',
+                record.id,
+                context.accountId as AccountId
+              )
+            ),
           ...diagnosticOrders
             .filter((order) =>
               subjectEncounters.some((encounter) => encounter.id === order.encounterId)
             )
-            .map((order) => attachments.listByLinkedEntity('diagnostic_order', order.id))
+            .map((order) =>
+              attachments.listByLinkedEntity(
+                'diagnostic_order',
+                order.id,
+                context.accountId as AccountId
+              )
+            )
         ]);
 
         return { source: 'AttachmentsService', rows: attachmentGroups.flat() };
@@ -1365,8 +1433,8 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
             accountId,
             correlationId: createCorrelationId('boot')
           },
-          () =>
-            Promise.all([
+          async () => {
+            await Promise.all([
               staff.hydrateFromDatabase(accountId),
               owners.hydrateFromDatabase(accountId),
               patients.hydrateFromDatabase(accountId),
@@ -1395,7 +1463,9 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
               inpatient.hydrateAccount(accountId),
               surgery.hydrateAccount(accountId),
               billing.hydrateFromDatabase(accountId)
-            ])
+            ]);
+            await medicalRecords.refreshAccount(accountId);
+          }
         );
       }
     }

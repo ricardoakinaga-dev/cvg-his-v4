@@ -19,6 +19,9 @@ const ACCOUNT_ID = randomUUID();
 const USER_ID = randomUUID();
 const OWNER_ID = randomUUID();
 const PATIENT_ID = randomUUID();
+const ROLLBACK_PATIENT_ID = randomUUID();
+const CONCURRENT_PATIENT_ID = randomUUID();
+const DETAIL_PATIENT_ID = randomUUID();
 const ENCOUNTER_ID = randomUUID();
 const STAY_ID = randomUUID();
 const ROLLBACK_ENCOUNTER_ID = randomUUID();
@@ -123,6 +126,7 @@ async function seedTenant(input: {
   readonly email: string;
   readonly encounterIds: readonly string[];
   readonly stayIds: readonly string[];
+  readonly encounterPatientIds: readonly string[];
 }): Promise<void> {
   const pool = getTestPool();
   await pool.query(
@@ -153,17 +157,31 @@ async function seedTenant(input: {
     `INSERT INTO owners (id, account_id, full_name) VALUES ($1, $2, 'Discharge HTTP Owner')`,
     [input.ownerId, input.accountId]
   );
-  await pool.query(
-    `INSERT INTO patients (id, account_id, owner_id, name, species)
-     VALUES ($1, $2, $3, 'Discharge HTTP Patient', 'canine')`,
-    [input.patientId, input.accountId, input.ownerId]
-  );
+  if (
+    input.encounterIds.length !== input.stayIds.length ||
+    input.encounterIds.length !== input.encounterPatientIds.length
+  ) {
+    throw new Error('Discharge fixture encounter, stay and patient counts must match');
+  }
+  for (const patientId of new Set([input.patientId, ...input.encounterPatientIds])) {
+    await pool.query(
+      `INSERT INTO patients (id, account_id, owner_id, name, species)
+       VALUES ($1, $2, $3, $4, 'canine')`,
+      [patientId, input.accountId, input.ownerId, `Discharge HTTP Patient ${patientId.slice(0, 8)}`]
+    );
+  }
   for (let index = 0; index < input.encounterIds.length; index += 1) {
     await pool.query(
       `INSERT INTO encounters (
          id, account_id, patient_id, owner_id, status, opened_by_user_id
        ) VALUES ($1, $2, $3, $4, 'open', $5)`,
-      [input.encounterIds[index], input.accountId, input.patientId, input.ownerId, input.userId]
+      [
+        input.encounterIds[index],
+        input.accountId,
+        input.encounterPatientIds[index],
+        input.ownerId,
+        input.userId
+      ]
     );
     await pool.query(
       `INSERT INTO inpatient_stays (
@@ -173,7 +191,7 @@ async function seedTenant(input: {
       [
         input.stayIds[index],
         input.accountId,
-        input.patientId,
+        input.encounterPatientIds[index],
         input.ownerId,
         input.encounterIds[index],
         `A-${input.stayIds[index].slice(0, 4)}`,
@@ -198,7 +216,8 @@ beforeAll(async () => {
       CONCURRENT_ENCOUNTER_ID,
       DETAIL_ENCOUNTER_ID
     ],
-    stayIds: [STAY_ID, ROLLBACK_STAY_ID, CONCURRENT_STAY_ID, DETAIL_STAY_ID]
+    stayIds: [STAY_ID, ROLLBACK_STAY_ID, CONCURRENT_STAY_ID, DETAIL_STAY_ID],
+    encounterPatientIds: [PATIENT_ID, ROLLBACK_PATIENT_ID, CONCURRENT_PATIENT_ID, DETAIL_PATIENT_ID]
   });
   await seedTenant({
     tenantId: FOREIGN_TENANT_ID,
@@ -209,7 +228,8 @@ beforeAll(async () => {
     username: FOREIGN_USERNAME,
     email: FOREIGN_EMAIL,
     encounterIds: [FOREIGN_ENCOUNTER_ID],
-    stayIds: [FOREIGN_STAY_ID]
+    stayIds: [FOREIGN_STAY_ID],
+    encounterPatientIds: [FOREIGN_PATIENT_ID]
   });
 
   const bootstrap = await bootstrapServices({

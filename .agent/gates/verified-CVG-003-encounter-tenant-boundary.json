@@ -1,0 +1,151 @@
+{
+  "record_id": "GATE-CVG-003-ENCOUNTER-TENANT-BOUNDARY-VFY-001",
+  "timestamp": "2026-08-31T13:17:00-03:00",
+  "gate_id": "VERIFIED_BOUNDED",
+  "scope": "Repository-local account-aware EncountersService cache, timeline, lifecycle commands and first-party caller propagation",
+  "scope_ref": "CVG-003-ENCOUNTER-TENANT-BOUNDARY",
+  "version": 1,
+  "active_plan": ".agent/plans/premium-enterprise-mvp.md",
+  "active_task": ".agent/tasks/CVG-003-ENCOUNTER-TENANT-BOUNDARY.md",
+  "verification_state": "REVIEW_FINDINGS",
+  "next_gate": "REMEDIATE_REVIEW_FINDINGS",
+  "criteria": [
+    {
+      "id": "V-001-ACCOUNT-AWARE-SERVICE",
+      "description": "Encounter detail, collections, timeline, snapshot/restore and lifecycle commands require explicit account scope and foreign IDs fail closed before disclosure or mutation.",
+      "required": true,
+      "status": "PASS",
+      "confidence": "HIGH",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-ENCOUNTER-TENANT-BOUNDARY-RED-001",
+        ".agent/verification.jsonl#VFY-CVG-003-ENCOUNTER-TENANT-BOUNDARY-GREEN-001",
+        "packages/modules/encounters/src/index.ts",
+        "packages/modules/encounters/src/encounters.boundary-coverage.test.ts"
+      ],
+      "limitations": "The reusable service contract is bounded to reviewed callers; future consumers must use the account-aware API."
+    },
+    {
+      "id": "V-002-HYDRATION-TIMELINE-INTEGRITY",
+      "description": "Contaminated encounter and timeline repository results are filtered by account and encounter before cache publication or return, including asynchronous cache misses.",
+      "required": true,
+      "status": "PASS",
+      "confidence": "HIGH",
+      "evidence_refs": [
+        "packages/modules/encounters/src/index.ts",
+        "packages/modules/encounters/src/encounters.boundary-coverage.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-003-ENCOUNTER-TENANT-BOUNDARY-GREEN-001"
+      ],
+      "limitations": "Repository SQL and target RLS were intentionally excluded; this gate accepts application-level filtering."
+    },
+    {
+      "id": "V-003-FIRST-PARTY-PROPAGATION",
+      "description": "Authenticated API, runtime, worker and reviewed clinical/financial callers pass the authoritative principal account to encounter operations.",
+      "required": true,
+      "status": "PASS",
+      "confidence": "HIGH",
+      "evidence_refs": [
+        "apps/api/src/server.ts",
+        "apps/api/src/runtime.ts",
+        "apps/api/src/routes/scheduling-routes.ts",
+        "packages/modules/encounters/src/index.ts",
+        ".agent/verification.jsonl#VFY-CVG-003-ENCOUNTER-TENANT-BOUNDARY-REGRESSION-001"
+      ],
+      "limitations": "Only repository-local first-party callers reviewed in this slice are covered."
+    },
+    {
+      "id": "V-004-PERSISTENCE-CALLBACK-SEMANTICS",
+      "description": "Encounter and handoff callbacks are gated on persistence, rejected queues recover for subsequent operations and cache rollback is exercised without weakening domain rules.",
+      "required": true,
+      "status": "PASS",
+      "confidence": "HIGH",
+      "evidence_refs": [
+        "packages/modules/encounters/src/index.ts",
+        "packages/modules/encounters/src/clinical-handoffs.tenant-boundary.test.ts",
+        ".agent/verification.jsonl#VFY-CVG-003-ENCOUNTER-TENANT-BOUNDARY-GREEN-001"
+      ],
+      "limitations": "Service compensation is best-effort; shared database atomicity remains at API tenant unit-of-work boundaries."
+    },
+    {
+      "id": "V-005-REGRESSION-QUALITY",
+      "description": "Focused, affected, critical, browser, workspace, coverage and static/security evidence pass after implementation.",
+      "required": true,
+      "status": "PASS",
+      "confidence": "HIGH",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-ENCOUNTER-TENANT-BOUNDARY-REGRESSION-001",
+        ".agent/verification.jsonl#VFY-CVG-003-ENCOUNTER-TENANT-BOUNDARY-QUALITY-001",
+        ".agent/verification.jsonl#VFY-CVG-003-ENCOUNTER-TENANT-BOUNDARY-E2E-001",
+        ".agent/artifacts/CVG-003-encounter-tenant-boundary-2026-08-31.md"
+      ],
+      "limitations": "Local evidence does not certify target, production, remote CI, providers, resilience or release readiness."
+    },
+    {
+      "id": "V-006-INDEPENDENT-REVIEW",
+      "description": "A fresh compatible independent read-only review returns APPROVE_BOUNDED with no actionable in-scope finding.",
+      "required": true,
+      "status": "REQUEST_CHANGES",
+      "confidence": "HIGH",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VFY-CVG-003-ENCOUNTER-TENANT-BOUNDARY-REVIEW-001",
+        ".agent/artifacts/CVG-003-encounter-tenant-boundary-2026-08-31.md"
+      ],
+      "limitations": "The fresh review requested changes: P1 counter-sales concurrency, P2 prescription and attachment repository scope, P2 report E2E contract trust and P3 visual state coverage. These adjacent findings require fresh bounded remediation before child closure."
+    },
+    {
+      "id": "V-007-GLOBAL-NON-PROMOTION",
+      "description": "Only this child closes; global ERP, Vetus parity, providers, target operations, production, deployment, release and resilience remain unpromoted.",
+      "required": true,
+      "status": "PASS",
+      "confidence": "HIGH",
+      "evidence_refs": [
+        ".agent/state.json",
+        ".agent/backlog.json",
+        ".agent/verification.jsonl#VFY-CVG-003-ENCOUNTER-TENANT-BOUNDARY-GLOBAL-NON-PROMOTION-001"
+      ],
+      "limitations": "Global ERP remains IN_PROGRESS/PARTIAL and promotion remains BLOCKED."
+    }
+  ],
+  "evidence": [
+    ".agent/tasks/CVG-003-ENCOUNTER-TENANT-BOUNDARY.md",
+    ".agent/artifacts/CVG-003-encounter-tenant-boundary-2026-08-31.md",
+    ".agent/gates/implementation-ready-CVG-003-encounter-tenant-boundary.json",
+    ".agent/authority.jsonl#AUTH-CVG-003-ENCOUNTER-TENANT-BOUNDARY-IR-001",
+    "packages/modules/encounters/src/index.ts",
+    "packages/modules/encounters/src/encounters.boundary-coverage.test.ts",
+    "packages/modules/encounters/src/clinical-handoffs.tenant-boundary.test.ts",
+    ".agent/verification.jsonl#VFY-CVG-003-ENCOUNTER-TENANT-BOUNDARY-FINAL-001",
+    ".agent/verification.jsonl#VFY-CVG-003-ENCOUNTER-TENANT-BOUNDARY-CONTROL-PLANE-001"
+  ],
+  "confidence": "MEDIUM",
+  "gaps": [
+    "Migration 0110 cascade-order residual and settled-receipt reversal policy remain explicit and outside this slice.",
+    "Fresh review findings remain open: counter-sales same-tenant concurrent number allocation, database prescription repository account scope, attachment deletion account scope, report E2E contract fidelity and visual state coverage.",
+    "Target PostgreSQL/Redis, providers, production, remote CI, backup/restore, cutover, Vetus parity and release evidence remain open.",
+    "The global ERP remains IN_PROGRESS/PARTIAL and is not promoted by this child gate."
+  ],
+  "conditions": [
+    "Keep all reviewed encounter callers on the explicit account-aware contract.",
+    "Do not expand this gate into schema, migration, RLS, provider, target, production, deployment, release or global promotion work without fresh authority; remediate adjacent review findings only through separately bounded local scopes.",
+    "Keep global ERP IN_PROGRESS/PARTIAL and promotion BLOCKED."
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "Ricardo (repository owner), via fresh residual scouting and implementation-ready authority",
+    "scope": "Repository-local account-aware EncountersService cache, timeline, lifecycle commands and first-party caller propagation",
+    "decision": "Authorize only explicit encounter account scope, cache/hydration filtering, authenticated first-party propagation and focused tests; exclude schema, migrations, RLS, target, production, deployment, release and global ERP promotion.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-CVG-003-ENCOUNTER-TENANT-BOUNDARY-IR-001",
+    "expires_or_revalidates": "Revalidate before changing schema, migrations, RLS, target/production infrastructure, real credentials, providers or release behavior."
+  },
+  "residual_risk": "HIGH",
+  "decision": "REQUEST_CHANGES",
+  "implementation_status": "IN_PROGRESS",
+  "next_action": "Remediate and independently re-review the five repository-local findings before closing this child; keep target, production, providers, schema, migrations, RLS, release and global promotion excluded, and preserve global ERP IN_PROGRESS/PARTIAL with promotion BLOCKED.",
+  "revalidation_triggers": [
+    "Changing encounter schema, migrations, RLS or repository SQL",
+    "Replacing service-level compensation with a new shared transaction abstraction",
+    "Adding external or unreviewed encounter consumers",
+    "Changing providers, credentials, target, production, deployment, release or global ERP promotion"
+  ],
+  "supersedes": ".agent/gates/implementation-ready-CVG-003-encounter-tenant-boundary.json"
+}

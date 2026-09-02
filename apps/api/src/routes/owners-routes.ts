@@ -163,11 +163,8 @@ export async function handleOwnersRoutes(
         breed: patient.breed ?? null
       }));
     const totalEncounters = encounters
-      .listAll()
-      .filter(
-        (encounter) =>
-          encounter.accountId === principal.user.accountId && encounter.ownerId === owner.id
-      ).length;
+      .listAll(principal.user.accountId)
+      .filter((encounter) => encounter.ownerId === owner.id).length;
 
     appendAudit(audit, {
       actorId: principal.user.id,

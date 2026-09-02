@@ -73,7 +73,7 @@ async function refreshInpatientCommandCaches(
   medicalRecords?: MedicalRecordsService
 ): Promise<void> {
   const refreshCaches = async (): Promise<void> => {
-    const refreshOperations: Promise<unknown>[] = [inpatient.refreshAccount(accountId)];
+    const refreshOperations: Promise<unknown>[] = [inpatient.refreshAccount(accountId as never)];
     if (billing && typeof billing.refreshFromDatabase === 'function') {
       refreshOperations.push(billing.refreshFromDatabase(accountId as never));
     }
@@ -209,7 +209,9 @@ export async function handleInpatientRoutes(
         }
       });
     } catch (error) {
-      if (createdStay) inpatient.removeStayCache(createdStay.id as never);
+      if (createdStay) {
+        inpatient.removeStayCache(principal.user.accountId, createdStay.id as never);
+      }
       await refreshInpatientCommandCaches(
         inpatient,
         audit,
@@ -423,12 +425,14 @@ export async function handleInpatientRoutes(
   if (pathname === '/inpatient/handover-preview' && request.method === 'GET') {
     const principal = await rp(request, 'inpatient.read');
     const url = new URL(request.url ?? pathname, 'http://localhost');
-    const payload: InpatientHandoverPreviewResponse = inpatient.buildHandoverPreview({
-      accountId: principal.user.accountId,
-      unit: url.searchParams.get('unit') ?? undefined,
-      ward: url.searchParams.get('ward') ?? undefined,
-      includeDischarged: url.searchParams.get('includeDischarged') === 'true'
-    });
+    const payload: InpatientHandoverPreviewResponse = inpatient.buildHandoverPreview(
+      principal.user.accountId as never,
+      {
+        unit: url.searchParams.get('unit') ?? undefined,
+        ward: url.searchParams.get('ward') ?? undefined,
+        includeDischarged: url.searchParams.get('includeDischarged') === 'true'
+      }
+    );
     appendAudit(audit, {
       actorId: principal.user.id,
       accountId: principal.user.accountId,
@@ -450,8 +454,7 @@ export async function handleInpatientRoutes(
     const principal = await rp(request, 'inpatient.read');
     const url = new URL(request.url ?? pathname, 'http://localhost');
     const status = url.searchParams.get('status') || undefined;
-    const items = inpatient.listDailyChargeWorklist({
-      accountId: principal.user.accountId,
+    const items = inpatient.listDailyChargeWorklist(principal.user.accountId as never, {
       status: status as never,
       unit: url.searchParams.get('unit') || undefined,
       ward: url.searchParams.get('ward') || undefined
@@ -529,7 +532,9 @@ export async function handleInpatientRoutes(
         }
       });
     } catch (error) {
-      if (previousStay) inpatient.restoreStayCache(previousStay);
+      if (previousStay) {
+        inpatient.restoreStayCache(principal.user.accountId as never, previousStay);
+      }
       await refreshInpatientCommandCaches(
         inpatient,
         audit,
@@ -572,6 +577,7 @@ export async function handleInpatientRoutes(
           const snapshot = requireStayForAccount(inpatient, stayId, principal.user.accountId);
           previousStay = snapshot;
           previousMedicalRecordState = medicalRecords?.snapshotEncounter(
+            principal.user.accountId as never,
             snapshot.encounterId as never
           );
           await sectorBedService.getBedForAccountOrThrow(
@@ -604,9 +610,14 @@ export async function handleInpatientRoutes(
         }
       });
     } catch (error) {
-      if (previousStay) inpatient.restoreStayCache(previousStay);
+      if (previousStay) {
+        inpatient.restoreStayCache(principal.user.accountId as never, previousStay);
+      }
       if (previousMedicalRecordState && medicalRecords) {
-        medicalRecords.restoreEncounterSnapshot(previousMedicalRecordState);
+        medicalRecords.restoreEncounterSnapshot(
+          principal.user.accountId as never,
+          previousMedicalRecordState
+        );
       }
       await refreshInpatientCommandCaches(
         inpatient,
@@ -652,6 +663,7 @@ export async function handleInpatientRoutes(
           const snapshot = requireStayForAccount(inpatient, stayId, principal.user.accountId);
           previousStay = snapshot;
           previousMedicalRecordState = medicalRecords?.snapshotEncounter(
+            principal.user.accountId as never,
             snapshot.encounterId as never
           );
           const updatedStay = inpatient.updateStatus(
@@ -680,9 +692,14 @@ export async function handleInpatientRoutes(
         }
       });
     } catch (error) {
-      if (previousStay) inpatient.restoreStayCache(previousStay);
+      if (previousStay) {
+        inpatient.restoreStayCache(principal.user.accountId as never, previousStay);
+      }
       if (previousMedicalRecordState && medicalRecords) {
-        medicalRecords.restoreEncounterSnapshot(previousMedicalRecordState);
+        medicalRecords.restoreEncounterSnapshot(
+          principal.user.accountId as never,
+          previousMedicalRecordState
+        );
       }
       await refreshInpatientCommandCaches(
         inpatient,
@@ -801,9 +818,15 @@ export async function handleInpatientRoutes(
         }
       });
     } catch (error) {
-      if (previousStay) inpatient.restoreStayCache(previousStay);
+      if (previousStay) {
+        inpatient.restoreStayCache(principal.user.accountId as never, previousStay);
+      }
       if (previousOccurrences) {
-        inpatient.restoreOccurrencesCache(stayId as never, previousOccurrences);
+        inpatient.restoreOccurrencesCache(
+          principal.user.accountId as never,
+          stayId as never,
+          previousOccurrences
+        );
       }
       await refreshInpatientCommandCaches(
         inpatient,
@@ -904,7 +927,11 @@ export async function handleInpatientRoutes(
       });
     } catch (error) {
       if (previousDailyCharges) {
-        inpatient.restoreDailyChargesCache(stayId as never, previousDailyCharges);
+        inpatient.restoreDailyChargesCache(
+          principal.user.accountId as never,
+          stayId as never,
+          previousDailyCharges
+        );
       }
       await refreshInpatientCommandCaches(
         inpatient,
@@ -1077,6 +1104,7 @@ export async function handleInpatientRoutes(
         command: async () => {
           previousStay = requireStayForAccount(inpatient, stayId, principal.user.accountId);
           previousMedicalRecordState = medicalRecords?.snapshotEncounter(
+            principal.user.accountId as never,
             previousStay.encounterId as never
           );
           previousProgress = inpatient.listProgress(
@@ -1112,12 +1140,21 @@ export async function handleInpatientRoutes(
         }
       });
     } catch (error) {
-      if (previousStay) inpatient.restoreStayCache(previousStay);
+      if (previousStay) {
+        inpatient.restoreStayCache(principal.user.accountId as never, previousStay);
+      }
       if (previousMedicalRecordState && medicalRecords) {
-        medicalRecords.restoreEncounterSnapshot(previousMedicalRecordState);
+        medicalRecords.restoreEncounterSnapshot(
+          principal.user.accountId as never,
+          previousMedicalRecordState
+        );
       }
       if (previousProgress) {
-        inpatient.restoreProgressCache(stayId as never, previousProgress);
+        inpatient.restoreProgressCache(
+          principal.user.accountId as never,
+          stayId as never,
+          previousProgress
+        );
       }
       await refreshInpatientCommandCaches(
         inpatient,

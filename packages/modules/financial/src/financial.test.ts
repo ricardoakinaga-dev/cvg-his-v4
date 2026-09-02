@@ -200,7 +200,8 @@ test('FinancialLedgerService rejects malformed journal entries', async () => {
 
 function createFinancialService(
   repository = new InMemoryEncounterFinancialRepository(),
-  onReceivablePaid?: (payment: EncounterReceivablePaymentRecord) => Promise<void>
+  onReceivablePaid?: (payment: EncounterReceivablePaymentRecord) => Promise<void>,
+  participantAccountId = 'acc_cvg_demo' as never
 ) {
   const encounter = {
     id: 'enc_1' as never,
@@ -252,7 +253,7 @@ function createFinancialService(
 
   const service = new EncounterFinancialService(
     {
-      getOrThrow(encounterId: string) {
+      getOrThrow(_accountId: string, encounterId: string) {
         assert.equal(encounterId, encounter.id);
         return encounter;
       }
@@ -279,6 +280,7 @@ function createFinancialService(
         assert.equal(patientId, encounter.patientId);
         return {
           id: patientId,
+          accountId: participantAccountId,
           name: 'Luna',
           species: 'canine'
         };
@@ -289,6 +291,7 @@ function createFinancialService(
         assert.equal(ownerId, encounter.ownerId);
         return {
           id: ownerId,
+          accountId: participantAccountId,
           fullName: 'Maria Silva',
           contacts: [
             {
@@ -438,8 +441,8 @@ test('InMemoryEncounterFinancialRepository filters receivables by account and st
 test('EncounterFinancialService syncs encounter and exposes administrative summary', async () => {
   const { service, encounter } = createFinancialService();
 
-  await service.syncEncounter(encounter.id);
-  const summary = await service.getSummary(encounter.id);
+  await service.syncEncounter(encounter.accountId, encounter.id);
+  const summary = await service.getSummary(encounter.accountId, encounter.id);
 
   assert.equal(summary.total, 190);
   assert.equal(summary.financialStatus, 'pending');
@@ -458,14 +461,19 @@ test('EncounterFinancialService closes encounter with installments and allocates
     }
   );
 
-  const summary = await service.closeEncounterFinancial(encounter.id, 'user_finance' as never, {
-    paidAmount: 120,
-    notes: 'Fechamento administrativo',
-    installments: [
-      { label: 'Entrada', amount: 100, dueAt: '2026-04-14T00:00:00.000Z' },
-      { label: 'Saldo', amount: 90, dueAt: '2026-04-20T00:00:00.000Z' }
-    ]
-  });
+  const summary = await service.closeEncounterFinancial(
+    encounter.accountId,
+    encounter.id,
+    'user_finance' as never,
+    {
+      paidAmount: 120,
+      notes: 'Fechamento administrativo',
+      installments: [
+        { label: 'Entrada', amount: 100, dueAt: '2026-04-14T00:00:00.000Z' },
+        { label: 'Saldo', amount: 90, dueAt: '2026-04-20T00:00:00.000Z' }
+      ]
+    }
+  );
 
   assert.equal(summary.financialClosed, true);
   assert.equal(summary.closedByUserId, 'user_finance');
@@ -482,22 +490,27 @@ test('EncounterFinancialService rejects inconsistent close and overpayment attem
 
   await assert.rejects(
     () =>
-      service.closeEncounterFinancial(encounter.id, 'user_finance' as never, {
+      service.closeEncounterFinancial(encounter.accountId, encounter.id, 'user_finance' as never, {
         installments: [{ amount: 100 }, { amount: 50 }]
       }),
     /Installment total must match encounter financial total/
   );
 
-  await service.closeEncounterFinancial(encounter.id, 'user_finance' as never, {
-    installments: [{ amount: 100 }, { amount: 90 }]
-  });
+  await service.closeEncounterFinancial(
+    encounter.accountId,
+    encounter.id,
+    'user_finance' as never,
+    {
+      installments: [{ amount: 100 }, { amount: 90 }]
+    }
+  );
 
   const account = await repository.findFinancialAccountByEncounter(encounter.id);
   const receivables = await repository.listReceivablesByFinancialAccount(account!.id);
 
   await assert.rejects(
     () =>
-      service.settleReceivable(receivables[0]!.id, {
+      service.settleReceivable(encounter.accountId, receivables[0]!.id, {
         amountPaid: 101
       }),
     /amountPaid must be greater than zero|Payment exceeds outstanding receivable balance/
@@ -507,12 +520,17 @@ test('EncounterFinancialService rejects inconsistent close and overpayment attem
 test('EncounterFinancialService lists receivables with pagination and search', async () => {
   const { service, encounter } = createFinancialService();
 
-  await service.closeEncounterFinancial(encounter.id, 'user_finance' as never, {
-    installments: [
-      { label: 'Entrada Luna', amount: 100 },
-      { label: 'Saldo Maria', amount: 90 }
-    ]
-  });
+  await service.closeEncounterFinancial(
+    encounter.accountId,
+    encounter.id,
+    'user_finance' as never,
+    {
+      installments: [
+        { label: 'Entrada Luna', amount: 100 },
+        { label: 'Saldo Maria', amount: 90 }
+      ]
+    }
+  );
 
   const firstPage = await service.listReceivables({
     accountId: 'acc_cvg_demo' as never,
@@ -585,15 +603,83 @@ test('EncounterFinancialService omits orphaned receivables instead of failing th
   assert.deepEqual(result.data, []);
 });
 
+test('EncounterFinancialService excludes contaminated payment rows from summaries and worklists', async () => {
+  class ContaminatedRepository extends InMemoryEncounterFinancialRepository {
+    public async listPaymentsByFinancialAccount(financialAccountId: string) {
+      const payments = await super.listPaymentsByFinancialAccount(financialAccountId);
+      const firstPayment = payments[0];
+      if (!firstPayment) return payments;
+      return [
+        ...payments,
+        {
+          ...firstPayment,
+          id: 'payment_foreign',
+          accountId: 'acc_other' as never,
+          encounterId: 'enc_foreign' as never
+        }
+      ];
+    }
+  }
+
+  const repository = new ContaminatedRepository();
+  const { service, encounter } = createFinancialService(repository);
+  await service.closeEncounterFinancial(
+    encounter.accountId,
+    encounter.id,
+    'user_finance' as never,
+    {
+      installments: [{ amount: 190 }]
+    }
+  );
+  const summary = await service.recordPaymentForEncounter(encounter.accountId, encounter.id, {
+    amountPaid: 25,
+    paidByUserId: 'user_finance' as never
+  });
+  const worklist = await service.listReceivables({ accountId: encounter.accountId });
+
+  assert.equal(summary.payments.length, 1);
+  assert.notEqual(summary.payments[0]?.id, 'payment_foreign');
+  assert.equal(worklist.data[0]?.payments.length, 1);
+  assert.notEqual(worklist.data[0]?.payments[0]?.id, 'payment_foreign');
+});
+
+test('EncounterFinancialService validates participants before a summary can mutate financial state', async () => {
+  let upserts = 0;
+  class TrackingRepository extends InMemoryEncounterFinancialRepository {
+    public async upsertFinancialAccount(account: EncounterFinancialAccountRecord) {
+      upserts += 1;
+      return super.upsertFinancialAccount(account);
+    }
+  }
+
+  const repository = new TrackingRepository();
+  const { service, encounter } = createFinancialService(
+    repository,
+    undefined,
+    'acc_other' as never
+  );
+
+  await assert.rejects(
+    () => service.getSummary(encounter.accountId, encounter.id),
+    /Encounter not found/
+  );
+  assert.equal(upserts, 0);
+});
+
 test('EncounterFinancialService records payment by billing record and settles receivables in order', async () => {
   const { service, encounter, billingRecord } = createFinancialService();
 
-  await service.closeEncounterFinancial(encounter.id, 'user_finance' as never, {
-    installments: [
-      { label: 'Entrada', amount: 100 },
-      { label: 'Saldo', amount: 90 }
-    ]
-  });
+  await service.closeEncounterFinancial(
+    encounter.accountId,
+    encounter.id,
+    'user_finance' as never,
+    {
+      installments: [
+        { label: 'Entrada', amount: 100 },
+        { label: 'Saldo', amount: 90 }
+      ]
+    }
+  );
 
   const summary = await service.recordPaymentForBillingRecord(
     encounter.accountId,

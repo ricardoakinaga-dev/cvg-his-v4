@@ -79,17 +79,21 @@ export interface InpatientServiceOptions {
 }
 
 export interface InpatientStayListFilters {
-  readonly accountId?: string;
   readonly encounterId?: string;
   readonly patientId?: string;
   readonly includeDischarged?: boolean;
 }
 
 export interface InpatientDailyChargeWorklistFilters {
-  readonly accountId?: string;
   readonly status?: InpatientDailyChargeSummary['status'];
   readonly unit?: string;
   readonly ward?: string;
+}
+
+export interface InpatientHandoverPreviewFilters {
+  readonly unit?: string;
+  readonly ward?: string;
+  readonly includeDischarged?: boolean;
 }
 
 export class InpatientService {
@@ -114,10 +118,12 @@ export class InpatientService {
     this.#sectorBedService = options?.sectorBedService;
   }
 
-  public async hydrateAccount(accountId: string): Promise<void> {
+  public async hydrateAccount(accountId: AccountId): Promise<void> {
     if (!this.#stayRepository) return;
 
-    const stays = await this.#stayRepository.findByAccountId(accountId as never);
+    const stays = (await this.#stayRepository.findByAccountId(accountId)).filter(
+      (stay) => stay.accountId === accountId
+    );
     await Promise.all(
       stays.map(async (stay) => {
         const [progress, occurrences, dailyCharges] = await Promise.all([
@@ -125,10 +131,23 @@ export class InpatientService {
           this.#occurrenceRepository?.findByStayId(stay.id) ?? Promise.resolve([]),
           this.#dailyChargeRepository?.findByStayId(stay.id) ?? Promise.resolve([])
         ]);
-        this.#stays.set(stay.id, stay);
-        this.#progress.set(stay.id, [...progress]);
-        this.#occurrences.set(stay.id, [...occurrences]);
-        this.#dailyCharges.set(stay.id, [...dailyCharges]);
+        this.#stays.set(stay.id, { ...stay });
+        this.#progress.set(
+          stay.id,
+          progress.filter((item) => this.isProgressForStay(item, stay)).map((item) => ({ ...item }))
+        );
+        this.#occurrences.set(
+          stay.id,
+          occurrences
+            .filter((item) => this.isOccurrenceForStay(item, stay))
+            .map((item) => ({ ...item }))
+        );
+        this.#dailyCharges.set(
+          stay.id,
+          dailyCharges
+            .filter((item) => this.isDailyChargeForStay(item, stay))
+            .map((item) => ({ ...item }))
+        );
       })
     );
   }
@@ -138,13 +157,15 @@ export class InpatientService {
    * This is used after a failed tenant command so a rolled-back daily-charge
    * mutation cannot remain visible to the next request in this API process.
    */
-  public async refreshAccount(accountId: string): Promise<void> {
+  public async refreshAccount(accountId: AccountId): Promise<void> {
     if (!this.#stayRepository) return;
     const nextStays = new Map<InpatientStayId, InpatientStaySummary>();
     const nextProgress = new Map<InpatientStayId, InpatientProgressSummary[]>();
     const nextOccurrences = new Map<InpatientStayId, InpatientOccurrenceSummary[]>();
     const nextDailyCharges = new Map<InpatientStayId, InpatientDailyChargeSummary[]>();
-    const stays = await this.#stayRepository.findByAccountId(accountId as never);
+    const stays = (await this.#stayRepository.findByAccountId(accountId)).filter(
+      (stay) => stay.accountId === accountId
+    );
     await Promise.all(
       stays.map(async (stay) => {
         const [progress, occurrences, dailyCharges] = await Promise.all([
@@ -152,10 +173,23 @@ export class InpatientService {
           this.#occurrenceRepository?.findByStayId(stay.id) ?? Promise.resolve([]),
           this.#dailyChargeRepository?.findByStayId(stay.id) ?? Promise.resolve([])
         ]);
-        nextStays.set(stay.id, stay);
-        nextProgress.set(stay.id, [...progress]);
-        nextOccurrences.set(stay.id, [...occurrences]);
-        nextDailyCharges.set(stay.id, [...dailyCharges]);
+        nextStays.set(stay.id, { ...stay });
+        nextProgress.set(
+          stay.id,
+          progress.filter((item) => this.isProgressForStay(item, stay)).map((item) => ({ ...item }))
+        );
+        nextOccurrences.set(
+          stay.id,
+          occurrences
+            .filter((item) => this.isOccurrenceForStay(item, stay))
+            .map((item) => ({ ...item }))
+        );
+        nextDailyCharges.set(
+          stay.id,
+          dailyCharges
+            .filter((item) => this.isDailyChargeForStay(item, stay))
+            .map((item) => ({ ...item }))
+        );
       })
     );
 
@@ -232,19 +266,50 @@ export class InpatientService {
     }
   }
 
+  private isProgressForStay(
+    progress: InpatientProgressSummary,
+    stay: InpatientStaySummary
+  ): boolean {
+    return (
+      progress.accountId === stay.accountId &&
+      progress.stayId === stay.id &&
+      progress.encounterId === stay.encounterId
+    );
+  }
+
+  private isOccurrenceForStay(
+    occurrence: InpatientOccurrenceSummary,
+    stay: InpatientStaySummary
+  ): boolean {
+    return (
+      occurrence.accountId === stay.accountId &&
+      occurrence.stayId === stay.id &&
+      occurrence.encounterId === stay.encounterId
+    );
+  }
+
+  private isDailyChargeForStay(
+    charge: InpatientDailyChargeSummary,
+    stay: InpatientStaySummary
+  ): boolean {
+    return (
+      charge.accountId === stay.accountId &&
+      charge.stayId === stay.id &&
+      charge.encounterId === stay.encounterId &&
+      charge.patientId === stay.patientId
+    );
+  }
+
   public admit(
     payload: CreateInpatientAdmissionRequest,
-    expectedAccountId?: string,
+    expectedAccountId: AccountId,
     admittedByUserId?: UserId
   ): InpatientStaySummary {
-    const encounter = this.#encounters.getOrThrow(payload.encounterId as never);
-    if (expectedAccountId && encounter.accountId !== expectedAccountId) {
-      throw new NotFoundError('Encounter not found', { encounterId: payload.encounterId });
-    }
+    const encounter = this.#encounters.getOrThrow(expectedAccountId, payload.encounterId as never);
     if (encounter.patientId !== payload.patientId) {
       throw new ValidationError('patientId does not match the encounter');
     }
-    const activeStay = this.list({ encounterId: encounter.id }).find(
+    const activeStay = this.list(expectedAccountId, { encounterId: encounter.id }).find(
       (item) => item.status !== 'discharged'
     );
     if (activeStay) {
@@ -330,6 +395,10 @@ export class InpatientService {
       if (bed.status === 'occupied') {
         throw new ValidationError('Bed is already occupied');
       }
+      assignedSector = await this.#sectorBedService.getSectorOrThrow(
+        stay.accountId,
+        payload.sectorId as SectorId
+      );
       if (!atomicBedTransition) {
         await this.#sectorBedService.setBedOccupied(stay.accountId, payload.bedId as BedId);
         if (stay.bedId) {
@@ -337,10 +406,6 @@ export class InpatientService {
         }
       }
       assignedBed = bed;
-      assignedSector = await this.#sectorBedService.getSectorOrThrow(
-        stay.accountId,
-        payload.sectorId as SectorId
-      );
     }
 
     const now = nowIso();
@@ -403,6 +468,10 @@ export class InpatientService {
       if (bed.status === 'occupied') {
         throw new ValidationError('Bed is already occupied');
       }
+      assignedSector = await this.#sectorBedService.getSectorOrThrow(
+        stay.accountId,
+        payload.sectorId as SectorId
+      );
       if (!atomicBedTransition) {
         await this.#sectorBedService.setBedOccupied(stay.accountId, payload.bedId as BedId);
         if (stay.bedId) {
@@ -410,10 +479,6 @@ export class InpatientService {
         }
       }
       assignedBed = bed;
-      assignedSector = await this.#sectorBedService.getSectorOrThrow(
-        stay.accountId,
-        payload.sectorId as SectorId
-      );
     }
 
     const now = nowIso();
@@ -450,25 +515,30 @@ export class InpatientService {
     return updated;
   }
 
-  public list(filters?: string | InpatientStayListFilters): readonly InpatientStaySummary[] {
+  public list(
+    accountId: AccountId,
+    filters?: string | InpatientStayListFilters
+  ): readonly InpatientStaySummary[] {
     const normalizedFilters =
       typeof filters === 'string' ? { encounterId: filters } : (filters ?? {});
 
-    return Array.from(this.#stays.values()).filter((stay) => {
-      if (normalizedFilters.accountId && stay.accountId !== normalizedFilters.accountId) {
-        return false;
-      }
-      if (normalizedFilters.encounterId && stay.encounterId !== normalizedFilters.encounterId) {
-        return false;
-      }
-      if (normalizedFilters.patientId && stay.patientId !== normalizedFilters.patientId) {
-        return false;
-      }
-      if (!normalizedFilters.includeDischarged && stay.status === 'discharged') {
-        return false;
-      }
-      return true;
-    });
+    return Array.from(this.#stays.values())
+      .filter((stay) => {
+        if (stay.accountId !== accountId) {
+          return false;
+        }
+        if (normalizedFilters.encounterId && stay.encounterId !== normalizedFilters.encounterId) {
+          return false;
+        }
+        if (normalizedFilters.patientId && stay.patientId !== normalizedFilters.patientId) {
+          return false;
+        }
+        if (!normalizedFilters.includeDischarged && stay.status === 'discharged') {
+          return false;
+        }
+        return true;
+      })
+      .map((stay) => ({ ...stay }));
   }
 
   public getOrThrow(stayId: InpatientStayId, accountId: AccountId): InpatientStaySummary {
@@ -480,11 +550,18 @@ export class InpatientService {
     return stay;
   }
 
-  public restoreStayCache(stay: InpatientStaySummary): void {
+  public restoreStayCache(accountId: AccountId, stay: InpatientStaySummary): void {
+    if (stay.accountId !== accountId) {
+      throw new ValidationError('Inpatient stay account does not match tenant context');
+    }
     this.#stays.set(stay.id, { ...stay });
   }
 
-  public removeStayCache(stayId: InpatientStayId): void {
+  public removeStayCache(accountId: AccountId, stayId: InpatientStayId): void {
+    const stay = this.#stays.get(stayId);
+    if (!stay || stay.accountId !== accountId) {
+      return;
+    }
     this.#stays.delete(stayId);
     this.#progress.delete(stayId);
     this.#occurrences.delete(stayId);
@@ -492,24 +569,41 @@ export class InpatientService {
   }
 
   public restoreDailyChargesCache(
+    accountId: AccountId,
     stayId: InpatientStayId,
     charges: readonly InpatientDailyChargeSummary[]
   ): void {
-    this.#dailyCharges.set(stayId, [...charges]);
+    const stay = this.getOrThrow(stayId, accountId);
+    this.#dailyCharges.set(
+      stayId,
+      charges.filter((item) => this.isDailyChargeForStay(item, stay)).map((item) => ({ ...item }))
+    );
   }
 
   public restoreProgressCache(
+    accountId: AccountId,
     stayId: InpatientStayId,
     progress: readonly InpatientProgressSummary[]
   ): void {
-    this.#progress.set(stayId, [...progress]);
+    const stay = this.getOrThrow(stayId, accountId);
+    this.#progress.set(
+      stayId,
+      progress.filter((item) => this.isProgressForStay(item, stay)).map((item) => ({ ...item }))
+    );
   }
 
   public restoreOccurrencesCache(
+    accountId: AccountId,
     stayId: InpatientStayId,
     occurrences: readonly InpatientOccurrenceSummary[]
   ): void {
-    this.#occurrences.set(stayId, [...occurrences]);
+    const stay = this.getOrThrow(stayId, accountId);
+    this.#occurrences.set(
+      stayId,
+      occurrences
+        .filter((item) => this.isOccurrenceForStay(item, stay))
+        .map((item) => ({ ...item }))
+    );
   }
 
   public addProgress(
@@ -547,8 +641,10 @@ export class InpatientService {
     stayId: InpatientStayId,
     accountId: AccountId
   ): readonly InpatientProgressSummary[] {
-    this.getOrThrow(stayId, accountId);
-    return [...(this.#progress.get(stayId) ?? [])];
+    const stay = this.getOrThrow(stayId, accountId);
+    return (this.#progress.get(stayId) ?? [])
+      .filter((item) => this.isProgressForStay(item, stay))
+      .map((item) => ({ ...item }));
   }
 
   public addOccurrence(
@@ -589,8 +685,10 @@ export class InpatientService {
     stayId: InpatientStayId,
     accountId: AccountId
   ): readonly InpatientOccurrenceSummary[] {
-    this.getOrThrow(stayId, accountId);
-    return [...(this.#occurrences.get(stayId) ?? [])];
+    const stay = this.getOrThrow(stayId, accountId);
+    return (this.#occurrences.get(stayId) ?? [])
+      .filter((item) => this.isOccurrenceForStay(item, stay))
+      .map((item) => ({ ...item }));
   }
 
   public createDailyCharge(
@@ -644,27 +742,31 @@ export class InpatientService {
     stayId: InpatientStayId,
     accountId: AccountId
   ): readonly InpatientDailyChargeSummary[] {
-    this.getOrThrow(stayId, accountId);
-    return [...(this.#dailyCharges.get(stayId) ?? [])];
+    const stay = this.getOrThrow(stayId, accountId);
+    return (this.#dailyCharges.get(stayId) ?? [])
+      .filter((item) => this.isDailyChargeForStay(item, stay))
+      .map((item) => ({ ...item }));
   }
 
   public listDailyChargeWorklist(
+    accountId: AccountId,
     filters?: InpatientDailyChargeWorklistFilters
   ): readonly InpatientDailyChargeWorklistItem[] {
     return Array.from(this.#dailyCharges.entries())
       .flatMap(([stayId, charges]) => {
         const stay = this.#stays.get(stayId);
-        if (!stay) return [];
-        return charges.map((charge) => ({
-          ...charge,
-          unit: stay.unit,
-          ward: stay.ward,
-          bed: stay.bed,
-          stayStatus: stay.status
-        }));
+        if (!stay || stay.accountId !== accountId) return [];
+        return charges
+          .filter((charge) => this.isDailyChargeForStay(charge, stay))
+          .map((charge) => ({
+            ...charge,
+            unit: stay.unit,
+            ward: stay.ward,
+            bed: stay.bed,
+            stayStatus: stay.status
+          }));
       })
       .filter((charge) => (filters?.status ? charge.status === filters.status : true))
-      .filter((charge) => (filters?.accountId ? charge.accountId === filters.accountId : true))
       .filter((charge) => (filters?.unit ? charge.unit === filters.unit : true))
       .filter((charge) => (filters?.ward ? charge.ward === filters.ward : true))
       .sort((left, right) => {
@@ -680,11 +782,11 @@ export class InpatientService {
     payload: MarkInpatientDailyChargeBilledRequest | undefined,
     accountId: AccountId
   ): InpatientDailyChargeSummary {
-    this.getOrThrow(stayId, accountId);
+    const stay = this.getOrThrow(stayId, accountId);
     const charges = this.#dailyCharges.get(stayId) ?? [];
     const charge = charges.find((item) => item.id === chargeId);
 
-    if (!charge) {
+    if (!charge || !this.isDailyChargeForStay(charge, stay)) {
       throw new NotFoundError('Inpatient daily charge not found', { stayId, chargeId });
     }
     if (charge.status === 'billed') {
@@ -701,7 +803,7 @@ export class InpatientService {
           }
         );
       }
-      return charge;
+      return { ...charge };
     }
     if (charge.status !== 'pending') {
       throw new ValidationError('Only pending daily charges can be billed');
@@ -800,14 +902,12 @@ export class InpatientService {
     return updated;
   }
 
-  public buildHandoverPreview(filters?: {
-    readonly accountId?: string;
-    readonly unit?: string;
-    readonly ward?: string;
-    readonly includeDischarged?: boolean;
-  }): InpatientHandoverPreviewResponse {
+  public buildHandoverPreview(
+    accountId: AccountId,
+    filters?: InpatientHandoverPreviewFilters
+  ): InpatientHandoverPreviewResponse {
     const includeDischarged = filters?.includeDischarged ?? false;
-    const items = this.list({ accountId: filters?.accountId, includeDischarged })
+    const items = this.list(accountId, { includeDischarged })
       .filter((stay) => includeDischarged || stay.status !== 'discharged')
       .filter((stay) => !filters?.unit || stay.unit === filters.unit)
       .filter((stay) => !filters?.ward || stay.ward === filters.ward)
@@ -819,7 +919,7 @@ export class InpatientService {
         return left.bed.localeCompare(right.bed);
       })
       .map((stay) => {
-        const latestProgress = this.listProgress(stay.id, stay.accountId)[0];
+        const latestProgress = this.listProgress(stay.id, accountId)[0];
         const requiresAttention =
           stay.status === 'transferred' ||
           (latestProgress?.note.toLowerCase().includes('urg') ?? false) ||

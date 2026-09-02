@@ -20,7 +20,13 @@ function createTestRuntime(
     accessTokenTtlSeconds: 900,
     refreshTokenTtlSeconds: 604800,
     repositories,
-    notificationsWhatsappRemindersEnabled: options?.notificationsWhatsappRemindersEnabled
+    notificationsWhatsappRemindersEnabled: options?.notificationsWhatsappRemindersEnabled,
+    // The restart suite uses the in-memory repository bundle, whose explicit
+    // transaction boundary is supplied by the test harness. Production SQL
+    // runtimes provide the real tenant transaction from bootstrap.
+    tenantTransaction: repositories
+      ? async <T>(_accountId: string, operation: () => Promise<T>): Promise<T> => operation()
+      : undefined
   });
 }
 
@@ -341,7 +347,7 @@ test('runtime initializes tenant-scoped repositories with the authenticated acco
   await runtime.initialize();
 
   const patient = runtime.patients.getOrThrow(REAL_PATIENT_ID);
-  const encounter = runtime.encounters.getOrThrow(REAL_ENCOUNTER_ID);
+  const encounter = runtime.encounters.getOrThrow(REAL_ACCOUNT_ID, REAL_ENCOUNTER_ID);
 
   assert.equal(patient.accountId, REAL_ACCOUNT_ID);
   assert.equal(encounter.accountId, REAL_ACCOUNT_ID);
@@ -528,7 +534,7 @@ test('runtime reconciles PIX confirmation into administrative financial state', 
   const settledBilling = runtime.billing.getOrThrow(reception.user.accountId, billingRecord.id);
   assert.equal(settledBilling.status, 'settled');
 
-  const summary = await runtime.encounterFinancial.getSummary(encounter.id);
+  const summary = await runtime.encounterFinancial.getSummary(encounter.accountId, encounter.id);
   assert.equal(summary.balanceDue, 0);
   assert.equal(summary.financialStatus, 'paid');
   assert.equal(
@@ -631,7 +637,7 @@ test('runtime reconciles card capture into administrative financial state', asyn
   const settledBilling = runtime.billing.getOrThrow(reception.user.accountId, billingRecord.id);
   assert.equal(settledBilling.status, 'settled');
 
-  const summary = await runtime.encounterFinancial.getSummary(encounter.id);
+  const summary = await runtime.encounterFinancial.getSummary(encounter.accountId, encounter.id);
   assert.equal(summary.balanceDue, 0);
   assert.equal(summary.financialStatus, 'paid');
   assert.equal(
@@ -883,19 +889,19 @@ test('operational flow supports appointment, queue, encounter lifecycle, triage 
     reason: 'Retorno ambulatorial'
   });
   await runtime.scheduling.attachEncounter(queueEntry.id, encounter.id);
-  runtime.encounters.appendTimeline(encounter.id, {
+  runtime.encounters.appendTimeline(encounter.accountId, encounter.id, {
     accountId: encounter.accountId,
     eventType: 'queue_checked_in',
     summary: 'Paciente aguardando triagem',
     actorUserId: reception.user.id
   });
-  runtime.encounters.appendTimeline(encounter.id, {
+  runtime.encounters.appendTimeline(encounter.accountId, encounter.id, {
     accountId: encounter.accountId,
     eventType: 'queue_called',
     summary: 'Paciente chamado para triagem',
     actorUserId: reception.user.id
   });
-  runtime.encounters.transitionEncounter(encounter.id, reception.user.id, {
+  runtime.encounters.transitionEncounter(encounter.accountId, encounter.id, reception.user.id, {
     nextStatus: 'in_triage'
   });
 
@@ -920,23 +926,33 @@ test('operational flow supports appointment, queue, encounter lifecycle, triage 
     },
     nurse.user.accountId
   );
-  runtime.encounters.appendTimeline(encounter.id, {
+  runtime.encounters.appendTimeline(encounter.accountId, encounter.id, {
     accountId: encounter.accountId,
     eventType: 'triage_recorded',
     summary: `Triagem inicial registrada com prioridade ${triage.priority}`,
     actorUserId: nurse.user.id
   });
-  const inObservation = runtime.encounters.transitionEncounter(encounter.id, nurse.user.id, {
+  const inObservation = runtime.encounters.transitionEncounter(
+    encounter.accountId,
+    encounter.id,
+    nurse.user.id,
+    {
     nextStatus: triage.destination
-  });
+    }
+  );
   await runtime.scheduling.transitionQueueForEncounter(queueEntry.id, 'observation');
 
-  const closed = runtime.encounters.closeEncounter(encounter.id, nurse.user.id, {
-    closeReason: 'Fluxo operacional concluido para encaminhamento clinico posterior'
-  });
+  const closed = runtime.encounters.closeEncounter(
+    encounter.accountId,
+    encounter.id,
+    nurse.user.id,
+    {
+      closeReason: 'Fluxo operacional concluido para encaminhamento clinico posterior'
+    }
+  );
   await runtime.scheduling.completeQueueEntry(queueEntry.id);
 
-  const timeline = runtime.encounters.listTimeline(encounter.id);
+  const timeline = runtime.encounters.listTimeline(encounter.accountId, encounter.id);
 
   assert.equal(inObservation.status, 'observation');
   assert.equal(closed.status, 'closed');
@@ -1036,29 +1052,44 @@ test('clinical record supports entries, prescriptions, conduct and attachments l
   )) as AuthSessionResponse;
   const veterinarian = runtime.auth.authenticateAccessToken(vetLogin.accessToken);
 
-  const anamnesis = runtime.medicalRecords.addEntry(veterinarian.user.id, {
-    encounterId: encounter.id,
-    patientId: encounter.patientId,
-    entryType: 'anamnesis',
-    title: 'Anamnese inicial',
-    content: 'Tutor relata dois dias de inapetencia e vomitos esporadicos.'
-  });
-  const prescription = runtime.medicalRecords.addEntry(veterinarian.user.id, {
-    encounterId: encounter.id,
-    patientId: encounter.patientId,
-    entryType: 'prescription',
-    title: 'Prescricao inicial',
-    content: 'Antiemetico a cada 12h por 3 dias.'
-  });
-  const conduct = runtime.medicalRecords.addEntry(veterinarian.user.id, {
-    encounterId: encounter.id,
-    patientId: encounter.patientId,
-    entryType: 'conduct',
-    title: 'Conduta e orientacoes',
-    content: 'Observacao domiciliar, dieta leve e retorno se persistirem sinais.'
-  });
+  const anamnesis = runtime.medicalRecords.addEntry(
+    veterinarian.user.accountId,
+    veterinarian.user.id,
+    {
+      encounterId: encounter.id,
+      patientId: encounter.patientId,
+      entryType: 'anamnesis',
+      title: 'Anamnese inicial',
+      content: 'Tutor relata dois dias de inapetencia e vomitos esporadicos.'
+    }
+  );
+  const prescription = runtime.medicalRecords.addEntry(
+    veterinarian.user.accountId,
+    veterinarian.user.id,
+    {
+      encounterId: encounter.id,
+      patientId: encounter.patientId,
+      entryType: 'prescription',
+      title: 'Prescricao inicial',
+      content: 'Antiemetico a cada 12h por 3 dias.'
+    }
+  );
+  const conduct = runtime.medicalRecords.addEntry(
+    veterinarian.user.accountId,
+    veterinarian.user.id,
+    {
+      encounterId: encounter.id,
+      patientId: encounter.patientId,
+      entryType: 'conduct',
+      title: 'Conduta e orientacoes',
+      content: 'Observacao domiciliar, dieta leve e retorno se persistirem sinais.'
+    }
+  );
 
-  const record = runtime.medicalRecords.getRecordByEncounterOrThrow(encounter.id);
+  const record = runtime.medicalRecords.getRecordByEncounterOrThrow(
+    veterinarian.user.accountId,
+    encounter.id
+  );
   const attachment = await runtime.attachments.upload(
     veterinarian.user.id,
     veterinarian.user.accountId,
@@ -1072,15 +1103,26 @@ test('clinical record supports entries, prescriptions, conduct and attachments l
     }
   );
   runtime.medicalRecords.appendAttachmentEvent(
+    veterinarian.user.accountId,
     encounter.id,
     veterinarian.user.id,
     attachment.id,
     'Attachment linked to clinical record'
   );
 
-  const entries = runtime.medicalRecords.listEntriesByEncounter(encounter.id);
-  const timeline = runtime.medicalRecords.listTimelineByEncounter(encounter.id);
-  const attachments = await runtime.attachments.listByLinkedEntity('medical_record', record.id);
+  const entries = runtime.medicalRecords.listEntriesByEncounter(
+    veterinarian.user.accountId,
+    encounter.id
+  );
+  const timeline = runtime.medicalRecords.listTimelineByEncounter(
+    veterinarian.user.accountId,
+    encounter.id
+  );
+  const attachments = await runtime.attachments.listByLinkedEntity(
+    'medical_record',
+    record.id,
+    veterinarian.user.accountId
+  );
 
   assert.equal(record.encounterId, encounter.id);
   assert.equal(
@@ -1136,18 +1178,22 @@ test('advanced care keeps inpatient, surgery and diagnostics tied to the same cl
   )) as AuthSessionResponse;
   const veterinarian = runtime.auth.authenticateAccessToken(vetLogin.accessToken);
 
-  runtime.encounters.transitionEncounter(encounter.id, veterinarian.user.id, {
+  runtime.encounters.transitionEncounter(encounter.accountId, encounter.id, veterinarian.user.id, {
     nextStatus: 'in_care'
   });
 
-  const stay = runtime.inpatient.admit({
-    encounterId: encounter.id,
-    patientId: encounter.patientId,
-    unit: 'Internacao Clinica',
-    ward: 'Ala A',
-    bed: 'A-12'
-  });
+  const stay = runtime.inpatient.admit(
+    {
+      encounterId: encounter.id,
+      patientId: encounter.patientId,
+      unit: 'Internacao Clinica',
+      ward: 'Ala A',
+      bed: 'A-12'
+    },
+    encounter.accountId
+  );
   runtime.medicalRecords.appendAdvancedCareEvent(
+    veterinarian.user.accountId,
     encounter.id,
     veterinarian.user.id,
     'inpatient_admitted',
@@ -1163,6 +1209,7 @@ test('advanced care keeps inpatient, surgery and diagnostics tied to the same cl
     veterinarian.user.accountId
   );
   runtime.medicalRecords.appendAdvancedCareEvent(
+    veterinarian.user.accountId,
     encounter.id,
     veterinarian.user.id,
     'inpatient_progressed',
@@ -1176,6 +1223,7 @@ test('advanced care keeps inpatient, surgery and diagnostics tied to the same cl
     preparationNotes: 'Jejum confirmado e consentimento coletado.'
   });
   runtime.medicalRecords.appendAdvancedCareEvent(
+    veterinarian.user.accountId,
     encounter.id,
     veterinarian.user.id,
     'surgery_requested',
@@ -1186,6 +1234,7 @@ test('advanced care keeps inpatient, surgery and diagnostics tied to the same cl
     status: 'pre_op'
   });
   runtime.medicalRecords.appendAdvancedCareEvent(
+    veterinarian.user.accountId,
     encounter.id,
     veterinarian.user.id,
     'surgery_pre_op',
@@ -1200,6 +1249,7 @@ test('advanced care keeps inpatient, surgery and diagnostics tied to the same cl
     }
   );
   runtime.medicalRecords.appendAdvancedCareEvent(
+    veterinarian.user.accountId,
     encounter.id,
     veterinarian.user.id,
     'surgery_in_progress',
@@ -1211,6 +1261,7 @@ test('advanced care keeps inpatient, surgery and diagnostics tied to the same cl
     operativeNotes: 'Procedimento concluido sem intercorrencias imediatas.'
   });
   runtime.medicalRecords.appendAdvancedCareEvent(
+    veterinarian.user.accountId,
     encounter.id,
     veterinarian.user.id,
     'surgery_status_changed',
@@ -1224,6 +1275,7 @@ test('advanced care keeps inpatient, surgery and diagnostics tied to the same cl
     reason: 'Suporte a decisao cirurgica e seguimento pos-operatorio.'
   });
   runtime.medicalRecords.appendAdvancedCareEvent(
+    veterinarian.user.accountId,
     encounter.id,
     veterinarian.user.id,
     'diagnostic_requested',
@@ -1243,6 +1295,7 @@ test('advanced care keeps inpatient, surgery and diagnostics tied to the same cl
     }
   );
   runtime.medicalRecords.appendAttachmentEvent(
+    veterinarian.user.accountId,
     encounter.id,
     veterinarian.user.id,
     attachment.id,
@@ -1254,6 +1307,7 @@ test('advanced care keeps inpatient, surgery and diagnostics tied to the same cl
     collectedByUserId: veterinarian.user.id
   });
   runtime.medicalRecords.appendAdvancedCareEvent(
+    veterinarian.user.accountId,
     encounter.id,
     veterinarian.user.id,
     'diagnostic_collected',
@@ -1266,16 +1320,21 @@ test('advanced care keeps inpatient, surgery and diagnostics tied to the same cl
     releasedByUserId: veterinarian.user.id
   });
   runtime.medicalRecords.appendAdvancedCareEvent(
+    veterinarian.user.accountId,
     encounter.id,
     veterinarian.user.id,
     'diagnostic_resulted',
     `Diagnostic result registered: ${resultedOrder.resultSummary}`
   );
 
-  const timeline = runtime.medicalRecords.listTimelineByEncounter(encounter.id);
+  const timeline = runtime.medicalRecords.listTimelineByEncounter(
+    veterinarian.user.accountId,
+    encounter.id
+  );
   const diagnosticAttachments = await runtime.attachments.listByLinkedEntity(
     'diagnostic_order',
-    order.id
+    order.id,
+    veterinarian.user.accountId
   );
 
   assert.equal(stay.encounterId, encounter.id);
@@ -1386,7 +1445,9 @@ test('administrative modules keep billing, inventory and notifications linked wi
     message: 'Billing inicial liberado para acompanhamento administrativo.',
     severity: 'medium'
   });
-  const processed = await runtime.notifications.processPending({ limit: 10 });
+  const processed = await runtime.notifications.processPending(finance.user.accountId, {
+    limit: 10
+  });
 
   assert.throws(
     () =>
@@ -1412,7 +1473,9 @@ test('administrative modules keep billing, inventory and notifications linked wi
     true
   );
   assert.equal(
-    runtime.notifications.list('sent').some((entry) => entry.id === notification.id),
+    runtime.notifications
+      .list(finance.user.accountId, 'sent')
+      .some((entry) => entry.id === notification.id),
     true
   );
   assert.equal(
@@ -1637,7 +1700,7 @@ test('runtime initialize rehydrates session cache and encounter timeline from sh
   await runtimeB.initialize();
 
   const rehydratedPrincipal = runtimeB.auth.authenticateAccessToken(login.accessToken);
-  const timeline = await runtimeB.encounters.listTimelineAsync(encounter.id);
+  const timeline = await runtimeB.encounters.listTimelineAsync(encounter.accountId, encounter.id);
 
   assert.equal(rehydratedPrincipal.user.id, principal.user.id);
   assert.ok(timeline.length > 0);
@@ -1695,23 +1758,34 @@ test('AUD-005-01: medical records, entries and timeline persist across runtime r
   );
 
   // Create medical record and entries
-  const record = runtimeA.medicalRecords.ensureRecord(encounter.id);
+  const record = runtimeA.medicalRecords.ensureRecord(
+    loginA.principal.user.accountId,
+    encounter.id
+  );
 
-  const entry1 = runtimeA.medicalRecords.addEntry(loginA.principal.user.id, {
-    encounterId: encounter.id,
-    patientId: patient.id,
-    entryType: 'anamnesis',
-    title: 'Anamnese inicial',
-    content: 'Tutor relata dois dias de inapetencia e vomitos esporadicos.'
-  });
+  const entry1 = await runtimeA.medicalRecords.createEntryAtomically(
+    loginA.principal.user.accountId,
+    loginA.principal.user.id,
+    {
+      encounterId: encounter.id,
+      patientId: patient.id,
+      entryType: 'anamnesis',
+      title: 'Anamnese inicial',
+      content: 'Tutor relata dois dias de inapetencia e vomitos esporadicos.'
+    }
+  );
 
-  const entry2 = runtimeA.medicalRecords.addEntry(loginA.principal.user.id, {
-    encounterId: encounter.id,
-    patientId: patient.id,
-    entryType: 'prescription',
-    title: 'Prescricao inicial',
-    content: 'Antiemetico a cada 12h por 3 dias.'
-  });
+  const entry2 = await runtimeA.medicalRecords.createEntryAtomically(
+    loginA.principal.user.accountId,
+    loginA.principal.user.id,
+    {
+      encounterId: encounter.id,
+      patientId: patient.id,
+      entryType: 'prescription',
+      title: 'Prescricao inicial',
+      content: 'Antiemetico a cada 12h por 3 dias.'
+    }
+  );
 
   await runtimeA.medicalRecords.waitForPersistence();
 
@@ -1839,7 +1913,7 @@ test('AUD-010-03: notifications API creates and worker processes via shared serv
   assert.equal(notification.status, 'queued');
 
   // Verify notification exists in API's service
-  const queuedInApi = runtime.notifications.list('queued');
+  const queuedInApi = runtime.notifications.list(finance.user.accountId, 'queued');
   assert.ok(
     queuedInApi.some((n) => n.id === notification.id),
     'Notification should be queued in API'
@@ -1847,20 +1921,22 @@ test('AUD-010-03: notifications API creates and worker processes via shared serv
 
   // Worker processes notifications using the SAME service instance
   // In current architecture, worker would need to receive the same service instance
-  const processed = await runtime.notifications.processPending({ limit: 10 });
+  const processed = await runtime.notifications.processPending(finance.user.accountId, {
+    limit: 10
+  });
 
   assert.equal(processed.length, 1);
   assert.equal(processed[0].id, notification.id);
 
   // Verify notification is now sent
-  const sentNotifications = runtime.notifications.list('sent');
+  const sentNotifications = runtime.notifications.list(finance.user.accountId, 'sent');
   assert.ok(
     sentNotifications.some((n) => n.id === notification.id),
     'Notification should be sent'
   );
 
   // Verify job was created
-  const jobs = runtime.notifications.listJobs();
+  const jobs = runtime.notifications.listJobs(finance.user.accountId);
   assert.ok(
     jobs.some((j) => j.notificationId === notification.id),
     'Job should be created'
@@ -1897,7 +1973,9 @@ test('AUD-010-03: current limitation - separate instances do NOT share state', a
   );
 
   // Worker (runtime2) tries to process - finds nothing because it's a different instance
-  const processed = await runtime2.notifications.processPending({ limit: 10 });
+  const processed = await runtime2.notifications.processPending(finance.user.accountId, {
+    limit: 10
+  });
 
   assert.equal(
     processed.length,
@@ -1906,7 +1984,7 @@ test('AUD-010-03: current limitation - separate instances do NOT share state', a
   );
 
   // The notification is still queued in runtime1
-  const queued = runtime1.notifications.list('queued');
+  const queued = runtime1.notifications.list(finance.user.accountId, 'queued');
   assert.equal(queued.length, 1, 'Notification should still be queued in original instance');
   assert.equal(queued[0]?.id, notification.id);
 
@@ -1971,7 +2049,9 @@ test('AUD-010-03: cross-aggregate flow - encounter to billing to notifications',
   assert.equal(notification.encounterId, encounter.id, 'Notification should link to encounter');
 
   // Process notification
-  const processed = await runtime.notifications.processPending({ limit: 1 });
+  const processed = await runtime.notifications.processPending(reception.user.accountId, {
+    limit: 1
+  });
   assert.equal(processed.length, 1);
 
   // This proves: Cross-aggregate flows work correctly
@@ -2012,7 +2092,7 @@ test('AUD-007-01: API writes notification to repository, worker reads and proces
   assert.equal(notifInRepo?.status, 'queued');
 
   // Verify job is in repository
-  const jobsInRepo = await repositories.notification?.findQueuedJobs(10);
+  const jobsInRepo = await repositories.notification?.findQueuedJobs(finance.user.accountId, 10);
   assert.ok(jobsInRepo && jobsInRepo.length >= 1, 'Job should be in shared repository');
 
   // Worker side: create notifications service that reads from same repository
@@ -2022,19 +2102,25 @@ test('AUD-007-01: API writes notification to repository, worker reads and proces
   });
 
   // Worker reads notifications from repository
-  const queuedNotifications = await workerNotifications.listFromRepository('queued');
+  const queuedNotifications = await workerNotifications.listFromRepository(
+    finance.user.accountId,
+    'queued'
+  );
   assert.ok(
     queuedNotifications.some((n) => n.id === notification.id),
     'Worker should see notification created by API via repository'
   );
 
   // Worker processes notifications from repository
-  const processed = await workerNotifications.processPendingFromRepository({ limit: 10 });
+  const processed = await workerNotifications.processPendingFromRepository(
+    finance.user.accountId,
+    { limit: 10 }
+  );
   assert.equal(processed.length, 1, 'Worker should process 1 notification');
   assert.equal(processed[0].id, notification.id, 'Worker should process the correct notification');
 
   // Verify notification is now sent in repository
-  const sentNotifications = (await repositories.notification?.findNotifications())?.filter(
+  const sentNotifications = (await repositories.notification?.findNotifications(finance.user.accountId))?.filter(
     (entry) => entry.status === 'sent'
   );
   assert.ok(
@@ -2043,7 +2129,10 @@ test('AUD-007-01: API writes notification to repository, worker reads and proces
   );
 
   // API can see the processed notification via repository
-  const apiViewOfSent = await apiRuntime.notifications.listFromRepository('sent');
+  const apiViewOfSent = await apiRuntime.notifications.listFromRepository(
+    finance.user.accountId,
+    'sent'
+  );
   assert.ok(
     apiViewOfSent.some((n) => n.id === notification.id),
     'API should see notification as sent via repository'

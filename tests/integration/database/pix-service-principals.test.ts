@@ -88,6 +88,7 @@ describe('PIX service principal persistence', () => {
     try {
       await client.query('BEGIN');
       await client.query('DROP TABLE account_service_principals');
+      await client.query('DROP TRIGGER IF EXISTS users_authorization_write_lock ON users');
       await client.query(
         `ALTER TABLE users
            DROP CONSTRAINT users_principal_kind_chk,

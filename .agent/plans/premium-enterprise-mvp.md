@@ -2787,3 +2787,208 @@ explicit 38-path source, test and control-plane set. The exact commit and
 worktree were reconciled; only the pre-existing design-system `tsbuildinfo`
 cache remains unstaged. Resume fresh residual scouting under a new authority;
 do not infer global ERP promotion from this child checkpoint.
+
+## 2026-08-30 — medical-records tenant-boundary authority
+
+Fresh residual scouting after the committed Billing checkpoint selected
+`CVG-003-MEDICAL-RECORDS-TENANT-BOUNDARY`. MedicalRecordsService cache-backed
+record, clinical-entry, revision and timeline operations still lack explicit
+account scope; authenticated routes have compensating checks, but reusable
+service callers can bypass that boundary. Bacon independently confirmed the
+finding and ranked the explicit service/cache/HTTP/first-party correction as
+the next high-value clinical confidentiality slice.
+
+The implementation-ready authority is bounded to account-aware service
+methods, cache/repository result filtering, authenticated medical-record
+routes, attachment/inpatient/laboratory callbacks, first-party callers and
+focused tests. Schema, migrations, RLS policy, repository SQL redesign,
+unrelated aggregates, providers, target, production, deployment, release and
+global ERP promotion remain excluded. The next gate is TDD RED; preserve the
+committed Billing checkpoint and global `IN_PROGRESS/PARTIAL` /
+`BLOCKED` status.
+
+## 2026-08-31 — medical-records tenant-boundary closure
+
+`CVG-003-MEDICAL-RECORDS-TENANT-BOUNDARY` is closed locally as
+`COMPLETE_BOUNDED` / `PASS_BOUNDED`. The account-aware service/cache boundary,
+authenticated HTTP propagation, attachment filtering and reviewed
+inpatient/laboratory first-party callers passed intentional RED/GREEN,
+`36/36` focused tests, `88.1%` statements/lines, `85.1%` branches and
+`92.85%` functions, complete API `555/555`, workspace typecheck/build/lint and
+the bounded quality/security gates.
+
+Lorentz's independent bounded review and subsequent revalidation both
+returned `PASS` with no in-scope Critical, High or Medium finding. The
+separate critical suite remains a global baseline blocker (`539` passed, `4`
+failed, `13` skipped), and
+enterprise readiness remains `95/100` with global ERP `IN_PROGRESS/PARTIAL`
+and promotion `BLOCKED`.
+
+No commit or push was performed. Preserve this mixed dirty worktree and return
+to fresh residual scouting only under a new implementation-ready authority.
+
+Post-formatting final retest passed the focused medical-record plus attachment
+run `51/51`, medical-record coverage `36/36`, API regression `555/555`, API
+build, Prettier and `git diff --check`; see
+`.agent/verification.jsonl#VFY-CVG-003-MEDICAL-RECORDS-TENANT-BOUNDARY-FINAL-RETEST-002`.
+
+## 2026-08-31 — critical integration baseline repair closure
+
+`CVG-CRITICAL-REGRESSION-BASELINE-REPAIR` is closed locally as
+`COMPLETE_BOUNDED` / `PASS_BOUNDED`. The bounded test-only corrections aligned
+the worker administrative-account rejection assertion, distinct inpatient
+fixture patients, PIX legacy-trigger cleanup and the canonical receipt
+idempotency operation. Focused evidence passed `19/19` (worker isolated
+contract `6/6`), the official critical base passed `57/57` files and `556/556`
+tests, and the official serial process matrix passed `10/10` with all ephemeral
+databases cleaned. Independent review found no in-scope Critical, High or
+Medium finding; formatting and diff hygiene passed.
+
+No production source, schema, migration, RLS, deployment or runtime behavior
+was changed. Global ERP remains `IN_PROGRESS/PARTIAL`, promotion remains
+`BLOCKED`, and no commit or push was performed. See
+`.agent/artifacts/CVG-CRITICAL-regression-baseline-repair-2026-08-31.md` and
+`.agent/gates/verified-CVG-critical-regression-baseline-repair.json`.
+
+## 2026-08-31 — prescription command/detail tenant-boundary closure
+
+`CVG-003-PRESCRIPTION-COMMAND-DETAIL-TENANT-ISOLATION` is closed locally as
+`COMPLETE_BOUNDED` / `PASS_BOUNDED`. The reusable prescription detail,
+document, revision, update, archive and sign paths now require explicit
+account scope; contaminated hydration is filtered before cache publication;
+authenticated routes and reviewed first-party callers forward the principal
+account directly. Foreign access fails closed without mutation or persistence
+residue.
+
+Intentional RED was captured at `3/3` failures. GREEN passed `36/36` with
+`94.18%` statements/lines, `90.74%` branches and `94.11%` functions for the
+changed service. Compiled routes passed `7/7`, authenticated PostgreSQL HTTP
+integration passed `6/6`, canonical runtime passed `1/1`, the API passed
+`538/538`, the official critical base passed `57/57` files and `556/556`
+tests, and the serial critical process matrix passed `10/10` with all
+ephemeral databases cleaned. Security/static controls, workspace quality,
+independent review and control-plane validation passed.
+
+The critical base required a test-only correction in
+`tests/integration/database/encounter-active-uniqueness.test.ts` so its
+intentionally incompatible simulation index uses unique IDs and remains
+stable in the full fixture set. No production behavior was changed. See
+`.agent/artifacts/CVG-003-prescription-command-detail-tenant-isolation-2026-08-31.md`
+and `.agent/gates/verified-CVG-003-prescription-command-detail-tenant-isolation.json`.
+
+Global ERP remains `IN_PROGRESS/PARTIAL` and promotion remains `BLOCKED`.
+Resume fresh residual scouting under a new authority; the next candidate
+requires explicit review of local Compose exposure, default credentials,
+healthchecks and observability wiring only, with target/production changes
+excluded.
+
+## 2026-08-31 — local Compose exposure candidate selected
+
+Fresh local residual inspection selected
+`OPS-SEC-COMPOSE-LOCAL-EXPOSURE-001`. The canonical Compose publishes host
+ports without explicit loopback binding, retains a Grafana `admin/admin`
+fallback, lacks a worker healthcheck even though the worker exposes `/ready`,
+allows cutover to accept merely `running`, and Prometheus targets host ports
+that do not match the canonical Compose network. The active observability
+README repeats stale host targets.
+
+The delegated scout did not return after repeated bounded waits and was shut
+down; no independent approval is inferred. Fresh owner authority is limited to
+loopback binding, required Grafana password, worker readiness/cutover
+strictness, Prometheus service-DNS correction, active README synchronization
+and focused config tests. Target/production/Helm/real credentials, Caddy
+deployment, providers, schema, migrations, RLS, API business logic and global
+promotion remain excluded. The next gate is intentional TDD RED.
+
+## 2026-08-31 — local Compose exposure bounded closure
+
+`OPS-SEC-COMPOSE-LOCAL-EXPOSURE-001` is closed locally as
+`COMPLETE_BOUNDED` / `PASS_BOUNDED`. Canonical published ports are loopback
+only; Grafana is fail-closed with a blank example and CI-only synthetic
+validation input; worker readiness is executable and required by cutover;
+Prometheus uses internal service DNS without a host gateway; and the active
+observability documentation specifies both `.env.v2` and
+`docker-compose.v2.yml`.
+
+The focused contract passed `6/6` and the final infrastructure regression
+passed `31/31`. Compose rendering with a synthetic secret passed, blank-secret
+rendering failed closed, the worker probe distinguished HTTP 200/503, and
+workspace typecheck/lint/build passed for `70/71` selected projects. Deploy,
+OpenAPI, namespace, migration-source, RLS, secret, backup/restore, formatting,
+shell and diff gates passed. Independent review remediation resolved every
+bounded finding; the final independent review returned `APPROVE_BOUNDED` with
+no Critical, High, Medium or Low finding.
+
+See `.agent/artifacts/OPS-SEC-COMPOSE-LOCAL-EXPOSURE-2026-08-31.md` and
+`.agent/gates/verified-OPS-SEC-COMPOSE-LOCAL-EXPOSURE-001.json`. No commit or
+push was performed. Global ERP remains `IN_PROGRESS/PARTIAL`, readiness remains
+`95/100` (`42 PASS`, `3 WARN`, `1 FAIL`), Vetus parity remains `4/11`, clinical
+parity remains `2/3`, and promotion remains `BLOCKED`. Resume with fresh
+residual scouting under a new authority; do not infer global promotion from
+this child closure.
+
+## 2026-08-31 — encounter tenant-boundary candidate selected
+
+Fresh local inspection plus delegated scout James selected
+`CVG-003-ENCOUNTER-TENANT-BOUNDARY` as the next P0 clinical confidentiality
+slice. `EncountersService` keeps an ID-only process cache and exposes detail,
+collections, timeline, snapshot and lifecycle methods without `AccountId`;
+hydration accepts an account but publishes rows without a post-filter, and
+scheduling still calls `listActive()` without principal scope. Existing
+repository durable predicates are tenant-aware, so the authorized bounded
+correction is service/cache filtering and first-party propagation only.
+
+The fresh authority requires intentional RED before implementation and excludes
+schema, migrations, RLS, target/production, providers, deployment, release and
+global promotion. Global ERP remains `IN_PROGRESS/PARTIAL` and promotion
+remains `BLOCKED`.
+
+## 2026-08-31 — encounter tenant-boundary bounded closure
+
+`CVG-003-ENCOUNTER-TENANT-BOUNDARY` is closed locally as
+`COMPLETE_BOUNDED` / `PASS_BOUNDED`. `EncountersService` now requires explicit
+account scope for encounter detail, collections, timeline, snapshot/restore
+and lifecycle commands; contaminated encounter/timeline hydration is filtered
+before cache publication; and authenticated first-party callers pass the
+principal account. Clinical handoff persistence/callback ordering was brought
+into the same boundary. A persisted counter-sale restart defect found during
+browser validation was corrected by restoring the generated-number high-water
+mark during hydration.
+
+Intentional RED failed `3/3`; focused encounter tests passed `38/38`, the
+broader affected suite passed `125/125`, changed encounter coverage reached
+`89.05%` statements/lines, `88.10%` branches and `90.00%` functions, the
+official critical base/process gates passed `57/57` and `10/10`, API E2E passed
+`11/11`, and the full authenticated SPA suite passed `72/72` including visual
+desktop/mobile, reports, RBAC and tenant-isolation journeys. Workspace
+typecheck/lint/build passed `70/71`; global coverage passed `194` files and
+`2,246` tests at `80.66%` statements/lines, `81.36%` branches and `87.19%`
+functions. Static/security gates passed and compatible independent review
+returned `APPROVE_BOUNDED`.
+
+The browser run keeps the settled-receipt reversal invariant visible and
+records a migration `0110` cascade-order trigger residual. Fixing the latter
+requires a fresh schema/migration authority and is not folded into this
+service-boundary slice. Global ERP remains `IN_PROGRESS/PARTIAL`, readiness
+remains `95/100` with Vetus parity `4/11`, and promotion remains `BLOCKED`.
+No commit or push was performed; preserve the mixed dirty worktree. See
+`.agent/artifacts/CVG-003-encounter-tenant-boundary-2026-08-31.md` and
+`.agent/gates/verified-CVG-003-encounter-tenant-boundary.json`.
+
+## 2026-08-31 — shutdown checkpoint for encounter follow-up remediation
+
+The earlier local encounter implementation remains saved, but its child
+closure is superseded by the independent review's adjacent findings. The
+attachment deletion, real report E2E contract and counter-sales visual-state
+findings were corrected and revalidated. Two findings remain open before the
+child can be closed: PostgreSQL-backed counter-sale numbering must be
+transactionally serialized per account across replicas, and critical
+database-prescription commands/readers must require explicit `accountId`.
+
+The work is paused for user shutdown with a resumable checkpoint at
+`.agent/artifacts/CVG-003-ENCOUNTER-TENANT-BOUNDARY-CHECKPOINT-2026-08-31.md`.
+On resume, execute RED tests for both findings, implement the smallest
+repository-local corrections, rerun all affected/full gates and obtain a new
+independent review. Do not infer global promotion from the prior local
+encounter evidence; global ERP remains `IN_PROGRESS/PARTIAL` and promotion
+remains `BLOCKED`.

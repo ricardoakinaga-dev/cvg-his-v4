@@ -184,7 +184,7 @@ test('EncountersService: inactivated owners and patients cannot reopen a closed 
     origin: 'reception',
     reason: 'Reopen lifecycle guard'
   });
-  encounters.closeEncounter(encounter.id, 'user_reopen_guard' as never, {
+  encounters.closeEncounter(accountId, encounter.id, 'user_reopen_guard' as never, {
     closeReason: 'Closed before lifecycle change'
   });
 
@@ -192,6 +192,7 @@ test('EncountersService: inactivated owners and patients cannot reopen a closed 
   assert.throws(
     () =>
       encounters.reopenEncounter(
+        accountId,
         encounter.id,
         'user_reopen_guard' as never,
         'Inactive owner reopen attempt'
@@ -204,6 +205,7 @@ test('EncountersService: inactivated owners and patients cannot reopen a closed 
   assert.throws(
     () =>
       encounters.reopenEncounter(
+        accountId,
         encounter.id,
         'user_reopen_guard' as never,
         'Inactive patient reopen attempt'
@@ -282,7 +284,7 @@ test('ClinicalHandoffsService: sends minimal handoff to reception and records ti
   );
   assert.ok(
     encounters
-      .listTimeline(encounter.id)
+      .listTimeline(encounter.accountId, encounter.id)
       .some((event) => event.eventType === 'handoff_sent_to_reception')
   );
 });
@@ -314,7 +316,7 @@ test('ClinicalHandoffsService: acknowledges reception ownership once', () => {
   );
   assert.ok(
     encounters
-      .listTimeline(encounter.id)
+      .listTimeline(encounter.accountId, encounter.id)
       .some((event) => event.eventType === 'handoff_acknowledged')
   );
 });
@@ -383,7 +385,10 @@ test('ClinicalHandoffsService: hydrates persisted handoffs from repository', asy
   const handoffsB = new ClinicalHandoffsService(encounters, { repository });
   await handoffsB.hydrateFromDatabase(encounter.accountId);
 
-  assert.equal(handoffsB.getOrThrow(handoff.id).clinicalSummary, 'Resumo persistido.');
+  assert.equal(
+    handoffsB.getOrThrow(encounter.accountId, handoff.id).clinicalSummary,
+    'Resumo persistido.'
+  );
 });
 
 test('ClinicalHandoffsService: manages pending issues before sending to finance', () => {
@@ -442,7 +447,7 @@ test('ClinicalHandoffsService: manages pending issues before sending to finance'
   assert.equal(finance.sentToFinanceBy, 'user_reception');
   assert.ok(
     encounters
-      .listTimeline(encounter.id)
+      .listTimeline(encounter.accountId, encounter.id)
       .some((event) => event.eventType === 'handoff_sent_to_finance')
   );
 });
@@ -477,7 +482,10 @@ test('ClinicalHandoffsService: returns handoff to clinic with reason', () => {
 test('EncountersService: getOrThrow throws for non-existent encounter', () => {
   const encounters = createEncountersService();
 
-  assert.throws(() => encounters.getOrThrow('nonexistent' as never), NotFoundError);
+  assert.throws(
+    () => encounters.getOrThrow('acc_cvg_demo' as never, 'nonexistent' as never),
+    NotFoundError
+  );
 });
 
 test('EncountersService: transitionEncounter changes status', () => {
@@ -491,9 +499,14 @@ test('EncountersService: transitionEncounter changes status', () => {
     reason: 'Test'
   });
 
-  const transitioned = encounters.transitionEncounter(encounter.id, 'user_admin' as never, {
-    nextStatus: 'in_triage'
-  });
+  const transitioned = encounters.transitionEncounter(
+    'acc_cvg_demo' as never,
+    encounter.id,
+    'user_admin' as never,
+    {
+      nextStatus: 'in_triage'
+    }
+  );
 
   assert.equal(transitioned.status, 'in_triage');
 });
@@ -510,12 +523,14 @@ test('EncountersService: transitionEncounter blocks invalid transitions', () => 
   });
 
   // Close the encounter
-  encounters.closeEncounter(encounter.id, 'user_admin' as never, { closeReason: 'Done' });
+  encounters.closeEncounter('acc_cvg_demo' as never, encounter.id, 'user_admin' as never, {
+    closeReason: 'Done'
+  });
 
   // Try to transition closed encounter - should fail
   assert.throws(
     () =>
-      encounters.transitionEncounter(encounter.id, 'user_admin' as never, {
+      encounters.transitionEncounter('acc_cvg_demo' as never, encounter.id, 'user_admin' as never, {
         nextStatus: 'in_care'
       }),
     ValidationError
@@ -533,9 +548,14 @@ test('EncountersService: closeEncounter sets closed status', () => {
     reason: 'Test'
   });
 
-  const closed = encounters.closeEncounter(encounter.id, 'user_admin' as never, {
-    closeReason: 'Test complete'
-  });
+  const closed = encounters.closeEncounter(
+    'acc_cvg_demo' as never,
+    encounter.id,
+    'user_admin' as never,
+    {
+      closeReason: 'Test complete'
+    }
+  );
 
   assert.equal(closed.status, 'closed');
   assert.ok(closed.closedAt);
@@ -550,9 +570,12 @@ test('EncountersService: reopenEncounter restores reception and appends an audit
     origin: 'reception',
     reason: 'Reopen test'
   });
-  encounters.closeEncounter(encounter.id, 'user_admin' as never, { closeReason: 'Discharge' });
+  encounters.closeEncounter('acc_cvg_demo' as never, encounter.id, 'user_admin' as never, {
+    closeReason: 'Discharge'
+  });
 
   const reopened = encounters.reopenEncounter(
+    'acc_cvg_demo' as never,
     encounter.id,
     'user_admin' as never,
     'Clinical reassessment required'
@@ -561,7 +584,10 @@ test('EncountersService: reopenEncounter restores reception and appends an audit
   assert.equal(reopened.status, 'reception');
   assert.equal(reopened.closedAt, undefined);
   assert.equal(reopened.closeReason, undefined);
-  assert.equal(encounters.listTimeline(encounter.id)[0].eventType, 'encounter_reopened');
+  assert.equal(
+    encounters.listTimeline('acc_cvg_demo' as never, encounter.id)[0].eventType,
+    'encounter_reopened'
+  );
 });
 
 test('EncountersService: deleteEncounter removes encounter and timeline from memory', () => {
@@ -575,9 +601,9 @@ test('EncountersService: deleteEncounter removes encounter and timeline from mem
     reason: 'Delete test'
   });
 
-  encounters.deleteEncounter(encounter.id);
+  encounters.deleteEncounter('acc_cvg_demo' as never, encounter.id);
 
-  assert.throws(() => encounters.getOrThrow(encounter.id), NotFoundError);
+  assert.throws(() => encounters.getOrThrow('acc_cvg_demo' as never, encounter.id), NotFoundError);
 });
 
 test('EncountersService: appendTimeline adds events', () => {
@@ -591,14 +617,14 @@ test('EncountersService: appendTimeline adds events', () => {
     reason: 'Test'
   });
 
-  encounters.appendTimeline(encounter.id, {
+  encounters.appendTimeline('acc_cvg_demo' as never, encounter.id, {
     accountId: encounter.accountId,
     eventType: 'status_changed',
     summary: 'Test status change',
     actorUserId: 'user_admin' as never
   });
 
-  const timeline = encounters.listTimeline(encounter.id);
+  const timeline = encounters.listTimeline('acc_cvg_demo' as never, encounter.id);
   assert.ok(timeline.length >= 2); // open + status_changed
   assert.ok(timeline.some((e) => e.eventType === 'status_changed'));
 });
@@ -615,7 +641,9 @@ test('EncountersService: listActive excludes closed encounters', () => {
   });
 
   // Close first encounter before opening second (same patient)
-  encounters.closeEncounter(e1.id, 'user_admin' as never, { closeReason: 'Done' });
+  encounters.closeEncounter('acc_cvg_demo' as never, e1.id, 'user_admin' as never, {
+    closeReason: 'Done'
+  });
 
   const e2 = encounters.openEncounter('acc_cvg_demo' as never, 'user_admin' as never, {
     patientId: 'patient_luna',
@@ -625,7 +653,7 @@ test('EncountersService: listActive excludes closed encounters', () => {
     reason: 'Test 2'
   });
 
-  const active = encounters.listActive();
+  const active = encounters.listActive('acc_cvg_demo' as never);
   assert.ok(active.some((e) => e.id === e2.id));
   assert.ok(!active.some((e) => e.id === e1.id));
 });
@@ -686,7 +714,7 @@ test('EncountersService: onEncounterStatusChanged callback is invoked on transit
 
   callbackInvoked = false;
 
-  encounters.transitionEncounter(encounter.id, 'user_admin' as never, {
+  encounters.transitionEncounter('acc_cvg_demo' as never, encounter.id, 'user_admin' as never, {
     nextStatus: 'in_triage'
   });
 
@@ -722,7 +750,7 @@ test('EncountersService: onEncounterStatusChanged callback is invoked on closeEn
 
   callbackInvoked = false;
 
-  encounters.closeEncounter(encounter.id, 'user_admin' as never, {
+  encounters.closeEncounter('acc_cvg_demo' as never, encounter.id, 'user_admin' as never, {
     closeReason: 'Test done'
   });
 
@@ -782,9 +810,9 @@ test('EncountersService: openEncounter rolls back memory when repository persist
   });
 
   await assert.rejects(() => encounters.waitForPersistence(), /database unavailable/);
-  assert.throws(() => encounters.getOrThrow(encounter.id), NotFoundError);
+  assert.throws(() => encounters.getOrThrow(accountId, encounter.id), NotFoundError);
   assert.equal(
-    encounters.listActive().some((item) => item.id === encounter.id),
+    encounters.listActive(accountId).some((item) => item.id === encounter.id),
     false
   );
 });
@@ -835,7 +863,7 @@ test('EncountersService: openEncounter rejects legacy ids before database persis
   );
   await encounters.waitForPersistence();
   assert.equal(persisted, false);
-  assert.equal(encounters.listActive().length, 0);
+  assert.equal(encounters.listActive('550e8400-e29b-41d4-a716-446655440000' as never).length, 0);
 });
 
 test('EncountersService: in-memory repository accepts opaque runtime identifiers', async () => {

@@ -128,8 +128,10 @@ test.describe('Gate Enterprise - Dashboard e Relatórios', () => {
     await page.getByRole('button', { name: 'Exportar CSV' }).click();
     const download = await downloadPromise;
 
-    expect(download.suggestedFilename()).toMatch(/^agenda-\d{4}-\d{2}-\d{2}\.csv$/);
-    await expect(page.getByText(/Exportação CSV gerada com \d+ linha\(s\)\./)).toBeVisible({
+    expect(download.suggestedFilename()).toMatch(/^scheduling-appointments-rep_exec_.+\.csv$/);
+    await expect(
+      page.getByText(/Exportação server-side auditada gerada com \d+ linha\(s\)\./)
+    ).toBeVisible({
       timeout: 15000
     });
   });
@@ -151,8 +153,10 @@ test.describe('Gate Enterprise - Dashboard e Relatórios', () => {
     await page.getByRole('button', { name: 'Exportar CSV' }).click();
     const download = await downloadPromise;
 
-    expect(download.suggestedFilename()).toMatch(/^estoque-\d{4}-\d{2}-\d{2}\.csv$/);
-    await expect(page.getByText(/Exportação CSV gerada com \d+ linha\(s\)\./)).toBeVisible({
+    expect(download.suggestedFilename()).toMatch(/^inventory-stock-rep_exec_.+\.csv$/);
+    await expect(
+      page.getByText(/Exportação server-side auditada gerada com \d+ linha\(s\)\./)
+    ).toBeVisible({
       timeout: 15000
     });
   });

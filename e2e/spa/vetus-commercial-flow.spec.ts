@@ -75,6 +75,8 @@ test.describe('Vetus Comercial — fidelidade, tabelas de preço e PDV', () => {
     await spaPage.goto('/pontos-de-venda');
     await expect(page.getByRole('heading', { name: /Pontos de venda/i }).first()).toBeVisible();
     await expect(page.getByText(job.id)).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText('Concluído')).toBeVisible();
+    await expect(
+      page.getByRole('row').filter({ hasText: job.id }).getByText('Concluído', { exact: true })
+    ).toBeVisible();
   });
 });

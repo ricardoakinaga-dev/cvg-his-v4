@@ -325,7 +325,7 @@ export async function handleSchedulingRoutes(
       throw new NotFoundError('Appointment not found', { appointmentId });
     }
     const existingEncounter = encounters
-      .listActive()
+      .listActive(principal.user.accountId)
       .find((encounter) => encounter.patientId === appointment.patientId);
 
     if (existingEncounter) {

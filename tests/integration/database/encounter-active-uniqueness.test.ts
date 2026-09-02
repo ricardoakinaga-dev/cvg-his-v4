@@ -181,7 +181,7 @@ describe('encounter active-patient database invariant', () => {
       await pool.query('DROP INDEX uidx_encounters_one_active_per_patient');
       await pool.query(
         `CREATE UNIQUE INDEX uidx_encounters_one_active_per_patient
-           ON encounters(account_id)
+           ON encounters(id)
           WHERE status <> 'closed'`
       );
       await expect(pool.query(migration)).rejects.toThrow(

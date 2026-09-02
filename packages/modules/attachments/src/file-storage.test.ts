@@ -1,7 +1,14 @@
 import assert from 'node:assert/strict';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { S3CompatibleFileStorage } from './file-storage.js';
+import {
+  LocalFileStorage,
+  S3CompatibleFileStorage,
+  createMemoryFileStorage
+} from './file-storage.js';
 
 describe('S3CompatibleFileStorage', () => {
   afterEach(() => {
@@ -38,10 +45,42 @@ describe('S3CompatibleFileStorage', () => {
     expect(calls[0].headers.get('authorization')).toMatch(/^AWS4-HMAC-SHA256 /);
     expect(calls[0].headers.get('x-amz-content-sha256')).toBeTruthy();
 
-    const downloaded = await storage.retrieve(stored.storageKey);
+    const downloaded = await storage.retrieve('account-a', stored.storageKey);
     assert.deepEqual(downloaded, content);
-    expect(await storage.exists(stored.storageKey)).toBe(true);
-    expect(await storage.delete(stored.storageKey)).toBe(true);
+    expect(await storage.retrieve('account-b', stored.storageKey)).toBeNull();
+    expect(await storage.exists('account-a', stored.storageKey)).toBe(true);
+    expect(await storage.exists('account-b', stored.storageKey)).toBe(false);
+    expect(await storage.delete('account-a', stored.storageKey)).toBe(true);
     expect(fetchMock).toHaveBeenCalledTimes(4);
+  });
+
+  it('keeps in-memory objects inaccessible through a foreign tenant key scope', async () => {
+    const storage = createMemoryFileStorage();
+    const content = Buffer.from('private tenant content');
+    const stored = await storage.store('account-a', 'encounter-a', 'private.txt', content);
+
+    expect(await storage.retrieve('account-a', stored.storageKey)).toEqual(content);
+    expect(await storage.retrieve('account-b', stored.storageKey)).toBeNull();
+    expect(await storage.exists('account-b', stored.storageKey)).toBe(false);
+    expect(await storage.delete('account-b', stored.storageKey)).toBe(false);
+    expect(await storage.exists('account-a', stored.storageKey)).toBe(true);
+  });
+
+  it('keeps local files inaccessible through a foreign tenant key scope', async () => {
+    const basePath = await mkdtemp(join(tmpdir(), 'cvg-attachments-'));
+    try {
+      const storage = new LocalFileStorage({ basePath });
+      const content = Buffer.from('private local content');
+      const stored = await storage.store('account-a', 'encounter-a', 'private.txt', content);
+
+      expect(await storage.retrieve('account-a', stored.storageKey)).toEqual(content);
+      expect(await storage.retrieve('account-b', stored.storageKey)).toBeNull();
+      expect(await storage.retrieve('account-a', '../account-b/escape.txt')).toBeNull();
+      expect(await storage.exists('account-b', stored.storageKey)).toBe(false);
+      expect(await storage.delete('account-b', stored.storageKey)).toBe(false);
+      expect(await storage.exists('account-a', stored.storageKey)).toBe(true);
+    } finally {
+      await rm(basePath, { recursive: true, force: true });
+    }
   });
 });
