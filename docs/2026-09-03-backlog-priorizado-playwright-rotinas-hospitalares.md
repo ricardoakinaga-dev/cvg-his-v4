@@ -1,7 +1,7 @@
 # Backlog priorizado das rotinas hospitalares Playwright
 
 Data-base: 3 de setembro de 2026
-Status: execução técnica concluída até GH3; certificação do SHA em andamento e aceites humanos bloqueados
+Status: execução técnica concluída; 32/37 tickets `DONE` e cinco dependências humanas `BLOCKED`
 Fonte: [Relatório de testes](./2026-09-03-relatorio-testes-playwright-rotinas-hospitalares.md)
 Direção: [Plano executivo](./2026-09-03-plano-executivo-playwright-rotinas-hospitalares.md)
 Sequenciamento: [Roadmap](./2026-09-03-roadmap-playwright-rotinas-hospitalares.md)
@@ -32,13 +32,12 @@ Sequenciamento: [Roadmap](./2026-09-03-roadmap-playwright-rotinas-hospitalares.m
 
 Esta visão não substitui os critérios abaixo. `DONE` significa critério técnico comprovado; `BLOCKED` identifica uma aprovação humana que não pode ser produzida pela automação.
 
-| Estado  | Tickets                                                                                                                                                                                                              | Evidência resumida                                                                                       |
-| ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| DONE    | `ENV-001–004`, `AGD-001–002`, `BIL-001–002`, `REG-001`, `SEC-001–002`, `LAB-001`, `PER-001–002`, `RPT-001–003`, `EXP-001–002`, `CAT-001–002`, `API-001`, `A11Y-001–005`, `RWD-001`, `OBS-001`, `CERT-001`, `XBR-001` | PostgreSQL real, suíte pré-certificação 404/404, master 286/286, visual 28/28 e Firefox/WebKit 18/18     |
-| DOING   | `QA-001`, `CERT-002`, `DOC-001`                                                                                                                                                                                      | freeze e três rodadas no mesmo SHA; dossiê será fechado após consolidar os artefatos                     |
-| BLOCKED | `VIS-001`, `VIS-002`, `UAT-001`                                                                                                                                                                                      | revisão técnica concluída; faltam decisão formal Produto/UX sobre baselines e aceite das cinco operações |
+| Estado  | Tickets                                                                                                                                                                                                                        | Evidência resumida                                                                                       |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| DONE    | `ENV-001–004`, `QA-001`, `AGD-001–002`, `BIL-001–002`, `REG-001`, `SEC-001–002`, `LAB-001`, `PER-001–002`, `RPT-001–003`, `EXP-001–002`, `CAT-001–002`, `API-001`, `A11Y-001–005`, `RWD-001`, `OBS-001`, `CERT-001`, `XBR-001` | SHA limpo; PostgreSQL real; 3 × 404/404; master 3 × 286/286; visual 3 × 28/28; Firefox/WebKit 18/18      |
+| BLOCKED | `VIS-001`, `VIS-002`, `CERT-002`, `UAT-001`, `DOC-001`                                                                                                                                                                         | faltam aprovação formal de Produto/UX, UAT nominal das cinco operações e, por dependência, decisão final |
 
-O detalhe por SHA, comando, ambiente e artefato está no [dossiê de certificação](./2026-09-03-dossie-certificacao-playwright-rotinas-hospitalares.md). `CERT-002` só poderá ser promovido a `DONE` se sua dependência formal `VIS-002` também for aprovada, ainda que as três rodadas automáticas passem.
+O detalhe por SHA, comando, ambiente e artefato está no [dossiê de certificação](./2026-09-03-dossie-certificacao-playwright-rotinas-hospitalares.md). O critério automático de `CERT-002` foi satisfeito por três rodadas de 404/404, sem skip, flaky ou falha, no SHA `844596fc55d9e189a2e7be19ecac7b170a6acced`. O ticket só poderá ser promovido a `DONE` quando sua dependência formal `VIS-002` for aprovada. O dossiê técnico de `DOC-001` foi emitido, mas o ticket aguarda UAT, assinaturas e decisão final.
 
 ## 3. P0 — ambiente e baseline persistente
 

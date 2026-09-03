@@ -1,7 +1,7 @@
 # Plano executivo de estabilização das rotinas hospitalares Playwright
 
 Data-base: 3 de setembro de 2026
-Status: execução técnica em certificação; aceites formais de Produto/UX e Operação pendentes
+Status: execução técnica e três rodadas concluídas; GH4 bloqueado por aceites humanos formais
 Horizonte proposto: 6 semanas após o kickoff
 Fonte: [Relatório de testes das rotinas hospitalares](./2026-09-03-relatorio-testes-playwright-rotinas-hospitalares.md)
 Execução: [Roadmap](./2026-09-03-roadmap-playwright-rotinas-hospitalares.md)
@@ -46,9 +46,9 @@ A aprovação das cinco jornadas demonstra que recepção, clínica médica, pat
 
 ### Estado da execução em 03/09/2026
 
-As etapas E0–E4 e os gates técnicos GH0–GH3 foram executados antecipadamente no ambiente PostgreSQL 16.15 isolado. A bateria pré-certificação atingiu 404/404 casos, 10/10 casos dependentes de PostgreSQL, 5/5 personas, 286/286 navegações, zero erro HTTP inesperado, zero alvo pequeno, zero overflow e 28/28 snapshots. Firefox e WebKit aprovaram a matriz crítica com 18/18 casos em cada engine.
+As etapas E0–E4 e os gates técnicos GH0–GH3 foram executados antecipadamente no ambiente PostgreSQL 16.15 isolado. As três baterias de certificação atingiram, cada uma, 404/404 casos, 10/10 casos dependentes de PostgreSQL, 5/5 personas, 286/286 navegações, zero erro HTTP inesperado, zero alvo pequeno, zero overflow e 28/28 snapshots. Firefox e WebKit aprovaram a matriz crítica com 18/18 casos em cada engine.
 
-O SHA candidato e as três rodadas integrais de E5 são registrados no [dossiê de certificação](./2026-09-03-dossie-certificacao-playwright-rotinas-hospitalares.md). GH4 e go-live permanecem bloqueados até existirem revisão formal dos snapshots e UAT assinado pelas cinco funções; nenhuma aprovação humana é inferida da evidência automatizada.
+O SHA candidato `844596fc55d9e189a2e7be19ecac7b170a6acced` e as três rodadas integrais de E5 estão registrados no [dossiê de certificação](./2026-09-03-dossie-certificacao-playwright-rotinas-hospitalares.md). A parte automatizada de E5 foi concluída; GH4 e go-live permanecem bloqueados até existirem revisão formal dos snapshots e UAT assinado pelas cinco funções. Nenhuma aprovação humana é inferida da evidência automatizada.
 
 ## 3. Objetivo e metas
 
@@ -64,7 +64,7 @@ Metas obrigatórias:
 6. revisar e aprovar legitimamente **28/28 snapshots**;
 7. eliminar os 13 alvos pequenos e o overflow de 57 px;
 8. repetir a bateria completa três vezes no mesmo SHA, com zero flaky;
-9. preservar builds e os 1.607 testes unitários verdes.
+9. preservar builds e ampliar a suíte unitária sem perda de cobertura; a execução final aprovou 2.362/2.362 testes e os quatro limiares de 82%.
 
 ## 4. Frentes de trabalho
 
@@ -118,6 +118,8 @@ Congelar o SHA, executar três rodadas completas, realizar UAT por função e em
 
 **Gate de saída:** 3 × 404/404, zero skip, zero flaky, 3 × 286/286 e aceite multidisciplinar vinculado ao SHA.
 
+**Estado em 03/09/2026:** freeze e critérios automáticos concluídos no SHA candidato; UAT e aceites formais permanecem bloqueados por dependerem de pessoas reais.
+
 ## 6. Gates de promoção
 
 | Gate                           | Bloqueia                       | Critério mínimo                                          |
@@ -129,6 +131,16 @@ Congelar o SHA, executar três rodadas completas, realizar UAT por função e em
 | GH4 — Certificação             | go-live                        | três rodadas integrais verdes e aceite formal            |
 
 Nenhum gate é aprovado com teste ignorado, retry ocultando defeito, baseline visual atualizada sem revisão ou evidência produzida em SHA diferente.
+
+### Estado dos gates em 03/09/2026
+
+| Gate | Estado       | Evidência / bloqueio                                                                     |
+| ---- | ------------ | ---------------------------------------------------------------------------------------- |
+| GH0  | PASS         | PostgreSQL 16.15 isolado, reset protegido, fail-fast e artefatos por SHA                 |
+| GH1  | PASS         | agenda, faturamento e cinco personas verdes                                              |
+| GH2  | PASS         | 10/10 PostgreSQL, RBAC/RLS, assinatura e relatórios verdes                               |
+| GH3  | PASS técnico | 3 × 286/286, 3 × 28/28, zero alvo pequeno e zero overflow; aceite visual formal pendente |
+| GH4  | BLOCKED      | 3 × 404/404 concluído; faltam aprovação Produto/UX e UAT nominal das cinco funções       |
 
 ## 7. Organização recomendada
 
@@ -174,4 +186,4 @@ O painel semanal deve exibir resultado por SHA, ambiente, navegador, causa e own
 
 ## 10. Decisão recomendada
 
-Iniciar E0 e E1 imediatamente e em paralelo controlado. Autorizar E2 assim que o banco estiver saudável. Manter a aplicação em homologação controlada até GH3. Levar o release candidate a go-live somente após GH4, sem exceção implícita para testes persistentes, segurança tenant ou jornada financeira.
+Manter o candidato tecnicamente certificado em homologação controlada e preservar o SHA e seus artefatos. A decisão vigente é `NO-GO por aceite pendente`: Produto/UX deve aprovar nominalmente os baselines e as cinco funções hospitalares devem executar e assinar o UAT. Somente então GH4 poderá ser promovido e o go-live deliberado, sem exceção implícita para teste persistente, segurança tenant, jornada financeira ou divergência de SHA.

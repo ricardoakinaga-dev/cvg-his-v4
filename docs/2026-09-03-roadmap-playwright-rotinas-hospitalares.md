@@ -1,7 +1,7 @@
 # Roadmap de estabilização das rotinas hospitalares Playwright
 
 Data-base: 3 de setembro de 2026
-Status: R0–R4 executados tecnicamente em 03/09; R5 em certificação, com aceites humanos pendentes
+Status: R0–R4 e certificação automática de R5 concluídos em 03/09; aceites humanos pendentes
 Horizonte: 3 de setembro a 16 de outubro de 2026
 Fonte: [Relatório de testes](./2026-09-03-relatorio-testes-playwright-rotinas-hospitalares.md)
 Direção: [Plano executivo](./2026-09-03-plano-executivo-playwright-rotinas-hospitalares.md)
@@ -41,9 +41,9 @@ As ondas R1–R4 têm sobreposição controlada por dependências; nenhuma equip
 
 ### Execução antecipada
 
-O trabalho técnico de R0–R4 foi concluído em 03/09/2026 porque as frentes puderam ser executadas em sequência contínua no ambiente isolado. As datas originais permanecem como baseline de planejamento, não como alegação de tempo transcorrido. A rodada pré-certificação aprovou 404/404 e a matriz crítica aprovou 18/18 tanto no Firefox quanto no WebKit.
+O trabalho técnico de R0–R4 foi concluído em 03/09/2026 porque as frentes puderam ser executadas em sequência contínua no ambiente isolado. As datas originais permanecem como baseline de planejamento, não como alegação de tempo transcorrido. A matriz crítica aprovou 18/18 tanto no Firefox quanto no WebKit.
 
-R5 foi dividido em duas partes: certificação automatizada do mesmo SHA, executável imediatamente, e aceites humanos. O [dossiê](./2026-09-03-dossie-certificacao-playwright-rotinas-hospitalares.md) registra os resultados e mantém GH4 em `NO-GO` enquanto Produto/UX e as cinco funções hospitalares não assinarem os respectivos aceites.
+R5 foi dividido em duas partes: certificação automatizada do mesmo SHA e aceites humanos. A parte automática foi concluída com 3 × 404/404, 3 × 286/286 e 3 × 28/28 no SHA `844596fc55d9e189a2e7be19ecac7b170a6acced`, sem skip, flaky ou falha. O [dossiê](./2026-09-03-dossie-certificacao-playwright-rotinas-hospitalares.md) mantém GH4 em `NO-GO` enquanto Produto/UX e as cinco funções hospitalares não assinarem os respectivos aceites.
 
 ## 3. R0 — Fundação reproduzível
 
@@ -188,9 +188,18 @@ Diferença entre ambiente local e CI. Mitigação: mesmo compose/script, mesmas 
 - 3 × 286/286 navegações master;
 - 3 × 28/28 snapshots;
 - zero skip, zero flaky e zero HTTP inesperado;
-- builds e 1.607 unitários verdes nas três rodadas;
+- build verde e 2.362/2.362 testes unitários consolidados com os quatro limiares de cobertura acima de 82%;
 - UAT assinado e riscos residuais com owner/prazo;
 - SHA remoto e artefatos imutáveis identificados no parecer.
+
+### Estado em 03/09/2026
+
+- freeze publicado no remoto: concluído;
+- três rodadas integrais: concluídas, todas 404/404;
+- artefatos imutáveis e dossiê técnico: concluídos;
+- UAT das cinco funções: bloqueado por aceite humano real;
+- aprovação formal Produto/UX: bloqueada;
+- decisão final de go-live: `NO-GO por aceite pendente`.
 
 ## 9. Plano por disciplina
 
@@ -208,15 +217,15 @@ Diferença entre ambiente local e CI. Mitigação: mesmo compose/script, mesmas 
 
 Não se define uma quantidade artificial de testes verdes por semana. Cada marco possui uma métrica de saída que só muda com evidência.
 
-| Marco    |                  Playwright |         DB |      Master |         HTTP |     Visual |   A11y/RWD |
-| -------- | --------------------------: | ---------: | ----------: | -----------: | ---------: | ---------: |
-| Baseline |                     374/404 |       0/10 |     207/286 |           74 |      14/28 | 14 achados |
-| Saída R0 |             medido sem skip | executável |  rebaseline | classificado | preservado | preservado |
-| Saída R1 |      falhas AGD/BIL zeradas | executável |  ≥ baseline |     em queda |     triado | preservado |
-| Saída R2 | falhas persistentes zeradas |      10/10 |    sem HTTP |            0 |     triado | preservado |
-| Saída R3 |         candidato a 404/404 |      10/10 |     286/286 |            0 |      28/28 |          0 |
-| Saída R4 |                     404/404 |      10/10 |     286/286 |            0 |      28/28 |          0 |
-| Saída R5 |                 3 × 404/404 |  3 × 10/10 | 3 × 286/286 |            0 |  3 × 28/28 |          0 |
+| Marco               |                  Playwright |         DB |      Master |         HTTP |     Visual |   A11y/RWD |
+| ------------------- | --------------------------: | ---------: | ----------: | -----------: | ---------: | ---------: |
+| Baseline            |                     374/404 |       0/10 |     207/286 |           74 |      14/28 | 14 achados |
+| Saída R0            |             medido sem skip | executável |  rebaseline | classificado | preservado | preservado |
+| Saída R1            |      falhas AGD/BIL zeradas | executável |  ≥ baseline |     em queda |     triado | preservado |
+| Saída R2            | falhas persistentes zeradas |      10/10 |    sem HTTP |            0 |     triado | preservado |
+| Saída R3            |         candidato a 404/404 |      10/10 |     286/286 |            0 |      28/28 |          0 |
+| Saída R4            |                     404/404 |      10/10 |     286/286 |            0 |      28/28 |          0 |
+| Saída R5 automática |                 3 × 404/404 |  3 × 10/10 | 3 × 286/286 |            0 |  3 × 28/28 |          0 |
 
 ## 11. Caminho crítico
 
@@ -229,7 +238,7 @@ O caminho crítico é:
 5. `A11Y-001–005` + `RWD-001` + `VIS-001/002`;
 6. `CERT-001` → `CERT-002` → `DOC-001`.
 
-Qualquer atraso em PostgreSQL, relatórios ou aprovação visual desloca GH4. A data não autoriza pular o gate.
+O caminho crítico técnico até as três rodadas foi concluído. A ramificação humana `VIS-001 → VIS-002 → CERT-002` e `UAT-001 → DOC-001` continua bloqueando GH4. A data não autoriza pular o gate.
 
 ## 12. Replanejamento
 
