@@ -30,7 +30,16 @@ function getAdminDatabaseUrl(connectionString) {
 
 function getDatabaseName(connectionString) {
   const url = new URL(connectionString);
-  return url.pathname.replace(/^\//, '') || 'postgres';
+  return decodeURIComponent(url.pathname.replace(/^\//, '')) || 'postgres';
+}
+
+function assertSafeTestDatabase(connectionString) {
+  const targetDatabase = getDatabaseName(connectionString);
+  if (!/(?:^|[_-])(test|e2e)(?:[_-]|$)/i.test(targetDatabase)) {
+    throw new Error(
+      `Refusing to reset database "${targetDatabase}": its name must contain a standalone test or e2e marker.`
+    );
+  }
 }
 
 function runCommand(cmd, args, options = {}) {
@@ -265,6 +274,7 @@ async function applySchema() {
 
 async function main() {
   console.log('Preparing PostgreSQL for db-persistence tests...');
+  assertSafeTestDatabase(databaseUrl);
   await ensurePostgresRunning();
   await resetDatabase();
   await applySchema();

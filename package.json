@@ -71,6 +71,7 @@
     "readiness:enterprise": "node scripts/check-enterprise-readiness.mjs",
     "test:e2e:spa:headed": "npx playwright test --config playwright-spa.config.ts --headed",
     "test:e2e:spa:docker": "bash infra/scripts/run-e2e-spa.sh",
+    "test:e2e:spa:postgres": "bash infra/scripts/run-e2e-spa.sh",
     "test:e2e:spa:docker:keep": "bash infra/scripts/run-e2e-spa.sh --no-cleanup",
     "test:visual": "bash -lc 'fuser -k 3111/tcp 3112/tcp 2>/dev/null || true; npx playwright test --config playwright-spa.config.ts -g \"Visual\"'",
     "test:visual:update": "bash -lc 'fuser -k 3111/tcp 3112/tcp 2>/dev/null || true; npx playwright test --config playwright-spa.config.ts -g \"Visual\" --update-snapshots'",

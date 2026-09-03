@@ -1,4 +1,5 @@
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
+import { execFileSync } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { navGroups } from '../../apps/spa/src/navigation';
 
@@ -48,8 +49,16 @@ const VIEWPORTS = {
   mobile: { width: 390, height: 844 }
 } as const;
 
+function currentGitSha(): string {
+  try {
+    return execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+  } catch {
+    return 'unknown';
+  }
+}
+
 const auditMetadata: AuditMetadata = {
-  sha: process.env.GITHUB_SHA || process.env.CI_COMMIT_SHA || 'workspace-uncommitted',
+  sha: process.env.GITHUB_SHA || process.env.CI_COMMIT_SHA || currentGitSha(),
   environment: process.env.E2E_ENVIRONMENT || (process.env.CI ? 'ci' : 'local'),
   command:
     process.env.E2E_AUDIT_COMMAND ||

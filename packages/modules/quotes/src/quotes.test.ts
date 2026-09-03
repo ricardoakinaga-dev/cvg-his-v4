@@ -5,6 +5,11 @@ import { ConflictError, NotFoundError } from '@cvg-his-v2/shared-errors';
 import type { AccountId, UserId } from '@cvg-his-v2/shared-types';
 
 import { QuotesService } from './index.js';
+import type {
+  QuoteItemRecord,
+  QuoteRecord,
+  QuotesRepository
+} from './repositories/database-quotes.repository.js';
 
 function createService() {
   return new QuotesService();
@@ -24,6 +29,58 @@ test('QuotesService create creates a quote with correct fields', async () => {
   assert.ok(quote.id);
   assert.ok(quote.number);
   assert.ok(quote.number.startsWith('QT-'));
+});
+
+test('QuotesService continues quote numbering after database hydration', async () => {
+  const persistedQuote: QuoteRecord = {
+    id: '00000000-0000-4000-8000-000000000001',
+    accountId: ACCOUNT_ID,
+    number: 'QT-000042',
+    ownerId: null,
+    status: 'approved',
+    validUntil: null,
+    subtotal: 100,
+    discountAmount: 0,
+    total: 100,
+    notes: null,
+    createdByUserId: USER_ID,
+    convertedToSaleId: null,
+    convertedAt: null,
+    createdAt: '2026-09-03T00:00:00.000Z',
+    updatedAt: '2026-09-03T00:00:00.000Z'
+  };
+  const created: QuoteRecord[] = [];
+  const repository: QuotesRepository = {
+    async create(quote) {
+      created.push(quote);
+    },
+    async update() {},
+    async findById() {
+      return null;
+    },
+    async findByAccountId() {
+      return [persistedQuote];
+    },
+    async createItem() {},
+    async updateItem() {},
+    async deleteItem() {},
+    async findItemsByQuoteId(): Promise<readonly QuoteItemRecord[]> {
+      return [];
+    },
+    async getIssuedCount() {
+      return 1;
+    },
+    async getConvertedCount() {
+      return 0;
+    }
+  };
+  const service = new QuotesService({ repository });
+
+  await service.hydrateFromDatabase(ACCOUNT_ID);
+  const quote = await service.create(ACCOUNT_ID, USER_ID);
+
+  assert.equal(quote.number, 'QT-000043');
+  assert.equal(created[0]?.number, 'QT-000043');
 });
 
 test('QuotesService addItem adds product item', async () => {

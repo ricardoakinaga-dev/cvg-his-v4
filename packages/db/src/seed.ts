@@ -44,6 +44,7 @@ type SeedAdminCredentials = {
 type SeedLaboratorySigner = {
   readonly id: string;
   readonly fullName: string;
+  readonly employeeCode: string;
 };
 
 const SEED_LABORATORY_PROFESSION = {
@@ -55,7 +56,6 @@ const SEED_LABORATORY_PROFESSION = {
 const roleSeeds = DB_ACCESS_CONTROL_ROLE_SEEDS;
 const permissionSeeds = DB_ACCESS_CONTROL_PERMISSION_SEEDS;
 const rolePermissionMap = DB_ACCESS_CONTROL_ROLE_PERMISSION_MAP;
-
 
 async function ensureAccountAndUnit(
   options: AccountUnitSeedOptions
@@ -249,10 +249,11 @@ async function seedAdminUser(
     })
     .onConflictDoNothing({ target: [userRoles.userId, userRoles.roleId] });
 
-  if (roleName === 'admin') {
+  if (roleName === 'admin' || roleName === 'veterinarian') {
     await ensureSeedLaboratorySigner(accountId, {
       id: adminUser.id,
-      fullName: credentials?.fullName ?? 'Administrador Seed'
+      fullName: credentials?.fullName ?? 'Administrador Seed',
+      employeeCode: roleName === 'admin' ? 'SEED-ADMIN-VET-001' : 'SEED-VET-001'
     });
   }
 
@@ -302,7 +303,7 @@ async function ensureSeedLaboratorySigner(
     .values({
       accountId,
       userId: user.id,
-      employeeCode: 'SEED-VET-001',
+      employeeCode: user.employeeCode,
       fullName: user.fullName,
       department: 'Clinica',
       jobTitle: 'Medico veterinario',
@@ -338,6 +339,18 @@ async function runSeed(): Promise<void> {
         username: process.env.RECEPTION_USERNAME?.trim() || receptionEmail.split('@')[0]!,
         fullName: 'Recepção E2E',
         roleName: 'reception'
+      });
+    }
+
+    const veterinarianEmail = process.env.VETERINARIAN_EMAIL?.trim();
+    const veterinarianPassword = process.env.VETERINARIAN_PASSWORD;
+    if (veterinarianEmail && veterinarianPassword) {
+      await seedAdminUser(accountId, unitId, {
+        email: veterinarianEmail,
+        password: veterinarianPassword,
+        username: process.env.VETERINARIAN_USERNAME?.trim() || veterinarianEmail.split('@')[0]!,
+        fullName: 'Veterinário E2E',
+        roleName: 'veterinarian'
       });
     }
 

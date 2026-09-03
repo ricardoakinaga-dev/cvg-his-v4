@@ -902,6 +902,9 @@ jobs:
           RECEPTION_EMAIL: reception@cvg-his.local
           RECEPTION_USERNAME: reception
           RECEPTION_PASSWORD: seed_reception
+          VETERINARIAN_EMAIL: vet@cvg-his.local
+          VETERINARIAN_USERNAME: vet
+          VETERINARIAN_PASSWORD: seed_vet
           SECOND_ADMIN_EMAIL: admin-b@cvg-his.local
           SECOND_ADMIN_USERNAME: admin_b
           SECOND_ADMIN_PASSWORD: seed_admin_b
@@ -972,7 +975,17 @@ jobs:
           API_URL: http://localhost:3001
           SPA_URL: http://localhost:3002
           E2E_ADMIN_EMAIL: admin@cvg-his.local
+          E2E_ADMIN_USERNAME: admin
           E2E_ADMIN_PASSWORD: seed_admin
+          E2E_RECEPTION_EMAIL: reception@cvg-his.local
+          E2E_RECEPTION_USERNAME: reception
+          E2E_RECEPTION_PASSWORD: seed_reception
+          E2E_VETERINARIAN_EMAIL: vet@cvg-his.local
+          E2E_VETERINARIAN_USERNAME: vet
+          E2E_VETERINARIAN_PASSWORD: seed_vet
+          E2E_SECOND_ADMIN_EMAIL: admin-b@cvg-his.local
+          E2E_SECOND_ADMIN_USERNAME: admin_b
+          E2E_SECOND_ADMIN_PASSWORD: seed_admin_b
           E2E_DATABASE_URL: postgres://postgres:postgres@localhost:5434/cvg_his_e2e
           E2E_REDIS_URL: redis://localhost:6380
           E2E_DATABASE_MODE: '1'
@@ -988,6 +1001,14 @@ jobs:
         if: always()
         run: node scripts/validate-usability-playwright-evidence.mjs
 
+      - name: Archive SHA-bound usability evidence
+        if: always()
+        env:
+          E2E_EVIDENCE_RUN_ID: ci-${{ github.run_id }}
+          E2E_ENVIRONMENT: ci-postgresql
+          E2E_EVIDENCE_COMMAND: npx playwright test --config playwright-spa.config.ts
+        run: node scripts/archive-playwright-evidence.mjs
+
       - name: Generate Enterprise RC evidence
         if: always()
         env:
@@ -1001,13 +1022,14 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: e2e-spa-report
+          name: e2e-spa-${{ github.sha }}
           path: |
             e2e/spa-report/
             playwright-report/usability/
             test-results/
             tmp/master-usability-audit.json
             tmp/playwright-discovery.txt
+            artifacts/playwright/${{ github.sha }}/
           if-no-files-found: warn
           retention-days: 30
 

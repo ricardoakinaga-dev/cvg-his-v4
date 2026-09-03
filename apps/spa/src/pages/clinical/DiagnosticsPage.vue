@@ -20,17 +20,36 @@
       {{ warningMessage }}
     </DsAlert>
 
-    <section v-if="hasWorkflowContext" class="clinical-context-strip" aria-label="Contexto do atendimento clínico">
+    <section
+      v-if="hasWorkflowContext"
+      class="clinical-context-strip"
+      aria-label="Contexto do atendimento clínico"
+    >
       <div>
         <span>Contexto do atendimento clínico</span>
         <strong>{{ selectedEncounterContextLabel }}</strong>
-        <small>Paciente {{ shortId(selectedEncounter?.patientId || workflowContext.patientId) }} · Tutor {{ shortId(selectedEncounter?.ownerId || workflowContext.ownerId) }}</small>
+        <small
+          >Paciente {{ shortId(selectedEncounter?.patientId || workflowContext.patientId) }} · Tutor
+          {{ shortId(selectedEncounter?.ownerId || workflowContext.ownerId) }}</small
+        >
       </div>
       <div class="clinical-context-strip__actions">
-        <DsButton v-if="selectedEncounterContextId" size="sm" variant="secondary" tag="a" :to="`/encounters/${selectedEncounterContextId}`">
+        <DsButton
+          v-if="selectedEncounterContextId"
+          size="sm"
+          variant="secondary"
+          tag="a"
+          :to="`/encounters/${selectedEncounterContextId}`"
+        >
           Voltar ao atendimento
         </DsButton>
-        <DsButton v-if="selectedEncounterContextId" size="sm" variant="secondary" tag="a" :to="`/medical-records/${selectedEncounterContextId}`">
+        <DsButton
+          v-if="selectedEncounterContextId"
+          size="sm"
+          variant="secondary"
+          tag="a"
+          :to="`/medical-records/${selectedEncounterContextId}`"
+        >
           Abrir prontuário
         </DsButton>
       </div>
@@ -61,7 +80,12 @@
 
     <div class="clinical-grid clinical-grid--two">
       <DsCard title="Atendimento selecionado">
-        <DsInput v-model="selectedEncounterId" type="select" label="Atendimento" @change="refreshContext">
+        <DsInput
+          v-model="selectedEncounterId"
+          type="select"
+          label="Atendimento"
+          @change="refreshContext"
+        >
           <option v-for="enc in encounters" :key="enc.id" :value="enc.id">
             {{ enc.id.slice(0, 8) }} • {{ enc.reason || 'Sem descrição' }}
           </option>
@@ -90,7 +114,9 @@
           />
           <DsInput v-model="requestForm.title" label="Título clínico" placeholder="Opcional" />
           <div class="form-actions">
-            <DsButton type="submit" variant="primary" :loading="submittingRequest">Registrar pedido</DsButton>
+            <DsButton type="submit" variant="primary" :loading="submittingRequest"
+              >Registrar pedido</DsButton
+            >
             <DsButton variant="secondary" type="button" @click="resetRequestForm">Limpar</DsButton>
           </div>
         </form>
@@ -106,9 +132,18 @@
               {{ order.examType }} • {{ statusLabel(order.status) }}
             </option>
           </DsInput>
-          <DsInput v-model="attachmentForm.resultSummary" label="Resumo do laudo" placeholder="Ex.: sem alterações relevantes" />
+          <DsInput
+            v-model="attachmentForm.resultSummary"
+            label="Resumo do laudo"
+            placeholder="Ex.: sem alterações relevantes"
+          />
           <DsInput v-model="attachmentForm.fileName" label="Arquivo" required />
-          <DsInput v-model="attachmentForm.mimeType" label="MIME type" placeholder="application/pdf" required />
+          <DsInput
+            v-model="attachmentForm.mimeType"
+            label="MIME type"
+            placeholder="application/pdf"
+            required
+          />
           <DsInput v-model="attachmentForm.checksum" label="Checksum" required />
           <DsInput v-model="attachmentForm.category" type="select" label="Categoria">
             <option value="lab">Laboratório</option>
@@ -117,8 +152,12 @@
             <option value="other">Outro</option>
           </DsInput>
           <div class="form-actions">
-            <DsButton type="submit" variant="primary" :loading="submittingAttachment">Enviar resultado</DsButton>
-            <DsButton variant="secondary" type="button" @click="resetAttachmentForm">Limpar</DsButton>
+            <DsButton type="submit" variant="primary" :loading="submittingAttachment"
+              >Enviar resultado</DsButton
+            >
+            <DsButton variant="secondary" type="button" @click="resetAttachmentForm"
+              >Limpar</DsButton
+            >
           </div>
         </form>
       </DsCard>
@@ -292,7 +331,9 @@ const hasWorkflowContext = computed(() =>
   Boolean(workflowContext.encounterId || workflowContext.patientId || workflowContext.ownerId)
 );
 
-const selectedEncounterContextId = computed(() => selectedEncounter.value?.id || workflowContext.encounterId);
+const selectedEncounterContextId = computed(
+  () => selectedEncounter.value?.id || workflowContext.encounterId
+);
 
 const selectedEncounterContextLabel = computed(() => {
   const id = selectedEncounterContextId.value;
@@ -311,7 +352,9 @@ const headerContextItems = computed<PageContextItem[]>(() => {
     {
       key: 'encounter',
       label: 'Atendimento',
-      value: selectedEncounterContextId.value ? shortId(selectedEncounterContextId.value) : 'Não selecionado',
+      value: selectedEncounterContextId.value
+        ? shortId(selectedEncounterContextId.value)
+        : 'Não selecionado',
       tone: selectedEncounterContextId.value ? 'info' : 'warning'
     },
     {
@@ -341,7 +384,13 @@ const headerNextSteps = computed<PageNextStep[]>(() => [
 const headerSecondaryActions = computed<PageAction[]>(() => {
   const actions: PageAction[] = [
     { key: 'lab', label: 'Hub do Laboratório', variant: 'secondary', to: '/laboratory' },
-    { key: 'refresh', label: 'Atualizar', variant: 'secondary', loading: loading.value, onClick: () => void loadData() }
+    {
+      key: 'refresh',
+      label: 'Atualizar',
+      variant: 'secondary',
+      loading: loading.value,
+      onClick: () => void loadData()
+    }
   ];
   if (selectedEncounterContextId.value) {
     actions.unshift({
@@ -368,7 +417,9 @@ const selectedReportType = computed(() =>
   reportTypes.value.find((reportType) => reportType.id === requestForm.value.reportTypeId)
 );
 
-function statusVariant(status: DiagnosticOrderSummary['status']): 'default' | 'warning' | 'success' | 'danger' {
+function statusVariant(
+  status: DiagnosticOrderSummary['status']
+): 'default' | 'warning' | 'success' | 'danger' {
   switch (status) {
     case 'requested':
       return 'warning';
@@ -425,13 +476,14 @@ async function loadData() {
       encounterService.list(),
       laboratoryService.listReportTypes()
     ]);
-    encounters.value = loadedEncounters;
+    encounters.value = loadedEncounters.filter((encounter) => encounter.status !== 'closed');
     reportTypes.value = loadedReportTypes;
 
     if (!selectedEncounterId.value && encounters.value.length > 0) {
       selectedEncounterId.value =
         encounters.value.find((encounter) => encounter.id === workflowContext.encounterId)?.id ??
-        encounters.value.find((encounter) => encounter.patientId === workflowContext.patientId)?.id ??
+        encounters.value.find((encounter) => encounter.patientId === workflowContext.patientId)
+          ?.id ??
         encounters.value[0].id;
     }
 
@@ -479,7 +531,8 @@ async function refreshContext() {
 
   if (!attachmentForm.value.orderId && laboratoryOrders.value.length > 0) {
     attachmentForm.value.orderId =
-      laboratoryOrders.value.find((order) => order.status !== 'resulted')?.id ?? laboratoryOrders.value[0].id;
+      laboratoryOrders.value.find((order) => order.status !== 'resulted')?.id ??
+      laboratoryOrders.value[0].id;
   }
 }
 
@@ -514,9 +567,7 @@ async function submitRequest() {
         title: (requestForm.value.title.trim() || selectedReportType.value.name).trim(),
         content: [
           `Tipo de exame: ${selectedReportType.value.name} (${selectedReportType.value.code})`,
-          requestForm.value.reason.trim()
-            ? `Justificativa: ${requestForm.value.reason.trim()}`
-            : ''
+          requestForm.value.reason.trim() ? `Justificativa: ${requestForm.value.reason.trim()}` : ''
         ]
           .filter(Boolean)
           .join('\n')
@@ -524,8 +575,7 @@ async function submitRequest() {
       successMessage.value = 'Pedido laboratorial registrado e vinculado ao prontuário.';
     } catch (err: unknown) {
       const detail = err instanceof Error ? err.message : 'Erro ao registrar anotação clínica';
-      warningMessage.value =
-        `Pedido laboratorial registrado, mas a anotação clínica não foi persistida: ${detail}`;
+      warningMessage.value = `Pedido laboratorial registrado, mas a anotação clínica não foi persistida: ${detail}`;
     }
 
     resetRequestForm();
@@ -557,7 +607,9 @@ async function submitAttachment() {
       category: attachmentForm.value.category
     });
 
-    const linkedOrder = laboratoryOrders.value.find((order) => order.id === attachmentForm.value.orderId);
+    const linkedOrder = laboratoryOrders.value.find(
+      (order) => order.id === attachmentForm.value.orderId
+    );
     if (linkedOrder && linkedOrder.status !== 'cancelled' && linkedOrder.status !== 'resulted') {
       if (linkedOrder.status === 'requested') {
         await laboratoryService.recordResult(linkedOrder.id, {
@@ -664,7 +716,11 @@ function readWorkflowContext() {
   padding: 12px;
   border: 1px solid var(--color-border, #e2e8f0);
   border-radius: 12px;
-  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+  background: linear-gradient(
+    180deg,
+    var(--color-surface, #ffffff),
+    var(--color-bg-subtle, #f8fafc)
+  );
 }
 
 .overview-metric__value {

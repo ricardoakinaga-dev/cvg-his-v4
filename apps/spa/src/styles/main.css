@@ -71,30 +71,30 @@ textarea {
 }
 
 :where(
-    .app-layout,
-    .sidebar,
-    .workspace,
-    .topbar,
-    .sidebar__brand,
-    .sidebar__context,
-    .sidebar__panel,
-    .sidebar__group-summary,
-    .sidebar__link,
-    .sidebar__quick-link,
-    .sidebar__recent-link,
-    .sidebar__toggle,
-    .sidebar__search-input,
-    .topbar__action-btn,
-    .topbar__logout-btn,
-    .page-header,
-    .detail-section,
-    .command-palette__item,
-    .command-palette__input,
-    .btn,
-    .alert,
-    .muted,
-    code
-  ) {
+  .app-layout,
+  .sidebar,
+  .workspace,
+  .topbar,
+  .sidebar__brand,
+  .sidebar__context,
+  .sidebar__panel,
+  .sidebar__group-summary,
+  .sidebar__link,
+  .sidebar__quick-link,
+  .sidebar__recent-link,
+  .sidebar__toggle,
+  .sidebar__search-input,
+  .topbar__action-btn,
+  .topbar__logout-btn,
+  .page-header,
+  .detail-section,
+  .command-palette__item,
+  .command-palette__input,
+  .btn,
+  .alert,
+  .muted,
+  code
+) {
   transition:
     color 180ms ease,
     background-color 180ms ease,
@@ -398,6 +398,13 @@ code {
   gap: 4px;
 }
 
+/* WCAG 2.2 target-size floor for compact operational table links. */
+:where(.queue-link, .record-link, .encounter-link, .open-link, .exam-links a) {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+}
+
 /* ─── Search Bar ─── */
 
 .search-bar {
@@ -421,6 +428,17 @@ code {
   outline: none;
   border-color: var(--color-primary-500, #3b82f6);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.4);
+}
+
+.report-page .report-field {
+  min-width: 0;
+}
+
+.report-page .report-field select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 
 /* ─── Modal ─── */

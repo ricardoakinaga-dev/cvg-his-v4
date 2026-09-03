@@ -1,4 +1,4 @@
-import { expect, test, type Page, type TestInfo } from '@playwright/test';
+import { expect, test, type Page, type Request, type TestInfo } from '@playwright/test';
 
 const API_URL = process.env.API_URL || 'http://127.0.0.1:3111';
 const SPA_URL = process.env.SPA_URL || 'http://127.0.0.1:3112';
@@ -37,7 +37,8 @@ async function apiRequest(
   method: string,
   path: string,
   body?: unknown,
-  expectedStatus?: number
+  expectedStatus?: number,
+  idempotencyKey?: string
 ): Promise<JsonRecord> {
   const response = await fetch(`${API_URL}${path}`, {
     method,
@@ -45,7 +46,10 @@ async function apiRequest(
       Authorization: `Bearer ${token}`,
       ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
       ...(['POST', 'PATCH', 'PUT'].includes(method)
-        ? { 'Idempotency-Key': `pw-${Date.now()}-${Math.random().toString(36).slice(2)}` }
+        ? {
+            'Idempotency-Key':
+              idempotencyKey ?? `pw-${Date.now()}-${Math.random().toString(36).slice(2)}`
+          }
         : {})
     },
     body: body === undefined ? undefined : JSON.stringify(body)
@@ -57,6 +61,32 @@ async function apiRequest(
   }
   const text = await response.text();
   return text ? JSON.parse(text) : {};
+}
+
+async function replayBrowserMutation(token: string, request: Request): Promise<JsonRecord> {
+  const url = new URL(request.url());
+  const idempotencyKey = await request.headerValue('idempotency-key');
+  expect(
+    idempotencyKey,
+    `${request.method()} ${url.pathname} deve declarar Idempotency-Key`
+  ).toBeTruthy();
+  const apiPath = `${url.pathname.replace(/^\/api/, '')}${url.search}`;
+  return apiRequest(
+    token,
+    request.method(),
+    apiPath,
+    request.postDataJSON(),
+    undefined,
+    idempotencyKey ?? undefined
+  );
+}
+
+function waitForMutation(page: Page, pathname: string | RegExp): Promise<Request> {
+  return page.waitForRequest((request) => {
+    if (request.method() !== 'POST') return false;
+    const candidate = new URL(request.url()).pathname.replace(/^\/api/, '');
+    return typeof pathname === 'string' ? candidate === pathname : pathname.test(candidate);
+  });
 }
 
 async function browserLogin(page: Page, username: string, password: string): Promise<void> {
@@ -194,8 +224,21 @@ test.describe('Rotinas hospitalares completas por persona', () => {
     const receptionSession = await apiLogin('reception', 'seed_reception');
 
     await browserLogin(page, 'reception', 'seed_reception');
-    const ownerId = await createOwnerViaUi(page, ownerName, run);
-    const patientId = await createPatientViaUi(page, patientName, ownerName);
+    const [ownerRequest, ownerId] = await Promise.all([
+      waitForMutation(page, '/owners'),
+      createOwnerViaUi(page, ownerName, run)
+    ]);
+    const replayedOwner = await replayBrowserMutation(receptionSession.accessToken, ownerRequest);
+    expect(replayedOwner.id).toBe(ownerId);
+    const [patientRequest, patientId] = await Promise.all([
+      waitForMutation(page, '/patients'),
+      createPatientViaUi(page, patientName, ownerName)
+    ]);
+    const replayedPatient = await replayBrowserMutation(
+      receptionSession.accessToken,
+      patientRequest
+    );
+    expect(replayedPatient.id).toBe(patientId);
 
     const consultationAppointmentId = await createAppointmentViaUi(page, {
       ownerId,
@@ -231,12 +274,30 @@ test.describe('Rotinas hospitalares completas por persona', () => {
     await page.waitForURL(/\/encounters\/[^/]+$/);
     const encounterId = page.url().split('/').pop() || '';
 
-    const sale = await apiRequest(receptionSession.accessToken, 'POST', '/counter-sales', {
+    const counterSaleKey = `persona-counter-sale-${run}`;
+    const counterSalePayload = {
       ownerId,
       patientId,
       encounterId,
       notes: `Comanda da recepção ${run}`
-    });
+    };
+    const sale = await apiRequest(
+      receptionSession.accessToken,
+      'POST',
+      '/counter-sales',
+      counterSalePayload,
+      undefined,
+      counterSaleKey
+    );
+    const replayedSale = await apiRequest(
+      receptionSession.accessToken,
+      'POST',
+      '/counter-sales',
+      counterSalePayload,
+      undefined,
+      counterSaleKey
+    );
+    expect(replayedSale.id).toBe(sale.id);
     await apiRequest(receptionSession.accessToken, 'POST', `/counter-sales/${sale.id}/items`, {
       itemType: 'service',
       nameSnapshot: `Consulta clínica ${run}`,
@@ -281,7 +342,8 @@ test.describe('Rotinas hospitalares completas por persona', () => {
       examAppointmentId,
       encounterId,
       counterSaleId: sale.id,
-      counterSaleStatus: closedSale.status
+      counterSaleStatus: closedSale.status,
+      idempotentRetries: ['owner', 'patient', 'counter-sale']
     });
   });
 
@@ -299,12 +361,30 @@ test.describe('Rotinas hospitalares completas por persona', () => {
     const veterinarian = users.items.find((item: JsonRecord) => item.username === 'vet');
     expect(veterinarian).toBeTruthy();
     for (const permissionCode of ['quote.read', 'quote.write']) {
-      await apiRequest(adminSession.accessToken, 'POST', '/access-control/grants', {
+      const grantPayload = {
         subjectType: 'user',
         subjectId: veterinarian.id,
         permissionCode,
         effect: 'allow'
-      });
+      };
+      const grantKey = `persona-grant-${permissionCode}-${run}`;
+      const grant = await apiRequest(
+        adminSession.accessToken,
+        'POST',
+        '/access-control/grants',
+        grantPayload,
+        undefined,
+        grantKey
+      );
+      const replayedGrant = await apiRequest(
+        adminSession.accessToken,
+        'POST',
+        '/access-control/grants',
+        grantPayload,
+        undefined,
+        grantKey
+      );
+      expect(replayedGrant).toEqual(grant);
     }
 
     await page.addInitScript(() => {
@@ -341,8 +421,15 @@ test.describe('Rotinas hospitalares completas por persona', () => {
     await page
       .getByLabel('Observações')
       .fill('Administrar após alimentação e retornar se houver vômito.');
+    const prescriptionRequestPromise = waitForMutation(page, '/prescriptions');
     await page.getByRole('button', { name: 'Salvar prescrição' }).click();
+    const prescriptionRequest = await prescriptionRequestPromise;
     await expect(page.getByText('Prescrição registrada com sucesso.')).toBeVisible();
+    const replayedPrescription = await replayBrowserMutation(
+      (await apiLogin('vet', 'seed_vet')).accessToken,
+      prescriptionRequest
+    );
+    expect(replayedPrescription.medicationName).toBe(`Dipirona ${run}`);
 
     await page.goto(`${SPA_URL}/patients/${context.patient.id}`, { waitUntil: 'networkidle' });
     await expect(page.getByText(context.owner.fullName).first()).toBeVisible();
@@ -365,12 +452,19 @@ test.describe('Rotinas hospitalares completas por persona', () => {
     );
     await page.getByPlaceholder('ID do tutor').fill(context.owner.id);
     await page.getByLabel('Observações', { exact: true }).first().fill(`Plano terapêutico ${run}`);
+    const quoteRequestPromise = waitForMutation(page, '/quotes');
     await page
       .locator('form')
       .filter({ has: page.getByPlaceholder('ID do tutor') })
       .getByRole('button', { name: 'Incluir', exact: true })
       .click();
+    const quoteRequest = await quoteRequestPromise;
     await expect(page.getByText(/Orçamento .* criado com sucesso/)).toBeVisible();
+    const replayedQuote = await replayBrowserMutation(
+      (await apiLogin('vet', 'seed_vet')).accessToken,
+      quoteRequest
+    );
+    expect(replayedQuote.notes).toBe(`Plano terapêutico ${run}`);
     await page.getByLabel('Descrição do Serviço').fill(`Retorno e reavaliação ${run}`);
     await page.getByLabel('Valor unitário').fill('120');
     await page.getByLabel('Quantidade').fill('1');
@@ -388,7 +482,8 @@ test.describe('Rotinas hospitalares completas por persona', () => {
       anamnesis: `Anamnese clínica ${run}`,
       prescription: `Dipirona ${run}`,
       printsTriggered: 2,
-      quoteItem: `Retorno e reavaliação ${run}`
+      quoteItem: `Retorno e reavaliação ${run}`,
+      idempotentRetries: ['grant', 'prescription', 'quote']
     });
   });
 
@@ -403,6 +498,7 @@ test.describe('Rotinas hospitalares completas por persona', () => {
       `Patologia ${run}`,
       'Investigação de hepatopatia'
     );
+    const pathologistSession = await apiLogin(pathologist.username, PERSONA_PASSWORD);
     await browserLogin(page, pathologist.username, PERSONA_PASSWORD);
 
     const equipmentName = `Analisador Bioquímico ${run}`;
@@ -452,10 +548,14 @@ test.describe('Rotinas hospitalares completas por persona', () => {
       .getByLabel('Tipo de exame')
       .selectOption({ label: `${reportCode.toUpperCase()} • ${reportTypeName}` });
     await page.getByLabel('Justificativa').fill(`Dosagem enzimática ${run}`);
+    const orderRequestPromise = waitForMutation(page, '/laboratory/orders');
     await page.getByRole('button', { name: 'Registrar pedido' }).click();
+    const orderRequest = await orderRequestPromise;
     await expect(
       page.getByText('Pedido laboratorial registrado e vinculado ao prontuário.')
     ).toBeVisible();
+    const replayedOrder = await replayBrowserMutation(pathologistSession.accessToken, orderRequest);
+    expect(replayedOrder.patientId).toBe(context.patient.id);
 
     await page.goto(`${SPA_URL}/laboratory/orders`, { waitUntil: 'networkidle' });
     await page.getByRole('searchbox', { name: 'Animal' }).fill(context.patient.name);
@@ -482,7 +582,8 @@ test.describe('Rotinas hospitalares completas por persona', () => {
       enzymes: enzymeRanges,
       reportTypeName,
       encounterId: context.encounter.id,
-      patientId: context.patient.id
+      patientId: context.patient.id,
+      idempotentRetries: ['exam-order']
     });
   });
 
@@ -501,6 +602,7 @@ test.describe('Rotinas hospitalares completas por persona', () => {
       `Ultrassom ${run}`,
       'Avaliação abdominal por imagem'
     );
+    const ultrasonographerSession = await apiLogin(ultrasonographer.username, PERSONA_PASSWORD);
     await browserLogin(page, ultrasonographer.username, PERSONA_PASSWORD);
 
     const reportTypeName = `Ultrassonografia abdominal ${run}`;
@@ -536,10 +638,17 @@ test.describe('Rotinas hospitalares completas por persona', () => {
     await page.getByLabel('MIME type').fill('application/pdf');
     await page.getByLabel('Checksum').fill(`sha256-${run}`);
     await page.getByLabel('Categoria').selectOption('image');
+    const reportRequestPromise = waitForMutation(page, /^\/laboratory\/orders\/[^/]+\/result$/);
     await page.getByRole('button', { name: 'Enviar resultado' }).click();
+    const reportRequest = await reportRequestPromise;
     await expect(
       page.getByText('Resultado anexado ao prontuário e liberado no laboratório.')
     ).toBeVisible();
+    const replayedReport = await replayBrowserMutation(
+      ultrasonographerSession.accessToken,
+      reportRequest
+    );
+    expect(replayedReport.patientId).toBe(context.patient.id);
 
     await page.goto(`${SPA_URL}/laboratory/results?patientId=${context.patient.id}`, {
       waitUntil: 'networkidle'
@@ -558,7 +667,8 @@ test.describe('Rotinas hospitalares completas por persona', () => {
       reportCode,
       encounterId: context.encounter.id,
       patientId: context.patient.id,
-      printableReportOpened: true
+      printableReportOpened: true,
+      idempotentRetries: ['laboratory-report']
     });
   });
 
@@ -646,8 +756,8 @@ test.describe('Rotinas hospitalares completas por persona', () => {
 
     await page.getByRole('button', { name: 'Usuários', exact: true }).click();
     await page.getByLabel('Usuário').selectOption(partner.id);
-    await page.getByLabel(teamName).check();
-    await page.getByLabel(sectorName).check();
+    await page.getByLabel(teamName, { exact: true }).check();
+    await page.getByLabel(sectorName, { exact: true }).check();
     await page.getByRole('button', { name: 'Salvar vínculos' }).click();
     await expect(page.getByText('Vínculos do usuário atualizados')).toBeVisible();
 

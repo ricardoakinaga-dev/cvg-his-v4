@@ -36,6 +36,7 @@ jobs:
     env:
       PLAYWRIGHT_BROWSERS_PATH: ${{ runner.tool_cache }}/ms-playwright
       E2E_ENVIRONMENT: certification-postgresql-run-${{ matrix.run }}
+      E2E_EVIDENCE_RUN_ID: certification-${{ matrix.run }}
       E2E_AUDIT_COMMAND: bash infra/scripts/run-e2e-spa.sh
     steps:
       - uses: actions/checkout@v4
@@ -98,6 +99,7 @@ jobs:
             test-results/
             tmp/master-usability-audit.json
             tmp/playwright-discovery.txt
+            artifacts/playwright/${{ github.sha }}/certification-${{ matrix.run }}/
           if-no-files-found: warn
           retention-days: 90
 
@@ -118,6 +120,8 @@ jobs:
         e2e/spa/advanced-care-persistence.spec.ts
         e2e/spa/billing-flow.spec.ts
         e2e/spa/report-registration-exports.spec.ts
+        e2e/spa/access-role-matrix-db.spec.ts
+        e2e/spa/hospital-personas-routines.spec.ts
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -132,6 +136,14 @@ jobs:
         run: npx playwright install --with-deps "${E2E_BROWSER}"
       - name: Execute essential database-backed journeys
         run: bash infra/scripts/run-e2e-spa.sh
+      - name: Archive cross-browser evidence
+        if: always()
+        env:
+          E2E_EVIDENCE_RUN_ID: cross-browser-${{ matrix.browser }}
+          E2E_ENVIRONMENT: certification-cross-browser
+          E2E_INCLUDE_MASTER_AUDIT: '0'
+          E2E_EVIDENCE_COMMAND: bash infra/scripts/run-e2e-spa.sh
+        run: node scripts/archive-playwright-evidence.mjs
       - name: Upload cross-browser evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -141,6 +153,7 @@ jobs:
             playwright-report/usability/
             test-results/
             tmp/playwright-discovery.txt
+            artifacts/playwright/${{ github.sha }}/cross-browser-${{ matrix.browser }}/
           if-no-files-found: warn
           retention-days: 90
 

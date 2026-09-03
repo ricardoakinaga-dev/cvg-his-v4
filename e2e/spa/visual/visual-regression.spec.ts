@@ -666,8 +666,8 @@ async function capturePageVisual(
   screenshotName: string
 ): Promise<void> {
   await ensureAuthToken(page);
-  if (route === '/queue') {
-    await stubEmptyCollection(page, route);
+  if (route === '/queue' || route === '/reception') {
+    await stubEmptyCollection(page, '/queue');
   }
   await navigateTo(page, route);
   await waitForPageSettled(page, {
@@ -1233,6 +1233,15 @@ async function normalizeCounterSaleVolatileText(page: Page): Promise<void> {
 
 async function normalizeQueueClock(page: Page): Promise<void> {
   await page.evaluate(() => {
+    for (const item of document.querySelectorAll<HTMLElement>('.app-page-header__context-item')) {
+      if (
+        item.querySelector('dt')?.textContent?.trim().toLocaleLowerCase('pt-BR') === 'atualizado'
+      ) {
+        const value = item.querySelector<HTMLElement>('dd');
+        if (value) value.textContent = '00:00';
+      }
+    }
+
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     let node = walker.nextNode();
 

@@ -1,6 +1,10 @@
 <template>
   <div class="clinical-page">
-    <AppPageHeader :breadcrumbs="['Atendimento', 'Atendimentos', 'Cirurgias']" title="Cirurgias" subtitle="Solicitação, preparo, procedimento e recuperação no mesmo fluxo.">
+    <AppPageHeader
+      :breadcrumbs="['Atendimento', 'Atendimentos', 'Cirurgias']"
+      title="Cirurgias"
+      subtitle="Solicitação, preparo, procedimento e recuperação no mesmo fluxo."
+    >
       <template #actions>
         <DsButton variant="secondary" :loading="loading" @click="loadData">Atualizar</DsButton>
       </template>
@@ -38,7 +42,12 @@
 
     <div class="clinical-grid clinical-grid--two">
       <DsCard title="Atendimento selecionado">
-        <DsInput v-model="selectedEncounterId" type="select" label="Atendimento" @change="refreshContext">
+        <DsInput
+          v-model="selectedEncounterId"
+          type="select"
+          label="Atendimento"
+          @change="refreshContext"
+        >
           <option v-for="enc in encounters" :key="enc.id" :value="enc.id">
             {{ enc.id.slice(0, 8) }} • {{ enc.reason || 'Sem descrição' }}
           </option>
@@ -191,7 +200,9 @@ async function loadData() {
   loading.value = true;
   error.value = '';
   try {
-    encounters.value = await encounterService.list();
+    encounters.value = (await encounterService.list()).filter(
+      (encounter) => encounter.status !== 'closed'
+    );
     if (!selectedEncounterId.value && encounters.value.length > 0) {
       selectedEncounterId.value = encounters.value[0].id;
     }
@@ -211,9 +222,9 @@ async function refreshContext() {
   }
 
   surgeryRequests.value = await surgeryService.listByEncounter(selectedEncounter.value.id);
-  surgeryTimeline.value = (await medicalRecordsService.getTimeline(selectedEncounter.value.id)).filter(
-    (event) => event.eventType.startsWith('surgery_')
-  );
+  surgeryTimeline.value = (
+    await medicalRecordsService.getTimeline(selectedEncounter.value.id)
+  ).filter((event) => event.eventType.startsWith('surgery_'));
   if (!form.value.procedureName.trim()) {
     form.value.procedureName = `Cirurgia para ${selectedEncounter.value.reason || 'atendimento'}`;
   }
@@ -238,7 +249,10 @@ async function submitSurgery() {
         scheduledAt: new Date(form.value.scheduledAt).toISOString()
       }),
       ...(form.value.surgicalTeam.trim() && {
-        surgicalTeam: form.value.surgicalTeam.split(',').map((item) => item.trim()).filter(Boolean)
+        surgicalTeam: form.value.surgicalTeam
+          .split(',')
+          .map((item) => item.trim())
+          .filter(Boolean)
       }),
       ...(form.value.preparationNotes.trim() && {
         preparationNotes: form.value.preparationNotes.trim()
@@ -323,7 +337,11 @@ onMounted(loadData);
   padding: 12px;
   border: 1px solid var(--color-border, #e2e8f0);
   border-radius: 12px;
-  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+  background: linear-gradient(
+    180deg,
+    var(--color-surface, #ffffff),
+    var(--color-bg-subtle, #f8fafc)
+  );
 }
 
 .overview-metric__value {

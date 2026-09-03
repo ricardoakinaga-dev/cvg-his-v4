@@ -9,7 +9,7 @@
 #                                                # run one deterministic target
 #
 # Prerequisites:
-#   - Docker + Docker Compose
+#   - Docker + Docker Compose, or E2E_DATABASE_URL pointing to an existing PostgreSQL test database
 #   - Node.js 22+ with pnpm
 #   - Playwright browsers installed (npx playwright install)
 #
@@ -29,13 +29,20 @@ COMPOSE_PROJECT_NAME="cvg-his-v2-e2e"
 COMPOSE_NETWORK_NAME="${COMPOSE_PROJECT_NAME}_default"
 CLEANUP=true
 PLAYWRIGHT_TARGET_ARGS=()
-DATABASE_URL_E2E="postgres://postgres:postgres@localhost:5434/cvg_his_e2e"
+DATABASE_URL_E2E="${E2E_DATABASE_URL:-postgres://postgres:postgres@localhost:5434/cvg_his_e2e}"
+USE_EXTERNAL_DATABASE=false
+if [[ -n "${E2E_DATABASE_URL:-}" ]]; then
+  USE_EXTERNAL_DATABASE=true
+fi
 E2E_ADMIN_EMAIL="${E2E_ADMIN_EMAIL:-admin@cvg-his.local}"
 E2E_ADMIN_USERNAME="${E2E_ADMIN_USERNAME:-${E2E_ADMIN_EMAIL%@*}}"
 E2E_ADMIN_PASSWORD="${E2E_ADMIN_PASSWORD:-seed_admin}"
 E2E_RECEPTION_EMAIL="${E2E_RECEPTION_EMAIL:-reception@cvg-his.local}"
 E2E_RECEPTION_USERNAME="${E2E_RECEPTION_USERNAME:-reception}"
 E2E_RECEPTION_PASSWORD="${E2E_RECEPTION_PASSWORD:-seed_reception}"
+E2E_VETERINARIAN_EMAIL="${E2E_VETERINARIAN_EMAIL:-vet@cvg-his.local}"
+E2E_VETERINARIAN_USERNAME="${E2E_VETERINARIAN_USERNAME:-vet}"
+E2E_VETERINARIAN_PASSWORD="${E2E_VETERINARIAN_PASSWORD:-seed_vet}"
 E2E_SECOND_ADMIN_EMAIL="${E2E_SECOND_ADMIN_EMAIL:-admin-b@cvg-his.local}"
 E2E_SECOND_ADMIN_USERNAME="${E2E_SECOND_ADMIN_USERNAME:-admin_b}"
 E2E_SECOND_ADMIN_PASSWORD="${E2E_SECOND_ADMIN_PASSWORD:-seed_admin_b}"
@@ -123,16 +130,37 @@ if [[ -n "${E2E_PLAYWRIGHT_TARGET:-}" ]]; then
 fi
 
 cleanup() {
+  local exit_code=$?
+  local archive_code=0
+
+  if [[ ${#PLAYWRIGHT_TARGET_ARGS[@]} -eq 0 ]]; then
+    echo ""
+    echo "📦 Archiving SHA-bound E2E evidence..."
+    (
+      cd "$ROOT_DIR"
+      E2E_EVIDENCE_COMMAND="${E2E_AUDIT_COMMAND:-bash infra/scripts/run-e2e-spa.sh}" \
+        node scripts/archive-playwright-evidence.mjs
+    ) || archive_code=$?
+  fi
+
   if [ "$CLEANUP" = true ]; then
     echo ""
     echo "🧹 Cleaning up E2E environment..."
-    force_cleanup_resources
+    if [ "$USE_EXTERNAL_DATABASE" = false ]; then
+      force_cleanup_resources
+    fi
     cleanup_local_e2e_processes
   else
     echo ""
     echo "ℹ️  --no-cleanup: containers left running"
     echo "   To stop: docker compose -p $COMPOSE_PROJECT_NAME -f $COMPOSE_FILE down -v --remove-orphans"
   fi
+
+  trap - EXIT
+  if [[ $exit_code -ne 0 ]]; then
+    exit "$exit_code"
+  fi
+  exit "$archive_code"
 }
 
 trap cleanup EXIT
@@ -141,30 +169,36 @@ echo "🚀 Starting E2E environment..."
 
 # 1. Start infrastructure
 echo "   🧽 Cleaning previous E2E stack..."
-force_cleanup_resources
+if [ "$USE_EXTERNAL_DATABASE" = false ]; then
+  force_cleanup_resources
+fi
 cleanup_local_e2e_processes
 
-echo "   📦 Starting PostgreSQL + Redis..."
-docker compose -p "$COMPOSE_PROJECT_NAME" -f "$COMPOSE_FILE" up -d --build postgres-e2e redis-e2e
-
-# 2. Wait for PostgreSQL health before schema/seed
-echo "   ⏳ Waiting for PostgreSQL health..."
 MAX_RETRIES=60
-RETRY=0
-while [ $RETRY -lt $MAX_RETRIES ]; do
-  if docker compose -p "$COMPOSE_PROJECT_NAME" -f "$COMPOSE_FILE" exec -T postgres-e2e \
-    pg_isready -U postgres -d cvg_his_e2e >/dev/null 2>&1; then
-    echo "   ✅ PostgreSQL is healthy"
-    break
-  fi
-  RETRY=$((RETRY + 1))
-  sleep 2
-done
+if [ "$USE_EXTERNAL_DATABASE" = false ]; then
+  echo "   📦 Starting PostgreSQL + Redis..."
+  docker compose -p "$COMPOSE_PROJECT_NAME" -f "$COMPOSE_FILE" up -d --build postgres-e2e redis-e2e
 
-if [ $RETRY -eq $MAX_RETRIES ]; then
-  echo "   ❌ PostgreSQL did not become healthy in time"
-  docker compose -p "$COMPOSE_PROJECT_NAME" -f "$COMPOSE_FILE" logs postgres-e2e
-  exit 1
+  # 2. Wait for PostgreSQL health before schema/seed
+  echo "   ⏳ Waiting for PostgreSQL health..."
+  RETRY=0
+  while [ $RETRY -lt $MAX_RETRIES ]; do
+    if docker compose -p "$COMPOSE_PROJECT_NAME" -f "$COMPOSE_FILE" exec -T postgres-e2e \
+      pg_isready -U postgres -d cvg_his_e2e >/dev/null 2>&1; then
+      echo "   ✅ PostgreSQL is healthy"
+      break
+    fi
+    RETRY=$((RETRY + 1))
+    sleep 2
+  done
+
+  if [ $RETRY -eq $MAX_RETRIES ]; then
+    echo "   ❌ PostgreSQL did not become healthy in time"
+    docker compose -p "$COMPOSE_PROJECT_NAME" -f "$COMPOSE_FILE" logs postgres-e2e
+    exit 1
+  fi
+else
+  echo "   ♻️  Using explicit external PostgreSQL test database"
 fi
 
 echo "   ⏳ Waiting for PostgreSQL host connection..."
@@ -238,6 +272,9 @@ while [ $SEED_ATTEMPT -le $SEED_RETRIES ]; do
     RECEPTION_EMAIL="$E2E_RECEPTION_EMAIL" \
     RECEPTION_USERNAME="$E2E_RECEPTION_USERNAME" \
     RECEPTION_PASSWORD="$E2E_RECEPTION_PASSWORD" \
+    VETERINARIAN_EMAIL="$E2E_VETERINARIAN_EMAIL" \
+    VETERINARIAN_USERNAME="$E2E_VETERINARIAN_USERNAME" \
+    VETERINARIAN_PASSWORD="$E2E_VETERINARIAN_PASSWORD" \
     SECOND_ADMIN_EMAIL="$E2E_SECOND_ADMIN_EMAIL" \
     SECOND_ADMIN_USERNAME="$E2E_SECOND_ADMIN_USERNAME" \
     SECOND_ADMIN_PASSWORD="$E2E_SECOND_ADMIN_PASSWORD" \
@@ -295,6 +332,12 @@ E2E_AUTH_TOKEN="" \
 E2E_ADMIN_USERNAME="$E2E_ADMIN_USERNAME" \
 E2E_ADMIN_EMAIL="$E2E_ADMIN_EMAIL" \
 E2E_ADMIN_PASSWORD="$E2E_ADMIN_PASSWORD" \
+E2E_RECEPTION_USERNAME="$E2E_RECEPTION_USERNAME" \
+E2E_RECEPTION_EMAIL="$E2E_RECEPTION_EMAIL" \
+E2E_RECEPTION_PASSWORD="$E2E_RECEPTION_PASSWORD" \
+E2E_VETERINARIAN_USERNAME="$E2E_VETERINARIAN_USERNAME" \
+E2E_VETERINARIAN_EMAIL="$E2E_VETERINARIAN_EMAIL" \
+E2E_VETERINARIAN_PASSWORD="$E2E_VETERINARIAN_PASSWORD" \
 E2E_SECOND_ADMIN_USERNAME="$E2E_SECOND_ADMIN_USERNAME" \
 E2E_SECOND_ADMIN_EMAIL="$E2E_SECOND_ADMIN_EMAIL" \
 E2E_SECOND_ADMIN_PASSWORD="$E2E_SECOND_ADMIN_PASSWORD" \

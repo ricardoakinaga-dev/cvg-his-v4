@@ -22,6 +22,16 @@ A unicidade e os links dessa baseline são definidos no
 
 ### Evidências técnicas recentes
 
+#### Estabilização hospitalar Playwright — 03/09/2026
+
+1. [`2026-09-03-relatorio-testes-playwright-rotinas-hospitalares.md`](2026-09-03-relatorio-testes-playwright-rotinas-hospitalares.md) - execução de 404 casos Playwright, cinco jornadas hospitalares, falhas, bloqueios PostgreSQL e evidências.
+2. [`2026-09-03-plano-executivo-playwright-rotinas-hospitalares.md`](2026-09-03-plano-executivo-playwright-rotinas-hospitalares.md) - decisão, metas, frentes e gates para certificar o recorte hospitalar.
+3. [`2026-09-03-backlog-priorizado-playwright-rotinas-hospitalares.md`](2026-09-03-backlog-priorizado-playwright-rotinas-hospitalares.md) - tickets P0/P1/P2, dependências, critérios de aceite e Definition of Done.
+4. [`2026-09-03-roadmap-playwright-rotinas-hospitalares.md`](2026-09-03-roadmap-playwright-rotinas-hospitalares.md) - ondas de 03/09 a 16/10, caminho crítico, indicadores e critérios de saída.
+5. [`2026-09-03-dossie-certificacao-playwright-rotinas-hospitalares.md`](2026-09-03-dossie-certificacao-playwright-rotinas-hospitalares.md) - execução dos 37 tickets, SHA certificado, rodadas integrais, matriz cross-browser e dependências de aceite humano.
+
+#### Handoffs e evidências anteriores
+
 1. [`2026-08-24-handoff-inpatient-bed-status-idempotency.md`](2026-08-24-handoff-inpatient-bed-status-idempotency.md) - assignment, transferência e status com replay/conflict cross-instance, failpoints PostgreSQL de timeline/leito/auditoria, callback clínico aguardado, restart/SIGKILL e liberação durável de leitos.
 2. [`2026-08-24-handoff-inpatient-clinical-notes-idempotency.md`](2026-08-24-handoff-inpatient-clinical-notes-idempotency.md) - handoff, evolução e ocorrência com replay/conflict cross-instance, recuperação de cache e timeline clínica persistida.
 3. [`2026-08-24-handoff-inpatient-command-idempotency.md`](2026-08-24-handoff-inpatient-command-idempotency.md) - admissão e criação de diária com unidade de trabalho tenant-scoped, replay/conflict, auditoria transacional e hidratação cross-instance.

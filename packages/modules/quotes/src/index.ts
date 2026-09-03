@@ -72,6 +72,10 @@ export class QuotesService {
     const quotes = await this.#repository.findByAccountId(accountId);
     for (const quote of quotes) {
       this.#quotes.set(quote.id, quote);
+      const persistedSequence = /^QT-(\d+)$/.exec(quote.number)?.[1];
+      if (persistedSequence) {
+        this.#numberCounter = Math.max(this.#numberCounter, Number.parseInt(persistedSequence, 10));
+      }
       const items = await this.#repository.findItemsByQuoteId(quote.id);
       for (const item of items) {
         this.#items.set(item.id, item);

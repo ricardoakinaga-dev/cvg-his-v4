@@ -1042,11 +1042,12 @@ async function saveUserMemberships() {
   if (!selectedUserId.value) return;
   userSaving.value = true;
   try {
-    await Promise.all([
-      accessControlService.replaceUserRoles(selectedUserId.value, draftRoleCodes.value),
-      accessControlService.replaceUserTeams(selectedUserId.value, draftTeamIds.value),
-      accessControlService.replaceUserSectors(selectedUserId.value, draftSectorIds.value)
-    ]);
+    // Access-control mutations intentionally fail closed while the account
+    // cache is being refreshed. Serialize the three replacements so the UI
+    // never races its own privileged requests.
+    await accessControlService.replaceUserRoles(selectedUserId.value, draftRoleCodes.value);
+    await accessControlService.replaceUserTeams(selectedUserId.value, draftTeamIds.value);
+    await accessControlService.replaceUserSectors(selectedUserId.value, draftSectorIds.value);
     showSuccess('Vínculos do usuário atualizados');
     await loadCatalog();
   } catch (err: unknown) {

@@ -15,6 +15,13 @@ import { chromium, type FullConfig } from '@playwright/test';
 const API_URL = process.env.API_URL || 'http://127.0.0.1:3111';
 const SPA_URL = process.env.SPA_URL || 'http://127.0.0.1:3112';
 
+interface ApiHealthResponse {
+  readonly ok?: boolean;
+  readonly status?: string;
+  readonly uptime?: number;
+  readonly persistenceMode?: string;
+}
+
 function resolveE2EAdminUsername(): string {
   const explicitUsername = process.env.E2E_ADMIN_USERNAME?.trim();
   if (explicitUsername) {
@@ -37,24 +44,34 @@ async function globalSetup(config: FullConfig) {
   // 1. Check API health
   console.log('   ⏳ Checking API health...');
   let healthy = false;
+  let healthFailure: unknown;
   for (let i = 0; i < 30; i++) {
     try {
       const res = await fetch(`${API_URL}/health`);
       if (res.ok) {
-        const data = await res.json();
+        const data = (await res.json()) as ApiHealthResponse;
+        const healthStatus = data.status ?? (data.ok ? 'ok' : 'unhealthy');
+        if (data.ok === false) {
+          throw new Error(`API reported an unhealthy runtime (${healthStatus})`);
+        }
+        if (process.env.E2E_DATABASE_MODE === '1' && data.persistenceMode !== 'database') {
+          throw new Error(
+            `E2E database mode requires persistenceMode=database; received ${data.persistenceMode ?? 'missing'}`
+          );
+        }
         console.log(
-          `   ✅ API healthy (status: ${data.status}, uptime: ${Math.round(data.uptime)}s)`
+          `   ✅ API healthy (status: ${healthStatus}, persistence: ${data.persistenceMode ?? 'unknown'}, uptime: ${Math.round(data.uptime ?? 0)}s)`
         );
         healthy = true;
         break;
       }
-    } catch {
-      // ignore
+    } catch (error) {
+      healthFailure = error;
     }
     await new Promise((r) => setTimeout(r, 1000));
   }
   if (!healthy) {
-    throw new Error('API is not healthy after 30 seconds');
+    throw new Error(`API is not healthy after 30 seconds: ${String(healthFailure)}`);
   }
 
   // 2. Authenticate via API
