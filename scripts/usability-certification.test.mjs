@@ -112,6 +112,8 @@ test('uses only validated SHA outputs in artifact names and paths', async () => 
   );
   assert.equal((workflow.match(/id: candidate/g) ?? []).length, 3);
   assert.match(workflow, /steps\.candidate\.outputs\.sha/);
+  assert.doesNotMatch(workflow, /Upload certification index\n\s+if: always\(\)/);
+  assert.match(workflow, /finalDecision:"pending-manual-index"/);
 });
 
 test('rejects a candidate SHA mismatch', () => {

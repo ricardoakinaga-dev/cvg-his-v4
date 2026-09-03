@@ -88,11 +88,10 @@ jobs:
         if: always()
         run: |
           mkdir -p certification
-          node -e 'const fs=require("fs"); fs.writeFileSync("certification/metadata.json", JSON.stringify({sha:process.env.CANDIDATE_SHA, run:Number(process.env.CERTIFICATION_RUN), workflowUrl:`${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`, decision:process.env.GO_NO_GO}, null, 2))'
+          node -e 'const fs=require("fs"); fs.writeFileSync("certification/metadata.json", JSON.stringify({sha:process.env.CANDIDATE_SHA, run:Number(process.env.CERTIFICATION_RUN), scope:"technical-only", workflowUrl:`${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`, finalDecision:"pending-manual-index"}, null, 2))'
         env:
           CANDIDATE_SHA: ${{ steps.candidate.outputs.sha }}
           CERTIFICATION_RUN: ${{ matrix.run }}
-          GO_NO_GO: ${{ inputs.go_no_go_decision }}
 
       - name: Upload immutable run evidence
         if: always()
@@ -217,7 +216,6 @@ jobs:
         run: node scripts/generate-usability-certification-index.mjs certification/index.md certification/index.json
 
       - name: Upload certification index
-        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: usability-certification-${{ steps.candidate.outputs.sha }}-index
