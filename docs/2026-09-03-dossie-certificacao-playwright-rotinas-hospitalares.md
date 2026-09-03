@@ -121,7 +121,10 @@ As rodadas `cert-2` e `cert-3` usam o mesmo comando, banco resetado e SHA, alter
 | Matriz WebKit                  | `artifacts/playwright/844596fc55d9e189a2e7be19ecac7b170a6acced/cross-browser-webkit/`   |
 | Dashboard filtrável por rodada | `artifacts/playwright/844596fc55d9e189a2e7be19ecac7b170a6acced/<run-id>/dashboard.json` |
 | Workflow de 90 dias            | `.github/workflows/usability-certification.yml`                                         |
-| Runbook                        | `infra/scripts/README.md`                                                               |
+| Runbook técnico                | `infra/scripts/README.md`                                                               |
+| Runbook do aceite humano       | `docs/usability-certification-runbook.md`                                               |
+| Template do pacote manual      | `docs/templates/usability-certification-manual-evidence.template.json`                  |
+| Validador do pacote manual     | `scripts/validate-usability-manual-evidence.mjs`                                        |
 
 ## 8. Dependências externas e decisão
 
@@ -134,4 +137,6 @@ As rodadas `cert-2` e `cert-3` usam o mesmo comando, banco resetado e SHA, alter
 | UAT ultrassonografia            | Ultrassonografista  | roteiro executado e aceite nominal    | BLOCKED |
 | UAT administração               | Administração       | roteiro executado e aceite nominal    | BLOCKED |
 
-Após receber os nomes e referências reais, o workflow `Usability Certification` deve ser disparado no SHA candidato. Ele recusa uma decisão `go` se as três rodadas técnicas ou a matriz cross-browser falharem. Até lá, a decisão honesta é `NO-GO por aceite pendente`, e não reprovação técnica. O resultado automático de `CERT-002` foi satisfeito, mas o ticket permanece formalmente bloqueado pela dependência `VIS-002`; `DOC-001` permanece bloqueado até que o parecer possa incorporar as assinaturas e a decisão final.
+Após receber os nomes e referências reais, o workflow `Usability Certification` deve ser disparado no SHA candidato. Ele exige o SHA completo, as 15 decisões visuais, as cinco funções e todos os seus cenários, revisão assistiva, riscos residuais e decisão assinada em um único JSON validado. O gate recusa `go` diante de placeholder, SHA divergente, papel/cenário ausente, ressalva, risco P0/P1, falha nas três rodadas técnicas ou falha na matriz cross-browser.
+
+Até lá, a decisão honesta é `NO-GO por aceite pendente`, e não reprovação técnica. O resultado automático de `CERT-002` foi satisfeito, mas o ticket permanece formalmente bloqueado pela dependência `VIS-002`; `DOC-001` permanece bloqueado até que o parecer possa incorporar as assinaturas e a decisão final.

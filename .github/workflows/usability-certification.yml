@@ -3,16 +3,12 @@ name: Usability Certification
 on:
   workflow_dispatch:
     inputs:
-      uat_evidence_reference:
-        description: Link or identifier for the four-role UAT evidence package
+      candidate_sha:
+        description: Exact lowercase 40-character SHA to certify
         required: true
         type: string
-      uat_approvers:
-        description: Names or corporate identifiers of Product, Operations and Accessibility approvers
-        required: true
-        type: string
-      residual_risks:
-        description: Residual risks accepted for this SHA, or "none"
+      manual_evidence_json:
+        description: Completed JSON following docs/templates/usability-certification-manual-evidence.template.json
         required: true
         type: string
       go_no_go_decision:
@@ -38,8 +34,20 @@ jobs:
       E2E_ENVIRONMENT: certification-postgresql-run-${{ matrix.run }}
       E2E_EVIDENCE_RUN_ID: certification-${{ matrix.run }}
       E2E_AUDIT_COMMAND: bash infra/scripts/run-e2e-spa.sh
+      CANDIDATE_SHA: ${{ inputs.candidate_sha }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.candidate_sha }}
+          fetch-depth: 0
+
+      - name: Verify exact candidate identity
+        id: candidate
+        run: |
+          node -e 'const value=process.env.CANDIDATE_SHA; if(!/^[0-9a-f]{40}$/.test(value)){throw new Error("candidate_sha must be a lowercase full SHA")}'
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          git merge-base --is-ancestor "$CANDIDATE_SHA" origin/main
+          echo "sha=$CANDIDATE_SHA" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-node@v4
         with:
@@ -80,26 +88,24 @@ jobs:
         if: always()
         run: |
           mkdir -p certification
-          node -e 'const fs=require("fs"); fs.writeFileSync("certification/metadata.json", JSON.stringify({sha:process.env.GITHUB_SHA, run:Number(process.env.CERTIFICATION_RUN), workflowUrl:`${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`, uatEvidence:process.env.UAT_EVIDENCE, approvers:process.env.UAT_APPROVERS, residualRisks:process.env.RESIDUAL_RISKS, decision:process.env.GO_NO_GO}, null, 2))'
+          node -e 'const fs=require("fs"); fs.writeFileSync("certification/metadata.json", JSON.stringify({sha:process.env.CANDIDATE_SHA, run:Number(process.env.CERTIFICATION_RUN), workflowUrl:`${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`, decision:process.env.GO_NO_GO}, null, 2))'
         env:
+          CANDIDATE_SHA: ${{ steps.candidate.outputs.sha }}
           CERTIFICATION_RUN: ${{ matrix.run }}
-          UAT_EVIDENCE: ${{ inputs.uat_evidence_reference }}
-          UAT_APPROVERS: ${{ inputs.uat_approvers }}
-          RESIDUAL_RISKS: ${{ inputs.residual_risks }}
           GO_NO_GO: ${{ inputs.go_no_go_decision }}
 
       - name: Upload immutable run evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: usability-certification-${{ github.sha }}-run-${{ matrix.run }}
+          name: usability-certification-${{ steps.candidate.outputs.sha }}-run-${{ matrix.run }}
           path: |
             certification/
             playwright-report/usability/
             test-results/
             tmp/master-usability-audit.json
             tmp/playwright-discovery.txt
-            artifacts/playwright/${{ github.sha }}/certification-${{ matrix.run }}/
+            artifacts/playwright/${{ steps.candidate.outputs.sha }}/certification-${{ matrix.run }}/
           if-no-files-found: warn
           retention-days: 90
 
@@ -114,6 +120,7 @@ jobs:
     env:
       PLAYWRIGHT_BROWSERS_PATH: ${{ runner.tool_cache }}/ms-playwright
       E2E_BROWSER: ${{ matrix.browser }}
+      CANDIDATE_SHA: ${{ inputs.candidate_sha }}
       E2E_PLAYWRIGHT_TARGET: >-
         e2e/spa/login-owner-patient-ui.spec.ts
         e2e/spa/appointment-flow.spec.ts
@@ -124,6 +131,16 @@ jobs:
         e2e/spa/hospital-personas-routines.spec.ts
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.candidate_sha }}
+          fetch-depth: 0
+      - name: Verify exact candidate identity
+        id: candidate
+        run: |
+          node -e 'const value=process.env.CANDIDATE_SHA; if(!/^[0-9a-f]{40}$/.test(value)){throw new Error("candidate_sha must be a lowercase full SHA")}'
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          git merge-base --is-ancestor "$CANDIDATE_SHA" origin/main
+          echo "sha=$CANDIDATE_SHA" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -148,12 +165,12 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: usability-${{ github.sha }}-${{ matrix.browser }}
+          name: usability-${{ steps.candidate.outputs.sha }}-${{ matrix.browser }}
           path: |
             playwright-report/usability/
             test-results/
             tmp/playwright-discovery.txt
-            artifacts/playwright/${{ github.sha }}/cross-browser-${{ matrix.browser }}/
+            artifacts/playwright/${{ steps.candidate.outputs.sha }}/cross-browser-${{ matrix.browser }}/
           if-no-files-found: warn
           retention-days: 90
 
@@ -164,14 +181,38 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify published candidate identity
+        id: candidate
+        env:
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+        run: |
+          node -e 'const value=process.env.CANDIDATE_SHA; if(!/^[0-9a-f]{40}$/.test(value)){throw new Error("candidate_sha must be a lowercase full SHA")}'
+          git cat-file -e "$CANDIDATE_SHA^{commit}"
+          git merge-base --is-ancestor "$CANDIDATE_SHA" origin/main
+          echo "sha=$CANDIDATE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Test manual certification contract
+        run: node --test scripts/usability-certification.test.mjs
+
+      - name: Materialize and validate manual evidence
+        env:
+          CANDIDATE_SHA: ${{ steps.candidate.outputs.sha }}
+          GO_NO_GO: ${{ inputs.go_no_go_decision }}
+          MANUAL_EVIDENCE_JSON: ${{ inputs.manual_evidence_json }}
+        run: |
+          mkdir -p certification
+          node -e 'const fs=require("fs"); const value=process.env.MANUAL_EVIDENCE_JSON; JSON.parse(value); fs.writeFileSync("certification/manual-evidence.json", `${value}\n`)'
+          node scripts/validate-usability-manual-evidence.mjs certification/manual-evidence.json "$CANDIDATE_SHA" "$GO_NO_GO"
 
       - name: Build SHA-bound go/no-go index
         env:
+          CANDIDATE_SHA: ${{ steps.candidate.outputs.sha }}
           TECHNICAL_RESULT: ${{ needs.technical-certification.result }}
           CROSS_BROWSER_RESULT: ${{ needs.cross-browser-essentials.result }}
-          UAT_EVIDENCE: ${{ inputs.uat_evidence_reference }}
-          UAT_APPROVERS: ${{ inputs.uat_approvers }}
-          RESIDUAL_RISKS: ${{ inputs.residual_risks }}
+          MANUAL_EVIDENCE_PATH: certification/manual-evidence.json
           GO_NO_GO: ${{ inputs.go_no_go_decision }}
         run: node scripts/generate-usability-certification-index.mjs certification/index.md certification/index.json
 
@@ -179,7 +220,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: usability-certification-${{ github.sha }}-index
+          name: usability-certification-${{ steps.candidate.outputs.sha }}-index
           path: certification/
           if-no-files-found: error
           retention-days: 90

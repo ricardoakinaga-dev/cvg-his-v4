@@ -29,6 +29,7 @@ A unicidade e os links dessa baseline são definidos no
 3. [`2026-09-03-backlog-priorizado-playwright-rotinas-hospitalares.md`](2026-09-03-backlog-priorizado-playwright-rotinas-hospitalares.md) - tickets P0/P1/P2, dependências, critérios de aceite e Definition of Done.
 4. [`2026-09-03-roadmap-playwright-rotinas-hospitalares.md`](2026-09-03-roadmap-playwright-rotinas-hospitalares.md) - ondas de 03/09 a 16/10, caminho crítico, indicadores e critérios de saída.
 5. [`2026-09-03-dossie-certificacao-playwright-rotinas-hospitalares.md`](2026-09-03-dossie-certificacao-playwright-rotinas-hospitalares.md) - execução dos 37 tickets, SHA certificado, rodadas integrais, matriz cross-browser e dependências de aceite humano.
+6. [`usability-certification-runbook.md`](usability-certification-runbook.md) - contrato de aprovação visual, UAT das cinco funções, revisão assistiva e disparo seguro do gate GH4.
 
 #### Handoffs e evidências anteriores
 

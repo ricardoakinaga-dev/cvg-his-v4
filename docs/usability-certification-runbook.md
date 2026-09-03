@@ -1,29 +1,122 @@
-# Certificação de usabilidade
+# Certificação de usabilidade hospitalar
 
-Este roteiro completa os gates manuais que não podem ser simulados por uma aprovação automática. A evidência deve apontar para o mesmo SHA usado nas três execuções do workflow `Usability Certification`.
+Este roteiro completa os gates manuais que não podem ser simulados por aprovação automática. A evidência deve identificar pessoas reais e apontar para o mesmo SHA integral usado nas três execuções do workflow `Usability Certification`.
 
-## Pré-condições
+Template: [`templates/usability-certification-manual-evidence.template.json`](./templates/usability-certification-manual-evidence.template.json)
 
-- As três execuções técnicas estão verdes, sem retry e sem skip.
-- Cada execução preservou JSON/HTML, traces, screenshots, descoberta e a auditoria 286/286.
-- A regressão visual está 28/28 e o subconjunto essencial passou em Chromium, Firefox e WebKit.
-- O ambiente usa dados sintéticos e não inclui credenciais no pacote.
+## 1. Pré-condições
 
-## UAT por papel
+- o candidato é um SHA completo de 40 caracteres, publicado em `main` e sem mudanças locais;
+- as três execuções técnicas estão verdes, com 404/404, zero retry oculto, zero flaky e zero skip;
+- cada execução preserva JSON, HTML, traces, screenshots, descoberta e auditoria 286/286;
+- a regressão visual está 28/28 e a matriz crítica passou em Chromium, Firefox e WebKit;
+- o ambiente usa apenas dados sintéticos e o pacote não contém credenciais ou dados pessoais de tutores;
+- cada referência de evidência é estável e acessível aos revisores.
 
-Registre para cada linha: pessoa aprovadora, data/hora, SHA, ambiente, resultado (`aceite`, `ressalva` ou `bloqueio`) e link de evidência.
+## 2. Preparar o pacote manual
 
-| Papel         | Roteiro obrigatório                               | Resultado | Aprovador | Evidência |
-| ------------- | ------------------------------------------------- | --------- | --------- | --------- |
-| Recepção      | login; tutor/animal; agenda; check-in; fechamento | pendente  |           |           |
-| Veterinário   | busca; prontuário; ordem; prescrição; alta        | pendente  |           |           |
-| Enfermagem    | fila; internação; evolução; prescrição            | pendente  |           |           |
-| Administração | billing; relatórios; export; perfis e negações    | pendente  |           |           |
+Copie o template para um local de trabalho protegido, preencha todos os campos e não versione identificadores pessoais sem autorização. O JSON completo será armazenado como artefato do workflow por 90 dias e seu SHA-256 será incluído no índice final.
 
-## Leitor de tela
+O validador rejeita placeholders, SHA divergente, papéis ou cenários ausentes, duplicidades, timestamps inválidos e referências vazias:
 
-Execute com NVDA + Firefox ou VoiceOver + Safari. Verifique landmarks e skip link; nomes e descrições de campos; estados de loading/erro/sucesso; leitura de tabelas; foco de modais; e anúncio do resultado de download nas jornadas de tutor/animal, agenda, prontuário, billing, relatórios e perfis. Qualquer bloqueador reprova o gate.
+```bash
+node scripts/validate-usability-manual-evidence.mjs \
+  /caminho/seguro/evidencia-manual.json \
+  '<sha-candidato-completo>' \
+  go
+```
 
-## Go/no-go
+## 3. Revisão visual de Produto e UX
 
-A decisão deve conter SHA, URLs das três rodadas, resultado 28/28, matriz cross-browser, UAT dos quatro papéis, validação de leitor de tela, riscos residuais com responsável/prazo e aprovadores de Produto, QA e Engenharia. `GO` só é permitido sem P0/P1 aberto e sem bloqueador manual.
+Produto e UX devem abrir a comparação antes/depois, classificar cada arquivo como `defect-corrected` ou `intentional-change` e registrar uma decisão nominal. O contrato exige os 15 baselines alterados:
+
+1. `appointments-kanban-page-dark.png`;
+2. `appointments-kanban-page-mobile-dark.png`;
+3. `appointments-kanban-page-mobile.png`;
+4. `appointments-kanban-page.png`;
+5. `billing-detail-page.png`;
+6. `billing-list-page.png`;
+7. `dashboard-page-dark.png`;
+8. `encounter-detail-page-dark.png`;
+9. `encounter-detail-page.png`;
+10. `medical-record-detail-page-dark.png`;
+11. `owner-detail-page.png`;
+12. `patient-detail-page-dark.png`;
+13. `patient-detail-page.png`;
+14. `queue-page-dark.png`;
+15. `reception-gateway-page-dark.png`.
+
+Uma decisão `go` exige `visualReview.result=approved` e `decision=approved` nos 15 registros. Atualizar novamente snapshots para resolver uma falha não substitui a revisão.
+
+## 4. UAT das cinco funções
+
+Cada função deve operar o sistema em homologação com PostgreSQL, registrar nome, identificador corporativo, data/hora, SHA, ambiente, resultado e referência de evidência. O aprovador deve exercer de fato a função ou possuir delegação formal registrada.
+
+### Recepção (`reception`)
+
+- cadastrar tutor e animal;
+- agendar consulta e exame;
+- operar fila/esteira;
+- lançar consulta e exame;
+- abrir e fechar comanda.
+
+### Clínica médica (`clinical-veterinarian`)
+
+- abrir prontuário e conferir tutor;
+- registrar anamnese e atendimento;
+- prescrever medicamento;
+- imprimir prontuário e exame;
+- consultar exames, consultas e anamneses anteriores;
+- criar orçamento para o tutor.
+
+### Patologia veterinária (`veterinary-pathologist`)
+
+- lançar resultado de exame;
+- cadastrar equipamento e enzima;
+- configurar valores de referência;
+- emitir laudo laboratorial com assinatura correta.
+
+### Ultrassonografia (`veterinary-ultrasonographer`)
+
+- acessar o caso correto e emitir laudo ultrassonográfico.
+
+### Administração hospitalar (`hospital-administrator`)
+
+- cadastrar usuário veterinário;
+- cadastrar perfil de usuário;
+- cadastrar setor hospitalar;
+- atribuir permissões customizadas e confirmar as negações esperadas.
+
+Uma decisão `go` exige `result=accepted` para as cinco funções e para cada cenário individual. `accepted-with-reservation` é registrável, mas não promove GH4.
+
+## 5. Revisão assistiva
+
+Execute com NVDA + Firefox ou VoiceOver + Safari. Verifique landmarks e skip link, nomes e descrições de campos, estados de loading/erro/sucesso, leitura de tabelas, foco de modais e anúncio de downloads. Registre tecnologia, browser, aprovador e evidência. Qualquer bloqueio ou ressalva impede `go`.
+
+## 6. Riscos e decisão
+
+Cada risco residual informa ID, severidade, descrição, responsável, prazo e quem o aceitou. Uma decisão `go` rejeita qualquer risco P0 ou P1 aberto.
+
+O bloco `goNoGo` exige decisão, timestamp, referência da ata e aprovadores nominais de Produto, QA e Engenharia. O workflow também recusa `go` se uma das três rodadas integrais ou algum engine da matriz terminar sem sucesso.
+
+## 7. Disparar o workflow
+
+Na interface do GitHub, selecione **Actions → Usability Certification → Run workflow** e informe:
+
+- `candidate_sha`: SHA completo validado;
+- `manual_evidence_json`: conteúdo integral do JSON aprovado;
+- `go_no_go_decision`: a mesma decisão presente no JSON.
+
+Os jobs técnicos fazem checkout do SHA informado e confirmam que ele pertence a `origin/main`. O job de governança usa a versão atual do contrato, valida o pacote contra o candidato, e todos os artefatos são nomeados pelo SHA. O workflow executa três baterias completas e Chromium/Firefox/WebKit. Se estiver usando GitHub CLI em um ambiente autorizado, o equivalente é:
+
+```bash
+gh workflow run usability-certification.yml \
+  --ref main \
+  -f candidate_sha='<sha-candidato-completo>' \
+  -f manual_evidence_json="$(jq -c . /caminho/seguro/evidencia-manual.json)" \
+  -f go_no_go_decision='go'
+```
+
+## 8. Saída esperada
+
+O índice final contém o SHA certificado, URLs da execução, resultados técnicos, hash do pacote manual, aprovadores, riscos e decisão. Guarde a URL da execução e os IDs dos artefatos no dossiê. GH4 só muda para `PASS` quando todos os jobs, o contrato manual e a decisão `go` estiverem verdes no mesmo candidato.

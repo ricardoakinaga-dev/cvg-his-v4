@@ -1,0 +1,331 @@
+{
+  "schemaVersion": 1,
+  "candidateSha": "<40-character-candidate-sha>",
+  "visualReview": {
+    "result": "pending",
+    "reviewedAt": "<ISO-8601-date-time>",
+    "productApprover": {
+      "name": "<full-name>",
+      "corporateId": "<corporate-id>"
+    },
+    "uxApprover": {
+      "name": "<full-name>",
+      "corporateId": "<corporate-id>"
+    },
+    "evidenceReference": "<immutable-link-or-id>",
+    "decisions": [
+      {
+        "snapshot": "appointments-kanban-page-dark.png",
+        "classification": "intentional-change",
+        "decision": "pending",
+        "evidenceReference": "<immutable-link-or-id>"
+      },
+      {
+        "snapshot": "appointments-kanban-page-mobile-dark.png",
+        "classification": "intentional-change",
+        "decision": "pending",
+        "evidenceReference": "<immutable-link-or-id>"
+      },
+      {
+        "snapshot": "appointments-kanban-page-mobile.png",
+        "classification": "intentional-change",
+        "decision": "pending",
+        "evidenceReference": "<immutable-link-or-id>"
+      },
+      {
+        "snapshot": "appointments-kanban-page.png",
+        "classification": "intentional-change",
+        "decision": "pending",
+        "evidenceReference": "<immutable-link-or-id>"
+      },
+      {
+        "snapshot": "billing-detail-page.png",
+        "classification": "intentional-change",
+        "decision": "pending",
+        "evidenceReference": "<immutable-link-or-id>"
+      },
+      {
+        "snapshot": "billing-list-page.png",
+        "classification": "intentional-change",
+        "decision": "pending",
+        "evidenceReference": "<immutable-link-or-id>"
+      },
+      {
+        "snapshot": "dashboard-page-dark.png",
+        "classification": "intentional-change",
+        "decision": "pending",
+        "evidenceReference": "<immutable-link-or-id>"
+      },
+      {
+        "snapshot": "encounter-detail-page-dark.png",
+        "classification": "intentional-change",
+        "decision": "pending",
+        "evidenceReference": "<immutable-link-or-id>"
+      },
+      {
+        "snapshot": "encounter-detail-page.png",
+        "classification": "intentional-change",
+        "decision": "pending",
+        "evidenceReference": "<immutable-link-or-id>"
+      },
+      {
+        "snapshot": "medical-record-detail-page-dark.png",
+        "classification": "intentional-change",
+        "decision": "pending",
+        "evidenceReference": "<immutable-link-or-id>"
+      },
+      {
+        "snapshot": "owner-detail-page.png",
+        "classification": "intentional-change",
+        "decision": "pending",
+        "evidenceReference": "<immutable-link-or-id>"
+      },
+      {
+        "snapshot": "patient-detail-page-dark.png",
+        "classification": "intentional-change",
+        "decision": "pending",
+        "evidenceReference": "<immutable-link-or-id>"
+      },
+      {
+        "snapshot": "patient-detail-page.png",
+        "classification": "intentional-change",
+        "decision": "pending",
+        "evidenceReference": "<immutable-link-or-id>"
+      },
+      {
+        "snapshot": "queue-page-dark.png",
+        "classification": "intentional-change",
+        "decision": "pending",
+        "evidenceReference": "<immutable-link-or-id>"
+      },
+      {
+        "snapshot": "reception-gateway-page-dark.png",
+        "classification": "intentional-change",
+        "decision": "pending",
+        "evidenceReference": "<immutable-link-or-id>"
+      }
+    ]
+  },
+  "uat": [
+    {
+      "role": "reception",
+      "result": "blocked",
+      "executedAt": "<ISO-8601-date-time>",
+      "environment": "<environment>",
+      "approver": {
+        "name": "<full-name>",
+        "corporateId": "<corporate-id>"
+      },
+      "evidenceReference": "<immutable-link-or-id>",
+      "scenarios": [
+        {
+          "id": "register-owner",
+          "result": "blocked",
+          "evidenceReference": "<immutable-link-or-id>"
+        },
+        {
+          "id": "register-patient",
+          "result": "blocked",
+          "evidenceReference": "<immutable-link-or-id>"
+        },
+        {
+          "id": "schedule-consultation",
+          "result": "blocked",
+          "evidenceReference": "<immutable-link-or-id>"
+        },
+        {
+          "id": "schedule-exam",
+          "result": "blocked",
+          "evidenceReference": "<immutable-link-or-id>"
+        },
+        {
+          "id": "manage-queue",
+          "result": "blocked",
+          "evidenceReference": "<immutable-link-or-id>"
+        },
+        { "id": "launch-exam", "result": "blocked", "evidenceReference": "<immutable-link-or-id>" },
+        {
+          "id": "launch-consultation",
+          "result": "blocked",
+          "evidenceReference": "<immutable-link-or-id>"
+        },
+        {
+          "id": "open-command",
+          "result": "blocked",
+          "evidenceReference": "<immutable-link-or-id>"
+        },
+        {
+          "id": "close-command",
+          "result": "blocked",
+          "evidenceReference": "<immutable-link-or-id>"
+        }
+      ]
+    },
+    {
+      "role": "clinical-veterinarian",
+      "result": "blocked",
+      "executedAt": "<ISO-8601-date-time>",
+      "environment": "<environment>",
+      "approver": {
+        "name": "<full-name>",
+        "corporateId": "<corporate-id>"
+      },
+      "evidenceReference": "<immutable-link-or-id>",
+      "scenarios": [
+        {
+          "id": "open-medical-record",
+          "result": "blocked",
+          "evidenceReference": "<immutable-link-or-id>"
+        },
+        {
+          "id": "verify-owner",
+          "result": "blocked",
+          "evidenceReference": "<immutable-link-or-id>"
+        },
+        {
+          "id": "record-anamnesis",
+          "result": "blocked",
+          "evidenceReference": "<immutable-link-or-id>"
+        },
+        {
+          "id": "prescribe-medication",
+          "result": "blocked",
+          "evidenceReference": "<immutable-link-or-id>"
+        },
+        {
+          "id": "print-medical-record",
+          "result": "blocked",
+          "evidenceReference": "<immutable-link-or-id>"
+        },
+        { "id": "print-exam", "result": "blocked", "evidenceReference": "<immutable-link-or-id>" },
+        { "id": "view-exams", "result": "blocked", "evidenceReference": "<immutable-link-or-id>" },
+        {
+          "id": "view-consultation-history",
+          "result": "blocked",
+          "evidenceReference": "<immutable-link-or-id>"
+        },
+        {
+          "id": "view-anamnesis-history",
+          "result": "blocked",
+          "evidenceReference": "<immutable-link-or-id>"
+        },
+        {
+          "id": "register-care",
+          "result": "blocked",
+          "evidenceReference": "<immutable-link-or-id>"
+        },
+        { "id": "create-quote", "result": "blocked", "evidenceReference": "<immutable-link-or-id>" }
+      ]
+    },
+    {
+      "role": "veterinary-pathologist",
+      "result": "blocked",
+      "executedAt": "<ISO-8601-date-time>",
+      "environment": "<environment>",
+      "approver": {
+        "name": "<full-name>",
+        "corporateId": "<corporate-id>"
+      },
+      "evidenceReference": "<immutable-link-or-id>",
+      "scenarios": [
+        {
+          "id": "enter-exam-result",
+          "result": "blocked",
+          "evidenceReference": "<immutable-link-or-id>"
+        },
+        {
+          "id": "register-equipment",
+          "result": "blocked",
+          "evidenceReference": "<immutable-link-or-id>"
+        },
+        {
+          "id": "register-enzyme",
+          "result": "blocked",
+          "evidenceReference": "<immutable-link-or-id>"
+        },
+        {
+          "id": "configure-reference-values",
+          "result": "blocked",
+          "evidenceReference": "<immutable-link-or-id>"
+        },
+        {
+          "id": "issue-laboratory-report",
+          "result": "blocked",
+          "evidenceReference": "<immutable-link-or-id>"
+        }
+      ]
+    },
+    {
+      "role": "veterinary-ultrasonographer",
+      "result": "blocked",
+      "executedAt": "<ISO-8601-date-time>",
+      "environment": "<environment>",
+      "approver": {
+        "name": "<full-name>",
+        "corporateId": "<corporate-id>"
+      },
+      "evidenceReference": "<immutable-link-or-id>",
+      "scenarios": [
+        {
+          "id": "issue-ultrasound-report",
+          "result": "blocked",
+          "evidenceReference": "<immutable-link-or-id>"
+        }
+      ]
+    },
+    {
+      "role": "hospital-administrator",
+      "result": "blocked",
+      "executedAt": "<ISO-8601-date-time>",
+      "environment": "<environment>",
+      "approver": {
+        "name": "<full-name>",
+        "corporateId": "<corporate-id>"
+      },
+      "evidenceReference": "<immutable-link-or-id>",
+      "scenarios": [
+        {
+          "id": "register-veterinarian-user",
+          "result": "blocked",
+          "evidenceReference": "<immutable-link-or-id>"
+        },
+        {
+          "id": "register-user-profile",
+          "result": "blocked",
+          "evidenceReference": "<immutable-link-or-id>"
+        },
+        {
+          "id": "register-hospital-sector",
+          "result": "blocked",
+          "evidenceReference": "<immutable-link-or-id>"
+        },
+        {
+          "id": "manage-custom-permissions",
+          "result": "blocked",
+          "evidenceReference": "<immutable-link-or-id>"
+        }
+      ]
+    }
+  ],
+  "accessibilityReview": {
+    "result": "blocked",
+    "executedAt": "<ISO-8601-date-time>",
+    "technology": "<screen-reader-and-browser>",
+    "approver": {
+      "name": "<full-name>",
+      "corporateId": "<corporate-id>"
+    },
+    "evidenceReference": "<immutable-link-or-id>"
+  },
+  "residualRisks": [],
+  "goNoGo": {
+    "decision": "no-go",
+    "decidedAt": "<ISO-8601-date-time>",
+    "evidenceReference": "<immutable-link-or-id>",
+    "approvers": {
+      "product": { "name": "<full-name>", "corporateId": "<corporate-id>" },
+      "qa": { "name": "<full-name>", "corporateId": "<corporate-id>" },
+      "engineering": { "name": "<full-name>", "corporateId": "<corporate-id>" }
+    }
+  }
+}
