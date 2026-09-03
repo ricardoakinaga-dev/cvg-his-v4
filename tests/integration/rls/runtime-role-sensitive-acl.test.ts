@@ -2,6 +2,11 @@ import { randomUUID } from 'node:crypto';
 
 import { afterAll, describe, expect, it } from 'vitest';
 
+import {
+  createDatabaseRuntimeRoleCheckSql,
+  isDatabaseRuntimeRoleInspectionSafe,
+  type DatabaseRuntimeRoleInspection
+} from '../../../packages/shared/database/src/client.js';
 import { getAdminPool, getTestPool } from '../../db/db-admin.js';
 import { TEST_DB_NAME, TEST_DB_URL } from '../../setup/env.js';
 
@@ -255,6 +260,23 @@ describe('runtime role sensitive-table ACL', () => {
         worker_laboratory_ingress_truncate: false,
         worker_sensitive_dml: false
       });
+
+      for (const runtimeRole of [apiRole, workerRole]) {
+        const inspectionClient = await testPool.connect();
+        try {
+          await inspectionClient.query('BEGIN');
+          await inspectionClient.query(`SET ROLE "${runtimeRole}"`);
+          const inspection = await inspectionClient.query<DatabaseRuntimeRoleInspection>(
+            createDatabaseRuntimeRoleCheckSql(apiRole)
+          );
+          expect(inspection.rows).toHaveLength(1);
+          expect(inspection.rows[0]?.current_user).toBe(runtimeRole);
+          expect(isDatabaseRuntimeRoleInspectionSafe(inspection.rows[0])).toBe(true);
+          await inspectionClient.query('ROLLBACK');
+        } finally {
+          inspectionClient.release();
+        }
+      }
 
       const accountId = randomUUID();
       const serviceUserId = randomUUID();

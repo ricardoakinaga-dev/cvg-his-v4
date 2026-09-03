@@ -1,7 +1,9 @@
 import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { createServer, type AddressInfo } from 'node:net';
-import { resolve } from 'node:path';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -38,7 +40,39 @@ function isDockerAvailable(): boolean {
   }
 }
 
-const canRunDisposableDistributedFixture = TEST_DB_IS_EPHEMERAL && isDockerAvailable();
+const redisServerBin = process.env.REDIS_SERVER_BIN ?? 'redis-server';
+const redisCliBin = process.env.REDIS_CLI_BIN ?? 'redis-cli';
+
+function redisCommandEnvironment(): NodeJS.ProcessEnv {
+  const libraryPath = process.env.REDIS_SERVER_LIBRARY_PATH;
+  return libraryPath ? { ...process.env, LD_LIBRARY_PATH: libraryPath } : { ...process.env };
+}
+
+function isLocalRedisAvailable(): boolean {
+  try {
+    execFileSync(redisServerBin, ['--version'], {
+      cwd: ROOT,
+      env: redisCommandEnvironment(),
+      stdio: 'ignore'
+    });
+    execFileSync(redisCliBin, ['--version'], {
+      cwd: ROOT,
+      env: redisCommandEnvironment(),
+      stdio: 'ignore'
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const redisFixtureMode = isDockerAvailable()
+  ? ('docker' as const)
+  : isLocalRedisAvailable()
+    ? ('local' as const)
+    : ('unavailable' as const);
+const canRunDisposableDistributedFixture =
+  TEST_DB_IS_EPHEMERAL && redisFixtureMode !== 'unavailable';
 const requireDisposableDistributedFixture = process.env.REQUIRE_TEST_DB === '1';
 
 interface ApiProcess {
@@ -128,6 +162,8 @@ let scratchAdmin: Pool | undefined;
 let scratchDatabaseUrl: string;
 let redisUrl: string;
 let redisContainerCreated = false;
+let localRedisDirectory: string | undefined;
+let localRedisPort: number | undefined;
 let apiA: ApiProcess | undefined;
 let apiB: ApiProcess | undefined;
 
@@ -160,7 +196,16 @@ async function waitForRedisPing(timeoutMs = 30_000): Promise<void> {
 
   while (Date.now() < deadline) {
     try {
-      if (dockerOutput(['exec', redisContainerName, 'redis-cli', 'PING']) === 'PONG') {
+      const response =
+        redisFixtureMode === 'docker'
+          ? dockerOutput(['exec', redisContainerName, 'redis-cli', 'PING'])
+          : execFileSync(redisCliBin, ['-h', '127.0.0.1', '-p', String(localRedisPort), 'PING'], {
+              cwd: ROOT,
+              env: redisCommandEnvironment(),
+              encoding: 'utf8',
+              stdio: ['ignore', 'pipe', 'pipe']
+            }).trim();
+      if (response === 'PONG') {
         return;
       }
       lastError = 'redis-cli did not return PONG';
@@ -173,11 +218,49 @@ async function waitForRedisPing(timeoutMs = 30_000): Promise<void> {
   throw new Error(`Disposable Redis did not become ready: ${lastError}`);
 }
 
+function startLocalRedisProcess(): void {
+  if (!localRedisDirectory || !localRedisPort) {
+    throw new Error('The disposable local Redis paths were not initialized.');
+  }
+  execFileSync(
+    redisServerBin,
+    [
+      '--bind',
+      '127.0.0.1',
+      '--protected-mode',
+      'yes',
+      '--port',
+      String(localRedisPort),
+      '--dir',
+      localRedisDirectory,
+      '--dbfilename',
+      'dump.rdb',
+      '--appendonly',
+      'no',
+      '--daemonize',
+      'yes',
+      '--pidfile',
+      join(localRedisDirectory, 'redis.pid'),
+      '--logfile',
+      join(localRedisDirectory, 'redis.log')
+    ],
+    { cwd: ROOT, env: redisCommandEnvironment(), stdio: 'ignore' }
+  );
+}
+
 async function startRedisContainer(): Promise<void> {
   // Reserve the host port ourselves. Docker's ephemeral dual-stack mapping
   // can expose different IPv4/IPv6 ports, which would make a URL parsed from
   // `docker port` nondeterministic for the API child processes.
   const publishedPort = await reservePort();
+  if (redisFixtureMode === 'local') {
+    localRedisDirectory = mkdtempSync(join(tmpdir(), 'cvg-his-redis-fixture-'));
+    localRedisPort = publishedPort;
+    startLocalRedisProcess();
+    redisContainerCreated = true;
+    redisUrl = `redis://127.0.0.1:${publishedPort}/0`;
+    return;
+  }
   const containerId = dockerOutput([
     'run',
     '-d',
@@ -213,12 +296,25 @@ async function startRedisContainer(): Promise<void> {
 
 function stopRedisContainer(): void {
   if (!redisContainerCreated) return;
+  if (redisFixtureMode === 'local') {
+    execFileSync(
+      redisCliBin,
+      ['-h', '127.0.0.1', '-p', String(localRedisPort), 'SHUTDOWN', 'SAVE'],
+      { cwd: ROOT, env: redisCommandEnvironment(), stdio: 'ignore' }
+    );
+    return;
+  }
   dockerCommand(['stop', redisContainerName]);
 }
 
 async function restoreRedisContainer(): Promise<void> {
   if (!redisContainerCreated) {
-    throw new Error('The disposable Redis container was not created.');
+    throw new Error('The disposable Redis fixture was not created.');
+  }
+  if (redisFixtureMode === 'local') {
+    startLocalRedisProcess();
+    await waitForRedisPing();
+    return;
   }
   dockerCommand(['start', redisContainerName]);
   await waitForRedisPing();
@@ -227,7 +323,24 @@ async function restoreRedisContainer(): Promise<void> {
 function removeRedisContainer(): void {
   if (!redisContainerCreated) return;
   try {
-    dockerCommand(['rm', '-f', redisContainerName]);
+    if (redisFixtureMode === 'local') {
+      try {
+        execFileSync(
+          redisCliBin,
+          ['-h', '127.0.0.1', '-p', String(localRedisPort), 'SHUTDOWN', 'NOSAVE'],
+          { cwd: ROOT, env: redisCommandEnvironment(), stdio: 'ignore' }
+        );
+      } catch {
+        // The local fixture may already be stopped after a failed test.
+      }
+      if (localRedisDirectory) {
+        rmSync(localRedisDirectory, { recursive: true, force: true });
+      }
+      localRedisDirectory = undefined;
+      localRedisPort = undefined;
+    } else {
+      dockerCommand(['rm', '-f', redisContainerName]);
+    }
   } finally {
     redisContainerCreated = false;
   }
@@ -565,7 +678,7 @@ describe.skipIf(!canRunDisposableDistributedFixture && !requireDisposableDistrib
     beforeAll(async () => {
       if (!canRunDisposableDistributedFixture) {
         throw new Error(
-          'Required distributed process fixture unavailable: TEST_DB_EPHEMERAL=1 and Docker are required.'
+          'Required distributed process fixture unavailable: TEST_DB_EPHEMERAL=1 and Docker or local Redis binaries are required.'
         );
       }
       await startRedisContainer();

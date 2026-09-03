@@ -1,6 +1,13 @@
 import { SpanStatusCode, trace } from '@opentelemetry/api';
 import { drizzle, type NodePgDatabase, type NodePgClient } from 'drizzle-orm/node-postgres';
 import { Pool, type PoolClient } from 'pg';
+import {
+  DATABASE_RUNTIME_API_FUNCTIONS,
+  DATABASE_RUNTIME_INSTALLER_FUNCTIONS,
+  DATABASE_RUNTIME_INSTALLER_MUTATIONS,
+  DATABASE_RUNTIME_ROLE_CONTRACT,
+  type DatabaseRuntimeCapability
+} from '@cvg-his-v2/security';
 import * as schema from './schemas/index.js';
 import { getDatabaseTransactionScope } from './transaction-scope.js';
 
@@ -247,55 +254,12 @@ export async function checkDatabaseHealth(): Promise<{ healthy: boolean; detail:
   }
 }
 
-type DatabaseMutationPrivilege = 'INSERT' | 'UPDATE' | 'DELETE';
-type DatabaseRuntimeCapability = readonly [name: string, detail: string];
-
-function immutableCapability<const Detail extends string>(
-  name: string,
-  detail: Detail
-): readonly [string, Detail] {
-  return Object.freeze([name, detail] as const);
-}
-
-export const DATABASE_RUNTIME_INSTALLER_MUTATIONS: readonly DatabaseRuntimeCapability[] =
-  Object.freeze([
-    immutableCapability('roles', 'INSERT'),
-    immutableCapability('permissions', 'INSERT'),
-    immutableCapability('role_permissions', 'INSERT'),
-    immutableCapability('role_permissions', 'DELETE'),
-    immutableCapability('user_roles', 'INSERT'),
-    immutableCapability('user_roles', 'DELETE'),
-    immutableCapability('cfop_entries', 'INSERT'),
-    immutableCapability('cfop_entries', 'UPDATE'),
-    immutableCapability('icms_tables', 'INSERT'),
-    immutableCapability('icms_tables', 'UPDATE'),
-    immutableCapability('ipi_tables', 'INSERT'),
-    immutableCapability('ipi_tables', 'UPDATE'),
-    immutableCapability('pis_tables', 'INSERT'),
-    immutableCapability('pis_tables', 'UPDATE'),
-    immutableCapability('cofins_tables', 'INSERT'),
-    immutableCapability('cofins_tables', 'UPDATE'),
-    immutableCapability('ibs_cbs_tables', 'INSERT'),
-    immutableCapability('ibs_cbs_tables', 'UPDATE'),
-    immutableCapability('icms_rules', 'INSERT'),
-    immutableCapability('nfse_layouts', 'INSERT'),
-    immutableCapability('nfse_layouts', 'UPDATE')
-  ] satisfies readonly (readonly [string, DatabaseMutationPrivilege])[]);
-
-export const DATABASE_RUNTIME_INSTALLER_FUNCTIONS: readonly DatabaseRuntimeCapability[] =
-  Object.freeze([
-    immutableCapability('is_initial_setup_required', ''),
-    immutableCapability(
-      'provision_initial_installation',
-      'text, text, text, text, text, text, text, text, text, jsonb, jsonb, jsonb, text'
-    )
-  ]);
-
-/** API-only SECURITY DEFINER entrypoints allowed during API role inspection. */
-export const DATABASE_RUNTIME_API_FUNCTIONS: readonly DatabaseRuntimeCapability[] = Object.freeze([
-  immutableCapability('resolve_active_api_key', 'text, text'),
-  immutableCapability('is_pix_transaction_owned_by', 'text, uuid')
-]);
+export {
+  DATABASE_RUNTIME_API_FUNCTIONS,
+  DATABASE_RUNTIME_INSTALLER_FUNCTIONS,
+  DATABASE_RUNTIME_INSTALLER_MUTATIONS,
+  DATABASE_RUNTIME_ROLE_CONTRACT
+};
 
 const DATABASE_RUNTIME_API_ROLE = process.env.POSTGRES_API_USER ?? 'cvg_api';
 
@@ -322,7 +286,8 @@ function renderSqlValues(capabilities: readonly DatabaseRuntimeCapability[]): st
     .join(',\n         ');
 }
 
-export const DATABASE_RUNTIME_ROLE_CHECK_SQL = `WITH RECURSIVE inherited_roles(role_id) AS (
+export function createDatabaseRuntimeRoleCheckSql(apiRole: string): string {
+  return `WITH RECURSIVE inherited_roles(role_id) AS (
      SELECT membership.roleid
        FROM pg_auth_members membership
       WHERE membership.member = (SELECT oid FROM pg_roles WHERE rolname = current_user)
@@ -341,9 +306,14 @@ export const DATABASE_RUNTIME_ROLE_CHECK_SQL = `WITH RECURSIVE inherited_roles(r
        JOIN pg_roles runtime_role ON runtime_role.oid = membership.member
       WHERE installer.rolname = 'cvg_installer'
         AND runtime_role.rolname = current_user
-        AND runtime_role.rolinherit
+        AND runtime_role.rolinherit = ${String(DATABASE_RUNTIME_ROLE_CONTRACT.login.inherit)}
         AND NOT membership.admin_option
-        AND membership.inherit_option
+        AND membership.inherit_option = ${String(
+          DATABASE_RUNTIME_ROLE_CONTRACT.installerMembership.inheritOption
+        )}
+        AND membership.set_option = ${String(
+          DATABASE_RUNTIME_ROLE_CONTRACT.installerMembership.setOption
+        )}
         AND NOT installer.rolcanlogin
         AND NOT installer.rolsuper
         AND NOT installer.rolbypassrls
@@ -467,12 +437,14 @@ export const DATABASE_RUNTIME_ROLE_CHECK_SQL = `WITH RECURSIVE inherited_roles(r
               AND NOT EXISTS (
                 SELECT 1
                   FROM allowed_api_functions allowed_function
-                 WHERE current_user = ${sqlLiteral(DATABASE_RUNTIME_API_ROLE)}
+                 WHERE current_user = ${sqlLiteral(apiRole)}
                    AND allowed_function.function_name = procedure.proname
                    AND allowed_function.identity_arguments =
                        pg_catalog.oidvectortypes(procedure.proargtypes)
                    AND procedure.proowner NOT IN (SELECT role_id FROM effective_roles)
-                   AND procedure.proconfig = ARRAY['search_path=pg_catalog, public']::text[]
+                   AND procedure.proconfig = ARRAY[${sqlLiteral(
+                     DATABASE_RUNTIME_ROLE_CONTRACT.securityDefinerSearchPath
+                   )}]::text[]
                    AND NOT has_schema_privilege(current_user, namespace.oid, 'CREATE')
                    AND NOT EXISTS (
                      SELECT 1
@@ -491,7 +463,9 @@ export const DATABASE_RUNTIME_ROLE_CHECK_SQL = `WITH RECURSIVE inherited_roles(r
                    AND allowed_function.identity_arguments =
                        pg_catalog.oidvectortypes(procedure.proargtypes)
                  WHERE procedure.proowner NOT IN (SELECT role_id FROM effective_roles)
-                   AND procedure.proconfig = ARRAY['search_path=pg_catalog, public']::text[]
+                   AND procedure.proconfig = ARRAY[${sqlLiteral(
+                     DATABASE_RUNTIME_ROLE_CONTRACT.securityDefinerSearchPath
+                   )}]::text[]
                    AND NOT has_schema_privilege(current_user, namespace.oid, 'CREATE')
                    AND has_schema_privilege(installer.role_id, namespace.oid, 'USAGE')
                    AND has_function_privilege(installer.role_id, procedure.oid, 'EXECUTE')
@@ -516,6 +490,10 @@ export const DATABASE_RUNTIME_ROLE_CHECK_SQL = `WITH RECURSIVE inherited_roles(r
           ) AS executable_security_definer_functions
      FROM pg_roles role
     WHERE role.rolname = current_user`;
+}
+
+export const DATABASE_RUNTIME_ROLE_CHECK_SQL =
+  createDatabaseRuntimeRoleCheckSql(DATABASE_RUNTIME_API_ROLE);
 
 export function isDatabaseRuntimeRoleInspectionSafe(
   role: DatabaseRuntimeRoleInspection | undefined

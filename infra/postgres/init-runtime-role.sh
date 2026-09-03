@@ -106,13 +106,12 @@ SELECT format(
 WHERE to_regclass('public.laboratory_result_imports') IS NOT NULL;
 \gexec
 
--- Installer/governance mutations stay API/installer-only; the worker keeps
--- read access to these shared tables but must not receive setup DML from the
--- broad RLS grant above.
+-- Remove broad DML from every installer/governance table. The API receives
+-- only its explicit operations later; worker and legacy roles stay read-only.
 SELECT format(
   'REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLE public.%I FROM %I',
   candidate.table_name,
-  :'worker_user'
+  :'runtime_user'
 )
 FROM (
   VALUES
@@ -224,7 +223,7 @@ WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'cvg_pix_dlq_operator')
 \gexec
 
 ALTER ROLE cvg_installer
-  NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+  NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;
 ALTER ROLE cvg_api_key_auth
   NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;
 ALTER ROLE cvg_pix_dlq_operator
@@ -232,7 +231,7 @@ ALTER ROLE cvg_pix_dlq_operator
 
 REVOKE cvg_installer FROM :"runtime_user";
 REVOKE cvg_installer FROM :"worker_user";
-GRANT cvg_installer TO :"api_user";
+GRANT cvg_installer TO :"api_user" WITH ADMIN FALSE, INHERIT FALSE, SET TRUE;
 REVOKE cvg_api_key_auth FROM :"runtime_user";
 REVOKE cvg_api_key_auth FROM :"api_user";
 REVOKE cvg_api_key_auth FROM :"worker_user";

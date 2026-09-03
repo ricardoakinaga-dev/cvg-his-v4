@@ -1,5 +1,6 @@
-import { execFileSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -22,8 +23,9 @@ import {
 import { createWorkerEventBus, runEventBusTick } from '../../../apps/worker/src/runner.js';
 
 import { ADMIN_DB_URL, TEST_DB_URL } from '../../setup/env.js';
+import { runTsxFileSync } from '../../helpers/run-tsx-file.js';
 
-const ROOT = new URL('../../../', import.meta.url).pathname.replace(/\/$/, '');
+const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 const suffix = randomUUID().replaceAll('-', '').slice(0, 16);
 const scratchDatabase = `cvg_worker_events_${process.pid}_${suffix}`;
 const apiRole = `cvg_worker_events_api_${suffix}`;
@@ -285,8 +287,7 @@ describe('worker event consumers with PostgreSQL and RLS', () => {
 
   beforeAll(async () => {
     await clusterAdmin.query(`CREATE DATABASE ${quoteIdentifier(scratchDatabase)}`);
-    execFileSync('pnpm', ['exec', 'tsx', 'packages/db/src/migrate.ts'], {
-      cwd: ROOT,
+    runTsxFileSync(resolve(ROOT, 'packages/db/src/migrate.ts'), [], {
       env: { ...process.env, DATABASE_URL: scratchUrl },
       stdio: 'pipe'
     });

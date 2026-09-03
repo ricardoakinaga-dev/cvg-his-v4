@@ -1,13 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { getTestPool } from './db-admin.js';
+import { runTsxFileSync } from '../helpers/run-tsx-file.js';
 
 const ROOT = resolve(import.meta.dirname, '../..');
 const MIGRATE_SCRIPT = resolve(ROOT, 'packages/db/src/migrate.ts');
 
 export async function applyDrizzleMigration(): Promise<void> {
-  const { execSync } = await import('node:child_process');
-  execSync(`npx tsx ${MIGRATE_SCRIPT}`, {
+  runTsxFileSync(MIGRATE_SCRIPT, [], {
     env: {
       ...process.env,
       DATABASE_URL: process.env.DATABASE_URL_TEST || process.env.DATABASE_URL
@@ -28,8 +28,7 @@ export async function applySeed(): Promise<void> {
       '[test-db] packages/db/dist/seed.js not found. Run `pnpm --filter @cvg-his/db build` first.'
     );
     console.warn('[test-db] Attempting to run seed via tsx as fallback...');
-    const { execSync } = await import('node:child_process');
-    execSync(`npx tsx ${resolve(ROOT, 'packages/db/src/seed.ts')}`, {
+    runTsxFileSync(resolve(ROOT, 'packages/db/src/seed.ts'), [], {
       env: {
         ...process.env,
         DATABASE_URL: process.env.DATABASE_URL_TEST || process.env.DATABASE_URL
@@ -42,8 +41,7 @@ export async function applySeed(): Promise<void> {
   console.log(
     '[test-db] Seed will be applied via compiled dist. If roles/permissions are misaligned, see docs/705.'
   );
-  const { execSync } = await import('node:child_process');
-  execSync(`npx tsx ${resolve(ROOT, 'packages/db/src/seed.ts')}`, {
+  runTsxFileSync(resolve(ROOT, 'packages/db/src/seed.ts'), [], {
     env: {
       ...process.env,
       DATABASE_URL: process.env.DATABASE_URL_TEST || process.env.DATABASE_URL

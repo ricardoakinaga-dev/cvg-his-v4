@@ -405,14 +405,17 @@ describe('critical process proof execution contract', () => {
   });
 
   it('accepts only localhost PostgreSQL test databases', () => {
-    expect(resolveCriticalTestDatabaseUrl()).toBe(
-      process.env.DATABASE_URL_TEST ??
-        process.env.DATABASE_URL ??
-        'postgres://postgres:postgres@localhost:5433/cvg_his_v2_test'
-    );
+    expect(
+      resolveCriticalTestDatabaseUrl('postgres://postgres:postgres@localhost:5433/cvg_his_v2_test')
+    ).toBe('postgres://postgres:postgres@localhost:5433/cvg_his_v2_test');
     expect(
       resolveCriticalTestDatabaseUrl('postgres://runner:secret@127.0.0.1:5432/cvg_his_v2_test_ci')
     ).toContain('cvg_his_v2_test_ci');
+    expect(
+      resolveCriticalTestDatabaseUrl(
+        'postgres://runner:secret@127.0.0.1:55433/cvg_his_v2_test_isolated'
+      )
+    ).toContain('cvg_his_v2_test_isolated');
     expect(() =>
       resolveCriticalTestDatabaseUrl('postgres://runner:secret@localhost:5433/cvg_his_v2')
     ).toThrow();

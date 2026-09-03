@@ -64,6 +64,7 @@ export function createWorkspaceAliases(root: string): Record<string, string> {
     '@cvg-his-v2/rbac/access-control-catalog': from('packages/rbac/src/access-control-catalog.ts'),
     '@cvg-his-v2/tenant-context': from('packages/tenant-context/src/index.ts'),
     '@cvg-his-v2/chaos': from('packages/chaos/src/index.ts'),
+    '@cvg-his-v2/security': from('packages/security/src/index.ts'),
     '@cvg-his-v2/secrets': from('packages/secrets/src/index.ts')
   };
 }

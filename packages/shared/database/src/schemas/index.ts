@@ -43,12 +43,12 @@ export const auditEvents = pgTable('audit_events', {
   entityId: varchar('entity_id', { length: 128 }).notNull(),
   metadata: jsonb('metadata'),
   correlationId: varchar('correlation_id', { length: 255 }),
-  occurredAt: timestamp('occurred_at').notNull(),
+  occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull(),
   beforeJson: jsonb('before_json'),
   afterJson: jsonb('after_json'),
   reason: text('reason'),
   requestId: varchar('request_id', { length: 128 }),
-  createdAt: timestamp('created_at').notNull()
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull()
 });
 
 export const owners = pgTable('owners', {
@@ -438,13 +438,13 @@ export const laboratoryResultImports = pgTable(
     payloadFingerprint: varchar('payload_fingerprint', { length: 64 })
       .notNull()
       .default('0'.repeat(64)),
-    observedAt: timestamp('observed_at').notNull(),
+    observedAt: timestamp('observed_at', { withTimezone: true }).notNull(),
     status: varchar('status', { length: 32 }).notNull(),
-    importedAt: timestamp('imported_at').notNull(),
+    importedAt: timestamp('imported_at', { withTimezone: true }).notNull(),
     resultSummary: varchar('result_summary', { length: 4000 }).notNull(),
     failureReason: varchar('failure_reason', { length: 1000 }),
     attemptCount: integer('attempt_count').notNull().default(1),
-    lastAttemptAt: timestamp('last_attempt_at').notNull()
+    lastAttemptAt: timestamp('last_attempt_at', { withTimezone: true }).notNull()
   },
   (table) => ({
     pk: primaryKey({ columns: [table.accountId, table.externalResultId] })

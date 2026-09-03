@@ -543,12 +543,12 @@ export class DatabaseCounterSalesRepository implements CounterSalesRepository {
       }
 
       if (filters?.dateFrom) {
-        sql += ` AND created_at >= $${paramIdx}::date`;
+        sql += ` AND created_at >= ($${paramIdx}::date::timestamp AT TIME ZONE 'UTC')`;
         params.push(filters.dateFrom);
         paramIdx++;
       }
       if (filters?.dateTo) {
-        sql += ` AND created_at < ($${paramIdx}::date + INTERVAL '1 day')`;
+        sql += ` AND created_at < (($${paramIdx}::date + 1)::timestamp AT TIME ZONE 'UTC')`;
         params.push(filters.dateTo);
         paramIdx++;
       }

@@ -5,6 +5,7 @@ import {
   DATABASE_RUNTIME_INSTALLER_FUNCTIONS,
   DATABASE_RUNTIME_INSTALLER_MUTATIONS,
   DATABASE_RUNTIME_ROLE_CHECK_SQL,
+  createDatabaseRuntimeRoleCheckSql,
   isDatabaseRuntimeRoleInspectionSafe
 } from './client.js';
 
@@ -45,23 +46,33 @@ describe('database runtime role guard', () => {
     ]);
   });
 
-  it('allows only the narrow API-key resolver for the configured API role', () => {
+  it('allows only the exact API SECURITY DEFINER contract for the configured API role', () => {
     expect(DATABASE_RUNTIME_API_FUNCTIONS).toEqual([
       ['resolve_active_api_key', 'text, text'],
-      ['is_pix_transaction_owned_by', 'text, uuid']
+      ['is_pix_transaction_owned_by', 'text, uuid'],
+      ['redrive_pix_provider_event_delivery', 'uuid, uuid, uuid, text, text']
     ]);
     expect(DATABASE_RUNTIME_ROLE_CHECK_SQL).toContain('allowed_api_functions');
     expect(DATABASE_RUNTIME_ROLE_CHECK_SQL).toContain("current_user = 'cvg_api'");
-    expect(DATABASE_RUNTIME_ROLE_CHECK_SQL).toContain("procedure.proname = 'resolve_active_api_key'");
-    expect(DATABASE_RUNTIME_ROLE_CHECK_SQL).toContain("'is_pix_transaction_owned_by'");
+    for (const [name, argumentsList] of DATABASE_RUNTIME_API_FUNCTIONS) {
+      expect(DATABASE_RUNTIME_ROLE_CHECK_SQL).toContain(`('${name}', '${argumentsList}')`);
+    }
+  });
+
+  it('quotes a configured API role when creating the inspection query', () => {
+    const sql = createDatabaseRuntimeRoleCheckSql("api'role");
+
+    expect(sql).toContain("current_user = 'api''role'");
+    expect(sql).not.toContain("current_user = 'api'role'");
   });
 
   it('accepts installer functions only through the hardened NOLOGIN membership', () => {
     expect(DATABASE_RUNTIME_ROLE_CHECK_SQL).toContain("installer.rolname = 'cvg_installer'");
     expect(DATABASE_RUNTIME_ROLE_CHECK_SQL).toContain('NOT installer.rolcanlogin');
     expect(DATABASE_RUNTIME_ROLE_CHECK_SQL).toContain('NOT membership.admin_option');
-    expect(DATABASE_RUNTIME_ROLE_CHECK_SQL).toContain('membership.inherit_option');
-    expect(DATABASE_RUNTIME_ROLE_CHECK_SQL).toContain('runtime_role.rolinherit');
+    expect(DATABASE_RUNTIME_ROLE_CHECK_SQL).toContain('membership.inherit_option = false');
+    expect(DATABASE_RUNTIME_ROLE_CHECK_SQL).toContain('membership.set_option = true');
+    expect(DATABASE_RUNTIME_ROLE_CHECK_SQL).toContain('runtime_role.rolinherit = false');
     expect(DATABASE_RUNTIME_ROLE_CHECK_SQL).toContain(
       "procedure.proconfig = ARRAY['search_path=pg_catalog, public']::text[]"
     );

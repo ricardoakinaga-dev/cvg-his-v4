@@ -369,12 +369,14 @@ export class DatabaseInventoryRepository implements InventoryRepository {
         params.push(`%${escapeIlikePattern(filters.search.trim())}%`);
       }
       if (filters.dateFrom) {
-        conditions.push(`created_at >= ($${params.length + 1}::date AT TIME ZONE 'UTC')`);
+        conditions.push(
+          `created_at >= ($${params.length + 1}::date::timestamp AT TIME ZONE 'UTC')`
+        );
         params.push(filters.dateFrom);
       }
       if (filters.dateTo) {
         conditions.push(
-          `created_at < (($${params.length + 1}::date + INTERVAL '1 day') AT TIME ZONE 'UTC')`
+          `created_at < (($${params.length + 1}::date + 1)::timestamp AT TIME ZONE 'UTC')`
         );
         params.push(filters.dateTo);
       }

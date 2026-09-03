@@ -145,7 +145,13 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await getTestPool().query('DELETE FROM tenants WHERE id = $1', [tenantId]);
+  const pool = getTestPool();
+  await pool.query(
+    `DELETE FROM entry_revisions
+      WHERE entry_id IN (SELECT id FROM clinical_entries WHERE account_id = $1)`,
+    [accountId]
+  );
+  await pool.query('DELETE FROM tenants WHERE id = $1', [tenantId]);
   await closeDatabaseClient();
 });
 

@@ -72,7 +72,6 @@ const SIGNAL_EXIT_CODES = {
 };
 const PACKAGE_MANAGER_COMMAND = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
 const APPROVED_TEST_DATABASE_HOSTS = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
-const APPROVED_TEST_DATABASE_PORTS = new Set([5432, 5433]);
 const TEST_DATABASE_NAME_PATTERN = /^cvg_his_v2_test(?:_[a-z0-9_]+)*$/;
 
 function resolveDefaultTestDatabaseUrl() {
@@ -97,6 +96,9 @@ const CHILD_ENVIRONMENT_KEYS = new Set([
   'NO_COLOR',
   'PATH',
   'PNPM_HOME',
+  'REDIS_CLI_BIN',
+  'REDIS_SERVER_BIN',
+  'REDIS_SERVER_LIBRARY_PATH',
   'PATHEXT',
   'TEMP',
   'TERM',
@@ -203,7 +205,9 @@ export function resolveCriticalTestDatabaseUrl(rawValue = undefined) {
   if (
     !['postgres:', 'postgresql:'].includes(url.protocol) ||
     !APPROVED_TEST_DATABASE_HOSTS.has(hostname) ||
-    !APPROVED_TEST_DATABASE_PORTS.has(port) ||
+    !Number.isSafeInteger(port) ||
+    port < 1 ||
+    port > 65_535 ||
     !databaseName ||
     databaseName.includes('/') ||
     !TEST_DATABASE_NAME_PATTERN.test(databaseName)

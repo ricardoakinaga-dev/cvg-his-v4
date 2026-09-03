@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import {
   API_GLOBAL_TABLE_MUTATIONS,
   API_SENSITIVE_TABLE_PRIVILEGES,
+  DATABASE_RUNTIME_API_FUNCTIONS,
   RUNTIME_APPEND_ONLY_TABLES,
   RUNTIME_INSTALLER_MUTATIONS,
   RUNTIME_SENSITIVE_TABLES,
@@ -38,6 +39,10 @@ const settlementSearchPathMigration = readFileSync(
 );
 const pixSettlementSearchPathMigration = readFileSync(
   resolve(root, 'packages/db/migrations/0124_pix_non_cash_receipt_consistency_search_path.sql'),
+  'utf8'
+);
+const runtimeSecurityDefinerContractMigration = readFileSync(
+  resolve(root, 'packages/db/migrations/0158_runtime_security_definer_contract.sql'),
   'utf8'
 );
 
@@ -93,7 +98,7 @@ describe('runtime PostgreSQL role grants', () => {
     }
   });
 
-  it('revokes installer/governance mutations from the worker after broad RLS grants', () => {
+  it('narrows installer/governance mutations for every runtime role after broad RLS grants', () => {
     expect(RUNTIME_INSTALLER_MUTATIONS).toEqual(API_GLOBAL_TABLE_MUTATIONS);
     for (const script of roleScripts) {
       const broadGrant = script.content.indexOf(
@@ -125,6 +130,11 @@ describe('runtime PostgreSQL role grants', () => {
     );
     expect(reconcilerWorkerRevoke).toBeGreaterThan(reconcilerBroadGrant);
     expect(runtimeReconciler).toContain('RUNTIME_INSTALLER_MUTATIONS');
+    expect(runtimeReconciler).toContain('[apiRole, workerRole]');
+    expect(roleScripts[0]?.content).toContain(":'runtime_user'");
+    expect(roleScripts[1]?.content).toContain(
+      "CROSS JOIN (VALUES (:'api_user'), (:'worker_user')) AS runtime_role(role_name)"
+    );
   });
 
   it('preserves the least-privilege PIX receipt/delivery matrix after broad RLS grants', () => {
@@ -298,6 +308,10 @@ describe('runtime PostgreSQL role grants', () => {
         'FROM pg_auth_members'
       );
     }
+    expect(runtimeReconciler).toContain('WITH ADMIN FALSE, INHERIT FALSE, SET TRUE');
+    for (const script of roleScripts) {
+      expect(script.content).toContain('WITH ADMIN FALSE, INHERIT FALSE, SET TRUE');
+    }
   });
 
   it('reconciles API function grants after migration in cutover and Compose', () => {
@@ -358,6 +372,13 @@ describe('runtime PostgreSQL role grants', () => {
     expect(settlementDlqMigration).toContain('CREATE ROLE cvg_pix_dlq_operator');
     expect(settlementDlqMigration).toContain('SECURITY DEFINER');
     expect(settlementDlqMigration).toContain('SET search_path = pg_catalog, public, app');
+    expect(runtimeSecurityDefinerContractMigration).toContain(
+      'ALTER FUNCTION app.redrive_pix_provider_event_delivery(UUID, UUID, UUID, TEXT, TEXT)'
+    );
+    expect(runtimeSecurityDefinerContractMigration).toContain(
+      'SET search_path = pg_catalog, public'
+    );
+    expect(runtimeReconciler).toContain('DATABASE_RUNTIME_API_FUNCTIONS');
     expect(settlementDlqMigration).toContain("state = 'reconciliation_required'");
     expect(settlementDlqMigration).toContain("'pix_settlement_redrive'");
     expect(settlementDlqMigration).toContain(
@@ -369,7 +390,10 @@ describe('runtime PostgreSQL role grants', () => {
     expect(settlementDlqMigration).toContain(
       'REVOKE ALL ON FUNCTION app.redrive_pix_provider_event_delivery'
     );
-    expect(runtimeReconciler).toContain('redrive_pix_provider_event_delivery');
+    expect(DATABASE_RUNTIME_API_FUNCTIONS).toContainEqual([
+      'redrive_pix_provider_event_delivery',
+      'uuid, uuid, uuid, text, text'
+    ]);
     expect(runtimeReconciler).toContain("'SELECT, UPDATE'");
     for (const script of roleScripts) {
       expect(script.content).toContain('cvg_pix_dlq_operator');

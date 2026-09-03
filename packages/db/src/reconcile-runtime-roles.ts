@@ -4,6 +4,7 @@ import { closeDbConnection, pool } from './connection.js';
 import {
   API_GLOBAL_TABLE_MUTATIONS,
   API_SENSITIVE_TABLE_PRIVILEGES,
+  DATABASE_RUNTIME_API_FUNCTIONS,
   RUNTIME_SENSITIVE_TABLES,
   RUNTIME_APPEND_ONLY_TABLES,
   RUNTIME_INSTALLER_MUTATIONS,
@@ -115,7 +116,7 @@ export async function reconcileRuntimeRoles(
         END IF;
       END
       $installer$;
-      ALTER ROLE cvg_installer NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+      ALTER ROLE cvg_installer NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;
     `);
     await client.query(`
       DO $api_key_auth_role$
@@ -198,7 +199,10 @@ export async function reconcileRuntimeRoles(
     );
     await executeGeneratedStatements(
       client,
-      `SELECT format('GRANT cvg_installer TO %I', $1::text) AS statement`,
+      `SELECT format(
+         'GRANT cvg_installer TO %I WITH ADMIN FALSE, INHERIT FALSE, SET TRUE',
+         $1::text
+       ) AS statement`,
       [apiRole]
     );
     await executeGeneratedStatements(
@@ -268,9 +272,10 @@ export async function reconcileRuntimeRoles(
     for (const mutation of RUNTIME_INSTALLER_MUTATIONS) {
       await executeGeneratedStatements(
         client,
-        `SELECT format('REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLE public.%I FROM %I', $1::text, $2::text) AS statement
+        `SELECT format('REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLE public.%I FROM %I', $1::text, role_name) AS statement
+         FROM unnest($2::text[]) AS role_name
          WHERE to_regclass(format('public.%I', $1::text)) IS NOT NULL`,
-        [mutation.tableName, workerRole]
+        [mutation.tableName, [apiRole, workerRole]]
       );
     }
     for (const tableName of SHARED_READ_TABLES) {
@@ -330,22 +335,18 @@ export async function reconcileRuntimeRoles(
          AND procedure.proname IN ('current_account_id', 'has_account_context')`,
       [[apiRole, workerRole]]
     );
-    await executeGeneratedStatements(
-      client,
-      `SELECT format('GRANT EXECUTE ON FUNCTION %s TO %I', procedure.oid::regprocedure, $1::text) AS statement
-       FROM pg_proc procedure
-       JOIN pg_namespace namespace ON namespace.oid = procedure.pronamespace
-       WHERE namespace.nspname = 'app'
-         AND (
-           (procedure.proname = 'resolve_active_api_key'
-             AND pg_catalog.oidvectortypes(procedure.proargtypes) = 'text, text')
-           OR (procedure.proname = 'is_pix_transaction_owned_by'
-             AND pg_catalog.oidvectortypes(procedure.proargtypes) = 'text, uuid')
-           OR (procedure.proname = 'redrive_pix_provider_event_delivery'
-             AND pg_catalog.oidvectortypes(procedure.proargtypes) = 'uuid, uuid, uuid, text, text')
-         )`,
-      [apiRole]
-    );
+    for (const [functionName, argumentTypes] of DATABASE_RUNTIME_API_FUNCTIONS) {
+      await executeGeneratedStatements(
+        client,
+        `SELECT format('GRANT EXECUTE ON FUNCTION %s TO %I', procedure.oid::regprocedure, $3::text) AS statement
+         FROM pg_proc procedure
+         JOIN pg_namespace namespace ON namespace.oid = procedure.pronamespace
+         WHERE namespace.nspname = 'app'
+           AND procedure.proname = $1::text
+           AND pg_catalog.oidvectortypes(procedure.proargtypes) = $2::text`,
+        [functionName, argumentTypes, apiRole]
+      );
+    }
     for (const functionGrant of RUNTIME_SETTLEMENT_FUNCTIONS) {
       await executeGeneratedStatements(
         client,
@@ -376,27 +377,6 @@ export async function reconcileRuntimeRoles(
       'cvg_pix_dlq_operator'
     );
     await grantExistingTable(client, 'audit_events', 'INSERT', 'cvg_pix_dlq_operator');
-    await executeGeneratedStatements(
-      client,
-      `SELECT format('REVOKE ALL ON FUNCTION %s FROM %I', procedure.oid::regprocedure, role_name) AS statement
-       FROM pg_proc procedure
-       JOIN pg_namespace namespace ON namespace.oid = procedure.pronamespace
-       CROSS JOIN unnest($1::text[]) AS role_name
-       WHERE namespace.nspname = 'app'
-         AND procedure.proname = 'redrive_pix_provider_event_delivery'
-         AND pg_catalog.oidvectortypes(procedure.proargtypes) = 'uuid, uuid, uuid, text, text'`,
-      [[apiRole, workerRole]]
-    );
-    await executeGeneratedStatements(
-      client,
-      `SELECT format('GRANT EXECUTE ON FUNCTION %s TO %I', procedure.oid::regprocedure, $1::text) AS statement
-       FROM pg_proc procedure
-       JOIN pg_namespace namespace ON namespace.oid = procedure.pronamespace
-       WHERE namespace.nspname = 'app'
-         AND procedure.proname = 'redrive_pix_provider_event_delivery'
-         AND pg_catalog.oidvectortypes(procedure.proargtypes) = 'uuid, uuid, uuid, text, text'`,
-      [apiRole]
-    );
     await executeGeneratedStatements(
       client,
       `SELECT format('GRANT EXECUTE ON FUNCTION %s TO cvg_installer', procedure.oid::regprocedure) AS statement

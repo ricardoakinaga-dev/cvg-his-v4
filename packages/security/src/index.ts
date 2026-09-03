@@ -14,6 +14,7 @@
 // Re-exported from shared for convenience
 export { AuthenticationError, ForbiddenError, ValidationError } from '@cvg-his-v2/shared-errors';
 export { requireNonEmptyString, requireEnum } from '@cvg-his-v2/shared-validation';
+export * from './database-runtime-role-policy.js';
 
 // ---------------------------------------------------------------------------
 // Security Headers

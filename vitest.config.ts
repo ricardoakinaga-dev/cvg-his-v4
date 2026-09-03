@@ -8,6 +8,8 @@ const root = resolve(__dirname);
 const productTestFiles = [
   'packages/db/src/**/*.test.ts',
   'packages/modules/*/src/**/*.test.ts',
+  'packages/security/src/**/*.test.ts',
+  'packages/shared/database/src/client.test.ts',
   'packages/tenant-context/src/**/*.test.ts',
   'tests/unit/**/*.test.ts'
 ];
@@ -15,6 +17,7 @@ const commonTestExcludes = ['**/node_modules/**', '**/dist/**', 'e2e/**'];
 const coverageSourceFiles = [
   'apps/api/src/**/*.ts',
   'packages/modules/*/src/**/*.ts',
+  'packages/security/src/**/*.ts',
   'packages/shared/*/src/**/*.ts',
   'packages/db/src/**/*.ts',
   'packages/tenant-context/src/**/*.ts'

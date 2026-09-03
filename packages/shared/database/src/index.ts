@@ -20,6 +20,7 @@ export {
   createDatabaseClient,
   configureDatabaseTenantAccountResolver,
   createScopedDatabaseClient,
+  createDatabaseRuntimeRoleCheckSql,
   getDatabaseClient,
   checkDatabaseRuntimeRole,
   getPool,

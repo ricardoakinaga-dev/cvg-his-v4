@@ -1,17 +1,9 @@
-export const API_GLOBAL_TABLE_MUTATIONS = [
-  { tableName: 'roles', privileges: 'INSERT' },
-  { tableName: 'permissions', privileges: 'INSERT' },
-  { tableName: 'role_permissions', privileges: 'INSERT, DELETE' },
-  { tableName: 'user_roles', privileges: 'INSERT, DELETE' },
-  { tableName: 'cfop_entries', privileges: 'INSERT, UPDATE' },
-  { tableName: 'icms_tables', privileges: 'INSERT, UPDATE' },
-  { tableName: 'ipi_tables', privileges: 'INSERT, UPDATE' },
-  { tableName: 'pis_tables', privileges: 'INSERT, UPDATE' },
-  { tableName: 'cofins_tables', privileges: 'INSERT, UPDATE' },
-  { tableName: 'ibs_cbs_tables', privileges: 'INSERT, UPDATE' },
-  { tableName: 'icms_rules', privileges: 'INSERT' },
-  { tableName: 'nfse_layouts', privileges: 'INSERT, UPDATE' }
-] as const;
+import {
+  DATABASE_RUNTIME_API_FUNCTIONS,
+  DATABASE_RUNTIME_INSTALLER_TABLE_GRANTS
+} from '@cvg-his-v2/security';
+
+export const API_GLOBAL_TABLE_MUTATIONS = DATABASE_RUNTIME_INSTALLER_TABLE_GRANTS;
 
 /**
  * Tables whose mutations are reserved for the installer capability role.
@@ -21,20 +13,9 @@ export const API_GLOBAL_TABLE_MUTATIONS = [
  * Keeping this list next to the API mutation contract lets reconciliation and
  * deployment ACLs close the same boundary after every broad grant.
  */
-export const RUNTIME_INSTALLER_MUTATIONS = [
-  { tableName: 'roles', privileges: 'INSERT' },
-  { tableName: 'permissions', privileges: 'INSERT' },
-  { tableName: 'role_permissions', privileges: 'INSERT, DELETE' },
-  { tableName: 'user_roles', privileges: 'INSERT, DELETE' },
-  { tableName: 'cfop_entries', privileges: 'INSERT, UPDATE' },
-  { tableName: 'icms_tables', privileges: 'INSERT, UPDATE' },
-  { tableName: 'ipi_tables', privileges: 'INSERT, UPDATE' },
-  { tableName: 'pis_tables', privileges: 'INSERT, UPDATE' },
-  { tableName: 'cofins_tables', privileges: 'INSERT, UPDATE' },
-  { tableName: 'ibs_cbs_tables', privileges: 'INSERT, UPDATE' },
-  { tableName: 'icms_rules', privileges: 'INSERT' },
-  { tableName: 'nfse_layouts', privileges: 'INSERT, UPDATE' }
-] as const;
+export const RUNTIME_INSTALLER_MUTATIONS = DATABASE_RUNTIME_INSTALLER_TABLE_GRANTS;
+
+export { DATABASE_RUNTIME_API_FUNCTIONS };
 
 /** Runtime roles may ingest and review provider rows, but never remove them. */
 export const RUNTIME_APPEND_ONLY_TABLES = ['laboratory_result_imports'] as const;

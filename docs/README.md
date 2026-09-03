@@ -1,10 +1,21 @@
 # CVG-HIS V4 - Documentacao ativa
 
-**Atualizado em:** 2026-08-24 (failpoint cross-domain e recuperação inpatient)
+**Atualizado em:** 2026-09-02 (reauditoria, plano executivo, roadmap e backlog)
 
 Esta pasta separa documentacao vigente, referencia do Vetus e historico. Uma afirmacao de funcionalidade so e considerada valida quando estiver sustentada por codigo executavel e teste comportamental.
 
 ## Comece aqui
+
+### Baseline executiva vigente
+
+1. [`2026-09-02-relatorio-reauditoria-cvg-his-v4.md`](2026-09-02-relatorio-reauditoria-cvg-his-v4.md) - reauditoria executável, notas por item e domínio, bloqueadores e decisão de uso.
+2. [`2026-09-02-plano-executivo-melhorias-cvg-his-v4.md`](2026-09-02-plano-executivo-melhorias-cvg-his-v4.md) - metas, frentes, gates, indicadores, responsabilidades e riscos.
+3. [`2026-09-02-roadmap-melhorias-cvg-his-v4.md`](2026-09-02-roadmap-melhorias-cvg-his-v4.md) - ondas R0-R4, dependências, critérios de saída e evolução esperada das notas.
+4. [`2026-09-02-backlog-priorizado-cvg-his-v4.md`](2026-09-02-backlog-priorizado-cvg-his-v4.md) - backlog P0/P1/P2, critérios de aceite e definições de Ready/Done.
+
+Esses quatro documentos substituem, para decisão executiva corrente, o relatório, o plano e o backlog de 7 de agosto. A documentação anterior permanece como histórico e evidência de evolução.
+
+### Evidências técnicas recentes
 
 1. [`2026-08-24-handoff-inpatient-bed-status-idempotency.md`](2026-08-24-handoff-inpatient-bed-status-idempotency.md) - assignment, transferência e status com replay/conflict cross-instance, failpoints PostgreSQL de timeline/leito/auditoria, callback clínico aguardado, restart/SIGKILL e liberação durável de leitos.
 2. [`2026-08-24-handoff-inpatient-clinical-notes-idempotency.md`](2026-08-24-handoff-inpatient-clinical-notes-idempotency.md) - handoff, evolução e ocorrência com replay/conflict cross-instance, recuperação de cache e timeline clínica persistida.
@@ -15,7 +26,6 @@ Esta pasta separa documentacao vigente, referencia do Vetus e historico. Uma afi
 5. [`2026-08-24-handoff-reports-workbench-inventory-export.md`](2026-08-24-handoff-reports-workbench-inventory-export.md) - exportação CSV bounded dos recortes de estoque já carregados no workbench Vetus.
 6. [`2026-08-24-handoff-reports-workbench-export.md`](2026-08-24-handoff-reports-workbench-export.md) - exportação CSV bounded do workbench Vetus para auditoria, financeiro e atendimento, com teste unitário, componente e E2E.
 7. [`2026-08-24-handoff-pix-runtime-role.md`](2026-08-24-handoff-pix-runtime-role.md) - settlement PIX sob role worker real, ACL/RLS, A/B, SIGKILL e fencing; não promove ERP, produção ou release.
-8. [`../.agent/artifacts/CVG-002C6-pix-runtime-role-2026-08-24.md`](../.agent/artifacts/CVG-002C6-pix-runtime-role-2026-08-24.md) - RED/GREEN da role runtime, migration 0124, crítica e limitações.
 9. [`2026-08-24-handoff-reports-run-once.md`](2026-08-24-handoff-reports-run-once.md) - execução one-shot de relatórios agendados, entrega controlada, recovery após SIGKILL e lease distribuído de retry no PostgreSQL.
 10. [`2026-08-24-handoff-webhook-storage-audit.md`](2026-08-24-handoff-webhook-storage-audit.md) - reconciliação do diagnóstico histórico com o executor webhook durável já implementado e seus limites honestos.
 11. [`2026-08-24-handoff-laboratory-bootstrap-concurrency.md`](2026-08-24-handoff-laboratory-bootstrap-concurrency.md) - dois PIDs reais, catálogo laboratorial idempotente, reparo parcial e isolamento A/B.
@@ -42,9 +52,10 @@ Esta pasta separa documentacao vigente, referencia do Vetus e historico. Uma afi
 31. [`430-fonte-de-verdade-documental.md`](430-fonte-de-verdade-documental.md) - regras de governança e precedência.
 32. [`vetus/README.md`](vetus/README.md) - acervo factual capturado do Vetus.
 
-Os handoffs de 24/08 e a Quality Bar global de 23/08 compõem a superfície
-operacional atual. Evidência posterior bounded atualiza a continuidade, mas não
-promove gates globais; os documentos históricos permanecem apenas para contexto.
+A baseline de 02/09 consolida a decisão executiva atual. Os handoffs de 24/08 e
+a Quality Bar global de 23/08 permanecem como evidências técnicas detalhadas;
+não promovem gates globais isoladamente. Os demais documentos históricos ficam
+disponíveis apenas para contexto e rastreabilidade.
 
 ## Documentacao vigente
 
@@ -85,7 +96,7 @@ Em divergencias, use esta ordem:
 
 1. comportamento reproduzido na aplicacao e testes sobre runtime real;
 2. codigo e contratos da API;
-3. programa ativo de 7 de agosto de 2026 e procedimentos posteriores explicitamente vigentes;
+3. baseline executiva de 2 de setembro de 2026 e procedimentos posteriores explicitamente vigentes;
 4. arquitetura e ADRs vigentes;
 5. auditorias de julho de 2026, como baseline anterior;
 6. acervo Vetus como referencia de produto;
