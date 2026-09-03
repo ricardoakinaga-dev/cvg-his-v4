@@ -185,7 +185,9 @@ describe('EncounterDetailPage', () => {
       .findAll('a')
       .filter((link) => link.text().includes('Continuar prontuário'));
     expect(clinicalRecordLinks.length).toBeGreaterThan(0);
-    expect(clinicalRecordLinks.some((link) => link.attributes('href') === '/medical-records/enc-1')).toBe(true);
+    expect(
+      clinicalRecordLinks.some((link) => link.attributes('href') === '/medical-records/enc-1')
+    ).toBe(true);
     expect(wrapper.findAll('a').some((link) => link.text().includes('Cobrança'))).toBe(true);
   });
 
@@ -325,12 +327,16 @@ describe('EncounterDetailPage', () => {
 
     await flushPromises();
 
-    const closeTab = wrapper.findAll('.workflow-tab').find((button) => button.text().includes('Fechamento'));
+    const closeTab = wrapper
+      .findAll('.workflow-tab')
+      .find((button) => button.text().includes('Fechamento'));
     await closeTab!.trigger('click');
     await wrapper.vm.$nextTick();
 
     expect(wrapper.text()).toContain('Pré-handoff para recepção');
-    expect(wrapper.text()).toContain('Este bloco orienta a conferência; não envia o caso automaticamente para a recepção.');
+    expect(wrapper.text()).toContain(
+      'Este bloco orienta a conferência; não envia o caso automaticamente para a recepção.'
+    );
     expect(wrapper.text()).toContain('Animal com febre e letargia');
     expect(wrapper.text()).toContain('Rex');
     expect(wrapper.text()).toContain('Joao Silva');
@@ -488,14 +494,19 @@ describe('EncounterDetailPage', () => {
     const wrapper = mount(EncounterDetailPage);
     await flushPromises();
 
-    const closeTab = wrapper.findAll('.workflow-tab').find((button) => button.text().includes('Fechamento'));
+    const closeTab = wrapper
+      .findAll('.workflow-tab')
+      .find((button) => button.text().includes('Fechamento'));
     await closeTab!.trigger('click');
-    const financialButton = wrapper.findAll('button').find((button) => button.text().includes('Fechar Financeiro'));
+    const financialButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('Fechar Financeiro'));
     await financialButton!.trigger('click');
     await wrapper.find('#financialNotes').setValue('Parcela única');
 
     expect(wrapper.find('#financialPaidAmount').exists()).toBe(false);
-    const confirm = wrapper.findAll('.ds-modal__footer .ds-btn')
+    const confirm = wrapper
+      .findAll('.ds-modal__footer .ds-btn')
       .find((button) => button.text().includes('Confirmar fechamento'));
     await confirm!.trigger('click');
     await flushPromises();
@@ -513,23 +524,41 @@ describe('EncounterDetailPage', () => {
       financialStatus: 'pending'
     };
     mockGetByIdFn.mockResolvedValue(closedEncounter);
-    mockGetSummaryFn.mockResolvedValue({
-      financial,
-      diagnostics: { totalOrders: 0, pendingOrders: 0, releasedResults: 0 }
-    });
+    mockGetSummaryFn
+      .mockResolvedValueOnce({
+        financial,
+        diagnostics: { totalOrders: 0, pendingOrders: 0, releasedResults: 0 }
+      })
+      .mockResolvedValue({
+        financial: {
+          ...financial,
+          paidAmount: 125.5,
+          balanceDue: 0,
+          financialStatus: 'paid'
+        },
+        diagnostics: { totalOrders: 0, pendingOrders: 0, releasedResults: 0 }
+      });
+    mockGetBillingByEncounterFn
+      .mockResolvedValueOnce({ status: 'open' })
+      .mockResolvedValue({ status: 'settled' });
     const EncounterDetailPage = (await import('../EncounterDetailPage.vue')).default;
     const wrapper = mount(EncounterDetailPage);
     await flushPromises();
 
-    const closeTab = wrapper.findAll('.workflow-tab').find((button) => button.text().includes('Fechamento'));
+    const closeTab = wrapper
+      .findAll('.workflow-tab')
+      .find((button) => button.text().includes('Fechamento'));
     await closeTab!.trigger('click');
-    const receiptButton = wrapper.findAll('button').find((button) => button.text().includes('Receber em dinheiro'));
+    const receiptButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('Receber em dinheiro'));
     await receiptButton!.trigger('click');
     await flushPromises();
 
     expect(mockGetCashDashboardFn).toHaveBeenCalledTimes(1);
     expect(wrapper.text()).toMatch(/R\$\s125,50/u);
-    const confirm = wrapper.findAll('.ds-modal__footer .ds-btn')
+    const confirm = wrapper
+      .findAll('.ds-modal__footer .ds-btn')
       .find((button) => button.text().includes('Confirmar recebimento'));
     await confirm!.trigger('click');
     await flushPromises();
@@ -539,6 +568,9 @@ describe('EncounterDetailPage', () => {
       { cashRegisterId: 'register-1', expectedAmount: 125.5, notes: undefined },
       expect.any(String)
     );
+    expect(mockGetSummaryFn).toHaveBeenCalledTimes(2);
+    expect(mockGetBillingByEncounterFn).toHaveBeenCalledTimes(2);
+    expect(wrapper.text()).toMatch(/R\$\s*0,00/u);
   });
 
   it('directs an estimated billing record to opening before offering cash receipt', async () => {
@@ -558,11 +590,14 @@ describe('EncounterDetailPage', () => {
     const wrapper = mount(EncounterDetailPage);
     await flushPromises();
 
-    await wrapper.findAll('.workflow-tab')
+    await wrapper
+      .findAll('.workflow-tab')
       .find((button) => button.text().includes('Fechamento'))!
       .trigger('click');
 
-    expect(wrapper.findAll('button').some((button) => button.text().includes('Receber em dinheiro'))).toBe(false);
+    expect(
+      wrapper.findAll('button').some((button) => button.text().includes('Receber em dinheiro'))
+    ).toBe(false);
     const openBilling = wrapper.findAll('a').find((link) => link.text().includes('Abrir cobrança'));
     expect(openBilling).toBeTruthy();
     expect(openBilling!.attributes('href')).toBe('/billing/enc-1');
@@ -588,15 +623,19 @@ describe('EncounterDetailPage', () => {
     const wrapper = mount(EncounterDetailPage);
     await flushPromises();
 
-    await wrapper.findAll('.workflow-tab')
+    await wrapper
+      .findAll('.workflow-tab')
       .find((button) => button.text().includes('Fechamento'))!
       .trigger('click');
-    await wrapper.findAll('button')
+    await wrapper
+      .findAll('button')
       .find((button) => button.text().includes('Receber em dinheiro'))!
       .trigger('click');
     await flushPromises();
-    const confirm = () => wrapper.findAll('.ds-modal__footer .ds-btn')
-      .find((button) => button.text().includes('Confirmar recebimento'))!;
+    const confirm = () =>
+      wrapper
+        .findAll('.ds-modal__footer .ds-btn')
+        .find((button) => button.text().includes('Confirmar recebimento'))!;
 
     await confirm().trigger('click');
     await flushPromises();

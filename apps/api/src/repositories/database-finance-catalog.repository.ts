@@ -12,6 +12,53 @@ import type {
   ExpenseCostCenterItem
 } from '../routes/expenses-catalog-store.js';
 
+export const FINANCE_OPERATIONAL_CATALOG_TYPES = [
+  'banks',
+  'payment-methods',
+  'card-machines',
+  'split-rules'
+] as const;
+
+export type FinanceOperationalCatalogType = (typeof FINANCE_OPERATIONAL_CATALOG_TYPES)[number];
+export type FinanceOperationalCatalogStatus = 'active' | 'inactive';
+
+export interface FinanceOperationalCatalogItem {
+  id: string;
+  accountId: string;
+  type: FinanceOperationalCatalogType;
+  code: string;
+  name: string;
+  status: FinanceOperationalCatalogStatus;
+  configuration: Record<string, unknown>;
+  version: number;
+  createdBy: string;
+  updatedBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FinanceOperationalCatalogPayload {
+  code: string;
+  name: string;
+  status: FinanceOperationalCatalogStatus;
+  configuration: Record<string, unknown>;
+}
+
+export interface FinanceOperationalCatalogFilters {
+  search?: string;
+  status?: FinanceOperationalCatalogStatus;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface FinanceOperationalCatalogPage {
+  items: FinanceOperationalCatalogItem[];
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+}
+
 export interface FinanceCatalogPersistence {
   list(
     accountId: string,
@@ -60,6 +107,30 @@ export interface FinanceCatalogPersistence {
     payload: CostCenterCatalogPayload
   ): Promise<{ item: ExpenseCostCenterItem; diffSummary: string }>;
   removeCostCenter(accountId: string, code: string): Promise<ExpenseCostCenterItem>;
+  listOperationalCatalog(
+    accountId: string,
+    type: FinanceOperationalCatalogType,
+    filters?: FinanceOperationalCatalogFilters
+  ): Promise<FinanceOperationalCatalogPage>;
+  createOperationalCatalog(
+    accountId: string,
+    actorId: string,
+    type: FinanceOperationalCatalogType,
+    payload: FinanceOperationalCatalogPayload
+  ): Promise<FinanceOperationalCatalogItem>;
+  updateOperationalCatalog(
+    accountId: string,
+    actorId: string,
+    type: FinanceOperationalCatalogType,
+    itemId: string,
+    expectedVersion: number,
+    payload: FinanceOperationalCatalogPayload
+  ): Promise<{ item: FinanceOperationalCatalogItem; diffSummary: string }>;
+  removeOperationalCatalog(
+    accountId: string,
+    type: FinanceOperationalCatalogType,
+    itemId: string
+  ): Promise<FinanceOperationalCatalogItem>;
   isValidCategory(category: string): boolean;
 }
 
@@ -128,6 +199,41 @@ function mapCostCenterRow(row: Record<string, unknown>): ExpenseCostCenterItem {
     owner: row.owner as string,
     description: row.description as string
   };
+}
+
+function mapOperationalCatalogRow(row: Record<string, unknown>): FinanceOperationalCatalogItem {
+  return {
+    id: row.id as string,
+    accountId: row.account_id as string,
+    type: row.catalog_type as FinanceOperationalCatalogType,
+    code: row.code as string,
+    name: row.name as string,
+    status: row.status as FinanceOperationalCatalogStatus,
+    configuration: (row.configuration_json ?? {}) as Record<string, unknown>,
+    version: Number(row.version),
+    createdBy: row.created_by_user_id as string,
+    updatedBy: row.updated_by_user_id as string,
+    createdAt: new Date(row.created_at as string).toISOString(),
+    updatedAt: new Date(row.updated_at as string).toISOString()
+  };
+}
+
+function summarizeOperationalCatalogDiff(
+  previous: FinanceOperationalCatalogItem,
+  current: FinanceOperationalCatalogItem
+): string {
+  const changed = ['code', 'name', 'status'].filter(
+    (field) =>
+      previous[field as 'code' | 'name' | 'status'] !== current[field as 'code' | 'name' | 'status']
+  );
+  if (JSON.stringify(previous.configuration) !== JSON.stringify(current.configuration)) {
+    changed.push('configuration');
+  }
+  return changed.length > 0 ? `changed=${changed.join(',')}` : 'no material field changes detected';
+}
+
+function isUniqueViolation(error: unknown): boolean {
+  return Boolean(error && typeof error === 'object' && 'code' in error && error.code === '23505');
 }
 
 function summarizeExpenseDiff(previous: ExpenseCatalogItem, current: ExpenseCatalogItem): string {
@@ -447,6 +553,159 @@ export class DatabaseFinanceCatalogRepository implements FinanceCatalogPersisten
       );
       if (!result.rows[0]) throw new Error('NOT_FOUND');
       return mapCostCenterRow(result.rows[0] as Record<string, unknown>);
+    });
+  }
+
+  async listOperationalCatalog(
+    accountId: string,
+    type: FinanceOperationalCatalogType,
+    filters: FinanceOperationalCatalogFilters = {}
+  ): Promise<FinanceOperationalCatalogPage> {
+    const page = normalizePage(filters.page);
+    const pageSize = normalizePageSize(filters.pageSize);
+    const params: unknown[] = [accountId, type];
+    const clauses = ['account_id = $1', 'catalog_type = $2'];
+    const search = normalizeSearch(filters.search);
+    if (search) {
+      params.push(`%${search}%`);
+      clauses.push(`(code ILIKE $${params.length} OR name ILIKE $${params.length})`);
+    }
+    if (filters.status) {
+      params.push(filters.status);
+      clauses.push(`status = $${params.length}`);
+    }
+
+    return withTenantQueryExplicit(getPool(), accountId, async (client) => {
+      const whereClause = clauses.join(' AND ');
+      const count = await client.query(
+        `SELECT COUNT(*)::int AS total
+         FROM finance_operational_catalog_items
+         WHERE ${whereClause}`,
+        params
+      );
+      const totalItems = Number(count.rows[0]?.total ?? 0);
+      const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+      const currentPage = Math.min(page, totalPages);
+      const rows = await client.query(
+        `SELECT id, account_id, catalog_type, code, name, status, configuration_json,
+                version, created_by_user_id, updated_by_user_id, created_at, updated_at
+         FROM finance_operational_catalog_items
+         WHERE ${whereClause}
+         ORDER BY name ASC, id ASC
+         LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+        [...params, pageSize, (currentPage - 1) * pageSize]
+      );
+      return {
+        items: rows.rows.map((row) => mapOperationalCatalogRow(row as Record<string, unknown>)),
+        page: currentPage,
+        pageSize,
+        totalItems,
+        totalPages
+      };
+    });
+  }
+
+  async createOperationalCatalog(
+    accountId: string,
+    actorId: string,
+    type: FinanceOperationalCatalogType,
+    payload: FinanceOperationalCatalogPayload
+  ): Promise<FinanceOperationalCatalogItem> {
+    try {
+      return await withTenantQueryExplicit(getPool(), accountId, async (client) => {
+        const result = await client.query(
+          `INSERT INTO finance_operational_catalog_items (
+             account_id, catalog_type, code, name, status, configuration_json,
+             created_by_user_id, updated_by_user_id
+           ) VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $7)
+           RETURNING id, account_id, catalog_type, code, name, status, configuration_json,
+                     version, created_by_user_id, updated_by_user_id, created_at, updated_at`,
+          [
+            accountId,
+            type,
+            payload.code,
+            payload.name,
+            payload.status,
+            JSON.stringify(payload.configuration),
+            actorId
+          ]
+        );
+        return mapOperationalCatalogRow(result.rows[0] as Record<string, unknown>);
+      });
+    } catch (error) {
+      if (isUniqueViolation(error)) throw new Error('DUPLICATE_CATALOG_CODE');
+      throw error;
+    }
+  }
+
+  async updateOperationalCatalog(
+    accountId: string,
+    actorId: string,
+    type: FinanceOperationalCatalogType,
+    itemId: string,
+    expectedVersion: number,
+    payload: FinanceOperationalCatalogPayload
+  ): Promise<{ item: FinanceOperationalCatalogItem; diffSummary: string }> {
+    try {
+      return await withTenantQueryExplicit(getPool(), accountId, async (client) => {
+        const existing = await client.query(
+          `SELECT id, account_id, catalog_type, code, name, status, configuration_json,
+                  version, created_by_user_id, updated_by_user_id, created_at, updated_at
+           FROM finance_operational_catalog_items
+           WHERE account_id = $1 AND catalog_type = $2 AND id = $3`,
+          [accountId, type, itemId]
+        );
+        if (!existing.rows[0]) throw new Error('NOT_FOUND');
+        const previous = mapOperationalCatalogRow(existing.rows[0] as Record<string, unknown>);
+        const result = await client.query(
+          `UPDATE finance_operational_catalog_items
+           SET code = $5,
+               name = $6,
+               status = $7,
+               configuration_json = $8::jsonb,
+               version = version + 1,
+               updated_by_user_id = $9,
+               updated_at = clock_timestamp()
+           WHERE account_id = $1 AND catalog_type = $2 AND id = $3 AND version = $4
+           RETURNING id, account_id, catalog_type, code, name, status, configuration_json,
+                     version, created_by_user_id, updated_by_user_id, created_at, updated_at`,
+          [
+            accountId,
+            type,
+            itemId,
+            expectedVersion,
+            payload.code,
+            payload.name,
+            payload.status,
+            JSON.stringify(payload.configuration),
+            actorId
+          ]
+        );
+        if (!result.rows[0]) throw new Error('VERSION_CONFLICT');
+        const item = mapOperationalCatalogRow(result.rows[0] as Record<string, unknown>);
+        return { item, diffSummary: summarizeOperationalCatalogDiff(previous, item) };
+      });
+    } catch (error) {
+      if (isUniqueViolation(error)) throw new Error('DUPLICATE_CATALOG_CODE');
+      throw error;
+    }
+  }
+
+  async removeOperationalCatalog(
+    accountId: string,
+    type: FinanceOperationalCatalogType,
+    itemId: string
+  ): Promise<FinanceOperationalCatalogItem> {
+    return withTenantQueryExplicit(getPool(), accountId, async (client) => {
+      const result = await client.query(
+        `DELETE FROM finance_operational_catalog_items
+         WHERE account_id = $1 AND catalog_type = $2 AND id = $3
+         RETURNING id, account_id, catalog_type, code, name, status, configuration_json,
+                   version, created_by_user_id, updated_by_user_id, created_at, updated_at`,
+        [accountId, type, itemId]
+      );
+      if (!result.rows[0]) throw new Error('NOT_FOUND');
+      return mapOperationalCatalogRow(result.rows[0] as Record<string, unknown>);
     });
   }
 }

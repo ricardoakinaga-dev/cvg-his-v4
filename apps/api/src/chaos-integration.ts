@@ -15,6 +15,7 @@ import {
   networkLatencyExperiment,
   workerFailureExperiment,
   apiLatencyExperiment,
+  providerFailureExperiment,
   chaosContext,
   type Experiment
 } from '@cvg-his-v2/chaos';
@@ -46,7 +47,8 @@ export function initializeChaos(options: ChaosIntegrationOptions = {}): ChaosEng
       redisFailureExperiment,
       networkLatencyExperiment,
       workerFailureExperiment,
-      apiLatencyExperiment
+      apiLatencyExperiment,
+      providerFailureExperiment
     ];
 
     for (const experiment of experiments) {

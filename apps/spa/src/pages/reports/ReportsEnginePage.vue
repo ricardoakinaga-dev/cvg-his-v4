@@ -414,13 +414,13 @@ import AppPageHeader from '@/components/AppPageHeader.vue';
 import DataTable from '@/components/DataTable.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
 import type { DataTableColumn, DataTableRow } from '@/components/DataTable.vue';
+import { saveBrowserDownload, withDownloadTimeout } from '@/services/download';
 import {
   reportsService,
   type ReportColumnType,
   type ReportDefinition,
   type ReportExecutionDetail,
   type ReportExecutionSummary,
-  type ReportExportSummary,
   type ReportFormat,
   type ReportScheduleDeliveryAlertSummary,
   type ReportScheduleDeliverySummary,
@@ -751,31 +751,16 @@ async function exportReport(format: ReportFormat): Promise<void> {
   success.value = '';
 
   try {
-    const exported = await reportsService.exportExecution(selectedExecution.value.id, format);
-    downloadReportExport(exported);
+    const exported = await withDownloadTimeout(() =>
+      reportsService.exportExecution(selectedExecution.value!.id, format)
+    );
+    saveBrowserDownload(exported);
     success.value = `Exportação gerada: ${exported.filename}.`;
   } catch (err) {
     error.value = errorMessage(err, 'Não foi possível exportar a execução.');
   } finally {
     exporting.value = '';
   }
-}
-
-function downloadReportExport(exported: ReportExportSummary): void {
-  const content =
-    exported.contentEncoding === 'base64'
-      ? Uint8Array.from(atob(exported.content), (character) => character.charCodeAt(0))
-      : exported.content;
-  const blob = new Blob([content], { type: exported.contentType });
-  const href = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = href;
-  anchor.download = exported.filename;
-  anchor.rel = 'noopener';
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  window.setTimeout(() => URL.revokeObjectURL(href), 0);
 }
 
 async function createSchedule(): Promise<void> {
@@ -1024,7 +1009,9 @@ function errorMessage(err: unknown, fallback: string): string {
 <style scoped>
 .reports-engine-page {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
+  min-width: 0;
 }
 
 .reports-engine-page__kpis {
@@ -1085,7 +1072,7 @@ function errorMessage(err: unknown, fallback: string): string {
 
 .reports-engine-page__split {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
   gap: 12px;
 }
 

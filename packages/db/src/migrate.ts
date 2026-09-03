@@ -7,6 +7,7 @@ import type { PoolClient } from 'pg';
 import { closeDbConnection, pool } from './connection.js';
 import { assertMigrationChecksums, type AppliedMigration } from './migration-integrity.js';
 import { APPLIED_MIGRATIONS_QUERY, MIGRATIONS_TABLE } from './migration-query.js';
+import { selectMigrationsThrough } from './migration-target.js';
 
 export { assertMigrationChecksums } from './migration-integrity.js';
 export type { AppliedMigration } from './migration-integrity.js';
@@ -205,7 +206,11 @@ async function applyMigration(client: PoolClient, file: MigrationFile): Promise<
   }
 }
 
-export async function runMigrations(): Promise<void> {
+export interface RunMigrationsOptions {
+  readonly targetMigration?: string;
+}
+
+export async function runMigrations(options: RunMigrationsOptions = {}): Promise<void> {
   const client = await pool.connect();
   try {
     await client.query("SELECT pg_advisory_lock(hashtext('cvg-his-v2:migrations'))");
@@ -213,8 +218,12 @@ export async function runMigrations(): Promise<void> {
     const files = getMigrationFiles();
     const appliedRecords = await getAppliedMigrations(client);
     const appliedMigrations = assertMigrationChecksums(files, appliedRecords);
+    const selectedFiles = selectMigrationsThrough(
+      files,
+      options.targetMigration ?? process.env.MIGRATION_TARGET
+    );
 
-    for (const file of files) {
+    for (const file of selectedFiles) {
       if (appliedMigrations.has(file.name)) {
         console.info(`Skipping already applied migration ${file.name}.`);
         continue;
@@ -232,7 +241,7 @@ export async function runMigrations(): Promise<void> {
 }
 
 if (import.meta.url === new URL(process.argv[1], 'file://').href) {
-  void runMigrations().catch((error) => {
+  void runMigrations({ targetMigration: process.env.MIGRATION_TARGET }).catch((error) => {
     console.error('Failed to run migrations.', error);
     process.exitCode = 1;
   });

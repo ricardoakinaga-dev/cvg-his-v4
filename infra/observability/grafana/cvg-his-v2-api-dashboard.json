@@ -704,6 +704,37 @@
       ],
       "title": "PIX Settlement DLQ (current)",
       "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 18, "x": 0, "y": 34 },
+      "id": 12,
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "sum(rate(http_operational_outcomes_total{route=~\"$route\",role=~\"$role\",result=~\"$result\"}[5m])) by (route, role, operation, result)",
+          "legendFormat": "{{operation}} {{result}} · {{role}} · {{route}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Erros de rota, 403 e downloads",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 34 },
+      "id": 13,
+      "options": {
+        "content": "### Correlação\nOs eventos em `http_operational_outcomes_total` escrevem um log estruturado `http operational outcome` com `correlationId`, `route`, `role`, `operation`, `result`, status e duração. Use **$correlation_id** na busca de logs/traces para abrir a requisição exata.",
+        "mode": "markdown"
+      },
+      "title": "Busca por correlation ID",
+      "type": "text"
     }
   ],
   "refresh": "30s",
@@ -730,6 +761,56 @@
         "regex": "",
         "skipUrlSync": false,
         "type": "datasource"
+      },
+      {
+        "allValue": ".*",
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "includeAll": true,
+        "label": "Rota/endpoint",
+        "multi": true,
+        "name": "route",
+        "query": {
+          "query": "label_values(http_operational_outcomes_total, route)",
+          "refId": "route"
+        },
+        "refresh": 1,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "includeAll": true,
+        "label": "Papel",
+        "multi": true,
+        "name": "role",
+        "query": {
+          "query": "label_values(http_operational_outcomes_total, role)",
+          "refId": "role"
+        },
+        "refresh": 1,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "includeAll": true,
+        "label": "Resultado",
+        "multi": true,
+        "name": "result",
+        "query": {
+          "query": "label_values(http_operational_outcomes_total, result)",
+          "refId": "result"
+        },
+        "refresh": 1,
+        "type": "query"
+      },
+      {
+        "current": { "selected": true, "text": "", "value": "" },
+        "label": "Correlation ID",
+        "name": "correlation_id",
+        "options": [{ "selected": true, "text": "", "value": "" }],
+        "query": "",
+        "type": "textbox"
       }
     ]
   },

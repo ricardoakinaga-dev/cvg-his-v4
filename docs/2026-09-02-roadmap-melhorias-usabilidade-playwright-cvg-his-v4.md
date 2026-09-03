@@ -1,5 +1,7 @@
 # Roadmap de melhorias de usabilidade Playwright — CVG-HIS V4
 
+> Atualização de execução: a implementação e as pendências de certificação estão consolidadas no [relatório de implementação](./2026-09-02-implementacao-usabilidade-playwright-cvg-his-v4.md).
+
 Data-base: 2 de setembro de 2026  
 Horizonte indicativo: 12 semanas, em seis sprints de duas semanas  
 Fonte: [Relatório master](./2026-09-02-relatorio-master-usabilidade-playwright-cvg-his-v4.md)  

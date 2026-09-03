@@ -1,5 +1,5 @@
 /**
- * k6 API Benchmark Suite — CVG-HIS-V2
+ * k6 API Benchmark Suite — CVG-HIS V4
  *
  * Load testing for CVG-HIS-V2 API.
  * Covers critical endpoints with SLO thresholds.
@@ -21,17 +21,12 @@ import http from 'k6/http';
 import { check, sleep, group } from 'k6';
 import { Rate, Trend } from 'k6/metrics';
 
-const OPERATIONAL_MINIMUM_PROFILE = {
-  id: 'operational-minimum-v1',
-  description: 'Perfil minimo para validar latencia e erro em carga sustentada antes de promover staging.',
-  stages: [
-    { duration: '30s', target: 5 },    // Ramp up (light)
-    { duration: '1m', target: 30 },     // Steady load
-    { duration: '30s', target: 60 },    // Stress
-    { duration: '30s', target: 30 },    // Ramp down
-    { duration: '1m', target: 5 },      // Cool down
-  ],
-};
+const SLO_CATALOG = JSON.parse(open('./slos.json'));
+const LOAD_PROFILE_ID = __ENV.LOAD_PROFILE ?? 'operational-minimum-v1';
+const LOAD_PROFILE = SLO_CATALOG.loadProfiles.find((profile) => profile.id === LOAD_PROFILE_ID);
+if (!LOAD_PROFILE) {
+  throw new Error(`Unknown LOAD_PROFILE: ${LOAD_PROFILE_ID}`);
+}
 
 // Custom metrics
 const apiLatency = new Trend('api_latency_ms');
@@ -47,16 +42,15 @@ const BASE_URL = __ENV.TARGET ?? 'http://localhost:3001';
 const FALLBACK_ACCOUNT_ID = __ENV.ACCOUNT_ID ?? 'acc_cvg_demo';
 
 // Test credentials — seed users from UsersService
-const TEST_USERS = [
-  { username: 'admin', password: 'seed_admin', role: 'admin' },
-  { username: 'vet', password: 'seed_vet', role: 'veterinarian' },
-  { username: 'finance', password: 'seed_finance', role: 'finance' },
-  { username: 'inventory', password: 'seed_inventory', role: 'inventory' },
-];
+const TEST_USER = {
+  username: __ENV.TEST_USERNAME ?? 'admin@cvg-his.local',
+  password: __ENV.TEST_PASSWORD ?? 'seed_admin',
+  role: 'admin',
+};
 
 // SLO thresholds from slos.json
 export const options = {
-  stages: OPERATIONAL_MINIMUM_PROFILE.stages,
+  stages: LOAD_PROFILE.stages,
   summaryTrendStats: ['avg', 'min', 'med', 'max', 'p(50)', 'p(90)', 'p(95)', 'p(99)'],
   thresholds: {
     'api_latency_ms':    ['p(95)<200', 'p(99)<500'],
@@ -70,10 +64,10 @@ export const options = {
 };
 
 let authToken = '';
-let testUser = TEST_USERS[0];
+let testUser = TEST_USER;
 
 export function setup() {
-  testUser = TEST_USERS[0]; // admin user for benchmark
+  testUser = TEST_USER;
   const loginRes = http.post(`${BASE_URL}/auth/login`, JSON.stringify({
     username: testUser.username,
     password: testUser.password
@@ -88,7 +82,7 @@ export function setup() {
     return { token: authToken, testUser, accountId };
   }
 
-  return { token: authToken, testUser, accountId: FALLBACK_ACCOUNT_ID };
+  throw new Error(`Benchmark login failed closed with HTTP ${loginRes.status}`);
 }
 
 // ========== SCENARIOS ==========
@@ -346,7 +340,7 @@ export function handleSummary(data) {
       timestamp: new Date().toISOString(),
       version: '1.0',
       baseUrl: BASE_URL,
-      profile: OPERATIONAL_MINIMUM_PROFILE,
+      profile: LOAD_PROFILE,
       stages: options.stages,
       metrics: extractMetrics(data),
       slo: sloResults,

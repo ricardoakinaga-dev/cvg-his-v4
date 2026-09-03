@@ -1,0 +1,169 @@
+name: Ephemeral Game Day
+
+on:
+  schedule:
+    - cron: '0 13 1 */3 *'
+  workflow_dispatch:
+    inputs:
+      release_sha:
+        description: Optional full commit SHA from main; defaults to the triggering SHA
+        required: false
+        type: string
+      safety_confirmation:
+        description: Type EPHEMERAL-TEST-ONLY
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ephemeral-game-day-${{ inputs.release_sha || github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  exercise:
+    name: API, worker, Redis and database fault recovery
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: cvg_his_v2_game_day
+        ports:
+          - 5433:5432
+        options: >-
+          --shm-size 1g
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6380:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Resolve and validate requested SHA
+        id: candidate
+        env:
+          INPUT_SHA: ${{ inputs.release_sha }}
+          FALLBACK_SHA: ${{ github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+          SAFETY_CONFIRMATION: ${{ inputs.safety_confirmation }}
+        run: |
+          set -euo pipefail
+          requested_sha="${INPUT_SHA:-${FALLBACK_SHA}}"
+          printf '%s' "${requested_sha}" | grep -Eq '^[0-9a-f]{40}$'
+          if [ "${EVENT_NAME}" = "workflow_dispatch" ]; then
+            test "${SAFETY_CONFIRMATION}" = "EPHEMERAL-TEST-ONLY"
+          fi
+          echo "release_sha=${requested_sha}" >> "${GITHUB_OUTPUT}"
+
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.candidate.outputs.release_sha }}
+          fetch-depth: 0
+
+      - name: Ensure candidate belongs to main
+        env:
+          REQUESTED_SHA: ${{ steps.candidate.outputs.release_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${REQUESTED_SHA}"
+          git fetch origin main --depth=1
+          git merge-base --is-ancestor "${REQUESTED_SHA}" origin/main
+          test -z "$(git status --porcelain)"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
+
+      - name: Install, build, migrate and seed
+        env:
+          TEST_DB_USER: postgres
+          TEST_DB_PASSWORD: postgres
+          TEST_DB_HOST: 127.0.0.1
+          TEST_DB_PORT: '5433'
+          TEST_DB_NAME: cvg_his_v2_game_day
+          ADMIN_EMAIL: admin@game-day.invalid
+          ADMIN_USERNAME: admin
+          ADMIN_PASSWORD: ephemeral_game_day_admin
+        run: |
+          set -euo pipefail
+          export DATABASE_URL="postgres://${TEST_DB_USER}:${TEST_DB_PASSWORD}@${TEST_DB_HOST}:${TEST_DB_PORT}/${TEST_DB_NAME}"
+          pnpm install --frozen-lockfile
+          pnpm --filter @cvg-his-v2/api... run build
+          pnpm exec tsx packages/db/src/migrate.ts
+          pnpm exec tsx packages/db/src/seed.ts
+
+      - name: Start ephemeral API
+        env:
+          TEST_DB_USER: postgres
+          TEST_DB_PASSWORD: postgres
+          TEST_DB_HOST: 127.0.0.1
+          TEST_DB_PORT: '5433'
+          TEST_DB_NAME: cvg_his_v2_game_day
+          REDIS_URL: redis://127.0.0.1:6380
+          RUNTIME_DISTRIBUTED_STATE_ENABLED: '1'
+          API_DISABLE_INCOMPATIBLE_DB_REPOS: '0'
+          AUTH_SECRET: ephemeral-game-day-auth-secret-01234567890123456789
+          NODE_ENV: test
+          PORT: '3111'
+          HOST: 127.0.0.1
+        run: |
+          set -euo pipefail
+          export DATABASE_URL="postgres://${TEST_DB_USER}:${TEST_DB_PASSWORD}@${TEST_DB_HOST}:${TEST_DB_PORT}/${TEST_DB_NAME}"
+          node apps/api/dist/index.js > artifacts-game-day-api.log 2>&1 &
+          echo "API_PID=$!" >> "${GITHUB_ENV}"
+          for attempt in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:3111/ready >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat artifacts-game-day-api.log
+          exit 1
+
+      - name: Execute and verify all recovery experiments
+        env:
+          GAME_DAY_API_URL: http://127.0.0.1:3111
+          GAME_DAY_ADMIN_USERNAME: admin
+          GAME_DAY_ADMIN_PASSWORD: ephemeral_game_day_admin
+          GAME_DAY_CONFIRMATION: EPHEMERAL-TEST-ONLY
+          GAME_DAY_RELEASE_SHA: ${{ steps.candidate.outputs.release_sha }}
+          GAME_DAY_OUTPUT_DIR: artifacts/game-day
+        run: pnpm ops:game-day:ephemeral
+
+      - name: Stop API
+        if: always()
+        run: |
+          if [ -n "${API_PID:-}" ]; then
+            kill -TERM "${API_PID}" 2>/dev/null || true
+          fi
+
+      - name: Upload game-day evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: game-day-${{ steps.candidate.outputs.release_sha }}
+          path: |
+            artifacts/game-day/
+            artifacts-game-day-api.log
+          if-no-files-found: error
+          retention-days: 90

@@ -231,7 +231,7 @@ describe('DiagnosticsPage', () => {
       expect.objectContaining({
         encounterId: 'enc-1',
         patientId: 'pat-1',
-        examCatalogId: 'cat_001'
+        examType: 'Hemograma'
       })
     );
     expect(mockDiagnosticsCreate).toHaveBeenCalledWith(

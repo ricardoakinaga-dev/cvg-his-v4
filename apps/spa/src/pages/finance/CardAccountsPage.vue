@@ -7,7 +7,10 @@
       :secondary-actions="headerSecondaryActions"
     />
 
-    <section class="card-accounts-summary-grid" aria-label="Resumo de contas administradas de cartão">
+    <section
+      class="card-accounts-summary-grid"
+      aria-label="Resumo de contas administradas de cartão"
+    >
       <DsStatCard :label="`${filteredRows.length} conta(s)`" value="Total" />
       <DsStatCard :label="formatCurrency(totalGross)" value="Valor" />
       <DsStatCard :label="formatCurrency(totalFees)" value="Taxas" />
@@ -21,11 +24,17 @@
     <section class="card-accounts-actions" aria-label="Ações de contas administradas de cartão">
       <DsButton variant="primary" disabled>Gerar Conta Avulsa</DsButton>
       <DsButton variant="secondary" :disabled="selectedIds.size === 0">Conciliar Em Lote</DsButton>
-      <DsButton variant="secondary" tag="a" to="/finance/card-transactions">Transações de Cartão</DsButton>
+      <DsButton variant="secondary" tag="a" to="/finance/card-transactions"
+        >Transações de Cartão</DsButton
+      >
       <DsButton variant="ghost" :loading="loading" @click="loadCardAccounts">Atualizar</DsButton>
     </section>
 
-    <form class="card-accounts-filters" aria-label="Filtros de contas administradas de cartão" @submit.prevent="loadCardAccounts">
+    <form
+      class="card-accounts-filters"
+      aria-label="Filtros de contas administradas de cartão"
+      @submit.prevent="loadCardAccounts"
+    >
       <DsInput
         id="card-account-search"
         v-model="filters.search"
@@ -33,7 +42,12 @@
         type="search"
         placeholder="Buscar por cliente, autorização, bandeira ou provedor"
       />
-      <DsInput id="card-account-date-from" v-model="filters.dateFrom" label="Data inicial" type="date" />
+      <DsInput
+        id="card-account-date-from"
+        v-model="filters.dateFrom"
+        label="Data inicial"
+        type="date"
+      />
       <DsInput id="card-account-date-to" v-model="filters.dateTo" label="Data final" type="date" />
       <DsInput id="card-account-provider" v-model="filters.provider" label="Provedor" type="select">
         <option value="">Todos</option>
@@ -49,7 +63,12 @@
         <option value="failed">Falhou</option>
         <option value="voided">Cancelada</option>
       </DsInput>
-      <DsInput id="card-account-reconciliation" v-model="filters.reconciliationState" label="Conciliação" type="select">
+      <DsInput
+        id="card-account-reconciliation"
+        v-model="filters.reconciliationState"
+        label="Conciliação"
+        type="select"
+      >
         <option value="">Todas</option>
         <option value="pending">Pendente</option>
         <option value="attention_required">Exige atenção</option>
@@ -90,9 +109,7 @@
       <template #cell-date="{ row }">
         {{ formatDate(cardAccountRow(row).date) }}
       </template>
-      <template #cell-installments="{ row }">
-        {{ cardAccountRow(row).installments }}x
-      </template>
+      <template #cell-installments="{ row }"> {{ cardAccountRow(row).installments }}x </template>
       <template #cell-type="{ row }">
         <span class="provider-cell">{{ cardAccountRow(row).type }}</span>
         <small>{{ cardAccountRow(row).reference }}</small>
@@ -143,7 +160,14 @@ import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
 
-type CardStatus = '' | 'pending' | 'authorized_pending_capture' | 'captured' | 'not_authorized' | 'failed' | 'voided';
+type CardStatus =
+  | ''
+  | 'pending'
+  | 'authorized_pending_capture'
+  | 'captured'
+  | 'not_authorized'
+  | 'failed'
+  | 'voided';
 type ReconciliationState = '' | 'pending' | 'attention_required' | 'reconciled';
 
 interface CardAccountRow {
@@ -192,15 +216,25 @@ const rows = computed(() => cards.value.map(toCardAccountRow) as unknown as Data
 const filteredRows = computed(() =>
   rows.value.filter((row) => {
     const account = cardAccountRow(row);
-    if (filters.reconciliationState && account.reconciliationState !== filters.reconciliationState) return false;
+    if (filters.reconciliationState && account.reconciliationState !== filters.reconciliationState)
+      return false;
     return matchesDateFilters(account);
   })
 );
-const totalGross = computed(() => filteredRows.value.reduce((sum, row) => sum + cardAccountRow(row).gross, 0));
-const totalFees = computed(() => filteredRows.value.reduce((sum, row) => sum + cardAccountRow(row).fee, 0));
-const totalNet = computed(() => filteredRows.value.reduce((sum, row) => sum + cardAccountRow(row).net, 0));
+const totalGross = computed(() =>
+  filteredRows.value.reduce((sum, row) => sum + cardAccountRow(row).gross, 0)
+);
+const totalFees = computed(() =>
+  filteredRows.value.reduce((sum, row) => sum + cardAccountRow(row).fee, 0)
+);
+const totalNet = computed(() =>
+  filteredRows.value.reduce((sum, row) => sum + cardAccountRow(row).net, 0)
+);
 const attentionCount = computed(
-  () => filteredRows.value.filter((row) => cardAccountRow(row).reconciliationState === 'attention_required').length
+  () =>
+    filteredRows.value.filter(
+      (row) => cardAccountRow(row).reconciliationState === 'attention_required'
+    ).length
 );
 const headerSecondaryActions = computed(() => [
   {
@@ -227,9 +261,14 @@ async function loadCardAccounts() {
       page: 1,
       pageSize: 100
     });
-    selectedIds.value = new Set([...selectedIds.value].filter((id) => cards.value.some((card) => card.transactionId === id)));
+    selectedIds.value = new Set(
+      [...selectedIds.value].filter((id) => cards.value.some((card) => card.transactionId === id))
+    );
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Não foi possível carregar contas administradas de cartão.';
+    error.value =
+      err instanceof Error
+        ? err.message
+        : 'Não foi possível carregar contas administradas de cartão.';
     cards.value = [];
   } finally {
     loading.value = false;
@@ -271,11 +310,17 @@ function toCardAccountRow(card: FinanceCardRow): CardAccountRow {
   return {
     id: card.transactionId,
     client: card.ownerName || card.cardHolderName || 'Cliente não informado',
-    patient: card.patientName ? `Paciente: ${card.patientName}` : card.description || 'Sem paciente vinculado',
+    patient: card.patientName
+      ? `Paciente: ${card.patientName}`
+      : card.description || 'Sem paciente vinculado',
     date: card.capturedAt || card.createdAt || null,
     installments: card.installments || 1,
     type: providerLabel(card.provider),
-    reference: card.providerAuthorizationCode || card.providerChargeId || card.cardBrand || card.transactionId,
+    reference:
+      card.providerAuthorizationCode ||
+      card.providerChargeId ||
+      card.cardBrand ||
+      card.transactionId,
     gross,
     net,
     fee,
@@ -395,7 +440,7 @@ function cardAccountRow(row: unknown): CardAccountRow {
   text-decoration: underline;
 }
 
-@media (max-width: 1180px) {
+@media (max-width: 1500px) {
   .card-accounts-filters {
     grid-template-columns: 1fr 1fr;
   }

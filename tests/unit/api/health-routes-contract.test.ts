@@ -4,6 +4,7 @@ vi.mock('@cvg-his-v2/chaos', () => ({
   API_LATENCY_ID: 'api-latency',
   DATABASE_FAILURE_ID: 'database-failure',
   NETWORK_LATENCY_ID: 'network-latency',
+  PROVIDER_FAILURE_ID: 'provider-failure',
   REDIS_FAILURE_ID: 'redis-failure',
   WORKER_FAILURE_ID: 'worker-failure',
   ChaosEngine: {

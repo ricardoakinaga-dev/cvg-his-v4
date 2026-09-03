@@ -167,23 +167,17 @@
             placeholder="Informe achados, interpretação ou referência do laudo liberado"
           />
         </label>
-        <label class="filter-field" for="result-signer">
-          <span>Responsável técnico *</span>
-          <input
-            id="result-signer"
-            v-model="resultSignerId"
-            type="text"
-            autocomplete="off"
-            placeholder="Usuário ou conselho do assinante"
-          />
-        </label>
+        <p class="filter-field">
+          <span>Responsável técnico</span>
+          <strong>Profissional autenticado (assinatura automática)</strong>
+        </p>
       </div>
       <template #footer>
         <DsButton variant="ghost" @click="closeResultModal">Cancelar</DsButton>
         <DsButton
           variant="primary"
           :loading="resultSubmitting"
-          :disabled="!resultSummary.trim() || !resultSignerId.trim() || resultSubmitting"
+          :disabled="!resultSummary.trim() || resultSubmitting"
           @click="submitResult"
         >
           {{ resultSubmitting ? 'Salvando...' : resultOrder?.status === 'in_analysis' ? 'Reportar resultado' : 'Liberar resultado' }}
@@ -254,7 +248,6 @@ const analysisId = ref<string | null>(null);
 const deliveringId = ref<string | null>(null);
 const resultOrder = ref<LaboratoryOrderRow | null>(null);
 const resultSummary = ref('');
-const resultSignerId = ref('lab-ui');
 const resultSubmitting = ref(false);
 const draftFilters = reactive({
   client: '',
@@ -410,7 +403,7 @@ function replaceOrder(updated: DiagnosticOrderSummary | LaboratoryWorkflowOrder)
 
 type CanonicalLaboratoryTransitionPayload =
   | { status: 'in_analysis' }
-  | { status: 'reported'; resultSummary: string; signedByUserId: string }
+  | { status: 'reported'; resultSummary: string }
   | { status: 'delivered'; deliveryChannel: string };
 
 async function requestCanonicalTransition(
@@ -464,7 +457,6 @@ async function startAnalysis(order: LaboratoryOrderRow) {
 function openResultModal(order: LaboratoryOrderRow) {
   resultOrder.value = order;
   resultSummary.value = order.resultSummary ?? '';
-  resultSignerId.value = order.signedByUserId ?? 'lab-ui';
   error.value = '';
   successMessage.value = '';
 }
@@ -472,11 +464,10 @@ function openResultModal(order: LaboratoryOrderRow) {
 function closeResultModal() {
   resultOrder.value = null;
   resultSummary.value = '';
-  resultSignerId.value = 'lab-ui';
 }
 
 async function submitResult() {
-  if (!resultOrder.value || !resultSummary.value.trim() || !resultSignerId.value.trim()) return;
+  if (!resultOrder.value || !resultSummary.value.trim()) return;
 
   resultSubmitting.value = true;
   error.value = '';
@@ -486,13 +477,11 @@ async function submitResult() {
     const updated = resultOrder.value.status === 'in_analysis'
       ? await requestCanonicalTransition(resultOrder.value.id, {
         status: 'reported',
-        resultSummary: resultSummary.value.trim(),
-        signedByUserId: resultSignerId.value.trim()
+        resultSummary: resultSummary.value.trim()
       })
       : await laboratoryService.recordResult(resultOrder.value.id, {
         status: 'resulted',
-        resultSummary: resultSummary.value.trim(),
-        signedByUserId: resultSignerId.value.trim()
+        resultSummary: resultSummary.value.trim()
       });
     replaceOrder(updated);
     successMessage.value = resultOrder.value.status === 'in_analysis'

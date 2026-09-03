@@ -185,27 +185,30 @@ export interface PageAction {
   onClick?: (event: MouseEvent) => void;
 }
 
-const props = withDefaults(defineProps<{
-  title?: string;
-  subtitle?: string;
-  breadcrumbs?: string[];
-  breadcrumbItems?: PageBreadcrumb[];
-  contextItems?: PageContextItem[];
-  nextSteps?: PageNextStep[];
-  tabs?: PageTab[];
-  modelValue?: string;
-  primaryAction?: PageAction | null;
-  secondaryActions?: PageAction[];
-}>(), {
-  breadcrumbs: () => [],
-  breadcrumbItems: () => [],
-  contextItems: () => [],
-  nextSteps: () => [],
-  tabs: () => [],
-  modelValue: '',
-  primaryAction: null,
-  secondaryActions: () => []
-});
+const props = withDefaults(
+  defineProps<{
+    title?: string;
+    subtitle?: string;
+    breadcrumbs?: string[];
+    breadcrumbItems?: PageBreadcrumb[];
+    contextItems?: PageContextItem[];
+    nextSteps?: PageNextStep[];
+    tabs?: PageTab[];
+    modelValue?: string;
+    primaryAction?: PageAction | null;
+    secondaryActions?: PageAction[];
+  }>(),
+  {
+    breadcrumbs: () => [],
+    breadcrumbItems: () => [],
+    contextItems: () => [],
+    nextSteps: () => [],
+    tabs: () => [],
+    modelValue: '',
+    primaryAction: null,
+    secondaryActions: () => []
+  }
+);
 
 const slots = useSlots();
 
@@ -215,9 +218,12 @@ const emit = defineEmits<{
 
 const activeTab = ref(props.modelValue || props.tabs[0]?.key || '');
 
-watch(() => props.modelValue, (val) => {
-  if (val) activeTab.value = val;
-});
+watch(
+  () => props.modelValue,
+  (val) => {
+    if (val) activeTab.value = val;
+  }
+);
 
 watch(activeTab, (val) => {
   emit('update:modelValue', val);
@@ -238,9 +244,13 @@ const normalizedBreadcrumbs = computed<PageBreadcrumb[]>(() => {
   }));
 });
 
-const hasStandardActions = computed(() => Boolean(props.primaryAction || props.secondaryActions.length));
+const hasStandardActions = computed(() =>
+  Boolean(props.primaryAction || props.secondaryActions.length)
+);
 const hasNextSteps = computed(() => Boolean(props.nextSteps.length));
-const hasAside = computed(() => Boolean(hasStandardActions.value || hasNextSteps.value || slots.actions || slots.nextSteps));
+const hasAside = computed(() =>
+  Boolean(hasStandardActions.value || hasNextSteps.value || slots.actions || slots.nextSteps)
+);
 
 function breadcrumbTarget(crumb: PageBreadcrumb): string | undefined {
   return crumb.to || crumb.href || undefined;
@@ -251,7 +261,7 @@ function nextStepTarget(step: PageNextStep): string | undefined {
 }
 
 function secondaryActionVariant(action: PageAction): PageAction['variant'] {
-  return action.variant === 'primary' ? 'secondary' : action.variant ?? 'secondary';
+  return action.variant === 'primary' ? 'secondary' : (action.variant ?? 'secondary');
 }
 
 function emitAction(action: PageAction, event: MouseEvent) {
@@ -266,7 +276,9 @@ function emitAction(action: PageAction, event: MouseEvent) {
   align-items: flex-start;
   margin-bottom: 0;
   gap: 16px;
+  max-width: 100%;
   min-width: 0;
+  width: 100%;
 }
 
 .app-page-header__content {
@@ -297,6 +309,9 @@ function emitAction(action: PageAction, event: MouseEvent) {
 }
 
 .app-page-header__breadcrumb-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
   color: var(--color-primary, #2563eb);
   text-decoration: none;
 }

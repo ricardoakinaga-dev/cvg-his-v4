@@ -1,7 +1,19 @@
+---
+document_status: historical
+document_kind: plan
+effective_date: 2026-08-07
+owner: PMO CVG-HIS
+review_cycle: archived
+superseded_by: docs/2026-09-02-plano-executivo-melhorias-cvg-his-v4.md
+---
+
 # Plano executivo de resolução da auditoria do CVG-HIS V4
 
+> **Documento histórico.** O plano executivo vigente é o [plano de melhorias
+> de 2026-09-02](./2026-09-02-plano-executivo-melhorias-cvg-his-v4.md).
+
 **Data:** 2026-08-07
-**Status:** execução pós-auditoria — M0 concluído; M1 técnico comprovado; M2/M3 incrementados com prontuário, agenda, compras, comissões e preventivos; G1/G2/G3+ condicionais
+**Status histórico:** execução pós-auditoria — M0 concluído; M1 técnico comprovado; M2/M3 incrementados com prontuário, agenda, compras, comissões e preventivos; G1/G2/G3+ condicionais
 **Baseline:** 57/100
 **Nota reavaliada:** 80/100
 **Relatório de origem:** [`2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md`](2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md)

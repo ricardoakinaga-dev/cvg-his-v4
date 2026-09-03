@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "current_documents": {
+    "baseline": {
+      "path": "docs/2026-09-02-relatorio-reauditoria-cvg-his-v4.md",
+      "effective_date": "2026-09-02"
+    },
+    "plan": {
+      "path": "docs/2026-09-02-plano-executivo-melhorias-cvg-his-v4.md",
+      "effective_date": "2026-09-02"
+    },
+    "roadmap": {
+      "path": "docs/2026-09-02-roadmap-melhorias-cvg-his-v4.md",
+      "effective_date": "2026-09-02"
+    },
+    "backlog": {
+      "path": "docs/2026-09-02-backlog-priorizado-cvg-his-v4.md",
+      "effective_date": "2026-09-02"
+    }
+  },
+  "historical_documents": [
+    {
+      "path": "docs/2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md",
+      "superseded_by": "docs/2026-09-02-relatorio-reauditoria-cvg-his-v4.md"
+    },
+    {
+      "path": "docs/2026-08-07-plano-executivo-resolucao-auditoria-cvg-his-v4.md",
+      "superseded_by": "docs/2026-09-02-plano-executivo-melhorias-cvg-his-v4.md"
+    },
+    {
+      "path": "docs/2026-08-07-backlog-roadmap-resolucao-auditoria-cvg-his-v4.md",
+      "superseded_by": "docs/2026-09-02-roadmap-melhorias-cvg-his-v4.md"
+    }
+  ],
+  "linked_indexes": [
+    "docs/README.md",
+    "docs/430-fonte-de-verdade-documental.md"
+  ]
+}

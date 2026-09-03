@@ -61,7 +61,11 @@
       </DsCard>
     </section>
 
-    <section class="enterprise-command-center" aria-label="Central executiva Premium">
+    <section
+      v-if="canViewEnterpriseOverview"
+      class="enterprise-command-center"
+      aria-label="Central executiva Premium"
+    >
       <DsCard class="panel-card panel-card--wide">
         <div class="panel-card__head panel-card__head--with-action">
           <div>
@@ -113,7 +117,9 @@
               :to="item.to"
               class="enterprise-focus-item"
             >
-              <span :class="`enterprise-focus-item__tone enterprise-focus-item__tone--${item.tone}`" />
+              <span
+                :class="`enterprise-focus-item__tone enterprise-focus-item__tone--${item.tone}`"
+              />
               <span>
                 <strong>{{ item.label }}</strong>
                 <small>{{ item.detail }}</small>
@@ -122,10 +128,14 @@
           </div>
         </div>
 
-        <div class="premium-lenses">
+        <div v-if="premiumBusinessLenses.length > 0" class="premium-lenses">
           <div class="premium-lenses__head">
             <h3>Lentes executivas</h3>
-            <span>{{ premiumBusinessOverview.loading ? 'Atualizando...' : 'Clínica, financeiro, operação e estoque' }}</span>
+            <span>{{
+              premiumBusinessOverview.loading
+                ? 'Atualizando...'
+                : 'Clínica, financeiro, operação e estoque'
+            }}</span>
           </div>
           <EmptyState
             v-if="premiumBusinessOverview.error"
@@ -531,6 +541,9 @@ const premiumBusinessOverview = reactive<{
 });
 
 const recentRoutes = computed(() => appStore.recentRoutes);
+const canViewEnterpriseOverview = computed(
+  () => permissionCodes.value?.includes('audit.read') === true
+);
 const favoriteRoutes = computed(() =>
   appStore.favoriteRoutes
     .map((path) => {
@@ -903,46 +916,59 @@ const enterpriseFocusItems = computed<EnterpriseFocusItem[]>(() => {
 const premiumBusinessLenses = computed<PremiumBusinessLens[]>(() => {
   const commercial = premiumBusinessOverview.commercial;
   const pendingDailyAmount = premiumBusinessOverview.dailyCharges?.totalPendingAmount ?? 0;
-  const pendingLaboratoryOrders = premiumBusinessOverview.laboratoryOrders.filter((order) =>
-    order.status === 'requested' || order.status === 'collected'
+  const pendingLaboratoryOrders = premiumBusinessOverview.laboratoryOrders.filter(
+    (order) => order.status === 'requested' || order.status === 'collected'
   ).length;
   const lowStockItems = premiumBusinessOverview.inventoryItems.filter(
     (item) => item.onHandQuantity <= item.reorderLevel
   );
   const criticalStockItems = lowStockItems.filter((item) => item.onHandQuantity <= 0);
   const clinicalHints = [
-    pendingLaboratoryOrders > 0 ? `${formatNumber(pendingLaboratoryOrders)} exame(s) pendente(s)` : '',
+    pendingLaboratoryOrders > 0
+      ? `${formatNumber(pendingLaboratoryOrders)} exame(s) pendente(s)`
+      : '',
     pendingDailyAmount > 0 ? `${formatCurrency(pendingDailyAmount)} em diárias pendentes` : ''
   ].filter(Boolean);
 
-  return [
-    {
+  const lenses: PremiumBusinessLens[] = [];
+  if (hasAnyPermission(['inpatient.read', 'diagnostics.read'])) {
+    lenses.push({
       key: 'clinical',
       label: 'Gestão clínica',
       value: formatNumber(premiumBusinessOverview.inpatientStays.length),
-      hint: clinicalHints.length > 0 ? clinicalHints.join(' · ') : 'Internações e exames sob acompanhamento',
-      tone: pendingLaboratoryOrders > 0 || pendingDailyAmount > 0
-        ? 'warning'
-        : premiumBusinessOverview.inpatientStays.length > 0 ? 'info' : 'success',
+      hint:
+        clinicalHints.length > 0
+          ? clinicalHints.join(' · ')
+          : 'Internações e exames sob acompanhamento',
+      tone:
+        pendingLaboratoryOrders > 0 || pendingDailyAmount > 0
+          ? 'warning'
+          : premiumBusinessOverview.inpatientStays.length > 0
+            ? 'info'
+            : 'success',
       to: pendingLaboratoryOrders > 0 ? '/laboratory/orders' : '/inpatient'
-    },
-    {
+    });
+  }
+  if (hasPermission('counter_sale.read')) {
+    lenses.push({
       key: 'financial',
       label: 'Financeiro hoje',
       value: formatCurrency(commercial?.netRevenueToday ?? 0),
       hint: `${formatNumber(commercial?.closedToday ?? 0)} comandas fechadas`,
       tone: (commercial?.netRevenueToday ?? 0) > 0 ? 'success' : 'info',
       to: '/dashboards/financial'
-    },
-    {
+    });
+    lenses.push({
       key: 'operation',
       label: 'Operação comercial',
       value: formatNumber(commercial?.openSales ?? homeSummary['counter-sales']),
       hint: `${formatCurrency(commercial?.avgTicket ?? 0)} ticket médio`,
       tone: (commercial?.openSales ?? 0) > 0 ? 'warning' : 'success',
       to: '/counter-sales'
-    },
-    {
+    });
+  }
+  if (hasPermission('inventory.read')) {
+    lenses.push({
       key: 'inventory',
       label: 'Estoque crítico',
       value: formatNumber(lowStockItems.length),
@@ -950,10 +976,12 @@ const premiumBusinessLenses = computed<PremiumBusinessLens[]>(() => {
         criticalStockItems.length > 0
           ? `${formatNumber(criticalStockItems.length)} SKU(s) zerados`
           : 'Itens abaixo ou no ponto de reposição',
-      tone: criticalStockItems.length > 0 ? 'danger' : lowStockItems.length > 0 ? 'warning' : 'success',
+      tone:
+        criticalStockItems.length > 0 ? 'danger' : lowStockItems.length > 0 ? 'warning' : 'success',
       to: '/inventory/movements'
-    }
-  ];
+    });
+  }
+  return lenses;
 });
 
 const visibleDomainShortcuts = computed(() => {
@@ -988,6 +1016,15 @@ async function loadDashboard() {
 }
 
 async function loadEnterpriseOverview() {
+  if (!canViewEnterpriseOverview.value) {
+    enterpriseOverview.loading = false;
+    enterpriseOverview.error = '';
+    enterpriseOverview.slo = null;
+    enterpriseOverview.audit = null;
+    enterpriseOverview.reportDeliveryAuditEvents = [];
+    return;
+  }
+
   enterpriseOverview.loading = true;
   enterpriseOverview.error = '';
 
@@ -1019,34 +1056,65 @@ async function loadEnterpriseOverview() {
 async function loadPremiumBusinessOverview() {
   premiumBusinessOverview.loading = true;
   premiumBusinessOverview.error = '';
+  premiumBusinessOverview.commercial = null;
+  premiumBusinessOverview.inpatientStays = [];
+  premiumBusinessOverview.dailyCharges = null;
+  premiumBusinessOverview.inventoryItems = [];
+  premiumBusinessOverview.laboratoryOrders = [];
+  let failedLoads = 0;
+  const loadPermitted = async <T,>(
+    permissionCode: string,
+    operation: () => Promise<T>,
+    assign: (value: T) => void
+  ) => {
+    if (!permissionCodes.value?.includes(permissionCode)) return;
+    try {
+      assign(await operation());
+    } catch {
+      failedLoads += 1;
+    }
+  };
 
-  const [commercialResult, inpatientResult, dailyChargesResult, inventoryResult, laboratoryResult] =
-    await Promise.allSettled([
-      counterSalesService.getCommercialDashboard({ dateFrom: today.value.toISOString().slice(0, 10) }),
-      inpatientService.list({ includeDischarged: false }),
-      inpatientService.listDailyChargeWorklist({ status: 'pending' }),
-      inventoryService.list(),
-      laboratoryService.listOrders()
-    ]);
-
-  premiumBusinessOverview.commercial =
-    commercialResult.status === 'fulfilled' ? commercialResult.value : null;
-  premiumBusinessOverview.inpatientStays =
-    inpatientResult.status === 'fulfilled' ? inpatientResult.value : [];
-  premiumBusinessOverview.dailyCharges =
-    dailyChargesResult.status === 'fulfilled' ? dailyChargesResult.value : null;
-  premiumBusinessOverview.inventoryItems =
-    inventoryResult.status === 'fulfilled' ? inventoryResult.value : [];
-  premiumBusinessOverview.laboratoryOrders =
-    laboratoryResult.status === 'fulfilled' ? laboratoryResult.value : [];
-
-  const failedLoads = [
-    commercialResult,
-    inpatientResult,
-    dailyChargesResult,
-    inventoryResult,
-    laboratoryResult
-  ].filter((result) => result.status === 'rejected').length;
+  await Promise.all([
+    loadPermitted(
+      'counter_sale.read',
+      () =>
+        counterSalesService.getCommercialDashboard({
+          dateFrom: today.value.toISOString().slice(0, 10)
+        }),
+      (value) => {
+        premiumBusinessOverview.commercial = value;
+      }
+    ),
+    loadPermitted(
+      'inpatient.read',
+      () => inpatientService.list({ includeDischarged: false }),
+      (value) => {
+        premiumBusinessOverview.inpatientStays = value;
+      }
+    ),
+    loadPermitted(
+      'inpatient.read',
+      () => inpatientService.listDailyChargeWorklist({ status: 'pending' }),
+      (value) => {
+        premiumBusinessOverview.dailyCharges = value;
+      }
+    ),
+    loadPermitted(
+      'inventory.read',
+      () => inventoryService.list(),
+      (value) => {
+        premiumBusinessOverview.inventoryItems = value;
+      }
+    ),
+    loadPermitted(
+      'diagnostics.read',
+      () => laboratoryService.listOrders(),
+      (value) => {
+        premiumBusinessOverview.laboratoryOrders = value;
+      }
+    )
+  ]);
 
   if (failedLoads > 0) {
     premiumBusinessOverview.error = `${formatNumber(

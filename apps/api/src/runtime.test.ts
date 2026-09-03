@@ -146,6 +146,57 @@ test('login, session refresh and audit trail work end-to-end', async () => {
   );
 });
 
+test('degraded runtime keeps clinical creation atomic in memory instead of using partial repositories', async () => {
+  const bootstrap = await bootstrapServices({ skipDatabase: true });
+  const runtime = createApiRuntime({
+    authSecret: 'test-secret',
+    accessTokenTtlSeconds: 900,
+    refreshTokenTtlSeconds: 604800,
+    repositories: bootstrap.repositories,
+    medicalRecordsPersistenceMode: 'memory'
+  });
+  const login = (await runtime.auth.login(
+    { username: 'reception', password: 'seed_reception' },
+    'corr_clinical_memory_fallback'
+  )) as AuthSessionResponse;
+  const accountId = login.principal.user.accountId;
+  const actorUserId = login.principal.user.id;
+  const owner = runtime.owners.create(accountId, {
+    fullName: 'Tutor Clinical Memory',
+    contacts: [{ label: 'Telefone', value: '+55 11 99999-0000', type: 'phone', primary: true }],
+    financialResponsible: true
+  });
+  const patient = runtime.patients.create(accountId, {
+    name: 'Paciente Clinical Memory',
+    species: 'canine',
+    breed: 'SRD',
+    sex: 'female',
+    primaryOwnerId: owner.id
+  });
+  const encounter = runtime.encounters.openEncounter(accountId, actorUserId, {
+    patientId: patient.id,
+    ownerId: owner.id,
+    visitType: 'walk_in',
+    origin: 'reception',
+    reason: 'Clinical memory fallback regression'
+  });
+
+  const entry = await runtime.medicalRecords.createEntryAtomically(accountId, actorUserId, {
+    encounterId: encounter.id,
+    patientId: patient.id,
+    entryType: 'anamnesis',
+    title: 'Anamnese sem PostgreSQL',
+    content: 'Persistência clínica local deve permanecer consistente.'
+  });
+
+  assert.equal(entry.version, 1);
+  assert.deepEqual(
+    runtime.medicalRecords.listEntriesByEncounter(accountId, encounter.id).map((item) => item.id),
+    [entry.id]
+  );
+  assert.equal(runtime.medicalRecords.listTimelineByEncounter(accountId, encounter.id).length, 2);
+});
+
 test('in-memory counter-sale cancellation rolls back when audit persistence fails', async () => {
   let auditWrites = 0;
   const failingAuditRepository = {
@@ -937,7 +988,7 @@ test('operational flow supports appointment, queue, encounter lifecycle, triage 
     encounter.id,
     nurse.user.id,
     {
-    nextStatus: triage.destination
+      nextStatus: triage.destination
     }
   );
   await runtime.scheduling.transitionQueueForEncounter(queueEntry.id, 'observation');
@@ -2112,17 +2163,16 @@ test('AUD-007-01: API writes notification to repository, worker reads and proces
   );
 
   // Worker processes notifications from repository
-  const processed = await workerNotifications.processPendingFromRepository(
-    finance.user.accountId,
-    { limit: 10 }
-  );
+  const processed = await workerNotifications.processPendingFromRepository(finance.user.accountId, {
+    limit: 10
+  });
   assert.equal(processed.length, 1, 'Worker should process 1 notification');
   assert.equal(processed[0].id, notification.id, 'Worker should process the correct notification');
 
   // Verify notification is now sent in repository
-  const sentNotifications = (await repositories.notification?.findNotifications(finance.user.accountId))?.filter(
-    (entry) => entry.status === 'sent'
-  );
+  const sentNotifications = (
+    await repositories.notification?.findNotifications(finance.user.accountId)
+  )?.filter((entry) => entry.status === 'sent');
   assert.ok(
     sentNotifications && sentNotifications.some((n) => n.id === notification.id),
     'Notification should be marked as sent in repository'

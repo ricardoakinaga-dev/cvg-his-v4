@@ -31,7 +31,9 @@
         :title="appStore.sidebarCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'"
       >
         <span class="topbar__collapse-icon">{{ appStore.sidebarCollapsed ? '☰' : '⇤' }}</span>
-        <span class="topbar__collapse-label">{{ appStore.sidebarCollapsed ? 'Expandir menu' : 'Recolher menu' }}</span>
+        <span class="topbar__collapse-label">{{
+          appStore.sidebarCollapsed ? 'Expandir menu' : 'Recolher menu'
+        }}</span>
       </button>
 
       <button class="topbar__search-shell" type="button" @click="openPalette">
@@ -41,11 +43,21 @@
       </button>
 
       <div class="topbar__actions">
-        <button class="topbar__icon-btn topbar__icon-btn--notifications" type="button" title="Notificações" @click="navigateTo('/notifications')">
+        <button
+          class="topbar__icon-btn topbar__icon-btn--notifications"
+          type="button"
+          title="Notificações"
+          @click="navigateTo('/notifications')"
+        >
           🔔
         </button>
 
-        <button class="topbar__icon-btn topbar__icon-btn--whatsapp" type="button" title="WhatsApp operacional" @click="navigateTo('/notifications/whatsapp')">
+        <button
+          class="topbar__icon-btn topbar__icon-btn--whatsapp"
+          type="button"
+          title="WhatsApp operacional"
+          @click="navigateTo('/notifications/whatsapp')"
+        >
           💬
         </button>
 
@@ -67,7 +79,13 @@
       </div>
     </header>
 
-    <aside class="sidebar" role="navigation" aria-label="Navegacao principal">
+    <aside
+      class="sidebar"
+      role="navigation"
+      aria-label="Navegacao principal"
+      :aria-hidden="isCompactViewport && appStore.sidebarCollapsed ? 'true' : undefined"
+      :inert="isCompactViewport && appStore.sidebarCollapsed"
+    >
       <div class="sidebar__search">
         <input
           v-model="searchQuery"
@@ -142,7 +160,9 @@
           >
             <summary class="sidebar__utility-summary">
               <span class="sidebar__eyebrow">Console Enterprise</span>
-              <span v-if="!appStore.sidebarCollapsed" class="sidebar__microcopy">Governança e integrações</span>
+              <span v-if="!appStore.sidebarCollapsed" class="sidebar__microcopy"
+                >Governança e integrações</span
+              >
             </summary>
             <div class="sidebar__panel sidebar__panel--enterprise">
               <div class="sidebar__enterprise-groups">
@@ -175,7 +195,9 @@
           <details v-if="favoriteLinks.length" class="sidebar__utility-group">
             <summary class="sidebar__utility-summary">
               <span class="sidebar__eyebrow">Favoritos</span>
-              <span v-if="!appStore.sidebarCollapsed" class="sidebar__microcopy">Atalhos pessoais</span>
+              <span v-if="!appStore.sidebarCollapsed" class="sidebar__microcopy"
+                >Atalhos pessoais</span
+              >
             </summary>
             <section class="sidebar__panel">
               <div class="sidebar__panel-head">
@@ -208,7 +230,9 @@
           <details v-if="recentLinks.length" class="sidebar__utility-group">
             <summary class="sidebar__utility-summary">
               <span class="sidebar__eyebrow">Recentes</span>
-              <span v-if="!appStore.sidebarCollapsed" class="sidebar__microcopy">Histórico de navegação</span>
+              <span v-if="!appStore.sidebarCollapsed" class="sidebar__microcopy"
+                >Histórico de navegação</span
+              >
             </summary>
             <section class="sidebar__panel sidebar__panel--recent">
               <div class="sidebar__panel-head">
@@ -249,8 +273,8 @@
       @click="appStore.toggleSidebar()"
     />
 
-    <main class="workspace">
-      <section class="workspace__body" id="main-content" role="main" aria-label="Conteudo principal">
+    <main id="main-content" class="workspace" aria-label="Conteúdo principal" tabindex="-1">
+      <section class="workspace__body">
         <router-view />
       </section>
     </main>
@@ -271,8 +295,8 @@
             @keydown.down.prevent="moveSelectionDown"
           />
           <p class="command-palette__hint">
-            <kbd>↑</kbd><kbd>↓</kbd> navegar &nbsp;·&nbsp; <kbd>Enter</kbd> selecionar
-            &nbsp;·&nbsp; <kbd>Esc</kbd> fechar
+            <kbd>↑</kbd><kbd>↓</kbd> navegar &nbsp;·&nbsp; <kbd>Enter</kbd> selecionar &nbsp;·&nbsp;
+            <kbd>Esc</kbd> fechar
           </p>
         </div>
 
@@ -295,7 +319,9 @@
                 <strong>{{ item.label }}</strong>
                 <small>{{ item.description }}</small>
               </span>
-              <kbd v-if="item.shortcut" class="command-palette__item-shortcut">{{ item.shortcut }}</kbd>
+              <kbd v-if="item.shortcut" class="command-palette__item-shortcut">{{
+                item.shortcut
+              }}</kbd>
             </button>
           </template>
 
@@ -306,7 +332,10 @@
               :key="'route-' + item.path"
               type="button"
               class="command-palette__item"
-              :class="{ 'command-palette__item--selected': selectedIndex === filteredActionItems.length + index }"
+              :class="{
+                'command-palette__item--selected':
+                  selectedIndex === filteredActionItems.length + index
+              }"
               role="option"
               :aria-selected="selectedIndex === filteredActionItems.length + index"
               @click="navigateTo(item.path)"
@@ -321,7 +350,10 @@
             </button>
           </template>
 
-          <div v-if="filteredActionItems.length === 0 && filteredRouteItems.length === 0" class="command-palette__empty">
+          <div
+            v-if="filteredActionItems.length === 0 && filteredRouteItems.length === 0"
+            class="command-palette__empty"
+          >
             Nenhum resultado encontrado.
           </div>
         </div>
@@ -364,6 +396,8 @@ const maxHistoryPosition = ref(readHistoryPosition());
 const sidebarNavEl = ref<HTMLElement | null>(null);
 const isSidebarScrolled = ref(false);
 const isSidebarNearBottom = ref(false);
+const compactViewportQuery = window.matchMedia?.('(max-width: 860px)');
+const isCompactViewport = ref(compactViewportQuery?.matches ?? false);
 
 interface CommandAction {
   id: string;
@@ -414,12 +448,14 @@ const userBadgeId = computed(() => {
 const shellBreadcrumbs = computed(() => {
   const crumbs: Array<{ label: string }> = [];
   const area = currentAreaLabel.value;
-  const parent = typeof route.meta.breadcrumbParent === 'string' ? route.meta.breadcrumbParent : undefined;
-  const current = route.path === '/'
-    ? undefined
-    : typeof route.meta.breadcrumb === 'string'
-      ? route.meta.breadcrumb
-      : currentLocation.value?.item.label ?? currentPageTitle.value;
+  const parent =
+    typeof route.meta.breadcrumbParent === 'string' ? route.meta.breadcrumbParent : undefined;
+  const current =
+    route.path === '/'
+      ? undefined
+      : typeof route.meta.breadcrumb === 'string'
+        ? route.meta.breadcrumb
+        : (currentLocation.value?.item.label ?? currentPageTitle.value);
 
   if (area) {
     crumbs.push({ label: area });
@@ -499,7 +535,12 @@ const commandActions = computed<CommandAction[]>(() => [
   }
 ]);
 
-function itemMatchesQuery(item: AppNavItem, query: string, groupLabel: string, sectionLabel: string): boolean {
+function itemMatchesQuery(
+  item: AppNavItem,
+  query: string,
+  groupLabel: string,
+  sectionLabel: string
+): boolean {
   return (
     item.label.toLowerCase().includes(query) ||
     item.path.toLowerCase().includes(query) ||
@@ -512,14 +553,17 @@ function itemMatchesQuery(item: AppNavItem, query: string, groupLabel: string, s
 function filterGroup(group: AppNavGroup, query: string): AppNavGroup | null {
   if (!query) return group;
 
-  const groupMatches = group.label.toLowerCase().includes(query) || group.description.toLowerCase().includes(query);
+  const groupMatches =
+    group.label.toLowerCase().includes(query) || group.description.toLowerCase().includes(query);
   const nextSections = group.sections
     .map((section) => {
       if (groupMatches || section.label.toLowerCase().includes(query)) {
         return section;
       }
 
-      const items = section.items.filter((item) => itemMatchesQuery(item, query, group.label, section.label));
+      const items = section.items.filter((item) =>
+        itemMatchesQuery(item, query, group.label, section.label)
+      );
       return items.length > 0 ? { ...section, items } : null;
     })
     .filter((section): section is AppNavSection => Boolean(section));
@@ -543,7 +587,10 @@ const filteredEnterpriseSections = computed(() => {
 
   return enterpriseConsole.sections
     .map((section) => {
-      if (enterpriseConsole.label.toLowerCase().includes(query) || section.label.toLowerCase().includes(query)) {
+      if (
+        enterpriseConsole.label.toLowerCase().includes(query) ||
+        section.label.toLowerCase().includes(query)
+      ) {
         return section;
       }
 
@@ -581,7 +628,7 @@ const commandItems = computed<CommandRouteItem[]>(() => {
         shortcut:
           item.path === '/'
             ? 'Home'
-            : item.path.split('/').filter(Boolean).slice(-1)[0] ?? item.label
+            : (item.path.split('/').filter(Boolean).slice(-1)[0] ?? item.label)
       }))
     )
   );
@@ -604,7 +651,10 @@ const filteredActionItems = computed(() => {
   }
 
   return commandActions.value
-    .filter((item) => item.label.toLowerCase().includes(query) || item.description.toLowerCase().includes(query))
+    .filter(
+      (item) =>
+        item.label.toLowerCase().includes(query) || item.description.toLowerCase().includes(query)
+    )
     .slice(0, 6);
 });
 
@@ -627,7 +677,9 @@ const filteredRouteItems = computed(() => {
     .slice(0, 12);
 });
 
-const totalItems = computed(() => filteredActionItems.value.length + filteredRouteItems.value.length);
+const totalItems = computed(
+  () => filteredActionItems.value.length + filteredRouteItems.value.length
+);
 const canGoBack = computed(() => historyPosition.value > 0);
 const canGoForward = computed(() => historyPosition.value < maxHistoryPosition.value);
 
@@ -783,6 +835,10 @@ function syncSidebarScrollState() {
   isSidebarNearBottom.value = scrollTop + clientHeight >= scrollHeight - 12;
 }
 
+function syncCompactViewport(event: MediaQueryListEvent) {
+  isCompactViewport.value = event.matches;
+}
+
 function scrollActiveSidebarItemIntoView() {
   const container = sidebarNavEl.value;
   if (!container) return;
@@ -806,6 +862,7 @@ function scrollActiveSidebarItemIntoView() {
 
 onMounted(async () => {
   window.addEventListener('keydown', onKeydown);
+  compactViewportQuery?.addEventListener('change', syncCompactViewport);
   sidebarNavEl.value?.addEventListener('scroll', syncSidebarScrollState, { passive: true });
   syncHistoryPosition();
   await nextTick();
@@ -815,6 +872,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKeydown);
+  compactViewportQuery?.removeEventListener('change', syncCompactViewport);
   sidebarNavEl.value?.removeEventListener('scroll', syncSidebarScrollState);
 });
 

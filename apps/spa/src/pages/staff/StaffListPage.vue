@@ -3,17 +3,20 @@
     <AppPageHeader
       title="Profissionais"
       :breadcrumbs="['RH', 'Cadastros', 'Profissionais']"
-      subtitle="Cadastro beta de profissionais, funções, disponibilidade e produção operacional">
+      subtitle="Cadastro beta de profissionais, funções, disponibilidade e produção operacional"
+    >
       <template #actions>
         <DsButton variant="secondary" :loading="loading" @click="loadData">Atualizar</DsButton>
-        <DsButton variant="primary" @click="router.push('/staff/new')">+ Incluir Novo Profissional</DsButton>
+        <DsButton variant="primary" @click="router.push('/staff/new')"
+          >+ Incluir Novo Profissional</DsButton
+        >
       </template>
     </AppPageHeader>
 
     <DsAlert variant="info">
       Superfície Vetus-like para a rota beta cadastro/profissionais, registrada no acervo como
-      rh-profissionais-01.png. Profissional representa pessoa operacional de agenda, produção, folgas e comissões;
-      usuário autenticável continua separado em RH / Usuários.
+      rh-profissionais-01.png. Profissional representa pessoa operacional de agenda, produção,
+      folgas e comissões; usuário autenticável continua separado em RH / Usuários.
     </DsAlert>
 
     <section class="list-page__overview">
@@ -45,7 +48,11 @@
 
     <section class="list-page__toolbar">
       <DsCard title="Busca por ID ou nome" variant="compact">
-        <DsInput v-model="search" placeholder="por ID ou nome" />
+        <DsInput
+          v-model="search"
+          aria-label="Buscar profissional por ID ou nome"
+          placeholder="por ID ou nome"
+        />
       </DsCard>
     </section>
 
@@ -56,7 +63,12 @@
             <span class="professional-card__id">ID {{ member.id }}</span>
             <h2>{{ member.fullName }}</h2>
           </div>
-          <span :class="['status-badge', member.status === 'active' ? 'status-badge--active' : 'status-badge--inactive']">
+          <span
+            :class="[
+              'status-badge',
+              member.status === 'active' ? 'status-badge--active' : 'status-badge--inactive'
+            ]"
+          >
             {{ member.status === 'active' ? 'Ativo' : 'Inativo' }}
           </span>
         </header>
@@ -104,7 +116,11 @@
     <section class="list-page__actions">
       <DsCard title="Integrações do profissional" variant="compact">
         <div class="integration-grid">
-          <article v-for="integration in integrations" :key="integration.title" class="integration-card">
+          <article
+            v-for="integration in integrations"
+            :key="integration.title"
+            class="integration-card"
+          >
             <span>{{ integration.scope }}</span>
             <strong>{{ integration.title }}</strong>
             <p>{{ integration.description }}</p>
@@ -147,16 +163,29 @@
         {{ staffRow(row).jobTitle || '—' }}
       </template>
       <template #cell-status="{ row }">
-        <span :class="['status-badge', staffRow(row).status === 'active' ? 'status-badge--active' : 'status-badge--inactive']">
+        <span
+          :class="[
+            'status-badge',
+            staffRow(row).status === 'active' ? 'status-badge--active' : 'status-badge--inactive'
+          ]"
+        >
           {{ staffRow(row).status === 'active' ? 'Ativo' : 'Inativo' }}
         </span>
       </template>
       <template #cell-actions="{ row }">
         <div class="row-actions">
-          <DsButton size="sm" variant="secondary" @click="router.push(`/staff/${staffRow(row).id}`)">
+          <DsButton
+            size="sm"
+            variant="secondary"
+            @click="router.push(`/staff/${staffRow(row).id}`)"
+          >
             Ver Detalhes
           </DsButton>
-          <DsButton size="sm" variant="secondary" @click="router.push(`/staff/${staffRow(row).id}/edit`)">
+          <DsButton
+            size="sm"
+            variant="secondary"
+            @click="router.push(`/staff/${staffRow(row).id}/edit`)"
+          >
             Editar
           </DsButton>
         </div>
@@ -193,13 +222,18 @@ const columns: DataTableColumn[] = [
   { key: 'actions', label: 'Ações', class: 'table__actions-col' }
 ];
 
-const activeStaff = computed(() => staff.value.filter((member) => member.status === 'active').length);
+const activeStaff = computed(
+  () => staff.value.filter((member) => member.status === 'active').length
+);
 const filteredStaff = computed(() => {
   const needle = search.value.trim().toLowerCase();
   if (!needle) return staff.value;
   return staff.value.filter((member) =>
-    [member.id, member.employeeCode, member.fullName, member.department, member.jobTitle].some((value) =>
-      String(value ?? '').toLowerCase().includes(needle)
+    [member.id, member.employeeCode, member.fullName, member.department, member.jobTitle].some(
+      (value) =>
+        String(value ?? '')
+          .toLowerCase()
+          .includes(needle)
     )
   );
 });
@@ -228,7 +262,9 @@ const storyCards = computed(() => [
   },
   {
     label: 'Cobertura',
-    value: staff.value.length ? `${Math.round((activeStaff.value / staff.value.length) * 100)}%` : '0%',
+    value: staff.value.length
+      ? `${Math.round((activeStaff.value / staff.value.length) * 100)}%`
+      : '0%',
     hint: 'Percentual de membros ativos'
   }
 ]);
@@ -387,7 +423,11 @@ function staffRow(row: unknown): StaffSummary {
   padding: 12px;
   border-radius: 12px;
   border: 1px solid var(--color-border, #e2e8f0);
-  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+  background: linear-gradient(
+    180deg,
+    var(--color-surface, #ffffff),
+    var(--color-bg-subtle, #f8fafc)
+  );
 }
 
 .overview-metric__value {
@@ -413,7 +453,11 @@ function staffRow(row: unknown): StaffSummary {
   padding: 12px;
   border-radius: 12px;
   border: 1px solid var(--color-border, #e2e8f0);
-  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+  background: linear-gradient(
+    180deg,
+    var(--color-surface, #ffffff),
+    var(--color-bg-subtle, #f8fafc)
+  );
 }
 
 .story-card__label {

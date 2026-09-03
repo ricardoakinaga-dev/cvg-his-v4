@@ -1,5 +1,7 @@
 # Relatório master de usabilidade Playwright — CVG-HIS V4
 
+> Atualização posterior ao laudo: a implementação corretiva e as pendências de certificação estão consolidadas no [relatório de implementação](./2026-09-02-implementacao-usabilidade-playwright-cvg-his-v4.md). Os números abaixo permanecem como baseline histórica.
+
 Data da execução: 2 de setembro de 2026 (America/Sao_Paulo)  
 Projeto: `cvg-his-v4`  
 Ferramenta obrigatória: Playwright 1.58.2 com Chrome for Testing 145.0.7632.6  

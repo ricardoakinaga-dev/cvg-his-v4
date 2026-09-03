@@ -384,6 +384,9 @@ async function main() {
           metadata?: { readonly actorUserId: string; readonly correlationId: string }
         ): Promise<T> => withTenantTransaction(accountId, async () => command(), metadata)
       : undefined,
+    medicalRecordsPersistenceMode: bootstrapResult.repositoriesUseDatabase
+      ? 'repositories'
+      : 'memory',
     featureFlagsProvider: config.featureFlagsProvider,
     runtimeDistributedStateEnabled: config.runtimeDistributedStateEnabled,
     preserveSeedUsersWithRepository: persistenceMode !== 'database',

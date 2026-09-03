@@ -345,6 +345,197 @@ test('expenses catalog routes list paginated items with server-side filters and 
   }
 });
 
+test('operational finance catalog routes provide validated, versioned and audited CRUD', async () => {
+  const { audit, events } = createAuditCollector();
+  const permissions: string[] = [];
+  const id = '11111111-1111-4111-8111-111111111111';
+  let item = {
+    id,
+    accountId: 'acc-1',
+    type: 'banks' as const,
+    code: 'BANK_001',
+    name: 'Banco Operacional',
+    status: 'active' as const,
+    configuration: {
+      bankCode: '001',
+      agency: '0001',
+      accountNumber: '12345-6',
+      accountType: 'checking',
+      usageKey: 'settlement',
+      usageDescription: 'Liquidação operacional',
+      reconciliationMode: 'manual'
+    },
+    version: 1,
+    createdBy: 'user-1',
+    updatedBy: 'user-1',
+    createdAt: '2026-09-02T12:00:00.000Z',
+    updatedAt: '2026-09-02T12:00:00.000Z'
+  };
+  const store = {
+    async createOperationalCatalog(
+      accountId: string,
+      actorId: string,
+      type: string,
+      payload: typeof item
+    ) {
+      assert.equal(accountId, 'acc-1');
+      assert.equal(actorId, 'user-1');
+      assert.equal(type, 'banks');
+      item = { ...item, ...payload, id, accountId, type: 'banks', version: 1 };
+      return item;
+    },
+    async updateOperationalCatalog(
+      accountId: string,
+      actorId: string,
+      type: string,
+      itemId: string,
+      expectedVersion: number,
+      payload: typeof item
+    ) {
+      assert.equal(accountId, 'acc-1');
+      assert.equal(actorId, 'user-1');
+      assert.equal(type, 'banks');
+      assert.equal(itemId, id);
+      if (expectedVersion !== item.version) throw new Error('VERSION_CONFLICT');
+      item = {
+        ...item,
+        ...payload,
+        type: 'banks',
+        version: item.version + 1,
+        updatedAt: '2026-09-02T12:01:00.000Z'
+      };
+      return { item, diffSummary: 'changed=name,configuration' };
+    },
+    async listOperationalCatalog(accountId: string, type: string) {
+      assert.equal(accountId, 'acc-1');
+      assert.equal(type, 'banks');
+      return {
+        items: [item],
+        page: 1,
+        pageSize: 10,
+        totalItems: 1,
+        totalPages: 1
+      };
+    },
+    async removeOperationalCatalog(accountId: string, type: string, itemId: string) {
+      assert.equal(accountId, 'acc-1');
+      assert.equal(type, 'banks');
+      assert.equal(itemId, id);
+      return item;
+    }
+  };
+  const handlers = {
+    audit: audit as never,
+    requirePrincipal: (_request: unknown, permission: string) => {
+      permissions.push(permission);
+      return createPrincipal();
+    },
+    store: store as never
+  };
+
+  const createResponse = new MockResponse();
+  await handleExpensesCatalogRoutes(
+    '/finance/catalogs/banks',
+    createMockRequest('POST', '/finance/catalogs/banks', {
+      code: 'bank_001',
+      name: 'Banco Operacional',
+      status: 'active',
+      configuration: item.configuration
+    }) as never,
+    createResponse as never,
+    'corr-bank-create',
+    handlers
+  );
+  assert.equal(createResponse.statusCode, 201);
+  assert.equal(createResponse.bodyJson<{ code: string }>().code, 'BANK_001');
+
+  const updateResponse = new MockResponse();
+  await handleExpensesCatalogRoutes(
+    `/finance/catalogs/banks/${id}`,
+    createMockRequest('PATCH', `/finance/catalogs/banks/${id}`, {
+      code: 'BANK_001',
+      name: 'Banco Operacional Principal',
+      status: 'active',
+      configuration: { ...item.configuration, reconciliationMode: 'automatic' },
+      version: 1
+    }) as never,
+    updateResponse as never,
+    'corr-bank-update',
+    handlers
+  );
+  assert.equal(updateResponse.statusCode, 200);
+  assert.equal(updateResponse.bodyJson<{ version: number }>().version, 2);
+
+  const staleResponse = new MockResponse();
+  await handleExpensesCatalogRoutes(
+    `/finance/catalogs/banks/${id}`,
+    createMockRequest('PATCH', `/finance/catalogs/banks/${id}`, {
+      code: 'BANK_001',
+      name: 'Edição obsoleta',
+      status: 'active',
+      configuration: item.configuration,
+      version: 1
+    }) as never,
+    staleResponse as never,
+    'corr-bank-stale',
+    handlers
+  );
+  assert.equal(staleResponse.statusCode, 409);
+  assert.equal(staleResponse.bodyJson<{ code: string }>().code, 'VERSION_CONFLICT');
+
+  const forbiddenResponse = new MockResponse();
+  await handleExpensesCatalogRoutes(
+    '/finance/catalogs/banks',
+    createMockRequest('POST', '/finance/catalogs/banks', {
+      code: 'BANK_002',
+      name: 'Banco com segredo',
+      status: 'active',
+      configuration: { ...item.configuration, apiToken: 'must-not-be-stored' }
+    }) as never,
+    forbiddenResponse as never,
+    'corr-bank-forbidden',
+    handlers
+  );
+  assert.equal(forbiddenResponse.statusCode, 400);
+  assert.match(forbiddenResponse.bodyJson<{ message: string }>().message, /apiToken is forbidden/);
+
+  const listResponse = new MockResponse();
+  await handleExpensesCatalogRoutes(
+    '/finance/catalogs/banks',
+    { method: 'GET', url: '/finance/catalogs/banks?status=active&page=1' } as never,
+    listResponse as never,
+    'corr-bank-list',
+    handlers
+  );
+  assert.equal(listResponse.statusCode, 200);
+  assert.equal(listResponse.bodyJson<{ totalItems: number }>().totalItems, 1);
+
+  const deleteResponse = new MockResponse();
+  await handleExpensesCatalogRoutes(
+    `/finance/catalogs/banks/${id}`,
+    { method: 'DELETE', url: `/finance/catalogs/banks/${id}` } as never,
+    deleteResponse as never,
+    'corr-bank-delete',
+    handlers
+  );
+  assert.equal(deleteResponse.statusCode, 200);
+  assert.deepEqual(deleteResponse.bodyJson(), { ok: true });
+
+  assert.deepEqual(permissions, [
+    'billing.manage',
+    'billing.manage',
+    'billing.manage',
+    'billing.manage',
+    'billing.read',
+    'billing.manage'
+  ]);
+  assert.ok(events.some((event) => event.action === 'create_finance_operational_catalog_item'));
+  assert.ok(events.some((event) => event.action === 'update_finance_operational_catalog_item'));
+  assert.ok(events.some((event) => event.action === 'list_finance_operational_catalog'));
+  assert.ok(events.some((event) => event.action === 'remove_finance_operational_catalog_item'));
+  assert.ok(events.every((event) => !event.payloadSummary.includes('must-not-be-stored')));
+});
+
 test('expenses catalog routes persist to disk across runtime restart, support cost center CRUD and write audit diffs', async () => {
   const tempDir = await mkdtemp(join(tmpdir(), 'expenses-catalog-routes-'));
   const storagePath = join(tempDir, 'expenses-catalog.json');

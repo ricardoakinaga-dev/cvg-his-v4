@@ -51,6 +51,13 @@ export const httpErrorsTotal = new Counter({
   registers: [registry]
 });
 
+export const httpOperationalOutcomesTotal = new Counter({
+  name: 'http_operational_outcomes_total',
+  help: 'Route errors, authorization denials and downloads by normalized route and role',
+  labelNames: ['route', 'role', 'operation', 'result'] as const,
+  registers: [registry]
+});
+
 // ============================================================================
 // Application Metrics
 // ============================================================================
@@ -435,6 +442,9 @@ export function normalizeRoute(pathname: string): string {
     [/^\/metrics$/, '/metrics'],
     [/^\/slos$/, '/slos'],
     [/^\/admin\/commercial-dashboard$/, '/admin/commercial-dashboard'],
+    [/^\/reports\/executions\/[^/]+\/export$/, '/reports/executions/:id/export'],
+    [/^\/attachments\/[^/]+\/download$/, '/attachments/:id/download'],
+    [/^\/attachments\/[^/]+\/download-url$/, '/attachments/:id/download-url'],
     // Generic resource patterns: /resource/:id, /resource/:id/sub-resource
     [
       /^\/(owners|patients|encounters|clinical-handoffs|appointments|users|staff|products|services|stock-items|wards|beds|inpatient-stays|exam-orders|medication-orders|clinical-notes|alerts|documents|protocols|shift-handovers|notifications|billing|cash-registers|counter-sales|quotes|triage|scheduling|surgery|diagnostics|laboratory|discharges|prescriptions|inventory|attachments|mfa|audit|health)\/[^/]+(\/[^/]+)?$/,

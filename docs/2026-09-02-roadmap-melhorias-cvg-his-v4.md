@@ -1,3 +1,13 @@
+---
+document_status: current
+document_kind: roadmap
+effective_date: 2026-09-02
+owner: Engenharia e Produto CVG-HIS
+review_cycle: monthly
+---
+
+> Atualizacao de execucao (2026-09-03): o progresso das ondas e os gates ainda externos estao na [matriz de implementacao](./2026-09-03-implementacao-plano-cvg-his-v4.md).
+
 # Roadmap de melhorias do CVG-HIS V4
 
 Este roadmap transforma o [plano executivo](./2026-09-02-plano-executivo-melhorias-cvg-his-v4.md) em ondas de entrega. A baseline e as notas estão no [relatório](./2026-09-02-relatorio-reauditoria-cvg-his-v4.md); os itens executáveis estão no [backlog](./2026-09-02-backlog-priorizado-cvg-his-v4.md).
@@ -6,13 +16,13 @@ As durações são faixas indicativas em sprints de duas semanas. A data de go-l
 
 ## 1. Visão por ondas
 
-| Onda | Horizonte indicativo | Objetivo | Entregas principais | Gate de saída |
-|---|---|---|---|---|
-| R0 — Segurança e determinismo | 1 sprint | eliminar bloqueadores P0 | roles PostgreSQL, runner portável, cleanup/subprocesso e quatro regressões | G0/G1 local verde |
-| R1 — Release reproduzível | 1–2 sprints | provar o mesmo SHA fora da máquina local | coverage ≥82%, CI protegida, Helm real, artefatos, restore e rollback | G1/G2 verde |
-| R2 — ERP e operação interna | 2–4 sprints | fechar gaps sem dependência externa | relatórios, cadastros financeiros, reconciliação, acessibilidade, SLO e observabilidade | ≥9/11 domínios |
-| R3 — Homologação externa | 3–6 sprints, paralelizável | validar provedores e migração | laboratório, fiscal, pagamentos, comunicação, Live Pet/Live Lab e Vetus | 11/11 ou exceção formal |
-| R4 — Certificação e cutover | 1–2 sprints | transformar o candidato em release operacional | freeze, regressão final, carga, DR, cutover/rollback e aceites | G4 e go/no-go |
+| Onda                          | Horizonte indicativo       | Objetivo                                       | Entregas principais                                                                     | Gate de saída           |
+| ----------------------------- | -------------------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------- | ----------------------- |
+| R0 — Segurança e determinismo | 1 sprint                   | eliminar bloqueadores P0                       | roles PostgreSQL, runner portável, cleanup/subprocesso e quatro regressões              | G0/G1 local verde       |
+| R1 — Release reproduzível     | 1–2 sprints                | provar o mesmo SHA fora da máquina local       | coverage ≥82%, CI protegida, Helm real, artefatos, restore e rollback                   | G1/G2 verde             |
+| R2 — ERP e operação interna   | 2–4 sprints                | fechar gaps sem dependência externa            | relatórios, cadastros financeiros, reconciliação, acessibilidade, SLO e observabilidade | ≥9/11 domínios          |
+| R3 — Homologação externa      | 3–6 sprints, paralelizável | validar provedores e migração                  | laboratório, fiscal, pagamentos, comunicação, Live Pet/Live Lab e Vetus                 | 11/11 ou exceção formal |
+| R4 — Certificação e cutover   | 1–2 sprints                | transformar o candidato em release operacional | freeze, regressão final, carga, DR, cutover/rollback e aceites                          | G4 e go/no-go           |
 
 ## 2. R0 — Segurança e determinismo
 
@@ -78,15 +88,15 @@ As durações são faixas indicativas em sprints de duas semanas. A data de go-l
 
 As trilhas abaixo devem ocorrer em paralelo quando houver equipe e sandbox disponíveis.
 
-| Trilha | Cenários mínimos |
-|---|---|
-| Laboratório/Live Lab | solicitação, aceite, resultado, correção, duplicidade, indisponibilidade e reconciliação |
-| Fiscal/NFS-e | emissão, rejeição, consulta, cancelamento, timeout, idempotência, XML/PDF e certificado |
-| Cartões/PIX | autorização, captura, split, settlement, refund, chargeback/rejeição e conciliação |
-| Marketing/comunicação | envio real, opt-out, bounce, retry, rate limit e auditoria de consentimento |
-| Live Pet | criação/atualização, duplicidade, erro, retry e reconciliação |
-| Migração Vetus | amostra assinada, contagens, checksums, reconciliação financeira/clínica e rollback |
-| LGPD | acesso, exportação, correção, retenção, anonimização, mascaramento e trilha de auditoria |
+| Trilha                | Cenários mínimos                                                                         |
+| --------------------- | ---------------------------------------------------------------------------------------- |
+| Laboratório/Live Lab  | solicitação, aceite, resultado, correção, duplicidade, indisponibilidade e reconciliação |
+| Fiscal/NFS-e          | emissão, rejeição, consulta, cancelamento, timeout, idempotência, XML/PDF e certificado  |
+| Cartões/PIX           | autorização, captura, split, settlement, refund, chargeback/rejeição e conciliação       |
+| Marketing/comunicação | envio real, opt-out, bounce, retry, rate limit e auditoria de consentimento              |
+| Live Pet              | criação/atualização, duplicidade, erro, retry e reconciliação                            |
+| Migração Vetus        | amostra assinada, contagens, checksums, reconciliação financeira/clínica e rollback      |
+| LGPD                  | acesso, exportação, correção, retenção, anonimização, mascaramento e trilha de auditoria |
 
 ### Critério de saída
 
@@ -115,25 +125,25 @@ As trilhas abaixo devem ocorrer em paralelo quando houver equipe e sandbox dispo
 
 ## 7. Dependências críticas
 
-| Dependência | Bloqueia | Ação antecipada |
-|---|---|---|
-| disponibilidade de sandboxes e certificados | R3 | solicitar acessos e janelas durante R0 |
-| equipe de negócio Vetus | R2–R4 | reservar responsáveis para critérios e reconciliação |
-| ambiente semelhante à produção | R1–R4 | provisionar antes de concluir correções locais |
-| metas de RPO/RTO/SLO | R1–R4 | aprovação executiva antes dos ensaios |
-| dados Vetus sanitizados e representativos | R3 | definir amostra, custódia e descarte seguro |
-| branch protection e CI remota | R1 em diante | configurar assim que os P0 estiverem corrigidos |
+| Dependência                                 | Bloqueia     | Ação antecipada                                      |
+| ------------------------------------------- | ------------ | ---------------------------------------------------- |
+| disponibilidade de sandboxes e certificados | R3           | solicitar acessos e janelas durante R0               |
+| equipe de negócio Vetus                     | R2–R4        | reservar responsáveis para critérios e reconciliação |
+| ambiente semelhante à produção              | R1–R4        | provisionar antes de concluir correções locais       |
+| metas de RPO/RTO/SLO                        | R1–R4        | aprovação executiva antes dos ensaios                |
+| dados Vetus sanitizados e representativos   | R3           | definir amostra, custódia e descarte seguro          |
+| branch protection e CI remota               | R1 em diante | configurar assim que os P0 estiverem corrigidos      |
 
 ## 8. Evolução esperada das notas
 
-| Marco | Global | Produção | Paridade |
-|---|---:|---:|---:|
-| Baseline 2026-09-02 | 84 | 68 | 4/11 |
-| Saída R0 | 86 | 76 | 4/11 |
-| Saída R1 | 89 | 84 | 4/11 |
-| Saída R2 | 91 | 88 | ≥9/11 |
-| Saída R3 | 93 | 92 | 11/11 ou exceção formal |
-| Saída R4 | ≥95 | ≥95 | 11/11 |
+| Marco               | Global | Produção |                Paridade |
+| ------------------- | -----: | -------: | ----------------------: |
+| Baseline 2026-09-02 |     84 |       68 |                    4/11 |
+| Saída R0            |     86 |       76 |                    4/11 |
+| Saída R1            |     89 |       84 |                    4/11 |
+| Saída R2            |     91 |       88 |                   ≥9/11 |
+| Saída R3            |     93 |       92 | 11/11 ou exceção formal |
+| Saída R4            |    ≥95 |      ≥95 |                   11/11 |
 
 As notas acima são metas, não crédito antecipado. Cada uma deve ser recalculada a partir das evidências do commit promovido.
 

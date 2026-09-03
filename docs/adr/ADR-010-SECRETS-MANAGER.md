@@ -18,17 +18,18 @@ O CVG-HIS V2 adotará **HashiCorp Vault (self-hosted)** como Secrets Manager ded
 
 ## Justificativa
 
-| Critério | HashiCorp Vault | AWS Secrets Manager | Azure Key Vault |
-|---------|-----------------|---------------------|-----------------|
-| Self-hosted | ✅ (full control) | ❌ (cloud only) | ❌ (cloud only) |
-| AppRole auth | ✅ (machine-to-machine ideal) | IAM Role | Managed Identity |
-| KV-v2 secrets engine | ✅ (primeira escolha) | ✅ | ✅ |
-| Rotação automática | ✅ (via Agent Sidecar) | ✅ (native) | ✅ |
-| Audit de acesso | ✅ (Vault audit log) | ✅ (CloudTrail) | ✅ |
-| Licença | Mozilla Public License 2.0 | AWS invoice | Azure invoice |
-| Acoplamento cloud | Nenhum | AWS-only | Azure-only |
+| Critério             | HashiCorp Vault               | AWS Secrets Manager | Azure Key Vault  |
+| -------------------- | ----------------------------- | ------------------- | ---------------- |
+| Self-hosted          | ✅ (full control)             | ❌ (cloud only)     | ❌ (cloud only)  |
+| AppRole auth         | ✅ (machine-to-machine ideal) | IAM Role            | Managed Identity |
+| KV-v2 secrets engine | ✅ (primeira escolha)         | ✅                  | ✅               |
+| Rotação automática   | ✅ (via Agent Sidecar)        | ✅ (native)         | ✅               |
+| Audit de acesso      | ✅ (Vault audit log)          | ✅ (CloudTrail)     | ✅               |
+| Licença              | Mozilla Public License 2.0    | AWS invoice         | Azure invoice    |
+| Acoplamento cloud    | Nenhum                        | AWS-only            | Azure-only       |
 
 **Por que Vault self-hosted over cloud-native:**
+
 - Infraestrutura pode ser multi-cloud ou on-premises
 - Não acopla a nenhuma cloud provider específica
 - AppRole é superior para workloads containers (vs IAM role precisa de metadata service)
@@ -59,10 +60,10 @@ export interface SecretsManager {
 }
 
 type SecretDescriptor = {
-  readonly key: string;           // env var fallback name
-  readonly path: string;          // Vault KV-v2 path: 'cvg-his-v2/production/api'
-  readonly version?: number;       // optional for Vault
-  readonly required?: boolean;    // throw if missing
+  readonly key: string; // env var fallback name
+  readonly path: string; // Vault KV-v2 path: 'cvg-his-v2/production/api'
+  readonly version?: number; // optional for Vault
+  readonly required?: boolean; // throw if missing
 };
 ```
 
@@ -86,16 +87,16 @@ VAULT_SECRET_PATH_PREFIX=secret/data/cvg-his-v2
 
 **Inventário de segredos gerenciados:**
 
-| Chave env | Vault path |
-|-----------|-----------|
-| `AUTH_SECRET` | `secret/data/cvg-his-v2/production/api` |
-| `MFA_SECRET_ENCRYPTION_KEY` | `secret/data/cvg-his-v2/production/mfa` |
-| `DATABASE_URL` | `secret/data/cvg-his-v2/production/database` |
-| `REDIS_URL` | `secret/data/cvg-his-v2/production/redis` |
-| `OIDC_CLIENT_SECRET` | `secret/data/cvg-his-v2/production/oidc` |
-| `WHATSAPP_API_KEY` | `secret/data/cvg-his-v2/production/whatsapp` |
-| `PAGARME_API_KEY` | `secret/data/cvg-his-v2/production/pagarme` |
-| `PAGARME_PIX_KEY` | `secret/data/cvg-his-v2/production/pagarme` |
+| Chave env                   | Vault path                                   |
+| --------------------------- | -------------------------------------------- |
+| `AUTH_SECRET`               | `secret/data/cvg-his-v2/production/api`      |
+| `MFA_SECRET_ENCRYPTION_KEY` | `secret/data/cvg-his-v2/production/mfa`      |
+| `DATABASE_URL`              | `secret/data/cvg-his-v2/production/database` |
+| `REDIS_URL`                 | `secret/data/cvg-his-v2/production/redis`    |
+| `OIDC_CLIENT_SECRET`        | `secret/data/cvg-his-v2/production/oidc`     |
+| `WHATSAPP_API_KEY`          | `secret/data/cvg-his-v2/production/whatsapp` |
+| `PAGARME_API_KEY`           | `secret/data/cvg-his-v2/production/pagarme`  |
+| `PAGARME_PIX_KEY`           | `secret/data/cvg-his-v2/production/pagarme`  |
 
 ---
 
@@ -156,6 +157,11 @@ loadApiConfig()
 - Rotação automática (requer Vault Agent Sidecar + runbook)
 - Scanning em runtime (coberto por `pnpm security:secrets` pre-commit)
 - AWS SM / GCP SM (escolha foi Vault self-hosted)
+
+O procedimento operacional posterior para rotação, break-glass e evidência está
+em [`SECRET_ROTATION_AND_BREAK_GLASS.md`](../engineering/SECRET_ROTATION_AND_BREAK_GLASS.md).
+Ele não altera esta decisão arquitetural nem implica que um exercício no ambiente-alvo
+já tenha sido aprovado.
 
 ---
 

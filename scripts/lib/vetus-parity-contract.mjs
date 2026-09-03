@@ -138,21 +138,40 @@ export const vetusParityContract = Object.freeze([
     name: 'Financeiro, pagamentos, caixa e split',
     sources: ['docs/vetus/guides/21-anexo-financeiro.md'],
     evidence: {
-      ui: ['apps/spa/src/pages/finance/AccountsPayablePage.vue'],
-      api: ['apps/api/src/routes/financial-routes.ts'],
+      ui: [
+        'apps/spa/src/pages/finance/AccountsPayablePage.vue',
+        'apps/spa/src/components/finance/OperationalFinanceCatalog.vue',
+        'apps/spa/src/pages/finance/BanksCatalogPage.vue',
+        'apps/spa/src/pages/finance/PaymentMethodsCatalogPage.vue',
+        'apps/spa/src/pages/finance/CardMachinesCatalogPage.vue',
+        'apps/spa/src/pages/finance/SplitRulesCatalogPage.vue'
+      ],
+      api: [
+        'apps/api/src/routes/financial-routes.ts',
+        'apps/api/src/routes/expenses-catalog-routes.ts'
+      ],
       persistence: [
         'packages/db/migrations/0049_financial_payables.sql',
         'packages/db/migrations/0101_cash_deposit_movement.sql',
-        'packages/db/migrations/0108_encounter_cash_receipts.sql'
+        'packages/db/migrations/0108_encounter_cash_receipts.sql',
+        'packages/db/migrations/0159_finance_operational_catalogs.sql'
       ],
       tests: [
         'apps/api/src/routes/financial-routes-payables.test.ts',
-        'tests/integration/database/cash-register-lifecycle-postgres.test.ts'
+        'apps/api/src/routes/expenses-catalog-routes.test.ts',
+        'apps/spa/src/components/finance/__tests__/OperationalFinanceCatalog.test.ts',
+        'apps/spa/src/services/__tests__/financeOperationalCatalog.test.ts',
+        'tests/integration/database/cash-register-lifecycle-postgres.test.ts',
+        'tests/integration/database/finance-operational-catalog.repository.test.ts',
+        'tests/integration/rls/finance-catalog-isolation.test.ts'
       ],
-      e2e: ['e2e/spa/billing-flow.spec.ts', 'e2e/tests/fluxo-caixa-operacional.spec.ts']
+      e2e: [
+        'e2e/spa/billing-flow.spec.ts',
+        'e2e/spa/finance-operational-catalog.spec.ts',
+        'e2e/tests/fluxo-caixa-operacional.spec.ts'
+      ]
     },
     blockers: [
-      'Bancos, formas de pagamento, maquininhas, split e habilitacao usam dados estaticos.',
       'Ainda falta E2E de estorno e conciliacao de pagamentos nao-caixa.',
       'PIX opera com adapter mock e captura/repasse de cartao nao esta habilitada.'
     ]

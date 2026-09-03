@@ -95,7 +95,7 @@
             <DsInput id="quote-valid-until" v-model="quoteForm.validUntil" type="date" label="Validade" />
             <DsInput id="quote-notes" v-model="quoteForm.notes" type="textarea" label="Observações" :rows="3" />
             <div class="form-actions">
-              <DsButton variant="primary" :loading="creatingQuote">Incluir</DsButton>
+              <DsButton type="submit" variant="primary" :loading="creatingQuote">Incluir</DsButton>
             </div>
           </form>
         </DsCard>
@@ -234,7 +234,7 @@
                 <DsInput id="item-notes" v-model="itemForm.notes" type="textarea" label="Observações" :rows="2" />
               </div>
               <div class="form-actions">
-                <DsButton variant="primary" :loading="actionLoading === 'item'">Adicionar item</DsButton>
+                <DsButton type="submit" variant="primary" :loading="actionLoading === 'item'">Adicionar item</DsButton>
               </div>
             </form>
 

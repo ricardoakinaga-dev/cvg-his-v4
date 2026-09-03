@@ -119,7 +119,7 @@ if [[ "${1:-}" == "--no-cleanup" ]]; then
 fi
 
 if [[ -n "${E2E_PLAYWRIGHT_TARGET:-}" ]]; then
-  PLAYWRIGHT_TARGET_ARGS=("$E2E_PLAYWRIGHT_TARGET")
+  read -r -a PLAYWRIGHT_TARGET_ARGS <<< "$E2E_PLAYWRIGHT_TARGET"
 fi
 
 cleanup() {
@@ -276,6 +276,21 @@ echo "🧪 Running SPA E2E tests..."
 echo ""
 
 cd "$ROOT_DIR"
+mkdir -p tmp
+E2E_AUTH_TOKEN="" \
+E2E_ADMIN_USERNAME="$E2E_ADMIN_USERNAME" \
+E2E_ADMIN_EMAIL="$E2E_ADMIN_EMAIL" \
+E2E_ADMIN_PASSWORD="$E2E_ADMIN_PASSWORD" \
+E2E_DATABASE_URL="$DATABASE_URL_E2E" \
+E2E_REDIS_URL="redis://127.0.0.1:6381" \
+E2E_DATABASE_MODE="1" \
+API_DISABLE_INCOMPATIBLE_DB_REPOS="0" \
+AUTH_RATE_LIMIT_MAX_REQUESTS="200" \
+API_URL="http://localhost:${API_E2E_PORT}" \
+SPA_URL="http://localhost:${SPA_E2E_PORT}" \
+  npx playwright test --config playwright-spa.config.ts --list "${PLAYWRIGHT_TARGET_ARGS[@]}" \
+  | tee tmp/playwright-discovery.txt
+
 E2E_AUTH_TOKEN="" \
 E2E_ADMIN_USERNAME="$E2E_ADMIN_USERNAME" \
 E2E_ADMIN_EMAIL="$E2E_ADMIN_EMAIL" \
@@ -291,6 +306,10 @@ AUTH_RATE_LIMIT_MAX_REQUESTS="200" \
   API_URL="http://localhost:${API_E2E_PORT}" \
 SPA_URL="http://localhost:${SPA_E2E_PORT}" \
   npx playwright test --config playwright-spa.config.ts "${PLAYWRIGHT_TARGET_ARGS[@]}"
+
+if [[ ${#PLAYWRIGHT_TARGET_ARGS[@]} -eq 0 ]]; then
+  node scripts/validate-usability-playwright-evidence.mjs
+fi
 
 echo ""
 echo "✅ E2E tests completed"

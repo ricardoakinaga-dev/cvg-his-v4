@@ -1,5 +1,8 @@
 <template>
-  <div class="ds-stat-card" :class="{ 'ds-stat-card--loading': loading, 'ds-stat-card--error': !!error }">
+  <div
+    class="ds-stat-card"
+    :class="{ 'ds-stat-card--loading': loading, 'ds-stat-card--error': !!error }"
+  >
     <div v-if="loading" class="ds-stat-card__skeleton">
       <div class="ds-stat-card__skeleton-icon" />
       <div class="ds-stat-card__skeleton-body">
@@ -19,8 +22,14 @@
         <div class="ds-stat-card__value">{{ value }}</div>
         <div class="ds-stat-card__label">{{ label }}</div>
       </div>
-      <div v-if="trend && trendValue" class="ds-stat-card__trend" :class="`ds-stat-card__trend--${trend}`">
-        <span class="ds-stat-card__trend-arrow">{{ trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→' }}</span>
+      <div
+        v-if="trend && trendValue"
+        class="ds-stat-card__trend"
+        :class="`ds-stat-card__trend--${trend}`"
+      >
+        <span class="ds-stat-card__trend-arrow">{{
+          trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→'
+        }}</span>
         <span class="ds-stat-card__trend-value">{{ trendValue }}</span>
       </div>
     </template>
@@ -90,13 +99,15 @@ withDefaults(defineProps<DsStatCardProps>(), {
   font-size: 28px;
   font-weight: 800;
   color: var(--color-text, #0f172a);
-  line-height: 1;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
 }
 
 .ds-stat-card__label {
   margin-top: 4px;
   font-size: 13px;
   color: var(--color-text-muted, #94a3b8);
+  overflow-wrap: anywhere;
 }
 
 .ds-stat-card__trend {

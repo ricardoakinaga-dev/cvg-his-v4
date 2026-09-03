@@ -3,7 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { navGroups } from '../../apps/spa/src/navigation';
 
 const SPA_URL = process.env.SPA_URL || 'http://127.0.0.1:3112';
-const ARTIFACT_PATH = 'tmp/master-usability-audit.json';
+const ARTIFACT_PATH = process.env.E2E_AUDIT_ARTIFACT || 'tmp/master-usability-audit.json';
 
 type AuditMode = 'desktop' | 'mobile';
 
@@ -27,7 +27,38 @@ type AuditRecord = {
     unnamedLinks: string[];
     unlabeledFields: string[];
     undersizedTargets: string[];
+    viewportOverflow: string[];
+    overflowContainers: string[];
   };
+};
+
+type AuditMetadata = {
+  sha: string;
+  environment: string;
+  command: string;
+  playwrightVersion: string;
+  browserVersion: string;
+  locale: string;
+  timezone: string;
+  viewports: Record<AuditMode, { width: number; height: number }>;
+};
+
+const VIEWPORTS = {
+  desktop: { width: 1440, height: 900 },
+  mobile: { width: 390, height: 844 }
+} as const;
+
+const auditMetadata: AuditMetadata = {
+  sha: process.env.GITHUB_SHA || process.env.CI_COMMIT_SHA || 'workspace-uncommitted',
+  environment: process.env.E2E_ENVIRONMENT || (process.env.CI ? 'ci' : 'local'),
+  command:
+    process.env.E2E_AUDIT_COMMAND ||
+    'npx playwright test --config playwright-spa.config.ts e2e/spa/master-usability-audit.spec.ts',
+  playwrightVersion: '1.58.2',
+  browserVersion: 'not-started',
+  locale: 'pt-BR',
+  timezone: 'America/Sao_Paulo',
+  viewports: VIEWPORTS
 };
 
 const navRoutes = Array.from(
@@ -153,6 +184,31 @@ async function auditRoute(page: Page, mode: AuditMode, route: (typeof navRoutes)
       const viewportWidth = document.documentElement.clientWidth;
       const horizontalOverflow =
         Math.max(document.body.scrollWidth, document.documentElement.scrollWidth) - viewportWidth;
+      const viewportOverflowElements = [...document.querySelectorAll('body *')]
+        .filter((element) => {
+          const htmlElement = element as HTMLElement;
+          const rect = element.getBoundingClientRect();
+          return (
+            !element.closest('[aria-hidden="true"], [inert]') &&
+            htmlElement.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }) &&
+            rect.width > 0 &&
+            rect.height > 0 &&
+            (rect.left < -2 || rect.right > viewportWidth + 2)
+          );
+        })
+        .sort(
+          (left, right) => right.getBoundingClientRect().right - left.getBoundingClientRect().right
+        );
+      const overflowContainers = [
+        document.documentElement,
+        document.body,
+        ...document.querySelectorAll('body *')
+      ]
+        .filter((element) => element.scrollWidth > element.clientWidth + 2)
+        .sort(
+          (left, right) =>
+            right.scrollWidth - right.clientWidth - (left.scrollWidth - left.clientWidth)
+        );
 
       const unnamedButtonElements = buttons.filter((element) => !accessibleName(element));
       const unnamedLinkElements = links.filter((element) => !accessibleName(element));
@@ -193,7 +249,15 @@ async function auditRoute(page: Page, mode: AuditMode, route: (typeof navRoutes)
           unnamedButtons: unnamedButtonElements.slice(0, 5).map(describeElement),
           unnamedLinks: unnamedLinkElements.slice(0, 8).map(describeElement),
           unlabeledFields: unlabeledFieldElements.slice(0, 8).map(describeElement),
-          undersizedTargets: undersizedTargetElements.slice(0, 8).map(describeElement)
+          undersizedTargets: undersizedTargetElements.slice(0, 8).map(describeElement),
+          viewportOverflow: viewportOverflowElements.slice(0, 12).map((element) => {
+            const rect = element.getBoundingClientRect();
+            return `${describeElement(element)} (${Math.round(rect.left)}..${Math.round(rect.right)}px)`;
+          }),
+          overflowContainers: overflowContainers.slice(0, 12).map((element) => {
+            const overflowX = getComputedStyle(element).overflowX;
+            return `${describeElement(element)} (${element.clientWidth}->${element.scrollWidth}px; overflow-x:${overflowX})`;
+          })
         }
       };
     });
@@ -212,7 +276,14 @@ async function auditRoute(page: Page, mode: AuditMode, route: (typeof navRoutes)
       issues.push(`${metrics.undersizedTargets} alvo(s) interativo(s) menor(es) que 24x24px`);
     }
     if (pageErrors.length) issues.push(`${pageErrors.length} erro(s) JavaScript não tratado(s)`);
+    if (httpErrors.length) {
+      issues.push(`${new Set(httpErrors).size} resposta(s) HTTP inesperada(s) da aplicação`);
+    }
 
+    await page.evaluate(() => {
+      document.body.tabIndex = -1;
+      document.body.focus();
+    });
     await page.keyboard.press('Tab');
     const focusVisible = await page.evaluate(() => {
       const active = document.activeElement as HTMLElement | null;
@@ -253,6 +324,24 @@ async function auditRoute(page: Page, mode: AuditMode, route: (typeof navRoutes)
   }
 }
 
+async function writeAuditArtifact(): Promise<void> {
+  await mkdir('tmp', { recursive: true });
+  await writeFile(
+    ARTIFACT_PATH,
+    JSON.stringify(
+      {
+        generatedAt: new Date().toISOString(),
+        metadata: auditMetadata,
+        routeCount: navRoutes.length,
+        navigationCount: auditRecords.length,
+        records: auditRecords
+      },
+      null,
+      2
+    )
+  );
+}
+
 for (const mode of ['desktop', 'mobile'] as const) {
   test.describe(`Auditoria master de usabilidade - ${mode}`, () => {
     let context: BrowserContext;
@@ -262,8 +351,9 @@ for (const mode of ['desktop', 'mobile'] as const) {
       context = await browser.newContext({
         locale: 'pt-BR',
         timezoneId: 'America/Sao_Paulo',
-        viewport: mode === 'desktop' ? { width: 1440, height: 900 } : { width: 390, height: 844 }
+        viewport: VIEWPORTS[mode]
       });
+      auditMetadata.browserVersion = browser.version();
       auditPage = await context.newPage();
       await login(auditPage);
     });
@@ -275,21 +365,22 @@ for (const mode of ['desktop', 'mobile'] as const) {
     }
 
     test.afterAll(async () => {
-      await mkdir('tmp', { recursive: true });
-      await writeFile(
-        ARTIFACT_PATH,
-        JSON.stringify(
-          {
-            generatedAt: new Date().toISOString(),
-            routeCount: navRoutes.length,
-            navigationCount: auditRecords.length,
-            records: auditRecords
-          },
-          null,
-          2
-        )
-      );
+      await writeAuditArtifact();
       await context?.close();
     });
   });
 }
+
+test('gate bloqueante da auditoria master após a coleta integral', async () => {
+  await writeAuditArtifact();
+
+  expect(
+    auditRecords,
+    `A coleta deve cobrir ${navRoutes.length} rotas nos dois viewports antes de avaliar o gate`
+  ).toHaveLength(navRoutes.length * 2);
+
+  const failures = auditRecords
+    .filter((record) => record.status === 'failed')
+    .map((record) => `${record.mode} ${record.path}: ${record.issues.join('; ')}`);
+  expect(failures, failures.join('\n')).toEqual([]);
+});

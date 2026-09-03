@@ -18,6 +18,8 @@ export interface WorkerFailureOptions {
 
 let active = false;
 let injected = false;
+let faultTimer: ReturnType<typeof setInterval> | null = null;
+let expirationTimer: ReturnType<typeof setTimeout> | null = null;
 
 async function start(options: WorkerFailureOptions): Promise<ExperimentResult> {
   if (active) {
@@ -35,16 +37,17 @@ async function start(options: WorkerFailureOptions): Promise<ExperimentResult> {
   chaosFaultInjectedTotal.labels(WORKER_FAILURE_ID, 'worker_job_crash').inc();
 
   // Simulate failure for the duration
-  const faultTimer = setInterval(() => {
+  faultTimer = setInterval(() => {
     if (Math.random() < probability) {
       chaosFaultInjectedTotal.labels(WORKER_FAILURE_ID, 'worker_job_crash').inc();
     }
   }, faultDelayMs);
 
-  setTimeout(() => {
-    clearInterval(faultTimer);
-    stop();
+  faultTimer.unref?.();
+  expirationTimer = setTimeout(() => {
+    void stop();
   }, durationMs);
+  expirationTimer.unref?.();
 
   return {
     ok: true,
@@ -55,6 +58,14 @@ async function start(options: WorkerFailureOptions): Promise<ExperimentResult> {
 }
 
 async function stop(): Promise<ExperimentStopResult> {
+  if (expirationTimer) {
+    clearTimeout(expirationTimer);
+    expirationTimer = null;
+  }
+  if (faultTimer) {
+    clearInterval(faultTimer);
+    faultTimer = null;
+  }
   active = false;
   injected = false;
   chaosExperimentActive.labels(WORKER_FAILURE_ID).set(0);

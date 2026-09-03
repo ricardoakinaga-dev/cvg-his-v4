@@ -99,7 +99,7 @@ import {
 import { QuotesService } from '@cvg-his-v2/module-quotes';
 import { ReportsService, type ReportRepository } from '@cvg-his-v2/module-reports';
 import { CashService } from '@cvg-his-v2/module-cash';
-import type { AccountId } from '@cvg-his-v2/shared-types';
+import type { AccountId, UserId } from '@cvg-his-v2/shared-types';
 import { ProductsService } from '@cvg-his-v2/module-products';
 import { ServicesService } from '@cvg-his-v2/module-services';
 import type { DischargeRepository } from '@cvg-his-v2/module-discharges';
@@ -302,6 +302,11 @@ export interface ApiRuntimeOptions {
     command: () => Promise<T>,
     metadata?: { readonly actorUserId: string; readonly correlationId: string }
   ) => Promise<T>;
+  /**
+   * Selects the clinical persistence boundary explicitly. Degraded/local runtimes
+   * must not inject a partial repository bundle without a transaction adapter.
+   */
+  readonly medicalRecordsPersistenceMode?: 'repositories' | 'memory';
 }
 
 function createRuntimeSeeds<T>(
@@ -314,6 +319,8 @@ function createRuntimeSeeds<T>(
 
 export function createApiRuntime(options: ApiRuntimeOptions) {
   const repos = options.repositories ?? {};
+  const medicalRecordRepos =
+    options.medicalRecordsPersistenceMode === 'memory' ? ({} as RuntimeRepositories) : repos;
   const inMemoryRepos = createInMemoryRuntimeRepositories();
 
   const accessControl = new AccessControlService({ repository: repos.accessControl });
@@ -646,10 +653,10 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
   const medicalRecords = new MedicalRecordsService({
     encounters,
     patients,
-    medicalRecordRepository: repos.medicalRecord,
-    clinicalEntryRepository: repos.clinicalEntry,
-    clinicalTimelineRepository: repos.clinicalTimeline,
-    entryRevisionRepository: repos.entryRevision,
+    medicalRecordRepository: medicalRecordRepos.medicalRecord,
+    clinicalEntryRepository: medicalRecordRepos.clinicalEntry,
+    clinicalTimelineRepository: medicalRecordRepos.clinicalTimeline,
+    entryRevisionRepository: medicalRecordRepos.entryRevision,
     atomicPersistence: medicalRecordsAtomicPersistence
   });
   const sectorBedService = new SectorBedService(options.sectorBedOptions ?? {});
@@ -663,8 +670,35 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
   const surgery = new SurgeryService(encounters, {
     surgeryCaseRepository: repos.surgeryCase
   });
+  const repositoryLaboratorySigner = repos.diagnosticOrder?.isEnabledLaboratorySigner;
+  const laboratorySignerAuthority = {
+    async isEnabledLaboratorySigner(accountId: AccountId, userId: string): Promise<boolean> {
+      if (repositoryLaboratorySigner) {
+        return repositoryLaboratorySigner.call(repos.diagnosticOrder, accountId, userId);
+      }
+      try {
+        const user = users.getForAccountOrThrow(userId as UserId, accountId);
+        const member = staff.findByUserId(userId as UserId);
+        if (
+          user.status !== 'active' ||
+          user.principalKind !== 'human' ||
+          !member ||
+          member.accountId !== accountId ||
+          member.status !== 'active' ||
+          !member.professionId
+        ) {
+          return false;
+        }
+        const profession = await staff.getProfessionOrThrow(member.professionId, accountId);
+        return profession.status === 'active';
+      } catch {
+        return false;
+      }
+    }
+  };
   const diagnostics = new DiagnosticsService(encounters, {
-    diagnosticOrderRepository: repos.diagnosticOrder
+    diagnosticOrderRepository: repos.diagnosticOrder,
+    laboratorySignerAuthority
   });
   const laboratory = new LaboratoryService(diagnostics, {
     catalogRepository: repos.laboratoryCatalog ?? new InMemoryLaboratoryCatalogRepository()
@@ -1242,11 +1276,13 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
         };
       }) satisfies LgpdDataProvider,
       encounters: (async (_subjectId, context) => {
-        const encounterRows = encounters.listAll(context.accountId as AccountId).filter((encounter) => {
-          if (context.subjectType === 'patient') return encounter.patientId === context.subjectId;
-          if (context.subjectType === 'owner') return encounter.ownerId === context.subjectId;
-          return false;
-        });
+        const encounterRows = encounters
+          .listAll(context.accountId as AccountId)
+          .filter((encounter) => {
+            if (context.subjectType === 'patient') return encounter.patientId === context.subjectId;
+            if (context.subjectType === 'owner') return encounter.ownerId === context.subjectId;
+            return false;
+          });
         const timelines = await Promise.all(
           encounterRows.map(async (encounter) => ({
             encounterId: encounter.id,
@@ -1281,16 +1317,22 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
         };
       }) satisfies LgpdDataProvider,
       attachments: (async (_subjectId, context) => {
-        const subjectEncounters = encounters.listAll(context.accountId as AccountId).filter((encounter) => {
-          if (context.subjectType === 'patient') return encounter.patientId === context.subjectId;
-          if (context.subjectType === 'owner') return encounter.ownerId === context.subjectId;
-          return false;
-        });
+        const subjectEncounters = encounters
+          .listAll(context.accountId as AccountId)
+          .filter((encounter) => {
+            if (context.subjectType === 'patient') return encounter.patientId === context.subjectId;
+            if (context.subjectType === 'owner') return encounter.ownerId === context.subjectId;
+            return false;
+          });
         const clinicalRecords = await medicalRecords.listAll(context.accountId as AccountId);
         const diagnosticOrders = diagnostics.listByAccount(context.accountId as AccountId);
         const attachmentGroups = await Promise.all([
           ...subjectEncounters.map((encounter) =>
-            attachments.listByLinkedEntity('encounter', encounter.id, context.accountId as AccountId)
+            attachments.listByLinkedEntity(
+              'encounter',
+              encounter.id,
+              context.accountId as AccountId
+            )
           ),
           ...clinicalRecords
             .filter(({ record }) =>

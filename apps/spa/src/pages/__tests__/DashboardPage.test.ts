@@ -274,7 +274,11 @@ describe('DashboardPage', () => {
               'owners.read',
               'patients.read',
               'scheduling.read',
-              'product.read'
+              'product.read',
+              'audit.read',
+              'inpatient.read',
+              'inventory.read',
+              'diagnostics.read'
             ]
           }
         });
@@ -428,5 +432,37 @@ describe('DashboardPage', () => {
     expect(mockListInventory).toHaveBeenCalledTimes(1);
     expect(mockListLaboratoryOrders).toHaveBeenCalledTimes(1);
     expect(mockInitWidgets).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not call forbidden executive sources for reception-only permissions', async () => {
+    mockApiRequest.mockImplementation((path: string) => {
+      if (path === '/auth/session') {
+        return Promise.resolve({
+          access: { permissionCodes: ['owners.read', 'patients.read', 'scheduling.read'] }
+        });
+      }
+      if (path === '/owners' || path === '/patients' || path === '/appointments') {
+        return Promise.resolve({ items: [], total: 0 });
+      }
+      return Promise.reject(new Error(`Unexpected path: ${path}`));
+    });
+
+    const DashboardPage = (await import('../DashboardPage.vue')).default;
+    const wrapper = mount(DashboardPage, {
+      global: {
+        stubs: { RouterLink: { props: ['to'], template: '<a><slot /></a>' } }
+      }
+    });
+    await flushPromises();
+
+    expect(mockGetSloReport).not.toHaveBeenCalled();
+    expect(mockGetOperationalCoverage).not.toHaveBeenCalled();
+    expect(mockListAuditEvents).not.toHaveBeenCalled();
+    expect(mockGetCommercialDashboard).not.toHaveBeenCalled();
+    expect(mockListInpatient).not.toHaveBeenCalled();
+    expect(mockListDailyChargeWorklist).not.toHaveBeenCalled();
+    expect(mockListInventory).not.toHaveBeenCalled();
+    expect(mockListLaboratoryOrders).not.toHaveBeenCalled();
+    expect(wrapper.find('[aria-label="Central executiva Premium"]').exists()).toBe(false);
   });
 });

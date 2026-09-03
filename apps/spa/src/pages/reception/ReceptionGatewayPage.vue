@@ -513,7 +513,8 @@ interface ContextualQuickAction {
 function patientPriority360Action(patient: PatientSummary): ContextualQuickAction | null {
   const pendingLaboratoryCount = patientLaboratoryOrders.value.filter(
     (order) =>
-      order.patientId === patient.id && (order.status === 'requested' || order.status === 'collected')
+      order.patientId === patient.id &&
+      (order.status === 'requested' || order.status === 'collected')
   ).length;
   const overduePreventiveCount = patientPreventiveEvents.value.filter(
     (event) =>
@@ -1497,6 +1498,12 @@ function handoffStatusLabel(status: string): string {
   color: #0f766e;
   font-weight: 700;
   text-decoration: none;
+}
+
+.text-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
 }
 
 .button-link {

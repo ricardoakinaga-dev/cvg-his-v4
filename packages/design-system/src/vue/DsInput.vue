@@ -15,6 +15,8 @@
       :readonly="readonly"
       :maxlength="maxlength"
       :autocomplete="autocomplete"
+      :aria-label="ariaLabel"
+      :aria-labelledby="ariaLabelledby"
       :step="step"
       :min="min"
       :max="max"
@@ -35,6 +37,8 @@
       :readonly="readonly"
       :maxlength="maxlength"
       :rows="rows"
+      :aria-label="ariaLabel"
+      :aria-labelledby="ariaLabelledby"
       :aria-invalid="!!error"
       :aria-describedby="describedById"
       class="ds-input ds-input--textarea"
@@ -48,6 +52,8 @@
       :value="modelValue"
       :disabled="disabled"
       :required="required"
+      :aria-label="ariaLabel"
+      :aria-labelledby="ariaLabelledby"
       :aria-invalid="!!error"
       :aria-describedby="describedById"
       class="ds-input ds-input--select"
@@ -107,6 +113,8 @@ export interface DsInputProps {
   readonly?: boolean;
   maxlength?: number;
   autocomplete?: string;
+  ariaLabel?: string;
+  ariaLabelledby?: string;
   rows?: number;
   id?: string;
   step?: string | number;
@@ -125,6 +133,8 @@ const props = withDefaults(defineProps<DsInputProps>(), {
   readonly: false,
   maxlength: undefined,
   autocomplete: undefined,
+  ariaLabel: undefined,
+  ariaLabelledby: undefined,
   rows: 4,
   id: undefined,
   step: undefined,

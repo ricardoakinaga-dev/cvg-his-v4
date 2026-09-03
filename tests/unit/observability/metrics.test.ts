@@ -17,6 +17,10 @@ describe('Metrics — Route Normalization', () => {
   it('should return exact match for known routes', () => {
     expect(normalizeRoute('/health')).toBe('/health');
     expect(normalizeRoute('/metrics')).toBe('/metrics');
+    expect(normalizeRoute('/reports/executions/rep-123/export')).toBe(
+      '/reports/executions/:id/export'
+    );
+    expect(normalizeRoute('/attachments/att-123/download')).toBe('/attachments/:id/download');
     expect(normalizeRoute('/auth/login')).toBe('/auth/login');
     expect(normalizeRoute('/auth/logout')).toBe('/auth/logout');
     expect(normalizeRoute('/auth/refresh')).toBe('/auth/refresh');

@@ -9,8 +9,9 @@
     />
 
     <DsAlert variant="info">
-      Superfície somente leitura para preservar a ordem Vetus de cadastros financeiros. Cadastrar cartão, alterar
-      bandeira, capturar transação, conciliar pagamento e baixar recebível seguem bloqueados até contrato auditável.
+      Superfície somente leitura para preservar a ordem Vetus de cadastros financeiros. Cadastrar
+      cartão, alterar bandeira, capturar transação, conciliar pagamento e baixar recebível seguem
+      bloqueados até contrato auditável.
     </DsAlert>
 
     <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
@@ -27,11 +28,15 @@
       />
       <DsInput id="cards-provider" v-model="filters.provider" label="Administradora" type="select">
         <option value="">Todas</option>
-        <option v-for="provider in providerOptions" :key="provider" :value="provider">{{ provider }}</option>
+        <option v-for="provider in providerOptions" :key="provider" :value="provider">
+          {{ provider }}
+        </option>
       </DsInput>
       <DsInput id="cards-status" v-model="filters.status" label="Status" type="select">
         <option value="">Todos</option>
-        <option v-for="status in statusOptions" :key="status" :value="status">{{ statusLabel(status) }}</option>
+        <option v-for="status in statusOptions" :key="status" :value="status">
+          {{ statusLabel(status) }}
+        </option>
       </DsInput>
       <DsInput id="cards-type" v-model="filters.type" label="Tipo" type="select">
         <option value="">Todos</option>
@@ -50,9 +55,15 @@
     <section class="cards-actions" aria-label="Ações de cartões débito e crédito">
       <DsButton variant="primary" disabled>Novo Cartão</DsButton>
       <DsButton variant="secondary" tag="a" to="/finance/card-machines">Maquininhas</DsButton>
-      <DsButton variant="secondary" tag="a" to="/finance/card-transactions">Transações de Cartão</DsButton>
-      <DsButton variant="secondary" tag="a" to="/finance/card-accounts">Contas Adm. Cartão</DsButton>
-      <DsButton variant="ghost" type="button" :loading="loading" @click="reload">Atualizar</DsButton>
+      <DsButton variant="secondary" tag="a" to="/finance/card-transactions"
+        >Transações de Cartão</DsButton
+      >
+      <DsButton variant="secondary" tag="a" to="/finance/card-accounts"
+        >Contas Adm. Cartão</DsButton
+      >
+      <DsButton variant="ghost" type="button" :loading="loading" @click="reload"
+        >Atualizar</DsButton
+      >
     </section>
 
     <DataTable
@@ -67,11 +78,18 @@
       variant="hoverable"
     >
       <template #cell-card="{ row }">
-        <strong>{{ card(row).cardHolderName || card(row).ownerName || card(row).transactionId }}</strong>
-        <small>{{ card(row).cardLast4 ? `Final ${card(row).cardLast4}` : card(row).transactionId }}</small>
+        <strong>{{
+          card(row).cardHolderName || card(row).ownerName || card(row).transactionId
+        }}</strong>
+        <small>{{
+          card(row).cardLast4 ? `Final ${card(row).cardLast4}` : card(row).transactionId
+        }}</small>
       </template>
       <template #cell-type="{ row }">
-        <StatusBadge :label="cardTypeLabel(card(row))" :variant="card(row).installments > 1 ? 'info' : 'neutral'" />
+        <StatusBadge
+          :label="cardTypeLabel(card(row))"
+          :variant="card(row).installments > 1 ? 'info' : 'neutral'"
+        />
       </template>
       <template #cell-brand="{ row }">
         <span>{{ brandLabel(card(row).cardBrand) }}</span>
@@ -81,14 +99,20 @@
         <small>{{ card(row).installments }} parcela(s)</small>
       </template>
       <template #cell-status="{ row }">
-        <StatusBadge :label="statusLabel(card(row).status)" :variant="statusVariant(card(row).status)" />
+        <StatusBadge
+          :label="statusLabel(card(row).status)"
+          :variant="statusVariant(card(row).status)"
+        />
       </template>
       <template #cell-reconciliation="{ row }">
         <span>{{ reconciliationLabel(card(row).reconciliationState) }}</span>
       </template>
       <template #cell-usage="{ row }">
         <span>{{ card(row).description }}</span>
-        <small>{{ card(row).patientName || 'Paciente não informado' }} · {{ card(row).ownerName || 'Tutor não informado' }}</small>
+        <small
+          >{{ card(row).patientName || 'Paciente não informado' }} ·
+          {{ card(row).ownerName || 'Tutor não informado' }}</small
+        >
       </template>
       <template #cell-next="{ row }">
         <span>{{ nextAction(card(row)) }}</span>
@@ -134,8 +158,12 @@ const visibleCards = computed(() => cards.value.filter(matchesFilters));
 const visibleRows = computed(() => visibleCards.value as unknown as DataTableRow[]);
 const providerOptions = computed(() => unique(cards.value.map((item) => item.provider)));
 const statusOptions = computed(() => unique(cards.value.map((item) => item.status)));
-const capturedCount = computed(() => visibleCards.value.filter((item) => item.status === 'captured').length);
-const pendingCount = computed(() => visibleCards.value.filter((item) => item.status !== 'captured').length);
+const capturedCount = computed(
+  () => visibleCards.value.filter((item) => item.status === 'captured').length
+);
+const pendingCount = computed(
+  () => visibleCards.value.filter((item) => item.status !== 'captured').length
+);
 const providerCount = computed(() => new Set(visibleCards.value.map((item) => item.provider)).size);
 const headerSecondaryActions = computed(() => [
   {
@@ -225,7 +253,9 @@ function nextAction(item: FinanceCardRow): string {
 }
 
 function unique(values: string[]): string[] {
-  return [...new Set(values.filter(Boolean))].sort((left, right) => left.localeCompare(right, 'pt-BR'));
+  return [...new Set(values.filter(Boolean))].sort((left, right) =>
+    left.localeCompare(right, 'pt-BR')
+  );
 }
 
 function normalize(value: string): string {
@@ -245,6 +275,9 @@ onMounted(() => {
 .cards-page {
   display: grid;
   gap: 16px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .cards-filters {
@@ -252,6 +285,7 @@ onMounted(() => {
   display: grid;
   gap: 12px;
   grid-template-columns: 2fr 1fr 1fr 1fr;
+  min-width: 0;
 }
 
 .cards-summary-grid {

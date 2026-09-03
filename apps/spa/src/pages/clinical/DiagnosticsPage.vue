@@ -90,7 +90,7 @@
           />
           <DsInput v-model="requestForm.title" label="Título clínico" placeholder="Opcional" />
           <div class="form-actions">
-            <DsButton variant="primary" :loading="submittingRequest">Registrar pedido</DsButton>
+            <DsButton type="submit" variant="primary" :loading="submittingRequest">Registrar pedido</DsButton>
             <DsButton variant="secondary" type="button" @click="resetRequestForm">Limpar</DsButton>
           </div>
         </form>
@@ -117,7 +117,7 @@
             <option value="other">Outro</option>
           </DsInput>
           <div class="form-actions">
-            <DsButton variant="primary" :loading="submittingAttachment">Enviar resultado</DsButton>
+            <DsButton type="submit" variant="primary" :loading="submittingAttachment">Enviar resultado</DsButton>
             <DsButton variant="secondary" type="button" @click="resetAttachmentForm">Limpar</DsButton>
           </div>
         </form>
@@ -504,7 +504,6 @@ async function submitRequest() {
       encounterId: selectedEncounter.value.id,
       patientId: selectedEncounter.value.patientId,
       examType: selectedReportType.value.name,
-      examCatalogId: selectedReportType.value.id,
       reason: requestForm.value.reason.trim() || 'Solicitação registrada na central diagnóstica.'
     });
 
@@ -570,8 +569,7 @@ async function submitAttachment() {
       await laboratoryService.recordResult(linkedOrder.id, {
         status: 'resulted',
         resultSummary: attachmentForm.value.resultSummary.trim() || attachment.fileName,
-        resultAttachmentId: attachment.id,
-        signedByUserId: 'diagnostics-page'
+        resultAttachmentId: attachment.id
       });
       successMessage.value = 'Resultado anexado ao prontuário e liberado no laboratório.';
     } else {

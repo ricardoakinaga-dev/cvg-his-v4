@@ -7,7 +7,8 @@ import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const roadmapPath = 'docs/2026-08-07-backlog-roadmap-resolucao-auditoria-cvg-his-v4.md';
+const roadmapPath = 'docs/2026-09-02-roadmap-melhorias-cvg-his-v4.md';
+const backlogPath = 'docs/2026-09-02-backlog-priorizado-cvg-his-v4.md';
 const requiredFiles = [
   'infra/scripts/backup-v2.sh',
   'infra/scripts/restore-drill-v2.sh',
@@ -15,7 +16,8 @@ const requiredFiles = [
   'package.json',
   'docs/131-checklist-cutover-servidor.md',
   'docs/132-superficie-canonica-deploy-e-migracao.md',
-  roadmapPath
+  roadmapPath,
+  backlogPath
 ];
 
 function createFixture() {
@@ -36,7 +38,7 @@ function runChecker(fixtureRoot) {
   );
 }
 
-test('backup/restore gate uses the current August roadmap without legacy docs', () => {
+test('backup/restore gate uses the current September roadmap and backlog', () => {
   const fixtureRoot = createFixture();
 
   try {
@@ -55,15 +57,15 @@ test('backup/restore gate fails when the current roadmap loses a required exit c
   try {
     const fixtureRoadmap = join(fixtureRoot, roadmapPath);
     const withoutRestoreProof = readFileSync(fixtureRoadmap, 'utf8').replace(
-      'restore é comprovado',
-      'restore ainda nao comprovado'
+      'restore atende aos objetivos aprovados',
+      'restore ainda não comprovado'
     );
     writeFileSync(fixtureRoadmap, withoutRestoreProof);
 
     const result = runChecker(fixtureRoot);
 
     assert.equal(result.status, 1, `${result.stdout}\n${result.stderr}`);
-    assert.match(result.stderr, /FAIL roadmap atual mantem backup\/restore/);
+    assert.match(result.stderr, /FAIL roadmap e backlog vigentes mantem backup\/restore/);
   } finally {
     rmSync(fixtureRoot, { recursive: true, force: true });
   }

@@ -3538,6 +3538,157 @@ paths:
               schema:
                 $ref: '#/components/schemas/CashReconciliation'
 
+  /finance/catalogs/{catalogType}:
+    get:
+      operationId: listFinanceOperationalCatalog
+      summary: List one tenant-scoped operational finance catalog
+      tags: [Financial]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/FinanceOperationalCatalogType'
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/FinanceOperationalCatalogStatus'
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: Tenant-scoped catalog page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinanceOperationalCatalogPage'
+        '400':
+          description: Invalid catalog type or filters
+        '401':
+          description: Unauthorized
+        '403':
+          description: Missing billing.read permission
+        '503':
+          description: Database-backed finance catalog unavailable
+    post:
+      operationId: createFinanceOperationalCatalogItem
+      summary: Create an audited operational finance catalog item
+      tags: [Financial]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/FinanceOperationalCatalogType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFinanceOperationalCatalogItemRequest'
+      responses:
+        '201':
+          description: Catalog item created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinanceOperationalCatalogItem'
+        '400':
+          description: Type-specific validation error or forbidden configuration field
+        '401':
+          description: Unauthorized
+        '403':
+          description: Missing billing.manage permission
+        '409':
+          description: Code already exists inside this tenant and catalog type
+        '503':
+          description: Database-backed finance catalog unavailable
+
+  /finance/catalogs/{catalogType}/{itemId}:
+    patch:
+      operationId: updateFinanceOperationalCatalogItem
+      summary: Update an operational finance catalog item using optimistic versioning
+      tags: [Financial]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/FinanceOperationalCatalogType'
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateFinanceOperationalCatalogItemRequest'
+      responses:
+        '200':
+          description: Catalog item updated with an incremented version
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinanceOperationalCatalogItem'
+        '400':
+          description: Type-specific validation error
+        '401':
+          description: Unauthorized
+        '403':
+          description: Missing billing.manage permission
+        '404':
+          description: Catalog item not found in the active tenant and type
+        '409':
+          description: Version conflict or duplicate code
+        '503':
+          description: Database-backed finance catalog unavailable
+    delete:
+      operationId: deleteFinanceOperationalCatalogItem
+      summary: Delete an audited operational finance catalog item
+      tags: [Financial]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/FinanceOperationalCatalogType'
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Catalog item deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
+                    enum: [true]
+        '401':
+          description: Unauthorized
+        '403':
+          description: Missing billing.manage permission
+        '404':
+          description: Catalog item not found in the active tenant and type
+        '503':
+          description: Database-backed finance catalog unavailable
+
   /finance/advance-payments:
     get:
       operationId: listAdvancePayments
@@ -11597,6 +11748,14 @@ components:
       schema:
         type: string
       description: Canonical feature flag key.
+    FinanceOperationalCatalogType:
+      in: path
+      name: catalogType
+      required: true
+      schema:
+        type: string
+        enum: [banks, payment-methods, card-machines, split-rules]
+      description: Closed set of persistent operational finance catalogs.
 
   schemas:
     PixSettlementDlqDelivery:
@@ -13700,6 +13859,205 @@ components:
         updatedAt:
           type: string
           format: date-time
+
+    FinanceOperationalCatalogStatus:
+      type: string
+      enum: [active, inactive]
+
+    BankOperationalConfiguration:
+      type: object
+      additionalProperties: false
+      required: [bankCode, agency, accountNumber, accountType, usageKey, usageDescription, reconciliationMode]
+      properties:
+        bankCode:
+          type: string
+          minLength: 1
+        agency:
+          type: string
+          minLength: 1
+        accountNumber:
+          type: string
+          minLength: 1
+        accountType:
+          type: string
+          enum: [checking, savings, payment]
+        usageKey:
+          type: string
+          enum: [settlement, card, support]
+        usageDescription:
+          type: string
+          minLength: 1
+        reconciliationMode:
+          type: string
+          enum: [manual, automatic, disabled]
+
+    PaymentMethodOperationalConfiguration:
+      type: object
+      additionalProperties: false
+      required: [methodType, integration, integrationDetail, usageDescription]
+      properties:
+        methodType:
+          type: string
+          enum: [cash, digital, credit, receivable]
+        integration:
+          type: string
+          enum: [cash-drawer, pix, card-machine, receivables]
+        integrationDetail:
+          type: string
+          minLength: 1
+        usageDescription:
+          type: string
+          minLength: 1
+
+    CardMachineOperationalConfiguration:
+      type: object
+      additionalProperties: false
+      required: [provider, serialNumber, unit, settlementBankCode, acceptedMethods]
+      properties:
+        provider:
+          type: string
+          minLength: 1
+        serialNumber:
+          type: string
+          minLength: 1
+        unit:
+          type: string
+          minLength: 1
+        settlementBankCode:
+          type: string
+          minLength: 1
+        acceptedMethods:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+            minLength: 1
+
+    SplitRuleOperationalConfiguration:
+      type: object
+      additionalProperties: false
+      required: [recipient, percentage, appliesTo, priority]
+      properties:
+        recipient:
+          type: string
+          minLength: 1
+        percentage:
+          type: number
+          exclusiveMinimum: 0
+          maximum: 100
+        appliesTo:
+          type: string
+          minLength: 1
+        priority:
+          type: integer
+          minimum: 0
+
+    FinanceOperationalConfiguration:
+      oneOf:
+        - $ref: '#/components/schemas/BankOperationalConfiguration'
+        - $ref: '#/components/schemas/PaymentMethodOperationalConfiguration'
+        - $ref: '#/components/schemas/CardMachineOperationalConfiguration'
+        - $ref: '#/components/schemas/SplitRuleOperationalConfiguration'
+
+    CreateFinanceOperationalCatalogItemRequest:
+      type: object
+      additionalProperties: false
+      required: [code, name, status, configuration]
+      properties:
+        code:
+          type: string
+          pattern: '^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$'
+          description: Normalized to uppercase when persisted.
+        name:
+          type: string
+          minLength: 1
+          maxLength: 160
+        status:
+          $ref: '#/components/schemas/FinanceOperationalCatalogStatus'
+        configuration:
+          $ref: '#/components/schemas/FinanceOperationalConfiguration'
+
+    UpdateFinanceOperationalCatalogItemRequest:
+      type: object
+      additionalProperties: false
+      required: [code, name, status, configuration, version]
+      properties:
+        code:
+          type: string
+          pattern: '^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$'
+          description: Normalized to uppercase when persisted.
+        name:
+          type: string
+          minLength: 1
+          maxLength: 160
+        status:
+          $ref: '#/components/schemas/FinanceOperationalCatalogStatus'
+        configuration:
+          $ref: '#/components/schemas/FinanceOperationalConfiguration'
+        version:
+          type: integer
+          minimum: 1
+
+    FinanceOperationalCatalogItem:
+      type: object
+      additionalProperties: false
+      required: [id, accountId, type, code, name, status, configuration, version, createdBy, updatedBy, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        accountId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [banks, payment-methods, card-machines, split-rules]
+        code:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/FinanceOperationalCatalogStatus'
+        configuration:
+          $ref: '#/components/schemas/FinanceOperationalConfiguration'
+        version:
+          type: integer
+          minimum: 1
+        createdBy:
+          type: string
+          format: uuid
+        updatedBy:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    FinanceOperationalCatalogPage:
+      type: object
+      additionalProperties: false
+      required: [items, page, pageSize, totalItems, totalPages]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/FinanceOperationalCatalogItem'
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+        totalItems:
+          type: integer
+          minimum: 0
+        totalPages:
+          type: integer
+          minimum: 1
 
     AdvancePaymentSummary:
       type: object

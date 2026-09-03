@@ -20,6 +20,7 @@ export interface ApiLatencyOptions {
 }
 
 let cleanup: (() => void) | null = null;
+let expirationTimer: ReturnType<typeof setTimeout> | null = null;
 let active = false;
 
 async function start(options: ApiLatencyOptions): Promise<ExperimentResult> {
@@ -34,9 +35,10 @@ async function start(options: ApiLatencyOptions): Promise<ExperimentResult> {
 
   cleanup = delayFault({ minDelayMs, maxDelayMs, probability });
 
-  setTimeout(() => {
-    stop();
+  expirationTimer = setTimeout(() => {
+    void stop();
   }, durationMs);
+  expirationTimer.unref?.();
 
   return {
     ok: true,
@@ -47,6 +49,10 @@ async function start(options: ApiLatencyOptions): Promise<ExperimentResult> {
 }
 
 async function stop(): Promise<ExperimentStopResult> {
+  if (expirationTimer) {
+    clearTimeout(expirationTimer);
+    expirationTimer = null;
+  }
   if (cleanup) {
     cleanup();
     cleanup = null;

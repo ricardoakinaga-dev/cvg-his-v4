@@ -1,10 +1,11 @@
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join, relative } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 
 const root = process.cwd();
 const outputDir = process.env.SECURITY_EVIDENCE_DIR ?? 'artifacts/security';
+const outputPath = resolve(root, outputDir);
 
 function readJson(path) {
   return JSON.parse(readFileSync(join(root, path), 'utf8'));
@@ -19,7 +20,7 @@ function run(command, args, options = {}) {
     cwd: root,
     encoding: 'utf8',
     stdio: options.capture ? ['ignore', 'pipe', 'pipe'] : 'inherit',
-    shell: false,
+    shell: false
   });
 
   if (result.status !== 0 && !options.allowFailure) {
@@ -31,7 +32,14 @@ function run(command, args, options = {}) {
 
 function findPackageJsons(baseDir) {
   const found = [];
-  const ignored = new Set(['node_modules', 'dist', '.git', 'coverage', 'playwright-report', 'spa-report']);
+  const ignored = new Set([
+    'node_modules',
+    'dist',
+    '.git',
+    'coverage',
+    'playwright-report',
+    'spa-report'
+  ]);
 
   function walk(dir) {
     for (const entry of readdirSync(join(root, dir), { withFileTypes: true })) {
@@ -52,7 +60,11 @@ function findPackageJsons(baseDir) {
 }
 
 function collectComponents() {
-  const packageFiles = ['package.json', ...findPackageJsons('apps'), ...findPackageJsons('packages')];
+  const packageFiles = [
+    'package.json',
+    ...findPackageJsons('apps'),
+    ...findPackageJsons('packages')
+  ];
   const components = [];
 
   for (const file of packageFiles) {
@@ -61,7 +73,7 @@ function collectComponents() {
       ...(pkg.dependencies ?? {}),
       ...(pkg.devDependencies ?? {}),
       ...(pkg.peerDependencies ?? {}),
-      ...(pkg.optionalDependencies ?? {}),
+      ...(pkg.optionalDependencies ?? {})
     };
 
     components.push({
@@ -71,8 +83,8 @@ function collectComponents() {
       'bom-ref': `${pkg.name ?? file}@${pkg.version ?? '0.0.0'}`,
       properties: [
         { name: 'cvg:path', value: file },
-        { name: 'cvg:dependencyCount', value: String(Object.keys(dependencies).length) },
-      ],
+        { name: 'cvg:dependencyCount', value: String(Object.keys(dependencies).length) }
+      ]
     });
 
     for (const [name, version] of Object.entries(dependencies)) {
@@ -81,7 +93,7 @@ function collectComponents() {
         name,
         version,
         'bom-ref': `${name}@${version}`,
-        properties: [{ name: 'cvg:declaredBy', value: file }],
+        properties: [{ name: 'cvg:declaredBy', value: file }]
       });
     }
   }
@@ -94,7 +106,9 @@ function collectComponents() {
     }
   }
 
-  return [...unique.values()].sort((a, b) => `${a.name}${a.version}`.localeCompare(`${b.name}${b.version}`));
+  return [...unique.values()].sort((a, b) =>
+    `${a.name}${a.version}`.localeCompare(`${b.name}${b.version}`)
+  );
 }
 
 function validateSemgrepCi() {
@@ -108,13 +122,13 @@ function validateSemgrepCi() {
     ['gera JSON', /output:\s*semgrep\.json/.test(sastJob)],
     ['gera SARIF', /sarif:\s*semgrep\.sarif/.test(sastJob)],
     ['faz upload SARIF', /upload-sarif@v3/.test(sastJob)],
-    ['nao usa continue-on-error no SAST', !/continue-on-error:\s*true/.test(sastJob)],
+    ['nao usa continue-on-error no SAST', !/continue-on-error:\s*true/.test(sastJob)]
   ];
 
   return checks.map(([label, pass]) => ({ label, status: pass ? 'PASS' : 'FAIL' }));
 }
 
-mkdirSync(join(root, outputDir), { recursive: true });
+mkdirSync(outputPath, { recursive: true });
 
 console.log('Running enterprise security audit...');
 run('pnpm', ['security:enterprise']);
@@ -133,13 +147,13 @@ const sbom = {
     component: {
       type: 'application',
       name: readJson('package.json').name,
-      version: readJson('package.json').version,
-    },
+      version: readJson('package.json').version
+    }
   },
-  components: collectComponents(),
+  components: collectComponents()
 };
 
-const sbomPath = join(root, outputDir, 'sbom.cyclonedx.json');
+const sbomPath = join(outputPath, 'sbom.cyclonedx.json');
 writeFileSync(sbomPath, `${JSON.stringify(sbom, null, 2)}\n`);
 
 const report = {
@@ -149,11 +163,11 @@ const report = {
   semgrepCi: semgrepChecks,
   sbom: {
     path: relative(root, sbomPath),
-    components: sbom.components.length,
-  },
+    components: sbom.components.length
+  }
 };
 
-const reportPath = join(root, outputDir, 'security-evidence.json');
+const reportPath = join(outputPath, 'security-evidence.json');
 writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`);
 
 console.log('# Security Evidence');

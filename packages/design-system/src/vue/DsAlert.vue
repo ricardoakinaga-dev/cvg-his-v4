@@ -103,13 +103,18 @@ const classes = computed(() => ['ds-alert', `ds-alert--${props.variant}`]);
 }
 
 .ds-alert__dismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  min-height: 24px;
   background: none;
   border: none;
   font-size: 20px;
   cursor: pointer;
   color: currentColor;
   opacity: 0.6;
-  padding: 0 4px;
+  padding: 0;
   line-height: 1;
   flex-shrink: 0;
 }
@@ -120,27 +125,27 @@ const classes = computed(() => ['ds-alert', `ds-alert--${props.variant}`]);
 
 /* Dark mode support follows the explicit application theme. */
 :global(:root[data-theme='dark'] .ds-alert--info) {
-    background: var(--color-info-900, #1e3a8a);
-    color: var(--color-text, #e7eef8);
-    border-color: var(--color-info-700, #1d4ed8);
+  background: var(--color-info-900, #1e3a8a);
+  color: var(--color-text, #e7eef8);
+  border-color: var(--color-info-700, #1d4ed8);
 }
 
 :global(:root[data-theme='dark'] .ds-alert--success) {
-    background: var(--color-success-900, #14532d);
-    color: var(--color-text, #e7eef8);
-    border-color: var(--color-success-700, #047857);
+  background: var(--color-success-900, #14532d);
+  color: var(--color-text, #e7eef8);
+  border-color: var(--color-success-700, #047857);
 }
 
 :global(:root[data-theme='dark'] .ds-alert--warning) {
-    background: var(--color-warning-900, #78350f);
-    color: var(--color-text, #e7eef8);
-    border-color: var(--color-warning-700, #b45309);
+  background: var(--color-warning-900, #78350f);
+  color: var(--color-text, #e7eef8);
+  border-color: var(--color-warning-700, #b45309);
 }
 
 :global(:root[data-theme='dark'] .ds-alert--danger) {
-    background: var(--color-danger-900, #7f1d1d);
-    color: var(--color-text, #e7eef8);
-    border-color: var(--color-danger-700, #b91c1c);
+  background: var(--color-danger-900, #7f1d1d);
+  color: var(--color-text, #e7eef8);
+  border-color: var(--color-danger-700, #b91c1c);
 }
 
 /* Keep a system fallback for markup rendered before the theme bootstrap. */

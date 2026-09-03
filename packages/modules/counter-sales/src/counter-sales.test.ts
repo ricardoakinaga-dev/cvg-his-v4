@@ -867,6 +867,70 @@ test('CounterSalesService includes the final millisecond of a cheque payment dat
   }
 });
 
+test('CounterSalesService applies inclusive UTC date limits to every commercial report fact', async () => {
+  vi.useFakeTimers();
+  try {
+    const service = createService();
+
+    vi.setSystemTime(new Date('2026-05-31T23:59:59.999Z'));
+    const included = await service.open(ACCOUNT_ID, USER_ID);
+    await service.addItem(included.id, {
+      itemType: 'product',
+      nameSnapshot: 'Produto no limite',
+      unitPrice: 30
+    });
+    await service.addItem(included.id, {
+      itemType: 'service',
+      nameSnapshot: 'Servico no limite',
+      unitPrice: 70
+    });
+    await service.addPayment(included.id, { method: 'pix', amount: 100 });
+    await service.close(included.id, USER_ID);
+
+    vi.setSystemTime(new Date('2026-06-01T00:00:00.000Z'));
+    const excluded = await service.open(ACCOUNT_ID, USER_ID);
+    await service.addItem(excluded.id, {
+      itemType: 'product',
+      nameSnapshot: 'Produto fora do periodo',
+      unitPrice: 200
+    });
+    await service.addPayment(excluded.id, { method: 'cash', amount: 200 });
+    await service.close(excluded.id, USER_ID);
+
+    const [sales, payments, products, services, summary] = await Promise.all([
+      service.getCommercialReport(ACCOUNT_ID, 'sales', '2026-05-31', '2026-05-31'),
+      service.getCommercialReport(ACCOUNT_ID, 'payments', '2026-05-31', '2026-05-31'),
+      service.getCommercialReport(ACCOUNT_ID, 'products', '2026-05-31', '2026-05-31'),
+      service.getCommercialReport(ACCOUNT_ID, 'services', '2026-05-31', '2026-05-31'),
+      service.getCommercialReport(ACCOUNT_ID, 'summary', '2026-05-31', '2026-05-31')
+    ]);
+
+    assert.equal((sales.data as { closedSales: number }).closedSales, 1);
+    assert.deepEqual(
+      (payments.data as { byMethod: Array<{ method: string }> }).byMethod.map((row) => row.method),
+      ['pix']
+    );
+    assert.deepEqual(
+      (products.data as { products: Array<{ name: string }> }).products.map((row) => row.name),
+      ['Produto no limite']
+    );
+    assert.deepEqual(
+      (services.data as { services: Array<{ name: string }> }).services.map((row) => row.name),
+      ['Servico no limite']
+    );
+    assert.deepEqual(summary.data, {
+      totalSales: 1,
+      closedSales: 1,
+      grossRevenue: 100,
+      productRevenue: 30,
+      serviceRevenue: 70,
+      byPaymentMethod: [{ method: 'pix', total: 100 }]
+    });
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
 test('CounterSalesService rejects an oversized cheque report before snapshotting it', async () => {
   const rows = Array.from({ length: 10_001 }, (_, index) => ({
     id: `payment-${index}`,

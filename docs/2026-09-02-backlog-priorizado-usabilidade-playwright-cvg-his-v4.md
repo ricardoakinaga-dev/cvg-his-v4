@@ -6,6 +6,8 @@ Origem: [Relatório master](./2026-09-02-relatorio-master-usabilidade-playwright
 Direção: [Plano executivo](./2026-09-02-plano-executivo-melhorias-usabilidade-playwright-cvg-his-v4.md)  
 Sequenciamento: [Roadmap](./2026-09-02-roadmap-melhorias-usabilidade-playwright-cvg-his-v4.md)
 
+> Atualização de execução: a implementação e as pendências de certificação estão consolidadas no [relatório de implementação](./2026-09-02-implementacao-usabilidade-playwright-cvg-his-v4.md).
+
 ## 1. Convenções
 
 - **P0:** impede uma baseline confiável, jornada crítica ou homologação.

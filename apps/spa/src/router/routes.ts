@@ -334,7 +334,7 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'finance/split',
         name: 'FinanceSplit',
-        component: () => import('@/pages/finance/SplitConfigurationPage.vue'),
+        component: () => import('@/pages/finance/SplitRulesCatalogPage.vue'),
         alias: [
           '/financeiro/maquininha/configuracao-do-split',
           '/financeiro/maquininha-de-cartao/configuracao-do-split',
@@ -350,7 +350,7 @@ export const routes: RouteRecordRaw[] = [
       {
         path: 'finance/card-machines',
         name: 'FinanceCardMachines',
-        component: () => import('@/pages/finance/CardMachinesPage.vue'),
+        component: () => import('@/pages/finance/CardMachinesCatalogPage.vue'),
         alias: [
           '/financeiro/maquininha/maquininhas',
           '/financeiro/maquininha-de-cartao/maquininhas',
@@ -1866,7 +1866,7 @@ export const routes: RouteRecordRaw[] = [
           '/financeiro/cadastros/formas-pagamento',
           '/formas-de-pagamento'
         ],
-        component: () => import('@/pages/finance/PaymentMethodsPage.vue'),
+        component: () => import('@/pages/finance/PaymentMethodsCatalogPage.vue'),
         meta: {
           title: 'Formas de Pagamento',
           breadcrumb: 'Formas de Pagamento',
@@ -1878,7 +1878,7 @@ export const routes: RouteRecordRaw[] = [
         path: 'banks',
         name: 'Banks',
         alias: ['/financeiro/cadastros/bancos', '/financeiro/bancos', '/bancos'],
-        component: () => import('@/pages/finance/BanksPage.vue'),
+        component: () => import('@/pages/finance/BanksCatalogPage.vue'),
         meta: {
           title: 'Bancos',
           breadcrumb: 'Bancos',

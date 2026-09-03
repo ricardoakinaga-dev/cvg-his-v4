@@ -8,21 +8,35 @@
     />
 
     <DsAlert variant="info">
-      Configuração em modo somente leitura para validação operacional. Salvar, habilitar split e repasse real seguem
-      bloqueados até integração de pagamentos.
+      Configuração em modo somente leitura para validação operacional. Salvar, habilitar split e
+      repasse real seguem bloqueados até integração de pagamentos.
     </DsAlert>
 
-    <form class="split-configuration-filters" aria-label="Filtros da configuração do split" @submit.prevent>
+    <form
+      class="split-configuration-filters"
+      aria-label="Filtros da configuração do split"
+      @submit.prevent
+    >
       <DsInput id="split-configuration-unit" v-model="filters.unit" label="Unidade" type="select">
         <option value="">Todas</option>
         <option value="cvg">Centro Veterinário Guarapiranga</option>
         <option value="payments">CVG Pagamentos</option>
       </DsInput>
-      <DsInput id="split-configuration-provider" v-model="filters.provider" label="Provedor" type="select">
+      <DsInput
+        id="split-configuration-provider"
+        v-model="filters.provider"
+        label="Provedor"
+        type="select"
+      >
         <option value="">Todos</option>
         <option value="cvg-pay">CVG Pay</option>
       </DsInput>
-      <DsInput id="split-configuration-status" v-model="filters.status" label="Status" type="select">
+      <DsInput
+        id="split-configuration-status"
+        v-model="filters.status"
+        label="Status"
+        type="select"
+      >
         <option value="">Todos</option>
         <option value="active">Ativo</option>
         <option value="pending">Pronto para validar</option>
@@ -40,9 +54,15 @@
 
     <section class="split-configuration-actions" aria-label="Ações da configuração do split">
       <DsButton variant="primary" disabled>Salvar Configuração</DsButton>
-      <DsButton variant="secondary" tag="a" to="/finance/split/simulator">Simulador de Split</DsButton>
-      <DsButton variant="secondary" tag="a" to="/finance/split/export">Exportador de Split</DsButton>
-      <DsButton variant="secondary" tag="a" to="/finance/card-transactions">Transações de Cartão</DsButton>
+      <DsButton variant="secondary" tag="a" to="/finance/split/simulator"
+        >Simulador de Split</DsButton
+      >
+      <DsButton variant="secondary" tag="a" to="/finance/split/export"
+        >Exportador de Split</DsButton
+      >
+      <DsButton variant="secondary" tag="a" to="/finance/card-transactions"
+        >Transações de Cartão</DsButton
+      >
       <DsButton variant="ghost" type="button" @click="resetFilters">Atualizar</DsButton>
     </section>
 
@@ -70,7 +90,10 @@
         <span>{{ splitRule(row).providerLabel }}</span>
       </template>
       <template #cell-status="{ row }">
-        <StatusBadge :label="statusLabel(splitRule(row).status)" :variant="statusVariant(splitRule(row).status)" />
+        <StatusBadge
+          :label="statusLabel(splitRule(row).status)"
+          :variant="statusVariant(splitRule(row).status)"
+        />
       </template>
       <template #cell-open="{ row }">
         <RouterLink :to="splitRule(row).openTo" class="open-link">Abrir</RouterLink>
@@ -168,8 +191,12 @@ const filters = reactive({
 
 const visibleSplitRules = computed(() => splitRules.filter(matchesFilters));
 const visibleRows = computed(() => visibleSplitRules.value as unknown as DataTableRow[]);
-const activeReceivers = computed(() => splitRules.filter((rule) => rule.status === 'active').length);
-const clinicShare = computed(() => splitRules.find((rule) => rule.id === 'clinic-operational')?.percentage ?? 0);
+const activeReceivers = computed(
+  () => splitRules.filter((rule) => rule.status === 'active').length
+);
+const clinicShare = computed(
+  () => splitRules.find((rule) => rule.id === 'clinic-operational')?.percentage ?? 0
+);
 const headerSecondaryActions = computed(() => [
   {
     key: 'refresh-split-configuration',
@@ -253,6 +280,9 @@ function normalize(value: string): string {
 }
 
 .open-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
   color: var(--color-primary, #2563eb);
   font-weight: 700;
   text-decoration: none;

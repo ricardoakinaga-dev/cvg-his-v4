@@ -9,6 +9,7 @@ const E2E_DATABASE_URL =
 const E2E_REDIS_URL =
   process.env.E2E_REDIS_URL || process.env.REDIS_URL || 'redis://127.0.0.1:6381';
 const E2E_DATABASE_MODE = process.env.E2E_DATABASE_MODE === '1';
+const E2E_BROWSER = process.env.E2E_BROWSER || 'chromium';
 const E2E_DISABLE_INCOMPATIBLE_DB_REPOS =
   process.env.API_DISABLE_INCOMPATIBLE_DB_REPOS ?? (E2E_DATABASE_MODE ? '0' : '1');
 
@@ -16,6 +17,36 @@ process.env.API_URL = process.env.API_URL || E2E_API_URL;
 process.env.SPA_URL = process.env.SPA_URL || E2E_SPA_URL;
 process.env.E2E_DATABASE_URL = process.env.E2E_DATABASE_URL || E2E_DATABASE_URL;
 process.env.E2E_REDIS_URL = process.env.E2E_REDIS_URL || E2E_REDIS_URL;
+
+const browserProjects = {
+  chromium: {
+    name: 'chromium',
+    use: {
+      ...devices['Desktop Chrome'],
+      viewport: { width: 1280, height: 720 },
+      launchOptions: {
+        args: [
+          '--font-render-hinting=none',
+          '--disable-skia-runtime-opts',
+          '--disable-dev-shm-usage',
+          '--disable-gpu'
+        ]
+      }
+    }
+  },
+  firefox: {
+    name: 'firefox',
+    use: { ...devices['Desktop Firefox'], viewport: { width: 1280, height: 720 } }
+  },
+  webkit: {
+    name: 'webkit',
+    use: { ...devices['Desktop Safari'], viewport: { width: 1280, height: 720 } }
+  }
+} as const;
+
+if (!(E2E_BROWSER in browserProjects) && E2E_BROWSER !== 'all') {
+  throw new Error(`Unsupported E2E_BROWSER: ${E2E_BROWSER}`);
+}
 
 /**
  * Playwright config for SPA E2E tests.
@@ -38,7 +69,11 @@ export default defineConfig({
   forbidOnly: true,
   retries: 0,
   workers: 1,
-  reporter: [['list']],
+  reporter: [
+    ['list'],
+    ['html', { outputFolder: 'playwright-report/usability', open: 'never' }],
+    ['json', { outputFile: 'playwright-report/usability/results.json' }]
+  ],
   // Keep failure artifacts in the workspace so CI can publish them from the
   // same path used by the visual-regression job.
   outputDir: 'test-results',
@@ -48,31 +83,18 @@ export default defineConfig({
   },
   use: {
     baseURL: process.env.SPA_URL || E2E_SPA_URL,
-    trace: 'off',
-    screenshot: 'off',
-    video: 'off',
+    trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
     locale: 'pt-BR',
     timezoneId: 'America/Sao_Paulo',
     colorScheme: 'light'
   },
   snapshotPathTemplate: '{testDir}/snapshots/{testFilePath}/{arg}{ext}',
-  projects: [
-    {
-      name: 'chromium',
-      use: {
-        ...devices['Desktop Chrome'],
-        viewport: { width: 1280, height: 720 },
-        launchOptions: {
-          args: [
-            '--font-render-hinting=none',
-            '--disable-skia-runtime-opts',
-            '--disable-dev-shm-usage',
-            '--disable-gpu'
-          ]
-        }
-      }
-    }
-  ],
+  projects:
+    E2E_BROWSER === 'all'
+      ? Object.values(browserProjects)
+      : [browserProjects[E2E_BROWSER as keyof typeof browserProjects]],
   globalSetup: './e2e/fixtures/spa-global-setup.ts',
   webServer: [
     {

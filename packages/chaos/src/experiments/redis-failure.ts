@@ -13,6 +13,7 @@ interface RedisFailureOptions {
 }
 
 let injected = false;
+let expirationTimer: ReturnType<typeof setTimeout> | null = null;
 
 async function start(opts?: unknown): Promise<ExperimentResult> {
   if (injected) {
@@ -24,9 +25,10 @@ async function start(opts?: unknown): Promise<ExperimentResult> {
   chaosExperimentActive.labels(REDIS_FAILURE_ID).set(1);
   chaosFaultInjectedTotal.labels(REDIS_FAILURE_ID, 'redis_unavailable').inc();
 
-  setTimeout(() => {
-    stop();
+  expirationTimer = setTimeout(() => {
+    void stop();
   }, durationMs);
+  expirationTimer.unref?.();
 
   return {
     ok: true,
@@ -37,6 +39,10 @@ async function start(opts?: unknown): Promise<ExperimentResult> {
 }
 
 async function stop(): Promise<ExperimentStopResult> {
+  if (expirationTimer) {
+    clearTimeout(expirationTimer);
+    expirationTimer = null;
+  }
   injected = false;
   chaosExperimentActive.labels(REDIS_FAILURE_ID).set(0);
   return { ok: true };

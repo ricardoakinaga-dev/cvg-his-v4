@@ -335,14 +335,12 @@ describe('LaboratoryOrdersPage', () => {
     const vm = wrapper.vm as any;
     vm.openResultModal(vm.decoratedOrders[0]);
     vm.resultSummary = 'Sem alterações relevantes.';
-    vm.resultSignerId = 'rt-lab';
     await vm.submitResult();
     await flushPromises();
 
     expect(laboratoryService.recordResult).toHaveBeenCalledWith('diag_1', {
       status: 'resulted',
-      resultSummary: 'Sem alterações relevantes.',
-      signedByUserId: 'rt-lab'
+      resultSummary: 'Sem alterações relevantes.'
     });
     expect(wrapper.text()).toContain('Resultado liberado com sucesso.');
     expect(wrapper.text()).toContain('Resultado liberado');

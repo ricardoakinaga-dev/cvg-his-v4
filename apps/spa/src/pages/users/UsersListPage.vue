@@ -9,8 +9,9 @@
     />
 
     <DsAlert variant="info">
-      Superfície Vetus-like para a rota legada Usuarios/Usuarios.htm. Usuário autenticável separado do profissional de
-      agenda, com vínculos de perfil, contexto organizacional, Grupos de Acesso e Auditoria.
+      Superfície Vetus-like para a rota legada Usuarios/Usuarios.htm. Usuário autenticável separado
+      do profissional de agenda, com vínculos de perfil, contexto organizacional, Grupos de Acesso e
+      Auditoria.
     </DsAlert>
 
     <section class="users-list-page__overview">
@@ -66,10 +67,15 @@
     </section>
 
     <div class="users-list-page__toolbar">
-      <DsInput v-model="search" placeholder="Buscar por nome, usuário ou e-mail" />
+      <DsInput
+        v-model="search"
+        aria-label="Buscar usuário"
+        placeholder="Buscar por nome, usuário ou e-mail"
+      />
       <DsInput
         v-model="roleFilter"
         type="select"
+        aria-label="Filtrar por perfil"
         placeholder="Todos perfis"
         style="max-width: 180px"
       >
@@ -85,6 +91,7 @@
       <DsInput
         v-model="statusFilter"
         type="select"
+        aria-label="Filtrar por status"
         placeholder="Todos status"
         style="max-width: 160px"
       >
@@ -288,7 +295,11 @@ onMounted(fetchData);
   padding: 12px;
   border-radius: 12px;
   border: 1px solid var(--color-border, #e2e8f0);
-  background: linear-gradient(180deg, var(--color-surface, #ffffff), var(--color-bg-subtle, #f8fafc));
+  background: linear-gradient(
+    180deg,
+    var(--color-surface, #ffffff),
+    var(--color-bg-subtle, #f8fafc)
+  );
 }
 
 .overview-metric__value {

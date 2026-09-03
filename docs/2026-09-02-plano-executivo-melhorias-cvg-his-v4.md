@@ -1,3 +1,13 @@
+---
+document_status: current
+document_kind: plan
+effective_date: 2026-09-02
+owner: PMO CVG-HIS
+review_cycle: monthly
+---
+
+> Atualizacao de execucao (2026-09-03): consulte a [matriz por ticket](./2026-09-03-implementacao-plano-cvg-his-v4.md) para o estado comprovado, a automacao pronta e os bloqueios externos.
+
 # Plano executivo de melhorias do CVG-HIS V4
 
 **Baseline:** [reauditoria de 2026-09-02](./2026-09-02-relatorio-reauditoria-cvg-his-v4.md) — **84/100**
@@ -33,18 +43,18 @@ Qualquer resposta negativa bloqueia a promoção correspondente.
 
 ## 3. Frentes de trabalho
 
-| Frente | Prioridade | Objetivo | Saída mensurável |
-|---|---|---|---|
-| Segurança das roles PostgreSQL | P0 | unificar reconciliador, permissões e inspetor | API/worker retornam `safe=true` com modo estrito ligado |
-| Harness e regressões PostgreSQL | P0 | tornar o critical gate portável e confiável | zero erro/falha/skip injustificado em 20 execuções consecutivas |
-| Cobertura baseada em risco | P0 | recuperar o gate sem maquiar exclusões | todas as métricas ≥82%; módulos críticos ≥85% |
-| CI e governança de `main` | P0 | garantir que só commits comprovados cheguem à branch única | checks obrigatórios, revisão e artefatos vinculados ao SHA |
-| Release e infraestrutura | P1 | provar build, deploy, rollback, backup e restore | instalação limpa e ensaio de cutover aprovados |
-| Performance e observabilidade | P1 | validar SLOs e diagnóstico distribuído | relatório de carga, alertas e trace de ponta a ponta |
-| Paridade ERP interna | P1 | fechar relatórios e financeiro persistido | jornadas E2E sem mock e reconciliação auditável |
-| Homologação de provedores | P1 | validar laboratório, fiscal, pagamentos e comunicação | sandboxes aprovados e matriz de falhas executada |
-| LGPD e operação | P1 | comprovar procedimentos, não apenas código | retenção, exportação, anonimização e auditoria aceitas |
-| Governança documental/versão | P2 | remover fontes de verdade concorrentes | índice canônico, histórico rotulado e identidade de release definida |
+| Frente                          | Prioridade | Objetivo                                                   | Saída mensurável                                                     |
+| ------------------------------- | ---------- | ---------------------------------------------------------- | -------------------------------------------------------------------- |
+| Segurança das roles PostgreSQL  | P0         | unificar reconciliador, permissões e inspetor              | API/worker retornam `safe=true` com modo estrito ligado              |
+| Harness e regressões PostgreSQL | P0         | tornar o critical gate portável e confiável                | zero erro/falha/skip injustificado em 20 execuções consecutivas      |
+| Cobertura baseada em risco      | P0         | recuperar o gate sem maquiar exclusões                     | todas as métricas ≥82%; módulos críticos ≥85%                        |
+| CI e governança de `main`       | P0         | garantir que só commits comprovados cheguem à branch única | checks obrigatórios, revisão e artefatos vinculados ao SHA           |
+| Release e infraestrutura        | P1         | provar build, deploy, rollback, backup e restore           | instalação limpa e ensaio de cutover aprovados                       |
+| Performance e observabilidade   | P1         | validar SLOs e diagnóstico distribuído                     | relatório de carga, alertas e trace de ponta a ponta                 |
+| Paridade ERP interna            | P1         | fechar relatórios e financeiro persistido                  | jornadas E2E sem mock e reconciliação auditável                      |
+| Homologação de provedores       | P1         | validar laboratório, fiscal, pagamentos e comunicação      | sandboxes aprovados e matriz de falhas executada                     |
+| LGPD e operação                 | P1         | comprovar procedimentos, não apenas código                 | retenção, exportação, anonimização e auditoria aceitas               |
+| Governança documental/versão    | P2         | remover fontes de verdade concorrentes                     | índice canônico, histórico rotulado e identidade de release definida |
 
 ## 4. Sequência executiva
 
@@ -80,43 +90,43 @@ Congelar escopo, rodar regressão no SHA candidato, simular cutover e rollback, 
 
 ## 5. Gates obrigatórios de promoção
 
-| Gate | Obrigatório para | Critério mínimo |
-|---|---|---|
-| G0 — Engenharia | qualquer merge em `main` | build, types, lint, unitários e segurança verdes |
-| G1 — Banco e segurança | release candidate | migração vazia/upgrade, critical gate, RLS e runtime roles verdes |
-| G2 — Operação | staging | deploy/rollback, backup/restore, Helm real e observabilidade comprovados |
-| G3 — Produto | produção limitada | 9/11 domínios verificados e exceções restantes aprovadas |
-| G4 — Go-live | produção plena | 11/11, carga/SLO, cutover, DR e aceite multidisciplinar |
+| Gate                   | Obrigatório para         | Critério mínimo                                                          |
+| ---------------------- | ------------------------ | ------------------------------------------------------------------------ |
+| G0 — Engenharia        | qualquer merge em `main` | build, types, lint, unitários e segurança verdes                         |
+| G1 — Banco e segurança | release candidate        | migração vazia/upgrade, critical gate, RLS e runtime roles verdes        |
+| G2 — Operação          | staging                  | deploy/rollback, backup/restore, Helm real e observabilidade comprovados |
+| G3 — Produto           | produção limitada        | 9/11 domínios verificados e exceções restantes aprovadas                 |
+| G4 — Go-live           | produção plena           | 11/11, carga/SLO, cutover, DR e aceite multidisciplinar                  |
 
 Nenhum gate pode ser aprovado com teste ignorado sem justificativa registrada. Readiness documental não compensa falha funcional.
 
 ## 6. Indicadores de acompanhamento
 
-| Indicador | Baseline | Meta de release candidate | Meta de go-live |
-|---|---:|---:|---:|
-| Nota global | 84 | ≥92 | ≥95 |
-| Prontidão para produção | 68 | ≥90 | ≥95 |
-| Paridade Vetus | 4/11 | ≥9/11 | 11/11 ou exceção formal |
-| P0 abertos | 3 grupos | 0 | 0 |
-| Cobertura global | 79,98% statements/lines | ≥82% em todas as métricas | ≥85% nos módulos críticos |
-| Critical gate | falha/bloqueado | 20 execuções verdes | verde no SHA de produção |
-| Runtime roles | `safe=false` | `safe=true` | monitorado e fail-closed |
-| Vulnerabilidades críticas/altas | 0 | 0 | 0 |
-| Restore/cutover | sem prova alvo | ensaio aprovado | prova final aprovada |
-| Performance | sem baseline representativa | SLO e capacidade definidos | SLO cumprido com margem acordada |
+| Indicador                       |                    Baseline |  Meta de release candidate |                  Meta de go-live |
+| ------------------------------- | --------------------------: | -------------------------: | -------------------------------: |
+| Nota global                     |                          84 |                        ≥92 |                              ≥95 |
+| Prontidão para produção         |                          68 |                        ≥90 |                              ≥95 |
+| Paridade Vetus                  |                        4/11 |                      ≥9/11 |          11/11 ou exceção formal |
+| P0 abertos                      |                    3 grupos |                          0 |                                0 |
+| Cobertura global                |     79,98% statements/lines |  ≥82% em todas as métricas |        ≥85% nos módulos críticos |
+| Critical gate                   |             falha/bloqueado |        20 execuções verdes |         verde no SHA de produção |
+| Runtime roles                   |                `safe=false` |                `safe=true` |         monitorado e fail-closed |
+| Vulnerabilidades críticas/altas |                           0 |                          0 |                                0 |
+| Restore/cutover                 |              sem prova alvo |            ensaio aprovado |             prova final aprovada |
+| Performance                     | sem baseline representativa | SLO e capacidade definidos | SLO cumprido com margem acordada |
 
 ## 7. Governança e responsabilidades
 
-| Papel | Responsabilidade de decisão |
-|---|---|
-| Liderança técnica | arquitetura, contrato de roles, qualidade e aprovação do SHA |
-| Backend/Banco | migrações, RLS, transações, relatórios e integrações server-side |
-| Frontend | jornadas, acessibilidade e evidência E2E da SPA |
-| QA | matriz crítica, critérios de aceite, regressão e rastreabilidade |
-| DevOps/SRE | CI, artefatos, Helm, deploy, restore, carga e observabilidade |
-| Segurança/DPO | roles mínimas, segredos, auditoria e controles LGPD |
-| Produto/Operação | paridade Vetus, regras de negócio e aceite de homologação |
-| Patrocinador executivo | prioridade, orçamento, exceções e decisão go/no-go |
+| Papel                  | Responsabilidade de decisão                                      |
+| ---------------------- | ---------------------------------------------------------------- |
+| Liderança técnica      | arquitetura, contrato de roles, qualidade e aprovação do SHA     |
+| Backend/Banco          | migrações, RLS, transações, relatórios e integrações server-side |
+| Frontend               | jornadas, acessibilidade e evidência E2E da SPA                  |
+| QA                     | matriz crítica, critérios de aceite, regressão e rastreabilidade |
+| DevOps/SRE             | CI, artefatos, Helm, deploy, restore, carga e observabilidade    |
+| Segurança/DPO          | roles mínimas, segredos, auditoria e controles LGPD              |
+| Produto/Operação       | paridade Vetus, regras de negócio e aceite de homologação        |
+| Patrocinador executivo | prioridade, orçamento, exceções e decisão go/no-go               |
 
 Cada item do backlog deve ter um responsável nominal antes de entrar em execução. Quem implementa não deve ser o único aprovador de um gate crítico.
 
@@ -132,14 +142,14 @@ Cada item do backlog deve ter um responsável nominal antes de entrar em execuç
 
 ## 9. Principais riscos executivos
 
-| Risco | Efeito | Mitigação |
-|---|---|---|
-| capacidade insuficiente para homologação externa | atraso imprevisível | reservar janelas e responsáveis dos provedores desde a Etapa A |
-| correção apressada das roles amplia privilégios | quebra do isolamento tenant | testes negativos de capability e revisão de segurança independente |
-| suíte verde apenas em uma máquina | falsa confiança | checkout limpo, caminhos com espaço, CI remota e repetição determinística |
-| 1.486 documentos geram decisões contraditórias | operação usa regra antiga | índice canônico, status explícito e arquivamento lógico |
-| expansão de escopo durante estabilização | P0 permanece aberto | freeze funcional até G1, salvo correção crítica |
-| dependência de uma única pessoa | risco de continuidade | donos primário/secundário, runbooks e revisão cruzada |
+| Risco                                            | Efeito                      | Mitigação                                                                 |
+| ------------------------------------------------ | --------------------------- | ------------------------------------------------------------------------- |
+| capacidade insuficiente para homologação externa | atraso imprevisível         | reservar janelas e responsáveis dos provedores desde a Etapa A            |
+| correção apressada das roles amplia privilégios  | quebra do isolamento tenant | testes negativos de capability e revisão de segurança independente        |
+| suíte verde apenas em uma máquina                | falsa confiança             | checkout limpo, caminhos com espaço, CI remota e repetição determinística |
+| 1.486 documentos geram decisões contraditórias   | operação usa regra antiga   | índice canônico, status explícito e arquivamento lógico                   |
+| expansão de escopo durante estabilização         | P0 permanece aberto         | freeze funcional até G1, salvo correção crítica                           |
+| dependência de uma única pessoa                  | risco de continuidade       | donos primário/secundário, runbooks e revisão cruzada                     |
 
 ## 10. Decisão recomendada
 

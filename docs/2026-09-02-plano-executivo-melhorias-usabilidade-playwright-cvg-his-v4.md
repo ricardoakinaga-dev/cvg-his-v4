@@ -1,5 +1,7 @@
 # Plano executivo de melhorias de usabilidade Playwright — CVG-HIS V4
 
+> Atualização de execução: a implementação e as pendências de certificação estão consolidadas no [relatório de implementação](./2026-09-02-implementacao-usabilidade-playwright-cvg-his-v4.md).
+
 Data-base: 2 de setembro de 2026  
 Status: proposta executiva para aprovação  
 Fonte de verdade: [Relatório master de usabilidade Playwright](./2026-09-02-relatorio-master-usabilidade-playwright-cvg-his-v4.md)  

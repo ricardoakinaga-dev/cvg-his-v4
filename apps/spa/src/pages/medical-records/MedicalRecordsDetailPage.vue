@@ -30,7 +30,8 @@
         {{ successMessage }}
       </DsAlert>
       <DsAlert v-if="contextWarnings.length" variant="info" dismissible>
-        Algumas informações complementares não carregaram: {{ contextWarnings.join(', ') }}. A leitura clínica principal continua disponível.
+        Algumas informações complementares não carregaram: {{ contextWarnings.join(', ') }}. A
+        leitura clínica principal continua disponível.
       </DsAlert>
 
       <section v-if="clinicalAlerts.length" class="clinical-alerts" aria-label="Alertas clínicos">
@@ -45,7 +46,7 @@
       </section>
 
       <section class="clinical-record-layout" aria-label="Prontuário clínico estruturado">
-        <main class="clinical-record-main">
+        <div class="clinical-record-main">
           <nav class="clinical-step-tabs" aria-label="Etapas do prontuário">
             <button
               v-for="step in clinicalSteps"
@@ -66,11 +67,18 @@
                 <span class="section-heading__eyebrow">1. Motivo do atendimento</span>
                 <h2>Queixa principal</h2>
               </div>
-              <DsButton variant="secondary" size="sm" tag="a" :to="`/encounters/${record.encounterId}`">
+              <DsButton
+                variant="secondary"
+                size="sm"
+                tag="a"
+                :to="`/encounters/${record.encounterId}`"
+              >
                 Editar atendimento
               </DsButton>
             </div>
-            <p v-if="chiefComplaint" class="clinical-text clinical-text--lead">{{ chiefComplaint }}</p>
+            <p v-if="chiefComplaint" class="clinical-text clinical-text--lead">
+              {{ chiefComplaint }}
+            </p>
             <p v-else class="empty-clinical-state">Nenhuma queixa principal registrada.</p>
           </section>
 
@@ -84,14 +92,18 @@
                 <span class="section-heading__eyebrow">2. Relato do tutor</span>
                 <h2>Anamnese</h2>
               </div>
-              <DsButton variant="secondary" size="sm" @click="startEntry('anamnesis')">Adicionar anamnese</DsButton>
+              <DsButton variant="secondary" size="sm" @click="startEntry('anamnesis')"
+                >Adicionar anamnese</DsButton
+              >
             </div>
             <article v-if="latestEntry('anamnesis')" class="clinical-entry">
               <h3>{{ latestEntry('anamnesis')?.title }}</h3>
               <p>{{ latestEntry('anamnesis')?.content }}</p>
               <span>{{ formatDateTime(latestEntry('anamnesis')?.updatedAt ?? '') }}</span>
             </article>
-            <p v-else class="empty-clinical-state">Nenhuma anamnese registrada neste atendimento.</p>
+            <p v-else class="empty-clinical-state">
+              Nenhuma anamnese registrada neste atendimento.
+            </p>
           </section>
 
           <section
@@ -104,14 +116,18 @@
                 <span class="section-heading__eyebrow">3. Achados objetivos</span>
                 <h2>Exame físico</h2>
               </div>
-              <DsButton variant="secondary" size="sm" @click="startEntry('physical_exam')">Registrar exame</DsButton>
+              <DsButton variant="secondary" size="sm" @click="startEntry('physical_exam')"
+                >Registrar exame</DsButton
+              >
             </div>
             <article v-if="latestEntry('physical_exam')" class="clinical-entry">
               <h3>{{ latestEntry('physical_exam')?.title }}</h3>
               <p>{{ latestEntry('physical_exam')?.content }}</p>
               <span>{{ formatDateTime(latestEntry('physical_exam')?.updatedAt ?? '') }}</span>
             </article>
-            <p v-else class="empty-clinical-state">Nenhum exame físico registrado neste atendimento.</p>
+            <p v-else class="empty-clinical-state">
+              Nenhum exame físico registrado neste atendimento.
+            </p>
           </section>
 
           <section v-if="activeClinicalStep === 'exam'" class="clinical-section">
@@ -120,7 +136,9 @@
                 <span class="section-heading__eyebrow">4. Sinais vitais</span>
                 <h2>Parâmetros vitais</h2>
               </div>
-              <DsButton variant="secondary" size="sm" @click="startEntry('physical_exam')">Registrar parâmetros</DsButton>
+              <DsButton variant="secondary" size="sm" @click="startEntry('physical_exam')"
+                >Registrar parâmetros</DsButton
+              >
             </div>
             <div v-if="hasVitalContext" class="vitals-grid">
               <div v-for="item in vitalSigns" :key="item.label" class="vital-item">
@@ -140,18 +158,29 @@
                 <span class="section-heading__eyebrow">5. Apoio diagnóstico</span>
                 <h2>Exames solicitados / recomendados</h2>
               </div>
-              <DsButton variant="secondary" size="sm" tag="a" :to="clinicalWorkflowPath('/diagnostics')">
+              <DsButton
+                variant="secondary"
+                size="sm"
+                tag="a"
+                :to="clinicalWorkflowPath('/diagnostics')"
+              >
                 Abrir exames
               </DsButton>
             </div>
             <div v-if="diagnosticEntries.length" class="clinical-list">
-              <article v-for="entry in diagnosticEntries.slice(0, 4)" :key="entry.id" class="clinical-entry">
+              <article
+                v-for="entry in diagnosticEntries.slice(0, 4)"
+                :key="entry.id"
+                class="clinical-entry"
+              >
                 <h3>{{ entry.title }}</h3>
                 <p>{{ entry.content || entryTypeLabel(entry.entryType) }}</p>
                 <span>{{ formatDateTime(entry.updatedAt) }}</span>
               </article>
             </div>
-            <p v-else class="empty-clinical-state">Nenhum exame solicitado ou recomendado neste atendimento.</p>
+            <p v-else class="empty-clinical-state">
+              Nenhum exame solicitado ou recomendado neste atendimento.
+            </p>
           </section>
 
           <section
@@ -164,14 +193,18 @@
                 <span class="section-heading__eyebrow">6. Raciocínio clínico</span>
                 <h2>Suspeita diagnóstica / avaliação clínica</h2>
               </div>
-              <DsButton variant="secondary" size="sm" @click="startEntry('assessment')">Registrar avaliação</DsButton>
+              <DsButton variant="secondary" size="sm" @click="startEntry('assessment')"
+                >Registrar avaliação</DsButton
+              >
             </div>
             <article v-if="latestEntry('assessment')" class="clinical-entry">
               <h3>{{ latestEntry('assessment')?.title }}</h3>
               <p>{{ latestEntry('assessment')?.content }}</p>
               <span>{{ formatDateTime(latestEntry('assessment')?.updatedAt ?? '') }}</span>
             </article>
-            <p v-else class="empty-clinical-state">Nenhuma suspeita diagnóstica ou avaliação registrada.</p>
+            <p v-else class="empty-clinical-state">
+              Nenhuma suspeita diagnóstica ou avaliação registrada.
+            </p>
           </section>
 
           <section
@@ -184,14 +217,18 @@
                 <span class="section-heading__eyebrow">7. Tratamento</span>
                 <h2>Terapêutica / plano de tratamento</h2>
               </div>
-              <DsButton variant="secondary" size="sm" @click="startEntry('plan')">Registrar plano</DsButton>
+              <DsButton variant="secondary" size="sm" @click="startEntry('plan')"
+                >Registrar plano</DsButton
+              >
             </div>
             <article v-if="latestEntry('plan')" class="clinical-entry">
               <h3>{{ latestEntry('plan')?.title }}</h3>
               <p>{{ latestEntry('plan')?.content }}</p>
               <span>{{ formatDateTime(latestEntry('plan')?.updatedAt ?? '') }}</span>
             </article>
-            <p v-else class="empty-clinical-state">Nenhuma terapêutica ou plano de tratamento registrado.</p>
+            <p v-else class="empty-clinical-state">
+              Nenhuma terapêutica ou plano de tratamento registrado.
+            </p>
           </section>
 
           <section v-if="activeClinicalStep === 'plan'" class="clinical-section">
@@ -200,16 +237,24 @@
                 <span class="section-heading__eyebrow">8. Medicações</span>
                 <h2>Prescrição / receituário</h2>
               </div>
-              <DsButton variant="secondary" size="sm" @click="startEntry('prescription')">Registrar prescrição</DsButton>
+              <DsButton variant="secondary" size="sm" @click="startEntry('prescription')"
+                >Registrar prescrição</DsButton
+              >
             </div>
             <div v-if="prescriptionEntries.length" class="clinical-list">
-              <article v-for="entry in prescriptionEntries.slice(0, 3)" :key="entry.id" class="clinical-entry">
+              <article
+                v-for="entry in prescriptionEntries.slice(0, 3)"
+                :key="entry.id"
+                class="clinical-entry"
+              >
                 <h3>{{ entry.title }}</h3>
                 <p>{{ entry.content }}</p>
                 <span>{{ formatDateTime(entry.updatedAt) }}</span>
               </article>
             </div>
-            <p v-else class="empty-clinical-state">Nenhuma prescrição registrada para este atendimento.</p>
+            <p v-else class="empty-clinical-state">
+              Nenhuma prescrição registrada para este atendimento.
+            </p>
           </section>
 
           <section v-if="activeClinicalStep === 'plan'" class="clinical-section">
@@ -218,7 +263,9 @@
                 <span class="section-heading__eyebrow">9. Continuidade do cuidado</span>
                 <h2>Conduta e próximos passos</h2>
               </div>
-              <DsButton variant="secondary" size="sm" @click="startEntry('conduct')">Registrar conduta</DsButton>
+              <DsButton variant="secondary" size="sm" @click="startEntry('conduct')"
+                >Registrar conduta</DsButton
+              >
             </div>
             <article v-if="latestEntry('conduct')" class="clinical-entry">
               <h3>{{ latestEntry('conduct')?.title }}</h3>
@@ -236,7 +283,9 @@
                 <span class="section-heading__eyebrow">10. Complementos</span>
                 <h2>Observações</h2>
               </div>
-              <DsButton variant="secondary" size="sm" @click="startEntry('progress_note')">Registrar observação</DsButton>
+              <DsButton variant="secondary" size="sm" @click="startEntry('progress_note')"
+                >Registrar observação</DsButton
+              >
             </div>
             <article v-if="latestEntry('progress_note')" class="clinical-entry">
               <h3>{{ latestEntry('progress_note')?.title }}</h3>
@@ -253,7 +302,11 @@
                 <h2>Adicionar informações ao prontuário</h2>
               </div>
               <div class="section-heading__actions">
-                <DsButton variant="secondary" :disabled="submittingClinicalSheet" @click="clearClinicalSheet">
+                <DsButton
+                  variant="secondary"
+                  :disabled="submittingClinicalSheet"
+                  @click="clearClinicalSheet"
+                >
                   Limpar
                 </DsButton>
                 <DsButton
@@ -268,7 +321,11 @@
             </div>
 
             <div class="clinical-form-grid">
-              <label v-for="section in visibleClinicalSheetSections" :key="section.key" class="clinical-field">
+              <label
+                v-for="section in visibleClinicalSheetSections"
+                :key="section.key"
+                class="clinical-field"
+              >
                 <span>{{ section.label }}</span>
                 <small>{{ section.hint }}</small>
                 <textarea
@@ -280,7 +337,7 @@
               </label>
             </div>
           </section>
-        </main>
+        </div>
 
         <aside class="clinical-record-aside" aria-label="Resumo do paciente e tutor">
           <section class="patient-summary-card">
@@ -305,10 +362,22 @@
               </div>
             </dl>
             <div class="rail-actions">
-              <DsButton v-if="owner" size="sm" variant="secondary" tag="a" :to="`/owners/${owner.id}`">
+              <DsButton
+                v-if="owner"
+                size="sm"
+                variant="secondary"
+                tag="a"
+                :to="`/owners/${owner.id}`"
+              >
                 Ver tutor
               </DsButton>
-              <DsButton v-if="patient" size="sm" variant="secondary" tag="a" :to="`/patients/${patient.id}`">
+              <DsButton
+                v-if="patient"
+                size="sm"
+                variant="secondary"
+                tag="a"
+                :to="`/patients/${patient.id}`"
+              >
                 Ver paciente
               </DsButton>
             </div>
@@ -341,7 +410,12 @@
             <article class="vetus-card">
               <div class="vetus-card__header">
                 <h3>Últimos Atendimentos</h3>
-                <DsButton size="sm" variant="secondary" tag="a" :to="`/encounters/${record.encounterId}`">
+                <DsButton
+                  size="sm"
+                  variant="secondary"
+                  tag="a"
+                  :to="`/encounters/${record.encounterId}`"
+                >
                   Ver Atendimento
                 </DsButton>
               </div>
@@ -365,7 +439,11 @@
                 </DsButton>
               </div>
               <div v-if="anamnesisEntries.length" class="record-list">
-                <div v-for="entry in anamnesisEntries.slice(0, 3)" :key="entry.id" class="record-list__item">
+                <div
+                  v-for="entry in anamnesisEntries.slice(0, 3)"
+                  :key="entry.id"
+                  class="record-list__item"
+                >
                   <div>
                     <strong>{{ entry.title }}</strong>
                     <p>{{ entry.content }}</p>
@@ -384,7 +462,11 @@
                 </DsButton>
               </div>
               <div v-if="preventiveEntries.length" class="record-list">
-                <div v-for="entry in preventiveEntries.slice(0, 3)" :key="entry.id" class="record-list__item">
+                <div
+                  v-for="entry in preventiveEntries.slice(0, 3)"
+                  :key="entry.id"
+                  class="record-list__item"
+                >
                   <div>
                     <strong>{{ entry.title }}</strong>
                     <p>{{ entry.content }}</p>
@@ -392,7 +474,9 @@
                   <span>{{ formatDateTime(entry.updatedAt) }}</span>
                 </div>
               </div>
-              <p v-else class="muted">Esse animal não possui vacinas ou vermífugos registrados neste prontuário.</p>
+              <p v-else class="muted">
+                Esse animal não possui vacinas ou vermífugos registrados neste prontuário.
+              </p>
             </article>
 
             <article class="vetus-card">
@@ -421,12 +505,21 @@
             <article class="vetus-card">
               <div class="vetus-card__header">
                 <h3>Exames</h3>
-                <DsButton size="sm" variant="secondary" tag="a" :to="clinicalWorkflowPath('/diagnostics')">
+                <DsButton
+                  size="sm"
+                  variant="secondary"
+                  tag="a"
+                  :to="clinicalWorkflowPath('/diagnostics')"
+                >
                   Ver mais Exames
                 </DsButton>
               </div>
               <div v-if="diagnosticEntries.length" class="record-list">
-                <div v-for="entry in diagnosticEntries.slice(0, 3)" :key="entry.id" class="record-list__item">
+                <div
+                  v-for="entry in diagnosticEntries.slice(0, 3)"
+                  :key="entry.id"
+                  class="record-list__item"
+                >
                   <div>
                     <strong>{{ entry.title }}</strong>
                     <p>{{ entryTypeLabel(entry.entryType) }}</p>
@@ -445,7 +538,11 @@
                 </DsButton>
               </div>
               <div v-if="inpatientEvents.length" class="record-list">
-                <div v-for="event in inpatientEvents.slice(0, 3)" :key="event.id" class="record-list__item">
+                <div
+                  v-for="event in inpatientEvents.slice(0, 3)"
+                  :key="event.id"
+                  class="record-list__item"
+                >
                   <div>
                     <strong>{{ timelineEventTypeLabel(event.eventType) }}</strong>
                     <p>{{ event.summary }}</p>
@@ -453,7 +550,9 @@
                   <span>{{ formatDateTime(event.occurredAt) }}</span>
                 </div>
               </div>
-              <p v-else class="muted">Esse animal não possui internação vinculada a este prontuário.</p>
+              <p v-else class="muted">
+                Esse animal não possui internação vinculada a este prontuário.
+              </p>
             </article>
 
             <article class="vetus-card">
@@ -464,7 +563,11 @@
                 </DsButton>
               </div>
               <div v-if="prescriptionEntries.length" class="record-list">
-                <div v-for="entry in prescriptionEntries.slice(0, 3)" :key="entry.id" class="record-list__item">
+                <div
+                  v-for="entry in prescriptionEntries.slice(0, 3)"
+                  :key="entry.id"
+                  class="record-list__item"
+                >
                   <div>
                     <strong>{{ entry.title }}</strong>
                     <p>{{ entry.content }}</p>
@@ -478,7 +581,12 @@
             <article class="vetus-card">
               <div class="vetus-card__header">
                 <h3>Gráfico de peso</h3>
-                <DsButton size="sm" variant="secondary" tag="a" :to="`/patients/${record.patientId}/edit`">
+                <DsButton
+                  size="sm"
+                  variant="secondary"
+                  tag="a"
+                  :to="`/patients/${record.patientId}/edit`"
+                >
                   Atualizar peso
                 </DsButton>
               </div>
@@ -504,12 +612,21 @@
             <article class="vetus-card">
               <div class="vetus-card__header">
                 <h3>Imagens</h3>
-                <DsButton size="sm" variant="secondary" tag="a" :to="clinicalWorkflowPath('/diagnostics')">
+                <DsButton
+                  size="sm"
+                  variant="secondary"
+                  tag="a"
+                  :to="clinicalWorkflowPath('/diagnostics')"
+                >
                   Incluir Imagem
                 </DsButton>
               </div>
               <div v-if="imageEvents.length" class="record-list">
-                <div v-for="event in imageEvents.slice(0, 3)" :key="event.id" class="record-list__item">
+                <div
+                  v-for="event in imageEvents.slice(0, 3)"
+                  :key="event.id"
+                  class="record-list__item"
+                >
                   <div>
                     <strong>{{ timelineEventTypeLabel(event.eventType) }}</strong>
                     <p>{{ event.summary }}</p>
@@ -524,10 +641,20 @@
               <div class="vetus-card__header">
                 <h3>Cobrança</h3>
                 <div class="vetus-card__actions">
-                  <DsButton size="sm" variant="secondary" tag="a" :to="`/billing/${record.encounterId}`">
+                  <DsButton
+                    size="sm"
+                    variant="secondary"
+                    tag="a"
+                    :to="`/billing/${record.encounterId}`"
+                  >
                     Abrir Cobrança
                   </DsButton>
-                  <DsButton size="sm" variant="primary" tag="a" :to="clinicalWorkflowPath('/counter-sales')">
+                  <DsButton
+                    size="sm"
+                    variant="primary"
+                    tag="a"
+                    :to="clinicalWorkflowPath('/counter-sales')"
+                  >
                     Abrir Comanda
                   </DsButton>
                 </div>
@@ -535,11 +662,20 @@
               <dl class="detail-list">
                 <div>
                   <dt>Status</dt>
-                  <dd>{{ billingRecord ? billingStatusLabel(billingRecord.status) : 'Não aberta' }}</dd>
+                  <dd>
+                    {{ billingRecord ? billingStatusLabel(billingRecord.status) : 'Não aberta' }}
+                  </dd>
                 </div>
                 <div>
                   <dt>Total</dt>
-                  <dd>{{ formatCurrency(billingRecord?.subtotalAmount ?? 0, billingRecord?.currency ?? 'BRL') }}</dd>
+                  <dd>
+                    {{
+                      formatCurrency(
+                        billingRecord?.subtotalAmount ?? 0,
+                        billingRecord?.currency ?? 'BRL'
+                      )
+                    }}
+                  </dd>
                 </div>
                 <div>
                   <dt>Últimos lançamentos</dt>
@@ -547,12 +683,21 @@
                 </div>
               </dl>
               <div v-if="billingItems.length" class="record-list record-list--compact">
-                <div v-for="item in billingItems.slice(0, 3)" :key="item.id" class="record-list__item">
+                <div
+                  v-for="item in billingItems.slice(0, 3)"
+                  :key="item.id"
+                  class="record-list__item"
+                >
                   <div>
                     <strong>{{ item.description }}</strong>
-                    <p>{{ item.quantity }} x {{ formatCurrency(item.unitPriceAmount, billingRecord?.currency ?? 'BRL') }}</p>
+                    <p>
+                      {{ item.quantity }} x
+                      {{ formatCurrency(item.unitPriceAmount, billingRecord?.currency ?? 'BRL') }}
+                    </p>
                   </div>
-                  <span>{{ formatCurrency(item.totalAmount, billingRecord?.currency ?? 'BRL') }}</span>
+                  <span>{{
+                    formatCurrency(item.totalAmount, billingRecord?.currency ?? 'BRL')
+                  }}</span>
                 </div>
               </div>
             </article>
@@ -565,7 +710,11 @@
                 </DsButton>
               </div>
               <div v-if="activeEntries.length" class="record-list">
-                <div v-for="entry in activeEntries.slice(0, 5)" :key="entry.id" class="record-list__item">
+                <div
+                  v-for="entry in activeEntries.slice(0, 5)"
+                  :key="entry.id"
+                  class="record-list__item"
+                >
                   <div>
                     <strong>{{ entry.title }}</strong>
                     <p>{{ entryTypeLabel(entry.entryType) }}</p>
@@ -573,7 +722,9 @@
                   <span>{{ formatDateTime(entry.updatedAt) }}</span>
                 </div>
               </div>
-              <p v-else class="muted">Escreva aqui o histórico clínico do animal usando a ficha de atendimento.</p>
+              <p v-else class="muted">
+                Escreva aqui o histórico clínico do animal usando a ficha de atendimento.
+              </p>
             </article>
           </section>
         </details>
@@ -583,7 +734,8 @@
           <section class="clinical-history-grid">
             <AppDetailSection title="Entradas Clínicas">
               <div v-if="entries.length === 0" class="muted">
-                Nenhuma entrada clínica registrada ainda. Use a ficha estruturada acima para documentar anamnese, exame físico, avaliação, plano e conduta.
+                Nenhuma entrada clínica registrada ainda. Use a ficha estruturada acima para
+                documentar anamnese, exame físico, avaliação, plano e conduta.
               </div>
 
               <div v-else class="entries-list">
@@ -601,7 +753,9 @@
                   <h3 class="entry-card__title">{{ entry.title }}</h3>
                   <p class="entry-card__content">{{ entry.content }}</p>
                   <div class="entry-card__footer">
-                    <span class="muted">Autor técnico: {{ entry.authoredByUserId.slice(0, 8) }}...</span>
+                    <span class="muted"
+                      >Autor técnico: {{ entry.authoredByUserId.slice(0, 8) }}...</span
+                    >
                     <div class="entry-card__actions">
                       <DsButton
                         v-if="!entry.deletedAt"
@@ -636,10 +790,14 @@
           <section class="clinical-history-grid">
             <AppDetailSection title="Timeline Clínica">
               <div v-if="timelineLoading" class="muted">Carregando timeline...</div>
-              <div v-else-if="timeline.length === 0" class="muted">Nenhum evento registrado ainda neste prontuário.</div>
+              <div v-else-if="timeline.length === 0" class="muted">
+                Nenhum evento registrado ainda neste prontuário.
+              </div>
               <div v-else class="timeline-list">
                 <div v-for="event in timeline" :key="event.id" class="timeline-event">
-                  <span class="timeline-event__type">{{ timelineEventTypeLabel(event.eventType) }}</span>
+                  <span class="timeline-event__type">{{
+                    timelineEventTypeLabel(event.eventType)
+                  }}</span>
                   <span class="timeline-event__summary">{{ event.summary }}</span>
                   <span class="timeline-event__time">{{ formatDateTime(event.occurredAt) }}</span>
                 </div>
@@ -790,10 +948,7 @@ import type {
 import type { OwnerSummary } from '@/types/owner';
 import type { PatientSex, PatientSummary } from '@/types/patient';
 import { useEntityCache } from '@/composables/useEntityCache';
-import {
-  encounterStatusLabel,
-  formatDateTime as formatEncounterDateTime
-} from '@/utils/labels';
+import { encounterStatusLabel, formatDateTime as formatEncounterDateTime } from '@/utils/labels';
 import SkeletonLoader from '@/components/SkeletonLoader.vue';
 import AppPageHeader, {
   type PageAction,
@@ -807,7 +962,13 @@ import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsModal from '@cvg-his-v2/design-system/vue/DsModal.vue';
 
-type ClinicalSheetKey = 'anamnesis' | 'physicalExam' | 'assessment' | 'plan' | 'prescription' | 'conduct';
+type ClinicalSheetKey =
+  | 'anamnesis'
+  | 'physicalExam'
+  | 'assessment'
+  | 'plan'
+  | 'prescription'
+  | 'conduct';
 
 interface ClinicalSheetSection {
   key: ClinicalSheetKey;
@@ -890,7 +1051,8 @@ const clinicalSheetSections: ClinicalSheetSection[] = [
     label: 'Anamnese / relato do tutor',
     title: 'Anamnese',
     hint: 'História, sinais percebidos, evolução e contexto informado pelo tutor.',
-    placeholder: 'Ex.: início dos sinais, apetite, ingestão hídrica, vômitos, diarreia, comportamento, medicações em uso.'
+    placeholder:
+      'Ex.: início dos sinais, apetite, ingestão hídrica, vômitos, diarreia, comportamento, medicações em uso.'
   },
   {
     key: 'physicalExam',
@@ -898,7 +1060,8 @@ const clinicalSheetSections: ClinicalSheetSection[] = [
     label: 'Exame físico',
     title: 'Exame físico',
     hint: 'Achados objetivos do atendimento.',
-    placeholder: 'Ex.: TPC, mucosas, hidratação, ausculta, palpação, temperatura, dor, pele, olhos, cavidade oral.'
+    placeholder:
+      'Ex.: TPC, mucosas, hidratação, ausculta, palpação, temperatura, dor, pele, olhos, cavidade oral.'
   },
   {
     key: 'assessment',
@@ -906,7 +1069,8 @@ const clinicalSheetSections: ClinicalSheetSection[] = [
     label: 'Suspeita diagnóstica / avaliação clínica',
     title: 'Suspeita diagnóstica / avaliação clínica',
     hint: 'Raciocínio diagnóstico, problemas ativos e exames necessários.',
-    placeholder: 'Ex.: principais suspeitas, diferenciais, gravidade, exames solicitados e justificativa.'
+    placeholder:
+      'Ex.: principais suspeitas, diferenciais, gravidade, exames solicitados e justificativa.'
   },
   {
     key: 'plan',
@@ -914,7 +1078,8 @@ const clinicalSheetSections: ClinicalSheetSection[] = [
     label: 'Terapêutica / plano de tratamento',
     title: 'Terapêutica / plano de tratamento',
     hint: 'Conduta planejada para o caso.',
-    placeholder: 'Ex.: medicações, fluidoterapia, exames complementares, retorno, internação, orientações de monitoramento.'
+    placeholder:
+      'Ex.: medicações, fluidoterapia, exames complementares, retorno, internação, orientações de monitoramento.'
   },
   {
     key: 'prescription',
@@ -930,7 +1095,8 @@ const clinicalSheetSections: ClinicalSheetSection[] = [
     label: 'Conduta e próximos passos',
     title: 'Conduta e próximos passos',
     hint: 'Fechamento clínico e comunicação ao tutor.',
-    placeholder: 'Ex.: orientações ao tutor, sinais de alerta, retorno recomendado, pendências e acompanhamento.'
+    placeholder:
+      'Ex.: orientações ao tutor, sinais de alerta, retorno recomendado, pendências e acompanhamento.'
   }
 ];
 
@@ -946,9 +1112,13 @@ const visibleClinicalSheetSections = computed(() => {
 });
 
 const activeEntries = computed(() => entries.value.filter((entry) => !entry.deletedAt));
-const anamnesisEntries = computed(() => activeEntries.value.filter((entry) => entry.entryType === 'anamnesis'));
+const anamnesisEntries = computed(() =>
+  activeEntries.value.filter((entry) => entry.entryType === 'anamnesis')
+);
 const preventiveEntries = computed(() =>
-  activeEntries.value.filter((entry) => hasPreventiveText(entry.title) || hasPreventiveText(entry.content))
+  activeEntries.value.filter(
+    (entry) => hasPreventiveText(entry.title) || hasPreventiveText(entry.content)
+  )
 );
 const inpatientEvents = computed(() =>
   timeline.value.filter((event) => event.eventType.startsWith('inpatient_'))
@@ -958,13 +1128,17 @@ const imageEvents = computed(() =>
 );
 const prescriptionEntries = computed(() => {
   const ownEntries = activeEntries.value.filter((entry) => entry.entryType === 'prescription');
-  const byId = new Map([...ownEntries, ...patientPrescriptions.value].map((entry) => [entry.id, entry]));
+  const byId = new Map(
+    [...ownEntries, ...patientPrescriptions.value].map((entry) => [entry.id, entry])
+  );
   return Array.from(byId.values()).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 });
 
 const latestEntriesByType = computed(() => {
   const grouped = new Map<ClinicalEntryType, ClinicalEntrySummary>();
-  for (const entry of [...activeEntries.value].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))) {
+  for (const entry of [...activeEntries.value].sort((a, b) =>
+    b.updatedAt.localeCompare(a.updatedAt)
+  )) {
     if (!grouped.has(entry.entryType)) {
       grouped.set(entry.entryType, entry);
     }
@@ -976,7 +1150,9 @@ const hasClinicalSheetContent = computed(() =>
   clinicalSheetSections.some((section) => clinicalSheet[section.key].trim().length > 0)
 );
 
-const displayPatientName = computed(() => patientName.value || patient.value?.name || 'Paciente não identificado');
+const displayPatientName = computed(
+  () => patientName.value || patient.value?.name || 'Paciente não identificado'
+);
 
 const medicalRecordHeaderSubtitle = computed(() => {
   const status = record.value?.status === 'open' ? 'Atendimento aberto' : 'Atendimento concluído';
@@ -1213,7 +1389,9 @@ const newPatientAppointmentPath = computed(() => {
   return `/appointments/new?${params.toString()}`;
 });
 
-const isEntryFormValid = computed(() => entryForm.value.title.trim() && entryForm.value.content.trim());
+const isEntryFormValid = computed(
+  () => entryForm.value.title.trim() && entryForm.value.content.trim()
+);
 
 const entryModalTitle = computed(() => {
   if (editingEntry.value) {
@@ -1283,7 +1461,9 @@ function billingStatusLabel(status: BillingStatus) {
 }
 
 function hasPreventiveText(value: string) {
-  return /vacina|vacinacao|vacinal|vermif|verme/i.test(value.normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
+  return /vacina|vacinacao|vacinal|vermif|verme/i.test(
+    value.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  );
 }
 
 function formatCurrency(value: number, currency: string) {
@@ -1330,7 +1510,9 @@ function routeEntryType(): ClinicalEntryType | null {
   const value = route.query?.entry ?? route.query?.newEntry;
   const raw = Array.isArray(value) ? value[0] : value;
   if (!raw) return null;
-  return Object.prototype.hasOwnProperty.call(entryTypeMap, raw) ? (raw as ClinicalEntryType) : null;
+  return Object.prototype.hasOwnProperty.call(entryTypeMap, raw)
+    ? (raw as ClinicalEntryType)
+    : null;
 }
 
 function openEditEntry(entry: ClinicalEntrySummary) {
@@ -1416,15 +1598,21 @@ async function loadRecordByRouteId(id: string) {
 
 async function loadClinicalContext(currentRecord: MedicalRecordSummary) {
   contextWarnings.value = [];
-  const [encounterResult, patientResult, billingResult, billingItemsResult, diagnosticsResult, prescriptionsResult] =
-    await Promise.allSettled([
-      encounterService.getById(currentRecord.encounterId),
-      patientService.getById(currentRecord.patientId),
-      billingService.getByEncounter(currentRecord.encounterId),
-      billingService.listItems(currentRecord.encounterId),
-      diagnosticsService.listByEncounter(currentRecord.encounterId),
-      prescriptionsService.listByPatient(currentRecord.patientId)
-    ]);
+  const [
+    encounterResult,
+    patientResult,
+    billingResult,
+    billingItemsResult,
+    diagnosticsResult,
+    prescriptionsResult
+  ] = await Promise.allSettled([
+    encounterService.getById(currentRecord.encounterId),
+    patientService.getById(currentRecord.patientId),
+    billingService.getByEncounter(currentRecord.encounterId),
+    billingService.listItems(currentRecord.encounterId),
+    diagnosticsService.listByEncounter(currentRecord.encounterId),
+    prescriptionsService.listByPatient(currentRecord.patientId)
+  ]);
 
   if (encounterResult.status === 'fulfilled') {
     encounter.value = encounterResult.value;
@@ -1457,7 +1645,8 @@ async function loadClinicalContext(currentRecord: MedicalRecordSummary) {
 
   billingItems.value = billingItemsResult.status === 'fulfilled' ? billingItemsResult.value : [];
   diagnosticEntries.value = diagnosticsResult.status === 'fulfilled' ? diagnosticsResult.value : [];
-  patientPrescriptions.value = prescriptionsResult.status === 'fulfilled' ? prescriptionsResult.value : [];
+  patientPrescriptions.value =
+    prescriptionsResult.status === 'fulfilled' ? prescriptionsResult.value : [];
 }
 
 async function loadTimeline() {
@@ -1509,7 +1698,8 @@ async function saveClinicalSheet() {
     successMessage.value = 'Ficha de atendimento salva no prontuário.';
     await refreshRecordAndTimeline();
   } catch (err: unknown) {
-    entryFormError.value = err instanceof Error ? err.message : 'Erro ao salvar ficha de atendimento';
+    entryFormError.value =
+      err instanceof Error ? err.message : 'Erro ao salvar ficha de atendimento';
   } finally {
     submittingClinicalSheet.value = false;
   }

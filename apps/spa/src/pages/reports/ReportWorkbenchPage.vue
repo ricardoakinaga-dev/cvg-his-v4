@@ -334,16 +334,13 @@ import {
   type AdministrativeReportsResponse
 } from '@/services/administrativeReports';
 import { auditService } from '@/services/audit';
+import { saveBrowserDownload, withDownloadTimeout } from '@/services/download';
 import {
   financialPayablesService,
   type FinancialPayableRecord
 } from '@/services/financialPayables';
 import { financialReceivablesService } from '@/services/financialReceivables';
-import {
-  reportsService,
-  type ReportExecutionDetail,
-  type ReportExportSummary
-} from '@/services/reports';
+import { reportsService, type ReportExecutionDetail } from '@/services/reports';
 import type { FinancialReceivableListItem } from '@/types/financialReceivables';
 import { patientStatusLabel, sexLabel, speciesLabel } from '@/utils/labels';
 import { buildReportCsv } from '@/utils/report-export';
@@ -1772,18 +1769,25 @@ async function exportCurrentReport(): Promise<void> {
 
   try {
     if (spec.value.serverReportId) {
-      const execution = await reportsService.execute({
-        reportId: spec.value.serverReportId,
-        filters: buildServerReportFilters()
+      const { execution, exported } = await withDownloadTimeout(async () => {
+        const execution = await reportsService.execute({
+          reportId: spec.value.serverReportId!,
+          filters: buildServerReportFilters()
+        });
+        const exported = await reportsService.exportExecution(execution.id, 'csv');
+        return { execution, exported };
       });
-      const exported = await reportsService.exportExecution(execution.id, 'csv');
-      downloadReportExport(exported);
+      saveBrowserDownload(exported);
       success.value = `Exportação server-side auditada gerada com ${execution.rowCount} linha(s).`;
       return;
     }
 
     const csv = buildReportCsv(spec.value.columns, rows.value);
-    downloadCsv(csv, buildReportFilename(spec.value.title));
+    saveBrowserDownload({
+      content: csv,
+      contentType: 'text/csv;charset=utf-8',
+      filename: buildReportFilename(spec.value.title)
+    });
     success.value = `Exportação CSV gerada com ${rows.value.length} linha(s).`;
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Não foi possível exportar o relatório';
@@ -1834,42 +1838,6 @@ function buildServerReportFilters(): Record<string, unknown> {
     ...(filters.value.dateFrom ? { dateFrom: filters.value.dateFrom } : {}),
     ...(filters.value.dateTo ? { dateTo: filters.value.dateTo } : {})
   };
-}
-
-function downloadReportExport(exported: ReportExportSummary): void {
-  const content =
-    exported.contentEncoding === 'base64'
-      ? Uint8Array.from(window.atob(exported.content), (character) => character.charCodeAt(0))
-      : exported.content;
-  const blob = new Blob([content], { type: exported.contentType });
-  const objectUrl = typeof URL.createObjectURL === 'function' ? URL.createObjectURL(blob) : null;
-  const anchor = document.createElement('a');
-  anchor.href = objectUrl ?? `data:${exported.contentType},${encodeURIComponent(exported.content)}`;
-  anchor.download = exported.filename;
-  anchor.rel = 'noopener';
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-
-  if (objectUrl) {
-    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
-  }
-}
-
-function downloadCsv(content: string, filename: string): void {
-  const blob = new Blob([content], { type: 'text/csv;charset=utf-8' });
-  const objectUrl = typeof URL.createObjectURL === 'function' ? URL.createObjectURL(blob) : null;
-  const anchor = document.createElement('a');
-  anchor.href = objectUrl ?? `data:text/csv;charset=utf-8,${encodeURIComponent(content)}`;
-  anchor.download = filename;
-  anchor.rel = 'noopener';
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-
-  if (objectUrl) {
-    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
-  }
 }
 
 function buildReportFilename(title: string): string {
@@ -3163,15 +3131,26 @@ onMounted(loadReport);
 
 <style scoped>
 .report-page {
+  box-sizing: border-box;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
+  max-width: 100%;
+  min-width: 0;
+  width: 100%;
+}
+
+.report-page > * {
+  max-width: 100%;
+  min-width: 0;
 }
 
 .report-filters {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
   gap: 12px;
   align-items: end;
+  width: 100%;
 }
 
 .report-filters__actions {

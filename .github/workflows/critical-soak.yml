@@ -1,0 +1,106 @@
+name: Critical Gate 20x
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_sha:
+        description: Full commit SHA from main to certify
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: critical-soak-${{ inputs.release_sha }}
+  cancel-in-progress: false
+
+jobs:
+  critical-soak:
+    name: Critical gate 20 of 20
+    runs-on: ubuntu-22.04
+    timeout-minutes: 360
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: cvg_his_v2_test
+        ports:
+          - 5433:5432
+        options: >-
+          --shm-size 1g
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Validate requested SHA
+        env:
+          REQUESTED_SHA: ${{ inputs.release_sha }}
+        run: |
+          if ! printf '%s' "${REQUESTED_SHA}" | grep -Eq '^[0-9a-f]{40}$'; then
+            echo 'release_sha must be a full lowercase commit SHA' >&2
+            exit 1
+          fi
+
+      - name: Checkout exact release candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_sha }}
+          fetch-depth: 0
+
+      - name: Ensure SHA belongs to main
+        env:
+          REQUESTED_SHA: ${{ inputs.release_sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "${REQUESTED_SHA}"
+          git fetch origin main --depth=1
+          git merge-base --is-ancestor "${REQUESTED_SHA}" origin/main
+          test -z "$(git status --porcelain)"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
+
+      - name: Install dependencies and Redis test binary
+        run: |
+          pnpm install --frozen-lockfile
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends redis-server redis-tools
+
+      - name: Run critical gate exactly 20 times without retry
+        env:
+          TEST_DB_USER: postgres
+          TEST_DB_PASSWORD: postgres
+          TEST_DB_HOST: localhost
+          TEST_DB_PORT: '5433'
+          TEST_DB_NAME: cvg_his_v2_test
+          REDIS_SERVER_BIN: /usr/bin/redis-server
+          REDIS_CLI_BIN: /usr/bin/redis-cli
+          CRITICAL_SOAK_RUNS: '20'
+          CRITICAL_SOAK_REQUIRE_20: '1'
+          CRITICAL_SOAK_REQUIRE_CLEAN: '1'
+          CRITICAL_SOAK_OUTPUT_DIR: artifacts/critical-soak
+        run: |
+          database_url="postgres://${TEST_DB_USER}:${TEST_DB_PASSWORD}@${TEST_DB_HOST}:${TEST_DB_PORT}/${TEST_DB_NAME}"
+          export DATABASE_URL_TEST="${database_url}"
+          export DATABASE_URL="${database_url}"
+          pnpm test:critical:soak
+
+      - name: Upload per-run logs and soak report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: critical-soak-${{ inputs.release_sha }}
+          path: artifacts/critical-soak/
+          if-no-files-found: error
+          retention-days: 90

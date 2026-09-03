@@ -13,6 +13,7 @@ import {
   type EncounterRepository
 } from '@cvg-his-v2/module-encounters';
 import { createRateLimiter } from '@cvg-his-v2/shared-rate-limiter';
+import { getTenantContext } from '@cvg-his-v2/tenant-context';
 import {
   ClamAvAttachmentSecurityScanner,
   S3CompatibleFileStorage
@@ -1683,6 +1684,51 @@ test('observability contract exposes request and trace correlation headers', asy
   assert.equal(response.getHeader('x-trace-id'), traceparent?.split('-')[1]);
 });
 
+test('operational metrics classify forbidden responses and downloads by normalized route and role', async () => {
+  const server = createServerUnderTest({ corsAllowedOrigins: ['https://app.example.com'] });
+  await server.ready;
+
+  const forbidden = await performRequest(server, {
+    method: 'GET',
+    url: '/health',
+    headers: {
+      origin: 'https://outside.example.com',
+      host: 'localhost'
+    }
+  });
+  assert.equal(forbidden.statusCode, 403);
+  forbidden.emit('finish');
+
+  const accessToken = await login(server, 'admin', 'seed_admin');
+  const failedDownload = await performRequest(server, {
+    method: 'POST',
+    url: '/reports/executions/missing-report/export',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: { format: 'csv' }
+  });
+  assert.equal(failedDownload.statusCode, 404);
+  failedDownload.emit('finish');
+
+  const metricsResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/metrics',
+    headers: { host: 'localhost' }
+  });
+  const metricsText = metricsResponse.bodyText();
+  assert.match(
+    metricsText,
+    /^http_operational_outcomes_total\{route="\/health",role="anonymous",operation="forbidden",result="error"\} [1-9]\d*$/m
+  );
+  assert.match(
+    metricsText,
+    /^http_operational_outcomes_total\{route="\/reports\/executions\/:id\/export",role="admin",operation="download",result="error"\} [1-9]\d*$/m
+  );
+});
+
 test('SLO endpoint exposes compliance, error budget and Prometheus gauges', async () => {
   resetRequestSloObservations();
   const now = Date.now();
@@ -1807,6 +1853,7 @@ test('chaos operations expose effective runtime state, runbooks and metrics', as
       name: 'chaos-test'
     })
   });
+  await server.ready;
   const accessToken = await login(server, 'admin', 'seed_admin');
   const unauthorized = await performRequest(server, {
     method: 'GET',
@@ -1817,7 +1864,12 @@ test('chaos operations expose effective runtime state, runbooks and metrics', as
   const chaosHeaders = { authorization: `Bearer ${accessToken}`, host: 'localhost' };
 
   const chaos = ChaosEngine.getInstance();
-  for (const experimentId of ['database-failure', 'redis-failure', 'worker-failure']) {
+  for (const experimentId of [
+    'database-failure',
+    'redis-failure',
+    'worker-failure',
+    'provider-failure'
+  ]) {
     if (chaos.isActive(experimentId)) {
       await chaos.stop(experimentId);
     }
@@ -1856,6 +1908,17 @@ test('chaos operations expose effective runtime state, runbooks and metrics', as
     });
     assert.equal(startWorkerFailure.statusCode, 200);
 
+    const startProviderFailure = await performRequest(server, {
+      method: 'POST',
+      url: '/chaos/experiments/provider-failure/start',
+      headers: {
+        ...chaosHeaders,
+        'content-type': 'application/json'
+      },
+      body: { durationMs: 60_000 }
+    });
+    assert.equal(startProviderFailure.statusCode, 200);
+
     const experimentsResponse = await performRequest(server, {
       method: 'GET',
       url: '/chaos/experiments',
@@ -1869,6 +1932,7 @@ test('chaos operations expose effective runtime state, runbooks and metrics', as
         databaseHealthy: boolean;
         persistenceMode: string;
         workerReady: boolean;
+        externalProvidersHealthy: boolean;
         redisHealthy: boolean;
         rateLimiterMode: string;
         activeExperimentIds: string[];
@@ -1877,13 +1941,19 @@ test('chaos operations expose effective runtime state, runbooks and metrics', as
         id: string;
         active: boolean;
         runbook?: { path: string };
-        runtimeImpact?: { persistenceMode: string; redisHealthy: boolean; workerReady: boolean };
+        runtimeImpact?: {
+          persistenceMode: string;
+          redisHealthy: boolean;
+          workerReady: boolean;
+          externalProvidersHealthy: boolean;
+        };
       }>;
     }>();
 
     assert.equal(experimentsPayload.runtimeState.databaseHealthy, false);
     assert.equal(experimentsPayload.runtimeState.persistenceMode, 'unavailable');
     assert.equal(experimentsPayload.runtimeState.workerReady, false);
+    assert.equal(experimentsPayload.runtimeState.externalProvidersHealthy, false);
     assert.equal(experimentsPayload.runtimeState.redisHealthy, false);
     assert.equal(experimentsPayload.runtimeState.rateLimiterMode, 'fail-closed');
     assert.equal(
@@ -1900,6 +1970,16 @@ test('chaos operations expose effective runtime state, runbooks and metrics', as
       'packages/chaos/src/runbooks/database-failure-runbook.md'
     );
     assert.equal(databaseExperiment?.runtimeImpact?.persistenceMode, 'unavailable');
+
+    const providerExperiment = experimentsPayload.experiments.find(
+      (item) => item.id === 'provider-failure'
+    );
+    assert.equal(providerExperiment?.active, true);
+    assert.equal(
+      providerExperiment?.runbook?.path,
+      'packages/chaos/src/runbooks/provider-failure-runbook.md'
+    );
+    assert.equal(providerExperiment?.runtimeImpact?.externalProvidersHealthy, false);
 
     const readyResponse = await performRequest(server, {
       method: 'GET',
@@ -1934,7 +2014,7 @@ test('chaos operations expose effective runtime state, runbooks and metrics', as
     assert.match(metricsText, /^app_redis_healthy 0$/m);
     assert.match(metricsText, /^app_persistence_mode\{mode="unavailable"\} 1$/m);
     assert.match(metricsText, /^app_rate_limiter_mode\{mode="fail-closed"\} 1$/m);
-
+    assert.match(metricsText, /^chaos_experiment_active\{experiment="provider-failure"\} 1$/m);
     const healthResponse = await performRequest(server, {
       method: 'GET',
       url: '/health',
@@ -2015,7 +2095,12 @@ test('chaos operations expose effective runtime state, runbooks and metrics', as
     assert.equal(livenessPayload.ok, true);
     assert.equal(livenessPayload.readiness.persistenceMode, 'unavailable');
   } finally {
-    for (const experimentId of ['database-failure', 'redis-failure', 'worker-failure']) {
+    for (const experimentId of [
+      'database-failure',
+      'redis-failure',
+      'worker-failure',
+      'provider-failure'
+    ]) {
       if (chaos.isActive(experimentId)) {
         await chaos.stop(experimentId);
       }
@@ -2092,6 +2177,61 @@ test('production-like API rejects chaos mutations before executing an experiment
     if (chaos.isActive('database-failure')) {
       await chaos.stop('database-failure');
     }
+    await server.closeDependencies();
+  }
+});
+
+test('database-backed chaos authorization runs inside the authenticated tenant context', async () => {
+  const accountId = 'acc_cvg_demo';
+  const createdAt = '2026-09-02T00:00:00.000Z';
+  let observedAccountId: string | undefined;
+  const adminRole = {
+    id: 'role_admin_context',
+    code: 'admin',
+    name: 'Administrator',
+    description: 'Game-day tenant-context regression role',
+    createdAt,
+    permissionCodes: ['users.manage']
+  };
+  const accessControl = {
+    getAccountChangeToken: async (requestedAccountId: string) => {
+      observedAccountId = getTenantContext()?.accountId;
+      assert.equal(requestedAccountId, accountId);
+      return 'stable-game-day-token';
+    },
+    findAllRoles: async () => [adminRole],
+    findAllPermissions: async () => [
+      {
+        id: 'permission_users_manage',
+        key: 'users.manage',
+        description: 'Manage users',
+        createdAt
+      }
+    ],
+    findAllTeams: async () => [],
+    findAllSectors: async () => [],
+    findTeamMemberships: async () => [],
+    findSectorMemberships: async () => [],
+    findPermissionAssignments: async () => [],
+    findUserIdsByAccount: async () => ['user_admin'],
+    findRolesByUser: async (userId: string) => (userId === 'user_admin' ? [adminRole] : [])
+  };
+  const server = createServerUnderTest({
+    repositories: { accessControl: accessControl as never }
+  });
+
+  try {
+    await server.ready;
+    const accessToken = await login(server, 'admin', 'seed_admin');
+    const response = await performRequest(server, {
+      method: 'GET',
+      url: '/chaos/experiments',
+      headers: { authorization: `Bearer ${accessToken}`, host: 'localhost' }
+    });
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(observedAccountId, accountId);
+  } finally {
     await server.closeDependencies();
   }
 });

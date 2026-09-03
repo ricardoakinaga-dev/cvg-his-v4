@@ -17,7 +17,12 @@ import {
 } from './expenses-catalog-store.js';
 import {
   DatabaseFinanceCatalogRepository,
-  type FinanceCatalogPersistence
+  FINANCE_OPERATIONAL_CATALOG_TYPES,
+  type FinanceCatalogPersistence,
+  type FinanceOperationalCatalogItem,
+  type FinanceOperationalCatalogPayload,
+  type FinanceOperationalCatalogStatus,
+  type FinanceOperationalCatalogType
 } from '../repositories/database-finance-catalog.repository.js';
 
 export type { ExpenseCatalogItem, ExpenseCostCenterItem } from './expenses-catalog-store.js';
@@ -81,7 +86,34 @@ interface CatalogPersistence {
     payload: CostCenterCatalogPayload
   ): Promise<{ item: ExpenseCostCenterItem; diffSummary: string }>;
   removeCostCenter(accountId: string, code: string): Promise<ExpenseCostCenterItem>;
+  listOperationalCatalog?: FinanceCatalogPersistence['listOperationalCatalog'];
+  createOperationalCatalog?: FinanceCatalogPersistence['createOperationalCatalog'];
+  updateOperationalCatalog?: FinanceCatalogPersistence['updateOperationalCatalog'];
+  removeOperationalCatalog?: FinanceCatalogPersistence['removeOperationalCatalog'];
 }
+
+interface NormalizedOperationalPayload {
+  payload: FinanceOperationalCatalogPayload;
+  version?: number;
+}
+
+const OPERATIONAL_CONFIGURATION_FIELDS: Record<FinanceOperationalCatalogType, readonly string[]> = {
+  banks: [
+    'bankCode',
+    'agency',
+    'accountNumber',
+    'accountType',
+    'usageKey',
+    'usageDescription',
+    'reconciliationMode'
+  ],
+  'payment-methods': ['methodType', 'integration', 'integrationDetail', 'usageDescription'],
+  'card-machines': ['provider', 'serialNumber', 'unit', 'settlementBankCode', 'acceptedMethods'],
+  'split-rules': ['recipient', 'percentage', 'appliesTo', 'priority']
+};
+
+const SECRET_FIELD_PATTERN = /(secret|password|token|credential|private.?key|api.?key)/i;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const defaultStore = new ExpensesCatalogStore();
 let databasePersistence: FinanceCatalogPersistence | null = null;
@@ -159,6 +191,151 @@ function parseCostCenterSort(value: string | null): 'code' | 'name' | 'kind' | '
   return 'name';
 }
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function parseOperationalCatalogType(value: string): FinanceOperationalCatalogType | null {
+  return FINANCE_OPERATIONAL_CATALOG_TYPES.includes(value as FinanceOperationalCatalogType)
+    ? (value as FinanceOperationalCatalogType)
+    : null;
+}
+
+function normalizeOperationalConfiguration(
+  configuration: Record<string, unknown>
+): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(configuration).map(([key, value]) => [
+      key,
+      typeof value === 'string'
+        ? value.trim()
+        : Array.isArray(value)
+          ? value.map((entry) => (typeof entry === 'string' ? entry.trim() : entry))
+          : value
+    ])
+  );
+}
+
+function validateOperationalConfiguration(
+  type: FinanceOperationalCatalogType,
+  configuration: Record<string, unknown>
+): string | null {
+  const allowedFields = OPERATIONAL_CONFIGURATION_FIELDS[type];
+  const unknownField = Object.keys(configuration).find((field) => !allowedFields.includes(field));
+  if (unknownField) {
+    return SECRET_FIELD_PATTERN.test(unknownField)
+      ? `configuration field ${unknownField} is forbidden`
+      : `configuration field ${unknownField} is not supported for ${type}`;
+  }
+  const missingField = allowedFields.find((field) => !(field in configuration));
+  if (missingField) return `configuration.${missingField} is required`;
+
+  const stringFields = allowedFields.filter(
+    (field) => !['acceptedMethods', 'percentage', 'priority'].includes(field)
+  );
+  const invalidString = stringFields.find(
+    (field) => typeof configuration[field] !== 'string' || !String(configuration[field]).trim()
+  );
+  if (invalidString) return `configuration.${invalidString} must be a non-empty string`;
+
+  if (
+    type === 'banks' &&
+    !['checking', 'savings', 'payment'].includes(String(configuration.accountType))
+  ) {
+    return 'configuration.accountType is invalid';
+  }
+  if (
+    type === 'banks' &&
+    !['settlement', 'card', 'support'].includes(String(configuration.usageKey))
+  ) {
+    return 'configuration.usageKey is invalid';
+  }
+  if (
+    type === 'banks' &&
+    !['manual', 'automatic', 'disabled'].includes(String(configuration.reconciliationMode))
+  ) {
+    return 'configuration.reconciliationMode is invalid';
+  }
+  if (
+    type === 'payment-methods' &&
+    !['cash', 'digital', 'credit', 'receivable'].includes(String(configuration.methodType))
+  ) {
+    return 'configuration.methodType is invalid';
+  }
+  if (
+    type === 'payment-methods' &&
+    !['cash-drawer', 'pix', 'card-machine', 'receivables'].includes(
+      String(configuration.integration)
+    )
+  ) {
+    return 'configuration.integration is invalid';
+  }
+  if (type === 'card-machines') {
+    const methods = configuration.acceptedMethods;
+    if (
+      !Array.isArray(methods) ||
+      methods.length === 0 ||
+      methods.some((method) => typeof method !== 'string' || !method.trim())
+    ) {
+      return 'configuration.acceptedMethods must be a non-empty string array';
+    }
+  }
+  if (type === 'split-rules') {
+    const percentage = configuration.percentage;
+    const priority = configuration.priority;
+    if (
+      typeof percentage !== 'number' ||
+      !Number.isFinite(percentage) ||
+      percentage <= 0 ||
+      percentage > 100
+    ) {
+      return 'configuration.percentage must be greater than 0 and at most 100';
+    }
+    if (typeof priority !== 'number' || !Number.isInteger(priority) || priority < 0) {
+      return 'configuration.priority must be a non-negative integer';
+    }
+  }
+  return null;
+}
+
+function normalizeOperationalPayload(
+  type: FinanceOperationalCatalogType,
+  input: unknown,
+  requireVersion: boolean
+): NormalizedOperationalPayload | { error: string } {
+  if (!isPlainObject(input)) return { error: 'request body must be an object' };
+  const allowedTopLevel = requireVersion
+    ? ['code', 'name', 'status', 'configuration', 'version']
+    : ['code', 'name', 'status', 'configuration'];
+  const unknownField = Object.keys(input).find((field) => !allowedTopLevel.includes(field));
+  if (unknownField) return { error: `field ${unknownField} is not supported` };
+
+  const code = typeof input.code === 'string' ? input.code.trim().toUpperCase() : '';
+  const name = typeof input.name === 'string' ? input.name.trim() : '';
+  const status = input.status as FinanceOperationalCatalogStatus;
+  if (!/^[A-Z0-9][A-Z0-9_-]{0,63}$/.test(code)) {
+    return { error: 'code must use 1-64 uppercase letters, numbers, underscores or hyphens' };
+  }
+  if (!name || name.length > 160) return { error: 'name must use 1-160 characters' };
+  if (status !== 'active' && status !== 'inactive') {
+    return { error: 'status must be active or inactive' };
+  }
+  if (!isPlainObject(input.configuration)) {
+    return { error: 'configuration must be an object' };
+  }
+  const configuration = normalizeOperationalConfiguration(input.configuration);
+  const configurationError = validateOperationalConfiguration(type, configuration);
+  if (configurationError) return { error: configurationError };
+
+  if (requireVersion && (!Number.isInteger(input.version) || Number(input.version) < 1)) {
+    return { error: 'version must be a positive integer' };
+  }
+  return {
+    payload: { code, name, status, configuration },
+    ...(requireVersion ? { version: Number(input.version) } : {})
+  };
+}
+
 function summarizeExpenseSnapshot(item: ExpenseCatalogItem): string {
   return [
     `id=${item.id}`,
@@ -208,6 +385,18 @@ function buildCostCenterUpdateAuditSummary(
 
 function buildCostCenterRemoveAuditSummary(item: ExpenseCostCenterItem): string {
   return `Cost center catalog item removed | ${summarizeCostCenterSnapshot(item)}`;
+}
+
+function buildOperationalAuditSummary(item: FinanceOperationalCatalogItem): string {
+  return [
+    `type=${item.type}`,
+    `id=${item.id}`,
+    `code=${item.code}`,
+    `name=${item.name}`,
+    `status=${item.status}`,
+    `version=${item.version}`,
+    `configurationFields=${Object.keys(item.configuration).sort().join(',')}`
+  ].join(' | ');
 }
 
 function wrapStore(store: ExpensesCatalogStore): CatalogPersistence {
@@ -274,7 +463,8 @@ function isExpensesCatalogRoute(pathname: string): boolean {
     pathname === '/expenses-catalog' ||
     pathname === '/cost-centers-catalog' ||
     /^\/expenses-catalog\/[^/]+$/.test(pathname) ||
-    /^\/cost-centers-catalog\/[^/]+$/.test(pathname)
+    /^\/cost-centers-catalog\/[^/]+$/.test(pathname) ||
+    /^\/finance\/catalogs\/[^/]+(?:\/[^/]+)?$/.test(pathname)
   );
 }
 
@@ -297,6 +487,221 @@ export async function handleExpensesCatalogRoutes(
         'Finance catalog runtime requires database-backed persistence in the default API runtime',
       correlationId
     });
+  }
+
+  if (pathname.startsWith('/finance/catalogs/')) {
+    const [, , , rawType, itemId] = pathname.split('/');
+    const type = parseOperationalCatalogType(rawType ?? '');
+    if (!type) {
+      return json(response, 400, {
+        code: 'INVALID_FINANCE_CATALOG_TYPE',
+        message: `Catalog type must be one of: ${FINANCE_OPERATIONAL_CATALOG_TYPES.join(', ')}`,
+        correlationId
+      });
+    }
+
+    if (!itemId && request.method === 'GET') {
+      if (!persistence.listOperationalCatalog) {
+        return json(response, 503, {
+          code: 'FINANCE_CATALOG_DB_REQUIRED',
+          message: 'Operational finance catalogs require database-backed persistence',
+          correlationId
+        });
+      }
+      const principal = await requirePrincipal(request, 'billing.read');
+      const url = new URL(request.url ?? pathname, 'http://localhost');
+      const rawStatus = url.searchParams.get('status');
+      if (rawStatus && rawStatus !== 'active' && rawStatus !== 'inactive') {
+        return json(response, 400, {
+          code: 'VALIDATION_ERROR',
+          message: 'status must be active or inactive',
+          correlationId
+        });
+      }
+      const result = await persistence.listOperationalCatalog(principal.user.accountId, type, {
+        search: url.searchParams.get('search') ?? undefined,
+        status: (rawStatus || undefined) as FinanceOperationalCatalogStatus | undefined,
+        page: parsePositiveInt(url.searchParams.get('page'), 1),
+        pageSize: parsePositiveInt(url.searchParams.get('pageSize'), 10)
+      });
+      appendAudit(audit, {
+        actorId: principal.user.id,
+        accountId: principal.user.accountId,
+        module: 'billing',
+        action: 'list_finance_operational_catalog',
+        entityType: `finance-${type}`,
+        entityId: 'all',
+        payloadSummary: `Operational finance catalog listed | type=${type} | total=${result.totalItems}`,
+        riskLevel: 'low',
+        correlationId
+      });
+      return json(response, 200, result);
+    }
+
+    if (!itemId && request.method === 'POST') {
+      if (!persistence.createOperationalCatalog) {
+        return json(response, 503, {
+          code: 'FINANCE_CATALOG_DB_REQUIRED',
+          message: 'Operational finance catalogs require database-backed persistence',
+          correlationId
+        });
+      }
+      const principal = await requirePrincipal(request, 'billing.manage');
+      const normalized = normalizeOperationalPayload(type, await readJsonBody(request), false);
+      if ('error' in normalized) {
+        return json(response, 400, {
+          code: 'VALIDATION_ERROR',
+          message: normalized.error,
+          correlationId
+        });
+      }
+      try {
+        const created = await persistence.createOperationalCatalog(
+          principal.user.accountId,
+          principal.user.id,
+          type,
+          normalized.payload
+        );
+        appendAudit(audit, {
+          actorId: principal.user.id,
+          accountId: principal.user.accountId,
+          module: 'billing',
+          action: 'create_finance_operational_catalog_item',
+          entityType: `finance-${type}`,
+          entityId: created.id,
+          payloadSummary: buildOperationalAuditSummary(created),
+          riskLevel: 'medium',
+          correlationId
+        });
+        return json(response, 201, created);
+      } catch (error) {
+        if (error instanceof Error && error.message === 'DUPLICATE_CATALOG_CODE') {
+          return json(response, 409, {
+            code: 'DUPLICATE_CATALOG_CODE',
+            message: `Code ${normalized.payload.code} already exists in ${type}`,
+            correlationId
+          });
+        }
+        throw error;
+      }
+    }
+
+    if (itemId && request.method === 'PATCH') {
+      if (!UUID_PATTERN.test(itemId)) {
+        return json(response, 400, {
+          code: 'VALIDATION_ERROR',
+          message: 'catalog item id must be a UUID',
+          correlationId
+        });
+      }
+      if (!persistence.updateOperationalCatalog) {
+        return json(response, 503, {
+          code: 'FINANCE_CATALOG_DB_REQUIRED',
+          message: 'Operational finance catalogs require database-backed persistence',
+          correlationId
+        });
+      }
+      const principal = await requirePrincipal(request, 'billing.manage');
+      const normalized = normalizeOperationalPayload(type, await readJsonBody(request), true);
+      if ('error' in normalized) {
+        return json(response, 400, {
+          code: 'VALIDATION_ERROR',
+          message: normalized.error,
+          correlationId
+        });
+      }
+      try {
+        const { item, diffSummary } = await persistence.updateOperationalCatalog(
+          principal.user.accountId,
+          principal.user.id,
+          type,
+          itemId,
+          normalized.version!,
+          normalized.payload
+        );
+        appendAudit(audit, {
+          actorId: principal.user.id,
+          accountId: principal.user.accountId,
+          module: 'billing',
+          action: 'update_finance_operational_catalog_item',
+          entityType: `finance-${type}`,
+          entityId: item.id,
+          payloadSummary: `${buildOperationalAuditSummary(item)} | ${diffSummary}`,
+          riskLevel: 'medium',
+          correlationId
+        });
+        return json(response, 200, item);
+      } catch (error) {
+        if (error instanceof Error && error.message === 'VERSION_CONFLICT') {
+          return json(response, 409, {
+            code: 'VERSION_CONFLICT',
+            message: 'Catalog item changed since it was loaded; reload before saving',
+            correlationId
+          });
+        }
+        if (error instanceof Error && error.message === 'DUPLICATE_CATALOG_CODE') {
+          return json(response, 409, {
+            code: 'DUPLICATE_CATALOG_CODE',
+            message: `Code ${normalized.payload.code} already exists in ${type}`,
+            correlationId
+          });
+        }
+        if (error instanceof Error && error.message === 'NOT_FOUND') {
+          return json(response, 404, {
+            code: 'NOT_FOUND',
+            message: 'Operational finance catalog item not found',
+            correlationId
+          });
+        }
+        throw error;
+      }
+    }
+
+    if (itemId && request.method === 'DELETE') {
+      if (!UUID_PATTERN.test(itemId)) {
+        return json(response, 400, {
+          code: 'VALIDATION_ERROR',
+          message: 'catalog item id must be a UUID',
+          correlationId
+        });
+      }
+      if (!persistence.removeOperationalCatalog) {
+        return json(response, 503, {
+          code: 'FINANCE_CATALOG_DB_REQUIRED',
+          message: 'Operational finance catalogs require database-backed persistence',
+          correlationId
+        });
+      }
+      const principal = await requirePrincipal(request, 'billing.manage');
+      try {
+        const removed = await persistence.removeOperationalCatalog(
+          principal.user.accountId,
+          type,
+          itemId
+        );
+        appendAudit(audit, {
+          actorId: principal.user.id,
+          accountId: principal.user.accountId,
+          module: 'billing',
+          action: 'remove_finance_operational_catalog_item',
+          entityType: `finance-${type}`,
+          entityId: removed.id,
+          payloadSummary: buildOperationalAuditSummary(removed),
+          riskLevel: 'medium',
+          correlationId
+        });
+        return json(response, 200, { ok: true });
+      } catch (error) {
+        if (error instanceof Error && error.message === 'NOT_FOUND') {
+          return json(response, 404, {
+            code: 'NOT_FOUND',
+            message: 'Operational finance catalog item not found',
+            correlationId
+          });
+        }
+        throw error;
+      }
+    }
   }
 
   if (pathname === '/expenses-catalog' && request.method === 'GET') {

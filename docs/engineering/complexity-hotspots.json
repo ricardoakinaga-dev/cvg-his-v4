@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "measurement": "physical_lines_including_blanks",
+  "hotspots": [
+    {
+      "path": "apps/api/src/server.ts",
+      "owner": "PLAT",
+      "max_lines": 8335,
+      "decomposition_plan": "Extrair registro de domínios e composição de handlers por bounded context."
+    },
+    {
+      "path": "apps/spa/src/pages/patients/PatientDetailPage.vue",
+      "owner": "WEB-CLIN",
+      "max_lines": 4124,
+      "decomposition_plan": "Separar tabs clínicas, comandos e carregamento em componentes e composables tipados."
+    },
+    {
+      "path": "apps/spa/src/pages/sales/CounterSalesPage.vue",
+      "owner": "WEB-FIN",
+      "max_lines": 3468,
+      "decomposition_plan": "Extrair catálogo, carrinho, pagamento e finalização em fluxos testáveis."
+    },
+    {
+      "path": "apps/spa/src/pages/reports/ReportWorkbenchPage.vue",
+      "owner": "WEB-REPORTS",
+      "max_lines": 3186,
+      "decomposition_plan": "Separar filtros, execução, visualização e exportação por família de relatório."
+    },
+    {
+      "path": "apps/spa/src/pages/appointments/AppointmentsListPage.vue",
+      "owner": "WEB-SCHED",
+      "max_lines": 3110,
+      "decomposition_plan": "Extrair agenda, filtros, edição e estados de sincronização em componentes de domínio."
+    },
+    {
+      "path": "apps/spa/src/router/routes.ts",
+      "owner": "WEB",
+      "max_lines": 2931,
+      "decomposition_plan": "Dividir as rotas por bounded context mantendo um agregador canônico."
+    },
+    {
+      "path": "packages/modules/reports/src/index.ts",
+      "owner": "REPORTS",
+      "max_lines": 2631,
+      "decomposition_plan": "Separar contratos, consultas, renderização e agendamento por módulo."
+    },
+    {
+      "path": "apps/worker/src/runner.ts",
+      "owner": "RUNTIME",
+      "max_lines": 2147,
+      "decomposition_plan": "Extrair bootstrap, leases, consumidores e shutdown para unidades isoladas."
+    }
+  ]
+}

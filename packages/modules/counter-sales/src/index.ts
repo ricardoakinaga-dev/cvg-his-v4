@@ -188,6 +188,16 @@ export interface CounterSaleSettlementInput {
   readonly payments: readonly CounterSalePaymentInput[];
 }
 
+function isWithinUtcCalendarDateRange(value: string, dateFrom?: string, dateTo?: string): boolean {
+  const timestamp = Date.parse(value);
+  if (!Number.isFinite(timestamp)) return false;
+  const from = dateFrom ? Date.parse(`${dateFrom}T00:00:00.000Z`) : Number.NEGATIVE_INFINITY;
+  const toExclusive = dateTo
+    ? Date.parse(`${dateTo}T00:00:00.000Z`) + 24 * 60 * 60 * 1000
+    : Number.POSITIVE_INFINITY;
+  return timestamp >= from && timestamp < toExclusive;
+}
+
 function normalizeCancellationInput(
   input: CounterSaleCancellationInput
 ): CounterSaleCancellationInput {
@@ -1255,19 +1265,14 @@ export class CounterSalesService {
       return rows.map((row) => ({ ...row }));
     }
 
-    const from = filters.dateFrom
-      ? Date.parse(`${filters.dateFrom}T00:00:00.000Z`)
-      : Number.NEGATIVE_INFINITY;
-    const toExclusive = filters.dateTo
-      ? Date.parse(`${filters.dateTo}T00:00:00.000Z`) + 24 * 60 * 60 * 1000
-      : Number.POSITIVE_INFINITY;
     let rows: CounterSaleChequePaymentSummary[] = [];
     for (const payment of this.#payments.values()) {
       if (payment.accountId !== accountId || payment.method !== 'check') continue;
       const sale = this.#sales.get(payment.counterSaleId);
       if (!sale || sale.accountId !== accountId) continue;
-      const timestamp = Date.parse(payment.createdAt);
-      if (!Number.isFinite(timestamp) || timestamp < from || timestamp >= toExclusive) continue;
+      if (!isWithinUtcCalendarDateRange(payment.createdAt, filters.dateFrom, filters.dateTo)) {
+        continue;
+      }
       const row = {
         ...payment,
         saleNumber: sale.number,
@@ -1315,11 +1320,10 @@ export class CounterSalesService {
           (s.notes?.toLowerCase().includes(search) ?? false)
       );
     }
-    if (filters?.dateFrom) {
-      items = items.filter((s) => s.createdAt >= `${filters.dateFrom}T00:00:00`);
-    }
-    if (filters?.dateTo) {
-      items = items.filter((s) => s.createdAt <= `${filters.dateTo}T23:59:59`);
+    if (filters?.dateFrom || filters?.dateTo) {
+      items = items.filter((sale) =>
+        isWithinUtcCalendarDateRange(sale.createdAt, filters.dateFrom, filters.dateTo)
+      );
     }
 
     return items.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -1480,13 +1484,12 @@ export class CounterSalesService {
     generatedAt: string;
     data: unknown;
   }> {
-    const sales = this.list(accountId).filter((s) => {
-      if (dateFrom && s.closedAt && s.closedAt < dateFrom) return false;
-      if (dateTo && s.closedAt && s.closedAt > dateTo + 'T23:59:59') return false;
-      return true;
-    });
+    const sales = this.list(accountId).filter((sale) =>
+      isWithinUtcCalendarDateRange(sale.closedAt ?? sale.createdAt, dateFrom, dateTo)
+    );
 
     const closedSales = sales.filter((s) => s.status === 'closed');
+    const closedSaleIds = new Set(closedSales.map((sale) => sale.id));
     const allItems = Array.from(this.#items.values());
     const allPayments = Array.from(this.#payments.values());
 
@@ -1519,9 +1522,8 @@ export class CounterSalesService {
         const methodMap = new Map<string, { count: number; total: number }>();
         for (const p of allPayments) {
           const sale = this.#sales.get(p.counterSaleId);
-          if (!sale || sale.status !== 'closed') continue;
-          if (dateFrom && p.createdAt < dateFrom) continue;
-          if (dateTo && p.createdAt > dateTo + 'T23:59:59') continue;
+          if (!sale || sale.accountId !== accountId || sale.status !== 'closed') continue;
+          if (!isWithinUtcCalendarDateRange(p.createdAt, dateFrom, dateTo)) continue;
           const existing = methodMap.get(p.method) ?? { count: 0, total: 0 };
           existing.count++;
           existing.total += p.amount;
@@ -1538,9 +1540,7 @@ export class CounterSalesService {
       case 'products': {
         const productMap = new Map<string, { name: string; quantity: number; revenue: number }>();
         for (const item of allItems) {
-          if (item.itemType !== 'product') continue;
-          const sale = this.#sales.get(item.counterSaleId);
-          if (!sale || sale.status !== 'closed') continue;
+          if (item.itemType !== 'product' || !closedSaleIds.has(item.counterSaleId)) continue;
           const existing = productMap.get(item.nameSnapshot) ?? {
             name: item.nameSnapshot,
             quantity: 0,
@@ -1559,9 +1559,7 @@ export class CounterSalesService {
       case 'services': {
         const serviceMap = new Map<string, { name: string; quantity: number; revenue: number }>();
         for (const item of allItems) {
-          if (item.itemType !== 'service') continue;
-          const sale = this.#sales.get(item.counterSaleId);
-          if (!sale || sale.status !== 'closed') continue;
+          if (item.itemType !== 'service' || !closedSaleIds.has(item.counterSaleId)) continue;
           const existing = serviceMap.get(item.nameSnapshot) ?? {
             name: item.nameSnapshot,
             quantity: 0,
@@ -1587,20 +1585,15 @@ export class CounterSalesService {
       default: {
         const methodTotals = new Map<string, number>();
         for (const p of allPayments) {
-          const sale = this.#sales.get(p.counterSaleId);
-          if (sale && sale.status === 'closed') {
+          if (closedSaleIds.has(p.counterSaleId)) {
             methodTotals.set(p.method, (methodTotals.get(p.method) ?? 0) + p.amount);
           }
         }
         const productRevenue = allItems
-          .filter(
-            (i) => i.itemType === 'product' && this.#sales.get(i.counterSaleId)?.status === 'closed'
-          )
+          .filter((item) => item.itemType === 'product' && closedSaleIds.has(item.counterSaleId))
           .reduce((sum, i) => sum + i.lineTotal, 0);
         const serviceRevenue = allItems
-          .filter(
-            (i) => i.itemType === 'service' && this.#sales.get(i.counterSaleId)?.status === 'closed'
-          )
+          .filter((item) => item.itemType === 'service' && closedSaleIds.has(item.counterSaleId))
           .reduce((sum, i) => sum + i.lineTotal, 0);
         data = {
           totalSales: sales.length,

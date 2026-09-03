@@ -17,6 +17,7 @@
         <DsInput
           v-model="filters.search"
           type="search"
+          aria-label="Buscar tutor"
           placeholder="Buscar tutor por nome, ID, CPF/CNPJ, RG, telefone ou e-mail"
         />
         <DsButton type="submit" variant="secondary" :loading="loading">Filtrar</DsButton>
@@ -116,7 +117,11 @@
             <summary>Informações de Contato</summary>
             <div class="owner-card__detail-body">
               <div v-if="owner.contacts.length" class="owner-contact-list">
-                <div v-for="contact in owner.contacts" :key="`${owner.id}-${contact.label}-${contact.value}`" class="fact-row">
+                <div
+                  v-for="contact in owner.contacts"
+                  :key="`${owner.id}-${contact.label}-${contact.value}`"
+                  class="fact-row"
+                >
                   <span class="fact-row__label">{{ contact.label }}</span>
                   <span>{{ contact.value }}</span>
                 </div>
@@ -138,7 +143,9 @@
                     <strong>{{ patient.name }}</strong>
                     <p>
                       {{ patient.breed || patient.species }}
-                      <span v-if="patient.birthDateApproximate">· {{ formatDate(patient.birthDateApproximate) }}</span>
+                      <span v-if="patient.birthDateApproximate"
+                        >· {{ formatDate(patient.birthDateApproximate) }}</span
+                      >
                     </p>
                   </div>
                   <div class="owner-animal-row__actions">
@@ -171,7 +178,12 @@
             <DsButton tag="a" :to="`/patients?ownerId=${owner.id}`" variant="secondary" size="sm">
               Ver animais
             </DsButton>
-            <DsButton tag="a" :to="`/patients/new?ownerId=${owner.id}`" variant="secondary" size="sm">
+            <DsButton
+              tag="a"
+              :to="`/patients/new?ownerId=${owner.id}`"
+              variant="secondary"
+              size="sm"
+            >
               Cadastrar paciente
             </DsButton>
             <DsButton
@@ -194,7 +206,8 @@
       <div class="empty-state__icon">TU</div>
       <h2 class="empty-state__title">Nenhum cliente encontrado</h2>
       <p class="empty-state__description">
-        Cadastre o primeiro cliente para vincular animais e sustentar agenda, atendimento e prontuário.
+        Cadastre o primeiro cliente para vincular animais e sustentar agenda, atendimento e
+        prontuário.
       </p>
       <div class="empty-state__actions">
         <DsButton tag="a" to="/owners/new" variant="primary">+ Cadastrar tutor</DsButton>
@@ -258,9 +271,7 @@ const displayedOwners = computed(() => {
   } else if (filters.sort === 'patients') {
     items.sort((a, b) => patientsByOwner(b.id).length - patientsByOwner(a.id).length);
   } else {
-    items.sort(
-      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-    );
+    items.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   }
 
   return items;
@@ -312,7 +323,8 @@ function patientsByOwner(ownerId: string): PatientSummary[] {
 }
 
 function primaryContact(owner: OwnerSummary): string {
-  const contact = (owner.contacts as OwnerContact[]).find((item) => item.primary) || owner.contacts[0];
+  const contact =
+    (owner.contacts as OwnerContact[]).find((item) => item.primary) || owner.contacts[0];
   return contact ? contact.value : '—';
 }
 
@@ -334,8 +346,7 @@ async function load() {
       ownerService.list({
         search: filters.search || undefined,
         status: filters.status,
-        financialResponsible:
-          filters.financial === 'all' ? undefined : filters.financial === 'yes'
+        financialResponsible: filters.financial === 'all' ? undefined : filters.financial === 'yes'
       }),
       patientService.list()
     ]);
@@ -642,4 +653,15 @@ onMounted(load);
   }
 }
 
+@media (max-width: 480px) {
+  .owners-grid,
+  .advanced-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .search-bar :deep(.form-field) {
+    flex-basis: 100%;
+    min-width: 0;
+  }
+}
 </style>

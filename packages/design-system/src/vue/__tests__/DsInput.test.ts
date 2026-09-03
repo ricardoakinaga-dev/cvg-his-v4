@@ -4,6 +4,33 @@ import { defineComponent, ref } from 'vue';
 import DsInput from '../DsInput.vue';
 
 describe('DsInput.vue', () => {
+  it('associates a visible label with the generated control id', () => {
+    const wrapper = mount(DsInput, {
+      props: { id: 'owner-search', modelValue: '', label: 'Buscar tutor' }
+    });
+
+    expect(wrapper.get('label').attributes('for')).toBe('owner-search');
+    expect(wrapper.get('input').attributes('id')).toBe('owner-search');
+  });
+
+  it.each([
+    { type: 'text' as const, selector: 'input' },
+    { type: 'textarea' as const, selector: 'textarea' },
+    { type: 'select' as const, selector: 'select' }
+  ])('forwards a programmatic name to a $type control', ({ type, selector }) => {
+    const wrapper = mount(DsInput, {
+      props: {
+        modelValue: '',
+        type,
+        ariaLabel: 'Nome programático',
+        ariaLabelledby: 'external-label'
+      }
+    });
+
+    expect(wrapper.get(selector).attributes('aria-label')).toBe('Nome programático');
+    expect(wrapper.get(selector).attributes('aria-labelledby')).toBe('external-label');
+  });
+
   it('updates string value without modifiers', async () => {
     const TestComponent = defineComponent({
       components: { DsInput },

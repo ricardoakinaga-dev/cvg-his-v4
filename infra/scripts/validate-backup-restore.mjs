@@ -20,7 +20,8 @@ const files = {
   packageJson: read('package.json'),
   cutoverChecklist: read('docs/131-checklist-cutover-servidor.md'),
   deploySurface: read('docs/132-superficie-canonica-deploy-e-migracao.md'),
-  roadmap: read('docs/2026-08-07-backlog-roadmap-resolucao-auditoria-cvg-his-v4.md')
+  roadmap: read('docs/2026-09-02-roadmap-melhorias-cvg-his-v4.md'),
+  backlog: read('docs/2026-09-02-backlog-priorizado-cvg-his-v4.md')
 };
 
 const checks = [
@@ -100,11 +101,13 @@ const checks = [
       files.deploySurface?.includes('pnpm deploy:check')
   },
   {
-    label: 'roadmap atual mantem backup/restore como criterio de saida',
+    label: 'roadmap e backlog vigentes mantem backup/restore como criterio de saida',
     ok:
-      /\|\s*OPS-001\s*\|\s*Backup, restore e Game Day\s*\|/.test(files.roadmap ?? '') &&
-      files.roadmap?.includes('restore é comprovado') &&
-      files.roadmap?.includes('backup/restore, Game Day')
+      files.roadmap?.includes('ensaiar criação vazia, upgrade, backup, restore, deploy e rollback') &&
+      files.roadmap?.includes('restore atende aos objetivos aprovados') &&
+      /\|\s*OPS-003\s*\|\s*Executar backup e restore no ambiente-alvo\s*\|/.test(
+        files.backlog ?? ''
+      )
   }
 ];
 

@@ -1,7 +1,20 @@
+---
+document_status: historical
+document_kind: roadmap
+effective_date: 2026-08-07
+owner: PMO e líderes de domínio CVG-HIS
+review_cycle: archived
+superseded_by: docs/2026-09-02-roadmap-melhorias-cvg-his-v4.md
+---
+
 # Backlog e roadmap de resolução da auditoria do CVG-HIS V4
 
+> **Documento histórico.** O sequenciamento vigente está no [roadmap de
+> 2026-09-02](./2026-09-02-roadmap-melhorias-cvg-his-v4.md), com itens no
+> [backlog priorizado](./2026-09-02-backlog-priorizado-cvg-his-v4.md).
+
 **Data:** 2026-08-07
-**Status:** vigente — O0 concluído; O1 técnico comprovado; O2/O3 incrementados com prontuário, agenda, compras, comissões, preventivos, anexos seguros, prescrições, merge de pacientes e laboratório resiliente; G1/G2/G3+ condicionais
+**Status histórico:** O0 concluído; O1 técnico comprovado; O2/O3 incrementados com prontuário, agenda, compras, comissões, preventivos, anexos seguros, prescrições, merge de pacientes e laboratório resiliente; G1/G2/G3+ condicionais
 **Plano executivo:** [`2026-08-07-plano-executivo-resolucao-auditoria-cvg-his-v4.md`](2026-08-07-plano-executivo-resolucao-auditoria-cvg-his-v4.md)
 **Relatório de origem:** [`2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md`](2026-08-07-relatorio-auditoria-integral-cvg-his-v4.md)
 **Backlogs anteriores:** mantidos como histórico e fonte de IDs já existentes; este documento atualiza a prioridade após a auditoria de 2026-08-07.

@@ -8,6 +8,7 @@ import {
   DATABASE_FAILURE_ID,
   REDIS_FAILURE_ID,
   WORKER_FAILURE_ID,
+  PROVIDER_FAILURE_ID,
   API_LATENCY_ID,
   NETWORK_LATENCY_ID
 } from '@cvg-his-v2/chaos';
@@ -51,6 +52,13 @@ describe('chaos-operational-state', () => {
       expect(descriptor).toBeDefined();
       expect(descriptor?.runbook.title).toBe('Incident Response Runbook');
       expect(descriptor?.indicators).toContain('readiness');
+    });
+
+    it('returns descriptor for PROVIDER_FAILURE_ID', () => {
+      const descriptor = describeChaosExperiment(PROVIDER_FAILURE_ID);
+      expect(descriptor).toBeDefined();
+      expect(descriptor?.runbook.title).toBe('External Provider Failure Runbook');
+      expect(descriptor?.indicators).toContain('readiness.productionReady');
     });
 
     it('returns descriptor for API_LATENCY_ID', () => {
@@ -191,6 +199,18 @@ describe('chaos-operational-state', () => {
         appState
       });
 
+      expect(result.productionReady).toBe(false);
+    });
+
+    it('blocks productionReady when a required external provider is degraded', () => {
+      const result = resolveOperationalRuntimeState({
+        ...baseInput,
+        activeExperimentIds: [PROVIDER_FAILURE_ID],
+        appState: createMockAppState()
+      });
+
+      expect(result.externalProvidersHealthy).toBe(false);
+      expect(result.externalProvidersDetail).toContain(PROVIDER_FAILURE_ID);
       expect(result.productionReady).toBe(false);
     });
 

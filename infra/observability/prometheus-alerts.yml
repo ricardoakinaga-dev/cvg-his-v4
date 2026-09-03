@@ -83,6 +83,26 @@ groups:
 
   - name: cvg-his-v2-operational
     rules:
+      - alert: CVG_HIS_API_ForbiddenRegression
+        expr: sum(rate(http_operational_outcomes_total{operation="forbidden",result="error"}[10m])) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+          component: authorization
+        annotations:
+          summary: 'Aumento sustentado de respostas 403 por rota e papel'
+          description: 'Use as labels route e role e o correlationId do log estruturado para distinguir negação esperada de carga secundária regressiva.'
+
+      - alert: CVG_HIS_API_DownloadFailures
+        expr: sum(rate(http_operational_outcomes_total{operation="download",result="error"}[10m])) > 0
+        for: 5m
+        labels:
+          severity: warning
+          component: downloads
+        annotations:
+          summary: 'Falhas em downloads auditáveis'
+          description: 'Exportações de relatório ou anexos falharam; filtre route e role no painel e correlacione com os logs.'
+
       - alert: CVG_HIS_API_Liveness_Failing
         expr: up{job="cvg-api"} == 0
         for: 1m

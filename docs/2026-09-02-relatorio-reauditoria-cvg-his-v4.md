@@ -1,3 +1,13 @@
+---
+document_status: current
+document_kind: baseline
+effective_date: 2026-09-02
+owner: Qualidade, Segurança e Engenharia CVG-HIS
+review_cycle: monthly
+---
+
+> Atualizacao de execucao (2026-09-03): a implementacao local e as dependencias externas estao consolidadas no [relatorio de implementacao](./2026-09-03-implementacao-plano-cvg-his-v4.md). As notas abaixo permanecem a fotografia do SHA originalmente auditado.
+
 # Relatório de reauditoria do CVG-HIS V4
 
 **Data da evidência:** 2026-09-02
@@ -25,14 +35,14 @@ O indicador `readiness:enterprise` chegou a 95/100 porque mede a presença de co
 
 ## 2. Régua e método
 
-| Nota | Interpretação |
-|---:|---|
-| 0–39 | Bloqueado, simulado ou sem evidência suficiente |
-| 40–59 | Parcial, com risco alto |
-| 60–79 | Piloto controlado |
-| 80–89 | Candidato à homologação |
+|  Nota | Interpretação                                         |
+| ----: | ----------------------------------------------------- |
+|  0–39 | Bloqueado, simulado ou sem evidência suficiente       |
+| 40–59 | Parcial, com risco alto                               |
+| 60–79 | Piloto controlado                                     |
+| 80–89 | Candidato à homologação                               |
 | 90–99 | Produção comprovada, com riscos residuais controlados |
-| 100 | Integralmente verificado no escopo definido |
+|   100 | Integralmente verificado no escopo definido           |
 
 A avaliação considerou código, documentação, scripts de operação, configuração, banco, execução local e testes reproduzíveis. Presença de arquivo, endpoint ou tela não foi considerada prova suficiente: persistência, isolamento, restart, autorização, efeito entre módulos e integração real também pesaram.
 
@@ -49,78 +59,78 @@ Não foram executados nesta rodada: CI remoto hospedado, provedor externo real, 
 
 ## 3. Evidência dos gates
 
-| Gate | Resultado | Evidência resumida |
-|---|---|---|
-| Estado Git | **Passou** | `main` limpa e alinhada a `origin/main`; apenas `main` publicada no remoto no momento da coleta |
-| Instalação/dependências | **Passou** | Node 24.20.0 e pnpm 10.0.0; workspace instalado |
-| `pnpm build` | **Passou** | 70/71 workspaces; SPA/PWA geradas; restaram avisos de chunk/import misto |
-| `pnpm typecheck` | **Passou** | sem erro de tipos |
-| `pnpm lint` | **Passou** | sem violação bloqueante |
-| `DATABASE_URL= pnpm test` | **Passou com limite de escopo** | API 540/540; SPA 1.053/1.053; demais pacotes e worker passaram. Testes dependentes das portas PostgreSQL/Redis de integração foram ignorados nessa matriz |
-| `DATABASE_URL= pnpm test:coverage` | **Falhou no limiar** | 196 arquivos passaram, 1 foi ignorado; 2.256 testes passaram e 1 foi ignorado; 79,98% statements/lines, 81,31% branches e 84,93% functions |
-| Suíte crítica oficial | **Bloqueada** | o executor constrói comando shell sem proteger o caminho `Área de trabalho` |
-| Recorte crítico em PostgreSQL efêmero | **Falhou** | 50 arquivos passaram, 6 falharam, 3 foram ignorados; 521 testes passaram, 4 assertions falharam, 35 foram ignorados; 2 erros de suíte |
-| Banco/migrações | **Passou com ressalva** | migrações e seed aplicados em PostgreSQL 16 isolado; inconsistência de capabilities das roles permanece |
-| Runtime local | **Passou** | PostgreSQL, Redis, API, SPA e worker ativos; API e worker responderam `ready=true` |
-| OpenAPI | **Passou** | 354 paths, 40 tags e 413 schemas |
-| Namespaces/migração/RLS/deploy | **Passou estaticamente** | validadores de namespaces, fonte de migração, RLS, superfície de deploy e deploy check concluíram |
-| Helm | **Passou estaticamente** | charts de dev/staging/prod validados; binário Helm não estava disponível para renderização real |
-| Segurança enterprise | **Passou** | secret scan passou; 0 vulnerabilidades críticas, altas ou moderadas reportadas no gate |
-| `readiness:enterprise` | **Falhou para promoção** | 95/100; 42 PASS, 3 WARN e 1 FAIL; falha em paridade Vetus |
-| Paridade Vetus | **Parcial** | 100/100 evidências catalogadas, mas somente 4/11 domínios funcionalmente verificados |
+| Gate                                  | Resultado                       | Evidência resumida                                                                                                                                        |
+| ------------------------------------- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Estado Git                            | **Passou**                      | `main` limpa e alinhada a `origin/main`; apenas `main` publicada no remoto no momento da coleta                                                           |
+| Instalação/dependências               | **Passou**                      | Node 24.20.0 e pnpm 10.0.0; workspace instalado                                                                                                           |
+| `pnpm build`                          | **Passou**                      | 70/71 workspaces; SPA/PWA geradas; restaram avisos de chunk/import misto                                                                                  |
+| `pnpm typecheck`                      | **Passou**                      | sem erro de tipos                                                                                                                                         |
+| `pnpm lint`                           | **Passou**                      | sem violação bloqueante                                                                                                                                   |
+| `DATABASE_URL= pnpm test`             | **Passou com limite de escopo** | API 540/540; SPA 1.053/1.053; demais pacotes e worker passaram. Testes dependentes das portas PostgreSQL/Redis de integração foram ignorados nessa matriz |
+| `DATABASE_URL= pnpm test:coverage`    | **Falhou no limiar**            | 196 arquivos passaram, 1 foi ignorado; 2.256 testes passaram e 1 foi ignorado; 79,98% statements/lines, 81,31% branches e 84,93% functions                |
+| Suíte crítica oficial                 | **Bloqueada**                   | o executor constrói comando shell sem proteger o caminho `Área de trabalho`                                                                               |
+| Recorte crítico em PostgreSQL efêmero | **Falhou**                      | 50 arquivos passaram, 6 falharam, 3 foram ignorados; 521 testes passaram, 4 assertions falharam, 35 foram ignorados; 2 erros de suíte                     |
+| Banco/migrações                       | **Passou com ressalva**         | migrações e seed aplicados em PostgreSQL 16 isolado; inconsistência de capabilities das roles permanece                                                   |
+| Runtime local                         | **Passou**                      | PostgreSQL, Redis, API, SPA e worker ativos; API e worker responderam `ready=true`                                                                        |
+| OpenAPI                               | **Passou**                      | 354 paths, 40 tags e 413 schemas                                                                                                                          |
+| Namespaces/migração/RLS/deploy        | **Passou estaticamente**        | validadores de namespaces, fonte de migração, RLS, superfície de deploy e deploy check concluíram                                                         |
+| Helm                                  | **Passou estaticamente**        | charts de dev/staging/prod validados; binário Helm não estava disponível para renderização real                                                           |
+| Segurança enterprise                  | **Passou**                      | secret scan passou; 0 vulnerabilidades críticas, altas ou moderadas reportadas no gate                                                                    |
+| `readiness:enterprise`                | **Falhou para promoção**        | 95/100; 42 PASS, 3 WARN e 1 FAIL; falha em paridade Vetus                                                                                                 |
+| Paridade Vetus                        | **Parcial**                     | 100/100 evidências catalogadas, mas somente 4/11 domínios funcionalmente verificados                                                                      |
 
 ## 4. Notas por item analisado
 
-| Item | Nota | Diagnóstico atual |
-|---|---:|---|
-| Governança Git e branches | **100** | `main` única no remoto e sincronizada na coleta; manter proteção e proibição de push direto |
-| Dependências e reprodutibilidade | **96** | instalação íntegra e sem vulnerabilidade relevante no gate; falta provar reinstalação limpa na CI alvo |
-| Arquitetura e modularidade | **91** | monorepo bem segmentado entre apps e pacotes; complexidade e amplitude exigem disciplina de contratos |
-| Build e empacotamento | **96** | build completo passou; avisos de chunk/import merecem tratamento não bloqueante |
-| TypeScript e consistência de tipos | **96** | typecheck passou em todo o escopo selecionado |
-| Lint e padrões estáticos | **94** | gate passou; qualidade depende também das validações complementares do repositório |
-| Testes unitários e de componentes | **96** | grande volume e passagem integral na matriz sem banco; skips de dependências reais reduzem a nota |
-| Cobertura automatizada | **79** | 79,98% de statements/lines: muito próxima, porém abaixo do limiar obrigatório de 80% |
-| Integração PostgreSQL | **72** | boa cobertura crítica, mas existem quatro regressões reproduzíveis e dois erros de harness/cleanup |
-| Banco, schema e migrações | **84** | fonte canônica e aplicação limpa funcionam; contrato das roles e portabilidade do executor precisam correção |
-| RLS e isolamento tenant | **76** | base de RLS é forte, porém a role real da API não satisfaz o próprio inspetor de segurança |
-| API e OpenAPI | **97** | contrato amplo e validado, com readiness saudável |
-| SPA, UX e PWA | **89** | aplicação compilada, navegável e coberta; homologação de todas as jornadas ainda não está completa |
-| Segurança de aplicação e supply chain | **80** | scan limpo; o guard estrito de role está desativado localmente e falharia com o estado atual |
-| Worker e processamento assíncrono | **91** | pronto, loops e consumidores principais saudáveis; um teste falha ao localizar `pnpm` no subprocesso |
-| Observabilidade | **85** | health, readiness e instrumentação existem; falta comprovação distribuída no ambiente-alvo |
-| CI/CD e deploy | **80** | automação ampla e validação estática sólida; faltam execução remota verde, Helm real e cutover comprovado |
-| Documentação | **86** | cobertura excepcional, mas excesso de documentos e baselines antigas criam risco de contradição |
-| Completude funcional | **76** | quatro domínios Vetus verificados; sete dependem de implementação/homologação adicional |
-| Performance e escala | **74** | infraestrutura de testes existe; não houve benchmark representativo nesta rodada |
-| Ambiente local | **97** | stack completa saudável em `http://localhost:3002` |
-| Prontidão para produção | **68** | role, critical gate, DR/cutover, CI remoto e provedores externos impedem aprovação |
+| Item                                  |    Nota | Diagnóstico atual                                                                                            |
+| ------------------------------------- | ------: | ------------------------------------------------------------------------------------------------------------ |
+| Governança Git e branches             | **100** | `main` única no remoto e sincronizada na coleta; manter proteção e proibição de push direto                  |
+| Dependências e reprodutibilidade      |  **96** | instalação íntegra e sem vulnerabilidade relevante no gate; falta provar reinstalação limpa na CI alvo       |
+| Arquitetura e modularidade            |  **91** | monorepo bem segmentado entre apps e pacotes; complexidade e amplitude exigem disciplina de contratos        |
+| Build e empacotamento                 |  **96** | build completo passou; avisos de chunk/import merecem tratamento não bloqueante                              |
+| TypeScript e consistência de tipos    |  **96** | typecheck passou em todo o escopo selecionado                                                                |
+| Lint e padrões estáticos              |  **94** | gate passou; qualidade depende também das validações complementares do repositório                           |
+| Testes unitários e de componentes     |  **96** | grande volume e passagem integral na matriz sem banco; skips de dependências reais reduzem a nota            |
+| Cobertura automatizada                |  **79** | 79,98% de statements/lines: muito próxima, porém abaixo do limiar obrigatório de 80%                         |
+| Integração PostgreSQL                 |  **72** | boa cobertura crítica, mas existem quatro regressões reproduzíveis e dois erros de harness/cleanup           |
+| Banco, schema e migrações             |  **84** | fonte canônica e aplicação limpa funcionam; contrato das roles e portabilidade do executor precisam correção |
+| RLS e isolamento tenant               |  **76** | base de RLS é forte, porém a role real da API não satisfaz o próprio inspetor de segurança                   |
+| API e OpenAPI                         |  **97** | contrato amplo e validado, com readiness saudável                                                            |
+| SPA, UX e PWA                         |  **89** | aplicação compilada, navegável e coberta; homologação de todas as jornadas ainda não está completa           |
+| Segurança de aplicação e supply chain |  **80** | scan limpo; o guard estrito de role está desativado localmente e falharia com o estado atual                 |
+| Worker e processamento assíncrono     |  **91** | pronto, loops e consumidores principais saudáveis; um teste falha ao localizar `pnpm` no subprocesso         |
+| Observabilidade                       |  **85** | health, readiness e instrumentação existem; falta comprovação distribuída no ambiente-alvo                   |
+| CI/CD e deploy                        |  **80** | automação ampla e validação estática sólida; faltam execução remota verde, Helm real e cutover comprovado    |
+| Documentação                          |  **86** | cobertura excepcional, mas excesso de documentos e baselines antigas criam risco de contradição              |
+| Completude funcional                  |  **76** | quatro domínios Vetus verificados; sete dependem de implementação/homologação adicional                      |
+| Performance e escala                  |  **74** | infraestrutura de testes existe; não houve benchmark representativo nesta rodada                             |
+| Ambiente local                        |  **97** | stack completa saudável em `http://localhost:3002`                                                           |
+| Prontidão para produção               |  **68** | role, critical gate, DR/cutover, CI remoto e provedores externos impedem aprovação                           |
 
 ### Consolidação ponderada
 
-| Dimensão | Nota |
-|---|---:|
-| Engenharia | **89** |
-| Execução local | **97** |
-| Completude funcional | **76** |
-| Prontidão para produção | **68** |
+| Dimensão                  |   Nota |
+| ------------------------- | -----: |
+| Engenharia                | **89** |
+| Execução local            | **97** |
+| Completude funcional      | **76** |
+| Prontidão para produção   | **68** |
 | **Nota global ponderada** | **84** |
 
 ## 5. Notas por domínio funcional
 
-| Domínio | Nota | Paridade | Lacuna decisiva |
-|---|---:|---|---|
-| Atendimento, agenda, comanda e internação | **92** | Verificada | ampliar homologação operacional e não regredir os fluxos críticos |
-| Cadastros de responsáveis, pacientes e auxiliares | **92** | Verificada | manter prova E2E e governança de dados mestres |
-| Laboratório | **70** | Bloqueada | Live Lab/provedor externo e homologação real |
-| Estoque, compras e movimentações | **84** | Verificada | corrigir regressões de relatórios por data/estoque |
-| Fiscal | **66** | Bloqueada | sandbox municipal, certificado, rejeição/cancelamento e XML/PDF |
-| Financeiro, caixa, cartão e PIX | **62** | Bloqueada | cadastros persistidos, cartões, split, settlement, refund e conciliação reais |
-| Marketing e comunicações | **68** | Bloqueada | provedor real, bounce e E2E externo |
-| Equipe, folgas e comissões | **90** | Verificada | preservar cobertura e validar operação real |
-| Relatórios e exportações | **64** | Bloqueada | cobertura histórica Vetus, agendamento/entrega e correções de limite de data |
-| Usuários, acesso, auditoria e LGPD | **76** | Bloqueada | aceite operacional de retenção, mascaramento e processos LGPD |
-| Integrações e migração Vetus | **68** | Bloqueada | Live Pet, Live Lab, observabilidade distribuída e homologação no destino |
+| Domínio                                           |   Nota | Paridade   | Lacuna decisiva                                                               |
+| ------------------------------------------------- | -----: | ---------- | ----------------------------------------------------------------------------- |
+| Atendimento, agenda, comanda e internação         | **92** | Verificada | ampliar homologação operacional e não regredir os fluxos críticos             |
+| Cadastros de responsáveis, pacientes e auxiliares | **92** | Verificada | manter prova E2E e governança de dados mestres                                |
+| Laboratório                                       | **70** | Bloqueada  | Live Lab/provedor externo e homologação real                                  |
+| Estoque, compras e movimentações                  | **84** | Verificada | corrigir regressões de relatórios por data/estoque                            |
+| Fiscal                                            | **66** | Bloqueada  | sandbox municipal, certificado, rejeição/cancelamento e XML/PDF               |
+| Financeiro, caixa, cartão e PIX                   | **62** | Bloqueada  | cadastros persistidos, cartões, split, settlement, refund e conciliação reais |
+| Marketing e comunicações                          | **68** | Bloqueada  | provedor real, bounce e E2E externo                                           |
+| Equipe, folgas e comissões                        | **90** | Verificada | preservar cobertura e validar operação real                                   |
+| Relatórios e exportações                          | **64** | Bloqueada  | cobertura histórica Vetus, agendamento/entrega e correções de limite de data  |
+| Usuários, acesso, auditoria e LGPD                | **76** | Bloqueada  | aceite operacional de retenção, mascaramento e processos LGPD                 |
+| Integrações e migração Vetus                      | **68** | Bloqueada  | Live Pet, Live Lab, observabilidade distribuída e homologação no destino      |
 
 ## 6. Achados prioritários
 
@@ -167,13 +177,13 @@ O acervo de 1.486 documentos preserva muita evidência, mas baselines antigas en
 
 ## 7. Decisão de uso
 
-| Uso | Decisão | Condição |
-|---|---|---|
-| Desenvolvimento local | **Aprovado** | stack saudável e gates principais executáveis |
-| Demonstração | **Aprovado** | usar dados não sensíveis e declarar integrações simuladas/não homologadas |
-| Piloto controlado | **Condicional** | limitar módulos, manter rollback e aceite explícito do risco |
-| Homologação integrada | **Condicional** | corrigir todos os P0 e disponibilizar sandboxes/provedores |
-| Produção crítica | **Reprovado no estado atual** | requer todos os gates de promoção descritos no plano e roadmap |
+| Uso                   | Decisão                       | Condição                                                                  |
+| --------------------- | ----------------------------- | ------------------------------------------------------------------------- |
+| Desenvolvimento local | **Aprovado**                  | stack saudável e gates principais executáveis                             |
+| Demonstração          | **Aprovado**                  | usar dados não sensíveis e declarar integrações simuladas/não homologadas |
+| Piloto controlado     | **Condicional**               | limitar módulos, manter rollback e aceite explícito do risco              |
+| Homologação integrada | **Condicional**               | corrigir todos os P0 e disponibilizar sandboxes/provedores                |
+| Produção crítica      | **Reprovado no estado atual** | requer todos os gates de promoção descritos no plano e roadmap            |
 
 ## 8. Meta da próxima reauditoria
 

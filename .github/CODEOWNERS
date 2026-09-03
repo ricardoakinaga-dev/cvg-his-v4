@@ -1,0 +1,12 @@
+# Nominal GitHub owner. Logical domain ownership and mandatory review disciplines
+# are defined in docs/engineering/OWNERSHIP_AND_COMPLEXITY.md.
+* @ricardoakinaga-dev
+
+/apps/api/ @ricardoakinaga-dev
+/apps/worker/ @ricardoakinaga-dev
+/apps/spa/ @ricardoakinaga-dev
+/packages/modules/reports/ @ricardoakinaga-dev
+/packages/security/ @ricardoakinaga-dev
+/packages/db/ @ricardoakinaga-dev
+/infra/ @ricardoakinaga-dev
+/.github/ @ricardoakinaga-dev

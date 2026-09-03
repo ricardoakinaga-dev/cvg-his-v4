@@ -1,0 +1,178 @@
+name: Usability Certification
+
+on:
+  workflow_dispatch:
+    inputs:
+      uat_evidence_reference:
+        description: Link or identifier for the four-role UAT evidence package
+        required: true
+        type: string
+      uat_approvers:
+        description: Names or corporate identifiers of Product, Operations and Accessibility approvers
+        required: true
+        type: string
+      residual_risks:
+        description: Residual risks accepted for this SHA, or "none"
+        required: true
+        type: string
+      go_no_go_decision:
+        description: Decision recorded after technical and manual gates
+        required: true
+        type: choice
+        options: [go, no-go]
+
+permissions:
+  contents: read
+
+jobs:
+  technical-certification:
+    name: Full certification run ${{ matrix.run }} of 3
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        run: [1, 2, 3]
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: ${{ runner.tool_cache }}/ms-playwright
+      E2E_ENVIRONMENT: certification-postgresql-run-${{ matrix.run }}
+      E2E_AUDIT_COMMAND: bash infra/scripts/run-e2e-spa.sh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
+
+      - name: Resolve pnpm store
+        run: echo "STORE_PATH=$(pnpm store path)" >> "$GITHUB_ENV"
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-store-
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Cache Chromium 1.58.2
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.tool_cache }}/ms-playwright
+          key: ${{ runner.os }}-playwright-1.58.2-chromium
+
+      - run: npx playwright install --with-deps chromium
+
+      - name: Execute full database-backed suite
+        run: bash infra/scripts/run-e2e-spa.sh
+
+      - name: Validate complete run evidence
+        if: always()
+        run: node scripts/validate-usability-playwright-evidence.mjs
+
+      - name: Record certification metadata
+        if: always()
+        run: |
+          mkdir -p certification
+          node -e 'const fs=require("fs"); fs.writeFileSync("certification/metadata.json", JSON.stringify({sha:process.env.GITHUB_SHA, run:Number(process.env.CERTIFICATION_RUN), workflowUrl:`${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`, uatEvidence:process.env.UAT_EVIDENCE, approvers:process.env.UAT_APPROVERS, residualRisks:process.env.RESIDUAL_RISKS, decision:process.env.GO_NO_GO}, null, 2))'
+        env:
+          CERTIFICATION_RUN: ${{ matrix.run }}
+          UAT_EVIDENCE: ${{ inputs.uat_evidence_reference }}
+          UAT_APPROVERS: ${{ inputs.uat_approvers }}
+          RESIDUAL_RISKS: ${{ inputs.residual_risks }}
+          GO_NO_GO: ${{ inputs.go_no_go_decision }}
+
+      - name: Upload immutable run evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: usability-certification-${{ github.sha }}-run-${{ matrix.run }}
+          path: |
+            certification/
+            playwright-report/usability/
+            test-results/
+            tmp/master-usability-audit.json
+            tmp/playwright-discovery.txt
+          if-no-files-found: warn
+          retention-days: 90
+
+  cross-browser-essentials:
+    name: Essential journeys (${{ matrix.browser }})
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: ${{ runner.tool_cache }}/ms-playwright
+      E2E_BROWSER: ${{ matrix.browser }}
+      E2E_PLAYWRIGHT_TARGET: >-
+        e2e/spa/login-owner-patient-ui.spec.ts
+        e2e/spa/appointment-flow.spec.ts
+        e2e/spa/advanced-care-persistence.spec.ts
+        e2e/spa/billing-flow.spec.ts
+        e2e/spa/report-registration-exports.spec.ts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
+      - run: pnpm install --frozen-lockfile
+      - name: Install selected browser
+        run: npx playwright install --with-deps "${E2E_BROWSER}"
+      - name: Execute essential database-backed journeys
+        run: bash infra/scripts/run-e2e-spa.sh
+      - name: Upload cross-browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: usability-${{ github.sha }}-${{ matrix.browser }}
+          path: |
+            playwright-report/usability/
+            test-results/
+            tmp/playwright-discovery.txt
+          if-no-files-found: warn
+          retention-days: 90
+
+  evidence-index:
+    name: Certification evidence index
+    if: always()
+    needs: [technical-certification, cross-browser-essentials]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build SHA-bound go/no-go index
+        env:
+          TECHNICAL_RESULT: ${{ needs.technical-certification.result }}
+          CROSS_BROWSER_RESULT: ${{ needs.cross-browser-essentials.result }}
+          UAT_EVIDENCE: ${{ inputs.uat_evidence_reference }}
+          UAT_APPROVERS: ${{ inputs.uat_approvers }}
+          RESIDUAL_RISKS: ${{ inputs.residual_risks }}
+          GO_NO_GO: ${{ inputs.go_no_go_decision }}
+        run: node scripts/generate-usability-certification-index.mjs certification/index.md certification/index.json
+
+      - name: Upload certification index
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: usability-certification-${{ github.sha }}-index
+          path: certification/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Enforce a consistent go decision
+        if: inputs.go_no_go_decision == 'go'
+        run: |
+          test "${{ needs.technical-certification.result }}" = "success"
+          test "${{ needs.cross-browser-essentials.result }}" = "success"

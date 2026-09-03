@@ -2,6 +2,7 @@ import {
   API_LATENCY_ID,
   DATABASE_FAILURE_ID,
   NETWORK_LATENCY_ID,
+  PROVIDER_FAILURE_ID,
   REDIS_FAILURE_ID,
   WORKER_FAILURE_ID
 } from '@cvg-his-v2/chaos';
@@ -17,6 +18,8 @@ export interface OperationalRuntimeState {
   readonly persistenceMode: PersistenceMode;
   readonly workerReady: boolean;
   readonly workerDetail: string;
+  readonly externalProvidersHealthy: boolean;
+  readonly externalProvidersDetail: string;
   readonly productionReady: boolean;
   readonly redisConfigured: boolean;
   readonly redisHealthy: boolean;
@@ -78,6 +81,18 @@ const CHAOS_EXPERIMENT_DESCRIPTORS: Record<string, ChaosExperimentDescriptor> = 
     indicators: ['readiness', 'worker dependency'],
     summary:
       'Marca a trilha operacional do worker como degradada para treinar resposta a falhas de consumo.'
+  },
+  [PROVIDER_FAILURE_ID]: {
+    runbook: {
+      title: 'External Provider Failure Runbook',
+      path: 'packages/chaos/src/runbooks/provider-failure-runbook.md'
+    },
+    indicators: [
+      'chaos_experiment_active{experiment="provider-failure"}',
+      'readiness.productionReady'
+    ],
+    summary:
+      'Marca provedores externos obrigatorios como indisponiveis e bloqueia a prontidao de producao.'
   }
 };
 
@@ -102,6 +117,7 @@ export function resolveOperationalRuntimeState(input: {
   const databaseFailureActive = active.has(DATABASE_FAILURE_ID);
   const redisFailureActive = active.has(REDIS_FAILURE_ID);
   const workerFailureActive = active.has(WORKER_FAILURE_ID);
+  const providerFailureActive = active.has(PROVIDER_FAILURE_ID);
   const redisConfigured = typeof input.redisUrl === 'string' && input.redisUrl.length > 0;
 
   const persistenceMode: PersistenceMode = databaseFailureActive
@@ -120,6 +136,11 @@ export function resolveOperationalRuntimeState(input: {
     ? `Simulated worker failure via chaos experiment "${WORKER_FAILURE_ID}".`
     : input.appState.workerDetail;
 
+  const externalProvidersHealthy = !providerFailureActive;
+  const externalProvidersDetail = providerFailureActive
+    ? `Simulated external provider failure via chaos experiment "${PROVIDER_FAILURE_ID}".`
+    : 'No required external provider failure is active.';
+
   const redisHealthy =
     redisConfigured && !redisFailureActive && (input.redisHealth?.healthy ?? true);
   const distributedStateReady =
@@ -129,6 +150,7 @@ export function resolveOperationalRuntimeState(input: {
     input.appState.productionReady &&
     databaseHealthy &&
     workerReady &&
+    externalProvidersHealthy &&
     persistenceMode === 'database' &&
     distributedStateReady;
 
@@ -156,6 +178,8 @@ export function resolveOperationalRuntimeState(input: {
     persistenceMode,
     workerReady,
     workerDetail,
+    externalProvidersHealthy,
+    externalProvidersDetail,
     productionReady,
     redisConfigured,
     redisHealthy,

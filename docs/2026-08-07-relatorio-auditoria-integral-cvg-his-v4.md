@@ -1,4 +1,16 @@
+---
+document_status: historical
+document_kind: baseline
+effective_date: 2026-08-07
+owner: Qualidade, Segurança e Engenharia CVG-HIS
+review_cycle: archived
+superseded_by: docs/2026-09-02-relatorio-reauditoria-cvg-his-v4.md
+---
+
 # Relatório de auditoria integral do CVG-HIS V4
+
+> **Documento histórico.** A baseline executiva vigente é a [reauditoria de
+> 2026-09-02](./2026-09-02-relatorio-reauditoria-cvg-his-v4.md).
 
 **Data:** 2026-08-07
 **Escopo:** documentação, API, SPA, worker, banco de dados, segurança, testes, operação e paridade Vetus

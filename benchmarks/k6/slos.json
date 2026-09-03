@@ -1,8 +1,37 @@
 {
-  "name": "CVG-HIS-V2 SLOs",
-  "version": "1.0",
-  "description": "Service Level Objectives for CVG-HIS-V2 API and SPA",
-  "lastUpdated": "2026-04-11",
+  "name": "CVG-HIS V4 SLOs and load profiles",
+  "version": "2.0",
+  "description": "Service objectives and reproducible load profiles for CVG-HIS V4",
+  "lastUpdated": "2026-09-02",
+  "owner": "SRE/Operations and Product",
+  "approval": {
+    "status": "pending-target-signoff",
+    "reason": "Technical thresholds are frozen; production volumes and capacity require target-environment approval."
+  },
+  "loadProfiles": [
+    {
+      "id": "operational-minimum-v1",
+      "purpose": "Blocking CI regression profile against an isolated PostgreSQL/Redis runtime.",
+      "maximumVirtualUsers": 60,
+      "stages": [
+        { "duration": "30s", "target": 5 },
+        { "duration": "1m", "target": 30 },
+        { "duration": "30s", "target": 60 },
+        { "duration": "30s", "target": 30 },
+        { "duration": "1m", "target": 5 }
+      ]
+    },
+    {
+      "id": "endurance-2h-v1",
+      "purpose": "Manual endurance certification in an approved, disposable benchmark tenant.",
+      "maximumVirtualUsers": 30,
+      "stages": [
+        { "duration": "10m", "target": 30 },
+        { "duration": "2h", "target": 30 },
+        { "duration": "10m", "target": 0 }
+      ]
+    }
+  ],
   "objectives": [
     {
       "id": "api-latency-p95",

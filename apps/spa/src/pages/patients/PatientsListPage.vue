@@ -9,7 +9,12 @@
     />
 
     <section class="summary-grid">
-      <DsCard v-for="card in summaryCards" :key="card.label" variant="elevated" class="summary-card">
+      <DsCard
+        v-for="card in summaryCards"
+        :key="card.label"
+        variant="elevated"
+        class="summary-card"
+      >
         <div class="summary-card__icon">{{ card.icon }}</div>
         <div class="summary-card__body">
           <span class="summary-card__value">{{ card.value }}</span>
@@ -28,6 +33,7 @@
         <DsInput
           v-model="filters.search"
           type="search"
+          aria-label="Buscar paciente"
           placeholder="Buscar paciente por nome, ID, tutor, CPF/CNPJ, RG, telefone, microchip ou raça"
         />
         <DsButton type="submit" variant="secondary" :loading="loading">Buscar</DsButton>
@@ -227,14 +233,7 @@
           >
             Criar agendamento
           </DsButton>
-          <DsButton
-            tag="a"
-            to="/queue"
-            variant="secondary"
-            size="sm"
-          >
-            Ir para Esteira
-          </DsButton>
+          <DsButton tag="a" to="/queue" variant="secondary" size="sm"> Ir para Esteira </DsButton>
           <DsButton
             tag="a"
             :to="`/encounters/new?patientId=${patient.id}&ownerId=${patient.primaryOwnerId}`"
@@ -270,12 +269,7 @@ import { ownerService } from '@/services/owner';
 import { patientService } from '@/services/patient';
 import type { OwnerContact, OwnerSummary } from '@/types/owner';
 import type { PatientSex, PatientSummary } from '@/types/patient';
-import {
-  speciesLabel,
-  sexLabel,
-  patientStatusLabel,
-  patientSizeLabel
-} from '@/utils/labels';
+import { speciesLabel, sexLabel, patientStatusLabel, patientSizeLabel } from '@/utils/labels';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
@@ -316,9 +310,7 @@ const displayedPatients = computed(() => {
   } else if (filters.sort === 'weight') {
     items.sort((a, b) => (b.baseWeightKg ?? -1) - (a.baseWeightKg ?? -1));
   } else {
-    items.sort(
-      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-    );
+    items.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   }
 
   return items;
@@ -337,11 +329,18 @@ const ownerMap = computed(() => {
 const summaryCards = computed(() => {
   const total = patients.value.length;
   const active = patients.value.filter((patient) => patient.status === 'active').length;
-  const weighted = patients.value.filter((patient) => typeof patient.baseWeightKg === 'number').length;
+  const weighted = patients.value.filter(
+    (patient) => typeof patient.baseWeightKg === 'number'
+  ).length;
   const withBreed = patients.value.filter((patient) => Boolean(patient.breed?.trim())).length;
 
   return [
-    { icon: 'TOT', label: 'Pacientes cadastrados', value: String(total), hint: 'Base clínica longitudinal' },
+    {
+      icon: 'TOT',
+      label: 'Pacientes cadastrados',
+      value: String(total),
+      hint: 'Base clínica longitudinal'
+    },
     { icon: 'ATV', label: 'Ativos', value: String(active), hint: 'Em operação clínica' },
     { icon: 'PES', label: 'Com peso', value: String(weighted), hint: 'Dados para acompanhamento' },
     { icon: 'RAC', label: 'Com raça', value: String(withBreed), hint: 'Identificação enriquecida' }
@@ -427,8 +426,8 @@ function formatWeight(weight?: number): string {
 }
 
 function clinicalAlert(patient: PatientSummary): string {
-  const alerts = [patient.allergy, patient.chronicDisease].filter(
-    (item): item is string => Boolean(item?.trim())
+  const alerts = [patient.allergy, patient.chronicDisease].filter((item): item is string =>
+    Boolean(item?.trim())
   );
   return alerts.length > 0 ? alerts.join(' / ') : 'Sem alerta';
 }

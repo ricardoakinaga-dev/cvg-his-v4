@@ -3,7 +3,12 @@ import { createHash } from 'node:crypto';
 import test from 'node:test';
 
 import type { AuthSessionResponse } from '@cvg-his-v2/shared-contracts';
-import { closeDatabaseClient, getPool, type TenantUnitOfWork } from '@cvg-his-v2/shared-database';
+import {
+  closeDatabaseClient,
+  getPool,
+  type JsonValue,
+  type TenantUnitOfWork
+} from '@cvg-his-v2/shared-database';
 import { runWithTenantContext } from '@cvg-his-v2/tenant-context';
 
 import { bootstrapServices } from './bootstrap.js';
@@ -98,13 +103,43 @@ test('canonical PostgreSQL runtime survives connection close and rehydrates crit
         });
         await runtimeA.encounters.waitForPersistence();
 
-        const entry = await runtimeA.medicalRecords.createEntryAtomically(accountId, actorUserId, {
+        const clinicalEntryPayload = {
           encounterId: encounter.id,
           patientId: patient.id,
           entryType: 'anamnesis',
           title: 'Registro apos reinicio',
           content: 'Dados persistidos no PostgreSQL antes do fechamento da conexao.'
-        });
+        } as const;
+        assert.ok(bootstrapA.unitOfWork, 'canonical bootstrap must expose the tenant unit of work');
+        const clinicalEntryOperation = {
+          accountId,
+          actorUserId,
+          correlationId: 'canonical-db-runtime-clinical-entry',
+          operation: 'medical-records.create-entry',
+          idempotencyKey: `canonical-clinical-entry-${encounter.id}`
+        };
+        const firstClinicalEntry = await bootstrapA.unitOfWork.execute(
+          clinicalEntryOperation,
+          clinicalEntryPayload as unknown as JsonValue,
+          async () =>
+            (await runtimeA.medicalRecords.createEntryAtomically(
+              accountId,
+              actorUserId,
+              clinicalEntryPayload
+            )) as unknown as JsonValue
+        );
+        const replayedClinicalEntry = await bootstrapA.unitOfWork.execute(
+          clinicalEntryOperation,
+          clinicalEntryPayload as unknown as JsonValue,
+          async () => {
+            assert.fail('an idempotent retry must not execute the clinical mutation twice');
+          }
+        );
+        assert.equal(replayedClinicalEntry.replayed, true);
+        assert.deepEqual(replayedClinicalEntry.value, firstClinicalEntry.value);
+        const entry = firstClinicalEntry.value as unknown as Awaited<
+          ReturnType<typeof runtimeA.medicalRecords.createEntryAtomically>
+        >;
         const record = runtimeA.medicalRecords.getRecordByEncounterOrThrow(accountId, encounter.id);
 
         const fileContent = Buffer.from('canonical restart attachment', 'utf8');
@@ -418,7 +453,11 @@ test('canonical PostgreSQL runtime survives connection close and rehydrates crit
           accountId,
           identifiers.encounterId as never
         );
-        assert.ok(entries.some((entry) => entry.id === identifiers.entryId));
+        assert.equal(
+          entries.filter((entry) => entry.id === identifiers.entryId).length,
+          1,
+          'the idempotent clinical retry must survive restart as exactly one entry'
+        );
 
         const timeline = await runtimeB!.medicalRecords.listTimelineByEncounterAsync(
           accountId,

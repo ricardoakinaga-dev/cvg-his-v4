@@ -89,6 +89,31 @@ describe('DataTable', () => {
       props: { columns, rows, caption: 'Lista de usuários' }
     });
     expect(wrapper.find('caption').text()).toBe('Lista de usuários');
+    expect(wrapper.find('.table-wrapper').attributes()).toMatchObject({
+      role: 'region',
+      'aria-label': 'Lista de usuários',
+      tabindex: '0'
+    });
+  });
+
+  it('gives blank utility headers a programmatic name', () => {
+    const wrapper = mount(DataTable, {
+      props: { columns: [{ key: 'select', label: '' }], rows: [{ id: '1', select: '' }] }
+    });
+    expect(wrapper.get('th').attributes('aria-label')).toBe('Selecionar');
+  });
+
+  it.each([1, 100, 1000])('renders a bounded fixture with %i row(s)', (size) => {
+    const largeRows = Array.from({ length: size }, (_, index) => ({
+      id: String(index),
+      name: `Registro ${index}`,
+      email: `registro-${index}@test.local`,
+      status: index % 2 ? 'active' : 'inactive'
+    }));
+    const wrapper = mount(DataTable, { props: { columns, rows: largeRows } });
+
+    expect(wrapper.findAll('tbody tr')).toHaveLength(size);
+    expect(wrapper.find('.table-wrapper').attributes('tabindex')).toBe('0');
   });
 
   it('renders empty action slot', () => {

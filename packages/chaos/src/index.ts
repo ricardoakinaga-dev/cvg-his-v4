@@ -21,12 +21,7 @@ export {
   type ChaosConfig
 } from './chaos-engine.js';
 
-export {
-  delayFault,
-  errorFault,
-  timeoutFault,
-  resourceFault
-} from './faults/index.js';
+export { delayFault, errorFault, timeoutFault, resourceFault } from './faults/index.js';
 
 export {
   databaseFailureExperiment,
@@ -41,7 +36,9 @@ export {
   type WorkerFailureOptions,
   apiLatencyExperiment,
   API_LATENCY_ID,
-  type ApiLatencyOptions
+  type ApiLatencyOptions,
+  providerFailureExperiment,
+  PROVIDER_FAILURE_ID
 } from './experiments/index.js';
 
 export {

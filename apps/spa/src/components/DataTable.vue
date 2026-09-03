@@ -37,7 +37,13 @@
       </template>
     </EmptyState>
 
-    <div v-else class="table-wrapper">
+    <div
+      v-else
+      class="table-wrapper"
+      role="region"
+      :aria-label="caption || 'Tabela de dados'"
+      tabindex="0"
+    >
       <table class="data-table" :class="tableClass">
         <caption v-if="caption" class="sr-only">
           {{
@@ -51,6 +57,7 @@
               :key="col.key"
               :class="col.class"
               :style="col.width ? { width: col.width } : undefined"
+              :aria-label="col.label || columnAccessibleName(col.key)"
             >
               <slot :name="`header-${col.key}`" :column="col">
                 {{ col.label }}
@@ -140,11 +147,19 @@ function skeletonWidth(columnKey: string, rowIndex: number): string {
 
   return widthsByColumn[columnKey]?.[rowIndex] ?? (rowIndex % 2 === 0 ? '90%' : '72%');
 }
+
+function columnAccessibleName(columnKey: string): string {
+  if (columnKey === 'select') return 'Selecionar';
+  if (columnKey === 'actions') return 'Ações';
+  return columnKey;
+}
 </script>
 
 <style scoped>
 .data-table-wrapper {
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .data-table-loading {
@@ -185,7 +200,16 @@ function skeletonWidth(columnKey: string, rowIndex: number): string {
 }
 
 .table-wrapper {
+  width: 100%;
+  max-width: 100%;
   overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-gutter: stable;
+}
+
+.table-wrapper:focus-visible {
+  outline: 2px solid var(--color-primary-500, #3b82f6);
+  outline-offset: 2px;
 }
 
 .data-table {

@@ -8,6 +8,14 @@ Game Day is a planned exercise to validate system resilience by deliberately inj
 
 **Frequency:** Quarterly (recommended) or before major architecture changes
 
+**Automated baseline:** `pnpm ops:game-day:ephemeral` exercises all six fault
+families (API, network, Redis, worker, external provider and database) against a loopback-only test runtime and writes
+`artifacts/game-day/game-day-report.json`. The quarterly/manual workflow
+`.github/workflows/ephemeral-game-day.yml` runs the same contract from an exact
+`main` SHA with disposable PostgreSQL and Redis. This automation validates the
+mechanism; an environment-target exercise, alert delivery and human incident
+response remain separate approval evidence.
+
 ---
 
 ## Objectives

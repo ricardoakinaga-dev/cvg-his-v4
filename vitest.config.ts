@@ -121,12 +121,12 @@ export default defineConfig({
       reportOnFailure: true,
       tempDirectory: './coverage/.tmp',
       // Enterprise coverage gate: business modules and shared runtime code must stay
-      // above the 80% global target for statements, lines and functions.
+      // at or above 82% in every global coverage dimension.
       thresholds: {
-        lines: 80,
-        functions: 80,
-        branches: 80,
-        statements: 80
+        lines: 82,
+        functions: 82,
+        branches: 82,
+        statements: 82
       }
     }
   }

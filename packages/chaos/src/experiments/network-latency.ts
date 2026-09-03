@@ -15,6 +15,7 @@ export interface NetworkLatencyOptions {
 }
 
 let cleanup: (() => void) | null = null;
+let expirationTimer: ReturnType<typeof setTimeout> | null = null;
 let active = false;
 
 async function start(options: NetworkLatencyOptions): Promise<ExperimentResult> {
@@ -29,9 +30,10 @@ async function start(options: NetworkLatencyOptions): Promise<ExperimentResult> 
 
   cleanup = delayFault({ minDelayMs, maxDelayMs, probability: 1.0 });
 
-  setTimeout(() => {
-    stop();
+  expirationTimer = setTimeout(() => {
+    void stop();
   }, durationMs);
+  expirationTimer.unref?.();
 
   return {
     ok: true,
@@ -42,6 +44,10 @@ async function start(options: NetworkLatencyOptions): Promise<ExperimentResult> 
 }
 
 async function stop(): Promise<ExperimentStopResult> {
+  if (expirationTimer) {
+    clearTimeout(expirationTimer);
+    expirationTimer = null;
+  }
   if (cleanup) {
     cleanup();
     cleanup = null;

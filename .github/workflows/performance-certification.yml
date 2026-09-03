@@ -1,0 +1,103 @@
+name: Performance Certification
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_sha:
+        description: Full commit SHA from main to certify
+        required: true
+        type: string
+      target_url:
+        description: HTTPS URL of the disposable performance environment
+        required: true
+        type: string
+      load_profile:
+        description: Reproducible profile from benchmarks/k6/slos.json
+        required: true
+        default: endurance-2h-v1
+        type: choice
+        options:
+          - endurance-2h-v1
+          - operational-minimum-v1
+      safety_confirmation:
+        description: Type BENCHMARK-DESCARTAVEL to confirm the target is disposable
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: performance-${{ inputs.release_sha }}-${{ inputs.load_profile }}
+  cancel-in-progress: false
+
+jobs:
+  certify:
+    name: Certified load profile
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    environment: performance-certification
+    steps:
+      - name: Validate target and requested SHA
+        env:
+          REQUESTED_SHA: ${{ inputs.release_sha }}
+          TARGET_URL: ${{ inputs.target_url }}
+          SAFETY_CONFIRMATION: ${{ inputs.safety_confirmation }}
+        run: |
+          set -euo pipefail
+          printf '%s' "${REQUESTED_SHA}" | grep -Eq '^[0-9a-f]{40}$'
+          printf '%s' "${TARGET_URL}" | grep -Eq '^https://[^/[:space:]]+([/:]|$)'
+          test "${SAFETY_CONFIRMATION}" = "BENCHMARK-DESCARTAVEL"
+
+      - name: Checkout exact release candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_sha }}
+          fetch-depth: 0
+
+      - name: Ensure SHA belongs to main
+        env:
+          REQUESTED_SHA: ${{ inputs.release_sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "${REQUESTED_SHA}"
+          git fetch origin main --depth=1
+          git merge-base --is-ancestor "${REQUESTED_SHA}" origin/main
+
+      - name: Require benchmark credentials
+        env:
+          TEST_USERNAME: ${{ secrets.PERF_USERNAME }}
+          TEST_PASSWORD: ${{ secrets.PERF_PASSWORD }}
+        run: |
+          test -n "${TEST_USERNAME}"
+          test -n "${TEST_PASSWORD}"
+
+      - name: Install pinned k6
+        env:
+          K6_VERSION: v0.55.0
+          K6_SHA256: 47a43a8dbb4c1f5d5bd7b8ed6a1b8c83b35546acf989b78400b4e6ce3adaf628
+        run: |
+          set -euo pipefail
+          archive="k6-${K6_VERSION}-linux-amd64.tar.gz"
+          curl --fail --silent --show-error --location "https://github.com/grafana/k6/releases/download/${K6_VERSION}/${archive}" --output "/tmp/${archive}"
+          echo "${K6_SHA256}  /tmp/${archive}" | sha256sum --check -
+          tar -xzf "/tmp/${archive}" -C /tmp
+          sudo install "/tmp/k6-${K6_VERSION}-linux-amd64/k6" /usr/local/bin/k6
+          test "$(command -v k6)" = "/usr/local/bin/k6"
+
+      - name: Execute protected performance profile
+        env:
+          TARGET: ${{ inputs.target_url }}
+          LOAD_PROFILE: ${{ inputs.load_profile }}
+          TEST_USERNAME: ${{ secrets.PERF_USERNAME }}
+          TEST_PASSWORD: ${{ secrets.PERF_PASSWORD }}
+          ACCOUNT_ID: ${{ secrets.PERF_ACCOUNT_ID }}
+        run: k6 run benchmarks/k6/api-benchmark.js
+
+      - name: Upload performance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-${{ inputs.release_sha }}-${{ inputs.load_profile }}
+          path: benchmarks/k6/results/performance-report.json
+          if-no-files-found: error
+          retention-days: 90

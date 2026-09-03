@@ -1512,6 +1512,7 @@ describe('ReportWorkbenchPage', () => {
       expect(exportButton).toBeDefined();
 
       await exportButton?.trigger('click');
+      await flushPromises();
 
       expect(reportsService.execute).toHaveBeenLastCalledWith({
         reportId: 'scheduling-professional-care',
@@ -2383,6 +2384,7 @@ describe('ReportWorkbenchPage', () => {
       expect(exportButton).toBeDefined();
 
       await exportButton?.trigger('click');
+      await flushPromises();
 
       expect(reportsService.execute).toHaveBeenLastCalledWith({
         reportId: 'scheduling-appointments',

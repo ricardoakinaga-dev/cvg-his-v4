@@ -8,8 +8,8 @@
     />
 
     <DsAlert variant="info">
-      Cadastro em modo somente leitura para validação operacional. Ativar terminal, credenciar provedor e alterar
-      domicílio bancário seguem bloqueados até integração de pagamentos.
+      Cadastro em modo somente leitura para validação operacional. Ativar terminal, credenciar
+      provedor e alterar domicílio bancário seguem bloqueados até integração de pagamentos.
     </DsAlert>
 
     <form class="card-machines-filters" aria-label="Filtros de maquininhas" @submit.prevent>
@@ -18,7 +18,12 @@
         <option value="cvg">Centro Veterinário Guarapiranga</option>
         <option value="mobile">Atendimento externo</option>
       </DsInput>
-      <DsInput id="card-machines-provider" v-model="filters.provider" label="Provedor" type="select">
+      <DsInput
+        id="card-machines-provider"
+        v-model="filters.provider"
+        label="Provedor"
+        type="select"
+      >
         <option value="">Todos</option>
         <option value="cvg-pay">CVG Pay</option>
         <option value="stone">Stone</option>
@@ -42,8 +47,12 @@
     <section class="card-machines-actions" aria-label="Ações de maquininhas">
       <DsButton variant="primary" disabled>Cadastrar Maquininha</DsButton>
       <DsButton variant="secondary" tag="a" to="/finance/split">Configuração do Split</DsButton>
-      <DsButton variant="secondary" tag="a" to="/finance/card-transactions">Transações de Cartão</DsButton>
-      <DsButton variant="secondary" tag="a" to="/finance/payment-enablement">Habilitar Pagamento</DsButton>
+      <DsButton variant="secondary" tag="a" to="/finance/card-transactions"
+        >Transações de Cartão</DsButton
+      >
+      <DsButton variant="secondary" tag="a" to="/finance/payment-enablement"
+        >Habilitar Pagamento</DsButton
+      >
       <DsButton variant="ghost" type="button" @click="resetFilters">Atualizar</DsButton>
     </section>
 
@@ -72,7 +81,10 @@
         <small>{{ cardMachine(row).merchantId }}</small>
       </template>
       <template #cell-status="{ row }">
-        <StatusBadge :label="statusLabel(cardMachine(row).status)" :variant="statusVariant(cardMachine(row).status)" />
+        <StatusBadge
+          :label="statusLabel(cardMachine(row).status)"
+          :variant="statusVariant(cardMachine(row).status)"
+        />
       </template>
       <template #cell-open="{ row }">
         <RouterLink :to="cardMachine(row).openTo" class="open-link">Abrir</RouterLink>
@@ -178,7 +190,9 @@ const filters = reactive({
 
 const visibleMachines = computed(() => machines.filter(matchesFilters));
 const visibleRows = computed(() => visibleMachines.value as unknown as DataTableRow[]);
-const activeMachines = computed(() => machines.filter((machine) => machine.status === 'active').length);
+const activeMachines = computed(
+  () => machines.filter((machine) => machine.status === 'active').length
+);
 const providerCount = computed(() => new Set(machines.map((machine) => machine.provider)).size);
 const latestReconciliationLabel = computed(() => {
   const latest = machines
@@ -277,6 +291,9 @@ function normalize(value: string): string {
 }
 
 .open-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
   color: var(--color-primary, #2563eb);
   font-weight: 700;
   text-decoration: none;

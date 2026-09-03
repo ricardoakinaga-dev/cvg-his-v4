@@ -78,7 +78,7 @@
           <DsInput v-model="form.frequency" label="Frequência" placeholder="Ex: 12/12h" />
           <DsInput v-model="form.notes" type="textarea" label="Observações" :rows="3" />
           <div class="form-actions">
-            <DsButton variant="primary" :loading="submitting">Salvar prescrição</DsButton>
+            <DsButton type="submit" variant="primary" :loading="submitting">Salvar prescrição</DsButton>
             <DsButton variant="secondary" type="button" @click="resetForm">Limpar</DsButton>
           </div>
         </form>

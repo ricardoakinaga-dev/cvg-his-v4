@@ -180,7 +180,9 @@ import {
   redisFailureExperiment,
   networkLatencyExperiment,
   workerFailureExperiment,
-  apiLatencyExperiment
+  apiLatencyExperiment,
+  providerFailureExperiment,
+  chaosMetrics
 } from '@cvg-his-v2/chaos';
 import type { SectorBedServiceOptions } from '@cvg-his-v2/module-inpatient';
 import { createApiRuntime, type RuntimeRepositories } from './runtime.js';
@@ -212,6 +214,7 @@ import {
   getMetricsText,
   decrementActiveRequests,
   httpErrorsTotal,
+  httpOperationalOutcomesTotal,
   httpRequestDurationSeconds,
   httpRequestsTotal,
   normalizeRoute,
@@ -330,6 +333,8 @@ export interface ApiServerOptions {
     command: () => Promise<T>,
     metadata?: { readonly actorUserId: string; readonly correlationId: string }
   ) => Promise<T>;
+  /** Explicitly disables partial clinical repositories in degraded/local runtimes. */
+  readonly medicalRecordsPersistenceMode?: 'repositories' | 'memory';
   readonly featureFlagsProvider?: string;
   /** Pre-resolved feature flags snapshot (GAP-06: avoids async call inside createApiServer) */
   readonly featureFlags?: ApiFeatureFlagsSnapshot;
@@ -3812,7 +3817,8 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
     preserveSeedMasterDataWithRepository: options.preserveSeedMasterDataWithRepository ?? false,
     requireUuidEntityIdentifiers: options.requireUuidEntityIdentifiers,
     unitOfWork: options.unitOfWork,
-    tenantTransaction: options.tenantTransaction
+    tenantTransaction: options.tenantTransaction,
+    medicalRecordsPersistenceMode: options.medicalRecordsPersistenceMode
   });
   const runTenantCommand = createTenantCommandRunner({
     environment: options.environment,
@@ -4195,9 +4201,11 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
   registerChaosExperimentOnce(chaos, networkLatencyExperiment);
   registerChaosExperimentOnce(chaos, workerFailureExperiment);
   registerChaosExperimentOnce(chaos, apiLatencyExperiment);
+  registerChaosExperimentOnce(chaos, providerFailureExperiment);
 
   const accessTokenSynchronizationErrors = new WeakMap<IncomingMessage, AppError>();
   const requestCorrelationIds = new WeakMap<IncomingMessage, string>();
+  const requestRoles = new WeakMap<IncomingMessage, readonly string[]>();
   const server = createServer((request: IncomingMessage, response: ServerResponse) => {
     // Apply W3C trace context propagation before handling
     tracingMiddleware(request, response, () => {
@@ -4289,6 +4297,25 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
         httpErrorsTotal.inc({ status_category: category });
       }
 
+      const role = requestRoles.get(request)?.slice().sort().join('+') || 'anonymous';
+      const isDownload =
+        route === '/reports/executions/:id/export' || route === '/attachments/:id/download';
+      const operation = statusCode === 403 ? 'forbidden' : isDownload ? 'download' : 'route_error';
+      if (statusCode >= 400 || isDownload) {
+        const result = statusCode >= 400 ? 'error' : 'success';
+        httpOperationalOutcomesTotal.inc({ route, role, operation, result });
+        logger.info('http operational outcome', {
+          correlationId,
+          method,
+          route,
+          role,
+          operation,
+          result,
+          statusCode,
+          durationMs: Math.round(durationSec * 1000)
+        });
+      }
+
       span.attributes['http.method'] = method;
       span.attributes['http.route'] = route;
       span.attributes['http.target'] = request.url ?? '/';
@@ -4374,10 +4401,13 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           runtimeDistributedStateEnabled: operationalState.runtimeDistributedStateEnabled
         });
 
-        const metricsText = await getMetricsText();
+        const [metricsText, chaosMetricsText] = await Promise.all([
+          getMetricsText(),
+          chaosMetrics.register.metrics()
+        ]);
         response.setHeader('content-type', 'text/plain; version=0.0.4; charset=utf-8');
         response.statusCode = 200;
-        response.end(metricsText);
+        response.end(`${metricsText}\n${chaosMetricsText}`);
         return;
       }
 
@@ -4409,10 +4439,16 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
         }
       }
 
+      const requireEarlyPrincipal = (permissionCode: string) =>
+        runWithTenantContext(
+          { tenantId: '00000000-0000-0000-0000-000000000001', accountId, userId, correlationId },
+          () => requirePrincipal(request, permissionCode)
+        );
+
       // Chaos engineering endpoints are privileged because experiments can alter process-wide behavior.
       const chaosMatch = request.url?.match(/^\/chaos\/experiments\/([^/]+)\/(start|stop)$/);
       if (chaosMatch && request.method === 'POST') {
-        await requirePrincipal(request, 'users.manage');
+        await requireEarlyPrincipal('users.manage');
         const [, experimentId, action] = chaosMatch;
         if (isProductionLikeEnvironment(options.environment)) {
           response.setHeader('content-type', 'application/json');
@@ -4449,7 +4485,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
 
       // List all available chaos experiments
       if (request.url === '/chaos/experiments' && request.method === 'GET') {
-        await requirePrincipal(request, 'users.manage');
+        await requireEarlyPrincipal('users.manage');
         const appState = getAppState();
         const activeExperimentIds = chaos
           .listActiveExperiments()
@@ -4480,6 +4516,8 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                 ? 'unavailable'
                 : operationalState.persistenceMode,
             workerReady: e.id === 'worker-failure' ? false : operationalState.workerReady,
+            externalProvidersHealthy:
+              e.id === 'provider-failure' ? false : operationalState.externalProvidersHealthy,
             redisHealthy: e.id === 'redis-failure' ? false : operationalState.redisHealthy,
             rateLimiterMode: operationalState.rateLimiterMode
           }
@@ -8110,6 +8148,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
     }
     await accessControl.ensureFreshForRequest(session.accountId);
     const principal = auth.authenticateAccessToken(accessToken);
+    requestRoles.set(request, principal.access.roleCodes);
     accessControl.assertAuthorized({
       actor: principal.user,
       access: principal.access,
@@ -8147,6 +8186,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
     }
 
     await apiKeys.updateLastUsed(apiKey.id);
+    requestRoles.set(request, ['api-key']);
     return { apiKey };
   }
 

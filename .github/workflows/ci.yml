@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
   pull_request:
-    branches: [main, develop]
+    branches: [main]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -206,7 +206,7 @@ jobs:
   repository-guards:
     name: Repository Guards
     runs-on: ubuntu-22.04
-    timeout-minutes: 10
+    timeout-minutes: 20
     needs: [typecheck]
     steps:
       - name: Checkout
@@ -263,9 +263,12 @@ jobs:
           pnpm validate:migration-source
           pnpm validate:rls
           pnpm validate:deploy-surface
+          pnpm docs:validate
+          pnpm complexity:check
           HELM_BIN=/usr/local/bin/helm REQUIRE_HELM=1 pnpm validate:helm
           pnpm deploy:check
           pnpm ops:backup:check
+          INSTALL_UPGRADE_REPORT_DIR=artifacts/operations/install-upgrade pnpm ops:install-upgrade:drill
           REQUIRE_TEST_DB=1 pnpm vitest run tests/unit/infra/requirement-evidence-matrix.test.ts --config vitest.config.ts
           node --test tests/unit/infra/gauntlet-subcriteria-evidence.test.mjs
           pnpm vetus:parity:test
@@ -279,6 +282,15 @@ jobs:
       - name: Stop isolated PostgreSQL
         if: always()
         run: pnpm test:db:stop
+
+      - name: Upload install and upgrade evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: install-upgrade-${{ github.sha }}
+          path: artifacts/operations/install-upgrade/
+          if-no-files-found: error
+          retention-days: 30
 
   api-contract-tests:
     name: API Contract Tests
@@ -736,35 +748,60 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Prepare performance database and deterministic tenant
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5433/cvg_his_v2_test
+          DATABASE_URL_TEST: postgres://postgres:postgres@localhost:5433/cvg_his_v2_test
+        run: |
+          pnpm exec tsx packages/db/src/migrate.ts
+          pnpm benchmark:k6:seed
+
       - name: Start API
         env:
           AUTH_SECRET: ci-test-secret-key-do-not-use-in-production-123456789012
           PIX_MOCK_MODE: 'true'
           PORT: '3001'
           NODE_ENV: test
+          DATABASE_URL: postgres://postgres:postgres@localhost:5433/cvg_his_v2_test
+          REDIS_URL: redis://localhost:6380
+          RUNTIME_DISTRIBUTED_STATE_ENABLED: '1'
+          API_DISABLE_INCOMPATIBLE_DB_REPOS: '0'
         run: |
           pnpm --filter @cvg-his-v2/api run build
           pnpm --filter @cvg-his-v2/api run dev &
           API_PID=$!
           echo "API_PID=$API_PID" >> $GITHUB_ENV
           for i in $(seq 1 60); do
-            if curl -fsS http://localhost:3001/health >/dev/null 2>&1; then
-              echo "API is healthy"
+            if curl -fsS http://localhost:3001/ready >/dev/null 2>&1; then
+              echo "API is ready with its required dependencies"
               break
+            fi
+            if [ "$i" -eq 60 ]; then
+              echo "API did not become ready for the performance gate" >&2
+              exit 1
             fi
             sleep 2
           done
 
-      - name: Install k6
+      - name: Install pinned k6
+        env:
+          K6_VERSION: v0.55.0
+          K6_SHA256: 47a43a8dbb4c1f5d5bd7b8ed6a1b8c83b35546acf989b78400b4e6ce3adaf628
         run: |
-          curl -sL https://github.com/grafana/k6/releases/download/v0.55.0/k6-v0.55.0-linux-amd64.tar.gz | tar -xz -C /usr/local/bin
+          set -euo pipefail
+          archive="k6-${K6_VERSION}-linux-amd64.tar.gz"
+          curl --fail --silent --show-error --location "https://github.com/grafana/k6/releases/download/${K6_VERSION}/${archive}" --output "/tmp/${archive}"
+          echo "${K6_SHA256}  /tmp/${archive}" | sha256sum --check -
+          tar -xzf "/tmp/${archive}" -C /tmp
+          sudo install "/tmp/k6-${K6_VERSION}-linux-amd64/k6" /usr/local/bin/k6
+          test "$(command -v k6)" = "/usr/local/bin/k6"
+          k6 version
 
       - name: Run k6 benchmark
         id: k6-benchmark
-        continue-on-error: true
         env:
           TARGET: http://localhost:3001
-          ACCOUNT_ID: acc_cvg_demo
+          LOAD_PROFILE: operational-minimum-v1
         run: k6 run benchmarks/k6/api-benchmark.js
 
       - name: Check SLO results
@@ -780,15 +817,13 @@ jobs:
           path: benchmarks/k6/results/performance-report.json
           retention-days: 30
 
-      - name: Fail if k6 thresholds breached
-        if: steps.k6-benchmark.outcome == 'failure'
-        run: exit 1
-
   test-e2e-spa:
     name: E2E Tests (SPA)
     runs-on: ubuntu-22.04
-    timeout-minutes: 20
+    timeout-minutes: 120
     needs: [build]
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: ${{ runner.tool_cache }}/ms-playwright
     services:
       postgres:
         image: postgres:16-alpine
@@ -842,6 +877,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Cache Playwright Chromium
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.tool_cache }}/ms-playwright
+          key: ${{ runner.os }}-playwright-1.58.2-chromium
+
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
@@ -856,7 +897,17 @@ jobs:
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5434/cvg_his_e2e
           ADMIN_EMAIL: admin@cvg-his.local
+          ADMIN_USERNAME: admin
           ADMIN_PASSWORD: seed_admin
+          RECEPTION_EMAIL: reception@cvg-his.local
+          RECEPTION_USERNAME: reception
+          RECEPTION_PASSWORD: seed_reception
+          SECOND_ADMIN_EMAIL: admin-b@cvg-his.local
+          SECOND_ADMIN_USERNAME: admin_b
+          SECOND_ADMIN_PASSWORD: seed_admin_b
+          SECOND_TENANT_SLUG: e2e-secondary
+          SECOND_ACCOUNT_SLUG: e2e-secondary
+          SECOND_UNIT_CODE: hq
         run: |
           if ! node infra/scripts/prepare-test-db.mjs; then
             if ! node infra/scripts/test-critical-bootstrap.mjs; then
@@ -926,15 +977,16 @@ jobs:
           E2E_REDIS_URL: redis://localhost:6380
           E2E_DATABASE_MODE: '1'
           API_DISABLE_INCOMPATIBLE_DB_REPOS: '0'
+          E2E_ENVIRONMENT: ci-postgresql
+          E2E_AUDIT_COMMAND: npx playwright test --config playwright-spa.config.ts
         run: |
-          npx playwright test --config playwright-spa.config.ts \
-            e2e/spa/master-search-360-reception.spec.ts \
-            e2e/spa/master-search-360-mobile.spec.ts \
-            e2e/spa/enterprise-surfaces-gate.spec.ts \
-            e2e/spa/setup-wizard-accessibility.spec.ts \
-            e2e/spa/vetus-import-flow.spec.ts \
-            e2e/spa/deleted-sales-report-flow.spec.ts \
-            e2e/spa/service-invoices-report-flow.spec.ts
+          mkdir -p tmp
+          npx playwright test --config playwright-spa.config.ts --list | tee tmp/playwright-discovery.txt
+          npx playwright test --config playwright-spa.config.ts
+
+      - name: Validate complete usability evidence
+        if: always()
+        run: node scripts/validate-usability-playwright-evidence.mjs
 
       - name: Generate Enterprise RC evidence
         if: always()
@@ -952,7 +1004,11 @@ jobs:
           name: e2e-spa-report
           path: |
             e2e/spa-report/
+            playwright-report/usability/
             test-results/
+            tmp/master-usability-audit.json
+            tmp/playwright-discovery.txt
+          if-no-files-found: warn
           retention-days: 30
 
   test-visual:
@@ -960,6 +1016,8 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     needs: [build]
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: ${{ runner.tool_cache }}/ms-playwright
     services:
       postgres:
         image: postgres:16-alpine
@@ -1013,6 +1071,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Cache Playwright Chromium
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.tool_cache }}/ms-playwright
+          key: ${{ runner.os }}-playwright-1.58.2-chromium
+
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
@@ -1026,6 +1090,18 @@ jobs:
       - name: Apply DB schema and seed
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5434/cvg_his_e2e
+          ADMIN_EMAIL: admin@cvg-his.local
+          ADMIN_USERNAME: admin
+          ADMIN_PASSWORD: seed_admin
+          RECEPTION_EMAIL: reception@cvg-his.local
+          RECEPTION_USERNAME: reception
+          RECEPTION_PASSWORD: seed_reception
+          SECOND_ADMIN_EMAIL: admin-b@cvg-his.local
+          SECOND_ADMIN_USERNAME: admin_b
+          SECOND_ADMIN_PASSWORD: seed_admin_b
+          SECOND_TENANT_SLUG: e2e-secondary
+          SECOND_ACCOUNT_SLUG: e2e-secondary
+          SECOND_UNIT_CODE: hq
         run: |
           if ! node infra/scripts/prepare-test-db.mjs; then
             if ! node infra/scripts/test-critical-bootstrap.mjs; then
@@ -1033,6 +1109,7 @@ jobs:
               exit 1
             fi
           fi
+          pnpm exec tsx packages/db/src/seed.ts
 
       - name: Start API
         env:
@@ -1087,8 +1164,13 @@ jobs:
         env:
           API_URL: http://localhost:3001
           SPA_URL: http://localhost:3002
-          E2E_ADMIN_EMAIL: admin@cvg.local
-          E2E_ADMIN_PASSWORD: Admin123!
+          E2E_ADMIN_USERNAME: admin
+          E2E_ADMIN_EMAIL: admin@cvg-his.local
+          E2E_ADMIN_PASSWORD: seed_admin
+          E2E_DATABASE_URL: postgres://postgres:postgres@localhost:5434/cvg_his_e2e
+          E2E_REDIS_URL: redis://localhost:6380
+          E2E_DATABASE_MODE: '1'
+          API_DISABLE_INCOMPATIBLE_DB_REPOS: '0'
         run: npx playwright test --config playwright-spa.config.ts -g "Visual"
 
       - name: Upload visual regression report
@@ -1096,7 +1178,11 @@ jobs:
         if: always()
         with:
           name: visual-regression-report
-          path: e2e/spa-report/
+          path: |
+            e2e/spa-report/
+            playwright-report/usability/
+            test-results/
+          if-no-files-found: warn
           retention-days: 30
 
       - name: Upload visual diff screenshots
