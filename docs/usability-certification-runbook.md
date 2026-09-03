@@ -30,6 +30,16 @@ node scripts/validate-usability-manual-evidence.mjs \
 
 Produto e UX devem abrir a comparação antes/depois, classificar cada arquivo como `defect-corrected` ou `intentional-change` e registrar uma decisão nominal. O contrato exige os 15 baselines alterados:
 
+Gere o pacote lado a lado vinculado aos blobs Git antes da sessão de revisão:
+
+```bash
+pnpm review:usability:visual 844596fc55d9e189a2e7be19ecac7b170a6acced
+```
+
+Abra `artifacts/playwright/844596fc55d9e189a2e7be19ecac7b170a6acced/visual-review/index.html`. O `manifest.json` registra SHA-256 e dimensões de cada imagem antes/depois.
+
+Para compartilhar o pacote sem depender da máquina local, execute **Actions → Prepare Usability Review**, informe o SHA completo e baixe o artefato `usability-visual-review-<sha>`. Esse workflow não recebe nomes, decisões ou outros dados pessoais.
+
 1. `appointments-kanban-page-dark.png`;
 2. `appointments-kanban-page-mobile-dark.png`;
 3. `appointments-kanban-page-mobile.png`;

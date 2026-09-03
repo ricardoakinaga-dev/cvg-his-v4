@@ -15,6 +15,7 @@ import {
 const execFileAsync = promisify(execFile);
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const candidateSha = '1234567890abcdef1234567890abcdef12345678';
+const hospitalCandidateSha = '844596fc55d9e189a2e7be19ecac7b170a6acced';
 
 function identity(prefix) {
   return { name: `${prefix} Silva`, corporateId: `${prefix.toLowerCase()}-1042` };
@@ -114,6 +115,38 @@ test('uses only validated SHA outputs in artifact names and paths', async () => 
   assert.match(workflow, /steps\.candidate\.outputs\.sha/);
   assert.doesNotMatch(workflow, /Upload certification index\n\s+if: always\(\)/);
   assert.match(workflow, /finalDecision:"pending-manual-index"/);
+
+  const preparationWorkflow = await readFile(
+    join(rootDir, '.github/workflows/prepare-usability-review.yml'),
+    'utf8'
+  );
+  assert.doesNotMatch(preparationWorkflow, /name: usability-visual-review-.*inputs\.candidate_sha/);
+  assert.match(
+    preparationWorkflow,
+    /name: usability-visual-review-\$\{\{ steps\.candidate\.outputs\.sha \}\}/
+  );
+});
+
+test('generates a 15-snapshot visual review package from immutable Git blobs', async () => {
+  const temporaryDirectory = await mkdtemp(join(tmpdir(), 'cvg-visual-review-'));
+  await execFileAsync(
+    process.execPath,
+    [
+      'scripts/generate-usability-visual-review-package.mjs',
+      hospitalCandidateSha,
+      temporaryDirectory
+    ],
+    { cwd: rootDir, env: process.env }
+  );
+  const manifest = JSON.parse(await readFile(join(temporaryDirectory, 'manifest.json'), 'utf8'));
+  const html = await readFile(join(temporaryDirectory, 'index.html'), 'utf8');
+  assert.equal(manifest.candidateSha, hospitalCandidateSha);
+  assert.equal(manifest.snapshotCount, 15);
+  assert.equal(manifest.items.length, 15);
+  assert.equal(new Set(manifest.items.map((item) => item.before.sha256)).size, 15);
+  assert.equal(new Set(manifest.items.map((item) => item.after.sha256)).size, 15);
+  assert.match(html, /Pacote de revisão visual hospitalar/);
+  assert.match(html, /Classificação e decisão formal/);
 });
 
 test('rejects a candidate SHA mismatch', () => {

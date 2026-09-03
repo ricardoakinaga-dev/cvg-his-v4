@@ -1,0 +1,46 @@
+name: Prepare Usability Review
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: Exact lowercase 40-character SHA whose visual baselines will be reviewed
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  visual-review-package:
+    name: Build immutable visual review package
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify published candidate identity
+        id: candidate
+        env:
+          CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+        run: |
+          node -e 'const value=process.env.CANDIDATE_SHA; if(!/^[0-9a-f]{40}$/.test(value)){throw new Error("candidate_sha must be a lowercase full SHA")}'
+          git cat-file -e "$CANDIDATE_SHA^{commit}"
+          git merge-base --is-ancestor "$CANDIDATE_SHA" origin/main
+          echo "sha=$CANDIDATE_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Generate before-and-after package from Git blobs
+        env:
+          CANDIDATE_SHA: ${{ steps.candidate.outputs.sha }}
+        run: |
+          node scripts/generate-usability-visual-review-package.mjs "$CANDIDATE_SHA" review-package
+          cp docs/templates/usability-certification-manual-evidence.template.json review-package/manual-evidence.template.json
+
+      - name: Upload SHA-bound visual review package
+        uses: actions/upload-artifact@v4
+        with:
+          name: usability-visual-review-${{ steps.candidate.outputs.sha }}
+          path: review-package/
+          if-no-files-found: error
+          retention-days: 90

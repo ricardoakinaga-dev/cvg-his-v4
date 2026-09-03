@@ -119,8 +119,10 @@ As rodadas `cert-2` e `cert-3` usam o mesmo comando, banco resetado e SHA, alter
 | Rodada integral 3              | `artifacts/playwright/844596fc55d9e189a2e7be19ecac7b170a6acced/cert-3/`                 |
 | Matriz Firefox                 | `artifacts/playwright/844596fc55d9e189a2e7be19ecac7b170a6acced/cross-browser-firefox/`  |
 | Matriz WebKit                  | `artifacts/playwright/844596fc55d9e189a2e7be19ecac7b170a6acced/cross-browser-webkit/`   |
+| Pacote de revisão visual       | `artifacts/playwright/844596fc55d9e189a2e7be19ecac7b170a6acced/visual-review/`          |
 | Dashboard filtrável por rodada | `artifacts/playwright/844596fc55d9e189a2e7be19ecac7b170a6acced/<run-id>/dashboard.json` |
 | Workflow de 90 dias            | `.github/workflows/usability-certification.yml`                                         |
+| Workflow do pacote visual      | `.github/workflows/prepare-usability-review.yml`                                        |
 | Runbook técnico                | `infra/scripts/README.md`                                                               |
 | Runbook do aceite humano       | `docs/usability-certification-runbook.md`                                               |
 | Template do pacote manual      | `docs/templates/usability-certification-manual-evidence.template.json`                  |

@@ -116,6 +116,7 @@
     "validate:helm": "node infra/scripts/validate-helm.mjs",
     "validate:deploy-surface": "node scripts/check-deploy-surface-of-truth.mjs",
     "docs:validate": "node scripts/validate-documentation.mjs",
+    "review:usability:visual": "node scripts/generate-usability-visual-review-package.mjs",
     "test:usability-certification": "node --test scripts/usability-certification.test.mjs",
     "complexity:check": "node scripts/check-complexity-hotspots.mjs",
     "vetus:parity": "node scripts/check-vetus-parity.mjs",
